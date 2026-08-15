@@ -3,10 +3,23 @@ using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// nginx is the only reverse proxy in front of the Api, and it reaches Kestrel over the
+// private Docker network on an address that changes with every `docker compose up`.
+// Without clearing the (loopback-only) defaults, the middleware would reject nginx's
+// own container address and drop the forwarded header - leaving the per-IP rate limiter
+// (Técnico R0006) partitioned on nginx's address, i.e. one shared bucket for everyone.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddDbContext<RuinaRpgDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
@@ -53,6 +66,10 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// Must run before anything that reads the connection (CORS, rate limiting, auth),
+// so those see the real client IP rather than nginx's.
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
