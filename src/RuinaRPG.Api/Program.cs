@@ -1,5 +1,6 @@
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 
@@ -15,6 +16,10 @@ builder.Services
     })
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<RuinaRpgDbContext>();
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 
 // Add services to the container.
 
