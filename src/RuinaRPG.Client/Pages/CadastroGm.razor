@@ -1,0 +1,49 @@
+@page "/cadastro"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Auth
+
+<h1>Cadastro do Gamemaster</h1>
+
+<EditForm Model="_request" OnValidSubmit="SubmitAsync">
+    <label>Nickname <InputText @bind-Value="_request.Nickname" /></label>
+    <label>Email <InputText @bind-Value="_request.Email" /></label>
+    <label>Senha <InputText type="password" @bind-Value="_request.Senha" /></label>
+    <label>Confirmação da Senha <InputText type="password" @bind-Value="_request.ConfirmacaoSenha" /></label>
+    <button type="submit">Cadastrar</button>
+</EditForm>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+@code {
+    private readonly RegisterGmFormModel _request = new();
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        var response = await Http.PostAsJsonAsync("auth/register/gm",
+            new RegisterGmRequest(_request.Nickname, _request.Email, _request.Senha, _request.ConfirmacaoSenha));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadAsStringAsync();
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await AuthState.SetTokensAsync(body!);
+        Navigation.NavigateTo("/painel");
+    }
+
+    private class RegisterGmFormModel
+    {
+        public string Nickname { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Senha { get; set; } = "";
+        public string ConfirmacaoSenha { get; set; } = "";
+    }
+}

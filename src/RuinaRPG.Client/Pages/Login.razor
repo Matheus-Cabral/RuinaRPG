@@ -1,0 +1,44 @@
+@page "/login"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Auth
+
+<h1>Entrar</h1>
+
+<EditForm Model="_request" OnValidSubmit="SubmitAsync">
+    <label>Nickname <InputText @bind-Value="_request.Nickname" /></label>
+    <label>Senha <InputText type="password" @bind-Value="_request.Senha" /></label>
+    <button type="submit">Entrar</button>
+</EditForm>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+@code {
+    private readonly LoginFormModel _request = new();
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        var response = await Http.PostAsJsonAsync("auth/login", new LoginRequest(_request.Nickname, _request.Senha));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nickname ou senha inválidos.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await AuthState.SetTokensAsync(body!);
+        Navigation.NavigateTo("/painel");
+    }
+
+    private class LoginFormModel
+    {
+        public string Nickname { get; set; } = "";
+        public string Senha { get; set; } = "";
+    }
+}

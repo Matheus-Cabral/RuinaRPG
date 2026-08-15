@@ -1,0 +1,20 @@
+@page "/painel"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<h1>Painel</h1>
+<p>Em construção.</p>
+<button @onclick="LogoutAsync">Sair</button>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        var refreshToken = await AuthState.GetRefreshTokenAsync();
+        if (refreshToken is not null)
+            await Http.PostAsJsonAsync("auth/logout", new RuinaRPG.Contracts.Auth.RefreshRequest(refreshToken));
+
+        await AuthState.ClearAsync();
+        Navigation.NavigateTo("/");
+    }
+}
