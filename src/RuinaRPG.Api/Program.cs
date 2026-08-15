@@ -1,4 +1,20 @@
+using RuinaRPG.Infrastructure.Identity;
+using RuinaRPG.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<RuinaRpgDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddRoles<IdentityRole<Guid>>()
+    .AddEntityFrameworkStores<RuinaRpgDbContext>();
 
 // Add services to the container.
 
@@ -33,5 +49,19 @@ app.MapGet("/health", () => Results.Ok("OK"));
 app.UseAuthorization();
 
 app.MapControllers();
+
+if (args.Contains("--migrate"))
+{
+    using var migrateScope = app.Services.CreateScope();
+    migrateScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().Database.Migrate();
+    return;
+}
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
