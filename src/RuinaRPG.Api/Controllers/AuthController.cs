@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RuinaRPG.Contracts.Auth;
@@ -42,6 +43,7 @@ public class AuthController(
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         // UserName is set to Email at registration (Task 5), so login — which is by
@@ -55,6 +57,7 @@ public class AuthController(
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request)
     {
         var hash = refreshTokenService.Hash(request.RefreshToken);
