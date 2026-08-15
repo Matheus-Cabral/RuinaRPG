@@ -20,11 +20,19 @@ public class AuthController(
     RuinaRpgDbContext db,
     IOptions<JwtOptions> jwtOptions) : ControllerBase
 {
+    private const string NicknameTakenMessage = "Este Nickname já está em uso.";
+
     [HttpPost("register/gm")]
     public async Task<ActionResult<AuthResponse>> RegisterGm(RegisterGmRequest request)
     {
         if (request.Senha != request.ConfirmacaoSenha)
             return BadRequest("A confirmação de senha não confere com a senha.");
+
+        // Login e Cadastro R0003 - o Nickname é único no sistema. Checked here for a clean
+        // message; the unique index on NormalizedNickname is what actually guarantees it,
+        // and the catch below turns the race-losing insert into the same 400.
+        if (await NicknameIsTakenAsync(request.Nickname))
+            return BadRequest(NicknameTakenMessage);
 
         var user = new ApplicationUser
         {
@@ -35,11 +43,25 @@ public class AuthController(
             Role = UserRole.GM
         };
 
-        var result = await userManager.CreateAsync(user, request.Senha);
-        if (!result.Succeeded)
-            return BadRequest(string.Join("; ", result.Errors.Select(e => e.Description)));
+        try
+        {
+            var result = await userManager.CreateAsync(user, request.Senha);
+            if (!result.Succeeded)
+                return BadRequest(string.Join("; ", result.Errors.Select(e => e.Description)));
 
-        return Created(string.Empty, await IssueTokensAsync(user));
+            return Created(string.Empty, await IssueTokensAsync(user));
+        }
+        catch (DbUpdateException)
+        {
+            // The check above is a check-then-insert, so a concurrent registration can still
+            // lose the race against the unique index. Translate that into the same 400
+            // instead of letting it surface as a 500.
+            db.ChangeTracker.Clear();
+            if (await NicknameIsTakenAsync(request.Nickname))
+                return BadRequest(NicknameTakenMessage);
+
+            throw;
+        }
     }
 
     [HttpPost("login")]
@@ -89,8 +111,19 @@ public class AuthController(
         return NoContent();
     }
 
-    private async Task<ApplicationUser?> FindByNicknameAsync(string nickname) =>
-        await db.Users.SingleOrDefaultAsync(u => u.Nickname == nickname);
+    // Matches the normalized column that carries the unique index, so the lookup is
+    // case-insensitive and can never find more than one row.
+    private async Task<ApplicationUser?> FindByNicknameAsync(string nickname)
+    {
+        var normalized = ApplicationUser.Normalize(nickname);
+        return await db.Users.SingleOrDefaultAsync(u => u.NormalizedNickname == normalized);
+    }
+
+    private async Task<bool> NicknameIsTakenAsync(string nickname)
+    {
+        var normalized = ApplicationUser.Normalize(nickname);
+        return await db.Users.AnyAsync(u => u.NormalizedNickname == normalized);
+    }
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
     {

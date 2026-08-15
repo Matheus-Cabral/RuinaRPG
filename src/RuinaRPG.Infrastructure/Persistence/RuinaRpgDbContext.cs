@@ -14,6 +14,14 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<ApplicationUser>(entity =>
+        {
+            // Login e Cadastro R0003 - Nickname é único no sistema. The index sits on the
+            // normalized (upper-invariant) column so the uniqueness is case-insensitive.
+            entity.Property(u => u.NormalizedNickname).IsRequired();
+            entity.HasIndex(u => u.NormalizedNickname).IsUnique();
+        });
+
         builder.Entity<RefreshToken>(entity =>
         {
             entity.HasIndex(t => t.TokenHash).IsUnique();
