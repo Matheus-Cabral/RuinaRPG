@@ -1,0 +1,16 @@
+# Obsidian
+.obsidian/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# .NET (implementation not started yet, but kept ready)
+bin/
+obj/
+*.user
+
+# Environment secrets
+.env
+.env.*
+!.env.example
