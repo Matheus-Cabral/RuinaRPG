@@ -115,3 +115,9 @@ Implicações para o deploy:
 
 - O **nginx** (R0007) não precisa gerenciar certificado TLS próprio nem terminar HTTPS para o domínio público — a Cloudflare faz a terminação TLS na borda do túnel. O nginx atende em HTTP simples na rede interna do homelab.
 - `Cors__AllowedOrigins` (R0003) deve incluir o domínio público servido através do túnel Cloudflare, além de qualquer origem de desenvolvimento local.
+
+  
+
+# **R0011** - Desenvolvimento segue TDD.
+
+**Descrição**: Toda unidade de comportamento (endpoint, serviço, regra de domínio) é implementada escrevendo primeiro um teste que falha, depois o código mínimo pra fazê-lo passar — não só onde for conveniente. Vale para todo o código de produção do projeto; os planos de implementação em `docs/superpowers/plans/` (fora deste `Docs/`, é a pasta usada pela skill de planejamento) já seguem esse ciclo passo a passo por padrão.
