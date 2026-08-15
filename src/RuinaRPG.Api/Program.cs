@@ -7,6 +7,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Default", policy =>
+    {
+        var origins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',') ?? [];
+        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -17,6 +26,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("Default");
+app.MapGet("/health", () => Results.Ok("OK"));
 
 app.UseAuthorization();
 
