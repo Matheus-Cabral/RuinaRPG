@@ -10,9 +10,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthStateService>();
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? builder.HostEnvironment.BaseAddress)
-});
+
+var apiBaseAddress = builder.Configuration["ApiBaseAddress"] ?? "/";
+var httpClientBaseAddress = new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBaseAddress);
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = httpClientBaseAddress });
 
 await builder.Build().RunAsync();
