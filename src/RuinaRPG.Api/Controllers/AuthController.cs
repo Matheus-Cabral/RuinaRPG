@@ -114,8 +114,6 @@ public class AuthController(
         return NoContent();
     }
 
-    // Matches the normalized column that carries the unique index, so the lookup is
-    // case-insensitive and can never find more than one row.
     /// <summary>
     /// Echoes the caller's own claims. Exists so the authenticated half of the slice
     /// (issue token -> validate token -> read identity) is reachable and testable.
@@ -127,6 +125,8 @@ public class AuthController(
         User.FindFirstValue("nickname") ?? string.Empty,
         User.FindFirstValue("role") ?? string.Empty));
 
+    // Matches the normalized column that carries the unique index, so the lookup is
+    // case-insensitive and can never find more than one row.
     private async Task<ApplicationUser?> FindByNicknameAsync(string nickname)
     {
         var normalized = ApplicationUser.Normalize(nickname);
