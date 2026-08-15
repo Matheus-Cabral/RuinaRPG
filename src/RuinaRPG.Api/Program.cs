@@ -3,8 +3,13 @@ using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,9 +37,51 @@ builder.Services
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<RuinaRpgDbContext>();
 
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+// Fail fast: a deploy that forgets the Jwt__* environment variables must not boot green
+// and only blow up deep inside request handling.
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .Validate(o => !string.IsNullOrWhiteSpace(o.SigningKey)
+        && Encoding.UTF8.GetByteCount(o.SigningKey) >= 32
+        && !string.IsNullOrWhiteSpace(o.Issuer)
+        && !string.IsNullOrWhiteSpace(o.Audience),
+        "Jwt configuration is missing or invalid (SigningKey must be present and at least 32 bytes; Issuer and Audience must be present).")
+    .ValidateOnStart();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+// The bearer options are configured *from DI* rather than from a JwtOptions instance bound
+// eagerly here, because at this point the container isn't built yet: reading configuration
+// directly would silently ignore anything that registers/overrides JwtOptions later in the
+// pipeline (the integration test host does exactly that). Taking IOptions<JwtOptions> as a
+// dependency of the named-options Configure means validation (below) and token validation
+// always agree on one single source of truth.
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((bearerOptions, jwtOptions) =>
+    {
+        var jwt = jwtOptions.Value;
+
+        // Keep the claim types exactly as JwtTokenService wrote them ("sub"/"role"/"nickname")
+        // instead of letting the handler rewrite them into the legacy WS-Fed URIs.
+        bearerOptions.MapInboundClaims = false;
+        bearerOptions.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+            ValidateLifetime = true,
+            RoleClaimType = "role",
+            NameClaimType = JwtRegisteredClaimNames.Sub
+        };
+    });
 
 // Add services to the container.
 
@@ -81,8 +128,12 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("Default");
+// nginx proxies /api/ through unmodified, so /api/health is the only externally
+// reachable form; the bare /health stays for container-internal healthchecks.
 app.MapGet("/health", () => Results.Ok("OK"));
+app.MapGet("/api/health", () => Results.Ok("OK"));
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseRateLimiter();

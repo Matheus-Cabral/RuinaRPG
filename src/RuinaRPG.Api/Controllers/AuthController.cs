@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Auth;
@@ -113,6 +116,17 @@ public class AuthController(
 
     // Matches the normalized column that carries the unique index, so the lookup is
     // case-insensitive and can never find more than one row.
+    /// <summary>
+    /// Echoes the caller's own claims. Exists so the authenticated half of the slice
+    /// (issue token -> validate token -> read identity) is reachable and testable.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<MeResponse> Me() => Ok(new MeResponse(
+        User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? string.Empty,
+        User.FindFirstValue("nickname") ?? string.Empty,
+        User.FindFirstValue("role") ?? string.Empty));
+
     private async Task<ApplicationUser?> FindByNicknameAsync(string nickname)
     {
         var normalized = ApplicationUser.Normalize(nickname);
