@@ -1315,24 +1315,26 @@ public class AuthControllerRateLimitTests : IClassFixture<PostgresFixture>, IAsy
 Run: `dotnet test tests/RuinaRPG.Tests.Integration --filter AuthControllerRateLimitTests`
 Expected: FAIL — no request in the loop returns 429 yet (all come back 401).
 
-- [ ] **Step 3: Register the rate limiter in `Program.cs`**
+- [ ] **Step 3: Register the rate limiter in `Program.cs`, partitioned per IP**
 
-Add, before `var app = builder.Build();`:
+Técnico R0006 requires the limit to apply **per IP/usuário**, not as one shared global counter — a single named `AddFixedWindowLimiter` policy is global and would let one abusive client exhaust the quota for everyone else. Use `AddPolicy` with a partition key instead. Add, before `var app = builder.Build();`:
 
 ```csharp
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("login", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 10;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueLimit = 0;
-    });
+    options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
 });
 ```
 
-Add `using Microsoft.AspNetCore.RateLimiting;` to the top of `Program.cs`, and add `app.UseRateLimiter();` right after `app.UseRouting();` (or right before `app.MapControllers();` if the template has no explicit `UseRouting`).
+Add `using Microsoft.AspNetCore.RateLimiting;` and `using System.Threading.RateLimiting;` to the top of `Program.cs`, and add `app.UseRateLimiter();` right after `app.UseRouting();` (or right before `app.MapControllers();` if the template has no explicit `UseRouting`).
 
 - [ ] **Step 4: Apply the policy to `Login` and `Refresh`**
 
