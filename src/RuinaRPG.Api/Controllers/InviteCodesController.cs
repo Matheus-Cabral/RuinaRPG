@@ -69,6 +69,25 @@ public class InviteCodesController(RuinaRpgDbContext db) : ControllerBase
         return codes.Select(c => ToResponse(c, redeemers)).ToList();
     }
 
+    [HttpPost("{code}/revoke")]
+    public async Task<IActionResult> Revoke(string code)
+    {
+        var gmId = CurrentGmId();
+        var inviteCode = await db.InviteCodes.SingleOrDefaultAsync(c => c.Code == code && c.GmId == gmId);
+
+        if (inviteCode is null)
+            return NotFound();
+
+        var status = InviteCodeStatusCalculator.Compute(inviteCode.RevokedAt, inviteCode.RedeemedByUserId, inviteCode.ExpiresAt, DateTime.UtcNow);
+        if (status != InviteCodeStatus.Ativo)
+            return BadRequest("Somente um código Ativo pode ser revogado.");
+
+        inviteCode.RevokedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     private static string GenerateRandomCode()
     {
         var bytes = RandomNumberGenerator.GetBytes(CodeLength);

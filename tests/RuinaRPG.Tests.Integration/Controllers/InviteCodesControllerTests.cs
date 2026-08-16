@@ -88,4 +88,59 @@ public class InviteCodesControllerTests : IClassFixture<PostgresFixture>, IAsync
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    private async Task<string> GenerateCodeAsync(string token)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", token));
+        var body = await response.Content.ReadFromJsonAsync<InviteCodeResponse>();
+        return body!.Code;
+    }
+
+    [Fact]
+    public async Task Revoke_an_active_code_returns_204_and_the_list_shows_Revogado()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RevokeGm1", "revoke1@teste.com");
+        var code = await GenerateCodeAsync(token);
+
+        var revoke = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+        revoke.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
+        var body = await list.Content.ReadFromJsonAsync<List<InviteCodeResponse>>();
+        body!.Single(c => c.Code == code).Status.Should().Be("Revogado");
+    }
+
+    [Fact]
+    public async Task Revoke_a_code_owned_by_another_gm_returns_404()
+    {
+        var tokenOwner = await RegisterGmAndGetTokenAsync("RevokeOwner", "revokeowner@teste.com");
+        var tokenOther = await RegisterGmAndGetTokenAsync("RevokeOther", "revokeother@teste.com");
+        var code = await GenerateCodeAsync(tokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", tokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Revoke_an_already_revoked_code_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RevokeTwice", "revoketwice@teste.com");
+        var code = await GenerateCodeAsync(token);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Revoke_a_nonexistent_code_returns_404()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RevokeMissing", "revokemissing@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes/NOTAREAL/revoke", token));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
