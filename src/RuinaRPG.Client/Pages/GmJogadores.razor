@@ -47,6 +47,7 @@
             return;
         }
 
+        _errorMessage = null;
         _players = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
     }
 
@@ -63,7 +64,10 @@
             return;
         }
 
+        _errorMessage = null;
         _resettingPlayerId = null;
+        _resetRequest.NovaSenha = "";
+        _resetRequest.ConfirmacaoNovaSenha = "";
     }
 
     private class ResetFormModel
