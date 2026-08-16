@@ -13,6 +13,11 @@ builder.Services.AddScoped<AuthStateService>();
 
 var apiBaseAddress = builder.Configuration["ApiBaseAddress"] ?? "/";
 var httpClientBaseAddress = new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBaseAddress);
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = httpClientBaseAddress });
+
+builder.Services.AddTransient<BearerTokenHandler>();
+builder.Services
+    .AddHttpClient("Api", client => client.BaseAddress = httpClientBaseAddress)
+    .AddHttpMessageHandler<BearerTokenHandler>();
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 
 await builder.Build().RunAsync();
