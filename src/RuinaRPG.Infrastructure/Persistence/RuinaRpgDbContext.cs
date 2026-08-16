@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Identity;
+using RuinaRPG.Infrastructure.Invites;
 
 namespace RuinaRPG.Infrastructure.Persistence;
 
@@ -9,6 +10,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,6 +31,19 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<InviteCode>(entity =>
+        {
+            entity.HasIndex(c => c.Code).IsUnique();
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(c => c.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(c => c.RedeemedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
