@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Domain.Enums;
+using RuinaRPG.Domain.Invites;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Persistence;
@@ -59,6 +60,62 @@ public class AuthController(
             // The check above is a check-then-insert, so a concurrent registration can still
             // lose the race against the unique index. Translate that into the same 400
             // instead of letting it surface as a 500.
+            db.ChangeTracker.Clear();
+            if (await NicknameIsTakenAsync(request.Nickname))
+                return BadRequest(NicknameTakenMessage);
+
+            throw;
+        }
+    }
+
+    [HttpPost("register/jogador")]
+    [EnableRateLimiting("login")]
+    public async Task<ActionResult<AuthResponse>> RegisterJogador(RegisterJogadorRequest request)
+    {
+        if (request.Senha != request.ConfirmacaoSenha)
+            return BadRequest("A confirmação de senha não confere com a senha.");
+
+        if (await NicknameIsTakenAsync(request.Nickname))
+            return BadRequest(NicknameTakenMessage);
+
+        var inviteCode = await db.InviteCodes.SingleOrDefaultAsync(c => c.Code == request.CodigoDeAcesso);
+        if (inviteCode is null)
+            return BadRequest("Código de acesso inválido.");
+
+        var status = InviteCodeStatusCalculator.Compute(inviteCode.RevokedAt, inviteCode.RedeemedByUserId, inviteCode.ExpiresAt, DateTime.UtcNow);
+        var statusError = status switch
+        {
+            InviteCodeStatus.Usado => "Este código de acesso já foi usado.",
+            InviteCodeStatus.Revogado => "Este código de acesso foi revogado.",
+            InviteCodeStatus.Expirado => "Este código de acesso expirou.",
+            _ => null
+        };
+        if (statusError is not null)
+            return BadRequest(statusError);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = request.Email,
+            Email = request.Email,
+            Nickname = request.Nickname,
+            Role = UserRole.Jogador,
+            InvitedByGmId = inviteCode.GmId
+        };
+
+        try
+        {
+            var result = await userManager.CreateAsync(user, request.Senha);
+            if (!result.Succeeded)
+                return BadRequest(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+            inviteCode.RedeemedByUserId = user.Id;
+            inviteCode.RedeemedAt = DateTime.UtcNow;
+
+            return Created(string.Empty, await IssueTokensAsync(user));
+        }
+        catch (DbUpdateException)
+        {
             db.ChangeTracker.Clear();
             if (await NicknameIsTakenAsync(request.Nickname))
                 return BadRequest(NicknameTakenMessage);
