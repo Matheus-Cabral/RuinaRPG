@@ -1,0 +1,91 @@
+@page "/cadastro"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Auth
+
+<h1>Cadastro</h1>
+
+<div>
+    <button @onclick='() => _activeTab = "gm"' disabled="@(_activeTab == "gm")">Gamemaster</button>
+    <button @onclick='() => _activeTab = "jogador"' disabled="@(_activeTab == "jogador")">Jogador</button>
+</div>
+
+@if (_activeTab == "gm")
+{
+    <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
+        <label>Nickname <InputText @bind-Value="_gmRequest.Nickname" /></label>
+        <label>Email <InputText @bind-Value="_gmRequest.Email" /></label>
+        <label>Senha <InputText type="password" @bind-Value="_gmRequest.Senha" /></label>
+        <label>Confirmação da Senha <InputText type="password" @bind-Value="_gmRequest.ConfirmacaoSenha" /></label>
+        <button type="submit">Cadastrar</button>
+    </EditForm>
+}
+else
+{
+    <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
+        <label>Nickname <InputText @bind-Value="_jogadorRequest.Nickname" /></label>
+        <label>Email <InputText @bind-Value="_jogadorRequest.Email" /></label>
+        <label>Senha <InputText type="password" @bind-Value="_jogadorRequest.Senha" /></label>
+        <label>Confirmação da Senha <InputText type="password" @bind-Value="_jogadorRequest.ConfirmacaoSenha" /></label>
+        <label>Código de acesso <InputText @bind-Value="_jogadorRequest.CodigoDeAcesso" /></label>
+        <button type="submit">Cadastrar</button>
+    </EditForm>
+}
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+@code {
+    private string _activeTab = "gm";
+    private readonly GmFormModel _gmRequest = new();
+    private readonly JogadorFormModel _jogadorRequest = new();
+    private string? _errorMessage;
+
+    private async Task SubmitGmAsync()
+    {
+        var response = await Http.PostAsJsonAsync("auth/register/gm",
+            new RegisterGmRequest(_gmRequest.Nickname, _gmRequest.Email, _gmRequest.Senha, _gmRequest.ConfirmacaoSenha));
+        await HandleResponseAsync(response);
+    }
+
+    private async Task SubmitJogadorAsync()
+    {
+        var response = await Http.PostAsJsonAsync("auth/register/jogador",
+            new RegisterJogadorRequest(_jogadorRequest.Nickname, _jogadorRequest.Email, _jogadorRequest.Senha,
+                _jogadorRequest.ConfirmacaoSenha, _jogadorRequest.CodigoDeAcesso));
+        await HandleResponseAsync(response);
+    }
+
+    private async Task HandleResponseAsync(HttpResponseMessage response)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadAsStringAsync();
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await AuthState.SetTokensAsync(body!);
+        Navigation.NavigateTo("/painel");
+    }
+
+    private class GmFormModel
+    {
+        public string Nickname { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Senha { get; set; } = "";
+        public string ConfirmacaoSenha { get; set; } = "";
+    }
+
+    private class JogadorFormModel
+    {
+        public string Nickname { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Senha { get; set; } = "";
+        public string ConfirmacaoSenha { get; set; } = "";
+        public string CodigoDeAcesso { get; set; } = "";
+    }
+}
