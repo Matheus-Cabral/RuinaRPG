@@ -1,0 +1,74 @@
+@page "/painel/jogadores"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Players
+
+<h1>Jogadores</h1>
+
+<input @bind="_query" @bind:event="oninput" placeholder="Buscar por nickname ou e-mail" />
+<button @onclick="SearchAsync">Buscar</button>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<ul>
+    @foreach (var player in _players)
+    {
+        <li>
+            @player.Nickname (@player.Email)
+            <button @onclick="() => StartReset(player.Id)">Redefinir senha</button>
+        </li>
+    }
+</ul>
+
+@if (_resettingPlayerId is not null)
+{
+    <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
+        <label>Nova senha <InputText type="password" @bind-Value="_resetRequest.NovaSenha" /></label>
+        <label>Confirmação da nova senha <InputText type="password" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" /></label>
+        <button type="submit">Confirmar</button>
+    </EditForm>
+}
+
+@code {
+    private string _query = "";
+    private List<PlayerSearchResultResponse> _players = new();
+    private string? _errorMessage;
+    private string? _resettingPlayerId;
+    private readonly ResetFormModel _resetRequest = new();
+
+    private async Task SearchAsync()
+    {
+        var response = await Http.GetAsync($"players?q={Uri.EscapeDataString(_query)}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível buscar jogadores.";
+            return;
+        }
+
+        _players = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
+    }
+
+    private void StartReset(string playerId) => _resettingPlayerId = playerId;
+
+    private async Task ConfirmResetAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"players/{_resettingPlayerId}/reset-password",
+            new ResetPlayerPasswordRequest(_resetRequest.NovaSenha, _resetRequest.ConfirmacaoNovaSenha));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível redefinir a senha.";
+            return;
+        }
+
+        _resettingPlayerId = null;
+    }
+
+    private class ResetFormModel
+    {
+        public string NovaSenha { get; set; } = "";
+        public string ConfirmacaoNovaSenha { get; set; } = "";
+    }
+}
