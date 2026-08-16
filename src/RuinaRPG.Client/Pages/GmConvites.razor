@@ -1,0 +1,88 @@
+@page "/painel/convites"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Invites
+
+<h1>Convidar Jogador</h1>
+
+<button @onclick="GenerateAsync">Gerar código de convite</button>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<table>
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Status</th>
+            <th>Gerado em</th>
+            <th>Expira em</th>
+            <th>Resgatado por</th>
+            <th>Resgatado em</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in _codes)
+        {
+            <tr>
+                <td>@item.Code</td>
+                <td>@item.Status</td>
+                <td>@item.GeneratedAt</td>
+                <td>@(item.ExpiresAt?.ToString() ?? "—")</td>
+                <td>@(item.RedeemedByNickname is null ? "—" : $"{item.RedeemedByNickname} ({item.RedeemedByEmail})")</td>
+                <td>@(item.RedeemedAt?.ToString() ?? "—")</td>
+                <td>
+                    @if (item.Status == "Ativo")
+                    {
+                        <button @onclick="() => RevokeAsync(item.Code)">Revogar</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<InviteCodeResponse> _codes = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("invite-codes");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os códigos de convite.";
+            return;
+        }
+
+        _codes = await response.Content.ReadFromJsonAsync<List<InviteCodeResponse>>() ?? new();
+    }
+
+    private async Task GenerateAsync()
+    {
+        var response = await Http.PostAsync("invite-codes", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível gerar um código de convite.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RevokeAsync(string code)
+    {
+        var response = await Http.PostAsync($"invite-codes/{code}/revoke", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível revogar o código.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+}
