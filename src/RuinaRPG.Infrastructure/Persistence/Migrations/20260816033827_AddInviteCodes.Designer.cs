@@ -12,7 +12,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    [Migration("20260816003409_AddInviteCodes")]
+    [Migration("20260816033827_AddInviteCodes")]
     partial class AddInviteCodes
     {
         /// <inheritdoc />
@@ -274,7 +274,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");

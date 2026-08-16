@@ -35,6 +35,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<InviteCode>(entity =>
         {
+            entity.Property(c => c.Code).HasMaxLength(8);
             entity.HasIndex(c => c.Code).IsUnique();
             entity.HasOne<ApplicationUser>()
                 .WithMany()

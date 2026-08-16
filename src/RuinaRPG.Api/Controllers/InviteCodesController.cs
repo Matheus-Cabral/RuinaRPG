@@ -107,7 +107,7 @@ public class InviteCodesController(RuinaRpgDbContext db) : ControllerBase
             code.Code,
             status.ToString(),
             code.GeneratedAt,
-            status == InviteCodeStatus.Ativo ? code.ExpiresAt : null,
+            status is InviteCodeStatus.Ativo or InviteCodeStatus.Expirado ? code.ExpiresAt : null,
             redeemer?.Nickname,
             redeemer?.Email,
             code.RedeemedAt);

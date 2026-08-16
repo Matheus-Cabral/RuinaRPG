@@ -111,6 +111,7 @@ public class AuthController(
 
             inviteCode.RedeemedByUserId = user.Id;
             inviteCode.RedeemedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
 
             return Created(string.Empty, await IssueTokensAsync(user));
         }

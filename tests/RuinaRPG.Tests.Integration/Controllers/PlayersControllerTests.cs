@@ -44,13 +44,15 @@ public class PlayersControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
         return tokens!.AccessToken;
     }
 
-    private async Task RegisterJogadorAsync(string gmToken, string nickname, string email)
+    private async Task<string> RegisterJogadorAsync(string gmToken, string nickname, string email)
     {
         var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
 
-        await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return tokens!.AccessToken;
     }
 
     [Fact]
@@ -59,6 +61,17 @@ public class PlayersControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
         var response = await _client.GetAsync("/api/players");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Search_with_a_jogador_token_returns_403()
+    {
+        var gmToken = await RegisterGmAsync("PlayersGmRole", "playersgmrole@teste.com");
+        var jogadorToken = await RegisterJogadorAsync(gmToken, "PlayersRoleCheck", "playersrolecheck@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", jogadorToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

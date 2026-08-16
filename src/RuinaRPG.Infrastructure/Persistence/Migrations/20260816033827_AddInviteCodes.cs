@@ -16,7 +16,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Code = table.Column<string>(type: "text", nullable: false),
+                    Code = table.Column<string>(type: "character varying(8)", maxLength: 8, nullable: false),
                     GmId = table.Column<Guid>(type: "uuid", nullable: false),
                     GeneratedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),

@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Invites;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -41,6 +44,16 @@ public class InviteCodesControllerTests : IClassFixture<PostgresFixture>, IAsync
         var message = new HttpRequestMessage(method, url);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return message;
+    }
+
+    private async Task<string> RegisterJogadorAsync(string gmToken, string nickname, string email)
+    {
+        var code = await GenerateCodeAsync(gmToken);
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return tokens!.AccessToken;
     }
 
     [Fact]
@@ -87,6 +100,39 @@ public class InviteCodesControllerTests : IClassFixture<PostgresFixture>, IAsync
         var response = await _client.GetAsync("/api/invite-codes");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task List_with_a_jogador_token_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ConviteGmRole", "conviterole@teste.com");
+        var jogadorToken = await RegisterJogadorAsync(gmToken, "ConviteRoleCheck", "conviterolecheck@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", jogadorToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task List_shows_the_original_ExpiresAt_for_an_Expirado_code()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ExpiraGm1", "expiragm1@teste.com");
+        var code = await GenerateCodeAsync(token);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var inviteCode = await db.InviteCodes.SingleAsync(c => c.Code == code);
+            inviteCode.ExpiresAt = DateTime.UtcNow.AddSeconds(-1);
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<InviteCodeResponse>>();
+        var entry = body!.Single(c => c.Code == code);
+        entry.Status.Should().Be("Expirado");
+        entry.ExpiresAt.Should().NotBeNull();
     }
 
     private async Task<string> GenerateCodeAsync(string token)
