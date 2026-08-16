@@ -35,7 +35,8 @@ builder.Services
         options.User.RequireUniqueEmail = true;
     })
     .AddRoles<IdentityRole<Guid>>()
-    .AddEntityFrameworkStores<RuinaRpgDbContext>();
+    .AddEntityFrameworkStores<RuinaRpgDbContext>()
+    .AddDefaultTokenProviders();
 
 // Fail fast: a deploy that forgets the Jwt__* environment variables must not boot green
 // and only blow up deep inside request handling.

@@ -111,4 +111,77 @@ public class PlayersControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
         var body = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>();
         body!.Should().ContainSingle(p => p.Nickname == "EmailMatch");
     }
+
+    [Fact]
+    public async Task Reset_password_for_a_linked_player_returns_204_and_the_new_password_works()
+    {
+        var gmToken = await RegisterGmAsync("ResetGm1", "resetgm1@teste.com");
+        await RegisterJogadorAsync(gmToken, "ResetPlayer1", "resetplayer1@teste.com");
+        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
+        var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
+
+        var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
+        {
+            Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
+        };
+        reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var resetResponse = await _client.SendAsync(reset);
+
+        resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("ResetPlayer1", "NovaSenha!456"));
+        login.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Reset_password_for_a_player_linked_to_another_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAsync("ResetOwner", "resetowner@teste.com");
+        var gmTokenOther = await RegisterGmAsync("ResetOther", "resetother@teste.com");
+        await RegisterJogadorAsync(gmTokenOwner, "ResetPlayer2", "resetplayer2@teste.com");
+        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmTokenOwner));
+        var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
+
+        var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
+        {
+            Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
+        };
+        reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmTokenOther);
+        var response = await _client.SendAsync(reset);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Reset_password_with_mismatched_confirmation_returns_400()
+    {
+        var gmToken = await RegisterGmAsync("ResetGm3", "resetgm3@teste.com");
+        await RegisterJogadorAsync(gmToken, "ResetPlayer3", "resetplayer3@teste.com");
+        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
+        var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
+
+        var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
+        {
+            Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "Outra!789"))
+        };
+        reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var response = await _client.SendAsync(reset);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Reset_password_for_a_nonexistent_player_returns_404()
+    {
+        var gmToken = await RegisterGmAsync("ResetGm4", "resetgm4@teste.com");
+
+        var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{Guid.NewGuid()}/reset-password")
+        {
+            Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
+        };
+        reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var response = await _client.SendAsync(reset);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
