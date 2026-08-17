@@ -115,6 +115,7 @@
 
         _form.Tipo = existing.Tipo;
         _form.Nome = existing.Nome;
+        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == existing.ImageUrl)?.Id;
         _form.Peso = existing.Peso;
         _form.Preco = existing.Preco;
         _form.Subcategoria = existing.Subcategoria;
