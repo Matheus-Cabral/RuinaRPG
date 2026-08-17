@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -34,6 +35,18 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
             new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return tokens!.AccessToken;
+    }
+
+    private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
+    {
+        var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
+        codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var codeResponse = await _client.SendAsync(codeMessage);
+        var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
     private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
@@ -69,5 +82,16 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         body!.GastoEmPI.Should().Be(14); // 8 + 6
         body.Custo.Should().Be(18); // ceil(14 * 1.25) = ceil(17.5) = 18
         body.Efeitos.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Create_as_a_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("BankGm2", "bank2@teste.com");
+        var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "BankJogador1", "bankjogador1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", jogadorToken, BolaDeFogo()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }
