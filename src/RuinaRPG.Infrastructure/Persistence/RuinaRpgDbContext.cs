@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
+using RuinaRPG.Infrastructure.Items;
 
 namespace RuinaRPG.Infrastructure.Persistence;
 
@@ -13,6 +14,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Image> Images => Set<Image>();
+    public DbSet<Item> Items => Set<Item>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -55,6 +57,24 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(i => i.UploadedByUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Item>(entity =>
+        {
+            entity.HasDiscriminator<string>("Tipo")
+                .HasValue<ItemGeral>("ItemGeral")
+                .HasValue<Arma>("Arma")
+                .HasValue<Armadura>("Armadura")
+                .HasValue<Escudo>("Escudo")
+                .HasValue<Artefato>("Artefato");
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(i => i.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>()
+                .WithMany()
+                .HasForeignKey(i => i.ImageId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
