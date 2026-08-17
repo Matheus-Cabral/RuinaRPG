@@ -109,4 +109,34 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         body.Should().ContainSingle();
     }
+
+    [Fact]
+    public async Task Mine_returns_the_callers_images_newest_first()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ImageGm5", "image5@teste.com");
+
+        var firstUpload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
+        firstUpload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var firstResponse = await _client.SendAsync(firstUpload);
+        var firstBody = await firstResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
+
+        // A short delay guarantees the two uploads land at distinct CreatedAt instants, so
+        // the "newest first" ordering is deterministically observable rather than depending
+        // on incidental request latency between the two SendAsync calls.
+        await Task.Delay(10);
+
+        var secondUpload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
+        secondUpload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var secondResponse = await _client.SendAsync(secondUpload);
+        var secondBody = await secondResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
+
+        var mineMessage = new HttpRequestMessage(HttpMethod.Get, "/api/images/mine");
+        mineMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(mineMessage);
+
+        var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
+        body.Should().HaveCount(2);
+        body!.Select(i => i.Id).Should().Equal(secondBody!.Id, firstBody!.Id);
+        body.Should().BeInDescendingOrder(i => i.CreatedAt);
+    }
 }
