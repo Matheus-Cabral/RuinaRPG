@@ -158,6 +158,14 @@ if (app.Environment.IsDevelopment())
     db.Database.Migrate();
 }
 
+using (var seedScope = app.Services.CreateScope())
+{
+    var db = seedScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+    var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
+    var insertedCount = await RuinaRPG.Infrastructure.Rules.TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
+    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted", insertedCount);
+}
+
 app.Run();
 
 public partial class Program { }
