@@ -1,4 +1,5 @@
 using RuinaRPG.Infrastructure.Identity;
+using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,13 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+
+builder.Services.Configure<ImageStorageOptions>(options =>
+{
+    options.ImagesPath = builder.Configuration["Storage:ImagesPath"] ?? "/images";
+    options.MaxSizeMb = int.Parse(builder.Configuration["Img:MaxSizeMb"] ?? "10");
+});
+builder.Services.AddScoped<IImageFileStore, DiskImageFileStore>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
