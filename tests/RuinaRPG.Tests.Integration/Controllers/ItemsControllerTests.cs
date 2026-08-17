@@ -1,0 +1,128 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using FluentAssertions;
+using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Items;
+
+namespace RuinaRPG.Tests.Integration.Controllers;
+
+public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+{
+    private readonly PostgresFixture _postgres;
+    private ApiFactory _factory = null!;
+    private HttpClient _client = null!;
+
+    public ItemsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+
+    public Task InitializeAsync()
+    {
+        _factory = new ApiFactory(_postgres.ConnectionString);
+        _client = _factory.CreateClient();
+        return Task.CompletedTask;
+    }
+
+    public Task DisposeAsync()
+    {
+        _client.Dispose();
+        return _factory.DisposeAsync().AsTask();
+    }
+
+    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return tokens!.AccessToken;
+    }
+
+    private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
+    {
+        var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
+        codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var codeResponse = await _client.SendAsync(codeMessage);
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+    }
+
+    private static CreateItemRequest MinimalItemGeral(string nome) =>
+        new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null);
+
+    private static CreateItemRequest MinimalArma(string nome) =>
+        new("Arma", nome, 1.5m, 50, null, "Espadas", null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+            null, null, null, null, null, null,
+            null, null, null, null);
+
+    [Fact]
+    public async Task Create_without_a_token_returns_401()
+    {
+        var response = await _client.PostAsJsonAsync("/api/items", MinimalItemGeral("Corda"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Create_as_a_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ItemGm1", "item1@teste.com");
+        var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "ItemJogador1", "itemjogador1@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorToken);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Create_an_ItemGeral_returns_201_with_only_ItemGeral_fields_set()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGm2", "item2@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.Tipo.Should().Be("ItemGeral");
+        body.Nome.Should().Be("Corda");
+        body.Subcategoria.Should().Be("Equipamentos de Aventura");
+        body.Dano.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Create_an_Arma_returns_201_with_arma_specific_fields_set()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGm3", "item3@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArma("Espada Curta")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.Tipo.Should().Be("Arma");
+        body.Tier.Should().Be("F");
+        body.Dano.Should().Be(3);
+        body.Subcategoria.Should().Be("Espadas");
+    }
+
+    [Fact]
+    public async Task Create_with_an_unknown_Tipo_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGm4", "item4@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda") with { Tipo = "NaoExiste" }) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+}
