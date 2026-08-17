@@ -1,0 +1,28 @@
+namespace RuinaRPG.Contracts.Items;
+
+public record UpdateItemRequest(
+    string Nome,
+    decimal Peso,
+    int Preco,
+    string? ImageId,
+    string? Subcategoria,
+    string? Descricao,
+    string? Tier,
+    string? Empunhadura,
+    string? Dados,
+    int? Dano,
+    string? Critico,
+    int? Alcance,
+    string? TipoDeDano,
+    string? RequisitoAtributo,
+    int? DurabilidadeMaxima,
+    string? Categoria,
+    int? Defesa,
+    int? RF,
+    int? RM,
+    string? Penalidade,
+    int? RequisitoVigor,
+    int? BonusDefesa,
+    string? TipoDeAlvo,
+    string? Alvo,
+    int? Valor);

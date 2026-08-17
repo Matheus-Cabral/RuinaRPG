@@ -144,5 +144,76 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         };
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, UpdateItemRequest request)
+    {
+        var gmId = CurrentGmId();
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.GmId == gmId);
+        if (item is null)
+            return NotFound();
+
+        item.Nome = request.Nome;
+        item.Peso = request.Peso;
+        item.Preco = request.Preco;
+        item.ImageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null;
+
+        switch (item)
+        {
+            case ItemGeral g:
+                g.Subcategoria = request.Subcategoria;
+                g.Descricao = request.Descricao;
+                break;
+            case Arma a:
+                a.Subcategoria = request.Subcategoria;
+                a.Tier = ParseEnum<Tier>(request.Tier);
+                a.Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura);
+                a.Dados = request.Dados;
+                a.Dano = request.Dano;
+                a.Critico = request.Critico;
+                a.Alcance = request.Alcance;
+                a.TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano);
+                a.RequisitoAtributo = request.RequisitoAtributo;
+                a.DurabilidadeMaxima = request.DurabilidadeMaxima;
+                break;
+            case Armadura ar:
+                ar.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
+                ar.Defesa = request.Defesa;
+                ar.RF = request.RF;
+                ar.RM = request.RM;
+                ar.Penalidade = request.Penalidade;
+                ar.RequisitoVigor = request.RequisitoVigor;
+                ar.DurabilidadeMaxima = request.DurabilidadeMaxima;
+                break;
+            case Escudo e:
+                e.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
+                e.BonusDefesa = request.BonusDefesa;
+                e.Penalidade = request.Penalidade;
+                e.RequisitoVigor = request.RequisitoVigor;
+                e.DurabilidadeMaxima = request.DurabilidadeMaxima;
+                break;
+            case Artefato art:
+                art.TipoDeAlvo = ParseEnum<TipoDeAlvo>(request.TipoDeAlvo);
+                art.Alvo = request.Alvo;
+                art.Valor = request.Valor;
+                break;
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var gmId = CurrentGmId();
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.GmId == gmId);
+        if (item is null)
+            return NotFound();
+
+        db.Items.Remove(item);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

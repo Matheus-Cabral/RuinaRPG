@@ -198,4 +198,78 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Nome == "Espada Curta");
     }
+
+    [Fact]
+    public async Task Update_an_owned_item_returns_204_and_the_change_is_visible_on_list()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmUpdate1", "itemupdate1@teste.com");
+        var createResponse = await PostItemAsync(token, MinimalItemGeral("Corda"));
+        var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+
+        var update = new UpdateItemRequest("Corda Reforçada", 0.6m, 8, null, "Equipamentos de Aventura", "Mais resistente.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null);
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var listResponse = await _client.SendAsync(listMessage);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().ContainSingle(i => i.Nome == "Corda Reforçada" && i.Preco == 8);
+    }
+
+    [Fact]
+    public async Task Update_a_item_owned_by_another_gm_returns_404()
+    {
+        var tokenOwner = await RegisterGmAndGetTokenAsync("ItemGmUpdateOwner", "itemupdateowner@teste.com");
+        var tokenOther = await RegisterGmAndGetTokenAsync("ItemGmUpdateOther", "itemupdateother@teste.com");
+        var createResponse = await PostItemAsync(tokenOwner, MinimalItemGeral("Corda"));
+        var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+
+        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenOther);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Delete_an_owned_item_returns_204_and_it_no_longer_appears_on_list()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmDelete1", "itemdelete1@teste.com");
+        var createResponse = await PostItemAsync(token, MinimalItemGeral("Corda"));
+        var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+
+        var message = new HttpRequestMessage(HttpMethod.Delete, $"/api/items/{itemId}");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var listResponse = await _client.SendAsync(listMessage);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().NotContain(i => i.Id == itemId);
+    }
+
+    [Fact]
+    public async Task Delete_a_nonexistent_item_returns_404()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmDelete2", "itemdelete2@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Delete, $"/api/items/{Guid.NewGuid()}");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
