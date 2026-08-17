@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
@@ -41,6 +42,30 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return Created(string.Empty, ToResponse(entry));
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<SpellAbilityEntryResponse>>> List(
+        [FromQuery] string? nome,
+        [FromQuery] string? tipo,
+        [FromQuery] int? grau)
+    {
+        var gmId = CurrentGmId();
+        var query = db.SpellAbilityBankEntries
+            .Include(e => e.Efeitos)
+            .Where(e => e.GmId == gmId);
+
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(e => EF.Functions.ILike(e.Nome, $"%{nome}%"));
+
+        if (tipo is not null && Enum.TryParse<SpellAbilityTipo>(tipo, out var tipoParsed))
+            query = query.Where(e => e.Tipo == tipoParsed);
+
+        if (grau is not null)
+            query = query.Where(e => e.Grau == grau);
+
+        var entries = await query.ToListAsync();
+        return entries.Select(ToResponse).ToList();
     }
 
     private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry) => new(

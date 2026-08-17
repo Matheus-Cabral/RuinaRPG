@@ -94,4 +94,46 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    private async Task<HttpResponseMessage> CreateAsync(string token, CreateSpellAbilityEntryRequest request) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, request));
+
+    [Fact]
+    public async Task List_returns_only_entries_created_by_the_authenticated_gm()
+    {
+        var tokenA = await RegisterGmAndGetTokenAsync("BankGmA", "bankgma@teste.com");
+        var tokenB = await RegisterGmAndGetTokenAsync("BankGmB", "bankgmb@teste.com");
+        await CreateAsync(tokenA, BolaDeFogo());
+        await CreateAsync(tokenB, BolaDeFogo());
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", tokenA));
+
+        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_Tipo_and_Grau_together()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmFilter1", "bankfilter1@teste.com");
+        await CreateAsync(token, BolaDeFogo()); // Magia, Grau 3
+        await CreateAsync(token, new CreateSpellAbilityEntryRequest("Fúria", "Habilidade", 1, "Aumenta o dano.", []));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Magia&grau=3", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_partial_Nome_case_insensitively()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmFilter2", "bankfilter2@teste.com");
+        await CreateAsync(token, BolaDeFogo());
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?nome=bola", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
+    }
 }
