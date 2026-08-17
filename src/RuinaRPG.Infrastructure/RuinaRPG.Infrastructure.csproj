@@ -11,6 +11,17 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Níveis.md" LogicalName="Tabela de Níveis.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Vocação.md" LogicalName="Tabela de Vocação.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Arquetipos.md" LogicalName="Tabela de Arquetipos.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Circulo e Grau por EAP.md" LogicalName="Tabela de Circulo e Grau por EAP.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabelas de XP, Atributos, Características e EAP.md" LogicalName="Tabelas de XP, Atributos, Características e EAP.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/GRAUS &amp; CÍRCULOS.md" LogicalName="GRAUS e CIRCULOS.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Ruína RPG - Sistema Básico.md" LogicalName="Sistema Basico.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Características.md" LogicalName="Caracteristicas.md" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
