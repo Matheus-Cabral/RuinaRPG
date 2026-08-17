@@ -1,0 +1,88 @@
+@page "/banco-de-magias"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.SpellsAndAbilities
+
+<h1>Banco de Magias e Habilidades</h1>
+
+<button @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
+
+<div>
+    <input @bind="_nomeFiltro" placeholder="Nome" />
+    <select @bind="_tipoFiltro">
+        <option value="">Todos os Tipos</option>
+        <option value="Magia">Magia</option>
+        <option value="Habilidade">Habilidade</option>
+        <option value="Racial">Racial</option>
+    </select>
+    <button @onclick="LoadAsync">Filtrar</button>
+</div>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Tipo</th>
+            <th>Grau</th>
+            <th>Gasto em PI</th>
+            <th>Custo</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in _entries)
+        {
+            <tr>
+                <td>@entry.Nome</td>
+                <td>@entry.Tipo</td>
+                <td>@entry.Grau</td>
+                <td>@entry.GastoEmPI</td>
+                <td>@entry.Custo</td>
+                <td>
+                    <button @onclick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</button>
+                    <button @onclick="@(() => DeleteAsync(entry.Id))">Excluir</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private string _nomeFiltro = "";
+    private string _tipoFiltro = "";
+    private List<SpellAbilityEntryResponse> _entries = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var query = $"?nome={Uri.EscapeDataString(_nomeFiltro)}&tipo={_tipoFiltro}";
+        var response = await Http.GetAsync($"spell-ability-bank{query}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar o banco de magias e habilidades.";
+            return;
+        }
+
+        _entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"spell-ability-bank/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a entrada.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+}
