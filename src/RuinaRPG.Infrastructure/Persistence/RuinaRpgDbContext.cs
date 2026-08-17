@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Invites;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Infrastructure.Persistence;
 
@@ -11,6 +12,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
+    public DbSet<Trait> Traits => Set<Trait>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
