@@ -60,6 +60,12 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
             null, null, null, null, null, null,
             null, null, null, null);
 
+    private static CreateItemRequest MinimalArmadura(string nome) =>
+        new("Armadura", nome, 8m, 100, null, null, null,
+            null, null, null, null, null, null, null, null, 15,
+            "Pesada", 5, 2, 1, null, 12,
+            null, null, null, null);
+
     [Fact]
     public async Task Create_without_a_token_returns_401()
     {
@@ -112,6 +118,21 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body.Tier.Should().Be("F");
         body.Dano.Should().Be(3);
         body.Subcategoria.Should().Be("Espadas");
+    }
+
+    [Fact]
+    public async Task Create_an_Armadura_returns_201_with_DurabilidadeMaxima_echoed_back()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGm5", "item5@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArmadura("Peitoral de Placas")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.Tipo.Should().Be("Armadura");
+        body.DurabilidadeMaxima.Should().Be(15);
     }
 
     [Fact]
