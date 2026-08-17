@@ -1,0 +1,68 @@
+@page "/compendio"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+
+<h1>Compêndio de Regras</h1>
+
+<div>
+    <input @bind="_query" @bind:event="oninput" placeholder="Buscar..." />
+    @foreach (var categoria in _categorias)
+    {
+        <label>
+            <input type="checkbox" checked="@_selectedCategorias.Contains(categoria)"
+                   @onchange="@(e => ToggleCategoria(categoria, (bool)e.Value!))" />
+            @categoria
+        </label>
+    }
+    <button @onclick="SearchAsync">Buscar</button>
+</div>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<ul>
+    @foreach (var result in _results)
+    {
+        <li>
+            <strong>@result.Titulo</strong> — <em>@result.Origem</em>
+            <p>@result.Conteudo</p>
+        </li>
+    }
+</ul>
+
+@code {
+    private readonly string[] _categorias = ["Caracteristica", "Efeito", "Tabela", "Regra"];
+    private readonly HashSet<string> _selectedCategorias = [];
+    private string _query = "";
+    private List<CompendioSearchResultResponse> _results = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => SearchAsync();
+
+    private void ToggleCategoria(string categoria, bool isSelected)
+    {
+        if (isSelected)
+            _selectedCategorias.Add(categoria);
+        else
+            _selectedCategorias.Remove(categoria);
+    }
+
+    private async Task SearchAsync()
+    {
+        var queryString = $"q={Uri.EscapeDataString(_query)}";
+        foreach (var categoria in _selectedCategorias)
+            queryString += $"&categorias={categoria}";
+
+        var response = await Http.GetAsync($"compendio/search?{queryString}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível buscar no Compêndio.";
+            return;
+        }
+
+        _results = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>() ?? new();
+        _errorMessage = null;
+    }
+}
