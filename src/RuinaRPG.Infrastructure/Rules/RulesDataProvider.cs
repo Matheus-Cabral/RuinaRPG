@@ -33,7 +33,7 @@ public class RulesDataProvider : IRulesDataProvider
     public IReadOnlyList<GraduacaoEfeito> Efeitos => _efeitos.Value;
     public IReadOnlyList<RegraEntry> Regras => _regras.Value;
 
-    internal static string ReadResource(string logicalName)
+    public static string ReadResource(string logicalName)
     {
         var assembly = Assembly.GetExecutingAssembly();
         using var stream = assembly.GetManifestResourceStream(logicalName)

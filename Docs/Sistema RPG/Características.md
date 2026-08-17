@@ -74,7 +74,7 @@ Obs.: Caso o homúnculo seja colocado em um corpo ainda vivo, o homúnculo e o a
 
 2 pontos: O usuário possui conhecimento de uma língua não comum, seja ela escrita ou falada. (a língua deve ser escrita em conjunto com a característica)
 
-Imunidade de Venenos
+### Imunidade de Venenos
 
 2 pontos: por algum motivo, seu Personagem nasceu com imunidade alta a venenos naturais e recebe um bônus de 1D contra venenos, seja mágico ou natural. 
 
