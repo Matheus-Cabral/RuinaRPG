@@ -5,6 +5,7 @@ using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
+using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Persistence;
 
@@ -15,6 +16,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
+    public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
+    public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -75,6 +78,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(i => i.ImageId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<SpellAbilityBankEntry>(entity =>
+        {
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(e => e.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Efeitos)
+                .WithOne()
+                .HasForeignKey(ef => ef.SpellAbilityBankEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
