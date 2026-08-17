@@ -1,0 +1,88 @@
+@page "/catalogo"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Items
+
+<h1>Catálogo de Itens e Equipamentos</h1>
+
+<button @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
+
+<div>
+    <select @bind="_tipoFiltro">
+        <option value="">Todos os Tipos</option>
+        <option value="ItemGeral">Item Geral</option>
+        <option value="Arma">Arma</option>
+        <option value="Armadura">Armadura</option>
+        <option value="Escudo">Escudo</option>
+        <option value="Artefato">Artefato</option>
+    </select>
+    <button @onclick="LoadAsync">Filtrar</button>
+</div>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Tipo</th>
+            <th>Subcategoria</th>
+            <th>Peso</th>
+            <th>Preço</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in _items)
+        {
+            <tr>
+                <td>@item.Nome</td>
+                <td>@item.Tipo</td>
+                <td>@(item.Subcategoria ?? "—")</td>
+                <td>@item.Peso</td>
+                <td>@item.Preco</td>
+                <td>
+                    <button @onclick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</button>
+                    <button @onclick="@(() => DeleteAsync(item.Id))">Excluir</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private string _tipoFiltro = "";
+    private List<ItemResponse> _items = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var queryString = string.IsNullOrEmpty(_tipoFiltro) ? "" : $"?tipo={_tipoFiltro}";
+        var response = await Http.GetAsync($"items{queryString}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar o catálogo.";
+            return;
+        }
+
+        _items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"items/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir o item.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+}
