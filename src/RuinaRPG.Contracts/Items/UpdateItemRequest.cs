@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RuinaRPG.Contracts.Items;
 
 public record UpdateItemRequest(
     string Nome,
-    decimal Peso,
-    int Preco,
+    [Range(typeof(decimal), "0", "79228162514264337593543950335")] decimal Peso,
+    [Range(0, int.MaxValue)] int Preco,
     string? ImageId,
     string? Subcategoria,
     string? Descricao,
@@ -15,7 +17,7 @@ public record UpdateItemRequest(
     int? Alcance,
     string? TipoDeDano,
     string? RequisitoAtributo,
-    int? DurabilidadeMaxima,
+    [Range(0, int.MaxValue)] int? DurabilidadeMaxima,
     string? Categoria,
     int? Defesa,
     int? RF,

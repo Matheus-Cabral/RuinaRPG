@@ -64,4 +64,42 @@ public class ImageValidatorTests
 
         result.Should().Be(ImageValidationResult.UnsupportedFormat);
     }
+
+    [Theory]
+    [MemberData(nameof(FormatsByMagicBytes))]
+    public void DetectFormat_identifies_the_real_format_from_bytes_alone(byte[] magicBytes, ImageFormat expected)
+    {
+        // DetectFormat takes no filename/Content-Type parameter — this is the seam the API
+        // controller must use to pick the on-disk extension and stored MIME type, instead of
+        // trusting an attacker-controlled file.FileName (stored-XSS via extension mismatch).
+        var result = ImageValidator.DetectFormat(magicBytes);
+
+        result.Should().Be(expected);
+    }
+
+    public static IEnumerable<object[]> FormatsByMagicBytes()
+    {
+        yield return [PngMagicBytes, ImageFormat.Png];
+        yield return [JpegMagicBytes, ImageFormat.Jpeg];
+        yield return [GifMagicBytes, ImageFormat.Gif];
+        yield return [WebpMagicBytes, ImageFormat.Webp];
+    }
+
+    [Fact]
+    public void DetectFormat_returns_null_for_bytes_that_dont_match_any_supported_magic_number()
+    {
+        var result = ImageValidator.DetectFormat(NotAnImage);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void DetectFormat_ignores_a_spoofed_filename_extension_it_was_never_given()
+    {
+        // PNG bytes are identified as PNG regardless of what a caller might have named the
+        // uploaded file (e.g. "payload.html") — the method only ever accepts bytes.
+        var result = ImageValidator.DetectFormat(PngMagicBytes);
+
+        result.Should().Be(ImageFormat.Png);
+    }
 }

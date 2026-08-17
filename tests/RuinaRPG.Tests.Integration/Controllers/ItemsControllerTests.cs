@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Images;
 using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -65,6 +66,18 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
             null, null, null, null, null, null, null, null, 15,
             "Pesada", 5, 2, 1, null, 12,
             null, null, null, null);
+
+    private static CreateItemRequest MinimalEscudo(string nome) =>
+        new("Escudo", nome, 4m, 60, null, null, null,
+            null, null, null, null, null, null, null, null, 20,
+            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            3, null, null, null);
+
+    private static CreateItemRequest MinimalArtefato(string nome) =>
+        new("Artefato", nome, 0.2m, 200, null, null, null,
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, "Atributo", "Força", 2);
 
     [Fact]
     public async Task Create_without_a_token_returns_401()
@@ -133,6 +146,45 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
         body!.Tipo.Should().Be("Armadura");
         body.DurabilidadeMaxima.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task Create_an_Escudo_returns_201_with_escudo_specific_fields_set()
+    {
+        // Regression guard: a field silently dropped in the Create/Update switch branches has
+        // already caused two real bugs in this plan (Armadura's DurabilidadeMaxima, Item's
+        // ImageId) — Escudo had zero end-to-end coverage before this test.
+        var token = await RegisterGmAndGetTokenAsync("ItemGmEscudo1", "itemescudo1@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalEscudo("Broquel")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.Tipo.Should().Be("Escudo");
+        body.Categoria.Should().Be("Leve");
+        body.BonusDefesa.Should().Be(3);
+        body.Penalidade.Should().Be("Desvantagem em Furtividade");
+        body.RequisitoVigor.Should().Be(8);
+        body.DurabilidadeMaxima.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task Create_an_Artefato_returns_201_with_artefato_specific_fields_set()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmArtefato1", "itemartefato1@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArtefato("Anel do Vigor")) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.Tipo.Should().Be("Artefato");
+        body.TipoDeAlvo.Should().Be("Atributo");
+        body.Alvo.Should().Be("Força");
+        body.Valor.Should().Be(2);
     }
 
     [Fact]
@@ -271,5 +323,135 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var response = await _client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private static MultipartFormDataContent BuildImageUpload(string fileName = "test.png")
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", fileName);
+        return content;
+    }
+
+    private async Task<string> UploadImageAsync(string token)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        return body!.Id;
+    }
+
+    [Fact]
+    public async Task Create_with_a_negative_Preco_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmNegPreco", "itemnegpreco@teste.com");
+        var request = MinimalItemGeral("Corda") with { Preco = -1 };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_a_negative_Peso_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmNegPeso", "itemnegpeso@teste.com");
+        var request = MinimalItemGeral("Corda") with { Peso = -0.5m };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_an_empty_string_ImageId_is_treated_as_no_image()
+    {
+        // CatalogoItemForm.razor's "— nenhuma —" <option value=""> posts ImageId="" rather than
+        // null — this must be treated as "no image", not throw on Guid.Parse("").
+        var token = await RegisterGmAndGetTokenAsync("ItemGmEmptyImg", "itememptyimg@teste.com");
+        var request = MinimalItemGeral("Corda") with { ImageId = "" };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Create_with_a_malformed_ImageId_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmBadImg", "itembadimg@teste.com");
+        var request = MinimalItemGeral("Corda") with { ImageId = "not-a-guid" };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_a_nonexistent_ImageId_returns_400_not_500()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmMissingImg", "itemmissingimg@teste.com");
+        var request = MinimalItemGeral("Corda") with { ImageId = Guid.NewGuid().ToString() };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_another_gms_image_returns_400()
+    {
+        // R0010 scopes referencing to images "seus" (the GM's own) — attaching another GM's
+        // image Guid must be rejected, not silently accepted.
+        var ownerToken = await RegisterGmAndGetTokenAsync("ItemGmImgOwner", "itemimgowner@teste.com");
+        var otherToken = await RegisterGmAndGetTokenAsync("ItemGmImgOther", "itemimgother@teste.com");
+        var otherImageId = await UploadImageAsync(otherToken);
+
+        var request = MinimalItemGeral("Corda") with { ImageId = otherImageId };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_the_callers_own_uploaded_image_returns_201_with_the_matching_ImageUrl()
+    {
+        // End-to-end regression guard for the ImageId -> ImageUrl round trip: covers the
+        // stored-XSS extension fix, the /images/ URL-prefix fix, the TryParse fix, and the
+        // ownership-check fix all at once.
+        var token = await RegisterGmAndGetTokenAsync("ItemGmOwnImg", "itemownimg@teste.com");
+        var uploadMessage = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
+        uploadMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var uploadResponse = await _client.SendAsync(uploadMessage);
+        var uploadBody = await uploadResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
+
+        var request = MinimalItemGeral("Corda") with { ImageId = uploadBody!.Id };
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.ImageUrl.Should().Be(uploadBody.Url);
+        body.ImageUrl.Should().StartWith("/images/");
     }
 }

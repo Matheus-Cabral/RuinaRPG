@@ -38,6 +38,18 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         return tokens!.AccessToken;
     }
 
+    private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
+    {
+        var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
+        codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var codeResponse = await _client.SendAsync(codeMessage);
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+    }
+
     private static MultipartFormDataContent BuildUpload(byte[] bytes, string fileName = "test.png")
     {
         var content = new MultipartFormDataContent();
@@ -67,6 +79,48 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
         body!.Url.Should().EndWith(".png");
+        // nginx serves the images volume at the /images/ web path (docker-compose.yml's
+        // images:/usr/share/nginx/html/images:ro mount) — a URL missing that prefix falls
+        // through nginx's SPA fallback to index.html instead of the actual file.
+        body.Url.Should().StartWith("/images/");
+    }
+
+    [Fact]
+    public async Task Upload_real_png_bytes_named_with_an_html_extension_is_still_stored_as_png()
+    {
+        // The client-supplied filename must never determine the on-disk extension: real PNG
+        // bytes named "payload.html" must be saved as .png (the format detected from the actual
+        // bytes), not .html — otherwise nginx would serve them same-origin as text/html, a
+        // stored-XSS vector against a page that keeps JWTs in localStorage.
+        var token = await RegisterGmAndGetTokenAsync("ImageGmXss", "imagexss@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images")
+        {
+            Content = BuildUpload(PngBytes, "payload.html")
+        };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        body!.Url.Should().EndWith(".png");
+        body.Url.Should().NotEndWith(".html");
+    }
+
+    [Fact]
+    public async Task Upload_as_a_jogador_returns_201()
+    {
+        // Image upload is deliberately [Authorize]-only, not GM-restricted, so a Jogador can
+        // later upload their own character portraits/diary images. Nothing previously pinned
+        // that a Jogador actually succeeds here — only that an unauthenticated caller fails.
+        var gmToken = await RegisterGmAndGetTokenAsync("ImageGmForJogador", "imagegmforjogador@teste.com");
+        var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "ImageJogador1", "imagejogador1@teste.com");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorToken);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
@@ -108,6 +162,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         body.Should().ContainSingle();
+        body!.Single().Url.Should().StartWith("/images/");
     }
 
     [Fact]

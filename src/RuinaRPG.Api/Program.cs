@@ -55,7 +55,7 @@ builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.Configure<ImageStorageOptions>(options =>
 {
     options.ImagesPath = builder.Configuration["Storage:ImagesPath"] ?? "/images";
-    options.MaxSizeMb = int.Parse(builder.Configuration["Img:MaxSizeMb"] ?? "10");
+    options.MaxSizeMb = ImageStorageOptions.ResolveMaxSizeMb(builder.Configuration["Img:MaxSizeMb"]);
 });
 builder.Services.AddScoped<IImageFileStore, DiskImageFileStore>();
 

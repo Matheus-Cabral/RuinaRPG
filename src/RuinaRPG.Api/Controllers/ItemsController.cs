@@ -22,7 +22,12 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             return BadRequest("Tipo de item desconhecido.");
 
         var gmId = CurrentGmId();
-        Guid? imageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null;
+
+        if (!TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        if (imageId is not null && !await OwnsImageAsync(imageId.Value, gmId))
+            return BadRequest("Imagem não encontrada.");
 
         Item item = tipo switch
         {
@@ -114,13 +119,38 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
     private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
         value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
 
+    /// <summary>
+    /// Treats null, empty, or whitespace-only as "no image" (returns true with imageId null).
+    /// A non-empty string that isn't a valid Guid is rejected (returns false) rather than
+    /// throwing — the client's "— nenhuma —" option posts ImageId="" rather than null.
+    /// </summary>
+    private static bool TryParseImageId(string? raw, out Guid? imageId)
+    {
+        imageId = null;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        if (!Guid.TryParse(raw, out var parsed))
+            return false;
+
+        imageId = parsed;
+        return true;
+    }
+
+    /// <summary>
+    /// R0010 scopes referencing to images the GM themselves uploaded — attaching another GM's
+    /// (or a nonexistent) image Guid must fail with a controlled 400, not an FK-violation 500.
+    /// </summary>
+    private Task<bool> OwnsImageAsync(Guid imageId, Guid gmId) =>
+        db.Images.AnyAsync(i => i.Id == imageId && i.UploadedByUserId == gmId);
+
     private async Task<ItemResponse> ToResponseAsync(Item item)
     {
         string? imageUrl = null;
         if (item.ImageId is not null)
         {
             var image = await db.Images.FindAsync(item.ImageId.Value);
-            imageUrl = image is not null ? $"/{image.Path}" : null;
+            imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
         return item switch
@@ -152,10 +182,16 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         if (item is null)
             return NotFound();
 
+        if (!TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        if (imageId is not null && !await OwnsImageAsync(imageId.Value, gmId))
+            return BadRequest("Imagem não encontrada.");
+
         item.Nome = request.Nome;
         item.Peso = request.Peso;
         item.Preco = request.Preco;
-        item.ImageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null;
+        item.ImageId = imageId;
 
         switch (item)
         {
