@@ -146,4 +146,56 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    private async Task<HttpResponseMessage> PostItemAsync(string token, CreateItemRequest request)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await _client.SendAsync(message);
+    }
+
+    [Fact]
+    public async Task List_returns_only_items_created_by_the_authenticated_gm()
+    {
+        var tokenA = await RegisterGmAndGetTokenAsync("ItemGmA", "itemgma@teste.com");
+        var tokenB = await RegisterGmAndGetTokenAsync("ItemGmB", "itemgmb@teste.com");
+        await PostItemAsync(tokenA, MinimalItemGeral("Corda A"));
+        await PostItemAsync(tokenB, MinimalItemGeral("Corda B"));
+
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
+        var response = await _client.SendAsync(message);
+
+        var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().ContainSingle(i => i.Nome == "Corda A");
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_Tipo()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmFilter1", "itemfilter1@teste.com");
+        await PostItemAsync(token, MinimalItemGeral("Corda"));
+        await PostItemAsync(token, MinimalArma("Espada"));
+
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?tipo=Arma");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+
+        var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().OnlyContain(i => i.Tipo == "Arma");
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_Subcategoria_and_Tier_together()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmFilter2", "itemfilter2@teste.com");
+        await PostItemAsync(token, MinimalArma("Espada Curta")); // Subcategoria "Espadas", Tier F
+
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?subcategoria=Espadas&tier=F");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+
+        var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().ContainSingle(i => i.Nome == "Espada Curta");
+    }
 }

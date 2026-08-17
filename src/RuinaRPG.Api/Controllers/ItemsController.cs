@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Items;
@@ -80,6 +81,34 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(item));
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<ItemResponse>>> List(
+        [FromQuery] string? tipo,
+        [FromQuery] string? subcategoria,
+        [FromQuery] string? tier,
+        [FromQuery] string? categoria,
+        [FromQuery] string? tipoDeDano)
+    {
+        var gmId = CurrentGmId();
+        var query = db.Items.Where(i => i.GmId == gmId);
+
+        if (tipo is not null && Enum.TryParse<ItemTipo>(tipo, out var tipoParsed))
+            query = query.Where(i => EF.Property<string>(i, "Tipo") == tipoParsed.ToString());
+
+        var items = await query.ToListAsync();
+
+        var responses = new List<ItemResponse>();
+        foreach (var item in items)
+            responses.Add(await ToResponseAsync(item));
+
+        return responses
+            .Where(r => subcategoria is null || r.Subcategoria == subcategoria)
+            .Where(r => tier is null || r.Tier == tier)
+            .Where(r => categoria is null || r.Categoria == categoria)
+            .Where(r => tipoDeDano is null || r.TipoDeDano == tipoDeDano)
+            .ToList();
     }
 
     private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
