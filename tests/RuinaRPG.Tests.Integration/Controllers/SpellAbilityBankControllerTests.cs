@@ -136,4 +136,66 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
     }
+
+    [Fact]
+    public async Task Update_recomputes_GastoEmPI_and_Custo_from_the_new_effect_list()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmUpdate1", "bankupdate1@teste.com");
+        var createResponse = await CreateAsync(token, BolaDeFogo());
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo Maior", "Magia", 4, "Mais poderosa.",
+            [new SpellAbilityEffectRequest("Dano", 6, 12)]);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        var updated = body!.Single(e => e.Id == entryId);
+        updated.Nome.Should().Be("Bola de Fogo Maior");
+        updated.GastoEmPI.Should().Be(12);
+        updated.Custo.Should().Be(15); // ceil(12 * 1.25) = 15
+        updated.Efeitos.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Update_an_entry_owned_by_another_gm_returns_404()
+    {
+        var tokenOwner = await RegisterGmAndGetTokenAsync("BankGmUpdateOwner", "bankupdateowner@teste.com");
+        var tokenOther = await RegisterGmAndGetTokenAsync("BankGmUpdateOther", "bankupdateother@teste.com");
+        var createResponse = await CreateAsync(tokenOwner, BolaDeFogo());
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var update = new UpdateSpellAbilityEntryRequest("Hack", "Magia", 1, "", []);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", tokenOther, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Delete_an_owned_entry_returns_204_and_it_no_longer_appears_on_list()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmDelete1", "bankdelete1@teste.com");
+        var createResponse = await CreateAsync(token, BolaDeFogo());
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", token));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Delete_a_nonexistent_entry_returns_404()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmDelete2", "bankdelete2@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{Guid.NewGuid()}", token));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

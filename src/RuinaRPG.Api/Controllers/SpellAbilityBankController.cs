@@ -68,6 +68,56 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         return entries.Select(ToResponse).ToList();
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, UpdateSpellAbilityEntryRequest request)
+    {
+        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo))
+            return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
+
+        var gmId = CurrentGmId();
+        var entry = await db.SpellAbilityBankEntries
+            .FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
+        if (entry is null)
+            return NotFound();
+
+        var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
+
+        entry.Nome = request.Nome;
+        entry.Tipo = tipo;
+        entry.Grau = request.Grau;
+        entry.Descricao = request.Descricao;
+        entry.GastoEmPI = gastoEmPI;
+        entry.Custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
+
+        // Delete old effects
+        var oldEffects = await db.SpellAbilityBankEffects
+            .Where(e => e.SpellAbilityBankEntryId == id)
+            .ToListAsync();
+        db.SpellAbilityBankEffects.RemoveRange(oldEffects);
+
+        // Add new effects
+        var newEffects = request.Efeitos
+            .Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = entry.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
+            .ToList();
+        db.SpellAbilityBankEffects.AddRange(newEffects);
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var gmId = CurrentGmId();
+        var entry = await db.SpellAbilityBankEntries.FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
+        if (entry is null)
+            return NotFound();
+
+        db.SpellAbilityBankEntries.Remove(entry);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
         entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
