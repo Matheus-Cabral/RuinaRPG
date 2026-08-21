@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Diary;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -149,6 +150,69 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var campaignOfOwner = await CreateCampaignAsync(gmTokenOwner, "Campanha do Dono");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignOfOwner}/members", gmTokenOther, new AddCampaignMemberRequest(playerOfOther)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Diary_create_and_list_round_trips_an_entry()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGm1", "campdiary1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Diário");
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Os jogadores chegaram à vila.", [])));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/diary", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Texto == "Os jogadores chegaram à vila.");
+    }
+
+    [Fact]
+    public async Task Diary_update_changes_the_text()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGm2", "campdiary2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Diário 2");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Texto original.", [])));
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<DiaryEntryResponse>())!.Id;
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/diary/{entryId}", gmToken,
+            new UpdateDiaryEntryRequest("Texto revisado.", [])));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/diary", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Texto == "Texto revisado.");
+    }
+
+    [Fact]
+    public async Task Diary_delete_removes_the_entry()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGm3", "campdiary3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Diário 3");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Para excluir.", [])));
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<DiaryEntryResponse>())!.Id;
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/diary/{entryId}", gmToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/diary", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>();
+        body!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Diary_actions_on_a_campaign_owned_by_another_gm_return_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CampDiaryOwner", "campdiaryowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CampDiaryOther", "campdiaryother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Privada");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmTokenOther,
+            new CreateDiaryEntryRequest("Invasão.", [])));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
