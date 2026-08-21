@@ -44,15 +44,17 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (campaign is null)
             return NotFound();
 
-        var playerId = Guid.Parse(request.UserId);
+        if (!Guid.TryParse(request.UserId, out _))
+            return BadRequest("O jogador informado não está vinculado à sua conta.");
+
         var player = await userManager.FindByIdAsync(request.UserId);
         if (player is null || player.InvitedByGmId != gmId)
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
-        if (await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == playerId))
+        if (await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == player.Id))
             return NoContent(); // already a member — idempotent, not an error
 
-        db.CampaignMembers.Add(new CampaignMember { Id = Guid.NewGuid(), CampaignId = campaignId, UserId = playerId });
+        db.CampaignMembers.Add(new CampaignMember { Id = Guid.NewGuid(), CampaignId = campaignId, UserId = player.Id });
         await db.SaveChangesAsync();
         return NoContent();
     }

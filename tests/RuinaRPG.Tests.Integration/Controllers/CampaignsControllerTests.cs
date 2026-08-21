@@ -102,6 +102,17 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task AddMember_with_a_malformed_UserId_returns_400_instead_of_throwing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampMemberGmMalformed", "campmembermalformed@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Malformada");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest("not-a-guid")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task AddMember_a_player_linked_to_the_caller_returns_204_and_they_appear_in_members()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CampMemberGm1", "campmember1@teste.com");
