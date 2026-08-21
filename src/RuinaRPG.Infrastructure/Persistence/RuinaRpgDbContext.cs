@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
@@ -15,6 +16,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -75,6 +77,14 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(i => i.ImageId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<Campaign>(entity =>
+        {
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(c => c.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
