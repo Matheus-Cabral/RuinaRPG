@@ -18,7 +18,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SpellAbilityEntryResponse>> Create(CreateSpellAbilityEntryRequest request)
     {
-        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo))
+        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
             return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
 
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
@@ -71,7 +71,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateSpellAbilityEntryRequest request)
     {
-        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo))
+        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
             return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
 
         var gmId = CurrentGmId();

@@ -12,6 +12,7 @@
 }
 
 <EditForm Model="_form" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
     <label>Nome <InputText @bind-Value="_form.Nome" /></label>
     <label>
         Tipo
