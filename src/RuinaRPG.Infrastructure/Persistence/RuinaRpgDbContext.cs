@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
@@ -18,6 +19,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
+    public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
+    public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
+    public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -98,6 +102,46 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DiaryEntry>(entity =>
+        {
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(d => d.AuthorUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Campaign>()
+                .WithMany()
+                .HasForeignKey(d => d.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // CharacterSheetId's FK is added by the Ficha de Personagem plan once CharacterSheets exists —
+            // left as a plain nullable Guid column here, no FK constraint yet.
+        });
+
+        builder.Entity<DiaryEntryImage>(entity =>
+        {
+            entity.HasKey(i => new { i.DiaryEntryId, i.ImageId });
+            entity.HasOne<DiaryEntry>()
+                .WithMany()
+                .HasForeignKey(i => i.DiaryEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>()
+                .WithMany()
+                .HasForeignKey(i => i.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DiaryEntryRecipient>(entity =>
+        {
+            entity.HasKey(r => new { r.DiaryEntryId, r.UserId });
+            entity.HasOne<DiaryEntry>()
+                .WithMany()
+                .HasForeignKey(r => r.DiaryEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
