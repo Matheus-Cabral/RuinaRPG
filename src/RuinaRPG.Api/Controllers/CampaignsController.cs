@@ -84,10 +84,13 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!campaignExists)
             return NotFound();
 
+        if (!TryParseImageIds(request.ImageIds, out var imageIds))
+            return BadRequest("Um dos identificadores de imagem informados é inválido.");
+
         var entry = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = false, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
         db.DiaryEntries.Add(entry);
-        foreach (var imageId in request.ImageIds)
-            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = entry.Id, ImageId = Guid.Parse(imageId) });
+        foreach (var imageId in imageIds)
+            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = entry.Id, ImageId = imageId });
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(entry));
@@ -120,12 +123,15 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (entry is null)
             return NotFound();
 
+        if (!TryParseImageIds(request.ImageIds, out var imageIds))
+            return BadRequest("Um dos identificadores de imagem informados é inválido.");
+
         entry.Texto = request.Texto;
 
         var existingImages = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == entryId).ToListAsync();
         db.DiaryEntryImages.RemoveRange(existingImages);
-        foreach (var imageId in request.ImageIds)
-            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = entryId, ImageId = Guid.Parse(imageId) });
+        foreach (var imageId in imageIds)
+            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = entryId, ImageId = imageId });
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -157,7 +163,24 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
     {
         var imageIds = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == entry.Id).Select(i => i.ImageId).ToListAsync();
         var images = await db.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
-        return new DiaryEntryResponse(entry.Id.ToString(), entry.Texto, entry.CreatedAt, images.Select(i => $"/{i.Path}").ToList());
+        return new DiaryEntryResponse(entry.Id.ToString(), entry.Texto, entry.CreatedAt, images.Select(i => $"/images/{i.Path}").ToList());
+    }
+
+    private static bool TryParseImageIds(List<string> rawImageIds, out List<Guid> imageIds)
+    {
+        imageIds = new List<Guid>(rawImageIds.Count);
+        foreach (var raw in rawImageIds)
+        {
+            if (!Guid.TryParse(raw, out var parsed))
+            {
+                imageIds = [];
+                return false;
+            }
+
+            imageIds.Add(parsed);
+        }
+
+        return true;
     }
 
     private static CampaignResponse ToResponse(Campaign c) => new(c.Id.ToString(), c.Nome, c.Descricao);

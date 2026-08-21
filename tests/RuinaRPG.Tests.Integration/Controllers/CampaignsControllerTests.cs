@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Contracts.Images;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -100,6 +101,25 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
         return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+    }
+
+    private static MultipartFormDataContent BuildImageUpload(string fileName = "test.png")
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", fileName);
+        return content;
+    }
+
+    private async Task<string> UploadImageAsync(string token)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        return body!.Id;
     }
 
     [Fact]
@@ -215,5 +235,47 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
             new CreateDiaryEntryRequest("Invasão.", [])));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Diary_create_with_an_existing_image_returns_ImageUrls_with_the_images_prefix()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGmImg", "campdiaryimg@teste.com");
+        var imageId = await UploadImageAsync(gmToken);
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Imagem no Diário");
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Encontraram um mapa.", [imageId])));
+
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await createResponse.Content.ReadFromJsonAsync<DiaryEntryResponse>();
+        body!.ImageUrls.Should().ContainSingle(url => url.StartsWith("/images/"));
+    }
+
+    [Fact]
+    public async Task Diary_create_with_a_malformed_ImageId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGmBadImg", "campdiarybadimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Imagem Inválida");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Texto qualquer.", ["not-a-guid"])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Diary_update_with_a_malformed_ImageId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGmBadImgUpd", "campdiarybadimgupd@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Imagem Inválida na Edição");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Texto original.", [])));
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<DiaryEntryResponse>())!.Id;
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/diary/{entryId}", gmToken,
+            new UpdateDiaryEntryRequest("Texto revisado.", ["not-a-guid"])));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
