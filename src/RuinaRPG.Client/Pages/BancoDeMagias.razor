@@ -15,6 +15,7 @@
         <option value="Habilidade">Habilidade</option>
         <option value="Racial">Racial</option>
     </select>
+    <input type="number" @bind="_grauFiltro" placeholder="Grau" />
     <button @onclick="LoadAsync">Filtrar</button>
 </div>
 
@@ -55,6 +56,7 @@
 @code {
     private string _nomeFiltro = "";
     private string _tipoFiltro = "";
+    private int? _grauFiltro;
     private List<SpellAbilityEntryResponse> _entries = new();
     private string? _errorMessage;
 
@@ -62,7 +64,7 @@
 
     private async Task LoadAsync()
     {
-        var query = $"?nome={Uri.EscapeDataString(_nomeFiltro)}&tipo={_tipoFiltro}";
+        var query = $"?nome={Uri.EscapeDataString(_nomeFiltro)}&tipo={_tipoFiltro}&grau={_grauFiltro}";
         var response = await Http.GetAsync($"spell-ability-bank{query}");
         if (!response.IsSuccessStatusCode)
         {
