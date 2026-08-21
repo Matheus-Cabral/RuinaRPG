@@ -198,4 +198,56 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Delete_an_entry_owned_by_another_gm_returns_404()
+    {
+        var tokenOwner = await RegisterGmAndGetTokenAsync("BankGmDeleteOwner", "bankdeleteowner@teste.com");
+        var tokenOther = await RegisterGmAndGetTokenAsync("BankGmDeleteOther", "bankdeleteother@teste.com");
+        var createResponse = await CreateAsync(tokenOwner, BolaDeFogo());
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", tokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Update_to_an_empty_effect_list_zeroes_out_GastoEmPI_and_Custo()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmUpdateEmpty", "bankupdateempty@teste.com");
+        var createResponse = await CreateAsync(token, BolaDeFogo());
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", []);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        var updated = body!.Single(e => e.Id == entryId);
+        updated.GastoEmPI.Should().Be(0);
+        updated.Custo.Should().Be(0);
+        updated.Efeitos.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Update_changes_the_persisted_Tipo()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmUpdateTipo", "bankupdatetipo@teste.com");
+        var createResponse = await CreateAsync(token, BolaDeFogo()); // Magia
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo", "Habilidade", 3, "Uma explosão de fogo.",
+            [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)]);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        var updated = body!.Single(e => e.Id == entryId);
+        updated.Tipo.Should().Be("Habilidade");
+    }
 }
