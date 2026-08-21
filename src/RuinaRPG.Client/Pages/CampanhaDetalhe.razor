@@ -1,0 +1,104 @@
+@page "/campanhas/{CampaignId}"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.Diary
+@using RuinaRPG.Contracts.Players
+
+<h1>Campanha</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<h2>Membros</h2>
+<input @bind="_memberSearch" placeholder="Buscar jogador para adicionar" />
+<button @onclick="SearchPlayersAsync">Buscar</button>
+<ul>
+    @foreach (var player in _searchResults)
+    {
+        <li>@player.Nickname (@player.Email) <button @onclick="@(() => AddMemberAsync(player.Id))">Adicionar</button></li>
+    }
+</ul>
+<ul>
+    @foreach (var member in _members)
+    {
+        <li>@member.Nickname (@member.Email)</li>
+    }
+</ul>
+
+<h2>Diário</h2>
+<EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
+    <label>Texto <InputTextArea @bind-Value="_diaryForm.Texto" /></label>
+    <button type="submit">Adicionar Entrada</button>
+</EditForm>
+<ul>
+    @foreach (var entry in _diaryEntries)
+    {
+        <li>@entry.CreatedAt.ToString("g") — @entry.Texto</li>
+    }
+</ul>
+
+@code {
+    [Parameter] public string CampaignId { get; set; } = "";
+
+    private List<CampaignMemberResponse> _members = new();
+    private List<DiaryEntryResponse> _diaryEntries = new();
+    private List<PlayerSearchResultResponse> _searchResults = new();
+    private string _memberSearch = "";
+    private readonly DiaryFormModel _diaryForm = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadDiaryAsync());
+
+    private async Task LoadMembersAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/members");
+        if (response.IsSuccessStatusCode)
+            _members = await response.Content.ReadFromJsonAsync<List<CampaignMemberResponse>>() ?? new();
+    }
+
+    private async Task LoadDiaryAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/diary");
+        if (response.IsSuccessStatusCode)
+            _diaryEntries = await response.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>() ?? new();
+    }
+
+    private async Task SearchPlayersAsync()
+    {
+        var response = await Http.GetAsync($"players?q={Uri.EscapeDataString(_memberSearch)}");
+        if (response.IsSuccessStatusCode)
+            _searchResults = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
+    }
+
+    private async Task AddMemberAsync(string playerId)
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/members", new AddCampaignMemberRequest(playerId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o membro.";
+            return;
+        }
+
+        await LoadMembersAsync();
+    }
+
+    private async Task AddDiaryEntryAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/diary", new CreateDiaryEntryRequest(_diaryForm.Texto, new List<string>()));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a entrada.";
+            return;
+        }
+
+        _diaryForm.Texto = "";
+        await LoadDiaryAsync();
+    }
+
+    private class DiaryFormModel
+    {
+        public string Texto { get; set; } = "";
+    }
+}
