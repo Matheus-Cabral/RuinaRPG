@@ -17,6 +17,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -84,6 +85,19 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(c => c.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CampaignMember>(entity =>
+        {
+            entity.HasIndex(m => new { m.CampaignId, m.UserId }).IsUnique();
+            entity.HasOne<Campaign>()
+                .WithMany()
+                .HasForeignKey(m => m.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
