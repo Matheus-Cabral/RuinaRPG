@@ -24,6 +24,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
+    public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
+    public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -123,6 +125,24 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(s => s.ImageId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CharacterAttribute>(entity =>
+        {
+            entity.HasIndex(a => new { a.CharacterSheetId, a.Atributo }).IsUnique();
+            entity.HasOne<CharacterSheet>()
+                .WithMany()
+                .HasForeignKey(a => a.CharacterSheetId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterSkill>(entity =>
+        {
+            entity.HasIndex(s => new { s.CharacterSheetId, s.Pericia }).IsUnique();
+            entity.HasOne<CharacterSheet>()
+                .WithMany()
+                .HasForeignKey(s => s.CharacterSheetId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CampaignMember>(entity =>

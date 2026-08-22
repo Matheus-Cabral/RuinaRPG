@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -479,5 +481,26 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_seeds_8_zeroed_attributes_and_39_zeroed_skills()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSeed1", "sheetseed1@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSeed1", "sheetplayerseed1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Seed");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == Guid.Parse(sheetId)).ToListAsync();
+
+        attributes.Should().HaveCount(8);
+        attributes.Should().OnlyContain(a => a.Gasto == 0 && a.Bonus == 0 && !a.TemMaestria);
+        skills.Should().HaveCount(39);
+        skills.Should().OnlyContain(s => s.Gasto == 0);
     }
 }

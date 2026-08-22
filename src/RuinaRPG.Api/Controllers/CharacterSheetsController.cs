@@ -36,6 +36,12 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         var sheet = new CharacterSheet { Id = Guid.NewGuid(), CampaignId = campaignId, OwnerId = ownerId };
         db.CharacterSheets.Add(sheet);
+
+        foreach (var atributo in Enum.GetValues<Atributo>())
+            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = atributo });
+        foreach (var pericia in Enum.GetValues<Pericia>())
+            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Pericia = pericia });
+
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(sheet));
