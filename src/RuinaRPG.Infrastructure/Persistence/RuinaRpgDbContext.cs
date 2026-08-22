@@ -26,6 +26,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
+    public DbSet<CharacterAffinity> CharacterAffinities => Set<CharacterAffinity>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -142,6 +143,14 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<CharacterSheet>()
                 .WithMany()
                 .HasForeignKey(s => s.CharacterSheetId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterAffinity>(entity =>
+        {
+            entity.HasOne<CharacterSheet>()
+                .WithMany()
+                .HasForeignKey(a => a.CharacterSheetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
