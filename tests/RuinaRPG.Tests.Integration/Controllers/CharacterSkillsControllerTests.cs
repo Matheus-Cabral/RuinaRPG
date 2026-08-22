@@ -95,6 +95,31 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task List_with_atributoEscolhido_echoes_the_attribute_and_computes_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SkillGm4", "skill4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer4", "skillplayer4@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        // Forca: Gasto 4, Bonus 0, no maestria -> Total 4 (AttributeTotalCalculator.Total)
+        var attrResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+        attrResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Atletismo: Gasto 9 -> Modificador 3 (SkillFormulas.Modificador)
+        var skillResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
+            new UpdateCharacterSkillRequest(9, null)));
+        skillResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills?atributoEscolhido=Forca", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
+        var atletismo = body!.Single(s => s.Pericia == "Atletismo");
+        atletismo.AtributoEscolhido.Should().Be("Forca");
+        atletismo.Modificador.Should().Be(3);
+        atletismo.Total.Should().Be(7); // SkillFormulas.Total(modificador: 3, atributoTotal: 4)
+    }
+
+    [Fact]
     public async Task Update_by_an_unrelated_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SkillGm3", "skill3@teste.com");
