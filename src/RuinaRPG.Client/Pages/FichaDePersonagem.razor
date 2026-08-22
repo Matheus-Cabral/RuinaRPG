@@ -1,0 +1,194 @@
+@page "/fichas/{SheetId}"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.CharacterSheets
+
+<h1>Ficha de Personagem</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+@if (_levelUpBonuses.Count > 0)
+{
+    <div class="level-up-notice">
+        <h2>Novo Nível!</h2>
+        <ul>
+            @foreach (var bonus in _levelUpBonuses)
+            {
+                <li>@bonus</li>
+            }
+        </ul>
+        <button @onclick="DismissLevelUpAsync">Fechar</button>
+    </div>
+}
+
+<h2>Informações Básicas</h2>
+
+<EditForm Model="_form" OnValidSubmit="SaveAsync">
+    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+    <label>
+        Linhagem
+        <select @bind="_form.Linhagem">
+            <option value="">Escolha uma Linhagem</option>
+            <option value="Humano">Humano</option>
+            <option value="Phylauc">Phylauc</option>
+            <option value="Nephrytes">Nephrytes</option>
+            <option value="Econos">Ecônos</option>
+        </select>
+    </label>
+    <label>Variante <InputText @bind-Value="_form.Variante" /></label>
+    <label>
+        Vocação
+        <select @bind="_form.Vocacao">
+            <option value="">Escolha uma Vocação</option>
+            <option value="Campeao">Campeão</option>
+            <option value="Cacador">Caçador</option>
+            <option value="Feiticeiro">Feiticeiro</option>
+            <option value="Adepto">Adepto</option>
+            <option value="Bruxo">Bruxo</option>
+        </select>
+    </label>
+    <label>Sub-vocação <InputText @bind-Value="_form.SubVocacao" /></label>
+    <label>Afinidade <InputText @bind-Value="_form.Afinidade" /></label>
+    <label>Propriedade <InputText @bind-Value="_form.Propriedade" /></label>
+
+    <label>Nível <InputNumber @bind-Value="_form.Nivel" /></label>
+    <p>@_form.GraduacaoLabel: @_form.Graduacao</p>
+    <label>Possui Coração de Mana? <InputCheckbox @bind-Value="_form.PossuiCoracaoDeMana" /></label>
+    <label>Experiência Atual <InputNumber @bind-Value="_form.ExperienciaAtual" /></label>
+    <label>EAP Atual <InputNumber @bind-Value="_form.EAPAtual" /></label>
+    <label>Pontos de Ignição Atual <InputNumber @bind-Value="_form.PontosDeIgnicaoAtual" /></label>
+    <label>Pontos de Ignição Total <InputNumber @bind-Value="_form.PontosDeIgnicaoTotal" /></label>
+
+    <h3>Âmbares Absorvidos</h3>
+    <label>Rank F <InputNumber @bind-Value="_form.NucleosRankF" /></label>
+    <label>Rank E <InputNumber @bind-Value="_form.NucleosRankE" /></label>
+    <label>Rank D <InputNumber @bind-Value="_form.NucleosRankD" /></label>
+    <label>Rank C <InputNumber @bind-Value="_form.NucleosRankC" /></label>
+    <label>Rank B <InputNumber @bind-Value="_form.NucleosRankB" /></label>
+    <label>Rank A <InputNumber @bind-Value="_form.NucleosRankA" /></label>
+    <label>Rank S <InputNumber @bind-Value="_form.NucleosRankS" /></label>
+
+    <h3>Recursos</h3>
+    <label>Adrenalina (PA) Atual <InputNumber @bind-Value="_form.AdrenalinaAtual" /></label>
+    <label>Foco (PF) Atual <InputNumber @bind-Value="_form.FocoAtual" /></label>
+    <label>Estresse Atual <InputNumber @bind-Value="_form.EstresseAtual" /></label>
+    <label>Vitalidade Atual <InputNumber @bind-Value="_form.VitalidadeAtual" /></label>
+
+    <button type="submit">Salvar</button>
+</EditForm>
+
+@code {
+    [Parameter] public string SheetId { get; set; } = "";
+
+    private readonly SheetFormModel _form = new();
+    private List<string> _levelUpBonuses = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadSheetAsync(), LoadLevelUpNoticeAsync());
+
+    private async Task LoadSheetAsync()
+    {
+        var response = await Http.GetAsync($"character-sheets/{SheetId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a ficha.";
+            return;
+        }
+
+        var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        _form.Nome = sheet!.Nome;
+        _form.Linhagem = sheet.Linhagem;
+        _form.Variante = sheet.Variante;
+        _form.Vocacao = sheet.Vocacao;
+        _form.SubVocacao = sheet.SubVocacao;
+        _form.Afinidade = sheet.Afinidade;
+        _form.Propriedade = sheet.Propriedade;
+        _form.Nivel = sheet.Nivel;
+        _form.Graduacao = sheet.Graduacao;
+        _form.GraduacaoLabel = sheet.GraduacaoLabel;
+        _form.PossuiCoracaoDeMana = sheet.PossuiCoracaoDeMana;
+        _form.ExperienciaAtual = sheet.ExperienciaAtual;
+        _form.EAPAtual = sheet.EAPAtual;
+        _form.NucleosRankF = sheet.NucleosRankF;
+        _form.NucleosRankE = sheet.NucleosRankE;
+        _form.NucleosRankD = sheet.NucleosRankD;
+        _form.NucleosRankC = sheet.NucleosRankC;
+        _form.NucleosRankB = sheet.NucleosRankB;
+        _form.NucleosRankA = sheet.NucleosRankA;
+        _form.NucleosRankS = sheet.NucleosRankS;
+        _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
+        _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
+        _form.VitalidadeAtual = sheet.VitalidadeAtual;
+        _form.FocoAtual = sheet.FocoAtual;
+        _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
+        _form.EstresseAtual = sheet.EstresseAtual;
+        _form.Cobertura = sheet.Cobertura;
+        _form.Ciclos = sheet.Ciclos;
+        _errorMessage = null;
+    }
+
+    private async Task LoadLevelUpNoticeAsync()
+    {
+        var response = await Http.GetAsync($"character-sheets/{SheetId}/level-up-notice");
+        if (response.IsSuccessStatusCode)
+            _levelUpBonuses = (await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>())!.BonusTexts;
+    }
+
+    private async Task DismissLevelUpAsync()
+    {
+        await Http.PostAsync($"character-sheets/{SheetId}/dismiss-level-up-notice", null);
+        _levelUpBonuses.Clear();
+    }
+
+    private async Task SaveAsync()
+    {
+        var request = new UpdateCharacterSheetRequest(null, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
+            _form.Afinidade, _form.Propriedade, _form.Nivel, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual, _form.EAPAtual,
+            _form.NucleosRankF, _form.NucleosRankE, _form.NucleosRankD, _form.NucleosRankC, _form.NucleosRankB, _form.NucleosRankA, _form.NucleosRankS,
+            _form.PontosDeIgnicaoAtual, _form.PontosDeIgnicaoTotal, _form.VitalidadeAtual, _form.FocoAtual, _form.AdrenalinaAtual, _form.EstresseAtual,
+            _form.Cobertura, _form.Ciclos);
+
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a ficha.";
+            return;
+        }
+
+        await LoadSheetAsync();
+    }
+
+    private class SheetFormModel
+    {
+        public string? Nome { get; set; }
+        public string? Linhagem { get; set; }
+        public string? Variante { get; set; }
+        public string? Vocacao { get; set; }
+        public string? SubVocacao { get; set; }
+        public string? Afinidade { get; set; }
+        public string? Propriedade { get; set; }
+        public int Nivel { get; set; } = 1;
+        public int Graduacao { get; set; }
+        public string GraduacaoLabel { get; set; } = "Grau";
+        public bool PossuiCoracaoDeMana { get; set; }
+        public int ExperienciaAtual { get; set; }
+        public int EAPAtual { get; set; }
+        public int NucleosRankF { get; set; }
+        public int NucleosRankE { get; set; }
+        public int NucleosRankD { get; set; }
+        public int NucleosRankC { get; set; }
+        public int NucleosRankB { get; set; }
+        public int NucleosRankA { get; set; }
+        public int NucleosRankS { get; set; }
+        public int PontosDeIgnicaoAtual { get; set; }
+        public int PontosDeIgnicaoTotal { get; set; }
+        public int VitalidadeAtual { get; set; }
+        public int FocoAtual { get; set; }
+        public int AdrenalinaAtual { get; set; }
+        public int EstresseAtual { get; set; }
+        public string Cobertura { get; set; } = "Nenhuma";
+        public int Ciclos { get; set; }
+    }
+}

@@ -1,6 +1,8 @@
 @page "/campanhas/{CampaignId}"
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
 @using RuinaRPG.Contracts.Players
 
@@ -23,7 +25,10 @@
 <ul>
     @foreach (var member in _members)
     {
-        <li>@member.Nickname (@member.Email)</li>
+        <li>
+            @member.Nickname (@member.Email)
+            <button @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
+        </li>
     }
 </ul>
 
@@ -148,6 +153,19 @@
         }
 
         await LoadDiaryAsync();
+    }
+
+    private async Task CreateSheetForAsync(string ownerId)
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/character-sheets", new CreateCharacterSheetRequest(ownerId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível criar a ficha.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        Navigation.NavigateTo($"fichas/{body!.Id}");
     }
 
     private class DiaryFormModel
