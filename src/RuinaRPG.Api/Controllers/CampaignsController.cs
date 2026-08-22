@@ -57,7 +57,18 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             return NoContent(); // already a member — idempotent, not an error
 
         db.CampaignMembers.Add(new CampaignMember { Id = Guid.NewGuid(), CampaignId = campaignId, UserId = player.Id });
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // The check above is a check-then-insert, so a concurrent AddMember call can still
+            // lose the race against the unique index on (CampaignId, UserId). Treat that as the
+            // same idempotent success instead of letting it surface as a 500.
+            db.ChangeTracker.Clear();
+        }
+
         return NoContent();
     }
 
@@ -86,6 +97,9 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
 
         if (!TryParseImageIds(request.ImageIds, out var imageIds))
             return BadRequest("Um dos identificadores de imagem informados é inválido.");
+
+        if (!await OwnsAllImagesAsync(imageIds, gmId))
+            return BadRequest("Imagem não encontrada.");
 
         var entry = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = false, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
         db.DiaryEntries.Add(entry);
@@ -126,6 +140,9 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!TryParseImageIds(request.ImageIds, out var imageIds))
             return BadRequest("Um dos identificadores de imagem informados é inválido.");
 
+        if (!await OwnsAllImagesAsync(imageIds, gmId))
+            return BadRequest("Imagem não encontrada.");
+
         entry.Texto = request.Texto;
 
         var existingImages = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == entryId).ToListAsync();
@@ -156,7 +173,21 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!campaignExists)
             return null;
 
-        return await db.DiaryEntries.FirstOrDefaultAsync(d => d.Id == entryId && d.CampaignId == campaignId);
+        return await db.DiaryEntries.FirstOrDefaultAsync(d => d.Id == entryId && d.CampaignId == campaignId && !d.IsSecretNote);
+    }
+
+    /// <summary>
+    /// R0010-equivalent guard for diary images: every referenced image must exist and be owned
+    /// by the calling GM, or attaching another GM's (or a nonexistent) image Guid must fail with
+    /// a controlled 400 rather than an FK-violation 500. Matches ItemsController's OwnsImageAsync.
+    /// </summary>
+    private async Task<bool> OwnsAllImagesAsync(List<Guid> imageIds, Guid gmId)
+    {
+        if (imageIds.Count == 0)
+            return true;
+
+        var ownedCount = await db.Images.CountAsync(i => imageIds.Contains(i.Id) && i.UploadedByUserId == gmId);
+        return ownedCount == imageIds.Count;
     }
 
     private async Task<DiaryEntryResponse> ToResponseAsync(DiaryEntry entry)

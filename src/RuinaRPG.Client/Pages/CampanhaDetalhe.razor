@@ -35,7 +35,20 @@
 <ul>
     @foreach (var entry in _diaryEntries)
     {
-        <li>@entry.CreatedAt.ToString("g") — @entry.Texto</li>
+        <li>
+            @if (_editingEntryId == entry.Id)
+            {
+                <textarea @bind="_editText"></textarea>
+                <button @onclick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</button>
+                <button @onclick="CancelEditDiaryEntry">Cancelar</button>
+            }
+            else
+            {
+                <span>@entry.CreatedAt.ToString("g") — @entry.Texto</span>
+                <button @onclick="@(() => StartEditDiaryEntry(entry))">Editar</button>
+                <button @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
+            }
+        </li>
     }
 </ul>
 
@@ -48,6 +61,8 @@
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();
     private string? _errorMessage;
+    private string? _editingEntryId;
+    private string _editText = "";
 
     protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadDiaryAsync());
 
@@ -94,6 +109,44 @@
         }
 
         _diaryForm.Texto = "";
+        await LoadDiaryAsync();
+    }
+
+    private void StartEditDiaryEntry(DiaryEntryResponse entry)
+    {
+        _editingEntryId = entry.Id;
+        _editText = entry.Texto;
+    }
+
+    private void CancelEditDiaryEntry()
+    {
+        _editingEntryId = null;
+        _editText = "";
+    }
+
+    private async Task SaveDiaryEntryAsync(string entryId)
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/diary/{entryId}", new UpdateDiaryEntryRequest(_editText, new List<string>()));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a entrada.";
+            return;
+        }
+
+        _editingEntryId = null;
+        _editText = "";
+        await LoadDiaryAsync();
+    }
+
+    private async Task DeleteDiaryEntryAsync(string entryId)
+    {
+        var response = await Http.DeleteAsync($"campaigns/{CampaignId}/diary/{entryId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a entrada.";
+            return;
+        }
+
         await LoadDiaryAsync();
     }
 

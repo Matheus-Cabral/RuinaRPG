@@ -278,4 +278,61 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Diary_create_with_an_image_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CampDiaryImgOwner", "campdiaryimgowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CampDiaryImgOther", "campdiaryimgother@teste.com");
+        var imageOfOther = await UploadImageAsync(gmTokenOther);
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha com Imagem Alheia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmTokenOwner,
+            new CreateDiaryEntryRequest("Texto qualquer.", [imageOfOther])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Diary_create_with_a_nonexistent_ImageId_returns_400_instead_of_500()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampDiaryGmMissingImg", "campdiarymissingimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Imagem Inexistente");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmToken,
+            new CreateDiaryEntryRequest("Texto qualquer.", [Guid.NewGuid().ToString()])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Diary_update_with_an_image_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CampDiaryImgOwnerUpd", "campdiaryimgownerupd@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CampDiaryImgOtherUpd", "campdiaryimgotherupd@teste.com");
+        var imageOfOther = await UploadImageAsync(gmTokenOther);
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha com Imagem Alheia na Edição");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/diary", gmTokenOwner,
+            new CreateDiaryEntryRequest("Texto original.", [])));
+        var entryId = (await createResponse.Content.ReadFromJsonAsync<DiaryEntryResponse>())!.Id;
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/diary/{entryId}", gmTokenOwner,
+            new UpdateDiaryEntryRequest("Texto revisado.", [imageOfOther])));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddMember_the_same_player_twice_returns_204_both_times()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CampMemberGmTwice", "campmembertwice@teste.com");
+        var playerId = await RegisterJogadorLinkedToAsync(gmToken, "CampMemberPlayerTwice", "campmemberplayertwice@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Membro Duplicado");
+
+        var firstResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var secondResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }
