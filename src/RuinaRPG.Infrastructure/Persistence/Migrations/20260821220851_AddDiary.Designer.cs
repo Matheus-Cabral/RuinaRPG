@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RuinaRPG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    partial class RuinaRpgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260821220851_AddDiary")]
+    partial class AddDiary
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -481,68 +484,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.UseTphMappingStrategy();
                 });
 
-            modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEffect", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("CustoPI")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EfeitoNome")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("Quantidade")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SpellAbilityBankEntryId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SpellAbilityBankEntryId");
-
-                    b.ToTable("SpellAbilityBankEffects");
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Custo")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("GastoEmPI")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("GmId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Grau")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Tipo")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GmId");
-
-                    b.ToTable("SpellAbilityBankEntries");
-                });
-
             modelBuilder.Entity("RuinaRPG.Infrastructure.Items.Arma", b =>
                 {
                     b.HasBaseType("RuinaRPG.Infrastructure.Items.Item");
@@ -849,29 +790,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEffect", b =>
-                {
-                    b.HasOne("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry", null)
-                        .WithMany("Efeitos")
-                        .HasForeignKey("SpellAbilityBankEntryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry", b =>
-                {
-                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("GmId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry", b =>
-                {
-                    b.Navigation("Efeitos");
                 });
 #pragma warning restore 612, 618
         }
