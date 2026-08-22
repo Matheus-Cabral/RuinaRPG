@@ -87,9 +87,9 @@
         {
             <tr>
                 <td>@attr.Atributo</td>
-                <td>@attr.Gasto</td>
-                <td>@attr.Bonus</td>
-                <td>@attr.TemMaestria</td>
+                <td><input type="number" value="@attr.Gasto" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Gasto", e.Value))" /></td>
+                <td><input type="number" value="@attr.Bonus" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Bonus", e.Value))" /></td>
+                <td><input type="checkbox" checked="@attr.TemMaestria" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "TemMaestria", e.Value))" /></td>
                 <td>@attr.Total</td>
             </tr>
         }
@@ -103,7 +103,7 @@
         {
             <tr>
                 <td>@skill.Pericia</td>
-                <td>@skill.Gasto</td>
+                <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillAsync(skill.Pericia, e.Value))" /></td>
                 <td>@skill.Modificador</td>
             </tr>
         }
@@ -114,7 +114,7 @@
 <ul>
     @foreach (var affinity in _affinities)
     {
-        <li>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia)</li>
+        <li>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia) <button @onclick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</button></li>
     }
 </ul>
 
@@ -123,7 +123,9 @@
 <ul>
     @foreach (var weapon in _weapons)
     {
-        <li>@weapon.Nome — Durabilidade @weapon.DurabilidadeAtual/@weapon.DurabilidadeMaxima — @weapon.IsEquipped</li>
+        <li>@weapon.Nome — Durabilidade @weapon.DurabilidadeAtual/@weapon.DurabilidadeMaxima — @(weapon.IsEquipped ? "Equipada" : "")
+            <button @onclick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</button>
+        </li>
     }
 </ul>
 
@@ -131,7 +133,7 @@
 <ul>
     @foreach (var slot in _armorSlots)
     {
-        <li>@slot.Slot: @slot.Nome</li>
+        <li>@slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")</li>
     }
 </ul>
 
@@ -251,6 +253,36 @@
         _armorSlots = await Http.GetFromJsonAsync<List<CharacterArmorSlotResponse>>($"character-sheets/{SheetId}/armor-slots") ?? new();
         _shields = await Http.GetFromJsonAsync<List<CharacterShieldResponse>>($"character-sheets/{SheetId}/shields") ?? new();
         _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"character-sheets/{SheetId}/sub-attributes");
+    }
+
+    private async Task UpdateAttributeAsync(string atributo, string field, object? value)
+    {
+        var current = _attributes.Single(a => a.Atributo == atributo);
+        var gasto = field == "Gasto" ? int.Parse(value?.ToString() ?? "0") : current.Gasto;
+        var bonus = field == "Bonus" ? int.Parse(value?.ToString() ?? "0") : current.Bonus;
+        var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
+
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/attributes/{atributo}", new UpdateCharacterAttributeRequest(gasto, bonus, temMaestria));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateSkillAsync(string pericia, object? value)
+    {
+        var gasto = int.Parse(value?.ToString() ?? "0");
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, null));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task DeleteAffinityAsync(string id)
+    {
+        await Http.DeleteAsync($"character-sheets/{SheetId}/affinities/{id}");
+        await LoadTabs2And3Async();
+    }
+
+    private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
+    {
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
+        await LoadTabs2And3Async();
     }
 
     private class SheetFormModel
