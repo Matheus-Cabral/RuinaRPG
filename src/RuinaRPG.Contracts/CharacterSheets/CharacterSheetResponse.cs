@@ -32,4 +32,6 @@ public record CharacterSheetResponse(
     int AdrenalinaAtual,
     int EstresseAtual,
     string Cobertura,
-    int Ciclos);
+    int Ciclos,
+    int Graduacao,
+    string GraduacaoLabel);

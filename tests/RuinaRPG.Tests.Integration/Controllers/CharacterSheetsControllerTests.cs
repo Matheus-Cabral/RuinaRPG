@@ -264,4 +264,40 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Get_labels_Graduacao_as_Grau_for_Campeao_and_computes_it_from_EAP()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad1", "sheetgrad1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerGrad1", "sheetplayergrad1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Graduacao");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Vocacao = "Campeao", EAPAtual = 150 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.GraduacaoLabel.Should().Be("Grau");
+        body.Graduacao.Should().Be(1); // 150 EAP >= the real Tabela's Grau 1 threshold (100)
+    }
+
+    [Fact]
+    public async Task Get_labels_Graduacao_as_Circulo_for_a_magic_vocacao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad2", "sheetgrad2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerGrad2", "sheetplayergrad2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Graduacao 2");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, EAPAtual = 150 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.GraduacaoLabel.Should().Be("Círculo");
+        body.Graduacao.Should().Be(0); // no coração de mana → always 0 regardless of EAP
+    }
 }
