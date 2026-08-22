@@ -19,7 +19,21 @@ public class CharacterSheet
 
     // 1.b Nível e Progressão
     public int Nivel { get; set; } = 1;
+
+    /// <summary>
+    /// Currently unused — nothing writes this column, so it is always 0. The authoritative
+    /// value is <c>Graduacao</c> on <c>CharacterSheetResponse</c>, computed on read by
+    /// <see cref="RuinaRPG.Domain.CharacterSheets.GraduacaoCalculator"/> from EAPAtual/Vocacao.
+    /// Do not read this property expecting a live value.
+    /// </summary>
     public int Circulo { get; set; }
+
+    /// <summary>
+    /// Currently unused — nothing writes this column, so it is always 0. The authoritative
+    /// value is <c>Graduacao</c> on <c>CharacterSheetResponse</c>, computed on read by
+    /// <see cref="RuinaRPG.Domain.CharacterSheets.GraduacaoCalculator"/> from EAPAtual/Vocacao.
+    /// Do not read this property expecting a live value.
+    /// </summary>
     public int Grau { get; set; }
     public bool PossuiCoracaoDeMana { get; set; }
     public int ExperienciaAtual { get; set; }
