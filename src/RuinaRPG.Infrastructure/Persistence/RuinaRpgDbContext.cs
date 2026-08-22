@@ -230,8 +230,10 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(d => d.CampaignId)
                 .OnDelete(DeleteBehavior.Cascade);
-            // CharacterSheetId's FK is added by the Ficha de Personagem plan once CharacterSheets exists —
-            // left as a plain nullable Guid column here, no FK constraint yet.
+            entity.HasOne<CharacterSheet>()
+                .WithMany()
+                .HasForeignKey(d => d.CharacterSheetId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<DiaryEntryImage>(entity =>
