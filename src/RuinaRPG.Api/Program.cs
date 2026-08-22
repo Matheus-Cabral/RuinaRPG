@@ -2,6 +2,8 @@ using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
+using RuinaRPG.Domain.Rules;
+using RuinaRPG.Infrastructure.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -51,6 +53,7 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddSingleton<IRulesDataProvider, RulesDataProvider>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
 {
