@@ -27,6 +27,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
     public DbSet<CharacterAffinity> CharacterAffinities => Set<CharacterAffinity>();
+    public DbSet<CharacterWeapon> CharacterWeapons => Set<CharacterWeapon>();
+    public DbSet<CharacterArmorSlot> CharacterArmorSlots => Set<CharacterArmorSlot>();
+    public DbSet<CharacterShield> CharacterShields => Set<CharacterShield>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -152,6 +155,25 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(a => a.CharacterSheetId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterWeapon>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(w => w.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CharacterArmorSlot>(entity =>
+        {
+            entity.HasIndex(a => new { a.CharacterSheetId, a.Slot }).IsUnique();
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CharacterShield>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(s => s.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CampaignMember>(entity =>

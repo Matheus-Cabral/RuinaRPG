@@ -41,6 +41,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = atributo });
         foreach (var pericia in Enum.GetValues<Pericia>())
             db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Pericia = pericia });
+        foreach (var slot in Enum.GetValues<ArmorSlotType>())
+            db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = slot });
 
         await db.SaveChangesAsync();
 
