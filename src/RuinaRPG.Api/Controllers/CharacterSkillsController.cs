@@ -17,6 +17,14 @@ public class CharacterSkillsController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId, [FromQuery] string? atributoEscolhido)
     {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
         var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToListAsync();
 
         int? atributoTotal = null;

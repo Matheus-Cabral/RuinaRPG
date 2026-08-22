@@ -42,6 +42,14 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
     [HttpGet]
     public async Task<ActionResult<List<CharacterAffinityResponse>>> List(Guid sheetId)
     {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
         var affinities = await db.CharacterAffinities.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
         return affinities.Select(ToResponse).ToList();
     }

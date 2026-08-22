@@ -127,4 +127,17 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task List_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm5", "aff5@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer5", "affplayer5@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer5b", "affplayer5b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

@@ -132,4 +132,17 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task List_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SkillGm5", "skill5@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer5", "skillplayer5@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer5b", "skillplayer5b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
