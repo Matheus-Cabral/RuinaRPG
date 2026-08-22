@@ -26,7 +26,9 @@ public class CharacterMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        if (!Enum.TryParse<Pericia>(request.Pericia, out var pericia) || !Enum.TryParse<Atributo>(request.Atributo, out var atributo))
+        if (!Enum.TryParse<Pericia>(request.Pericia, out var pericia) || !Enum.IsDefined(pericia))
+            return BadRequest("Perícia ou Atributo desconhecido.");
+        if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
             return BadRequest("Perícia ou Atributo desconhecido.");
 
         var mastery = new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = request.Nome, Pericia = pericia, Atributo = atributo, GastoMaestria = request.GastoMaestria };

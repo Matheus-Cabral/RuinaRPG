@@ -160,4 +160,25 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Id == added.Id && m.Total == 12);
     }
+
+    [Fact]
+    public async Task Add_with_an_out_of_range_numeric_Pericia_or_Atributo_returns_400_and_does_not_poison_the_list()
+    {
+        // A numeric string satisfies Enum.TryParse but isn't a real Pericia/Atributo value - without
+        // an Enum.IsDefined check, the row would be saved before ComputeTotalAsync runs and then every
+        // later GET .../masteries would 500 forever trying to look up a skill/attribute row that
+        // doesn't exist for that undefined enum value.
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryGm6", "mastery6@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer6", "masteryplayer6@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", playerToken,
+            new AddCharacterMasteryRequest("Maestria Inválida", "999", "Destreza", 3)));
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/masteries", playerToken));
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
+        body!.Should().BeEmpty();
+    }
 }
