@@ -41,6 +41,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
     public DbSet<Trait> Traits => Set<Trait>();
+    public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
+    public DbSet<CharacterTrait> CharacterTraits => Set<CharacterTrait>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -243,6 +245,17 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(i => i.ImageId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterAffection>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterTrait>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(t => t.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<DiaryEntryRecipient>(entity =>
