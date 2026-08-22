@@ -73,10 +73,10 @@
     <label>Rank S <InputNumber @bind-Value="_form.NucleosRankS" /></label>
 
     <h3>Recursos</h3>
-    <label>Adrenalina (PA) Atual <InputNumber @bind-Value="_form.AdrenalinaAtual" /></label>
-    <label>Foco (PF) Atual <InputNumber @bind-Value="_form.FocoAtual" /></label>
-    <label>Estresse Atual <InputNumber @bind-Value="_form.EstresseAtual" /></label>
-    <label>Vitalidade Atual <InputNumber @bind-Value="_form.VitalidadeAtual" /></label>
+    <label>Adrenalina (PA) Atual <InputNumber @bind-Value="_form.AdrenalinaAtual" /> / @_form.AdrenalinaMaximo</label>
+    <label>Foco (PF) Atual <InputNumber @bind-Value="_form.FocoAtual" /> / @_form.FocoMaximo</label>
+    <label>Estresse Atual <InputNumber @bind-Value="_form.EstresseAtual" /> / @_form.EstresseMaximo</label>
+    <label>Vitalidade Atual <InputNumber @bind-Value="_form.VitalidadeAtual" /> / @_form.VitalidadeMaximo</label>
 
     <button type="submit">Salvar</button>
 </EditForm>
@@ -413,6 +413,10 @@
         _form.EstresseAtual = sheet.EstresseAtual;
         _form.Cobertura = sheet.Cobertura;
         _form.Ciclos = sheet.Ciclos;
+        _form.VitalidadeMaximo = sheet.VitalidadeMaximo;
+        _form.FocoMaximo = sheet.FocoMaximo;
+        _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
+        _form.EstresseMaximo = sheet.EstresseMaximo;
         _errorMessage = null;
     }
 
@@ -756,6 +760,10 @@
         public int EstresseAtual { get; set; }
         public string Cobertura { get; set; } = "Nenhuma";
         public int Ciclos { get; set; }
+        public int VitalidadeMaximo { get; set; }
+        public int FocoMaximo { get; set; }
+        public int AdrenalinaMaximo { get; set; }
+        public int EstresseMaximo { get; set; }
     }
 
     private class SpellAbilityFormModel
