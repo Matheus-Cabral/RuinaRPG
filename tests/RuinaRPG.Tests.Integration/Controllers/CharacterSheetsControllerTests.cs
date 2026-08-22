@@ -525,4 +525,46 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
     }
+
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, 12, "Medio", 5, rf, rm, "-1 Furtividade", 2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_equipped_armor_RF_and_RM()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub2", "sheetsub2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub2", "sheetplayersub2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr RF");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 3, rm: 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken,
+            new UpdateCharacterArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.ReducaoFisica.Should().Be(3);
+        body.ReducaoMagica.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SubAttributes_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub3", "sheetsub3@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub3", "sheetplayersub3@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub3b", "sheetplayersub3b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Forbidden");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

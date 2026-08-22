@@ -227,13 +227,23 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             .FirstOrDefaultAsync();
         var coberturaBonus = sheet.Cobertura switch { Cobertura.Parcial => 5, Cobertura.Completa => 10, _ => 0 };
 
+        // Every CharacterArmorSlot with an ItemId is inherently worn (no separate IsEquipped
+        // flag, unlike weapons/shields) — so, unlike Peso Total Carregado, this is already
+        // scoped to equipped armor only.
+        var armorRfRm = await db.CharacterArmorSlots
+            .Where(a => a.CharacterSheetId == id && a.ItemId != null)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { i.RF, i.RM })
+            .ToListAsync();
+        var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
+        var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
+
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao: 0, artefatoOuItem: 0),
             Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, (int)pesoTotalCarregado, forca, vigor),
             EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos: 0, artefatos: 0, penalidadeArmadura: 0),
             DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude: 0, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: 0),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: 0));
+            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
     }
 
     /// <summary>
