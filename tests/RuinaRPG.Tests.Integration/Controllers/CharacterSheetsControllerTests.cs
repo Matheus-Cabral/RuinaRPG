@@ -503,4 +503,26 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         skills.Should().HaveCount(39);
         skills.Should().OnlyContain(s => s.Gasto == 0);
     }
+
+    [Fact]
+    public async Task SubAttributes_computes_from_attributes_and_arsenal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub1", "sheetsub1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub1", "sheetplayersub1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
+    }
 }

@@ -188,6 +188,55 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     }
 
     /// <summary>
+    /// Read-only, everything derived live — nothing here is persisted. "Bruto [Perícia]" terms
+    /// (Prontidão, Reflexos, Fortitude) are hardcoded to 0: "Bruto" means a Perícia's Modificador
+    /// alone (Sistema Básico §2), but Formulas.md's "Prontidão" isn't among the 38 Perícias in the
+    /// R0001 2.d fixed list, so which CharacterSkill it maps to needs a product decision, not a
+    /// guess baked into a formula.
+    /// </summary>
+    [HttpGet("api/character-sheets/{id}/sub-attributes")]
+    public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == id).ToListAsync();
+        int TotalOf(Atributo atributo)
+        {
+            var attribute = attributes.Single(a => a.Atributo == atributo);
+            return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
+        }
+
+        var agilidade = TotalOf(Atributo.Agilidade);
+        var vigor = TotalOf(Atributo.Vigor);
+        var forca = TotalOf(Atributo.Forca);
+
+        var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
+        var armorSlots = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == id && a.ItemId != null).Join(db.Items, a => a.ItemId!.Value, i => i.Id, (a, i) => i.Peso).ToListAsync();
+        var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => i.Peso).ToListAsync();
+        var pesoTotalCarregado = weapons.Sum(w => w.Peso) + armorSlots.Sum() + shields.Sum();
+
+        var equippedShield = await db.CharacterShields
+            .Where(s => s.CharacterSheetId == id && s.IsEquipped)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => i.BonusDefesa)
+            .FirstOrDefaultAsync();
+        var coberturaBonus = sheet.Cobertura switch { Cobertura.Parcial => 5, Cobertura.Completa => 10, _ => 0 };
+
+        return new SubAttributesResponse(
+            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao: 0, artefatoOuItem: 0),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, (int)pesoTotalCarregado, forca, vigor),
+            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos: 0, artefatos: 0, penalidadeArmadura: 0),
+            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude: 0, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
+            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: 0),
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: 0));
+    }
+
+    /// <summary>
     /// A null request value means "not set" and maps to null on the entity. A non-null value
     /// that fails to parse is malformed input, not an absent one — the caller must 400 rather
     /// than silently persisting null (e.g. a garbage Variante silently skipping
