@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
@@ -22,6 +23,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
+    public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -105,6 +107,22 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(c => c.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CharacterSheet>(entity =>
+        {
+            entity.HasOne<Campaign>()
+                .WithMany()
+                .HasForeignKey(s => s.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(s => s.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>()
+                .WithMany()
+                .HasForeignKey(s => s.ImageId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<CampaignMember>(entity =>
