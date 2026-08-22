@@ -222,6 +222,7 @@
     <label>
         Perícia
         <select @bind="_masteryForm.Pericia">
+            <option value="">Escolha uma Perícia</option>
             @foreach (var skill in _skills)
             {
                 <option value="@skill.Pericia">@skill.Pericia</option>
@@ -231,6 +232,7 @@
     <label>
         Atributo
         <select @bind="_masteryForm.Atributo">
+            <option value="">Escolha um Atributo</option>
             @foreach (var attr in _attributes)
             {
                 <option value="@attr.Atributo">@attr.Atributo</option>
