@@ -120,6 +120,31 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Create_for_a_campaign_owned_by_another_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("SheetGmCreateOwner", "sheetcreateowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("SheetGmCreateOther", "sheetcreateother@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmTokenOwner, "SheetPlayerCreateOwner", "sheetplayercreateowner@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha do Dono para Criação");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmTokenOwner, new AddCampaignMemberRequest(playerId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmTokenOther, new CreateCharacterSheetRequest(playerId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Create_with_a_malformed_OwnerId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmMalformed", "sheetmalformed@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha OwnerId Inválido");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest("not-a-guid")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Delete_an_owned_sheet_returns_204()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmDelete1", "sheetdelete1@teste.com");
