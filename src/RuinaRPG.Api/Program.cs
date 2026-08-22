@@ -155,7 +155,12 @@ app.MapControllers();
 if (args.Contains("--migrate"))
 {
     using var migrateScope = app.Services.CreateScope();
-    migrateScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().Database.Migrate();
+    var migrateDb = migrateScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+    migrateDb.Database.Migrate();
+
+    var migrateCaracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
+    var migrateInsertedCount = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
+    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted", migrateInsertedCount);
     return;
 }
 
@@ -164,11 +169,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
     db.Database.Migrate();
-}
 
-using (var seedScope = app.Services.CreateScope())
-{
-    var db = seedScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
     var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
     var insertedCount = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted", insertedCount);
