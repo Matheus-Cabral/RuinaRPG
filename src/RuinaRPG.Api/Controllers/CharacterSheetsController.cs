@@ -221,16 +221,9 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == id).ToListAsync();
-        int TotalOf(Atributo atributo)
-        {
-            var attribute = attributes.Single(a => a.Atributo == atributo);
-            return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
-        }
-
-        var agilidade = TotalOf(Atributo.Agilidade);
-        var vigor = TotalOf(Atributo.Vigor);
-        var forca = TotalOf(Atributo.Forca);
+        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade);
+        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor);
+        var forca = await GetAttributeTotalAsync(id, Atributo.Forca);
 
         var brutoSkills = await db.CharacterSkills
             .Where(s => s.CharacterSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
@@ -273,6 +266,31 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
     }
+
+    /// <summary>
+    /// Shared by SubAttributes and the máximo computation in ToResponseAsync — a single-row
+    /// lookup + AttributeTotalCalculator.Total, rather than duplicating that logic a third time.
+    /// </summary>
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo)
+    {
+        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
+        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
+    }
+
+    /// <summary>
+    /// Vocacao's C# member names are unaccented (Campeao, Cacador, ...) but IRulesDataProvider.Vocacoes
+    /// is parsed straight from the real Tabela de Vocação markdown, which uses the accented Portuguese
+    /// names (Campeão, Caçador). A raw .ToString() lookup would never match those two, silently
+    /// returning 0 for statusVida/statusFoco. Used ONLY for that lookup — the existing, unrelated
+    /// convention elsewhere in this file exposing s.Vocacao?.ToString() unaccented to API clients is
+    /// separate and correct as-is.
+    /// </summary>
+    private static string VocacaoTabelaName(RuinaRPG.Domain.CharacterSheets.Vocacao vocacao) => vocacao switch
+    {
+        RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao => "Campeão",
+        RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador => "Caçador",
+        _ => vocacao.ToString()
+    };
 
     /// <summary>
     /// A null request value means "not set" and maps to null on the entity. A non-null value
@@ -329,6 +347,21 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
+        // "Status de classe Vida/Foco" is not computed here — it comes from Tabela de Vocação
+        // (Vocação × Nível). That table's rows are keyed by the 5 base Vocação names, not by
+        // Sub-Vocação/Classe, so the sheet's Vocacao (not SubVocacao) is used as the lookup key —
+        // an accepted approximation (see plan's Explicitly out of scope).
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia);
+        var statusVida = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
+        var statusFoco = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var artefatoBonusParaAdrenalina = 0; // Artefatos com TipoDeAlvo=SubAtributo/Alvo="Adrenalina" — não modelado ainda, ver Explicitly out of scope
+
+        var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
+        var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);
+        var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
+        var estresseMaximo = ResourceMaximumCalculator.Estresse();
+
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
             s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
@@ -336,7 +369,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
-            s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel);
+            s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
+            vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

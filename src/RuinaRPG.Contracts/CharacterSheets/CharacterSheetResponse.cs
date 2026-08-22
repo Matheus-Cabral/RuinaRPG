@@ -34,4 +34,8 @@ public record CharacterSheetResponse(
     string Cobertura,
     int Ciclos,
     int Graduacao,
-    string GraduacaoLabel);
+    string GraduacaoLabel,
+    int VitalidadeMaximo,
+    int FocoMaximo,
+    int AdrenalinaMaximo,
+    int EstresseMaximo);

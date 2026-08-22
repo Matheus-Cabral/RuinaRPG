@@ -375,6 +375,35 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Get_computes_vitalidade_and_foco_maximo_from_vigor_astucia_and_vocacao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmMax1", "sheetmax1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerMax1", "sheetplayermax1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Maximo");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Campeão Nível 1 → Vida 8, Arcana 4 (real Tabela de Vocação excerpt, same as
+        // VocacaoProgressaoParserTests). This vocação is specifically chosen because it
+        // exercises the accented-name lookup bug (Campeão/Caçador) fixed in this task.
+        var update = ValidUpdate() with { Vocacao = "Campeao", Nivel = 1 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        // Vigor total = Gasto(5) + Bonus(0)/2 (sem maestria) = 5 → Vitalidade = 5*2 + 8 = 18.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+        // Astúcia total = Gasto(3) + Bonus(0)/2 (sem maestria) = 3 → Foco = 3*2 + 4 = 10.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.VitalidadeMaximo.Should().Be(18);
+        body.FocoMaximo.Should().Be(10);
+        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
+        body.EstresseMaximo.Should().Be(10); // flat
+    }
+
+    [Fact]
     public async Task LevelUpNotice_lists_bonus_text_for_every_level_gained_since_the_last_dismissal()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp1", "sheetlevelup1@teste.com");
