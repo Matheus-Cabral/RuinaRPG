@@ -189,10 +189,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
     /// <summary>
     /// Read-only, everything derived live — nothing here is persisted. "Bruto [Perícia]" terms
-    /// (Prontidão, Reflexos, Fortitude) are hardcoded to 0: "Bruto" means a Perícia's Modificador
-    /// alone (Sistema Básico §2), but Formulas.md's "Prontidão" isn't among the 38 Perícias in the
-    /// R0001 2.d fixed list, so which CharacterSkill it maps to needs a product decision, not a
-    /// guess baked into a formula.
+    /// (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador alone (Sistema Básico §2 /
+    /// SkillFormulas.Modificador), sourced from the sheet's own CharacterSkill rows below.
     /// </summary>
     [HttpGet("api/character-sheets/{id}/sub-attributes")]
     public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
@@ -216,6 +214,15 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var vigor = TotalOf(Atributo.Vigor);
         var forca = TotalOf(Atributo.Forca);
 
+        var brutoSkills = await db.CharacterSkills
+            .Where(s => s.CharacterSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
+            .ToListAsync();
+        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(brutoSkills.Single(s => s.Pericia == pericia).Gasto);
+
+        var brutoProntidao = BrutoOf(Pericia.Prontidao);
+        var brutoReflexos = BrutoOf(Pericia.Reflexos);
+        var brutoFortitude = BrutoOf(Pericia.Fortitude);
+
         var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
         var armorSlots = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == id && a.ItemId != null).Join(db.Items, a => a.ItemId!.Value, i => i.Id, (a, i) => i.Peso).ToListAsync();
         var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => i.Peso).ToListAsync();
@@ -238,10 +245,13 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao: 0, artefatoOuItem: 0),
+            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: 0),
             Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, (int)pesoTotalCarregado, forca, vigor),
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos: 0, artefatos: 0, penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude: 0, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
+            // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
+            // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
+            // numeric formula term today. Unlike Bruto above, this is a real, still-open gap.
+            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: 0, penalidadeArmadura: 0),
+            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
     }

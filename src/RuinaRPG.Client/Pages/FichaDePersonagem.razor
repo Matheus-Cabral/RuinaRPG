@@ -258,8 +258,8 @@
     private async Task UpdateAttributeAsync(string atributo, string field, object? value)
     {
         var current = _attributes.Single(a => a.Atributo == atributo);
-        var gasto = field == "Gasto" ? int.Parse(value?.ToString() ?? "0") : current.Gasto;
-        var bonus = field == "Bonus" ? int.Parse(value?.ToString() ?? "0") : current.Bonus;
+        var gasto = field == "Gasto" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Gasto) : current.Gasto;
+        var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
         await Http.PutAsJsonAsync($"character-sheets/{SheetId}/attributes/{atributo}", new UpdateCharacterAttributeRequest(gasto, bonus, temMaestria));
@@ -268,7 +268,8 @@
 
     private async Task UpdateSkillAsync(string pericia, object? value)
     {
-        var gasto = int.Parse(value?.ToString() ?? "0");
+        var current = _skills.Single(s => s.Pericia == pericia);
+        var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
         await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, null));
         await LoadTabs2And3Async();
     }
