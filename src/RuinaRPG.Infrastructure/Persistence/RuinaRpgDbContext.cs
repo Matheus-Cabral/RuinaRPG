@@ -32,6 +32,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterWeapon> CharacterWeapons => Set<CharacterWeapon>();
     public DbSet<CharacterArmorSlot> CharacterArmorSlots => Set<CharacterArmorSlot>();
     public DbSet<CharacterShield> CharacterShields => Set<CharacterShield>();
+    public DbSet<CharacterInventoryItem> CharacterInventoryItems => Set<CharacterInventoryItem>();
+    public DbSet<CharacterArtifact> CharacterArtifacts => Set<CharacterArtifact>();
     public DbSet<CharacterSpellAbility> CharacterSpellAbilities => Set<CharacterSpellAbility>();
     public DbSet<CharacterSpellAbilityEffect> CharacterSpellAbilityEffects => Set<CharacterSpellAbilityEffect>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
@@ -181,6 +183,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(s => s.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CharacterInventoryItem>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CharacterArtifact>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterSpellAbility>(entity =>
