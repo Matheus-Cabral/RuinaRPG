@@ -19,6 +19,7 @@
     <EmbeddedResource Include="../../Docs/Sistema RPG/Tabelas de XP, Atributos, Características e EAP.md" LogicalName="Tabelas de XP, Atributos, Características e EAP.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/GRAUS &amp; CÍRCULOS.md" LogicalName="GRAUS e CIRCULOS.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/Ruína RPG - Sistema Básico.md" LogicalName="Sistema Basico.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Características.md" LogicalName="Caracteristicas.md" />
   </ItemGroup>
 
   <PropertyGroup>

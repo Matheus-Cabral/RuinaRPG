@@ -8,6 +8,7 @@ using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
+using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Persistence;
@@ -39,6 +40,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
+    public DbSet<Trait> Traits => Set<Trait>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
