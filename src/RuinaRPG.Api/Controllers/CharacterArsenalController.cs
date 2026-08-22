@@ -23,7 +23,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (authError is not null)
             return authError;
 
-        var itemId = Guid.Parse(request.ItemId);
+        if (!Guid.TryParse(request.ItemId, out var itemId))
+            return BadRequest("ItemId inválido.");
+
         var item = await db.Set<Arma>().FirstOrDefaultAsync(a => a.Id == itemId);
         if (item is null)
             return BadRequest("Item de arma não encontrado.");
@@ -38,6 +40,10 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet("weapons")]
     public async Task<ActionResult<List<CharacterWeaponResponse>>> ListWeapons(Guid sheetId)
     {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
         var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).ToListAsync();
         var responses = new List<CharacterWeaponResponse>();
         foreach (var weapon in weapons)
@@ -87,6 +93,10 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet("armor-slots")]
     public async Task<ActionResult<List<CharacterArmorSlotResponse>>> ListArmorSlots(Guid sheetId)
     {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
         var slots = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
         var responses = new List<CharacterArmorSlotResponse>();
         foreach (var slot in slots)
@@ -110,7 +120,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         }
         else
         {
-            var itemId = Guid.Parse(request.ItemId);
+            if (!Guid.TryParse(request.ItemId, out var itemId))
+                return BadRequest("ItemId inválido.");
+
             var item = await db.Set<Armadura>().FirstOrDefaultAsync(a => a.Id == itemId);
             if (item is null)
                 return BadRequest("Item de armadura não encontrado.");
@@ -130,7 +142,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (authError is not null)
             return authError;
 
-        var itemId = Guid.Parse(request.ItemId);
+        if (!Guid.TryParse(request.ItemId, out var itemId))
+            return BadRequest("ItemId inválido.");
+
         var item = await db.Set<Escudo>().FirstOrDefaultAsync(e => e.Id == itemId);
         if (item is null)
             return BadRequest("Item de escudo não encontrado.");
@@ -145,6 +159,10 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet("shields")]
     public async Task<ActionResult<List<CharacterShieldResponse>>> ListShields(Guid sheetId)
     {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
         var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).ToListAsync();
         var responses = new List<CharacterShieldResponse>();
         foreach (var shield in shields)

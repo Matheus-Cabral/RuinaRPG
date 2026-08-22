@@ -249,14 +249,109 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
     public async Task Weapon_actions_by_an_unrelated_jogador_return_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm6", "arsenal6@teste.com");
-        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer6", "arsenalplayer6@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer6", "arsenalplayer6@teste.com");
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer6b", "arsenalplayer6b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var addWeapon = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
+        var weaponId = (await addWeapon.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+        var addShield = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
+        var shieldId = (await addShield.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", otherToken,
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", otherToken,
             new AddCharacterWeaponRequest(weaponItemId)));
+        addResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}", otherToken, true));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/weapons/{weaponId}", otherToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var addShieldResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", otherToken,
+            new AddCharacterShieldRequest(shieldItemId)));
+        addShieldResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var deleteShieldResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/shields/{shieldId}", otherToken));
+        deleteShieldResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListWeapons_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm10", "arsenal10@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer10", "arsenalplayer10@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer10b", "arsenalplayer10b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", otherToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListArmorSlots_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm11", "arsenal11@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer11", "arsenalplayer11@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer11b", "arsenalplayer11b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListShields_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm12", "arsenal12@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer12", "arsenalplayer12@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer12b", "arsenalplayer12b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AddWeapon_with_a_malformed_ItemId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm13", "arsenal13@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer13", "arsenalplayer13@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken,
+            new AddCharacterWeaponRequest("not-a-guid")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlot_with_a_malformed_ItemId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm14", "arsenal14@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer14", "arsenalplayer14@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken,
+            new UpdateCharacterArmorSlotRequest("not-a-guid")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddShield_with_a_malformed_ItemId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm15", "arsenal15@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer15", "arsenalplayer15@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken,
+            new AddCharacterShieldRequest("not-a-guid")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
