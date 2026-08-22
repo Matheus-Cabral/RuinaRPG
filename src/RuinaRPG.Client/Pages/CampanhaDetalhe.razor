@@ -28,6 +28,12 @@
         <li>
             @member.Nickname (@member.Email)
             <button @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
+            <ul>
+                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
+                {
+                    <li><a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a></li>
+                }
+            </ul>
         </li>
     }
 </ul>
@@ -61,6 +67,7 @@
     [Parameter] public string CampaignId { get; set; } = "";
 
     private List<CampaignMemberResponse> _members = new();
+    private List<CharacterSheetResponse> _sheets = new();
     private List<DiaryEntryResponse> _diaryEntries = new();
     private List<PlayerSearchResultResponse> _searchResults = new();
     private string _memberSearch = "";
@@ -69,13 +76,20 @@
     private string? _editingEntryId;
     private string _editText = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadDiaryAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync());
 
     private async Task LoadMembersAsync()
     {
         var response = await Http.GetAsync($"campaigns/{CampaignId}/members");
         if (response.IsSuccessStatusCode)
             _members = await response.Content.ReadFromJsonAsync<List<CampaignMemberResponse>>() ?? new();
+    }
+
+    private async Task LoadSheetsAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/character-sheets");
+        if (response.IsSuccessStatusCode)
+            _sheets = await response.Content.ReadFromJsonAsync<List<CharacterSheetResponse>>() ?? new();
     }
 
     private async Task LoadDiaryAsync()

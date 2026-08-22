@@ -59,12 +59,32 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return NoContent();
     }
 
+    [HttpGet("api/campaigns/{campaignId}/character-sheets")]
+    [Authorize(Roles = "GM")]
+    public async Task<ActionResult<List<CharacterSheetResponse>>> ListForCampaign(Guid campaignId)
+    {
+        var gmId = CurrentUserId();
+        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        if (!campaignExists)
+            return NotFound();
+
+        var sheets = await db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
+        var responses = new List<CharacterSheetResponse>();
+        foreach (var sheet in sheets)
+            responses.Add(await ToResponseAsync(sheet));
+        return responses;
+    }
+
     [HttpGet("api/character-sheets/{id}")]
     public async Task<ActionResult<CharacterSheetResponse>> Get(Guid id)
     {
         var sheet = await db.CharacterSheets.FindAsync(id);
         if (sheet is null)
             return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         return await ToResponseAsync(sheet);
     }
@@ -80,18 +100,29 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var linhagem = ParseEnum<Linhagem>(request.Linhagem);
-        var variante = ParseEnum<Variante>(request.Variante);
+        if (!TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        if (!TryParseEnum<Linhagem>(request.Linhagem, out var linhagem))
+            return BadRequest("Linhagem inválida.");
+        if (!TryParseEnum<Variante>(request.Variante, out var variante))
+            return BadRequest("Variante inválida.");
         if (linhagem is not null && variante is not null && !LinhagemVarianteValidator.IsValidCombination(linhagem.Value, variante.Value))
             return BadRequest("A Variante escolhida não pertence à Linhagem escolhida.");
+        if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
+            return BadRequest("Vocação inválida.");
+        if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
+            return BadRequest("Afinidade inválida.");
+        if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
+            return BadRequest("Cobertura inválida.");
 
-        sheet.ImageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null;
+        sheet.ImageId = imageId;
         sheet.Nome = request.Nome;
         sheet.Linhagem = linhagem;
         sheet.Variante = variante;
-        sheet.Vocacao = ParseEnum<Vocacao>(request.Vocacao);
+        sheet.Vocacao = vocacao;
         sheet.SubVocacao = request.SubVocacao;
-        sheet.Afinidade = ParseEnum<AfinidadeElemental>(request.Afinidade);
+        sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
@@ -110,7 +141,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.FocoAtual = request.FocoAtual;
         sheet.AdrenalinaAtual = request.AdrenalinaAtual;
         sheet.EstresseAtual = request.EstresseAtual;
-        sheet.Cobertura = Enum.Parse<Cobertura>(request.Cobertura);
+        sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
 
         await db.SaveChangesAsync();
@@ -148,8 +179,47 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return NoContent();
     }
 
-    private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
-        value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
+    /// <summary>
+    /// A null request value means "not set" and maps to null on the entity. A non-null value
+    /// that fails to parse is malformed input, not an absent one — the caller must 400 rather
+    /// than silently persisting null (e.g. a garbage Variante silently skipping
+    /// LinhagemVarianteValidator).
+    /// </summary>
+    private static bool TryParseEnum<TEnum>(string? value, out TEnum? parsed) where TEnum : struct, Enum
+    {
+        if (value is null)
+        {
+            parsed = null;
+            return true;
+        }
+
+        if (Enum.TryParse<TEnum>(value, out var result))
+        {
+            parsed = result;
+            return true;
+        }
+
+        parsed = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Treats null, empty, or whitespace-only as "no image" (returns true with imageId null).
+    /// A non-empty string that isn't a valid Guid is rejected (returns false) rather than
+    /// throwing. Mirrors ItemsController's TryParseImageId.
+    /// </summary>
+    private static bool TryParseImageId(string? raw, out Guid? imageId)
+    {
+        imageId = null;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        if (!Guid.TryParse(raw, out var parsed))
+            return false;
+
+        imageId = parsed;
+        return true;
+    }
 
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
     {
