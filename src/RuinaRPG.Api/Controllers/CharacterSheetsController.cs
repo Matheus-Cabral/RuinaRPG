@@ -97,6 +97,24 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return await ToResponseAsync(sheet);
     }
 
+    [HttpGet("api/character-sheets/{id}/racial-ability")]
+    public async Task<ActionResult<RacialAbilityResponse>> RacialAbility(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (sheet.Variante is null)
+            return new RacialAbilityResponse(null, null);
+
+        var ability = RacialAbilityLookup.For(sheet.Variante.Value);
+        return new RacialAbilityResponse(ability.Nome, ability.Descricao);
+    }
+
     [HttpPut("api/character-sheets/{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateCharacterSheetRequest request)
     {

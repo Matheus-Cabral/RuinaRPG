@@ -599,4 +599,22 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task RacialAbility_is_null_before_a_Variante_is_chosen_and_populated_after()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial1", "sheetracial1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerRacial1", "sheetplayerracial1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Racial");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
+        (await beforeResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().BeNull();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos" }));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
+        (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
+    }
 }
