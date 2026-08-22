@@ -300,4 +300,53 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body!.GraduacaoLabel.Should().Be("Círculo");
         body.Graduacao.Should().Be(0); // no coração de mana → always 0 regardless of EAP
     }
+
+    [Fact]
+    public async Task LevelUpNotice_lists_bonus_text_for_every_level_gained_since_the_last_dismissal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp1", "sheetlevelup1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp1", "sheetplayerlevelup1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Nivel = 2 }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        body!.BonusTexts.Should().HaveCount(2); // Nível 1 and 2's bonus text, nothing dismissed yet
+    }
+
+    [Fact]
+    public async Task Dismiss_stops_the_dismissed_levels_from_reappearing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp2", "sheetlevelup2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp2", "sheetplayerlevelup2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 2");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Nivel = 2 }));
+
+        var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
+        dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var noticeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
+        var body = await noticeResponse.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        body!.BonusTexts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Dismiss_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp3", "sheetlevelup3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp3", "sheetplayerlevelup3@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp3b", "sheetplayerlevelup3b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", otherToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

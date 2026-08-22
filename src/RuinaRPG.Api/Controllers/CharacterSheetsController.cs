@@ -117,6 +117,37 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return NoContent();
     }
 
+    [HttpGet("api/character-sheets/{id}/level-up-notice")]
+    public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        return new LevelUpNoticeResponse(pending.Select(b => b.BonusText).ToList());
+    }
+
+    [HttpPost("api/character-sheets/{id}/dismiss-level-up-notice")]
+    public async Task<IActionResult> DismissLevelUpNotice(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        sheet.LastDismissedLevelUpLevel = sheet.Nivel;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
         value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
 
