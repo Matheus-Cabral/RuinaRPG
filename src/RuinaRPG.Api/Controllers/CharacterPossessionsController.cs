@@ -8,6 +8,7 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -126,6 +127,101 @@ public class CharacterPossessionsController(RuinaRpgDbContext db) : ControllerBa
         return NoContent();
     }
 
+    [HttpPost("affections")]
+    public async Task<ActionResult<CharacterAffectionResponse>> AddAffection(Guid sheetId, AddCharacterAffectionRequest request)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var affection = new CharacterAffection { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = request.Nome, Favorabilidade = request.Favorabilidade };
+        db.CharacterAffections.Add(affection);
+        await db.SaveChangesAsync();
+
+        return Created(string.Empty, ToAffectionResponse(affection));
+    }
+
+    [HttpGet("affections")]
+    public async Task<ActionResult<List<CharacterAffectionResponse>>> ListAffections(Guid sheetId)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var affections = await db.CharacterAffections.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        return affections.Select(ToAffectionResponse).ToList();
+    }
+
+    [HttpDelete("affections/{id}")]
+    public async Task<IActionResult> DeleteAffection(Guid sheetId, Guid id)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        if (affection is null)
+            return NotFound();
+
+        db.CharacterAffections.Remove(affection);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost("traits")]
+    public async Task<ActionResult<CharacterTraitResponse>> AddTrait(Guid sheetId, AddCharacterTraitRequest request)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        if (!Guid.TryParse(request.TraitId, out var traitId))
+            return BadRequest("TraitId inválido.");
+
+        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId);
+        if (trait is null)
+            return BadRequest("Trait não encontrado.");
+
+        var characterTrait = new CharacterTrait { Id = Guid.NewGuid(), CharacterSheetId = sheetId, TraitId = traitId, Polaridade = trait.Polaridade };
+        db.CharacterTraits.Add(characterTrait);
+        await db.SaveChangesAsync();
+
+        return Created(string.Empty, ToTraitResponse(characterTrait, trait));
+    }
+
+    [HttpGet("traits")]
+    public async Task<ActionResult<CharacterTraitsListResponse>> ListTraits(Guid sheetId)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var rows = await db.CharacterTraits
+            .Where(t => t.CharacterSheetId == sheetId)
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CharacterTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString()))
+            .ToListAsync();
+
+        var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
+        var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
+        return new CharacterTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo));
+    }
+
+    [HttpDelete("traits/{id}")]
+    public async Task<IActionResult> DeleteTrait(Guid sheetId, Guid id)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var characterTrait = await db.CharacterTraits.FirstOrDefaultAsync(t => t.Id == id && t.CharacterSheetId == sheetId);
+        if (characterTrait is null)
+            return NotFound();
+
+        db.CharacterTraits.Remove(characterTrait);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<ActionResult?> CheckEditAuthorizationAsync(Guid sheetId)
     {
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
@@ -150,6 +246,12 @@ public class CharacterPossessionsController(RuinaRpgDbContext db) : ControllerBa
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         return new CharacterArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0);
     }
+
+    private static CharacterAffectionResponse ToAffectionResponse(CharacterAffection affection) =>
+        new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
+
+    private static CharacterTraitResponse ToTraitResponse(CharacterTrait characterTrait, Trait trait) =>
+        new(characterTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString());
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
