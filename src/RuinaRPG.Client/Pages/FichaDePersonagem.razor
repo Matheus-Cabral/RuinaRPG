@@ -79,14 +79,96 @@
     <button type="submit">Salvar</button>
 </EditForm>
 
+<h2>Atributos & Perícias</h2>
+<table>
+    <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
+    <tbody>
+        @foreach (var attr in _attributes)
+        {
+            <tr>
+                <td>@attr.Atributo</td>
+                <td>@attr.Gasto</td>
+                <td>@attr.Bonus</td>
+                <td>@attr.TemMaestria</td>
+                <td>@attr.Total</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<table>
+    <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
+    <tbody>
+        @foreach (var skill in _skills)
+        {
+            <tr>
+                <td>@skill.Pericia</td>
+                <td>@skill.Gasto</td>
+                <td>@skill.Modificador</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Afinidades</h3>
+<ul>
+    @foreach (var affinity in _affinities)
+    {
+        <li>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia)</li>
+    }
+</ul>
+
+<h2>Combate</h2>
+<h3>Armas</h3>
+<ul>
+    @foreach (var weapon in _weapons)
+    {
+        <li>@weapon.Nome — Durabilidade @weapon.DurabilidadeAtual/@weapon.DurabilidadeMaxima — @weapon.IsEquipped</li>
+    }
+</ul>
+
+<h3>Armaduras</h3>
+<ul>
+    @foreach (var slot in _armorSlots)
+    {
+        <li>@slot.Slot: @slot.Nome</li>
+    }
+</ul>
+
+<h3>Escudos</h3>
+<ul>
+    @foreach (var shield in _shields)
+    {
+        <li>@shield.Nome — Durabilidade @shield.DurabilidadeAtual/@shield.DurabilidadeMaxima</li>
+    }
+</ul>
+
+@if (_subAttributes is not null)
+{
+    <h3>Sub-Atributos</h3>
+    <p>Iniciativa: @_subAttributes.Iniciativa</p>
+    <p>Movimentação: @_subAttributes.Movimentacao</p>
+    <p>Esquiva Natural: @_subAttributes.EsquivaNatural</p>
+    <p>Defesa Natural: @_subAttributes.DefesaNatural</p>
+    <p>Redução Física: @_subAttributes.ReducaoFisica</p>
+    <p>Redução Mágica: @_subAttributes.ReducaoMagica</p>
+}
+
 @code {
     [Parameter] public string SheetId { get; set; } = "";
 
     private readonly SheetFormModel _form = new();
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
+    private List<CharacterAttributeResponse> _attributes = new();
+    private List<CharacterSkillResponse> _skills = new();
+    private List<CharacterAffinityResponse> _affinities = new();
+    private List<CharacterWeaponResponse> _weapons = new();
+    private List<CharacterArmorSlotResponse> _armorSlots = new();
+    private List<CharacterShieldResponse> _shields = new();
+    private SubAttributesResponse? _subAttributes;
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadSheetAsync(), LoadLevelUpNoticeAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadSheetAsync(), LoadLevelUpNoticeAsync(), LoadTabs2And3Async());
 
     private async Task LoadSheetAsync()
     {
@@ -158,6 +240,17 @@
         }
 
         await LoadSheetAsync();
+    }
+
+    private async Task LoadTabs2And3Async()
+    {
+        _attributes = await Http.GetFromJsonAsync<List<CharacterAttributeResponse>>($"character-sheets/{SheetId}/attributes") ?? new();
+        _skills = await Http.GetFromJsonAsync<List<CharacterSkillResponse>>($"character-sheets/{SheetId}/skills") ?? new();
+        _affinities = await Http.GetFromJsonAsync<List<CharacterAffinityResponse>>($"character-sheets/{SheetId}/affinities") ?? new();
+        _weapons = await Http.GetFromJsonAsync<List<CharacterWeaponResponse>>($"character-sheets/{SheetId}/weapons") ?? new();
+        _armorSlots = await Http.GetFromJsonAsync<List<CharacterArmorSlotResponse>>($"character-sheets/{SheetId}/armor-slots") ?? new();
+        _shields = await Http.GetFromJsonAsync<List<CharacterShieldResponse>>($"character-sheets/{SheetId}/shields") ?? new();
+        _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"character-sheets/{SheetId}/sub-attributes");
     }
 
     private class SheetFormModel
