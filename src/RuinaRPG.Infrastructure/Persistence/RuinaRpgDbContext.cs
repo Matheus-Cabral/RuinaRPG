@@ -27,6 +27,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
     public DbSet<CharacterAffinity> CharacterAffinities => Set<CharacterAffinity>();
+    public DbSet<CharacterRune> CharacterRunes => Set<CharacterRune>();
+    public DbSet<CharacterMastery> CharacterMasteries => Set<CharacterMastery>();
     public DbSet<CharacterWeapon> CharacterWeapons => Set<CharacterWeapon>();
     public DbSet<CharacterArmorSlot> CharacterArmorSlots => Set<CharacterArmorSlot>();
     public DbSet<CharacterShield> CharacterShields => Set<CharacterShield>();
@@ -158,6 +160,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .HasForeignKey(a => a.CharacterSheetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<CharacterRune>(entity => entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<CharacterMastery>(entity => entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.CharacterSheetId).OnDelete(DeleteBehavior.Cascade));
 
         builder.Entity<CharacterWeapon>(entity =>
         {
