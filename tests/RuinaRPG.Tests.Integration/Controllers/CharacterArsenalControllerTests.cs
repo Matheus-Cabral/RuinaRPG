@@ -191,6 +191,61 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
     }
 
     [Fact]
+    public async Task Delete_an_existing_weapon_returns_204_and_it_no_longer_appears_on_list()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm7", "arsenal7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer7", "arsenalplayer7@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
+        var weaponId = (await addResponse.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/weapons/{weaponId}", playerToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        body!.Should().NotContain(w => w.Id == weaponId);
+    }
+
+    [Fact]
+    public async Task Unlinking_an_armor_slot_clears_its_item_and_durability()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm8", "arsenal8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer8", "arsenalplayer8@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
+
+        var unlinkResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(null)));
+        unlinkResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
+        var slot = body!.Single(s => s.Slot == "Capacete");
+        slot.ItemId.Should().BeNull();
+        slot.DurabilidadeAtual.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Delete_an_existing_shield_returns_204_and_it_no_longer_appears_on_list()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm9", "arsenal9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer9", "arsenalplayer9@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
+        var shieldId = (await addResponse.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/shields/{shieldId}", playerToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
+        body!.Should().NotContain(s => s.Id == shieldId);
+    }
+
+    [Fact]
     public async Task Weapon_actions_by_an_unrelated_jogador_return_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm6", "arsenal6@teste.com");

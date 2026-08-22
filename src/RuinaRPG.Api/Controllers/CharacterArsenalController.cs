@@ -152,6 +152,22 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         return responses;
     }
 
+    [HttpDelete("shields/{id}")]
+    public async Task<IActionResult> DeleteShield(Guid sheetId, Guid id)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        db.CharacterShields.Remove(shield);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<ActionResult?> CheckEditAuthorizationAsync(Guid sheetId)
     {
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
