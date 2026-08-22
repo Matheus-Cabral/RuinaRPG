@@ -174,4 +174,94 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    private async Task<string> CreateSheetForMemberAsync(string gmToken, string campaignId, string playerId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        return (await response.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+    }
+
+    private static UpdateCharacterSheetRequest ValidUpdate() => new(
+        null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+
+    [Fact]
+    public async Task Get_returns_the_sheet()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGet1", "sheetget1@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerGet1", "sheetplayerget1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Get");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Update_by_the_owner_returns_204_and_persists_every_field()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdate1", "sheetupdate1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate1", "sheetplayerupdate1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.Nome.Should().Be("Vann Astrel");
+        body.Linhagem.Should().Be("Humano");
+        body.Variante.Should().Be("Sinir");
+        body.Nivel.Should().Be(5);
+        body.VitalidadeAtual.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task Update_by_the_campaigns_gm_returns_204()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdate2", "sheetupdate2@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate2", "sheetplayerupdate2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update GM");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, ValidUpdate()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Update_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdate3", "sheetupdate3@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate3", "sheetplayerupdate3@teste.com");
+        var (_, otherPlayerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate3b", "sheetplayerupdate3b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Unrelated");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", otherPlayerToken, ValidUpdate()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Update_with_a_Variante_that_does_not_belong_to_the_Linhagem_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdate4", "sheetupdate4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate4", "sheetplayerupdate4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Invalid");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var invalid = ValidUpdate() with { Linhagem = "Humano", Variante = "Yavos" }; // Yavos belongs to Nephrytes
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

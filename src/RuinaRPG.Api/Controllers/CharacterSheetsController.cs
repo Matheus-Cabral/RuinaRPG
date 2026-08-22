@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -56,6 +57,67 @@ public class CharacterSheetsController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpGet("api/character-sheets/{id}")]
+    public async Task<ActionResult<CharacterSheetResponse>> Get(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        return await ToResponseAsync(sheet);
+    }
+
+    [HttpPut("api/character-sheets/{id}")]
+    public async Task<IActionResult> Update(Guid id, UpdateCharacterSheetRequest request)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var linhagem = ParseEnum<Linhagem>(request.Linhagem);
+        var variante = ParseEnum<Variante>(request.Variante);
+        if (linhagem is not null && variante is not null && !LinhagemVarianteValidator.IsValidCombination(linhagem.Value, variante.Value))
+            return BadRequest("A Variante escolhida não pertence à Linhagem escolhida.");
+
+        sheet.ImageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null;
+        sheet.Nome = request.Nome;
+        sheet.Linhagem = linhagem;
+        sheet.Variante = variante;
+        sheet.Vocacao = ParseEnum<Vocacao>(request.Vocacao);
+        sheet.SubVocacao = request.SubVocacao;
+        sheet.Afinidade = ParseEnum<AfinidadeElemental>(request.Afinidade);
+        sheet.Propriedade = request.Propriedade;
+        sheet.Nivel = request.Nivel;
+        sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
+        sheet.ExperienciaAtual = request.ExperienciaAtual;
+        sheet.EAPAtual = request.EAPAtual;
+        sheet.NucleosRankF = request.NucleosRankF;
+        sheet.NucleosRankE = request.NucleosRankE;
+        sheet.NucleosRankD = request.NucleosRankD;
+        sheet.NucleosRankC = request.NucleosRankC;
+        sheet.NucleosRankB = request.NucleosRankB;
+        sheet.NucleosRankA = request.NucleosRankA;
+        sheet.NucleosRankS = request.NucleosRankS;
+        sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
+        sheet.PontosDeIgnicaoTotal = request.PontosDeIgnicaoTotal;
+        sheet.VitalidadeAtual = request.VitalidadeAtual;
+        sheet.FocoAtual = request.FocoAtual;
+        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
+        sheet.EstresseAtual = request.EstresseAtual;
+        sheet.Cobertura = Enum.Parse<Cobertura>(request.Cobertura);
+        sheet.Ciclos = request.Ciclos;
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
+        value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
 
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
     {
