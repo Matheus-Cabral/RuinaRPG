@@ -8,6 +8,7 @@ using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
+using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
@@ -43,6 +44,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Trait> Traits => Set<Trait>();
     public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
     public DbSet<CharacterTrait> CharacterTraits => Set<CharacterTrait>();
+    public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -271,6 +273,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NpcSheet>(entity =>
+        {
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
