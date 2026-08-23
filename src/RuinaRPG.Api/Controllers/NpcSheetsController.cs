@@ -113,6 +113,27 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
         return NoContent();
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<NpcSheetSummaryResponse>>> List(
+        [FromQuery] string? nome, [FromQuery] string? linhagem, [FromQuery] string? vocacao, [FromQuery] string? subVocacao, [FromQuery] int? nivel)
+    {
+        var gmId = CurrentGmId();
+        var query = db.NpcSheets.Where(s => s.GmId == gmId);
+
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(s => s.Nome != null && EF.Functions.ILike(s.Nome, $"%{nome}%"));
+        if (linhagem is not null && Enum.TryParse<Linhagem>(linhagem, out var linhagemParsed))
+            query = query.Where(s => s.Linhagem == linhagemParsed);
+        if (vocacao is not null && Enum.TryParse<Vocacao>(vocacao, out var vocacaoParsed))
+            query = query.Where(s => s.Vocacao == vocacaoParsed);
+        if (!string.IsNullOrWhiteSpace(subVocacao))
+            query = query.Where(s => s.SubVocacao == subVocacao);
+        if (nivel is not null)
+            query = query.Where(s => s.Nivel == nivel);
+
+        return await query.Select(s => new NpcSheetSummaryResponse(s.Id.ToString(), s.Nome ?? "", s.Linhagem.ToString(), s.Vocacao.ToString(), s.SubVocacao, s.Nivel)).ToListAsync();
+    }
+
     /// <summary>
     /// A null request value means "not set" and maps to null on the entity. A non-null value
     /// that fails to parse is malformed input, not an absent one — the caller must 400 rather

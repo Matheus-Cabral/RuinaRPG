@@ -237,4 +237,46 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body!.GraduacaoLabel.Should().Be("Grau");
         body.Graduacao.Should().Be(1); // 150 EAP >= the real Tabela's Grau 1 threshold (100)
     }
+
+    [Fact]
+    public async Task List_returns_only_the_callers_own_npcs()
+    {
+        var gmTokenA = await RegisterGmAndGetTokenAsync("NpcGmListA", "npcgmlista@teste.com");
+        var gmTokenB = await RegisterGmAndGetTokenAsync("NpcGmListB", "npcgmlistb@teste.com");
+
+        var sheetIdA = await CreateSheetAsync(gmTokenA);
+        var sheetIdB = await CreateSheetAsync(gmTokenB);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets", gmTokenA));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
+        body.Should().HaveCount(1);
+        body![0].Id.Should().Be(sheetIdA);
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_partial_Nome_Linhagem_and_Nivel_together()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListFilter", "npcgmlistfilter@teste.com");
+
+        var sheetId1 = await CreateSheetAsync(gmToken);
+        var sheetId2 = await CreateSheetAsync(gmToken);
+
+        var update1 = ValidUpdate() with { Nome = "Sentinela da Ruína", Linhagem = "Humano", Nivel = 5 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId1}", gmToken, update1));
+
+        var update2 = ValidUpdate() with { Nome = "Assassino Silencioso", Linhagem = "Phylauc", Nivel = 7 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId2}", gmToken, update2));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets?nome=Sentinela&linhagem=Humano&nivel=5", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
+        body.Should().HaveCount(1);
+        body![0].Id.Should().Be(sheetId1);
+        body![0].Nome.Should().Be("Sentinela da Ruína");
+        body![0].Linhagem.Should().Be("Humano");
+        body![0].Nivel.Should().Be(5);
+    }
 }
