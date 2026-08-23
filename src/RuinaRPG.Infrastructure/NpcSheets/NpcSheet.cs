@@ -58,6 +58,11 @@ public class NpcSheet
     public Cobertura Cobertura { get; set; }
     public int Ciclos { get; set; }
 
-    // R0002
+    /// <summary>
+    /// Currently unused — nothing writes this column for NPCs, so it is always null. The
+    /// level-up-notice feature is deliberately Personagem-only per spec R0002; nothing on
+    /// the NPC code path ever reads or writes this property.
+    /// Do not read this property expecting a live value.
+    /// </summary>
     public int? LastDismissedLevelUpLevel { get; set; }
 }

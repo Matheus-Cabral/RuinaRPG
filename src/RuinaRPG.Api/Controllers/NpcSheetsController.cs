@@ -200,7 +200,9 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
 
     [HttpGet]
     public async Task<ActionResult<List<NpcSheetSummaryResponse>>> List(
-        [FromQuery] string? nome, [FromQuery] string? linhagem, [FromQuery] string? vocacao, [FromQuery] string? subVocacao, [FromQuery] int? nivel)
+        [FromQuery] string? nome, [FromQuery] string? linhagem, [FromQuery] string? vocacao, [FromQuery] string? subVocacao, [FromQuery] int? nivel,
+        /// <summary>No-op placeholder until CampaignAttachments lands in the Campanha — Anexos plan.</summary>
+        [FromQuery] string? campaignId)
     {
         var gmId = CurrentGmId();
         var query = db.NpcSheets.Where(s => s.GmId == gmId);
