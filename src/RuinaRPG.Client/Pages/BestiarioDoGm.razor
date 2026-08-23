@@ -1,0 +1,112 @@
+@page "/bestiario"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.CreatureSheets
+
+<h1>Bestiário do GM</h1>
+
+<button @onclick="CreateAsync">Nova Criatura</button>
+
+<div>
+    <label>Nome <input @bind="_nomeFiltro" /></label>
+    <label>Raça <input @bind="_racaFiltro" /></label>
+    <label>
+        Arquétipo
+        <select @bind="_arquetipoFiltro">
+            <option value="">Todos</option>
+            <option value="Fisico">Físico</option>
+            <option value="Arcano">Arcano</option>
+        </select>
+    </label>
+    <label>
+        Rank
+        <select @bind="_rankFiltro">
+            <option value="">Todos</option>
+            <option value="F">F</option>
+            <option value="E">E</option>
+            <option value="D">D</option>
+            <option value="C">C</option>
+            <option value="B">B</option>
+            <option value="A">A</option>
+            <option value="S">S</option>
+        </select>
+    </label>
+    <button @onclick="LoadAsync">Filtrar</button>
+</div>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Raça</th>
+            <th>Arquétipo</th>
+            <th>Rank</th>
+            <th>Nível</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var creature in _creatures)
+        {
+            <tr>
+                <td><a href="@($"criaturas/{creature.Id}")">@creature.Nome</a></td>
+                <td>@(creature.Raca ?? "—")</td>
+                <td>@(creature.Arquetipo ?? "—")</td>
+                <td>@(creature.Rank ?? "—")</td>
+                <td>@creature.Nivel</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private string _nomeFiltro = "";
+    private string _racaFiltro = "";
+    private string _arquetipoFiltro = "";
+    private string _rankFiltro = "";
+    private List<CreatureSheetSummaryResponse> _creatures = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_nomeFiltro))
+            query.Add($"nome={Uri.EscapeDataString(_nomeFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_racaFiltro))
+            query.Add($"raca={Uri.EscapeDataString(_racaFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_arquetipoFiltro))
+            query.Add($"arquetipo={Uri.EscapeDataString(_arquetipoFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_rankFiltro))
+            query.Add($"rank={Uri.EscapeDataString(_rankFiltro)}");
+
+        var queryString = query.Count > 0 ? $"?{string.Join("&", query)}" : "";
+        var response = await Http.GetAsync($"creature-sheets{queryString}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar as criaturas.";
+            return;
+        }
+
+        _creatures = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        var response = await Http.PostAsync("creature-sheets", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível criar a criatura.";
+            return;
+        }
+
+        var creature = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        Navigation.NavigateTo($"/criaturas/{creature!.Id}");
+    }
+}
