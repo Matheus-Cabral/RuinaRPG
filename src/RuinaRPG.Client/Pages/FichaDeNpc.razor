@@ -1,0 +1,714 @@
+@page "/npcs/{SheetId}"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.NpcSheets
+@using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Contracts.CharacterSheets
+
+<h1>Ficha de NPC</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<h2>Informações Básicas</h2>
+
+<EditForm Model="_form" OnValidSubmit="SaveAsync">
+    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+    <label>
+        Linhagem
+        <select @bind="_form.Linhagem">
+            <option value="">Escolha uma Linhagem</option>
+            <option value="Humano">Humano</option>
+            <option value="Phylauc">Phylauc</option>
+            <option value="Nephrytes">Nephrytes</option>
+            <option value="Econos">Ecônos</option>
+        </select>
+    </label>
+    <label>Variante <InputText @bind-Value="_form.Variante" /></label>
+    <label>
+        Vocação
+        <select @bind="_form.Vocacao">
+            <option value="">Escolha uma Vocação</option>
+            <option value="Campeao">Campeão</option>
+            <option value="Cacador">Caçador</option>
+            <option value="Feiticeiro">Feiticeiro</option>
+            <option value="Adepto">Adepto</option>
+            <option value="Bruxo">Bruxo</option>
+        </select>
+    </label>
+    <label>Sub-vocação <InputText @bind-Value="_form.SubVocacao" /></label>
+    <label>Afinidade <InputText @bind-Value="_form.Afinidade" /></label>
+    <label>Propriedade <InputText @bind-Value="_form.Propriedade" /></label>
+
+    <label>Nível <InputNumber @bind-Value="_form.Nivel" /></label>
+    <p>@_form.GraduacaoLabel: @_form.Graduacao</p>
+    <label>Possui Coração de Mana? <InputCheckbox @bind-Value="_form.PossuiCoracaoDeMana" /></label>
+    <label>Experiência Atual <InputNumber @bind-Value="_form.ExperienciaAtual" /></label>
+    <label>EAP Atual <InputNumber @bind-Value="_form.EAPAtual" /></label>
+    <label>Pontos de Ignição Atual <InputNumber @bind-Value="_form.PontosDeIgnicaoAtual" /></label>
+    <label>Pontos de Ignição Total <InputNumber @bind-Value="_form.PontosDeIgnicaoTotal" /></label>
+
+    <h3>Âmbares Absorvidos</h3>
+    <label>Rank F <InputNumber @bind-Value="_form.NucleosRankF" /></label>
+    <label>Rank E <InputNumber @bind-Value="_form.NucleosRankE" /></label>
+    <label>Rank D <InputNumber @bind-Value="_form.NucleosRankD" /></label>
+    <label>Rank C <InputNumber @bind-Value="_form.NucleosRankC" /></label>
+    <label>Rank B <InputNumber @bind-Value="_form.NucleosRankB" /></label>
+    <label>Rank A <InputNumber @bind-Value="_form.NucleosRankA" /></label>
+    <label>Rank S <InputNumber @bind-Value="_form.NucleosRankS" /></label>
+
+    <h3>Recursos</h3>
+    <label>Adrenalina (PA) Atual <InputNumber @bind-Value="_form.AdrenalinaAtual" /> / @_form.AdrenalinaMaximo</label>
+    <label>Foco (PF) Atual <InputNumber @bind-Value="_form.FocoAtual" /> / @_form.FocoMaximo</label>
+    <label>Estresse Atual <InputNumber @bind-Value="_form.EstresseAtual" /> / @_form.EstresseMaximo</label>
+    <label>Vitalidade Atual <InputNumber @bind-Value="_form.VitalidadeAtual" /> / @_form.VitalidadeMaximo</label>
+
+    <button type="submit">Salvar</button>
+</EditForm>
+
+<h2>Atributos & Perícias</h2>
+<table>
+    <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
+    <tbody>
+        @foreach (var attr in _attributes)
+        {
+            <tr>
+                <td>@attr.Atributo</td>
+                <td><input type="number" value="@attr.Gasto" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Gasto", e.Value))" /></td>
+                <td><input type="number" value="@attr.Bonus" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Bonus", e.Value))" /></td>
+                <td><input type="checkbox" checked="@attr.TemMaestria" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "TemMaestria", e.Value))" /></td>
+                <td>@attr.Total</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<table>
+    <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
+    <tbody>
+        @foreach (var skill in _skills)
+        {
+            <tr>
+                <td>@skill.Pericia</td>
+                <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillAsync(skill.Pericia, e.Value))" /></td>
+                <td>@skill.Modificador</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Afinidades</h3>
+<ul>
+    @foreach (var affinity in _affinities)
+    {
+        <li>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia) <button @onclick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</button></li>
+    }
+</ul>
+
+<h2>Combate</h2>
+<h3>Armas</h3>
+<ul>
+    @foreach (var weapon in _weapons)
+    {
+        <li>@weapon.Nome — Durabilidade @weapon.DurabilidadeAtual/@weapon.DurabilidadeMaxima — @(weapon.IsEquipped ? "Equipada" : "")
+            <button @onclick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</button>
+        </li>
+    }
+</ul>
+
+<h3>Armaduras</h3>
+<ul>
+    @foreach (var slot in _armorSlots)
+    {
+        <li>@slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")</li>
+    }
+</ul>
+
+<h3>Escudos</h3>
+<ul>
+    @foreach (var shield in _shields)
+    {
+        <li>@shield.Nome — Durabilidade @shield.DurabilidadeAtual/@shield.DurabilidadeMaxima</li>
+    }
+</ul>
+
+@if (_subAttributes is not null)
+{
+    <h3>Sub-Atributos</h3>
+    <p>Iniciativa: @_subAttributes.Iniciativa</p>
+    <p>Movimentação: @_subAttributes.Movimentacao</p>
+    <p>Esquiva Natural: @_subAttributes.EsquivaNatural</p>
+    <p>Defesa Natural: @_subAttributes.DefesaNatural</p>
+    <p>Redução Física: @_subAttributes.ReducaoFisica</p>
+    <p>Redução Mágica: @_subAttributes.ReducaoMagica</p>
+}
+
+<h2>Magias & Habilidades</h2>
+<h3>Habilidade Racial</h3>
+<p>@(_racialAbility?.Nome ?? "—")</p>
+<p>@(_racialAbility?.Descricao ?? "—")</p>
+
+<h3>Magias e Habilidades</h3>
+<EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
+    <label>Nome <InputText @bind-Value="_spellAbilityForm.Nome" /></label>
+    <label>
+        Tipo
+        <select @bind="_spellAbilityForm.Tipo">
+            <option value="Magia">Magia</option>
+            <option value="Habilidade">Habilidade</option>
+            <option value="Racial">Racial</option>
+        </select>
+    </label>
+    <label>Grau <InputNumber @bind-Value="_spellAbilityForm.Grau" /></label>
+    <label>Descrição <InputTextArea @bind-Value="_spellAbilityForm.Descricao" /></label>
+
+    <h4>Efeitos</h4>
+    <button type="button" @onclick="AddSpellAbilityEffect">Adicionar Efeito</button>
+    @for (var i = 0; i < _spellAbilityForm.Efeitos.Count; i++)
+    {
+        var index = i; // capture for the closures below
+        <div>
+            <label>Nome do Efeito <InputText @bind-Value="_spellAbilityForm.Efeitos[index].EfeitoNome" /></label>
+            <label>Quantidade <InputNumber @bind-Value="_spellAbilityForm.Efeitos[index].Quantidade" /></label>
+            <label>Custo em PI <InputNumber @bind-Value="_spellAbilityForm.Efeitos[index].CustoPI" /></label>
+            <button type="button" @onclick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</button>
+        </div>
+    }
+
+    <button type="submit">Adicionar Magia/Habilidade</button>
+</EditForm>
+<ul>
+    @foreach (var spellAbility in _spellAbilities)
+    {
+        <li>
+            @spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao
+            <button @onclick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</button>
+        </li>
+    }
+</ul>
+
+<h3>Runas</h3>
+<EditForm Model="_runeForm" OnValidSubmit="AddRuneAsync">
+    <label>Nome <InputText @bind-Value="_runeForm.Nome" /></label>
+    <label>Descrição <InputTextArea @bind-Value="_runeForm.Descricao" /></label>
+    <label>Grau <InputNumber @bind-Value="_runeForm.Grau" /></label>
+    <button type="submit">Adicionar Runa</button>
+</EditForm>
+<ul>
+    @foreach (var rune in _runes)
+    {
+        <li>@rune.Nome (Grau @rune.Grau) — @rune.Descricao <button @onclick="@(() => DeleteRuneAsync(rune.Id))">Remover</button></li>
+    }
+</ul>
+
+<h3>Maestrias</h3>
+<EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
+    <label>Nome <InputText @bind-Value="_masteryForm.Nome" /></label>
+    <label>
+        Perícia
+        <select @bind="_masteryForm.Pericia">
+            <option value="">Escolha uma Perícia</option>
+            @foreach (var skill in _skills)
+            {
+                <option value="@skill.Pericia">@skill.Pericia</option>
+            }
+        </select>
+    </label>
+    <label>
+        Atributo
+        <select @bind="_masteryForm.Atributo">
+            <option value="">Escolha um Atributo</option>
+            @foreach (var attr in _attributes)
+            {
+                <option value="@attr.Atributo">@attr.Atributo</option>
+            }
+        </select>
+    </label>
+    <label>Gasto Maestria <InputNumber @bind-Value="_masteryForm.GastoMaestria" /></label>
+    <button type="submit">Adicionar Maestria</button>
+</EditForm>
+<ul>
+    @foreach (var mastery in _masteries)
+    {
+        <li>@mastery.Nome — @mastery.Pericia / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total <button @onclick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</button></li>
+    }
+</ul>
+
+<h2>Posses</h2>
+<h3>Inventário</h3>
+<EditForm Model="_inventoryForm" OnValidSubmit="AddInventoryItemAsync">
+    <label>Item (Id do Catálogo) <InputText @bind-Value="_inventoryForm.ItemId" /></label>
+    <label>Quantidade <InputNumber @bind-Value="_inventoryForm.Qtd" /></label>
+    <button type="submit">Adicionar Item</button>
+</EditForm>
+<ul>
+    @foreach (var item in _inventory)
+    {
+        <li>@item.Nome — Peso @item.Peso — Qtd @item.Qtd — Total @item.Total <button @onclick="@(() => DeleteInventoryItemAsync(item.Id))">Remover</button></li>
+    }
+</ul>
+
+<h3>Artefatos</h3>
+<EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
+    <label>Artefato (Id do Catálogo) <InputText @bind-Value="_artifactForm.ArtifactItemId" /></label>
+    <button type="submit">Adicionar Artefato</button>
+</EditForm>
+@foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
+{
+    <h4>@group.Key</h4>
+    <ul>
+        @foreach (var artifact in group)
+        {
+            <li>@artifact.Nome — Alvo @artifact.Alvo — Valor @artifact.Valor <button @onclick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</button></li>
+        }
+    </ul>
+}
+
+<h3>Afeições</h3>
+<EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
+    <label>Nome <InputText @bind-Value="_affectionForm.Nome" /></label>
+    <label>Favorabilidade <InputNumber @bind-Value="_affectionForm.Favorabilidade" /></label>
+    <button type="submit">Adicionar Afeição</button>
+</EditForm>
+<ul>
+    @foreach (var affection in _affections)
+    {
+        <li>@affection.Nome — Favorabilidade @affection.Favorabilidade <button @onclick="@(() => DeleteAffectionAsync(affection.Id))">Remover</button></li>
+    }
+</ul>
+
+<h3>Características</h3>
+<EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
+    <label>Característica (Id) <InputText @bind-Value="_traitForm.TraitId" /></label>
+    <button type="submit">Adicionar Característica</button>
+</EditForm>
+<h4>Positivas (Total: @(_traits?.TotalPositivas ?? 0))</h4>
+<ul>
+    @foreach (var trait in _traits?.Positivas ?? new())
+    {
+        <li>@trait.Nome (@trait.Custo) — @trait.Descricao <button @onclick="@(() => DeleteTraitAsync(trait.Id))">Remover</button></li>
+    }
+</ul>
+<h4>Negativas (Total: @(_traits?.TotalNegativas ?? 0))</h4>
+<ul>
+    @foreach (var trait in _traits?.Negativas ?? new())
+    {
+        <li>@trait.Nome (@trait.Custo) — @trait.Descricao <button @onclick="@(() => DeleteTraitAsync(trait.Id))">Remover</button></li>
+    }
+</ul>
+
+@code {
+    [Parameter] public string SheetId { get; set; } = "";
+
+    private readonly SheetFormModel _form = new();
+    private string? _errorMessage;
+    private List<NpcAttributeResponse> _attributes = new();
+    private List<NpcSkillResponse> _skills = new();
+    private List<NpcAffinityResponse> _affinities = new();
+    private List<NpcWeaponResponse> _weapons = new();
+    private List<NpcArmorSlotResponse> _armorSlots = new();
+    private List<NpcShieldResponse> _shields = new();
+    private SubAttributesResponse? _subAttributes;
+    private RacialAbilityResponse? _racialAbility;
+    private List<NpcSpellAbilityResponse> _spellAbilities = new();
+    private readonly SpellAbilityFormModel _spellAbilityForm = new();
+    private List<NpcRuneResponse> _runes = new();
+    private readonly RuneFormModel _runeForm = new();
+    private List<NpcMasteryResponse> _masteries = new();
+    private readonly MasteryFormModel _masteryForm = new();
+    private List<NpcInventoryItemResponse> _inventory = new();
+    private readonly InventoryFormModel _inventoryForm = new();
+    private List<NpcArtifactResponse> _artifacts = new();
+    private readonly ArtifactFormModel _artifactForm = new();
+    private List<NpcAffectionResponse> _affections = new();
+    private readonly AffectionFormModel _affectionForm = new();
+    private NpcTraitsListResponse? _traits;
+    private readonly TraitFormModel _traitForm = new();
+
+    protected override Task OnInitializedAsync() => Task.WhenAll(
+        LoadSheetAsync(), LoadTabs2And3Async(),
+        LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
+        LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync());
+
+    private async Task LoadSheetAsync()
+    {
+        var response = await Http.GetAsync($"npc-sheets/{SheetId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a ficha.";
+            return;
+        }
+
+        var sheet = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        _form.Nome = sheet!.Nome;
+        _form.Linhagem = sheet.Linhagem;
+        _form.Variante = sheet.Variante;
+        _form.Vocacao = sheet.Vocacao;
+        _form.SubVocacao = sheet.SubVocacao;
+        _form.Afinidade = sheet.Afinidade;
+        _form.Propriedade = sheet.Propriedade;
+        _form.Nivel = sheet.Nivel;
+        _form.Graduacao = sheet.Graduacao;
+        _form.GraduacaoLabel = sheet.GraduacaoLabel;
+        _form.PossuiCoracaoDeMana = sheet.PossuiCoracaoDeMana;
+        _form.ExperienciaAtual = sheet.ExperienciaAtual;
+        _form.EAPAtual = sheet.EAPAtual;
+        _form.NucleosRankF = sheet.NucleosRankF;
+        _form.NucleosRankE = sheet.NucleosRankE;
+        _form.NucleosRankD = sheet.NucleosRankD;
+        _form.NucleosRankC = sheet.NucleosRankC;
+        _form.NucleosRankB = sheet.NucleosRankB;
+        _form.NucleosRankA = sheet.NucleosRankA;
+        _form.NucleosRankS = sheet.NucleosRankS;
+        _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
+        _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
+        _form.VitalidadeAtual = sheet.VitalidadeAtual;
+        _form.FocoAtual = sheet.FocoAtual;
+        _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
+        _form.EstresseAtual = sheet.EstresseAtual;
+        _form.Cobertura = sheet.Cobertura;
+        _form.Ciclos = sheet.Ciclos;
+        _form.VitalidadeMaximo = sheet.VitalidadeMaximo;
+        _form.FocoMaximo = sheet.FocoMaximo;
+        _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
+        _form.EstresseMaximo = sheet.EstresseMaximo;
+        _errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        var request = new UpdateNpcSheetRequest(null, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
+            _form.Afinidade, _form.Propriedade, _form.Nivel, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual, _form.EAPAtual,
+            _form.NucleosRankF, _form.NucleosRankE, _form.NucleosRankD, _form.NucleosRankC, _form.NucleosRankB, _form.NucleosRankA, _form.NucleosRankS,
+            _form.PontosDeIgnicaoAtual, _form.PontosDeIgnicaoTotal, _form.VitalidadeAtual, _form.FocoAtual, _form.AdrenalinaAtual, _form.EstresseAtual,
+            _form.Cobertura, _form.Ciclos);
+
+        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a ficha.";
+            return;
+        }
+
+        await LoadSheetAsync();
+    }
+
+    private async Task LoadTabs2And3Async()
+    {
+        _attributes = await Http.GetFromJsonAsync<List<NpcAttributeResponse>>($"npc-sheets/{SheetId}/attributes") ?? new();
+        _skills = await Http.GetFromJsonAsync<List<NpcSkillResponse>>($"npc-sheets/{SheetId}/skills") ?? new();
+        _affinities = await Http.GetFromJsonAsync<List<NpcAffinityResponse>>($"npc-sheets/{SheetId}/affinities") ?? new();
+        _weapons = await Http.GetFromJsonAsync<List<NpcWeaponResponse>>($"npc-sheets/{SheetId}/weapons") ?? new();
+        _armorSlots = await Http.GetFromJsonAsync<List<NpcArmorSlotResponse>>($"npc-sheets/{SheetId}/armor-slots") ?? new();
+        _shields = await Http.GetFromJsonAsync<List<NpcShieldResponse>>($"npc-sheets/{SheetId}/shields") ?? new();
+        _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"npc-sheets/{SheetId}/sub-attributes");
+    }
+
+    private async Task UpdateAttributeAsync(string atributo, string field, object? value)
+    {
+        var current = _attributes.Single(a => a.Atributo == atributo);
+        var gasto = field == "Gasto" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Gasto) : current.Gasto;
+        var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
+        var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
+
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateNpcAttributeRequest(gasto, bonus, temMaestria));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateSkillAsync(string pericia, object? value)
+    {
+        var current = _skills.Single(s => s.Pericia == pericia);
+        var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, null));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task DeleteAffinityAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/affinities/{id}");
+        await LoadTabs2And3Async();
+    }
+
+    private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
+    {
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
+        await LoadTabs2And3Async();
+    }
+
+    private async Task LoadRacialAbilityAsync()
+    {
+        _racialAbility = await Http.GetFromJsonAsync<RacialAbilityResponse>($"npc-sheets/{SheetId}/racial-ability");
+    }
+
+    private async Task LoadSpellAbilitiesAsync()
+    {
+        _spellAbilities = await Http.GetFromJsonAsync<List<NpcSpellAbilityResponse>>($"npc-sheets/{SheetId}/spell-abilities") ?? new();
+    }
+
+    private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
+
+    private async Task AddSpellAbilityAsync()
+    {
+        var efeitos = _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
+        var request = new AddNpcSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao, efeitos);
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/spell-abilities", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a magia/habilidade.";
+            return;
+        }
+
+        _spellAbilityForm.Nome = "";
+        _spellAbilityForm.Tipo = "Magia";
+        _spellAbilityForm.Grau = 0;
+        _spellAbilityForm.Descricao = "";
+        _spellAbilityForm.Efeitos.Clear();
+        await LoadSpellAbilitiesAsync();
+    }
+
+    private async Task DeleteSpellAbilityAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/spell-abilities/{id}");
+        await LoadSpellAbilitiesAsync();
+    }
+
+    private async Task LoadRunesAsync()
+    {
+        _runes = await Http.GetFromJsonAsync<List<NpcRuneResponse>>($"npc-sheets/{SheetId}/runes") ?? new();
+    }
+
+    private async Task AddRuneAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/runes", new AddNpcRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a runa.";
+            return;
+        }
+
+        _runeForm.Nome = "";
+        _runeForm.Descricao = "";
+        _runeForm.Grau = 0;
+        await LoadRunesAsync();
+    }
+
+    private async Task DeleteRuneAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/runes/{id}");
+        await LoadRunesAsync();
+    }
+
+    private async Task LoadMasteriesAsync()
+    {
+        _masteries = await Http.GetFromJsonAsync<List<NpcMasteryResponse>>($"npc-sheets/{SheetId}/masteries") ?? new();
+    }
+
+    private async Task AddMasteryAsync()
+    {
+        var request = new AddNpcMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/masteries", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a maestria.";
+            return;
+        }
+
+        _masteryForm.Nome = "";
+        _masteryForm.GastoMaestria = 0;
+        await LoadMasteriesAsync();
+    }
+
+    private async Task DeleteMasteryAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/masteries/{id}");
+        await LoadMasteriesAsync();
+    }
+
+    private async Task LoadInventoryAsync()
+    {
+        _inventory = await Http.GetFromJsonAsync<List<NpcInventoryItemResponse>>($"npc-sheets/{SheetId}/inventory") ?? new();
+    }
+
+    private async Task AddInventoryItemAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/inventory", new AddNpcInventoryItemRequest(_inventoryForm.ItemId, _inventoryForm.Qtd));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o item.";
+            return;
+        }
+
+        _inventoryForm.ItemId = "";
+        _inventoryForm.Qtd = 1;
+        await LoadInventoryAsync();
+    }
+
+    private async Task DeleteInventoryItemAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/inventory/{id}");
+        await LoadInventoryAsync();
+    }
+
+    private async Task LoadArtifactsAsync()
+    {
+        _artifacts = await Http.GetFromJsonAsync<List<NpcArtifactResponse>>($"npc-sheets/{SheetId}/artifacts") ?? new();
+    }
+
+    private async Task AddArtifactAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/artifacts", new AddNpcArtifactRequest(_artifactForm.ArtifactItemId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o artefato.";
+            return;
+        }
+
+        _artifactForm.ArtifactItemId = "";
+        await LoadArtifactsAsync();
+    }
+
+    private async Task DeleteArtifactAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/artifacts/{id}");
+        await LoadArtifactsAsync();
+    }
+
+    private async Task LoadAffectionsAsync()
+    {
+        _affections = await Http.GetFromJsonAsync<List<NpcAffectionResponse>>($"npc-sheets/{SheetId}/affections") ?? new();
+    }
+
+    private async Task AddAffectionAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affections", new AddNpcAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a afeição.";
+            return;
+        }
+
+        _affectionForm.Nome = "";
+        _affectionForm.Favorabilidade = 0;
+        await LoadAffectionsAsync();
+    }
+
+    private async Task DeleteAffectionAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/affections/{id}");
+        await LoadAffectionsAsync();
+    }
+
+    private async Task LoadTraitsAsync()
+    {
+        _traits = await Http.GetFromJsonAsync<NpcTraitsListResponse>($"npc-sheets/{SheetId}/traits");
+    }
+
+    private async Task AddTraitAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/traits", new AddNpcTraitRequest(_traitForm.TraitId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a característica.";
+            return;
+        }
+
+        _traitForm.TraitId = "";
+        await LoadTraitsAsync();
+    }
+
+    private async Task DeleteTraitAsync(string id)
+    {
+        await Http.DeleteAsync($"npc-sheets/{SheetId}/traits/{id}");
+        await LoadTraitsAsync();
+    }
+
+    private class SheetFormModel
+    {
+        public string? Nome { get; set; }
+        public string? Linhagem { get; set; }
+        public string? Variante { get; set; }
+        public string? Vocacao { get; set; }
+        public string? SubVocacao { get; set; }
+        public string? Afinidade { get; set; }
+        public string? Propriedade { get; set; }
+        public int Nivel { get; set; } = 1;
+        public int Graduacao { get; set; }
+        public string GraduacaoLabel { get; set; } = "Grau";
+        public bool PossuiCoracaoDeMana { get; set; }
+        public int ExperienciaAtual { get; set; }
+        public int EAPAtual { get; set; }
+        public int NucleosRankF { get; set; }
+        public int NucleosRankE { get; set; }
+        public int NucleosRankD { get; set; }
+        public int NucleosRankC { get; set; }
+        public int NucleosRankB { get; set; }
+        public int NucleosRankA { get; set; }
+        public int NucleosRankS { get; set; }
+        public int PontosDeIgnicaoAtual { get; set; }
+        public int PontosDeIgnicaoTotal { get; set; }
+        public int VitalidadeAtual { get; set; }
+        public int FocoAtual { get; set; }
+        public int AdrenalinaAtual { get; set; }
+        public int EstresseAtual { get; set; }
+        public string Cobertura { get; set; } = "Nenhuma";
+        public int Ciclos { get; set; }
+        public int VitalidadeMaximo { get; set; }
+        public int FocoMaximo { get; set; }
+        public int AdrenalinaMaximo { get; set; }
+        public int EstresseMaximo { get; set; }
+    }
+
+    private class SpellAbilityFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Tipo { get; set; } = "Magia";
+        public int Grau { get; set; }
+        public string Descricao { get; set; } = "";
+        public List<SpellAbilityEffectFormModel> Efeitos { get; set; } = new();
+    }
+
+    private class SpellAbilityEffectFormModel
+    {
+        public string EfeitoNome { get; set; } = "";
+        public int? Quantidade { get; set; }
+        public int CustoPI { get; set; }
+    }
+
+    private class RuneFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public int Grau { get; set; }
+    }
+
+    private class MasteryFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Pericia { get; set; } = "";
+        public string Atributo { get; set; } = "";
+        public int GastoMaestria { get; set; }
+    }
+
+    private class InventoryFormModel
+    {
+        public string ItemId { get; set; } = "";
+        public int Qtd { get; set; } = 1;
+    }
+
+    private class ArtifactFormModel
+    {
+        public string ArtifactItemId { get; set; } = "";
+    }
+
+    private class AffectionFormModel
+    {
+        public string Nome { get; set; } = "";
+        public int Favorabilidade { get; set; }
+    }
+
+    private class TraitFormModel
+    {
+        public string TraitId { get; set; } = "";
+    }
+}
