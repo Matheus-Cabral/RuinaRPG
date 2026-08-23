@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
+using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
@@ -59,6 +60,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NpcSpellAbilityEffect> NpcSpellAbilityEffects => Set<NpcSpellAbilityEffect>();
     public DbSet<NpcAffection> NpcAffections => Set<NpcAffection>();
     public DbSet<NpcTrait> NpcTraits => Set<NpcTrait>();
+    public DbSet<CreatureSheet> CreatureSheets => Set<CreatureSheet>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -290,6 +292,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         });
 
         builder.Entity<NpcSheet>(entity =>
+        {
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CreatureSheet>(entity =>
         {
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
