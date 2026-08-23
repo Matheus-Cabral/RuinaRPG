@@ -25,6 +25,15 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var sheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gmId };
         db.CreatureSheets.Add(sheet);
 
+        foreach (var atributo in Enum.GetValues<AtributoCriatura>())
+            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = atributo });
+        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values, not all 39
+        // (unlike Ficha de NPCs' Enum.GetValues<Pericia>()).
+        foreach (var pericia in CreatureSkillAllowList.AllowedPericias)
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Pericia = pericia });
+        foreach (var slot in Enum.GetValues<ArmorSlotType>())
+            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = slot });
+
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(sheet));

@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -186,6 +189,31 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{Guid.NewGuid()}", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Create_seeds_6_zeroed_attributes_20_zeroed_skills_and_3_armor_slots()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSeed1", "creatureseed1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var armorSlots = await db.CreatureArmorSlots.Where(a => a.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
+
+        // AtributoCriatura has 6 members (not Atributo's 8).
+        attributes.Should().HaveCount(6);
+        attributes.Should().OnlyContain(a => a.Gasto == 0 && a.Bonus == 0 && !a.TemMaestria);
+        // The R0005 allow-list has 20 members (not all 39 Pericia values, unlike Ficha de NPCs).
+        skills.Should().HaveCount(20);
+        skills.Should().OnlyContain(s => s.Gasto == 0);
+        skills.Select(s => s.Pericia).Should().BeEquivalentTo(CreatureSkillAllowList.AllowedPericias);
+        // ArmorSlotType has 3 members (Capacete, Superior, Inferior) — not 6.
+        armorSlots.Should().HaveCount(3);
+        armorSlots.Should().OnlyContain(a => a.ItemId == null);
     }
 
     [Fact]
