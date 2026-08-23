@@ -12,8 +12,8 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    [Migration("20260817003237_AddTraits")]
-    partial class AddTraits
+    [Migration("20260817123015_AddImages")]
+    partial class AddImages
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -266,6 +266,33 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Images.Image", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.ToTable("Images");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Invites.InviteCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -305,31 +332,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("RedeemedByUserId");
 
                     b.ToTable("InviteCodes");
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.Trait", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Custo")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Polaridade")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Traits");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -388,6 +390,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Images.Image", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

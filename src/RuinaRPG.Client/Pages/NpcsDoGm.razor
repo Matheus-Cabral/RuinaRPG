@@ -1,0 +1,93 @@
+@page "/npcs"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.NpcSheets
+
+<h1>NPCs do GM</h1>
+
+<button @onclick="CreateAsync">Novo NPC</button>
+
+<div>
+    <label>Nome <input @bind="_nomeFiltro" /></label>
+    <label>Linhagem <input @bind="_linhagemFiltro" /></label>
+    <label>Vocação <input @bind="_vocacaoFiltro" /></label>
+    <label>Nível <input type="number" @bind="_nivelFiltro" /></label>
+    <button @onclick="LoadAsync">Filtrar</button>
+</div>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Linhagem</th>
+            <th>Vocação</th>
+            <th>Sub-Vocação</th>
+            <th>Nível</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var npc in _npcs)
+        {
+            <tr>
+                <td><a href="@($"npcs/{npc.Id}")">@npc.Nome</a></td>
+                <td>@npc.Linhagem</td>
+                <td>@npc.Vocacao</td>
+                <td>@(npc.SubVocacao ?? "—")</td>
+                <td>@npc.Nivel</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private string _nomeFiltro = "";
+    private string _linhagemFiltro = "";
+    private string _vocacaoFiltro = "";
+    private int? _nivelFiltro;
+    private List<NpcSheetSummaryResponse> _npcs = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_nomeFiltro))
+            query.Add($"nome={Uri.EscapeDataString(_nomeFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_linhagemFiltro))
+            query.Add($"linhagem={Uri.EscapeDataString(_linhagemFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_vocacaoFiltro))
+            query.Add($"vocacao={Uri.EscapeDataString(_vocacaoFiltro)}");
+        if (_nivelFiltro is not null)
+            query.Add($"nivel={_nivelFiltro}");
+
+        var queryString = query.Count > 0 ? $"?{string.Join("&", query)}" : "";
+        var response = await Http.GetAsync($"npc-sheets{queryString}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os NPCs.";
+            return;
+        }
+
+        _npcs = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        var response = await Http.PostAsync("npc-sheets", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível criar o NPC.";
+            return;
+        }
+
+        var npc = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        Navigation.NavigateTo($"/npcs/{npc!.Id}");
+    }
+}

@@ -1,0 +1,109 @@
+@page "/banco-de-magias/novo"
+@page "/banco-de-magias/{EntryId}/editar"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.SpellsAndAbilities
+
+<h1>@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<EditForm Model="_form" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+    <label>
+        Tipo
+        <select @bind="_form.Tipo">
+            <option value="Magia">Magia</option>
+            <option value="Habilidade">Habilidade</option>
+            <option value="Racial">Racial</option>
+        </select>
+    </label>
+    <label>Grau <InputNumber @bind-Value="_form.Grau" /></label>
+    <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+
+    <h2>Efeitos</h2>
+    <button type="button" @onclick="AddEffect">Adicionar Efeito</button>
+    @for (var i = 0; i < _form.Efeitos.Count; i++)
+    {
+        var index = i; // capture for the closures below
+        <div>
+            <label>Nome do Efeito <InputText @bind-Value="_form.Efeitos[index].EfeitoNome" /></label>
+            <label>Quantidade <InputNumber @bind-Value="_form.Efeitos[index].Quantidade" /></label>
+            <label>Custo em PI <InputNumber @bind-Value="_form.Efeitos[index].CustoPI" /></label>
+            <button type="button" @onclick="@(() => _form.Efeitos.RemoveAt(index))">Remover</button>
+        </div>
+    }
+
+    <p>Gasto em PI (calculado ao salvar): @_form.Efeitos.Sum(e => e.CustoPI)</p>
+
+    <button type="submit">Salvar</button>
+</EditForm>
+
+@code {
+    [Parameter] public string? EntryId { get; set; }
+
+    private readonly EntryFormModel _form = new();
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EntryId is null)
+            return;
+
+        var response = await Http.GetAsync("spell-ability-bank");
+        var entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
+        var existing = entries.SingleOrDefault(e => e.Id == EntryId);
+        if (existing is null)
+        {
+            _errorMessage = "Entrada não encontrada.";
+            return;
+        }
+
+        _form.Nome = existing.Nome;
+        _form.Tipo = existing.Tipo;
+        _form.Grau = existing.Grau;
+        _form.Descricao = existing.Descricao;
+        _form.Efeitos = existing.Efeitos
+            .Select(e => new EffectFormModel { EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
+            .ToList();
+    }
+
+    private void AddEffect() => _form.Efeitos.Add(new EffectFormModel());
+
+    private async Task SubmitAsync()
+    {
+        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
+
+        HttpResponseMessage response = EntryId is null
+            ? await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos))
+            : await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a entrada.";
+            return;
+        }
+
+        Navigation.NavigateTo("/banco-de-magias");
+    }
+
+    private class EntryFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Tipo { get; set; } = "Magia";
+        public int Grau { get; set; }
+        public string Descricao { get; set; } = "";
+        public List<EffectFormModel> Efeitos { get; set; } = new();
+    }
+
+    private class EffectFormModel
+    {
+        public string EfeitoNome { get; set; } = "";
+        public int? Quantidade { get; set; }
+        public int CustoPI { get; set; }
+    }
+}

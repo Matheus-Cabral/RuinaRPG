@@ -1,0 +1,222 @@
+@page "/catalogo/novo"
+@page "/catalogo/{ItemId}/editar"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Items
+@using RuinaRPG.Contracts.Images
+
+<h1>@(ItemId is null ? "Novo Item" : "Editar Item")</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<EditForm Model="_form" OnValidSubmit="SubmitAsync">
+    @if (ItemId is null)
+    {
+        <label>
+            Tipo
+            <select @bind="_form.Tipo">
+                <option value="ItemGeral">Item Geral</option>
+                <option value="Arma">Arma</option>
+                <option value="Armadura">Armadura</option>
+                <option value="Escudo">Escudo</option>
+                <option value="Artefato">Artefato</option>
+            </select>
+        </label>
+    }
+
+    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+    <label>Peso <InputNumber @bind-Value="_form.Peso" /></label>
+    <label>Preço (Ciclos) <InputNumber @bind-Value="_form.Preco" /></label>
+
+    <label>Enviar nova imagem <InputFile OnChange="UploadImageAsync" /></label>
+    <label>
+        Ou reutilizar uma imagem já enviada (R0010)
+        <select @bind="_form.ImageId">
+            <option value="">— nenhuma —</option>
+            @foreach (var image in _myImages)
+            {
+                <option value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</option>
+            }
+        </select>
+    </label>
+
+    @if (_form.Tipo == "ItemGeral")
+    {
+        <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
+        <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+    }
+    else if (_form.Tipo == "Arma")
+    {
+        <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
+        <label>Tier <InputText @bind-Value="_form.Tier" /></label>
+        <label>Empunhadura <InputText @bind-Value="_form.Empunhadura" /></label>
+        <label>Dados <InputText @bind-Value="_form.Dados" /></label>
+        <label>Dano <InputNumber @bind-Value="_form.Dano" /></label>
+        <label>Crítico <InputText @bind-Value="_form.Critico" /></label>
+        <label>Alcance <InputNumber @bind-Value="_form.Alcance" /></label>
+        <label>Tipo de Dano <InputText @bind-Value="_form.TipoDeDano" /></label>
+        <label>Requisito de Atributo <InputText @bind-Value="_form.RequisitoAtributo" /></label>
+        <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+    }
+    else if (_form.Tipo is "Armadura" or "Escudo")
+    {
+        <label>Categoria <InputText @bind-Value="_form.Categoria" /></label>
+        @if (_form.Tipo == "Armadura")
+        {
+            <label>Defesa <InputNumber @bind-Value="_form.Defesa" /></label>
+            <label>RF <InputNumber @bind-Value="_form.RF" /></label>
+            <label>RM <InputNumber @bind-Value="_form.RM" /></label>
+        }
+        else
+        {
+            <label>Bônus de Defesa <InputNumber @bind-Value="_form.BonusDefesa" /></label>
+        }
+        <label>Penalidade <InputText @bind-Value="_form.Penalidade" /></label>
+        <label>Requisito de Vigor <InputNumber @bind-Value="_form.RequisitoVigor" /></label>
+        <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+    }
+    else if (_form.Tipo == "Artefato")
+    {
+        <label>Tipo de Alvo <InputText @bind-Value="_form.TipoDeAlvo" /></label>
+        <label>Alvo <InputText @bind-Value="_form.Alvo" /></label>
+        <label>Valor <InputNumber @bind-Value="_form.Valor" /></label>
+    }
+
+    <button type="submit">Salvar</button>
+</EditForm>
+
+@code {
+    [Parameter] public string? ItemId { get; set; }
+
+    private readonly ItemFormModel _form = new();
+    private List<ImageSummaryResponse> _myImages = new();
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var imagesResponse = await Http.GetAsync("images/mine");
+        if (imagesResponse.IsSuccessStatusCode)
+            _myImages = await imagesResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
+
+        if (ItemId is null)
+            return;
+
+        var response = await Http.GetAsync($"items?tipo="); // full list; find the one being edited
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        var existing = items.SingleOrDefault(i => i.Id == ItemId);
+        if (existing is null)
+        {
+            _errorMessage = "Item não encontrado.";
+            return;
+        }
+
+        _form.Tipo = existing.Tipo;
+        _form.Nome = existing.Nome;
+        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == existing.ImageUrl)?.Id;
+        _form.Peso = existing.Peso;
+        _form.Preco = existing.Preco;
+        _form.Subcategoria = existing.Subcategoria;
+        _form.Descricao = existing.Descricao;
+        _form.Tier = existing.Tier;
+        _form.Empunhadura = existing.Empunhadura;
+        _form.Dados = existing.Dados;
+        _form.Dano = existing.Dano;
+        _form.Critico = existing.Critico;
+        _form.Alcance = existing.Alcance;
+        _form.TipoDeDano = existing.TipoDeDano;
+        _form.RequisitoAtributo = existing.RequisitoAtributo;
+        _form.DurabilidadeMaxima = existing.DurabilidadeMaxima;
+        _form.Categoria = existing.Categoria;
+        _form.Defesa = existing.Defesa;
+        _form.RF = existing.RF;
+        _form.RM = existing.RM;
+        _form.Penalidade = existing.Penalidade;
+        _form.RequisitoVigor = existing.RequisitoVigor;
+        _form.BonusDefesa = existing.BonusDefesa;
+        _form.TipoDeAlvo = existing.TipoDeAlvo;
+        _form.Alvo = existing.Alvo;
+        _form.Valor = existing.Valor;
+    }
+
+    private async Task UploadImageAsync(InputFileChangeEventArgs e)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(e.File.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", e.File.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _form.ImageId = body!.Id;
+        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow)); // so the <select> has an option matching the ID just set
+    }
+
+    private async Task SubmitAsync()
+    {
+        HttpResponseMessage response;
+        if (ItemId is null)
+        {
+            var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
+                _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
+                _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+                _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+                _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+            response = await Http.PostAsJsonAsync("items", request);
+        }
+        else
+        {
+            var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
+                _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
+                _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+                _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+                _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+            response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar o item.";
+            return;
+        }
+
+        Navigation.NavigateTo("/catalogo");
+    }
+
+    private class ItemFormModel
+    {
+        public string Tipo { get; set; } = "ItemGeral";
+        public string Nome { get; set; } = "";
+        public decimal Peso { get; set; }
+        public int Preco { get; set; }
+        public string? ImageId { get; set; }
+        public string? Subcategoria { get; set; }
+        public string? Descricao { get; set; }
+        public string? Tier { get; set; }
+        public string? Empunhadura { get; set; }
+        public string? Dados { get; set; }
+        public int? Dano { get; set; }
+        public string? Critico { get; set; }
+        public int? Alcance { get; set; }
+        public string? TipoDeDano { get; set; }
+        public string? RequisitoAtributo { get; set; }
+        public int? DurabilidadeMaxima { get; set; }
+        public string? Categoria { get; set; }
+        public int? Defesa { get; set; }
+        public int? RF { get; set; }
+        public int? RM { get; set; }
+        public string? Penalidade { get; set; }
+        public int? RequisitoVigor { get; set; }
+        public int? BonusDefesa { get; set; }
+        public string? TipoDeAlvo { get; set; }
+        public string? Alvo { get; set; }
+        public int? Valor { get; set; }
+    }
+}

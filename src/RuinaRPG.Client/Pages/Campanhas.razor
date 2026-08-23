@@ -1,0 +1,67 @@
+@page "/campanhas"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Campaigns
+
+<h1>Campanhas</h1>
+
+<EditForm Model="_form" OnValidSubmit="CreateAsync">
+    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+    <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+    <button type="submit">Criar Campanha</button>
+</EditForm>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<ul>
+    @foreach (var campaign in _campaigns)
+    {
+        <li>
+            <a href="@($"campanhas/{campaign.Id}")">@campaign.Nome</a>
+        </li>
+    }
+</ul>
+
+@code {
+    private readonly CampaignFormModel _form = new();
+    private List<CampaignResponse> _campaigns = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("campaigns");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar as campanhas.";
+            return;
+        }
+
+        _campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        var response = await Http.PostAsJsonAsync("campaigns", new CreateCampaignRequest(_form.Nome, _form.Descricao));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível criar a campanha.";
+            return;
+        }
+
+        _form.Nome = "";
+        _form.Descricao = "";
+        await LoadAsync();
+    }
+
+    private class CampaignFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+    }
+}
