@@ -5,7 +5,9 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -298,5 +300,92 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(18);
         body.FocoMaximo.Should().Be(10);
+    }
+
+    // Sub-Atributos — R0005 §2.b: mesmos campos/fórmulas do Personagem/NPC, exceto Resistência
+    // Física/Arcana e Dano Cortante (pendente/sem fórmula ainda). Mirrors
+    // NpcSheetsControllerTests.SubAttributes_computes_from_attributes_and_arsenal.
+    [Fact]
+    public async Task SubAttributes_computes_from_attributes_and_arsenal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub1", "creaturesub1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_Bruto_Prontidao_Reflexos_and_Fortitude_from_their_skill_Modificador()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub2", "creaturesub2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+
+        // Prontidao Gasto 9 -> Modificador 3, Reflexos Gasto 6 -> Modificador 2, Fortitude Gasto 3 -> Modificador 1.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Prontidao", gmToken,
+            new UpdateCreatureSkillRequest(9, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Reflexos", gmToken,
+            new UpdateCreatureSkillRequest(6, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Fortitude", gmToken,
+            new UpdateCreatureSkillRequest(3, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Iniciativa.Should().Be(7); // agilidade 4 + brutoProntidao 3 + 0 artefato
+        body.EsquivaNatural.Should().Be(6); // agilidade 4 + brutoReflexos 2 + 0 artefatos - 0 penalidade
+        body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
+    }
+
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, 12, "Medio", 5, rf, rm, "-1 Furtividade", 2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_equipped_armor_RF_and_RM()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub3", "creaturesub3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 3, rm: 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken,
+            new UpdateCreatureArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.ReducaoFisica.Should().Be(3);
+        body.ReducaoMagica.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SubAttributes_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureGmOwnerSub4", "creatureownersub4@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmOtherSub4", "creatureothersub4@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
