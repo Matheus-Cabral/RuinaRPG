@@ -388,4 +388,56 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task List_returns_only_the_callers_own_creatures()
+    {
+        var gmTokenA = await RegisterGmAndGetTokenAsync("CreatureGmList1", "creaturelist1@teste.com");
+        var gmTokenB = await RegisterGmAndGetTokenAsync("CreatureGmList2", "creaturelist2@teste.com");
+
+        var sheetA = await CreateSheetAsync(gmTokenA);
+        var sheetB = await CreateSheetAsync(gmTokenB);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetA}", gmTokenA,
+            ValidUpdate() with { Nome = "Creature A" }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetB}", gmTokenB,
+            ValidUpdate() with { Nome = "Creature B" }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmTokenA));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
+        body.Should().HaveCount(1);
+        body![0].Nome.Should().Be("Creature A");
+    }
+
+    [Fact]
+    public async Task List_can_filter_by_partial_Nome_Raca_Arquetipo_and_Rank_together()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmListFilter", "creaturelistfilter@teste.com");
+
+        var sheet1 = await CreateSheetAsync(gmToken);
+        var sheet2 = await CreateSheetAsync(gmToken);
+
+        // Both creatures share Rank=F, but differ on Nome/Raca/Arquetipo
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet1}", gmToken,
+            ValidUpdate() with { Nome = "Lobo das Ruínas", Raca = "Lobo", Arquetipo = "Fisico", Rank = "F", Nivel = 3 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet2}", gmToken,
+            ValidUpdate() with { Nome = "Dragão de Fogo", Raca = "Dragão", Arquetipo = "Arcano", Rank = "F", Nivel = 5 }));
+
+        // Filter by Rank alone (shared field) should return both
+        var responseRankOnly = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets?rank=F", gmToken));
+        var bodyRankOnly = await responseRankOnly.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
+        bodyRankOnly.Should().HaveCount(2);
+
+        // Filter by all fields (Rank + Nome + Raca + Arquetipo) should return exactly 1
+        var responseAll = await _client.SendAsync(AuthedRequest(HttpMethod.Get,
+            "/api/creature-sheets?nome=Lobo&raca=Lobo&arquetipo=Fisico&rank=F", gmToken));
+        var bodyAll = await responseAll.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
+        bodyAll.Should().HaveCount(1);
+        bodyAll![0].Nome.Should().Be("Lobo das Ruínas");
+        bodyAll[0].Raca.Should().Be("Lobo");
+        bodyAll[0].Arquetipo.Should().Be("Fisico");
+        bodyAll[0].Rank.Should().Be("F");
+    }
 }

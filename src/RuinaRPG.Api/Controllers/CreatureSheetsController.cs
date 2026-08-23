@@ -216,6 +216,27 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<CreatureSheetSummaryResponse>>> List(
+        [FromQuery] string? nome, [FromQuery] string? raca, [FromQuery] string? arquetipo, [FromQuery] string? rank,
+        /// <summary>No-op placeholder until CampaignAttachments lands in the Campanha — Anexos plan.</summary>
+        [FromQuery] string? campaignId)
+    {
+        var gmId = CurrentGmId();
+        var query = db.CreatureSheets.Where(s => s.GmId == gmId);
+
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(s => s.Nome != null && EF.Functions.ILike(s.Nome, $"%{nome}%"));
+        if (!string.IsNullOrWhiteSpace(raca))
+            query = query.Where(s => s.Raca != null && EF.Functions.ILike(s.Raca, $"%{raca}%"));
+        if (arquetipo is not null && Enum.TryParse<Arquetipo>(arquetipo, out var arquetipoParsed))
+            query = query.Where(s => s.Arquetipo == arquetipoParsed);
+        if (rank is not null && Enum.TryParse<Rank>(rank, out var rankParsed))
+            query = query.Where(s => s.Rank == rankParsed);
+
+        return await query.Select(s => new CreatureSheetSummaryResponse(s.Id.ToString(), s.Nome ?? "", s.Raca, s.Arquetipo == null ? null : s.Arquetipo.ToString(), s.Rank == null ? null : s.Rank.ToString(), s.Nivel)).ToListAsync();
+    }
+
     /// <summary>
     /// Kill/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
