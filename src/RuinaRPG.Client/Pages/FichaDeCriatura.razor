@@ -26,7 +26,6 @@
     </label>
     <label>Sub Arquétipo <InputText @bind-Value="_form.SubArquetipo" /></label>
     <label>Afinidade <InputText @bind-Value="_form.Afinidade" /></label>
-    <label>Propriedade <InputText @bind-Value="_form.Propriedade" /></label>
     <label>
         Rank
         <select @bind="_form.Rank">
@@ -343,7 +342,6 @@
         _form.Arquetipo = sheet.Arquetipo;
         _form.SubArquetipo = sheet.SubArquetipo;
         _form.Afinidade = sheet.Afinidade;
-        _form.Propriedade = sheet.Propriedade;
         _form.Rank = sheet.Rank;
         _form.Nivel = sheet.Nivel;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
@@ -363,7 +361,7 @@
     private async Task SaveAsync()
     {
         var request = new UpdateCreatureSheetRequest(null, _form.Nome, _form.Raca, _form.Arquetipo, _form.SubArquetipo,
-            _form.Afinidade, _form.Propriedade, _form.Rank, _form.Nivel, _form.ExperienciaAtual, _form.PontosDeIgnicao,
+            _form.Afinidade, _form.Rank, _form.Nivel, _form.ExperienciaAtual, _form.PontosDeIgnicao,
             _form.VitalidadeAtual, _form.FocoAtual, _form.AdrenalinaAtual, _form.Cobertura);
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}", request);
@@ -602,7 +600,6 @@
         public string? Arquetipo { get; set; }
         public string? SubArquetipo { get; set; }
         public string? Afinidade { get; set; }
-        public string? Propriedade { get; set; }
         public string? Rank { get; set; }
         public int Nivel { get; set; } = 1;
         public int ExperienciaAtual { get; set; }

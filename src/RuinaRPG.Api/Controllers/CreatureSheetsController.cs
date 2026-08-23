@@ -75,7 +75,6 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Arquetipo = arquetipo;
         sheet.SubArquetipo = request.SubArquetipo;
         sheet.Afinidade = afinidade;
-        sheet.Propriedade = request.Propriedade;
         sheet.Rank = rank;
         sheet.Nivel = request.Nivel;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
@@ -275,7 +274,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
-            s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade?.ToString(), s.Propriedade,
+            s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade?.ToString(),
             s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, kill, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo);

@@ -69,7 +69,7 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     private static UpdateCreatureSheetRequest ValidUpdate() => new(
-        null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra", "Alfa da Matilha",
+        null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra",
         "F", 3, 200, 5, 12, 8, 10, "Parcial");
 
     [Fact]

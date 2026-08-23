@@ -14,7 +14,6 @@ public class CreatureSheet
     public Arquetipo? Arquetipo { get; set; }
     public string? SubArquetipo { get; set; }
     public AfinidadeElemental? Afinidade { get; set; }
-    public string? Propriedade { get; set; }
     public Rank? Rank { get; set; }
     public int Nivel { get; set; } = 1;
     public int ExperienciaAtual { get; set; }
