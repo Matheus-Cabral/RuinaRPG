@@ -45,6 +45,20 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
     public DbSet<CharacterTrait> CharacterTraits => Set<CharacterTrait>();
     public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
+    public DbSet<NpcAttribute> NpcAttributes => Set<NpcAttribute>();
+    public DbSet<NpcSkill> NpcSkills => Set<NpcSkill>();
+    public DbSet<NpcAffinity> NpcAffinities => Set<NpcAffinity>();
+    public DbSet<NpcRune> NpcRunes => Set<NpcRune>();
+    public DbSet<NpcMastery> NpcMasteries => Set<NpcMastery>();
+    public DbSet<NpcWeapon> NpcWeapons => Set<NpcWeapon>();
+    public DbSet<NpcArmorSlot> NpcArmorSlots => Set<NpcArmorSlot>();
+    public DbSet<NpcShield> NpcShields => Set<NpcShield>();
+    public DbSet<NpcInventoryItem> NpcInventoryItems => Set<NpcInventoryItem>();
+    public DbSet<NpcArtifact> NpcArtifacts => Set<NpcArtifact>();
+    public DbSet<NpcSpellAbility> NpcSpellAbilities => Set<NpcSpellAbility>();
+    public DbSet<NpcSpellAbilityEffect> NpcSpellAbilityEffects => Set<NpcSpellAbilityEffect>();
+    public DbSet<NpcAffection> NpcAffections => Set<NpcAffection>();
+    public DbSet<NpcTrait> NpcTraits => Set<NpcTrait>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -280,6 +294,68 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<NpcAttribute>(entity =>
+        {
+            entity.HasIndex(a => new { a.NpcSheetId, a.Atributo }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NpcSkill>(entity =>
+        {
+            entity.HasIndex(s => new { s.NpcSheetId, s.Pericia }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NpcAffinity>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<NpcRune>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<NpcMastery>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<NpcWeapon>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(w => w.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NpcArmorSlot>(entity =>
+        {
+            entity.HasIndex(a => new { a.NpcSheetId, a.Slot }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NpcShield>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NpcInventoryItem>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NpcArtifact>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NpcSpellAbility>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(e => e.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.NpcSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NpcAffection>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<NpcTrait>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(t => t.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
