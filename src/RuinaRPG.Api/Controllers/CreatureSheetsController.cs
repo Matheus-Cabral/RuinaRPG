@@ -142,6 +142,17 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     }
 
     /// <summary>
+    /// Shared by ToResponseAsync's máximo computation — a single-row lookup +
+    /// AttributeTotalCalculator.Total, rather than duplicating that logic. Mirrors
+    /// NpcSheetsController.GetAttributeTotalAsync, scoped to CreatureAttributes/AtributoCriatura.
+    /// </summary>
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo)
+    {
+        var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
+        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
+    }
+
+    /// <summary>
     /// Kill/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
     ///
@@ -151,10 +162,9 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// match the real Tabela de Arquetipos.md's labels exactly, so a plain .ToString() lookup is
     /// correct here — no accent-mapping helper needed).
     ///
-    /// vigorTotal/astuciaTotal are temporarily hardcoded to 0: CreatureAttribute doesn't exist
-    /// until Task 3, so there is no Vigor/Astúcia total to compute yet. A later task wires the
-    /// real computation in (mirrors NpcSheetsController's equivalent gap when NpcAttribute didn't
-    /// exist yet).
+    /// vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync now that CreatureAttribute
+    /// exists (Task 3) — resolves the earlier hardcoded-0 gap (mirrors NpcSheetsController's
+    /// equivalent fix once NpcAttribute existed).
     /// </summary>
     private async Task<CreatureSheetResponse> ToResponseAsync(CreatureSheet s)
     {
@@ -168,8 +178,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var kill = XpAwardCalculator.Kill(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
-        var vigorTotal = 0; // TODO(Task 3): CreatureAttribute doesn't exist yet — real Vigor total pending.
-        var astuciaTotal = 0; // TODO(Task 3): CreatureAttribute doesn't exist yet — real Astúcia total pending.
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia);
         var statusVida = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
         var statusFoco = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
         var artefatoBonusParaAdrenalina = 0; // Artefatos com TipoDeAlvo=SubAtributo/Alvo="Adrenalina" — não modelado ainda

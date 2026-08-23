@@ -231,12 +231,13 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         body.Assistencia.Should().Be(12);
     }
 
-    // vigorTotal/astuciaTotal are hardcoded to 0 in this task (CreatureAttribute doesn't exist
-    // until Task 3), so VitalidadeMaximo/FocoMaximo reduce to statusVida/statusFoco alone (0*2 +
-    // status). Real excerpt from Docs/Sistema RPG/Tabela de Arquetipos.md, Nível 1:
+    // vigorTotal/astuciaTotal now compute for real from the seeded CreatureAttribute rows (Task 3),
+    // which start zeroed — so VitalidadeMaximo/FocoMaximo reduce to statusVida/statusFoco alone
+    // (0*2 + status) here. Real excerpt from Docs/Sistema RPG/Tabela de Arquetipos.md, Nível 1:
     // Fisico -> Vida 8, Arcana 4; Arcano -> Vida 4, Arcana 8. Exercising both proves the plain
     // Arquetipo.ToString() lookup (no accent-mapping helper needed, unlike Vocacao) works for
-    // both enum members.
+    // both enum members. See Get_computes_Vitalidade_and_Foco_Maximo_from_real_Vigor_and_Astucia
+    // below for the non-zero case.
     [Fact]
     public async Task Get_computes_Vitalidade_Foco_and_Adrenalina_Maximo_for_Fisico_Arquetipo()
     {
@@ -266,5 +267,36 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(4);
         body.FocoMaximo.Should().Be(8);
+    }
+
+    // CreatureAttributesController doesn't exist until Task 4, so Vigor/Astúcia are set directly
+    // via the DbContext — same pattern other migration/seed tests in this codebase already use —
+    // rather than through an API route that doesn't exist yet. Proves ToResponseAsync's
+    // GetAttributeTotalAsync(AtributoCriatura.Vigor/Astucia) genuinely reads real, non-default
+    // CreatureAttribute rows, not just the seeded zeroes exercised above.
+    [Fact]
+    public async Task Get_computes_Vitalidade_and_Foco_Maximo_from_real_Vigor_and_Astucia()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmMax3", "criaturamax3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var update = ValidUpdate() with { Arquetipo = "Fisico", Nivel = 1 }; // Fisico Nível 1 -> Vida 8, Arcana 4
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var sheetGuid = Guid.Parse(sheetId);
+            var vigor = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetGuid && a.Atributo == AtributoCriatura.Vigor);
+            vigor.Gasto = 5; // Vigor total = 5 (sem maestria/bonus) -> Vitalidade = 5*2 + 8 = 18
+            var astucia = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetGuid && a.Atributo == AtributoCriatura.Astucia);
+            astucia.Gasto = 3; // Astúcia total = 3 -> Foco = 3*2 + 4 = 10
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        body!.VitalidadeMaximo.Should().Be(18);
+        body.FocoMaximo.Should().Be(10);
     }
 }
