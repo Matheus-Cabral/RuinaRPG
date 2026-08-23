@@ -23,6 +23,14 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
 
         var sheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId };
         db.NpcSheets.Add(sheet);
+
+        foreach (var atributo in Enum.GetValues<Atributo>())
+            db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Atributo = atributo });
+        foreach (var pericia in Enum.GetValues<Pericia>())
+            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Pericia = pericia });
+        foreach (var slot in Enum.GetValues<ArmorSlotType>())
+            db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Slot = slot });
+
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(sheet));

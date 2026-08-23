@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -197,6 +199,28 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_seeds_8_zeroed_attributes_39_zeroed_skills_and_3_armor_slots()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSeed1", "npcseed1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var attributes = await db.NpcAttributes.Where(a => a.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var armorSlots = await db.NpcArmorSlots.Where(a => a.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
+
+        attributes.Should().HaveCount(8);
+        attributes.Should().OnlyContain(a => a.Gasto == 0 && a.Bonus == 0 && !a.TemMaestria);
+        skills.Should().HaveCount(39);
+        skills.Should().OnlyContain(s => s.Gasto == 0);
+        // ArmorSlotType has 3 members (Capacete, Superior, Inferior) — not 6.
+        armorSlots.Should().HaveCount(3);
+        armorSlots.Should().OnlyContain(a => a.ItemId == null);
     }
 
     [Fact]
