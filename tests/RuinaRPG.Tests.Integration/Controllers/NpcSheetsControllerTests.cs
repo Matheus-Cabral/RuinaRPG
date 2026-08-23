@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -288,5 +289,116 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body![0].Nome.Should().Be("Sentinela da Ruína");
         body![0].Linhagem.Should().Be("Humano");
         body![0].Nivel.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task RacialAbility_is_null_before_a_Variante_is_chosen_and_populated_after()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmRacial1", "npcracial1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
+        (await beforeResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().BeNull();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos" }));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
+        (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
+    }
+
+    [Fact]
+    public async Task RacialAbility_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwnerRacial2", "npcownerracial2@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOtherRacial2", "npcotherracial2@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task SubAttributes_computes_from_attributes_and_arsenal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub1", "npcsub1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_Bruto_Prontidao_Reflexos_and_Fortitude_from_their_skill_Modificador()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub4", "npcsub4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+
+        // Prontidao Gasto 9 -> Modificador 3, Reflexos Gasto 6 -> Modificador 2, Fortitude Gasto 3 -> Modificador 1.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Prontidao", gmToken,
+            new UpdateNpcSkillRequest(9, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Reflexos", gmToken,
+            new UpdateNpcSkillRequest(6, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Fortitude", gmToken,
+            new UpdateNpcSkillRequest(3, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Iniciativa.Should().Be(7); // agilidade 4 + brutoProntidao 3 + 0 artefato
+        body.EsquivaNatural.Should().Be(6); // agilidade 4 + brutoReflexos 2 + 0 artefatos - 0 penalidade
+        body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
+    }
+
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, 12, "Medio", 5, rf, rm, "-1 Furtividade", 2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_equipped_armor_RF_and_RM()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub2", "npcsub2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 3, rm: 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete", gmToken,
+            new UpdateNpcArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.ReducaoFisica.Should().Be(3);
+        body.ReducaoMagica.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SubAttributes_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwnerSub3", "npcownersub3@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOtherSub3", "npcothersub3@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
