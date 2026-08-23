@@ -277,8 +277,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
 
     /// <summary>
     /// Same shape as CharacterSheetsController.ToResponseAsync's Graduação/máximo computation,
-    /// but there is no NpcAttribute table yet (a later task adds it) — vigorTotal/astuciaTotal
-    /// are hardcoded to 0 rather than queried. A known, temporary approximation.
+    /// now that NpcAttribute exists — vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync,
+    /// same as SubAttributes uses.
     /// </summary>
     private async Task<NpcSheetResponse> ToResponseAsync(NpcSheet s)
     {
@@ -293,8 +293,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var vigorTotal = 0;
-        var astuciaTotal = 0;
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia);
         var statusVida = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
         var statusFoco = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
         var artefatoBonusParaAdrenalina = 0; // Artefatos com TipoDeAlvo=SubAtributo/Alvo="Adrenalina" — não modelado ainda

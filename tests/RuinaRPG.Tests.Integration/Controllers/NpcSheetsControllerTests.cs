@@ -401,4 +401,32 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Get_computes_vitalidade_and_foco_maximo_from_vigor_astucia_and_vocacao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmMax1", "npcmax1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Campeão Nível 1 → Vida 8, Arcana 4 (real Tabela de Vocação excerpt, same as
+        // VocacaoProgressaoParserTests). This vocação is specifically chosen because it
+        // exercises the accented-name lookup bug (Campeão/Caçador) fixed in this task.
+        var update = ValidUpdate() with { Vocacao = "Campeao", Nivel = 1 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
+
+        // Vigor total = Gasto(5) + Bonus(0)/2 (sem maestria) = 5 → Vitalidade = 5*2 + 8 = 18.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
+            new UpdateNpcAttributeRequest(5, 0, false)));
+        // Astúcia total = Gasto(3) + Bonus(0)/2 (sem maestria) = 3 → Foco = 3*2 + 4 = 10.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Astucia", gmToken,
+            new UpdateNpcAttributeRequest(3, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.VitalidadeMaximo.Should().Be(18);
+        body.FocoMaximo.Should().Be(10);
+        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
+        body.EstresseMaximo.Should().Be(10); // flat
+    }
 }
