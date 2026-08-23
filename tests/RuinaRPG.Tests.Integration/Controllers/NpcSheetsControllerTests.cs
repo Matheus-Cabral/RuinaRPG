@@ -263,12 +263,22 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var sheetId1 = await CreateSheetAsync(gmToken);
         var sheetId2 = await CreateSheetAsync(gmToken);
 
+        // Both sheets have same Linhagem (Humano) but differ on Nome and Nivel
+        // This ensures filtering by Linhagem alone returns both; only adding the other filters narrows to one
         var update1 = ValidUpdate() with { Nome = "Sentinela da Ruína", Linhagem = "Humano", Nivel = 5 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId1}", gmToken, update1));
 
-        var update2 = ValidUpdate() with { Nome = "Assassino Silencioso", Linhagem = "Phylauc", Nivel = 7 };
+        var update2 = ValidUpdate() with { Nome = "Assassino Silencioso", Linhagem = "Humano", Nivel = 7 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId2}", gmToken, update2));
 
+        // Verify that filtering by Linhagem alone returns both sheets (proving it's not being ignored)
+        var filterByLinhagemAlone = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets?linhagem=Humano", gmToken));
+        filterByLinhagemAlone.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bodyLinhagemOnly = await filterByLinhagemAlone.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
+        bodyLinhagemOnly.Should().HaveCount(2);
+
+        // Now filter by all three fields together and verify only the matching one is returned
+        // This proves the three filters combine with AND, not OR
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets?nome=Sentinela&linhagem=Humano&nivel=5", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
