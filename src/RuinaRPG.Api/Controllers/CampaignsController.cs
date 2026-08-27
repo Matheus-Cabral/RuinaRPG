@@ -175,9 +175,10 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!campaignExists)
             return NotFound();
 
-        var recipientIds = request.RecipientUserIds.Select(Guid.Parse).ToList();
-        var memberIds = await db.CampaignMembers.Where(m => m.CampaignId == campaignId).Select(m => m.UserId).ToListAsync();
-        if (recipientIds.Any(id => !memberIds.Contains(id)))
+        if (!TryParseGuids(request.RecipientUserIds, out var recipientIds))
+            return BadRequest("RecipientUserIds contém um identificador inválido.");
+
+        if (!await AllAreCampaignMembersAsync(campaignId, recipientIds))
             return BadRequest("Todo destinatário deve ser membro da campanha.");
 
         var note = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = true, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
@@ -187,6 +188,76 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         await db.SaveChangesAsync();
 
         return Created(string.Empty, new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, request.RecipientUserIds));
+    }
+
+    [HttpPut("{campaignId}/secret-notes/{noteId}")]
+    public async Task<IActionResult> UpdateSecretNote(Guid campaignId, Guid noteId, UpdateSecretNoteRequest request)
+    {
+        var gmId = CurrentGmId();
+        var note = await FindOwnedSecretNoteAsync(campaignId, noteId, gmId);
+        if (note is null)
+            return NotFound();
+
+        if (!TryParseGuids(request.RecipientUserIds, out var recipientIds))
+            return BadRequest("RecipientUserIds contém um identificador inválido.");
+
+        if (!await AllAreCampaignMembersAsync(campaignId, recipientIds))
+            return BadRequest("Todo destinatário deve ser membro da campanha.");
+
+        note.Texto = request.Texto;
+
+        var existingRecipients = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == noteId).ToListAsync();
+        db.DiaryEntryRecipients.RemoveRange(existingRecipients);
+        foreach (var recipientId in recipientIds)
+            db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = noteId, UserId = recipientId });
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{campaignId}/secret-notes/{noteId}")]
+    public async Task<IActionResult> DeleteSecretNote(Guid campaignId, Guid noteId)
+    {
+        var gmId = CurrentGmId();
+        var note = await FindOwnedSecretNoteAsync(campaignId, noteId, gmId);
+        if (note is null)
+            return NotFound();
+
+        db.DiaryEntries.Remove(note);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private async Task<bool> AllAreCampaignMembersAsync(Guid campaignId, List<Guid> userIds)
+    {
+        var memberIds = await db.CampaignMembers.Where(m => m.CampaignId == campaignId).Select(m => m.UserId).ToListAsync();
+        return userIds.All(id => memberIds.Contains(id));
+    }
+
+    private async Task<DiaryEntry?> FindOwnedSecretNoteAsync(Guid campaignId, Guid noteId, Guid gmId)
+    {
+        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        if (!campaignExists)
+            return null;
+
+        return await db.DiaryEntries.FirstOrDefaultAsync(d => d.Id == noteId && d.CampaignId == campaignId && d.IsSecretNote);
+    }
+
+    private static bool TryParseGuids(List<string> rawIds, out List<Guid> ids)
+    {
+        ids = new List<Guid>(rawIds.Count);
+        foreach (var raw in rawIds)
+        {
+            if (!Guid.TryParse(raw, out var parsed))
+            {
+                ids = [];
+                return false;
+            }
+
+            ids.Add(parsed);
+        }
+
+        return true;
     }
 
     private async Task<DiaryEntry?> FindOwnedDiaryEntryAsync(Guid campaignId, Guid entryId, Guid gmId)
