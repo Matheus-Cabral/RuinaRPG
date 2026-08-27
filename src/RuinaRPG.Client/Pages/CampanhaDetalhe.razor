@@ -4,6 +4,7 @@
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
+@using RuinaRPG.Contracts.Encounters
 @using RuinaRPG.Contracts.Players
 
 <h1>Campanha</h1>
@@ -60,6 +61,15 @@
                 <button @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
             }
         </li>
+    }
+</ul>
+
+<h2>Encontros</h2>
+<button @onclick="CreateEncounterAsync">Novo Encontro</button>
+<ul>
+    @foreach (var encounter in _encounters)
+    {
+        <li><a href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</a></li>
     }
 </ul>
 
@@ -180,6 +190,7 @@
     private List<CampaignMemberResponse> _members = new();
     private List<CharacterSheetResponse> _sheets = new();
     private List<DiaryEntryResponse> _diaryEntries = new();
+    private List<EncounterResponse> _encounters = new();
     private List<PlayerSearchResultResponse> _searchResults = new();
     private List<CampaignAttachmentResponse> _attachments = new();
     private List<SecretNoteResponse> _secretNotes = new();
@@ -204,7 +215,7 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync());
 
     private async Task LoadMembersAsync()
     {
@@ -225,6 +236,26 @@
         var response = await Http.GetAsync($"campaigns/{CampaignId}/diary");
         if (response.IsSuccessStatusCode)
             _diaryEntries = await response.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>() ?? new();
+    }
+
+    private async Task LoadEncountersAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/encounters");
+        if (response.IsSuccessStatusCode)
+            _encounters = await response.Content.ReadFromJsonAsync<List<EncounterResponse>>() ?? new();
+    }
+
+    private async Task CreateEncounterAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/encounters", new CreateEncounterRequest(null));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível criar o encontro.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<EncounterResponse>();
+        Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{body!.Id}");
     }
 
     private async Task LoadAttachmentsAsync()
