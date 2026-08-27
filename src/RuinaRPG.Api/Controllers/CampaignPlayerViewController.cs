@@ -30,8 +30,20 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
             .Select(s => new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel))
             .ToListAsync();
 
-        var meusNpcs = await db.NpcSheets.Where(s => s.OwnerId == callerId).Select(s => new GrantedSheetSummary(s.Id.ToString(), "Npc", s.Nome)).ToListAsync();
-        var meusCriaturas = await db.CreatureSheets.Where(s => s.OwnerId == callerId).Select(s => new GrantedSheetSummary(s.Id.ToString(), "Creature", s.Nome)).ToListAsync();
+        var meusNpcs = await db.CampaignAttachments
+            .Where(a => a.CampaignId == campaignId && a.NpcSheetId != null)
+            .Join(db.NpcSheets, a => a.NpcSheetId!.Value, s => s.Id, (a, s) => s)
+            .Where(s => s.OwnerId == callerId)
+            .Select(s => new GrantedSheetSummary(s.Id.ToString(), "Npc", s.Nome))
+            .Distinct()
+            .ToListAsync();
+        var meusCriaturas = await db.CampaignAttachments
+            .Where(a => a.CampaignId == campaignId && a.CreatureSheetId != null)
+            .Join(db.CreatureSheets, a => a.CreatureSheetId!.Value, s => s.Id, (a, s) => s)
+            .Where(s => s.OwnerId == callerId)
+            .Select(s => new GrantedSheetSummary(s.Id.ToString(), "Creature", s.Nome))
+            .Distinct()
+            .ToListAsync();
 
         var attachments = await db.CampaignAttachments.Where(a => a.CampaignId == campaignId).ToListAsync();
         var anexosPublicos = new List<PublicAttachmentSummary>();
