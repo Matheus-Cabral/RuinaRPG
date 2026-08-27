@@ -91,8 +91,11 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignA}/encounters", tokenA));
 
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<EncounterResponse>>();
-        body!.Should().ContainSingle(e => e.Nome == "Encontro A");
+        body!.Should().HaveCount(1);
+        body.Should().ContainSingle(e => e.Nome == "Encontro A");
+        body.Should().NotContain(e => e.Nome == "Encontro B");
     }
 
     [Fact]
