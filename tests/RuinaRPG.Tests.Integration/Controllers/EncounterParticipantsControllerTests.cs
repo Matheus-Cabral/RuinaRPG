@@ -212,4 +212,37 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task AddParticipant_with_a_CharacterSheet_from_a_different_campaign_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm6", "ep6@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer6", "epplayer6@teste.com");
+        var campaignA = await CreateCampaignAsync(gmToken, "Campanha A Sheet");
+        var campaignB = await CreateCampaignAsync(gmToken, "Campanha B Encontro");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateCharacterSheetAsync(gmToken, campaignA, playerId);
+        // Encounter lives in campaignB — sheetId belongs to campaignA.
+        var encounterId = await CreateEncounterAsync(gmToken, campaignB, "Encontro B");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(sheetId, null, null, 10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddParticipant_with_an_NpcSheet_owned_by_a_different_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("EpGmOwner7", "ep7owner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("EpGmOther7", "ep7other@teste.com");
+        var npcId = await CreateNpcSheetAsync(gmTokenOwner);
+        var campaignId = await CreateCampaignAsync(gmTokenOther, "Campanha do Outro GM");
+        var encounterId = await CreateEncounterAsync(gmTokenOther, campaignId, "Encontro do Outro GM");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmTokenOther,
+            new AddParticipantRequest(null, npcId, null, 10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
