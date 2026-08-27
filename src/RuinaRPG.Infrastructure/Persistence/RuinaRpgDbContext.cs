@@ -5,6 +5,7 @@ using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Diary;
+using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
@@ -74,6 +75,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureSpellAbilityEffect> CreatureSpellAbilityEffects => Set<CreatureSpellAbilityEffect>();
     public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
+    public DbSet<Encounter> Encounters => Set<Encounter>();
+    public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
+    public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -448,5 +452,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        builder.Entity<Encounter>(entity => entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<EncounterParticipant>(entity =>
+        {
+            entity.HasOne<Encounter>().WithMany().HasForeignKey(p => p.EncounterId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(p => p.SourceCharacterSheetId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(p => p.SourceNpcSheetId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(p => p.SourceCreatureSheetId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<EncounterParticipantCondition>(entity =>
+            entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade));
     }
 }
