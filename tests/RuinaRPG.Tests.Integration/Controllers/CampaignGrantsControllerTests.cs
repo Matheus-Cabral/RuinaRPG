@@ -97,6 +97,28 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     private async Task<HttpResponseMessage> GrantAsync(string gmToken, string campaignId, GrantSheetRequest request) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, request));
 
+    private async Task<string> CreateCreatureSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
+    }
+
+    private async Task<CreatureSheetResponse> GetCreatureSheetAsync(string gmToken, string sheetId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
+    }
+
+    private async Task<List<CreatureAttributeResponse>> GetCreatureAttributesAsync(string gmToken, string sheetId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
+        return (await response.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>())!;
+    }
+
+    private async Task SetCreatureAttributeGastoAsync(string gmToken, string sheetId, string atributo, int gasto) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/{atributo}", gmToken,
+            new UpdateCreatureAttributeRequest(gasto, 0, false)));
+
     [Fact]
     public async Task Grant_blank_creates_a_new_owned_Npc_sheet()
     {
@@ -177,8 +199,8 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Criatura");
         await AddMemberAsync(gmToken, campaignId, playerId);
 
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
-        var sourceId = (await createResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
+        var sourceId = await CreateCreatureSheetAsync(gmToken);
+        await SetCreatureAttributeGastoAsync(gmToken, sourceId, "Forca", 5);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Creature", sourceId));
 
@@ -186,9 +208,73 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
         body!.Tipo.Should().Be("Creature");
 
-        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{body.SheetId}", gmToken));
-        var sheet = await getResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
-        sheet!.OwnerId.Should().Be(playerId);
+        var sheet = await GetCreatureSheetAsync(gmToken, body.SheetId);
+        sheet.OwnerId.Should().Be(playerId);
+
+        var copiedAttributes = await GetCreatureAttributesAsync(gmToken, body.SheetId);
+        copiedAttributes.Single(a => a.Atributo == "Forca").Gasto.Should().Be(5);
+
+        // Mutate the ORIGINAL after the copy — the granted copy must stay independent.
+        await SetCreatureAttributeGastoAsync(gmToken, sourceId, "Forca", 9);
+
+        var copiedAttributesAfter = await GetCreatureAttributesAsync(gmToken, body.SheetId);
+        copiedAttributesAfter.Single(a => a.Atributo == "Forca").Gasto.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Grant_with_a_malformed_PlayerId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGm7", "grant7@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant PlayerId Malformado");
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest("not-a-guid", "Npc", null));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Grant_with_a_malformed_SourceSheetId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGm8", "grant8@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayer8", "grantplayer8@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant SourceSheetId Malformado");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", "not-a-guid"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Grant_a_copy_of_another_gms_Npc_sheet_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("GrantGmOwner9", "grantowner9@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("GrantGmOther9", "grantother9@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmTokenOther, "GrantPlayer9", "grantplayer9@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOther, "Campanha Grant NPC Alheio");
+        await AddMemberAsync(gmTokenOther, campaignId, playerId);
+
+        var sourceId = await CreateNpcSheetAsync(gmTokenOwner);
+
+        var response = await GrantAsync(gmTokenOther, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Grant_a_copy_of_another_gms_Creature_sheet_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("GrantGmOwner10", "grantowner10@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("GrantGmOther10", "grantother10@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmTokenOther, "GrantPlayer10", "grantplayer10@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOther, "Campanha Grant Criatura Alheia");
+        await AddMemberAsync(gmTokenOther, campaignId, playerId);
+
+        var sourceId = await CreateCreatureSheetAsync(gmTokenOwner);
+
+        var response = await GrantAsync(gmTokenOther, campaignId, new GrantSheetRequest(playerId, "Creature", sourceId));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

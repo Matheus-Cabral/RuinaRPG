@@ -26,22 +26,31 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         if (!campaignExists)
             return NotFound();
 
-        var playerId = Guid.Parse(request.PlayerId);
+        if (!Guid.TryParse(request.PlayerId, out var playerId))
+            return BadRequest("PlayerId inválido.");
         var isMember = await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == playerId);
         if (!isMember)
             return BadRequest("O jogador informado não é membro desta campanha.");
 
+        Guid? sourceSheetId = null;
+        if (request.SourceSheetId is not null)
+        {
+            if (!Guid.TryParse(request.SourceSheetId, out var parsedSourceSheetId))
+                return BadRequest("SourceSheetId inválido.");
+            sourceSheetId = parsedSourceSheetId;
+        }
+
         if (request.Tipo == "Npc")
         {
             NpcSheet? newSheet;
-            if (request.SourceSheetId is null)
+            if (sourceSheetId is null)
             {
                 newSheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
                 SeedBlankNpcChildren(newSheet.Id);
             }
             else
             {
-                newSheet = await DeepCopyNpcAsync(Guid.Parse(request.SourceSheetId), gmId, playerId);
+                newSheet = await DeepCopyNpcAsync(sourceSheetId.Value, gmId, playerId);
             }
             if (newSheet is null)
                 return BadRequest("Ficha de NPC de origem não encontrada.");
@@ -57,14 +66,14 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         if (request.Tipo == "Creature")
         {
             CreatureSheet? newSheet;
-            if (request.SourceSheetId is null)
+            if (sourceSheetId is null)
             {
                 newSheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
                 SeedBlankCreatureChildren(newSheet.Id);
             }
             else
             {
-                newSheet = await DeepCopyCreatureAsync(Guid.Parse(request.SourceSheetId), gmId, playerId);
+                newSheet = await DeepCopyCreatureAsync(sourceSheetId.Value, gmId, playerId);
             }
             if (newSheet is null)
                 return BadRequest("Ficha de Criatura de origem não encontrada.");
@@ -113,7 +122,10 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
 
     private async Task<NpcSheet?> DeepCopyNpcAsync(Guid sourceId, Guid gmId, Guid ownerId)
     {
-        var source = await db.NpcSheets.FindAsync(sourceId);
+        // Scoped to the calling GM's own registry (R0010: "ficha já cadastrada no Bestiário/NPCs
+        // do GM") — "doesn't exist" and "exists but belongs to another GM" both fall through to
+        // the same null/400, so neither case is distinguishable to the caller.
+        var source = await db.NpcSheets.FirstOrDefaultAsync(s => s.Id == sourceId && s.GmId == gmId);
         if (source is null)
             return null;
 
@@ -173,7 +185,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
 
     private async Task<CreatureSheet?> DeepCopyCreatureAsync(Guid sourceId, Guid gmId, Guid ownerId)
     {
-        var source = await db.CreatureSheets.FindAsync(sourceId);
+        // Scoped to the calling GM's own registry — same rationale as DeepCopyNpcAsync above.
+        var source = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == sourceId && s.GmId == gmId);
         if (source is null)
             return null;
 
