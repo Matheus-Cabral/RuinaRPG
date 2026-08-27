@@ -4,7 +4,9 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -62,6 +64,18 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItemGeral(nome)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateNpcSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>())!.Id;
+    }
+
+    private async Task<string> CreateCreatureSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
     }
 
     [Fact]
@@ -182,5 +196,104 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
             new AttachToCampaignRequest(itemId, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Attach_an_npc_defaults_both_toggles_off()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttNpcGm1", "attnpc1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com NPC");
+        var npcId = await CreateNpcSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, npcId, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.Tipo.Should().Be("NpcSheet");
+        body.NpcNomePublico.Should().BeFalse();
+        body.NpcImagemPublica.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NpcVisibility_can_toggle_Nome_and_Imagem_independently()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttNpcGm2", "attnpc2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle NPC");
+        var npcId = await CreateNpcSheetAsync(gmToken);
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, npcId, null, null, null)));
+        var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        // Toggle both on
+        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+            new { nomePublico = true, imagemPublica = true }));
+        toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        var attachment = body!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
+        attachment.NpcNomePublico.Should().BeTrue();
+        attachment.NpcImagemPublica.Should().BeTrue();
+
+        // Toggle nome off, imagem on
+        var toggleResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+            new { nomePublico = false, imagemPublica = true }));
+        toggleResponse2.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body2 = await listResponse2.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        var attachment2 = body2!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
+        attachment2.NpcNomePublico.Should().BeFalse();
+        attachment2.NpcImagemPublica.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task NpcVisibility_on_an_item_attachment_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttNpcGm3", "attnpc3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Item Bad Request");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+        var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+            new { nomePublico = true, imagemPublica = true }));
+
+        toggleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreatureVisibility_can_toggle_Nome_and_Imagem_independently()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttCreatureGm1", "attcreature1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle Creature");
+        var creatureId = await CreateCreatureSheetAsync(gmToken);
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, creatureId, null, null)));
+        var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        // Toggle both on
+        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
+            new { nomePublico = true, imagemPublica = true }));
+        toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        var attachment = body!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
+        attachment.CreatureNomePublico.Should().BeTrue();
+        attachment.CreatureImagemPublica.Should().BeTrue();
+
+        // Toggle nome off, imagem on
+        var toggleResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
+            new { nomePublico = false, imagemPublica = true }));
+        toggleResponse2.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body2 = await listResponse2.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        var attachment2 = body2!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
+        attachment2.CreatureNomePublico.Should().BeFalse();
+        attachment2.CreatureImagemPublica.Should().BeTrue();
     }
 }

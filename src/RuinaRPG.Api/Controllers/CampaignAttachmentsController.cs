@@ -116,6 +116,36 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         return NoContent();
     }
 
+    [HttpPut("{id}/npc-visibility")]
+    public async Task<IActionResult> ToggleNpcVisibility(Guid campaignId, Guid id, [FromBody] NpcVisibilityRequest request)
+    {
+        var attachment = await FindOwnedAttachmentAsync(campaignId, id);
+        if (attachment is null)
+            return NotFound();
+        if (attachment.NpcSheetId is null)
+            return BadRequest("Este anexo não é uma Ficha de NPC.");
+
+        attachment.NpcNomePublico = request.NomePublico;
+        attachment.NpcImagemPublica = request.ImagemPublica;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("{id}/creature-visibility")]
+    public async Task<IActionResult> ToggleCreatureVisibility(Guid campaignId, Guid id, [FromBody] CreatureVisibilityRequest request)
+    {
+        var attachment = await FindOwnedAttachmentAsync(campaignId, id);
+        if (attachment is null)
+            return NotFound();
+        if (attachment.CreatureSheetId is null)
+            return BadRequest("Este anexo não é uma Ficha de Criatura.");
+
+        attachment.CreatureNomePublico = request.NomePublico;
+        attachment.CreatureImagemPublica = request.ImagemPublica;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Remove(Guid campaignId, Guid id)
     {
@@ -166,3 +196,6 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
 
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
+
+public record NpcVisibilityRequest(bool NomePublico, bool ImagemPublica);
+public record CreatureVisibilityRequest(bool NomePublico, bool ImagemPublica);
