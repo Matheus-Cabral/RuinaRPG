@@ -167,6 +167,28 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         return NoContent();
     }
 
+    [HttpPost("{campaignId}/secret-notes")]
+    public async Task<ActionResult<SecretNoteResponse>> CreateSecretNote(Guid campaignId, CreateSecretNoteRequest request)
+    {
+        var gmId = CurrentGmId();
+        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        if (!campaignExists)
+            return NotFound();
+
+        var recipientIds = request.RecipientUserIds.Select(Guid.Parse).ToList();
+        var memberIds = await db.CampaignMembers.Where(m => m.CampaignId == campaignId).Select(m => m.UserId).ToListAsync();
+        if (recipientIds.Any(id => !memberIds.Contains(id)))
+            return BadRequest("Todo destinatário deve ser membro da campanha.");
+
+        var note = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = true, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
+        db.DiaryEntries.Add(note);
+        foreach (var recipientId in recipientIds)
+            db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = note.Id, UserId = recipientId });
+        await db.SaveChangesAsync();
+
+        return Created(string.Empty, new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, request.RecipientUserIds));
+    }
+
     private async Task<DiaryEntry?> FindOwnedDiaryEntryAsync(Guid campaignId, Guid entryId, Guid gmId)
     {
         var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -79,6 +80,25 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         }
 
         return new PlayerCampaignViewResponse(minhasFichas, meusNpcs.Concat(meusCriaturas).ToList(), anexosPublicos);
+    }
+
+    [HttpGet("~/api/campaigns/{campaignId}/secret-notes")]
+    public async Task<ActionResult<List<SecretNoteResponse>>> ListSecretNotes(Guid campaignId)
+    {
+        var callerId = CurrentUserId();
+        var isGm = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == callerId);
+
+        var notes = await db.DiaryEntries.Where(d => d.CampaignId == campaignId && d.IsSecretNote).ToListAsync();
+        var results = new List<SecretNoteResponse>();
+        foreach (var note in notes)
+        {
+            var recipientIds = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == note.Id).Select(r => r.UserId).ToListAsync();
+            if (!isGm && !recipientIds.Contains(callerId))
+                continue; // R0011: a non-recipient sees nothing, not even that the note exists
+
+            results.Add(new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, recipientIds.Select(id => id.ToString()).ToList()));
+        }
+        return results;
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
