@@ -127,7 +127,7 @@
 </div>
 
 <h2>Notas Secretas</h2>
-<div>
+<EditForm Model="_noteForm" OnValidSubmit="AddSecretNoteAsync">
     <label>Texto <InputTextArea @bind-Value="_noteForm.Texto" /></label>
     <p>Destinatários:</p>
     <ul>
@@ -141,8 +141,8 @@
             </li>
         }
     </ul>
-    <button @onclick="AddSecretNoteAsync">Adicionar Nota Secreta</button>
-</div>
+    <button type="submit">Adicionar Nota Secreta</button>
+</EditForm>
 <ul>
     @foreach (var note in _secretNotes)
     {
