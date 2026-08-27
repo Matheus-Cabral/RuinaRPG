@@ -32,7 +32,7 @@
 <button @onclick="AdvanceTurnAsync">Próximo Turno</button>
 
 <table>
-    <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th></tr></thead>
+    <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < _participants.Count; i++)
         {
@@ -46,7 +46,40 @@
                 <td>@participant.PA</td>
                 <td>@participant.AcoesRestantes</td>
                 <td>@(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
+                <td>
+                    @if (_editingParticipantId == participant.Id)
+                    {
+                        <button @onclick="CancelEditParticipant">Cancelar</button>
+                    }
+                    else
+                    {
+                        <button @onclick="@(() => StartEditParticipant(participant))">Editar</button>
+                    }
+                </td>
             </tr>
+            @if (_editingParticipantId == participant.Id)
+            {
+                <tr>
+                    <td colspan="8">
+                        <EditForm Model="_editParticipantForm" OnValidSubmit="@(() => SaveParticipantAsync(participant))">
+                            <label>Iniciativa <InputNumber @bind-Value="_editParticipantForm.Iniciativa" /></label>
+                            <label>Ações Restantes <InputNumber @bind-Value="_editParticipantForm.AcoesRestantes" /></label>
+                            @if (participant.IsLiveSourced)
+                            {
+                                <p>PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
+                            }
+                            else
+                            {
+                                <label>PV <InputNumber @bind-Value="_editParticipantForm.PV" /></label>
+                                <label>PF <InputNumber @bind-Value="_editParticipantForm.PF" /></label>
+                                <label>PA <InputNumber @bind-Value="_editParticipantForm.PA" /></label>
+                            }
+                            <label>Condições (substitui a lista atual) <InputText @bind-Value="_editParticipantForm.CondicoesText" /></label>
+                            <button type="submit">Salvar</button>
+                        </EditForm>
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>
@@ -60,6 +93,8 @@
     private HubConnection? _hubConnection;
     private readonly AddParticipantFormModel _addForm = new();
     private string? _errorMessage;
+    private string? _editingParticipantId;
+    private readonly EditParticipantFormModel _editParticipantForm = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,6 +158,52 @@
         await LoadAsync();
     }
 
+    private void StartEditParticipant(EncounterParticipantResponse participant)
+    {
+        _editingParticipantId = participant.Id;
+        _editParticipantForm.Iniciativa = participant.Iniciativa;
+        _editParticipantForm.AcoesRestantes = participant.AcoesRestantes;
+        _editParticipantForm.PV = participant.PV;
+        _editParticipantForm.PF = participant.PF;
+        _editParticipantForm.PA = participant.PA;
+        // The list API doesn't return the participant's current conditions (EncounterParticipantResponse
+        // has no such field), so this can't be pre-filled — start blank. The label makes clear that
+        // submitting replaces the whole list, matching the server's actual (replace, not append) semantics.
+        _editParticipantForm.CondicoesText = "";
+    }
+
+    private void CancelEditParticipant()
+    {
+        _editingParticipantId = null;
+    }
+
+    private async Task SaveParticipantAsync(EncounterParticipantResponse participant)
+    {
+        var condicoes = _editParticipantForm.CondicoesText
+            .Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim())
+            .Where(c => c.Length > 0)
+            .ToList();
+
+        var request = new UpdateParticipantRequest(
+            _editParticipantForm.Iniciativa,
+            participant.IsLiveSourced ? null : _editParticipantForm.PV,
+            participant.IsLiveSourced ? null : _editParticipantForm.PF,
+            participant.IsLiveSourced ? null : _editParticipantForm.PA,
+            _editParticipantForm.AcoesRestantes,
+            condicoes);
+
+        var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar o participante.";
+            return;
+        }
+
+        _editingParticipantId = null;
+        await LoadAsync();
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_hubConnection is not null)
@@ -134,5 +215,15 @@
         public string SourceKind { get; set; } = "CharacterSheet";
         public string SourceSheetId { get; set; } = "";
         public int Iniciativa { get; set; }
+    }
+
+    private class EditParticipantFormModel
+    {
+        public int Iniciativa { get; set; }
+        public int AcoesRestantes { get; set; }
+        public int? PV { get; set; }
+        public int? PF { get; set; }
+        public int? PA { get; set; }
+        public string CondicoesText { get; set; } = "";
     }
 }
