@@ -83,6 +83,41 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         return Created(string.Empty, await ToResponseAsync(participant));
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid encounterId, Guid id, UpdateParticipantRequest request)
+    {
+        var (authError, _) = await CheckEncounterOwnershipAsync(encounterId);
+        if (authError is not null)
+            return authError;
+
+        var participant = await db.EncounterParticipants.FirstOrDefaultAsync(p => p.Id == id && p.EncounterId == encounterId);
+        if (participant is null)
+            return NotFound();
+
+        var isLive = participant.SourceCharacterSheetId is not null
+            || (participant.SourceNpcSheetId is not null && (await db.NpcSheets.FindAsync(participant.SourceNpcSheetId.Value))?.OwnerId is not null)
+            || (participant.SourceCreatureSheetId is not null && (await db.CreatureSheets.FindAsync(participant.SourceCreatureSheetId.Value))?.OwnerId is not null);
+        if (isLive && (request.PV is not null || request.PF is not null || request.PA is not null))
+            return BadRequest("PV/PF/PA de um participante vindo de Ficha de Personagem são somente leitura aqui — edite a ficha diretamente.");
+
+        participant.Iniciativa = request.Iniciativa;
+        participant.AcoesRestantes = request.AcoesRestantes;
+        if (!isLive)
+        {
+            participant.PVAtual = request.PV;
+            participant.PFAtual = request.PF;
+            participant.PAAtual = request.PA;
+        }
+
+        var existingConditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
+        db.EncounterParticipantConditions.RemoveRange(existingConditions);
+        foreach (var texto in request.Condicoes)
+            db.EncounterParticipantConditions.Add(new EncounterParticipantCondition { Id = Guid.NewGuid(), EncounterParticipantId = id, Texto = texto });
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<EncounterParticipantResponse>>> List(Guid encounterId)
     {

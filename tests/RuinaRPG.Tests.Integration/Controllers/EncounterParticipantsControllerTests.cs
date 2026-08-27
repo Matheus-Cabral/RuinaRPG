@@ -2,11 +2,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -244,5 +247,61 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new AddParticipantRequest(null, npcId, null, 10)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_a_non_live_sourced_participant_changes_PV_and_condicoes()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm8", "ep8@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update NPC");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Update NPC");
+        var npcId = await CreateNpcSheetAsync(gmToken);
+        await UpdateNpcVitalidadeAsync(gmToken, npcId, "Goblin Editável", 30);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(null, npcId, null, 10)));
+        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
+            new UpdateParticipantRequest(15, 12, 5, 2, 1, new List<string> { "Enfraquecido", "Sangrando" })));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken));
+        var list = await listResponse.Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>();
+        var updated = list!.Should().ContainSingle().Which;
+        updated.Iniciativa.Should().Be(15);
+        updated.PV.Should().Be(12);
+        updated.AcoesRestantes.Should().Be(1);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var condicoes = await db.EncounterParticipantConditions
+            .Where(c => c.EncounterParticipantId == Guid.Parse(added.Id))
+            .Select(c => c.Texto)
+            .ToListAsync();
+        condicoes.Should().BeEquivalentTo(new[] { "Enfraquecido", "Sangrando" });
+    }
+
+    [Fact]
+    public async Task Update_PV_on_a_live_sourced_participant_returns_400()
+    {
+        // R0003: PV/PF/PA are read-only on the Encounter screen for a live-sourced participant.
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm9", "ep9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer9", "epplayer9@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Live");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Update Live");
+        var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
+        await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Editável", 25);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(sheetId, null, null, 8)));
+        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
+            new UpdateParticipantRequest(8, 5, null, null, 3, new List<string>())));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
