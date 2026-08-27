@@ -107,6 +107,30 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task Attach_with_a_malformed_ItemId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm6", "att6@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha ItemId Malformado");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest("not-a-guid", null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attach_with_a_nonexistent_ItemId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm7", "att7@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha ItemId Inexistente");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(Guid.NewGuid().ToString(), null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task ToggleVisibility_flips_IsPublic_for_an_item_attachment()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm4", "att4@teste.com");

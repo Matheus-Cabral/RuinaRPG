@@ -26,15 +26,58 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         if (!CampaignAttachmentTargetValidator.ExactlyOneSet(request.ItemId, request.NpcSheetId, request.CreatureSheetId, request.SpellAbilityBankEntryId, request.ImageId))
             return BadRequest("Informe exatamente um alvo para o anexo.");
 
+        Guid? itemId = null, npcSheetId = null, creatureSheetId = null, bankEntryId = null, imageId = null;
+
+        if (request.ItemId is not null)
+        {
+            if (!Guid.TryParse(request.ItemId, out var parsed))
+                return BadRequest("ItemId inválido.");
+            if (!await db.Items.AnyAsync(i => i.Id == parsed))
+                return BadRequest("Item não encontrado.");
+            itemId = parsed;
+        }
+        else if (request.NpcSheetId is not null)
+        {
+            if (!Guid.TryParse(request.NpcSheetId, out var parsed))
+                return BadRequest("NpcSheetId inválido.");
+            if (!await db.NpcSheets.AnyAsync(n => n.Id == parsed))
+                return BadRequest("Ficha de NPC não encontrada.");
+            npcSheetId = parsed;
+        }
+        else if (request.CreatureSheetId is not null)
+        {
+            if (!Guid.TryParse(request.CreatureSheetId, out var parsed))
+                return BadRequest("CreatureSheetId inválido.");
+            if (!await db.CreatureSheets.AnyAsync(c => c.Id == parsed))
+                return BadRequest("Ficha de Criatura não encontrada.");
+            creatureSheetId = parsed;
+        }
+        else if (request.SpellAbilityBankEntryId is not null)
+        {
+            if (!Guid.TryParse(request.SpellAbilityBankEntryId, out var parsed))
+                return BadRequest("SpellAbilityBankEntryId inválido.");
+            if (!await db.SpellAbilityBankEntries.AnyAsync(e => e.Id == parsed))
+                return BadRequest("Entrada do Banco de Magias não encontrada.");
+            bankEntryId = parsed;
+        }
+        else
+        {
+            if (!Guid.TryParse(request.ImageId, out var parsed))
+                return BadRequest("ImageId inválido.");
+            if (!await db.Images.AnyAsync(img => img.Id == parsed))
+                return BadRequest("Imagem não encontrada.");
+            imageId = parsed;
+        }
+
         var attachment = new CampaignAttachment
         {
             Id = Guid.NewGuid(),
             CampaignId = campaignId,
-            ItemId = request.ItemId is not null ? Guid.Parse(request.ItemId) : null,
-            NpcSheetId = request.NpcSheetId is not null ? Guid.Parse(request.NpcSheetId) : null,
-            CreatureSheetId = request.CreatureSheetId is not null ? Guid.Parse(request.CreatureSheetId) : null,
-            SpellAbilityBankEntryId = request.SpellAbilityBankEntryId is not null ? Guid.Parse(request.SpellAbilityBankEntryId) : null,
-            ImageId = request.ImageId is not null ? Guid.Parse(request.ImageId) : null,
+            ItemId = itemId,
+            NpcSheetId = npcSheetId,
+            CreatureSheetId = creatureSheetId,
+            SpellAbilityBankEntryId = bankEntryId,
+            ImageId = imageId,
             IsPublic = false, NpcNomePublico = false, NpcImagemPublica = false, CreatureNomePublico = false, CreatureImagemPublica = false
         };
         db.CampaignAttachments.Add(attachment);
