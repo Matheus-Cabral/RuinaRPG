@@ -1,0 +1,65 @@
+@page "/campanhas/{CampaignId}/jogador"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Campaigns
+
+<h1>Minha Campanha</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<h2>Minhas Fichas</h2>
+<ul>
+    @foreach (var ficha in _view.MinhasFichas)
+    {
+        <li><a href="@($"fichas/{ficha.Id}")">@(ficha.Nome ?? "(sem nome)")</a> — Nível @ficha.Nivel</li>
+    }
+</ul>
+
+<h2>Meus Companheiros</h2>
+<ul>
+    @foreach (var companheiro in _view.MeusCompanheiros)
+    {
+        <li>
+            @(companheiro.Nome ?? "(sem nome)")
+            (@(companheiro.Tipo == "Npc" ? "NPC" : "Criatura"))
+        </li>
+    }
+</ul>
+
+<h2>Anexos Públicos</h2>
+<ul>
+    @foreach (var anexo in _view.AnexosPublicos)
+    {
+        <li>
+            [@anexo.Tipo] @(anexo.Nome ?? "(sem nome público)")
+            @if (anexo.ImageUrl is not null)
+            {
+                <img src="@anexo.ImageUrl" alt="@anexo.Nome" style="max-width: 120px;" />
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter] public string CampaignId { get; set; } = "";
+
+    private PlayerCampaignViewResponse _view = new(new(), new(), new());
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/player-view");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a campanha.";
+            return;
+        }
+
+        _view = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>() ?? _view;
+        _errorMessage = null;
+    }
+}

@@ -63,6 +63,117 @@
     }
 </ul>
 
+<h2>Anexos</h2>
+<div>
+    <label>Item (id) <input @bind="_attachItemId" /> <button @onclick="AttachItemAsync">Anexar Item</button></label>
+</div>
+<div>
+    <label>Entrada do Banco de Magias (id) <input @bind="_attachBankEntryId" /> <button @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button></label>
+</div>
+<div>
+    <label>Imagem (id) <input @bind="_attachImageId" /> <button @onclick="AttachImageAsync">Anexar Imagem</button></label>
+</div>
+<div>
+    <label>Ficha de NPC (id) <input @bind="_attachNpcSheetId" /> <button @onclick="AttachNpcSheetAsync">Anexar NPC</button></label>
+</div>
+<div>
+    <label>Ficha de Criatura (id) <input @bind="_attachCreatureSheetId" /> <button @onclick="AttachCreatureSheetAsync">Anexar Criatura</button></label>
+</div>
+<ul>
+    @foreach (var attachment in _attachments)
+    {
+        <li>
+            [@attachment.Tipo] @attachment.Nome
+            @if (attachment.Tipo == "NpcSheet")
+            {
+                <label>Nome público <input type="checkbox" checked="@attachment.NpcNomePublico" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, (bool)e.Value!, attachment.NpcImagemPublica ?? false))" /></label>
+                <label>Imagem pública <input type="checkbox" checked="@attachment.NpcImagemPublica" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, (bool)e.Value!))" /></label>
+            }
+            else if (attachment.Tipo == "CreatureSheet")
+            {
+                <label>Nome público <input type="checkbox" checked="@attachment.CreatureNomePublico" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, (bool)e.Value!, attachment.CreatureImagemPublica ?? false))" /></label>
+                <label>Imagem pública <input type="checkbox" checked="@attachment.CreatureImagemPublica" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, (bool)e.Value!))" /></label>
+            }
+            else
+            {
+                <label>Público <input type="checkbox" checked="@attachment.IsPublic" @onchange="@(e => ToggleVisibilityAsync(attachment, (bool)e.Value!))" /></label>
+            }
+            <button @onclick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</button>
+        </li>
+    }
+</ul>
+
+<h2>Conceder Ficha</h2>
+<div>
+    <label>
+        Jogador
+        <select @bind="_grantPlayerId">
+            <option value="">(selecione)</option>
+            @foreach (var member in _members)
+            {
+                <option value="@member.UserId">@member.Nickname</option>
+            }
+        </select>
+    </label>
+    <label>
+        Tipo
+        <select @bind="_grantTipo">
+            <option value="Npc">NPC</option>
+            <option value="Creature">Criatura</option>
+        </select>
+    </label>
+    <label>Ficha de origem (id, opcional — em branco cria uma ficha nova) <input @bind="_grantSourceSheetId" /></label>
+    <button @onclick="GrantSheetAsync">Conceder</button>
+</div>
+
+<h2>Notas Secretas</h2>
+<div>
+    <label>Texto <InputTextArea @bind-Value="_noteForm.Texto" /></label>
+    <p>Destinatários:</p>
+    <ul>
+        @foreach (var member in _members)
+        {
+            <li>
+                <label>
+                    <input type="checkbox" checked="@_noteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleNoteRecipient(member.UserId, (bool)e.Value!))" />
+                    @member.Nickname
+                </label>
+            </li>
+        }
+    </ul>
+    <button @onclick="AddSecretNoteAsync">Adicionar Nota Secreta</button>
+</div>
+<ul>
+    @foreach (var note in _secretNotes)
+    {
+        <li>
+            @if (_editingNoteId == note.Id)
+            {
+                <textarea @bind="_editNoteText"></textarea>
+                <ul>
+                    @foreach (var member in _members)
+                    {
+                        <li>
+                            <label>
+                                <input type="checkbox" checked="@_editNoteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleEditNoteRecipient(member.UserId, (bool)e.Value!))" />
+                                @member.Nickname
+                            </label>
+                        </li>
+                    }
+                </ul>
+                <button @onclick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</button>
+                <button @onclick="CancelEditSecretNote">Cancelar</button>
+            }
+            else
+            {
+                <span>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</span>
+                <button @onclick="@(() => StartEditSecretNote(note))">Editar</button>
+                <button @onclick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</button>
+            }
+        </li>
+    }
+</ul>
+
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
 
@@ -70,13 +181,30 @@
     private List<CharacterSheetResponse> _sheets = new();
     private List<DiaryEntryResponse> _diaryEntries = new();
     private List<PlayerSearchResultResponse> _searchResults = new();
+    private List<CampaignAttachmentResponse> _attachments = new();
+    private List<SecretNoteResponse> _secretNotes = new();
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();
+    private readonly DiaryFormModel _noteForm = new();
+    private readonly HashSet<string> _noteRecipients = new();
+    private readonly HashSet<string> _editNoteRecipients = new();
     private string? _errorMessage;
     private string? _editingEntryId;
     private string _editText = "";
+    private string? _editingNoteId;
+    private string _editNoteText = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync());
+    private string _attachItemId = "";
+    private string _attachBankEntryId = "";
+    private string _attachImageId = "";
+    private string _attachNpcSheetId = "";
+    private string _attachCreatureSheetId = "";
+
+    private string _grantPlayerId = "";
+    private string _grantTipo = "Npc";
+    private string _grantSourceSheetId = "";
+
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync());
 
     private async Task LoadMembersAsync()
     {
@@ -97,6 +225,20 @@
         var response = await Http.GetAsync($"campaigns/{CampaignId}/diary");
         if (response.IsSuccessStatusCode)
             _diaryEntries = await response.Content.ReadFromJsonAsync<List<DiaryEntryResponse>>() ?? new();
+    }
+
+    private async Task LoadAttachmentsAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/attachments");
+        if (response.IsSuccessStatusCode)
+            _attachments = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>() ?? new();
+    }
+
+    private async Task LoadSecretNotesAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/secret-notes");
+        if (response.IsSuccessStatusCode)
+            _secretNotes = await response.Content.ReadFromJsonAsync<List<SecretNoteResponse>>() ?? new();
     }
 
     private async Task SearchPlayersAsync()
@@ -182,8 +324,199 @@
         Navigation.NavigateTo($"fichas/{body!.Id}");
     }
 
+    private async Task AttachAsync(AttachToCampaignRequest request)
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/attachments", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível anexar.";
+            return;
+        }
+
+        await LoadAttachmentsAsync();
+    }
+
+    private Task AttachItemAsync()
+    {
+        var id = _attachItemId;
+        _attachItemId = "";
+        return AttachAsync(new AttachToCampaignRequest(id, null, null, null, null));
+    }
+
+    private Task AttachBankEntryAsync()
+    {
+        var id = _attachBankEntryId;
+        _attachBankEntryId = "";
+        return AttachAsync(new AttachToCampaignRequest(null, null, null, id, null));
+    }
+
+    private Task AttachImageAsync()
+    {
+        var id = _attachImageId;
+        _attachImageId = "";
+        return AttachAsync(new AttachToCampaignRequest(null, null, null, null, id));
+    }
+
+    private Task AttachNpcSheetAsync()
+    {
+        var id = _attachNpcSheetId;
+        _attachNpcSheetId = "";
+        return AttachAsync(new AttachToCampaignRequest(null, id, null, null, null));
+    }
+
+    private Task AttachCreatureSheetAsync()
+    {
+        var id = _attachCreatureSheetId;
+        _attachCreatureSheetId = "";
+        return AttachAsync(new AttachToCampaignRequest(null, null, id, null, null));
+    }
+
+    private async Task ToggleVisibilityAsync(CampaignAttachmentResponse attachment, bool isPublic)
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/attachments/{attachment.Id}/visibility", isPublic);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível alterar a visibilidade.";
+            return;
+        }
+
+        await LoadAttachmentsAsync();
+    }
+
+    private async Task ToggleNpcVisibilityAsync(CampaignAttachmentResponse attachment, bool nomePublico, bool imagemPublica)
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/attachments/{attachment.Id}/npc-visibility", new NpcVisibilityBody(nomePublico, imagemPublica));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível alterar a visibilidade.";
+            return;
+        }
+
+        await LoadAttachmentsAsync();
+    }
+
+    private async Task ToggleCreatureVisibilityAsync(CampaignAttachmentResponse attachment, bool nomePublico, bool imagemPublica)
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/attachments/{attachment.Id}/creature-visibility", new CreatureVisibilityBody(nomePublico, imagemPublica));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível alterar a visibilidade.";
+            return;
+        }
+
+        await LoadAttachmentsAsync();
+    }
+
+    private async Task RemoveAttachmentAsync(string attachmentId)
+    {
+        var response = await Http.DeleteAsync($"campaigns/{CampaignId}/attachments/{attachmentId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível remover o anexo.";
+            return;
+        }
+
+        await LoadAttachmentsAsync();
+    }
+
+    private async Task GrantSheetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_grantPlayerId))
+        {
+            _errorMessage = "Selecione um jogador.";
+            return;
+        }
+
+        var sourceSheetId = string.IsNullOrWhiteSpace(_grantSourceSheetId) ? null : _grantSourceSheetId;
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/grants", new GrantSheetRequest(_grantPlayerId, _grantTipo, sourceSheetId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível conceder a ficha.";
+            return;
+        }
+
+        _grantSourceSheetId = "";
+        await LoadAttachmentsAsync();
+    }
+
+    private void ToggleNoteRecipient(string userId, bool selected)
+    {
+        if (selected)
+            _noteRecipients.Add(userId);
+        else
+            _noteRecipients.Remove(userId);
+    }
+
+    private void ToggleEditNoteRecipient(string userId, bool selected)
+    {
+        if (selected)
+            _editNoteRecipients.Add(userId);
+        else
+            _editNoteRecipients.Remove(userId);
+    }
+
+    private async Task AddSecretNoteAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/secret-notes", new CreateSecretNoteRequest(_noteForm.Texto, _noteRecipients.ToList()));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a nota secreta.";
+            return;
+        }
+
+        _noteForm.Texto = "";
+        _noteRecipients.Clear();
+        await LoadSecretNotesAsync();
+    }
+
+    private void StartEditSecretNote(SecretNoteResponse note)
+    {
+        _editingNoteId = note.Id;
+        _editNoteText = note.Texto;
+        _editNoteRecipients.Clear();
+        foreach (var recipientId in note.RecipientUserIds)
+            _editNoteRecipients.Add(recipientId);
+    }
+
+    private void CancelEditSecretNote()
+    {
+        _editingNoteId = null;
+        _editNoteText = "";
+        _editNoteRecipients.Clear();
+    }
+
+    private async Task SaveSecretNoteAsync(string noteId)
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/secret-notes/{noteId}", new UpdateSecretNoteRequest(_editNoteText, _editNoteRecipients.ToList()));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a nota secreta.";
+            return;
+        }
+
+        _editingNoteId = null;
+        _editNoteText = "";
+        _editNoteRecipients.Clear();
+        await LoadSecretNotesAsync();
+    }
+
+    private async Task DeleteSecretNoteAsync(string noteId)
+    {
+        var response = await Http.DeleteAsync($"campaigns/{CampaignId}/secret-notes/{noteId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a nota secreta.";
+            return;
+        }
+
+        await LoadSecretNotesAsync();
+    }
+
     private class DiaryFormModel
     {
         public string Texto { get; set; } = "";
     }
+
+    private record NpcVisibilityBody(bool NomePublico, bool ImagemPublica);
+    private record CreatureVisibilityBody(bool NomePublico, bool ImagemPublica);
 }
