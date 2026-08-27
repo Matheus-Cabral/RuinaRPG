@@ -1,0 +1,162 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using FluentAssertions;
+using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Items;
+
+namespace RuinaRPG.Tests.Integration.Controllers;
+
+public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+{
+    private readonly PostgresFixture _postgres;
+    private ApiFactory _factory = null!;
+    private HttpClient _client = null!;
+
+    public CampaignAttachmentsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+
+    public Task InitializeAsync()
+    {
+        _factory = new ApiFactory(_postgres.ConnectionString);
+        _client = _factory.CreateClient();
+        return Task.CompletedTask;
+    }
+
+    public Task DisposeAsync()
+    {
+        _client.Dispose();
+        return _factory.DisposeAsync().AsTask();
+    }
+
+    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return tokens!.AccessToken;
+    }
+
+    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
+    {
+        var message = new HttpRequestMessage(method, url);
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (body is not null)
+            message.Content = JsonContent.Create(body);
+        return message;
+    }
+
+    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
+        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+    }
+
+    private static CreateItemRequest MinimalItemGeral(string nome) =>
+        new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null);
+
+    private async Task<string> CreateItemAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItemGeral(nome)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task Attach_an_item_defaults_to_private()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm1", "att1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Anexo");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.Tipo.Should().Be("Item");
+        body.Nome.Should().Be("Corda");
+        body.IsPublic.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Attach_with_no_target_set_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm2", "att2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Sem Alvo");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attach_with_two_targets_set_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm3", "att3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Dois Alvos");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, itemId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ToggleVisibility_flips_IsPublic_for_an_item_attachment()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm4", "att4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+        var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        body!.Should().ContainSingle(a => a.Id == attachmentId && a.IsPublic == true);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_attachment_but_not_the_underlying_item()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGm5", "att5@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Delete");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+        var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/attachments/{attachmentId}", gmToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        body!.Should().BeEmpty();
+
+        var itemsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/items", gmToken));
+        var items = await itemsResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        items!.Should().ContainSingle(i => i.Id == itemId);
+    }
+
+    [Fact]
+    public async Task Attach_by_a_different_gm_to_someone_elses_campaign_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("AttOwner", "attowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("AttOther", "attother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Alheia");
+        var itemId = await CreateItemAsync(gmTokenOther, "Corda Alheia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOther,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+}
