@@ -40,7 +40,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             if (!Guid.TryParse(request.NpcSheetId, out var parsed))
                 return BadRequest("NpcSheetId inválido.");
-            if (!await db.NpcSheets.AnyAsync(n => n.Id == parsed))
+            if (!await db.NpcSheets.AnyAsync(n => n.Id == parsed && n.GmId == gmId))
                 return BadRequest("Ficha de NPC não encontrada.");
             npcSheetId = parsed;
         }
@@ -48,7 +48,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             if (!Guid.TryParse(request.CreatureSheetId, out var parsed))
                 return BadRequest("CreatureSheetId inválido.");
-            if (!await db.CreatureSheets.AnyAsync(c => c.Id == parsed))
+            if (!await db.CreatureSheets.AnyAsync(c => c.Id == parsed && c.GmId == gmId))
                 return BadRequest("Ficha de Criatura não encontrada.");
             creatureSheetId = parsed;
         }
@@ -97,8 +97,35 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         var attachments = await db.CampaignAttachments.Where(a => a.CampaignId == campaignId).ToListAsync();
         var responses = new List<CampaignAttachmentResponse>();
         foreach (var attachment in attachments)
+        {
+            if (await IsGrantLinkAsync(attachment))
+                continue;
             responses.Add(await ToResponseAsync(attachment));
+        }
         return responses;
+    }
+
+    /// <summary>
+    /// Task 6's grant flow inserts a CampaignAttachment row purely to link a granted NPC/Creature
+    /// sheet to its campaign, with all visibility booleans false — indistinguishable from a genuine
+    /// GM-authored display attachment by any of its own fields. Granted sheets always have OwnerId
+    /// set (the player who received them); sheets still in the GM's own registry never do. That
+    /// distinguishes a grant-link row without a schema change, so it can be hidden from the GM's
+    /// Anexos list (deleting it there would silently break the player's companion link).
+    /// </summary>
+    private async Task<bool> IsGrantLinkAsync(CampaignAttachment a)
+    {
+        if (a.NpcSheetId is not null)
+        {
+            var npc = await db.NpcSheets.FindAsync(a.NpcSheetId.Value);
+            return npc?.OwnerId is not null;
+        }
+        if (a.CreatureSheetId is not null)
+        {
+            var creature = await db.CreatureSheets.FindAsync(a.CreatureSheetId.Value);
+            return creature?.OwnerId is not null;
+        }
+        return false;
     }
 
     [HttpPut("{id}/visibility")]

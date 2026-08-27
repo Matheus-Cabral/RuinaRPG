@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -77,6 +78,25 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
     }
+
+    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
+    {
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        var meResponse = await _client.SendAsync(me);
+        var meBody = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
+        return (meBody!.Id, tokens.AccessToken);
+    }
+
+    private async Task AddMemberAsync(string gmToken, string campaignId, string playerId) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
     [Fact]
     public async Task Attach_an_item_defaults_to_private()
@@ -295,5 +315,60 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         var attachment2 = body2!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
         attachment2.CreatureNomePublico.Should().BeFalse();
         attachment2.CreatureImagemPublica.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Attach_a_npc_sheet_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("AttNpcCrossOwner", "attnpccrossowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("AttNpcCrossOther", "attnpccrossother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM NPC");
+        var npcOfOther = await CreateNpcSheetAsync(gmTokenOther);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+            new AttachToCampaignRequest(null, npcOfOther, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attach_a_creature_sheet_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("AttCreatureCrossOwner", "attcreaturecrossowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("AttCreatureCrossOther", "attcreaturecrossother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Creature");
+        var creatureOfOther = await CreateCreatureSheetAsync(gmTokenOther);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+            new AttachToCampaignRequest(null, null, creatureOfOther, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task List_excludes_grant_link_attachments_but_still_includes_genuine_npc_attachments()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttGrantListGm", "attgrantlist@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "AttGrantListPlayer", "attgrantlistplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Link");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+
+        // Grant flow inserts its own campaign-link CampaignAttachment row for the granted sheet.
+        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+            new GrantSheetRequest(playerId, "Npc", null)));
+        grantResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // A genuine, GM-authored display attachment of an NPC the GM still owns (not granted).
+        var displayNpcId = await CreateNpcSheetAsync(gmToken);
+        var attachResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, displayNpcId, null, null, null)));
+        attachResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var displayAttachmentId = (await attachResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+
+        body!.Should().ContainSingle(a => a.Id == displayAttachmentId);
+        body!.Should().HaveCount(1);
     }
 }

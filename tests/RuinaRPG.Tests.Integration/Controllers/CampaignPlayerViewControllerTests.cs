@@ -185,4 +185,33 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task PlayerView_excludes_a_fully_private_npc_attachment_entirely()
+    {
+        var setup = await BuildSetupAsync("PrivateNpc");
+        // BuildSetupAsync's own NPC attachment already toggles NomePublico on, so build a second
+        // one here and deliberately leave both toggles at their false default.
+        var privateNpcId = await CreateNpcSheetAsync(setup.GmToken, "Fido Secreto PrivateNpc");
+        var privateNpcAttachmentId = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, privateNpcId, null, null, null));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        // R0008: the whole entry must be absent, matching the code's
+        // Where(a => a.NpcSheetId is not null && (a.NpcNomePublico || a.NpcImagemPublica)) filter —
+        // not merely present with null fields.
+        body!.AnexosPublicos.Should().NotContain(a => a.Id == privateNpcAttachmentId);
+    }
+
+    [Fact]
+    public async Task ListSecretNotes_by_a_non_member_returns_403()
+    {
+        var setup = await BuildSetupAsync("SecretNonMember");
+        var (_, outsiderToken) = await RegisterJogadorLinkedToAsync(setup.GmToken, "PvSecretOutsider", "pvsecretoutsider@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/secret-notes", outsiderToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

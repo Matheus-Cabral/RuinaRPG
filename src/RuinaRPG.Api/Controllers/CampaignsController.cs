@@ -183,7 +183,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
 
         var note = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = true, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
         db.DiaryEntries.Add(note);
-        foreach (var recipientId in recipientIds)
+        foreach (var recipientId in recipientIds.Distinct())
             db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = note.Id, UserId = recipientId });
         await db.SaveChangesAsync();
 
@@ -207,8 +207,9 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         note.Texto = request.Texto;
 
         var existingRecipients = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == noteId).ToListAsync();
-        db.DiaryEntryRecipients.RemoveRange(existingRecipients);
-        foreach (var recipientId in recipientIds)
+        var newRecipientIds = recipientIds.Distinct().ToList();
+        db.DiaryEntryRecipients.RemoveRange(existingRecipients.Where(r => !newRecipientIds.Contains(r.UserId)));
+        foreach (var recipientId in newRecipientIds.Where(id => existingRecipients.All(r => r.UserId != id)))
             db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = noteId, UserId = recipientId });
 
         await db.SaveChangesAsync();

@@ -86,7 +86,14 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
     public async Task<ActionResult<List<SecretNoteResponse>>> ListSecretNotes(Guid campaignId)
     {
         var callerId = CurrentUserId();
-        var isGm = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == callerId);
+        var campaign = await db.Campaigns.FindAsync(campaignId);
+        if (campaign is null)
+            return NotFound();
+
+        var isGm = campaign.GmId == callerId;
+        var isMember = isGm || await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == callerId);
+        if (!isMember)
+            return Forbid();
 
         var notes = await db.DiaryEntries.Where(d => d.CampaignId == campaignId && d.IsSecretNote).ToListAsync();
         var results = new List<SecretNoteResponse>();

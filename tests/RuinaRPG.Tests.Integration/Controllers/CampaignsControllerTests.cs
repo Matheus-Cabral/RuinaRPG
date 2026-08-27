@@ -434,6 +434,31 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task UpdateSecretNote_retaining_the_same_recipient_returns_204_instead_of_throwing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecretGm5b", "secret5b@teste.com");
+        var playerId = await RegisterJogadorLinkedToAsync(gmToken, "SecretPlayer5b", "secretplayer5b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Secreta 5b");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
+            new CreateSecretNoteRequest("Texto original.", [playerId])));
+        var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
+
+        // Same recipient list is retained across the edit — the Client's edit form pre-populates
+        // existing recipients, which used to make EF Core's change tracker throw because the
+        // composite key (DiaryEntryId, UserId) was simultaneously RemoveRange'd and re-Add'ed.
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken,
+            new UpdateSecretNoteRequest("Texto revisado retendo destinatário.", [playerId])));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
+        var note = (await listResponse.Content.ReadFromJsonAsync<List<SecretNoteResponse>>())!.Should().ContainSingle().Which;
+        note.Texto.Should().Be("Texto revisado retendo destinatário.");
+        note.RecipientUserIds.Should().BeEquivalentTo([playerId]);
+    }
+
+    [Fact]
     public async Task UpdateSecretNote_with_a_non_member_recipient_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SecretGm6", "secret6@teste.com");
