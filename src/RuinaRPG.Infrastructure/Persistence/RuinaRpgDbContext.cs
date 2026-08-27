@@ -26,6 +26,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
+    public DbSet<CampaignAttachment> CampaignAttachments => Set<CampaignAttachment>();
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
@@ -248,6 +249,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CampaignAttachment>(entity =>
+        {
+            entity.HasOne<Campaign>().WithMany().HasForeignKey(a => a.CampaignId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<SpellAbilityBankEntry>().WithMany().HasForeignKey(a => a.SpellAbilityBankEntryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(a => a.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<DiaryEntry>(entity =>
