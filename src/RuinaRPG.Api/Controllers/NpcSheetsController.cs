@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Hubs;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
@@ -15,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize(Roles = "GM")]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NpcSheetResponse>> Create()
@@ -99,6 +101,15 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules)
         sheet.Ciclos = request.Ciclos;
 
         await db.SaveChangesAsync();
+
+        var affectedEncounterIds = await db.EncounterParticipants
+            .Where(p => p.SourceNpcSheetId == id)
+            .Select(p => p.EncounterId)
+            .Distinct()
+            .ToListAsync();
+        foreach (var encounterId in affectedEncounterIds)
+            await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+
         return NoContent();
     }
 

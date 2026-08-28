@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
+using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Diary;
+using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
@@ -25,6 +27,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
+    public DbSet<CampaignAttachment> CampaignAttachments => Set<CampaignAttachment>();
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
@@ -59,6 +62,22 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NpcSpellAbilityEffect> NpcSpellAbilityEffects => Set<NpcSpellAbilityEffect>();
     public DbSet<NpcAffection> NpcAffections => Set<NpcAffection>();
     public DbSet<NpcTrait> NpcTraits => Set<NpcTrait>();
+    public DbSet<CreatureSheet> CreatureSheets => Set<CreatureSheet>();
+    public DbSet<CreatureAttribute> CreatureAttributes => Set<CreatureAttribute>();
+    public DbSet<CreatureSkill> CreatureSkills => Set<CreatureSkill>();
+    public DbSet<CreatureMastery> CreatureMasteries => Set<CreatureMastery>();
+    public DbSet<CreatureWeapon> CreatureWeapons => Set<CreatureWeapon>();
+    public DbSet<CreatureArmorSlot> CreatureArmorSlots => Set<CreatureArmorSlot>();
+    public DbSet<CreatureShield> CreatureShields => Set<CreatureShield>();
+    public DbSet<CreatureSpoil> CreatureSpoils => Set<CreatureSpoil>();
+    public DbSet<CreatureArtifact> CreatureArtifacts => Set<CreatureArtifact>();
+    public DbSet<CreatureSpellAbility> CreatureSpellAbilities => Set<CreatureSpellAbility>();
+    public DbSet<CreatureSpellAbilityEffect> CreatureSpellAbilityEffects => Set<CreatureSpellAbilityEffect>();
+    public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
+    public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
+    public DbSet<Encounter> Encounters => Set<Encounter>();
+    public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
+    public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -236,6 +255,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder.Entity<CampaignAttachment>(entity =>
+        {
+            entity.HasOne<Campaign>().WithMany().HasForeignKey(a => a.CampaignId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<SpellAbilityBankEntry>().WithMany().HasForeignKey(a => a.SpellAbilityBankEntryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(a => a.ImageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<DiaryEntry>(entity =>
         {
             entity.HasOne<ApplicationUser>()
@@ -290,6 +319,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         });
 
         builder.Entity<NpcSheet>(entity =>
+        {
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CreatureSheet>(entity =>
         {
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
@@ -357,5 +393,77 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(t => t.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        builder.Entity<CreatureAttribute>(entity =>
+        {
+            entity.HasIndex(a => new { a.CreatureSheetId, a.Atributo }).IsUnique();
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CreatureSkill>(entity =>
+        {
+            entity.HasIndex(s => new { s.CreatureSheetId, s.Pericia }).IsUnique();
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CreatureMastery>(entity => entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(m => m.CreatureSheetId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<CreatureWeapon>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(w => w.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CreatureArmorSlot>(entity =>
+        {
+            entity.HasIndex(a => new { a.CreatureSheetId, a.Slot }).IsUnique();
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CreatureShield>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CreatureSpoil>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(i => i.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CreatureArtifact>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CreatureSpellAbility>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(e => e.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.CreatureSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CreatureAffection>(entity => entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<CreatureTrait>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Encounter>(entity => entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<EncounterParticipant>(entity =>
+        {
+            entity.HasOne<Encounter>().WithMany().HasForeignKey(p => p.EncounterId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(p => p.SourceCharacterSheetId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(p => p.SourceNpcSheetId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(p => p.SourceCreatureSheetId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<EncounterParticipantCondition>(entity =>
+            entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade));
     }
 }

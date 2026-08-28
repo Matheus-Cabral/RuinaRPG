@@ -445,11 +445,18 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 |---|---|---|
 | Id | PK | |
 | EncounterId | FK | |
-| SourceCharacterSheetId | FK → CharacterSheets, nullable | setado quando vem de Personagem/pet-invocação (R0003) — PV/PF/PA lidos ao vivo de lá, não das colunas abaixo |
+| SourceCharacterSheetId | FK → CharacterSheets, nullable | no máximo uma das três colunas `Source*SheetId` é setada (R0002) |
+| SourceNpcSheetId | FK → NpcSheets, nullable | idem |
+| SourceCreatureSheetId | FK → CreatureSheets, nullable | idem |
 | Nome | string | snapshot, pra exibição mesmo se a origem for excluída depois |
 | Iniciativa | int | digitada manualmente pelo GM (R0003) |
-| PVAtual, PFAtual, PAAtual | int, nullable | só usados quando `SourceCharacterSheetId` é nulo (instância independente de NPC/Criatura) |
+| PVAtual, PFAtual, PAAtual | int, nullable | ver regra abaixo |
 | AcoesRestantes | int | |
+
+A regra de PV/PF/PA não depende só de qual `Source*SheetId` está setada, mas também de `OwnerId` da ficha de origem (NpcSheets/CreatureSheets):
+
+- **Live-link a outra ficha** (colunas ficam nulas, valor lido ao vivo da origem): `SourceCharacterSheetId` setado, OU `SourceNpcSheetId`/`SourceCreatureSheetId` setada apontando pra uma ficha **concedida** (`OwnerId` não nulo — pet/invocação de jogador).
+- **Cópia independente** (colunas copiadas da origem no momento da criação do participante e depois editáveis por conta própria): `SourceNpcSheetId`/`SourceCreatureSheetId` setada apontando pra uma ficha do **bestiário do próprio GM** (`OwnerId` nulo).
 
 **EncounterParticipantConditions** — tags de condição (texto livre, R0003).
 

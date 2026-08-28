@@ -1,0 +1,228 @@
+@page "/campanhas/{CampaignId}/encontros/{EncounterId}"
+@implements IAsyncDisposable
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthStateService AuthState
+@using Microsoft.AspNetCore.SignalR.Client
+@using RuinaRPG.Client.Services
+@using RuinaRPG.Contracts.Encounters
+
+<h1>Encontro — Rodada @_encounter?.CurrentRound</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+
+<h2>Adicionar Participante</h2>
+<EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">
+    <label>
+        Origem
+        <select @bind="_addForm.SourceKind">
+            <option value="CharacterSheet">Ficha de Personagem</option>
+            <option value="NpcSheet">Ficha de NPC</option>
+            <option value="CreatureSheet">Ficha de Criatura</option>
+        </select>
+    </label>
+    <label>Ficha de origem (id) <InputText @bind-Value="_addForm.SourceSheetId" /></label>
+    <label>Iniciativa <InputNumber @bind-Value="_addForm.Iniciativa" /></label>
+    <button type="submit">Adicionar Participante</button>
+</EditForm>
+
+<button @onclick="AdvanceTurnAsync">Próximo Turno</button>
+
+<table>
+    <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
+    <tbody>
+        @for (var i = 0; i < _participants.Count; i++)
+        {
+            var participant = _participants[i];
+            var isCurrentTurn = i == _encounter?.CurrentParticipantIndex;
+            <tr style="@(isCurrentTurn ? "font-weight: bold" : "")">
+                <td>@participant.Nome</td>
+                <td>@participant.Iniciativa</td>
+                <td>@participant.PV @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
+                <td>@participant.PF</td>
+                <td>@participant.PA</td>
+                <td>@participant.AcoesRestantes</td>
+                <td>@string.Join(", ", participant.Condicoes)</td>
+                <td>
+                    @if (_editingParticipantId == participant.Id)
+                    {
+                        <button @onclick="CancelEditParticipant">Cancelar</button>
+                    }
+                    else
+                    {
+                        <button @onclick="@(() => StartEditParticipant(participant))">Editar</button>
+                    }
+                </td>
+            </tr>
+            @if (_editingParticipantId == participant.Id)
+            {
+                <tr>
+                    <td colspan="8">
+                        <EditForm Model="_editParticipantForm" OnValidSubmit="@(() => SaveParticipantAsync(participant))">
+                            <label>Iniciativa <InputNumber @bind-Value="_editParticipantForm.Iniciativa" /></label>
+                            <label>Ações Restantes <InputNumber @bind-Value="_editParticipantForm.AcoesRestantes" /></label>
+                            @if (participant.IsLiveSourced)
+                            {
+                                <p>PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
+                            }
+                            else
+                            {
+                                <label>PV <InputNumber @bind-Value="_editParticipantForm.PV" /></label>
+                                <label>PF <InputNumber @bind-Value="_editParticipantForm.PF" /></label>
+                                <label>PA <InputNumber @bind-Value="_editParticipantForm.PA" /></label>
+                            }
+                            <label>Condições (substitui a lista atual) <InputText @bind-Value="_editParticipantForm.CondicoesText" /></label>
+                            <button type="submit">Salvar</button>
+                        </EditForm>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public string CampaignId { get; set; } = "";
+    [Parameter] public string EncounterId { get; set; } = "";
+
+    private EncounterResponse? _encounter;
+    private List<EncounterParticipantResponse> _participants = new();
+    private HubConnection? _hubConnection;
+    private readonly AddParticipantFormModel _addForm = new();
+    private string? _errorMessage;
+    private string? _editingParticipantId;
+    private readonly EditParticipantFormModel _editParticipantForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(new Uri(new Uri(Http.BaseAddress!, "/"), "hubs/encounters"), options =>
+            {
+                options.AccessTokenProvider = async () => await AuthState.GetAccessTokenAsync();
+            })
+            .Build();
+        _hubConnection.On("ParticipantsChanged", async () => { await LoadAsync(); StateHasChanged(); });
+        await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("JoinEncounter", EncounterId);
+    }
+
+    private async Task LoadAsync()
+    {
+        var encountersResponse = await Http.GetAsync($"campaigns/{CampaignId}/encounters");
+        var encounters = await encountersResponse.Content.ReadFromJsonAsync<List<EncounterResponse>>() ?? new();
+        _encounter = encounters.SingleOrDefault(e => e.Id == EncounterId);
+
+        _participants = await Http.GetFromJsonAsync<List<EncounterParticipantResponse>>($"encounters/{EncounterId}/participants") ?? new();
+    }
+
+    private async Task AddParticipantAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_addForm.SourceSheetId))
+        {
+            _errorMessage = "Informe o id da ficha de origem.";
+            return;
+        }
+
+        var request = new AddParticipantRequest(
+            _addForm.SourceKind == "CharacterSheet" ? _addForm.SourceSheetId : null,
+            _addForm.SourceKind == "NpcSheet" ? _addForm.SourceSheetId : null,
+            _addForm.SourceKind == "CreatureSheet" ? _addForm.SourceSheetId : null,
+            _addForm.Iniciativa);
+
+        var response = await Http.PostAsJsonAsync($"encounters/{EncounterId}/participants", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o participante.";
+            return;
+        }
+
+        _addForm.SourceSheetId = "";
+        _addForm.Iniciativa = 0;
+        await LoadAsync();
+    }
+
+    private async Task AdvanceTurnAsync()
+    {
+        var response = await Http.PostAsync($"encounters/{EncounterId}/advance-turn", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível avançar o turno.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private void StartEditParticipant(EncounterParticipantResponse participant)
+    {
+        _editingParticipantId = participant.Id;
+        _editParticipantForm.Iniciativa = participant.Iniciativa;
+        _editParticipantForm.AcoesRestantes = participant.AcoesRestantes;
+        _editParticipantForm.PV = participant.PV;
+        _editParticipantForm.PF = participant.PF;
+        _editParticipantForm.PA = participant.PA;
+        // The label makes clear that submitting replaces the whole list, matching the server's
+        // actual (replace, not append) semantics — pre-filling here just saves retyping unchanged tags.
+        _editParticipantForm.CondicoesText = string.Join(", ", participant.Condicoes);
+    }
+
+    private void CancelEditParticipant()
+    {
+        _editingParticipantId = null;
+    }
+
+    private async Task SaveParticipantAsync(EncounterParticipantResponse participant)
+    {
+        var condicoes = _editParticipantForm.CondicoesText
+            .Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim())
+            .Where(c => c.Length > 0)
+            .ToList();
+
+        var request = new UpdateParticipantRequest(
+            _editParticipantForm.Iniciativa,
+            participant.IsLiveSourced ? null : _editParticipantForm.PV,
+            participant.IsLiveSourced ? null : _editParticipantForm.PF,
+            participant.IsLiveSourced ? null : _editParticipantForm.PA,
+            _editParticipantForm.AcoesRestantes,
+            condicoes);
+
+        var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar o participante.";
+            return;
+        }
+
+        _editingParticipantId = null;
+        await LoadAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+
+    private class AddParticipantFormModel
+    {
+        public string SourceKind { get; set; } = "CharacterSheet";
+        public string SourceSheetId { get; set; } = "";
+        public int Iniciativa { get; set; }
+    }
+
+    private class EditParticipantFormModel
+    {
+        public int Iniciativa { get; set; }
+        public int AcoesRestantes { get; set; }
+        public int? PV { get; set; }
+        public int? PF { get; set; }
+        public int? PA { get; set; }
+        public string CondicoesText { get; set; } = "";
+    }
+}

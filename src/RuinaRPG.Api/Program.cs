@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Hubs;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
@@ -93,11 +94,28 @@ builder.Services
             RoleClaimType = "role",
             NameClaimType = JwtRegisteredClaimNames.Sub
         };
+
+        // Browsers/SignalR clients can't reliably set a custom Authorization header on a
+        // WebSocket upgrade request, so the SignalR .NET/JS client instead sends the token as
+        // an ?access_token= query string parameter (the standard, Microsoft-documented pattern)
+        // when HttpConnectionOptions.AccessTokenProvider is set. Scoped to /hubs paths only —
+        // regular REST calls keep using the Authorization header exclusively.
+        bearerOptions.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -151,6 +169,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHub<EncounterHub>("/hubs/encounters");
 
 if (args.Contains("--migrate"))
 {

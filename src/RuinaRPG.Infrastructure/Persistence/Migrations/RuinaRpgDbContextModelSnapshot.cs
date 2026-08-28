@@ -176,6 +176,62 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("Campaigns");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Campaigns.CampaignAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CreatureImagemPublica")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CreatureNomePublico")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ImageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("NpcImagemPublica")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NpcNomePublico")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("NpcSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SpellAbilityBankEntryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("NpcSheetId");
+
+                    b.HasIndex("SpellAbilityBankEntryId");
+
+                    b.ToTable("CampaignAttachments");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Campaigns.CampaignMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -687,6 +743,409 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("CharacterWeapons");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Favorabilidade")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.ToTable("CreatureAffections");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArmorSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("DurabilidadeAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Slot")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("CreatureSheetId", "Slot")
+                        .IsUnique();
+
+                    b.ToTable("CreatureArmorSlots");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArtifact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ArtifactItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtifactItemId");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.ToTable("CreatureArtifacts");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAttribute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Atributo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Bonus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Gasto")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("TemMaestria")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId", "Atributo")
+                        .IsUnique();
+
+                    b.ToTable("CreatureAttributes");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureMastery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Atributo")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("GastoMaestria")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Pericia")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.ToTable("CreatureMasteries");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AdrenalinaAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Afinidade")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Arquetipo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Cobertura")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExperienciaAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FocoAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("GmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ImageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("LastDismissedLevelUpLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Nivel")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PontosDeIgnicao")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Raca")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubArquetipo")
+                        .HasColumnType("text");
+
+                    b.Property<int>("VitalidadeAtual")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GmId");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("CreatureSheets");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureShield", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DurabilidadeAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEquipped")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("CreatureShields");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Gasto")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Pericia")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId", "Pericia")
+                        .IsUnique();
+
+                    b.ToTable("CreatureSkills");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Custo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("GastoEmPI")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Grau")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("SourceBankEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.ToTable("CreatureSpellAbilities");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbilityEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSpellAbilityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CustoPI")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EfeitoNome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("Quantidade")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSpellAbilityId");
+
+                    b.ToTable("CreatureSpellAbilityEffects");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpoil", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DT")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Qtd")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("CreatureSpoils");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Polaridade")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TraitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.HasIndex("TraitId");
+
+                    b.ToTable("CreatureTraits");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureWeapon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("DurabilidadeAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEquipped")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ManualDados")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ManualDano")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ManualNome")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ManualTipoDeDano")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatureSheetId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("CreatureWeapons");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Diary.DiaryEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -751,6 +1210,101 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("DiaryEntryRecipients");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.Encounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CurrentParticipantIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CurrentRound")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.ToTable("Encounters");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AcoesRestantes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Iniciativa")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PAAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PFAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PVAtual")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SourceCharacterSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceCreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceNpcSheetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncounterId");
+
+                    b.HasIndex("SourceCharacterSheetId");
+
+                    b.HasIndex("SourceCreatureSheetId");
+
+                    b.HasIndex("SourceNpcSheetId");
+
+                    b.ToTable("EncounterParticipants");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EncounterParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncounterParticipantId");
+
+                    b.ToTable("EncounterParticipantConditions");
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Identity.ApplicationUser", b =>
@@ -1751,6 +2305,40 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Campaigns.CampaignAttachment", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Campaigns.Campaign", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.Images.Image", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
+                        .WithMany()
+                        .HasForeignKey("NpcSheetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry", null)
+                        .WithMany()
+                        .HasForeignKey("SpellAbilityBankEntryId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Campaigns.CampaignMember", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.Campaigns.Campaign", null)
@@ -1947,6 +2535,167 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArmorSlot", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArtifact", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ArtifactItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAttribute", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureMastery", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("GmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Images.Image", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureShield", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSkill", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbility", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbilityEffect", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbility", null)
+                        .WithMany("Efeitos")
+                        .HasForeignKey("CreatureSpellAbilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpoil", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Rules.Trait", null)
+                        .WithMany()
+                        .HasForeignKey("TraitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureWeapon", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Diary.DiaryEntry", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
@@ -1992,6 +2741,48 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.Encounter", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Campaigns.Campaign", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Encounters.Encounter", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SourceCharacterSheetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SourceCreatureSheetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SourceNpcSheetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondition", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterParticipantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -2241,6 +3032,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSpellAbility", b =>
+                {
+                    b.Navigation("Efeitos");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpellAbility", b =>
                 {
                     b.Navigation("Efeitos");
                 });
