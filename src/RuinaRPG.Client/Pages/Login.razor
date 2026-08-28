@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject TokenAuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Auth
 
 <h1>Entrar</h1>
@@ -33,6 +34,7 @@
 
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
         await AuthState.SetTokensAsync(body!);
+        AuthProvider.NotifyUserChanged();
         Navigation.NavigateTo("/painel");
     }
 

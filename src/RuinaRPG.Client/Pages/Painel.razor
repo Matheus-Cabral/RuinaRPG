@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject TokenAuthenticationStateProvider AuthProvider
 
 <h1>Painel</h1>
 <p>Em construção.</p>
@@ -15,6 +16,7 @@
             await Http.PostAsJsonAsync("auth/logout", new RuinaRPG.Contracts.Auth.RefreshRequest(refreshToken));
 
         await AuthState.ClearAsync();
+        AuthProvider.NotifyUserChanged();
         Navigation.NavigateTo("/");
     }
 }
