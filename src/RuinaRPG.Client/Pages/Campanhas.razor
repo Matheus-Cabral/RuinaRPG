@@ -16,14 +16,15 @@
     <p class="error">@_errorMessage</p>
 }
 
-<ul>
+<div class="list-group">
     @foreach (var campaign in _campaigns)
     {
-        <li>
-            <a href="@($"campanhas/{campaign.Id}")">@campaign.Nome</a>
-        </li>
+        <a class="list-group-item list-group-item-action" href="@($"campanhas/{campaign.Id}")">
+            <h3 class="mb-1">@campaign.Nome</h3>
+            <p class="mb-0 text-muted">@campaign.Descricao</p>
+        </a>
     }
-</ul>
+</div>
 
 @code {
     private readonly CampaignFormModel _form = new();

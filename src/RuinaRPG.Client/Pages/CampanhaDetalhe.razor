@@ -33,10 +33,13 @@
                 <li>
                     @member.Nickname (@member.Email)
                     <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
-                    <ul>
+                    <ul class="list-unstyled">
                         @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
                         {
-                            <li><a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a></li>
+                            <li>
+                                <a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a>
+                                <span class="text-muted">— Nível @sheet.Nivel, @sheet.Vocacao (@sheet.Linhagem)</span>
+                            </li>
                         }
                     </ul>
                 </li>
