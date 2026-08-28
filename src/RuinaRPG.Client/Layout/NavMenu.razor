@@ -1,63 +1,97 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject TokenAuthenticationStateProvider AuthProvider
+
 <nav class="nav-menu">
     <div class="nav-item">
         <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="NotifyLinkClicked">
             <span class="nav-icon" aria-hidden="true">🏠</span> Início
         </NavLink>
     </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="login" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🔑</span> Entrar
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="cadastro" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">✒️</span> Cadastrar
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="painel/convites" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">✉️</span> Convidar Jogador
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="painel/jogadores" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">👥</span> Jogadores
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="catalogo" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🎒</span> Catálogo de Itens
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="npcs" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🎭</span> NPCs do GM
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="bestiario" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🐺</span> Bestiário do GM
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="banco-de-magias" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">📜</span> Banco de Magias e Habilidades
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="campanhas" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🗺️</span> Campanhas
-        </NavLink>
-    </div>
-    <div class="nav-item">
-        <NavLink class="nav-link" href="compendio" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">📖</span> Compêndio de Regras
-        </NavLink>
-    </div>
+
+    <AuthorizeView>
+        <NotAuthorized>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="login" @onclick="NotifyLinkClicked">
+                    <span class="nav-icon" aria-hidden="true">🔑</span> Entrar
+                </NavLink>
+            </div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="cadastro" @onclick="NotifyLinkClicked">
+                    <span class="nav-icon" aria-hidden="true">✒️</span> Cadastrar
+                </NavLink>
+            </div>
+        </NotAuthorized>
+        <Authorized>
+            <AuthorizeView Roles="GM" Context="gmContext">
+                <Authorized>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="painel/convites" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">✉️</span> Convidar Jogador
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="painel/jogadores" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">👥</span> Jogadores
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="catalogo" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">🎒</span> Catálogo de Itens
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="npcs" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">🎭</span> NPCs do GM
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="bestiario" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">🐺</span> Bestiário do GM
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="banco-de-magias" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">📜</span> Banco de Magias e Habilidades
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="campanhas" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">🗺️</span> Campanhas
+                        </NavLink>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="compendio" @onclick="NotifyLinkClicked">
+                    <span class="nav-icon" aria-hidden="true">📖</span> Compêndio de Regras
+                </NavLink>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="javascript:void(0)" @onclick="LogoutAsync">
+                    <span class="nav-icon" aria-hidden="true">🚪</span> Sair
+                </a>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 </nav>
 
 @code {
     [Parameter] public EventCallback OnLinkClicked { get; set; }
 
     private Task NotifyLinkClicked() => OnLinkClicked.InvokeAsync();
+
+    private async Task LogoutAsync()
+    {
+        var refreshToken = await AuthState.GetRefreshTokenAsync();
+        if (refreshToken is not null)
+            await Http.PostAsJsonAsync("auth/logout", new RuinaRPG.Contracts.Auth.RefreshRequest(refreshToken));
+
+        await AuthState.ClearAsync();
+        AuthProvider.NotifyUserChanged();
+        Navigation.NavigateTo("/");
+        await NotifyLinkClicked();
+    }
 }
