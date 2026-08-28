@@ -1,0 +1,121 @@
+/* ==========================================================================
+   Ruína RPG — Design Tokens
+   Tema Sol (Helônios) = claro · Tema Lua (Nyxara) = escuro
+   Toggled via [data-theme="light"|"dark"] on <html>, set before first paint
+   by the inline script in index.html — see theme.js for the runtime API
+   the ThemeToggle component uses after load.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/cormorant-garamond-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/cormorant-garamond-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* Estrutura — compartilhada pelos dois temas */
+  --rr-font-heading: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --rr-font-body: 'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --rr-radius-sm: 4px;
+  --rr-radius-md: 8px;
+  --rr-radius-lg: 16px;
+
+  --rr-space-1: 4px;
+  --rr-space-2: 8px;
+  --rr-space-3: 16px;
+  --rr-space-4: 24px;
+  --rr-space-5: 40px;
+
+  --rr-sidebar-width: 260px;
+  --rr-topbar-height: 3.5rem;
+  --rr-content-max-width: 1100px;
+
+  /* Tema Sol (Helônios) — padrão */
+  --rr-bg: #f6ecd9;
+  --rr-surface: #fbf5e9;
+  --rr-surface-alt: #efe1c4;
+  --rr-text: #3b2a1a;
+  --rr-text-muted: #6b5842;
+  --rr-primary: #c8932c;
+  --rr-primary-hover: #a97a20;
+  --rr-primary-contrast: #2a1c0c;
+  --rr-accent: #8a4a1f;
+  --rr-border: #d9c39a;
+  --rr-shadow: rgba(59, 42, 26, 0.18);
+  --rr-danger: #a3312a;
+  --rr-success: #4f7942;
+  --rr-sidebar-bg: linear-gradient(180deg, #7a5424 0%, #4d3315 100%);
+  --rr-sidebar-text: #f3e3c2;
+  --rr-sidebar-text-muted: #d9c39a;
+  --rr-sidebar-active-bg: rgba(255, 223, 158, 0.28);
+}
+
+:root[data-theme='dark'] {
+  /* Tema Lua (Nyxara) */
+  --rr-bg: #14172b;
+  --rr-surface: #1d2140;
+  --rr-surface-alt: #262b4d;
+  --rr-text: #dcd6f0;
+  --rr-text-muted: #9b93bd;
+  --rr-primary: #b6b3e0;
+  --rr-primary-hover: #cac7ee;
+  --rr-primary-contrast: #14172b;
+  --rr-accent: #eef0ff;
+  --rr-border: #33375c;
+  --rr-shadow: rgba(0, 0, 0, 0.45);
+  --rr-danger: #e0685f;
+  --rr-success: #7fc98f;
+  --rr-sidebar-bg: linear-gradient(180deg, #0d0f21 0%, #1d1938 100%);
+  --rr-sidebar-text: #e5e2fb;
+  --rr-sidebar-text-muted: #9b93bd;
+  --rr-sidebar-active-bg: rgba(182, 179, 224, 0.22);
+}
+
+html, body {
+  background-color: var(--rr-bg);
+  color: var(--rr-text);
+  font-family: var(--rr-font-body);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--rr-font-heading);
+  font-weight: 600;
+  color: var(--rr-text);
+}
+
+a, .btn-link {
+  color: var(--rr-primary);
+}
+
+a:hover, .btn-link:hover {
+  color: var(--rr-primary-hover);
+}
