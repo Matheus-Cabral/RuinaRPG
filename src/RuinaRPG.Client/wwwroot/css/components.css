@@ -37,6 +37,20 @@
   color: var(--rr-text);
 }
 
+.list-group-item-action:focus, .list-group-item-action:hover {
+  background-color: var(--rr-surface-alt);
+  color: var(--rr-text);
+}
+
+.breadcrumb-item.active,
+.breadcrumb-item + .breadcrumb-item::before {
+  color: var(--rr-text-muted);
+}
+
+.text-muted {
+  color: var(--rr-text-muted) !important;
+}
+
 .table {
   --bs-table-bg: var(--rr-surface);
   --bs-table-color: var(--rr-text);

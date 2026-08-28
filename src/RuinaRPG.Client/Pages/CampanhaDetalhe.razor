@@ -39,7 +39,7 @@
                         {
                             <li>
                                 <a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a>
-                                <span class="text-muted">— Nível @sheet.Nivel, @sheet.Vocacao (@sheet.Linhagem)</span>
+                                <span class="text-muted">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</span>
                             </li>
                         }
                     </ul>
