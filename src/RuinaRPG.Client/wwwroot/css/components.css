@@ -1,0 +1,82 @@
+/* ==========================================================================
+   Ruína RPG — Base component skin
+   Re-styles Bootstrap's default elements using the tokens from theme.css.
+   Every existing page inherits this without markup changes.
+   ========================================================================== */
+
+.btn {
+  border-radius: var(--rr-radius-sm);
+  font-family: var(--rr-font-body);
+  font-weight: 600;
+}
+
+.btn-primary {
+  background-color: var(--rr-primary);
+  border-color: var(--rr-primary);
+  color: var(--rr-primary-contrast);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--rr-primary-hover);
+  border-color: var(--rr-primary-hover);
+  color: var(--rr-primary-contrast);
+}
+
+.btn-danger {
+  background-color: var(--rr-danger);
+  border-color: var(--rr-danger);
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.2rem var(--rr-shadow);
+}
+
+.card, .list-group-item {
+  background-color: var(--rr-surface);
+  border-color: var(--rr-border);
+  color: var(--rr-text);
+}
+
+.table {
+  --bs-table-bg: var(--rr-surface);
+  --bs-table-color: var(--rr-text);
+  --bs-table-border-color: var(--rr-border);
+  --bs-table-striped-bg: var(--rr-surface-alt);
+}
+
+thead th {
+  font-family: var(--rr-font-heading);
+  font-weight: 600;
+  border-bottom-color: var(--rr-border);
+}
+
+.form-control, .form-select {
+  background-color: var(--rr-surface);
+  border-color: var(--rr-border);
+  color: var(--rr-text);
+  border-radius: var(--rr-radius-sm);
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: var(--rr-surface);
+  color: var(--rr-text);
+  border-color: var(--rr-primary);
+  box-shadow: 0 0 0 0.2rem var(--rr-shadow);
+}
+
+label {
+  color: var(--rr-text-muted);
+  font-weight: 600;
+}
+
+.alert-danger, .validation-message, .error {
+  color: var(--rr-danger);
+}
+
+.alert-success {
+  color: var(--rr-success);
+}
+
+hr {
+  border-color: var(--rr-border);
+}
