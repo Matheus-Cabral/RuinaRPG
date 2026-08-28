@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace RuinaRPG.Api.Hubs;
 
-[Authorize]
+[Authorize(Roles = "GM")]
 public class EncounterHub : Hub
 {
     public async Task JoinEncounter(string encounterId) =>

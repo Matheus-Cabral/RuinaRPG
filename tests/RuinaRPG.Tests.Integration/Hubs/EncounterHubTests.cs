@@ -242,4 +242,28 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
         await connection.DisposeAsync();
     }
+
+    [Fact]
+    public async Task Connecting_as_a_jogador_is_rejected()
+    {
+        // EncounterHub is [Authorize(Roles = "GM")] — the plan's own Global Constraint and R0002's
+        // "acesso 100% do GM... Não há visualização de jogador para o Encontro" both require this.
+        // A valid, linked Jogador token must still be rejected, not silently allowed through.
+        var gmToken = await RegisterGmAndGetTokenAsync("HubGm4", "hub4@teste.com");
+        var (_, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer4", "hubplayer4@teste.com");
+
+        var connection = new HubConnectionBuilder()
+            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/encounters"), options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(playerToken);
+                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+            })
+            .Build();
+
+        var act = async () => await connection.StartAsync();
+
+        await act.Should().ThrowAsync<HttpRequestException>("a valid Jogador token must still be rejected by a GM-only hub");
+
+        await connection.DisposeAsync();
+    }
 }

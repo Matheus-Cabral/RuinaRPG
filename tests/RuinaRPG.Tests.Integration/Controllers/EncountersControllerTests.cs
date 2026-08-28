@@ -155,6 +155,21 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task AdvanceTurn_on_an_encounter_owned_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("EncOwnerAdv", "encowneradv@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("EncOtherAdv", "encotheradv@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha do Dono do Encontro");
+        var encounterId = await CreateEncounterAsync(gmTokenOwner, campaignId, "Encontro do Dono");
+        var npcId = await CreateNpcSheetAsync(gmTokenOwner);
+        await AddParticipantAsync(gmTokenOwner, encounterId, npcId, 10);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task AdvanceTurn_moves_to_the_next_participant_and_resets_their_AcoesRestantes()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EncGmAdv1", "encadv1@teste.com");
@@ -230,5 +245,46 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         var after = await ListParticipantsAsync(gmToken, encounterId);
         after.Single(p => p.Id == firstId).AcoesRestantes.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task List_and_AdvanceTurn_agree_on_ordering_when_Iniciativa_is_tied()
+    {
+        // R0002's own "3 goblins" example: equal Iniciativa is expected and must not let List's
+        // ordering and AdvanceTurn's ordering disagree on who is "next" — both must ThenBy(Id)
+        // so the two independent queries are guaranteed to produce the same order.
+        var gmToken = await RegisterGmAndGetTokenAsync("EncGmTie1", "enctie1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Empate");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Empate");
+
+        var npc1 = await CreateNpcSheetAsync(gmToken);
+        var npc2 = await CreateNpcSheetAsync(gmToken);
+        var npc3 = await CreateNpcSheetAsync(gmToken);
+        await AddParticipantAsync(gmToken, encounterId, npc1, 10);
+        await AddParticipantAsync(gmToken, encounterId, npc2, 10);
+        await AddParticipantAsync(gmToken, encounterId, npc3, 10);
+
+        var beforeOrder = await ListParticipantsAsync(gmToken, encounterId);
+        beforeOrder.Should().HaveCount(3);
+        // The encounter starts at CurrentParticipantIndex 0, so a single AdvanceTurn call moves to
+        // index 1 (TurnAdvanceCalculator.Advance increments before resetting) — the participant List
+        // puts SECOND is the one that must get its AcoesRestantes reset.
+        var expectedNextId = beforeOrder[1].Id;
+
+        // Drive every participant's AcoesRestantes down to 0 so the reset is detectable — the
+        // default from Add is already 3.
+        foreach (var p in beforeOrder)
+            await SetAcoesRestantesAsync(gmToken, encounterId, p, 0);
+
+        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // AdvanceTurn must have reset the SAME participant that List put at index 1 — not a
+        // different one due to an ordering disagreement between the two independent queries.
+        var afterOrder = await ListParticipantsAsync(gmToken, encounterId);
+        afterOrder.Select(p => p.Id).Should().ContainInOrder(beforeOrder.Select(p => p.Id),
+            "List's ordering must be stable and agree with itself across calls when Iniciativa is tied");
+        afterOrder.Single(p => p.Id == expectedNextId).AcoesRestantes.Should().Be(3);
+        afterOrder.Where(p => p.Id != expectedNextId).Should().OnlyContain(p => p.AcoesRestantes == 0);
     }
 }

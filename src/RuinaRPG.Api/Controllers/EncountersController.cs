@@ -61,7 +61,7 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
 
         var nextParticipant = await db.EncounterParticipants
             .Where(p => p.EncounterId == encounterId)
-            .OrderByDescending(p => p.Iniciativa)
+            .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
             .Skip(nextIndex)
             .FirstAsync();
         nextParticipant.AcoesRestantes = 3;

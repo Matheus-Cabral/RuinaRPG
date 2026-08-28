@@ -80,7 +80,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         db.EncounterParticipants.Add(participant);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, await ToResponseAsync(participant));
+        return Created(string.Empty, await ToResponseAsync(participant, new List<string>()));
     }
 
     [HttpPut("{id}")]
@@ -127,21 +127,28 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
 
         var participants = await db.EncounterParticipants
             .Where(p => p.EncounterId == encounterId)
-            .OrderByDescending(p => p.Iniciativa)
+            .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
             .ToListAsync();
+
+        var participantIds = participants.Select(p => p.Id).ToList();
+        var conditionsByParticipantId = (await db.EncounterParticipantConditions
+                .Where(c => participantIds.Contains(c.EncounterParticipantId))
+                .ToListAsync())
+            .GroupBy(c => c.EncounterParticipantId)
+            .ToDictionary(g => g.Key, g => g.Select(c => c.Texto).ToList());
 
         var responses = new List<EncounterParticipantResponse>();
         foreach (var participant in participants)
-            responses.Add(await ToResponseAsync(participant));
+            responses.Add(await ToResponseAsync(participant, conditionsByParticipantId.GetValueOrDefault(participant.Id, new List<string>())));
         return responses;
     }
 
-    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p)
+    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p, List<string> condicoes)
     {
         if (p.SourceCharacterSheetId is not null)
         {
             var sheet = await db.CharacterSheets.FindAsync(p.SourceCharacterSheetId.Value);
-            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true);
+            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true, condicoes);
         }
         if (p.SourceNpcSheetId is not null)
         {
@@ -149,7 +156,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
             var isLive = sheet?.OwnerId is not null;
             return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa,
                 isLive ? sheet?.VitalidadeAtual : p.PVAtual, isLive ? sheet?.FocoAtual : p.PFAtual, isLive ? sheet?.AdrenalinaAtual : p.PAAtual,
-                p.AcoesRestantes, isLive);
+                p.AcoesRestantes, isLive, condicoes);
         }
         if (p.SourceCreatureSheetId is not null)
         {
@@ -157,10 +164,10 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
             var isLive = sheet?.OwnerId is not null;
             return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa,
                 isLive ? sheet?.VitalidadeAtual : p.PVAtual, isLive ? sheet?.FocoAtual : p.PFAtual, isLive ? sheet?.AdrenalinaAtual : p.PAAtual,
-                p.AcoesRestantes, isLive);
+                p.AcoesRestantes, isLive, condicoes);
         }
         // Source sheet was deleted (SetNull cascaded) — Nome snapshot still displays, PV/PF/PA frozen at whatever the columns last held.
-        return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false);
+        return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false, condicoes);
     }
 
     private async Task<(ActionResult? Error, Encounter? Encounter)> CheckEncounterOwnershipAsync(Guid encounterId)
