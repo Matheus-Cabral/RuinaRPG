@@ -14,175 +14,232 @@
     <p class="error">@_errorMessage</p>
 }
 
-<h2>Membros</h2>
-<input @bind="_memberSearch" placeholder="Buscar jogador para adicionar" />
-<button @onclick="SearchPlayersAsync">Buscar</button>
-<ul>
-    @foreach (var player in _searchResults)
-    {
-        <li>@player.Nickname (@player.Email) <button @onclick="@(() => AddMemberAsync(player.Id))">Adicionar</button></li>
-    }
-</ul>
-<ul>
-    @foreach (var member in _members)
-    {
-        <li>
-            @member.Nickname (@member.Email)
-            <button @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
-            <ul>
-                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
-                {
-                    <li><a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a></li>
-                }
-            </ul>
-        </li>
-    }
-</ul>
-
-<h2>Diário</h2>
-<EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
-    <label>Texto <InputTextArea @bind-Value="_diaryForm.Texto" /></label>
-    <button type="submit">Adicionar Entrada</button>
-</EditForm>
-<ul>
-    @foreach (var entry in _diaryEntries)
-    {
-        <li>
-            @if (_editingEntryId == entry.Id)
+<TabControl>
+    <TabPage Title="Membros">
+        <div class="mb-3">
+            <label class="form-label">Buscar jogador para adicionar</label>
+            <input class="form-control" @bind="_memberSearch" placeholder="Buscar jogador para adicionar" />
+        </div>
+        <button type="button" class="btn btn-primary" @onclick="SearchPlayersAsync">Buscar</button>
+        <ul class="list-unstyled mt-3">
+            @foreach (var player in _searchResults)
             {
-                <textarea @bind="_editText"></textarea>
-                <button @onclick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</button>
-                <button @onclick="CancelEditDiaryEntry">Cancelar</button>
+                <li>@player.Nickname (@player.Email) <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AddMemberAsync(player.Id))">Adicionar</button></li>
             }
-            else
-            {
-                <span>@entry.CreatedAt.ToString("g") — @entry.Texto</span>
-                <button @onclick="@(() => StartEditDiaryEntry(entry))">Editar</button>
-                <button @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
-            }
-        </li>
-    }
-</ul>
-
-<h2>Encontros</h2>
-<button @onclick="CreateEncounterAsync">Novo Encontro</button>
-<ul>
-    @foreach (var encounter in _encounters)
-    {
-        <li><a href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</a></li>
-    }
-</ul>
-
-<h2>Anexos</h2>
-<div>
-    <label>Item (id) <input @bind="_attachItemId" /> <button @onclick="AttachItemAsync">Anexar Item</button></label>
-</div>
-<div>
-    <label>Entrada do Banco de Magias (id) <input @bind="_attachBankEntryId" /> <button @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button></label>
-</div>
-<div>
-    <label>Imagem (id) <input @bind="_attachImageId" /> <button @onclick="AttachImageAsync">Anexar Imagem</button></label>
-</div>
-<div>
-    <label>Ficha de NPC (id) <input @bind="_attachNpcSheetId" /> <button @onclick="AttachNpcSheetAsync">Anexar NPC</button></label>
-</div>
-<div>
-    <label>Ficha de Criatura (id) <input @bind="_attachCreatureSheetId" /> <button @onclick="AttachCreatureSheetAsync">Anexar Criatura</button></label>
-</div>
-<ul>
-    @foreach (var attachment in _attachments)
-    {
-        <li>
-            [@attachment.Tipo] @attachment.Nome
-            @if (attachment.Tipo == "NpcSheet")
-            {
-                <label>Nome público <input type="checkbox" checked="@attachment.NpcNomePublico" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, (bool)e.Value!, attachment.NpcImagemPublica ?? false))" /></label>
-                <label>Imagem pública <input type="checkbox" checked="@attachment.NpcImagemPublica" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, (bool)e.Value!))" /></label>
-            }
-            else if (attachment.Tipo == "CreatureSheet")
-            {
-                <label>Nome público <input type="checkbox" checked="@attachment.CreatureNomePublico" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, (bool)e.Value!, attachment.CreatureImagemPublica ?? false))" /></label>
-                <label>Imagem pública <input type="checkbox" checked="@attachment.CreatureImagemPublica" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, (bool)e.Value!))" /></label>
-            }
-            else
-            {
-                <label>Público <input type="checkbox" checked="@attachment.IsPublic" @onchange="@(e => ToggleVisibilityAsync(attachment, (bool)e.Value!))" /></label>
-            }
-            <button @onclick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</button>
-        </li>
-    }
-</ul>
-
-<h2>Conceder Ficha</h2>
-<div>
-    <label>
-        Jogador
-        <select @bind="_grantPlayerId">
-            <option value="">(selecione)</option>
+        </ul>
+        <ul class="list-unstyled">
             @foreach (var member in _members)
             {
-                <option value="@member.UserId">@member.Nickname</option>
+                <li>
+                    @member.Nickname (@member.Email)
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
+                    <ul>
+                        @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
+                        {
+                            <li><a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a></li>
+                        }
+                    </ul>
+                </li>
             }
-        </select>
-    </label>
-    <label>
-        Tipo
-        <select @bind="_grantTipo">
-            <option value="Npc">NPC</option>
-            <option value="Creature">Criatura</option>
-        </select>
-    </label>
-    <label>Ficha de origem (id, opcional — em branco cria uma ficha nova) <input @bind="_grantSourceSheetId" /></label>
-    <button @onclick="GrantSheetAsync">Conceder</button>
-</div>
+        </ul>
+    </TabPage>
 
-<h2>Notas Secretas</h2>
-<EditForm Model="_noteForm" OnValidSubmit="AddSecretNoteAsync">
-    <label>Texto <InputTextArea @bind-Value="_noteForm.Texto" /></label>
-    <p>Destinatários:</p>
-    <ul>
-        @foreach (var member in _members)
-        {
-            <li>
-                <label>
-                    <input type="checkbox" checked="@_noteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleNoteRecipient(member.UserId, (bool)e.Value!))" />
-                    @member.Nickname
-                </label>
-            </li>
-        }
-    </ul>
-    <button type="submit">Adicionar Nota Secreta</button>
-</EditForm>
-<ul>
-    @foreach (var note in _secretNotes)
-    {
-        <li>
-            @if (_editingNoteId == note.Id)
+    <TabPage Title="Diário">
+        <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
+            <div class="mb-3">
+                <label class="form-label">Texto</label>
+                <InputTextArea class="form-control" @bind-Value="_diaryForm.Texto" />
+            </div>
+            <button type="submit" class="btn btn-primary">Adicionar Entrada</button>
+        </EditForm>
+        <ul class="list-unstyled mt-3">
+            @foreach (var entry in _diaryEntries)
             {
-                <textarea @bind="_editNoteText"></textarea>
-                <ul>
+                <li>
+                    @if (_editingEntryId == entry.Id)
+                    {
+                        <textarea class="form-control" @bind="_editText"></textarea>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditDiaryEntry">Cancelar</button>
+                    }
+                    else
+                    {
+                        <span>@entry.CreatedAt.ToString("g") — @entry.Texto</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditDiaryEntry(entry))">Editar</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
+                    }
+                </li>
+            }
+        </ul>
+    </TabPage>
+
+    <TabPage Title="Encontros">
+        <button type="button" class="btn btn-primary" @onclick="CreateEncounterAsync">Novo Encontro</button>
+        <ul class="list-unstyled mt-3">
+            @foreach (var encounter in _encounters)
+            {
+                <li><a href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</a></li>
+            }
+        </ul>
+    </TabPage>
+
+    <TabPage Title="Anexos">
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Item (id)</label>
+                <div class="input-group">
+                    <input class="form-control" @bind="_attachItemId" />
+                    <button type="button" class="btn btn-primary" @onclick="AttachItemAsync">Anexar Item</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Entrada do Banco de Magias (id)</label>
+                <div class="input-group">
+                    <input class="form-control" @bind="_attachBankEntryId" />
+                    <button type="button" class="btn btn-primary" @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Imagem (id)</label>
+                <div class="input-group">
+                    <input class="form-control" @bind="_attachImageId" />
+                    <button type="button" class="btn btn-primary" @onclick="AttachImageAsync">Anexar Imagem</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ficha de NPC (id)</label>
+                <div class="input-group">
+                    <input class="form-control" @bind="_attachNpcSheetId" />
+                    <button type="button" class="btn btn-primary" @onclick="AttachNpcSheetAsync">Anexar NPC</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ficha de Criatura (id)</label>
+                <div class="input-group">
+                    <input class="form-control" @bind="_attachCreatureSheetId" />
+                    <button type="button" class="btn btn-primary" @onclick="AttachCreatureSheetAsync">Anexar Criatura</button>
+                </div>
+            </div>
+        </div>
+        <ul class="list-unstyled">
+            @foreach (var attachment in _attachments)
+            {
+                <li>
+                    [@attachment.Tipo] @attachment.Nome
+                    @if (attachment.Tipo == "NpcSheet")
+                    {
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" checked="@attachment.NpcNomePublico" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, (bool)e.Value!, attachment.NpcImagemPublica ?? false))" />
+                            <label class="form-check-label">Nome público</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" checked="@attachment.NpcImagemPublica" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, (bool)e.Value!))" />
+                            <label class="form-check-label">Imagem pública</label>
+                        </div>
+                    }
+                    else if (attachment.Tipo == "CreatureSheet")
+                    {
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" checked="@attachment.CreatureNomePublico" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, (bool)e.Value!, attachment.CreatureImagemPublica ?? false))" />
+                            <label class="form-check-label">Nome público</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" checked="@attachment.CreatureImagemPublica" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, (bool)e.Value!))" />
+                            <label class="form-check-label">Imagem pública</label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" checked="@attachment.IsPublic" @onchange="@(e => ToggleVisibilityAsync(attachment, (bool)e.Value!))" />
+                            <label class="form-check-label">Público</label>
+                        </div>
+                    }
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</button>
+                </li>
+            }
+        </ul>
+    </TabPage>
+
+    <TabPage Title="Conceder Ficha">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Jogador</label>
+                <select class="form-select" @bind="_grantPlayerId">
+                    <option value="">(selecione)</option>
                     @foreach (var member in _members)
                     {
-                        <li>
-                            <label>
-                                <input type="checkbox" checked="@_editNoteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleEditNoteRecipient(member.UserId, (bool)e.Value!))" />
-                                @member.Nickname
-                            </label>
-                        </li>
+                        <option value="@member.UserId">@member.Nickname</option>
                     }
-                </ul>
-                <button @onclick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</button>
-                <button @onclick="CancelEditSecretNote">Cancelar</button>
-            }
-            else
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" @bind="_grantTipo">
+                    <option value="Npc">NPC</option>
+                    <option value="Creature">Criatura</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Ficha de origem (id, opcional — em branco cria uma ficha nova)</label>
+                <input class="form-control" @bind="_grantSourceSheetId" />
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" @onclick="GrantSheetAsync">Conceder</button>
+    </TabPage>
+
+    <TabPage Title="Notas Secretas">
+        <EditForm Model="_noteForm" OnValidSubmit="AddSecretNoteAsync">
+            <div class="mb-3">
+                <label class="form-label">Texto</label>
+                <InputTextArea class="form-control" @bind-Value="_noteForm.Texto" />
+            </div>
+            <p>Destinatários:</p>
+            <ul class="list-unstyled">
+                @foreach (var member in _members)
+                {
+                    <li>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked="@_noteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleNoteRecipient(member.UserId, (bool)e.Value!))" />
+                            <label class="form-check-label">@member.Nickname</label>
+                        </div>
+                    </li>
+                }
+            </ul>
+            <button type="submit" class="btn btn-primary">Adicionar Nota Secreta</button>
+        </EditForm>
+        <ul class="list-unstyled mt-3">
+            @foreach (var note in _secretNotes)
             {
-                <span>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</span>
-                <button @onclick="@(() => StartEditSecretNote(note))">Editar</button>
-                <button @onclick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</button>
+                <li>
+                    @if (_editingNoteId == note.Id)
+                    {
+                        <textarea class="form-control" @bind="_editNoteText"></textarea>
+                        <ul class="list-unstyled">
+                            @foreach (var member in _members)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" checked="@_editNoteRecipients.Contains(member.UserId)" @onchange="@(e => ToggleEditNoteRecipient(member.UserId, (bool)e.Value!))" />
+                                        <label class="form-check-label">@member.Nickname</label>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditSecretNote">Cancelar</button>
+                    }
+                    else
+                    {
+                        <span>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditSecretNote(note))">Editar</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</button>
+                    }
+                </li>
             }
-        </li>
-    }
-</ul>
+        </ul>
+    </TabPage>
+</TabControl>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
