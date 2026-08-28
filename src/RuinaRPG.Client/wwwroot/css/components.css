@@ -80,3 +80,116 @@ label {
 hr {
   border-color: var(--rr-border);
 }
+
+/* ==========================================================================
+   Formulários e tabelas "crus"
+   As páginas usam HTML puro (<label>Campo <input /></label>, <table> sem
+   classes) em vez de classes Bootstrap, então estas regras miram os
+   elementos diretamente. Ficam restritas a `.content` (onde @Body é
+   renderizado) para não vazar para o cabeçalho/menu, que já têm seu
+   próprio visual isolado (hamburger, seletor de tema).
+   ========================================================================== */
+
+.content label {
+  display: block;
+  margin-bottom: var(--rr-space-3);
+}
+
+.content input:not([type="checkbox"]):not([type="radio"]),
+.content select,
+.content textarea {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--rr-space-2) var(--rr-space-3);
+  background-color: var(--rr-surface);
+  color: var(--rr-text);
+  border: 1px solid var(--rr-border);
+  border-radius: var(--rr-radius-sm);
+  font-family: var(--rr-font-body);
+  font-size: 1rem;
+}
+
+.content label > input:not([type="checkbox"]):not([type="radio"]),
+.content label > select,
+.content label > textarea {
+  display: block;
+  margin-top: var(--rr-space-1);
+}
+
+.content input:focus,
+.content select:focus,
+.content textarea:focus {
+  outline: none;
+  border-color: var(--rr-primary);
+  box-shadow: 0 0 0 0.2rem var(--rr-shadow);
+}
+
+.content input[type="checkbox"],
+.content input[type="radio"] {
+  width: auto;
+  accent-color: var(--rr-primary);
+  margin-right: var(--rr-space-2);
+}
+
+.content td input:not([type="checkbox"]):not([type="radio"]) {
+  max-width: 100px;
+}
+
+.content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--rr-space-4);
+  background-color: var(--rr-surface);
+  border: 1px solid var(--rr-border);
+}
+
+.content th, .content td {
+  padding: var(--rr-space-2) var(--rr-space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--rr-border);
+}
+
+.content thead th {
+  background-color: var(--rr-surface-alt);
+}
+
+.content tbody tr:nth-child(even) {
+  background-color: var(--rr-surface-alt);
+}
+
+.content tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.content tbody tr:hover {
+  background-color: var(--rr-shadow);
+}
+
+.content button {
+  display: inline-block;
+  padding: var(--rr-space-2) var(--rr-space-4);
+  margin: var(--rr-space-1) var(--rr-space-2) var(--rr-space-1) 0;
+  border: 1px solid var(--rr-primary);
+  border-radius: var(--rr-radius-sm);
+  background-color: var(--rr-primary);
+  color: var(--rr-primary-contrast);
+  font-family: var(--rr-font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.content button:hover {
+  background-color: var(--rr-primary-hover);
+  border-color: var(--rr-primary-hover);
+}
+
+.content button:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem var(--rr-shadow);
+}
+
+.content button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
