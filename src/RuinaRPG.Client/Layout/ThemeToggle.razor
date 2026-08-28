@@ -1,0 +1,25 @@
+@inject IJSRuntime JS
+
+<button class="theme-toggle" @onclick="ToggleAsync" title="Alternar entre tema Sol e Lua" aria-label="Alternar entre tema Sol e Lua">
+    <span class="theme-toggle-icon @(_theme == "light" ? "active" : "")" aria-hidden="true">☀️</span>
+    <span class="theme-toggle-icon @(_theme == "dark" ? "active" : "")" aria-hidden="true">🌙</span>
+</button>
+
+@code {
+    private string _theme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await JS.InvokeAsync<string>("ruinaTheme.resolveInitial");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _theme = _theme == "dark" ? "light" : "dark";
+        await JS.InvokeVoidAsync("ruinaTheme.set", _theme);
+    }
+}

@@ -1,79 +1,63 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Ruína RPG</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+<nav class="nav-menu">
+    <div class="nav-item">
+        <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🏠</span> Início
+        </NavLink>
     </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Início
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="login">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Entrar
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cadastro">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Cadastrar
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="painel/convites">
-                <span class="bi bi-envelope-fill-nav-menu" aria-hidden="true"></span> Convidar Jogador
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="painel/jogadores">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Jogadores
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="catalogo">
-                <span class="bi bi-box-seam-fill-nav-menu" aria-hidden="true"></span> Catálogo de Itens
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="npcs">
-                <span class="bi bi-person-badge-fill-nav-menu" aria-hidden="true"></span> NPCs do GM
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="bestiario">
-                <span class="bi bi-bug-fill-nav-menu" aria-hidden="true"></span> Bestiário do GM
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="banco-de-magias">
-                <span class="bi bi-wand-magic-2-nav-menu" aria-hidden="true"></span> Banco de Magias e Habilidades
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="campanhas">
-                <span class="bi bi-journal-richtext-nav-menu" aria-hidden="true"></span> Campanhas
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="compendio">
-                <span class="bi bi-book-fill-nav-menu" aria-hidden="true"></span> Compêndio de Regras
-            </NavLink>
-        </div>
-    </nav>
-</div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="login" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🔑</span> Entrar
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="cadastro" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">✒️</span> Cadastrar
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="painel/convites" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">✉️</span> Convidar Jogador
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="painel/jogadores" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">👥</span> Jogadores
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="catalogo" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🎒</span> Catálogo de Itens
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="npcs" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🎭</span> NPCs do GM
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="bestiario" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🐺</span> Bestiário do GM
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="banco-de-magias" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">📜</span> Banco de Magias e Habilidades
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="campanhas" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">🗺️</span> Campanhas
+        </NavLink>
+    </div>
+    <div class="nav-item">
+        <NavLink class="nav-link" href="compendio" @onclick="NotifyLinkClicked">
+            <span class="nav-icon" aria-hidden="true">📖</span> Compêndio de Regras
+        </NavLink>
+    </div>
+</nav>
 
 @code {
-    private bool collapseNavMenu = true;
+    [Parameter] public EventCallback OnLinkClicked { get; set; }
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+    private Task NotifyLinkClicked() => OnLinkClicked.InvokeAsync();
 }
