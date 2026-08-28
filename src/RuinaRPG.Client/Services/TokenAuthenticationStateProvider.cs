@@ -19,8 +19,9 @@ public class TokenAuthenticationStateProvider(AuthStateService authState) : Auth
         {
             payload = JwtClaimsParser.ParsePayload(token);
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException or InvalidOperationException)
         {
+            await authState.ClearAsync();
             return new AuthenticationState(AnonymousPrincipal);
         }
 

@@ -86,7 +86,10 @@
 @media (min-width: 992px) {
     .sidebar {
         position: sticky;
+        top: 0;
         transform: none;
+        height: 100vh;
+        align-self: flex-start;
     }
 
     .sidebar-backdrop {

@@ -9,7 +9,7 @@
     margin-bottom: var(--rr-space-1);
 }
 
-.nav-link {
+.nav-item ::deep .nav-link {
     display: flex;
     align-items: center;
     gap: var(--rr-space-2);
@@ -20,12 +20,12 @@
     font-weight: 600;
 }
 
-.nav-link:hover {
+.nav-item ::deep .nav-link:hover {
     background-color: var(--rr-sidebar-active-bg);
     color: var(--rr-sidebar-text);
 }
 
-.nav-link.active {
+.nav-item ::deep .nav-link.active {
     background-color: var(--rr-sidebar-active-bg);
     color: var(--rr-sidebar-text);
 }
