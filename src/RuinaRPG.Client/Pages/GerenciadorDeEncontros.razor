@@ -5,8 +5,10 @@
 @inject AuthStateService AuthState
 @using Microsoft.AspNetCore.SignalR.Client
 @using RuinaRPG.Client.Services
+@using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.Encounters
 
+<Breadcrumbs Items="@Crumbs" />
 <h1>Encontro — Rodada @_encounter?.CurrentRound</h1>
 
 @if (_errorMessage is not null)
@@ -88,6 +90,23 @@
     [Parameter] public string CampaignId { get; set; } = "";
     [Parameter] public string EncounterId { get; set; } = "";
 
+    private string? _campaignName;
+
+    private List<BreadcrumbItem> Crumbs
+    {
+        get
+        {
+            var crumbs = new List<BreadcrumbItem> { new("Painel", "painel") };
+            if (_campaignName is not null)
+            {
+                crumbs.Add(new("Campanhas", "campanhas"));
+                crumbs.Add(new(_campaignName, $"campanhas/{CampaignId}"));
+            }
+            crumbs.Add(new(_encounter?.Nome ?? "Encontro"));
+            return crumbs;
+        }
+    }
+
     private EncounterResponse? _encounter;
     private List<EncounterParticipantResponse> _participants = new();
     private HubConnection? _hubConnection;
@@ -98,7 +117,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
+        await Task.WhenAll(LoadAsync(), LoadCampaignNameAsync());
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(new Uri(new Uri(Http.BaseAddress!, "/"), "hubs/encounters"), options =>
@@ -109,6 +128,14 @@
         _hubConnection.On("ParticipantsChanged", async () => { await LoadAsync(); StateHasChanged(); });
         await _hubConnection.StartAsync();
         await _hubConnection.SendAsync("JoinEncounter", EncounterId);
+    }
+
+    private async Task LoadCampaignNameAsync()
+    {
+        var response = await Http.GetAsync("campaigns");
+        if (!response.IsSuccessStatusCode) return;
+        var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
+        _campaignName = campaigns.FirstOrDefault(c => c.Id == CampaignId)?.Nome;
     }
 
     private async Task LoadAsync()

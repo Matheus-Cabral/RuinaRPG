@@ -7,7 +7,8 @@
 @using RuinaRPG.Contracts.Encounters
 @using RuinaRPG.Contracts.Players
 
-<h1>Campanha</h1>
+<Breadcrumbs Items="@Crumbs" />
+<h1>@(_campaignName ?? "Campanha")</h1>
 
 @if (_errorMessage is not null)
 {
@@ -247,6 +248,15 @@
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
 
+    private string? _campaignName;
+
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Campanhas", "campanhas"),
+        new(_campaignName ?? "Campanha"),
+    };
+
     private List<CampaignMemberResponse> _members = new();
     private List<CharacterSheetResponse> _sheets = new();
     private List<DiaryEntryResponse> _diaryEntries = new();
@@ -275,7 +285,15 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync());
+
+    private async Task LoadCampaignNameAsync()
+    {
+        var response = await Http.GetAsync("campaigns");
+        if (!response.IsSuccessStatusCode) return;
+        var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
+        _campaignName = campaigns.FirstOrDefault(c => c.Id == CampaignId)?.Nome;
+    }
 
     private async Task LoadMembersAsync()
     {

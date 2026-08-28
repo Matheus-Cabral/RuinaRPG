@@ -1,9 +1,11 @@
 @page "/fichas/{SheetId}"
 @inject HttpClient Http
+@using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
 @using RuinaRPG.Contracts.SpellsAndAbilities
 
+<Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Personagem</h1>
 
 @if (_errorMessage is not null)
@@ -493,6 +495,23 @@
 @code {
     [Parameter] public string SheetId { get; set; } = "";
 
+    private string? _campaignId;
+    private string? _campaignName;
+
+    private List<BreadcrumbItem> Crumbs
+    {
+        get
+        {
+            var crumbs = new List<BreadcrumbItem> { new("Painel", "painel") };
+            if (_campaignName is not null && _campaignId is not null)
+                crumbs.Add(new("Campanhas", "campanhas"));
+            if (_campaignName is not null && _campaignId is not null)
+                crumbs.Add(new(_campaignName, $"campanhas/{_campaignId}"));
+            crumbs.Add(new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Personagem" : _form.Nome));
+            return crumbs;
+        }
+    }
+
     private readonly SheetFormModel _form = new();
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
@@ -523,10 +542,23 @@
     private string? _editingDiaryEntryId;
     private string _editDiaryText = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(
-        LoadSheetAsync(), LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
-        LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
-        LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadDiaryAsync());
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSheetAsync();
+        await Task.WhenAll(LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
+            LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
+            LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadDiaryAsync(),
+            LoadCampaignNameAsync());
+    }
+
+    private async Task LoadCampaignNameAsync()
+    {
+        if (_campaignId is null) return;
+        var response = await Http.GetAsync("campaigns");
+        if (!response.IsSuccessStatusCode) return;
+        var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
+        _campaignName = campaigns.FirstOrDefault(c => c.Id == _campaignId)?.Nome;
+    }
 
     private async Task LoadSheetAsync()
     {
@@ -538,6 +570,7 @@
         }
 
         var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        _campaignId = sheet!.CampaignId;
         _form.Nome = sheet!.Nome;
         _form.Linhagem = sheet.Linhagem;
         _form.Variante = sheet.Variante;
