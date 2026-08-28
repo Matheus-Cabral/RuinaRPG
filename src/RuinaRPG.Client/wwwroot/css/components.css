@@ -167,6 +167,7 @@ hr {
 
 .content td input:not([type="checkbox"]):not([type="radio"]) {
   max-width: 100px;
+  min-width: 4rem;
 }
 
 .content table {

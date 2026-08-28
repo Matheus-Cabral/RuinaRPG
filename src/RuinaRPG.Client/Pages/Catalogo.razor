@@ -10,7 +10,7 @@
 <button @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
 
 <div>
-    <select @bind="_tipoFiltro">
+    <select @bind="_tipoFiltro" @bind:after="LoadAsync">
         <option value="">Todos os Tipos</option>
         <option value="ItemGeral">Item Geral</option>
         <option value="Arma">Arma</option>
@@ -18,7 +18,6 @@
         <option value="Escudo">Escudo</option>
         <option value="Artefato">Artefato</option>
     </select>
-    <button @onclick="LoadAsync">Filtrar</button>
 </div>
 
 @if (_errorMessage is not null)

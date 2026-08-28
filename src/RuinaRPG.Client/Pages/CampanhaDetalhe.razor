@@ -19,9 +19,8 @@
     <TabPage Title="Membros">
         <div class="mb-3">
             <label class="form-label">Buscar jogador para adicionar</label>
-            <input class="form-control" @bind="_memberSearch" placeholder="Buscar jogador para adicionar" />
+            <input class="form-control" @bind="_memberSearch" @bind:event="oninput" @bind:after="DebouncedSearchPlayersAsync" placeholder="Buscar jogador para adicionar" />
         </div>
-        <button type="button" class="btn btn-primary" @onclick="SearchPlayersAsync">Buscar</button>
         <ul class="list-unstyled mt-3">
             @foreach (var player in _searchResults)
             {
@@ -285,7 +284,7 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync());
 
     private async Task LoadCampaignNameAsync()
     {
@@ -348,6 +347,25 @@
         var response = await Http.GetAsync($"campaigns/{CampaignId}/secret-notes");
         if (response.IsSuccessStatusCode)
             _secretNotes = await response.Content.ReadFromJsonAsync<List<SecretNoteResponse>>() ?? new();
+    }
+
+    private CancellationTokenSource? _memberSearchDebounceCts;
+
+    private async Task DebouncedSearchPlayersAsync()
+    {
+        _memberSearchDebounceCts?.Cancel();
+        _memberSearchDebounceCts = new CancellationTokenSource();
+        var token = _memberSearchDebounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await SearchPlayersAsync();
     }
 
     private async Task SearchPlayersAsync()

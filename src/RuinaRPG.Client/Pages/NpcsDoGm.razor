@@ -10,11 +10,10 @@
 <button @onclick="CreateAsync">Novo NPC</button>
 
 <div>
-    <label>Nome <input @bind="_nomeFiltro" /></label>
-    <label>Linhagem <input @bind="_linhagemFiltro" /></label>
-    <label>Vocação <input @bind="_vocacaoFiltro" /></label>
-    <label>Nível <input type="number" @bind="_nivelFiltro" /></label>
-    <button @onclick="LoadAsync">Filtrar</button>
+    <label>Nome <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Linhagem <input @bind="_linhagemFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Vocação <input @bind="_vocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Nível <input type="number" @bind="_nivelFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
 </div>
 
 @if (_errorMessage is not null)
@@ -61,6 +60,25 @@
     private string? _errorMessage;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedLoadAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

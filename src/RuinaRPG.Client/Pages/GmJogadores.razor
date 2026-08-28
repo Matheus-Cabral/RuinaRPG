@@ -6,8 +6,7 @@
 
 <h1>Jogadores</h1>
 
-<input @bind="_query" @bind:event="oninput" placeholder="Buscar por nickname ou e-mail" />
-<button @onclick="SearchAsync">Buscar</button>
+<input @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar por nickname ou e-mail" />
 
 @if (_errorMessage is not null)
 {
@@ -45,6 +44,27 @@
     private string? _errorMessage;
     private string? _resettingPlayerId;
     private readonly ResetFormModel _resetRequest = new();
+
+    protected override Task OnInitializedAsync() => SearchAsync();
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedSearchAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await SearchAsync();
+    }
 
     private async Task SearchAsync()
     {

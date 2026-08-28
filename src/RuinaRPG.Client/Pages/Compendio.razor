@@ -7,16 +7,15 @@
 <h1>Compêndio de Regras</h1>
 
 <div>
-    <input @bind="_query" @bind:event="oninput" placeholder="Buscar..." />
+    <input @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar..." />
     @foreach (var categoria in _categorias)
     {
         <label>
             <input type="checkbox" checked="@_selectedCategorias.Contains(categoria)"
-                   @onchange="@(e => ToggleCategoria(categoria, (bool)e.Value!))" />
+                   @onchange="@(e => ToggleCategoriaAsync(categoria, (bool)e.Value!))" />
             @categoria
         </label>
     }
-    <button @onclick="SearchAsync">Buscar</button>
 </div>
 
 @if (_errorMessage is not null)
@@ -49,12 +48,33 @@
 
     protected override Task OnInitializedAsync() => SearchAsync();
 
-    private void ToggleCategoria(string categoria, bool isSelected)
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedSearchAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await SearchAsync();
+    }
+
+    private async Task ToggleCategoriaAsync(string categoria, bool isSelected)
     {
         if (isSelected)
             _selectedCategorias.Add(categoria);
         else
             _selectedCategorias.Remove(categoria);
+
+        await SearchAsync();
     }
 
     private async Task SearchAsync()

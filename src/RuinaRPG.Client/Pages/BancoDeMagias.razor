@@ -10,15 +10,14 @@
 <button @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
 
 <div>
-    <input @bind="_nomeFiltro" placeholder="Nome" />
-    <select @bind="_tipoFiltro">
+    <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Nome" />
+    <select @bind="_tipoFiltro" @bind:after="LoadAsync">
         <option value="">Todos os Tipos</option>
         <option value="Magia">Magia</option>
         <option value="Habilidade">Habilidade</option>
         <option value="Racial">Racial</option>
     </select>
-    <input type="number" @bind="_grauFiltro" placeholder="Grau" />
-    <button @onclick="LoadAsync">Filtrar</button>
+    <input type="number" @bind="_grauFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Grau" />
 </div>
 
 @if (_errorMessage is not null)
@@ -69,6 +68,25 @@
     private string? _errorMessage;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedLoadAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

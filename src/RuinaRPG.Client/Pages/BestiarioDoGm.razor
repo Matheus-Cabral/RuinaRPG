@@ -10,11 +10,11 @@
 <button @onclick="CreateAsync">Nova Criatura</button>
 
 <div>
-    <label>Nome <input @bind="_nomeFiltro" /></label>
-    <label>Raça <input @bind="_racaFiltro" /></label>
+    <label>Nome <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Raça <input @bind="_racaFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
     <label>
         Arquétipo
-        <select @bind="_arquetipoFiltro">
+        <select @bind="_arquetipoFiltro" @bind:after="LoadAsync">
             <option value="">Todos</option>
             <option value="Fisico">Físico</option>
             <option value="Arcano">Arcano</option>
@@ -22,7 +22,7 @@
     </label>
     <label>
         Rank
-        <select @bind="_rankFiltro">
+        <select @bind="_rankFiltro" @bind:after="LoadAsync">
             <option value="">Todos</option>
             <option value="F">F</option>
             <option value="E">E</option>
@@ -33,7 +33,6 @@
             <option value="S">S</option>
         </select>
     </label>
-    <button @onclick="LoadAsync">Filtrar</button>
 </div>
 
 @if (_errorMessage is not null)
@@ -80,6 +79,25 @@
     private string? _errorMessage;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedLoadAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
