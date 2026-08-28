@@ -42,6 +42,11 @@
   --bs-table-color: var(--rr-text);
   --bs-table-border-color: var(--rr-border);
   --bs-table-striped-bg: var(--rr-surface-alt);
+  color: var(--rr-text);
+}
+
+.table > :not(caption) > * > * {
+  background-color: transparent;
 }
 
 thead th {
@@ -95,6 +100,11 @@ hr {
   margin-bottom: var(--rr-space-3);
 }
 
+.content .form-check-label {
+  display: inline-block;
+  margin-bottom: 0;
+}
+
 .content input:not([type="checkbox"]):not([type="radio"]),
 .content select,
 .content textarea {
@@ -107,6 +117,16 @@ hr {
   border-radius: var(--rr-radius-sm);
   font-family: var(--rr-font-body);
   font-size: 1rem;
+}
+
+.content .input-group > input {
+  width: 1%;
+}
+
+.content .input-group-text {
+  background-color: var(--rr-surface-alt);
+  color: var(--rr-text);
+  border-color: var(--rr-border);
 }
 
 .content label > input:not([type="checkbox"]):not([type="radio"]),
@@ -124,8 +144,8 @@ hr {
   box-shadow: 0 0 0 0.2rem var(--rr-shadow);
 }
 
-.content input[type="checkbox"],
-.content input[type="radio"] {
+.content input[type="checkbox"]:not(.form-check-input),
+.content input[type="radio"]:not(.form-check-input) {
   width: auto;
   accent-color: var(--rr-primary);
   margin-right: var(--rr-space-2);
@@ -165,7 +185,7 @@ hr {
   background-color: var(--rr-shadow);
 }
 
-.content button {
+.content button:not([class*="btn"]) {
   display: inline-block;
   padding: var(--rr-space-2) var(--rr-space-4);
   margin: var(--rr-space-1) var(--rr-space-2) var(--rr-space-1) 0;
@@ -179,17 +199,17 @@ hr {
   cursor: pointer;
 }
 
-.content button:hover {
+.content button:not([class*="btn"]):hover {
   background-color: var(--rr-primary-hover);
   border-color: var(--rr-primary-hover);
 }
 
-.content button:focus {
+.content button:not([class*="btn"]):focus {
   outline: none;
   box-shadow: 0 0 0 0.2rem var(--rr-shadow);
 }
 
-.content button:disabled {
+.content button:not([class*="btn"]):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
