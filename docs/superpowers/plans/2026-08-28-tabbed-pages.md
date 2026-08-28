@@ -27,6 +27,7 @@
 - "Current / Maximum" fields (trailing `/ @_form.XMaximo` text) → Bootstrap input-group (see Task 3 worked example).
 - Tables: `<table>` → `<table class="table">`. Editable `<td>` cells keep their current bare `<input>` structure (Round 2's CSS still narrows them).
 - `dotnet build` must stay at 0 warnings/0 errors after every task.
+- `src/RuinaRPG.Client/_Imports.razor` already has `@using RuinaRPG.Client.Shared` (added by Task 2, the first consumer of `TabControl`/`TabPage` — without it every page gets 7 `RZ10012` warnings). It applies to every `.razor` file in the project already — **do not add a per-page `@using RuinaRPG.Client.Shared`**, that would trigger a CS0105 duplicate-using warning and break the 0-warnings bar.
 - No Blazor component test infrastructure exists in this repo — verification is `dotnet build` + running `dotnet run --project src/RuinaRPG.Client` standalone and `curl`-checking the served HTML for the expected tab/Bootstrap markup, plus careful manual diff-reading to confirm every binding/handler survived. No screenshot tool is available in this environment.
 
 ---
@@ -649,10 +650,10 @@ Same method as Task 2 Step 2: confirm every field and method referenced in the m
 dotnet build
 dotnet run --project src/RuinaRPG.Client --urls http://127.0.0.1:5299 &
 sleep 8
-curl -s http://127.0.0.1:5299/fichas/test-id | grep -c "nav-tabs\|tab-pane"
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5299/fichas/test-id
 kill %1
 ```
-Expected: build 0/0; grep count > 0.
+Expected: build 0/0; HTTP 200. **Note (found during Task 2):** `RuinaRPG.Client` is Blazor WebAssembly standalone with no server prerendering, so curl only ever returns the static `index.html` shell — it can never show the client-rendered tab markup (`nav-tabs`/`tab-pane` will never appear in a curl response, no matter how correct the page is). Don't grep for them; HTTP 200 here only confirms routing/no immediate crash. The real correctness gate for this task is Step 2's exhaustive `@code`-preservation diff check.
 
 - [ ] **Step 4: Commit**
 
@@ -688,10 +689,10 @@ Keep `<h1>Ficha de NPC</h1>` and the `@if (_errorMessage...)` block above the `<
 dotnet build
 dotnet run --project src/RuinaRPG.Client --urls http://127.0.0.1:5299 &
 sleep 8
-curl -s http://127.0.0.1:5299/npcs/test-id | grep -c "nav-tabs\|tab-pane"
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5299/npcs/test-id
 kill %1
 ```
-Expected: build 0/0; grep count > 0.
+Expected: build 0/0; HTTP 200. **Note (found during Task 2):** `RuinaRPG.Client` is Blazor WebAssembly standalone with no server prerendering — curl only ever returns the static `index.html` shell, never client-rendered markup. Don't grep for `nav-tabs`/`tab-pane`. HTTP 200 here only confirms routing/no immediate crash; the real correctness gate is Step 2's exhaustive `@code`-preservation diff check.
 
 - [ ] **Step 4: Commit**
 
@@ -733,10 +734,10 @@ Keep `<h1>Ficha de Criatura</h1>` and the `@if (_errorMessage...)` block above t
 dotnet build
 dotnet run --project src/RuinaRPG.Client --urls http://127.0.0.1:5299 &
 sleep 8
-curl -s http://127.0.0.1:5299/criaturas/test-id | grep -c "nav-tabs\|tab-pane"
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5299/criaturas/test-id
 kill %1
 ```
-Expected: build 0/0; grep count > 0.
+Expected: build 0/0; HTTP 200. **Note (found during Task 2):** `RuinaRPG.Client` is Blazor WebAssembly standalone with no server prerendering — curl only ever returns the static `index.html` shell, never client-rendered markup. Don't grep for `nav-tabs`/`tab-pane`. HTTP 200 here only confirms routing/no immediate crash; the real correctness gate is Step 2's exhaustive `@code`-preservation diff check.
 
 - [ ] **Step 4: Commit**
 
@@ -812,10 +813,10 @@ Keep `<h1>Minha Campanha</h1>` and the `@if (_errorMessage...)` block exactly wh
 dotnet build
 dotnet run --project src/RuinaRPG.Client --urls http://127.0.0.1:5299 &
 sleep 8
-curl -s http://127.0.0.1:5299/campanhas/test-id/jogador | grep -c "nav-tabs\|tab-pane"
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5299/campanhas/test-id/jogador
 kill %1
 ```
-Expected: build 0/0; grep count > 0.
+Expected: build 0/0; HTTP 200. **Note (found during Task 2):** `RuinaRPG.Client` is Blazor WebAssembly standalone with no server prerendering — curl only ever returns the static `index.html` shell, never client-rendered markup. Don't grep for `nav-tabs`/`tab-pane`. HTTP 200 here only confirms routing/no immediate crash; the real correctness gate is Step 2's exhaustive `@code`-preservation diff check.
 
 - [ ] **Step 4: Commit**
 
