@@ -4,6 +4,8 @@
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Contracts.CharacterSheets
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Ficha de Criatura</h1>
 
 @if (_errorMessage is not null)
@@ -413,6 +415,13 @@
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
+
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Bestiário do GM", "bestiario"),
+        new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Criatura" : _form.Nome),
+    };
 
     private readonly SheetFormModel _form = new();
     private string? _errorMessage;

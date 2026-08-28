@@ -4,6 +4,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</h1>
 
 @if (_errorMessage is not null)
@@ -45,6 +47,13 @@
 
 @code {
     [Parameter] public string? EntryId { get; set; }
+
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Banco de Magias e Habilidades", "banco-de-magias"),
+        new(EntryId is null ? "Nova Entrada" : (string.IsNullOrWhiteSpace(_form.Nome) ? "Editar Entrada" : _form.Nome)),
+    };
 
     private readonly EntryFormModel _form = new();
     private string? _errorMessage;

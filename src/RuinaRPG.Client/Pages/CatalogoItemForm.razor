@@ -5,6 +5,8 @@
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Images
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>@(ItemId is null ? "Novo Item" : "Editar Item")</h1>
 
 @if (_errorMessage is not null)
@@ -90,6 +92,13 @@
 
 @code {
     [Parameter] public string? ItemId { get; set; }
+
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Catálogo de Itens", "catalogo"),
+        new(ItemId is null ? "Novo Item" : (string.IsNullOrWhiteSpace(_form.Nome) ? "Editar Item" : _form.Nome)),
+    };
 
     private readonly ItemFormModel _form = new();
     private List<ImageSummaryResponse> _myImages = new();
