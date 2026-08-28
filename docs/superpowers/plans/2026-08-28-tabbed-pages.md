@@ -18,11 +18,11 @@
 - Button classification (apply uniformly, do not improvise per page):
   | Intent | Example labels | Class |
   |---|---|---|
-  | Primary form submit / create / attach / search | Salvar, Adicionar *, Criar Ficha de Personagem, Conceder, Anexar *, Buscar, Novo Encontro | `btn btn-primary` |
-  | Inline list-item action (non-destructive) | Editar, Equipar/Desequipar, Adicionar Efeito | `btn btn-outline-primary btn-sm` |
+  | Primary form submit / create / attach / search | Salvar (the button that submits an `<EditForm>`), Adicionar *, Criar Ficha de Personagem, Conceder, Anexar *, Buscar, Novo Encontro | `btn btn-primary` |
+  | Inline list-item action (non-destructive) | Editar, **Salvar (the inline edit-in-place confirm button, paired with an inline Cancelar — e.g. editing a diary entry or secret note directly in its `<li>`)**, Equipar/Desequipar, Adicionar Efeito | `btn btn-outline-primary btn-sm` |
   | Destructive | Remover, Excluir | `btn btn-outline-danger btn-sm` |
   | Cancel | Cancelar | `btn btn-outline-secondary btn-sm` |
-  Use `btn-sm` for buttons inside a `<li>`/table row; full-size `btn` for the button that submits an `<EditForm>`.
+  Use `btn-sm` for buttons inside a `<li>`/table row; full-size `btn` for the button that submits an `<EditForm>`. **"Salvar" is context-dependent, not label-dependent**: the one `<EditForm>`-submit "Salvar" per tab is `btn btn-primary`; every other "Salvar" (always an inline row-edit confirm, always paired with an inline "Cancelar") is `btn btn-outline-primary btn-sm` — see `CampanhaDetalhe.razor`'s Diário/Notas Secretas tabs (Task 2) for the worked example of both.
 - Field wrapper: `<label>Campo <InputX .../></label>` → `<div class="mb-3"><label class="form-label">Campo</label><InputX class="form-control" .../></div>` (or `class="form-select"` for selects). Checkboxes → `<div class="mb-3 form-check"><InputCheckbox class="form-check-input" .../><label class="form-check-label">Campo</label></div>`.
 - "Current / Maximum" fields (trailing `/ @_form.XMaximo` text) → Bootstrap input-group (see Task 3 worked example).
 - Tables: `<table>` → `<table class="table">`. Editable `<td>` cells keep their current bare `<input>` structure (Round 2's CSS still narrows them).
