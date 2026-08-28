@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.CreatureSheets
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Bestiário do GM</h1>
 
 <button @onclick="CreateAsync">Nova Criatura</button>
@@ -64,6 +66,12 @@
 </table>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Bestiário do GM"),
+    };
+
     private string _nomeFiltro = "";
     private string _racaFiltro = "";
     private string _arquetipoFiltro = "";

@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Campaigns
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Campanhas</h1>
 
 <EditForm Model="_form" OnValidSubmit="CreateAsync">
@@ -27,6 +29,12 @@
 </div>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Campanhas"),
+    };
+
     private readonly CampaignFormModel _form = new();
     private List<CampaignResponse> _campaigns = new();
     private string? _errorMessage;

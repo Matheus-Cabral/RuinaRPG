@@ -2,6 +2,8 @@
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Players
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Jogadores</h1>
 
 <input @bind="_query" @bind:event="oninput" placeholder="Buscar por nickname ou e-mail" />
@@ -32,6 +34,12 @@
 }
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Jogadores"),
+    };
+
     private string _query = "";
     private List<PlayerSearchResultResponse> _players = new();
     private string? _errorMessage;

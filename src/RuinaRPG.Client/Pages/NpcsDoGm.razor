@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.NpcSheets
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>NPCs do GM</h1>
 
 <button @onclick="CreateAsync">Novo NPC</button>
@@ -45,6 +47,12 @@
 </table>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("NPCs do GM"),
+    };
+
     private string _nomeFiltro = "";
     private string _linhagemFiltro = "";
     private string _vocacaoFiltro = "";

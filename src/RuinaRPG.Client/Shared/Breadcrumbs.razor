@@ -23,6 +23,4 @@
 
 @code {
     [Parameter, EditorRequired] public List<BreadcrumbItem> Items { get; set; } = new();
-
-    public record BreadcrumbItem(string Text, string? Href = null);
 }

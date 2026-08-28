@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Banco de Magias e Habilidades</h1>
 
 <button @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
@@ -54,6 +56,12 @@
 </table>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Banco de Magias e Habilidades"),
+    };
+
     private string _nomeFiltro = "";
     private string _tipoFiltro = "";
     private int? _grauFiltro;

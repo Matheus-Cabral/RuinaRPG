@@ -2,6 +2,8 @@
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Compêndio de Regras</h1>
 
 <div>
@@ -33,6 +35,12 @@
 </ul>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Compêndio de Regras"),
+    };
+
     private readonly string[] _categorias = ["Caracteristica", "Efeito", "Tabela", "Regra"];
     private readonly HashSet<string> _selectedCategorias = [];
     private string _query = "";

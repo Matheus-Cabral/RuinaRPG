@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Items
 
+<Breadcrumbs Items="@Crumbs" />
+
 <h1>Catálogo de Itens e Equipamentos</h1>
 
 <button @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
@@ -54,6 +56,12 @@
 </table>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Catálogo de Itens"),
+    };
+
     private string _tipoFiltro = "";
     private List<ItemResponse> _items = new();
     private string? _errorMessage;
