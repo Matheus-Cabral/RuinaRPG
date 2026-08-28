@@ -1,0 +1,39 @@
+<div class="tab-control">
+    <ul class="nav nav-tabs" role="tablist">
+        @foreach (var page in _pages)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link @(IsActive(page) ? "active" : "")"
+                        role="tab"
+                        aria-selected="@(IsActive(page) ? "true" : "false")"
+                        @onclick="@(() => Activate(page))">
+                    @(page.Title)
+                </button>
+            </li>
+        }
+    </ul>
+    <div class="tab-content">
+        <CascadingValue Value="this" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private readonly List<TabPage> _pages = new();
+    private TabPage? _activePage;
+
+    internal void Register(TabPage page)
+    {
+        _pages.Add(page);
+        _activePage ??= page;
+        StateHasChanged();
+    }
+
+    internal bool IsActive(TabPage page) => ReferenceEquals(page, _activePage);
+
+    private void Activate(TabPage page) => _activePage = page;
+}

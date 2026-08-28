@@ -1,0 +1,29 @@
+.tab-control .nav-tabs {
+  border-bottom-color: var(--rr-border);
+}
+
+.tab-control .nav-link {
+  color: var(--rr-text-muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: var(--rr-space-2) var(--rr-space-3);
+  font-family: var(--rr-font-body);
+  font-weight: 600;
+  border-radius: 0;
+}
+
+.tab-control .nav-link:hover {
+  color: var(--rr-text);
+  border-bottom-color: var(--rr-border);
+}
+
+.tab-control .nav-link.active {
+  color: var(--rr-primary);
+  border-bottom-color: var(--rr-primary);
+  background: none;
+}
+
+.tab-control .tab-content {
+  padding-top: var(--rr-space-4);
+}

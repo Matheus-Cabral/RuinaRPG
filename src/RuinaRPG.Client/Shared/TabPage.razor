@@ -1,0 +1,13 @@
+<div class="tab-pane @(IsActive ? "show active" : "d-none")" role="tabpanel">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] public TabControl? Parent { get; set; }
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool IsActive => Parent is not null && Parent.IsActive(this);
+
+    protected override void OnInitialized() => Parent?.Register(this);
+}
