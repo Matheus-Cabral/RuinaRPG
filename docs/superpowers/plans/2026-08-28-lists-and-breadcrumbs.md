@@ -157,7 +157,6 @@ git commit -m "style: format campaign and campaign-member sheet lists with real 
 ### Task 3: Breadcrumbs on static-trail pages
 
 **Files:**
-- Modify: `src/RuinaRPG.Client/Pages/Painel.razor`
 - Modify: `src/RuinaRPG.Client/Pages/Campanhas.razor`
 - Modify: `src/RuinaRPG.Client/Pages/NpcsDoGm.razor`
 - Modify: `src/RuinaRPG.Client/Pages/BestiarioDoGm.razor`
