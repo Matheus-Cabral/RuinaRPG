@@ -33,7 +33,20 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Variante</label>
-                    <InputText class="form-control" @bind-Value="_form.Variante" />
+                    @if (string.IsNullOrEmpty(_form.Linhagem))
+                    {
+                        <p class="mb-0 text-muted">Escolha uma Linhagem antes da Variante.</p>
+                    }
+                    else
+                    {
+                        <select class="form-select" @bind="_form.Variante">
+                            <option value="">Escolha uma Variante</option>
+                            @foreach (var (valor, rotulo) in VariantesPorLinhagem[_form.Linhagem])
+                            {
+                                <option value="@valor">@rotulo</option>
+                            }
+                        </select>
+                    }
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Vocação</label>
@@ -48,11 +61,44 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Sub-vocação</label>
-                    <InputText class="form-control" @bind-Value="_form.SubVocacao" />
+                    @if (string.IsNullOrEmpty(_form.Vocacao))
+                    {
+                        <p class="mb-0 text-muted">Escolha uma Vocação antes da Sub-vocação.</p>
+                    }
+                    else
+                    {
+                        <select class="form-select" @bind="_form.SubVocacao">
+                            <option value="">Escolha uma Sub-vocação</option>
+                            @foreach (var subVocacao in SubVocacoesPorVocacao[_form.Vocacao])
+                            {
+                                <option value="@subVocacao">@subVocacao</option>
+                            }
+                        </select>
+                    }
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Afinidade</label>
-                    <InputText class="form-control" @bind-Value="_form.Afinidade" />
+                    <select class="form-select" @bind="_form.Afinidade">
+                        <option value="">Escolha uma Afinidade</option>
+                        <option value="Terra">Terra</option>
+                        <option value="Agua">Água</option>
+                        <option value="Fogo">Fogo</option>
+                        <option value="Ar">Ar</option>
+                        <option value="Gelo">Gelo</option>
+                        <option value="Flora">Flora</option>
+                        <option value="Ferro">Ferro</option>
+                        <option value="Raio">Raio</option>
+                        <option value="Prever">Prever</option>
+                        <option value="Alma">Alma</option>
+                        <option value="Purificar">Purificar</option>
+                        <option value="Ecomancia">Ecomancia</option>
+                        <option value="Hemomancia">Hemomancia</option>
+                        <option value="Curar">Curar</option>
+                        <option value="Vida">Vida</option>
+                        <option value="Aprimorar">Aprimorar</option>
+                        <option value="Necromancia">Necromancia</option>
+                        <option value="Invocacao">Invocação</option>
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Propriedade</label>
@@ -489,6 +535,27 @@
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
+
+    // Value must match the Variante enum member name exactly (server parses it); label is the
+    // real Sistema Básico display name (Ruína RPG - Sistema Básico §7).
+    private static readonly Dictionary<string, (string Valor, string Rotulo)[]> VariantesPorLinhagem = new()
+    {
+        ["Humano"] = [("Sinir", "Sinir (Sol)"), ("Laonir", "Laonir (Lua)")],
+        ["Phylauc"] = [("PhylacTai", "Phylac'tai (Sol)"), ("EsPhylauc", "Es'Phylauc (Lua)")],
+        ["Nephrytes"] = [("Koroanos", "Koroanos (Sol)"), ("Yavos", "Yavos (Lua)")],
+        ["Econos"] = [("Alora", "Alóra (Lua)")],
+    };
+
+    // Sub-Vocação is free text server-side (no enum), so value == label here — from "Relação de
+    // Vocacão e Classes.md".
+    private static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
+    {
+        ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],
+        ["Cacador"] = ["Arqueiro", "Domador", "Assassino"],
+        ["Feiticeiro"] = ["Aeromante", "Biomante", "Fluxomante", "Piromante", "Sábio"],
+        ["Adepto"] = ["Paladino", "Arauto", "Trovador", "Eremita"],
+        ["Bruxo"] = ["Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista"],
+    };
 
     private List<BreadcrumbItem> Crumbs => new()
     {
