@@ -49,6 +49,15 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
             var sheet = await db.NpcSheets.FindAsync(npcSheetId);
             // R0002: the NpcSheet must belong to the calling GM.
             if (sheet is null || sheet.GmId != gmId) return BadRequest("Ficha de NPC não encontrada.");
+            if (sheet.OwnerId is not null)
+            {
+                // Granted sheets are campaign-scoped via their grant-link CampaignAttachment row
+                // (the same one CampaignGrantsController.Grant inserts) — a GM who owns several
+                // campaigns must not be able to pull a companion granted in one of them into an
+                // encounter in a different one, matching the CharacterSheet branch's own check above.
+                var grantedToThisCampaign = await db.CampaignAttachments.AnyAsync(a => a.NpcSheetId == npcSheetId && a.CampaignId == encounter!.CampaignId);
+                if (!grantedToThisCampaign) return BadRequest("Ficha de NPC não encontrada.");
+            }
             participant.SourceNpcSheetId = sheet.Id;
             participant.Nome = sheet.Nome ?? "";
             if (sheet.OwnerId is null) // GM's own bestiary entry (R0002's 2nd case) — copy once, then independent.
@@ -67,6 +76,12 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
             var sheet = await db.CreatureSheets.FindAsync(creatureSheetId);
             // R0002: the CreatureSheet must belong to the calling GM.
             if (sheet is null || sheet.GmId != gmId) return BadRequest("Ficha de Criatura não encontrada.");
+            if (sheet.OwnerId is not null)
+            {
+                // Same campaign-scoping rationale as the NpcSheet branch above.
+                var grantedToThisCampaign = await db.CampaignAttachments.AnyAsync(a => a.CreatureSheetId == creatureSheetId && a.CampaignId == encounter!.CampaignId);
+                if (!grantedToThisCampaign) return BadRequest("Ficha de Criatura não encontrada.");
+            }
             participant.SourceCreatureSheetId = sheet.Id;
             participant.Nome = sheet.Nome ?? "";
             if (sheet.OwnerId is null)
