@@ -32,7 +32,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             if (!Guid.TryParse(request.ItemId, out var parsed))
                 return BadRequest("ItemId inválido.");
-            if (!await db.Items.AnyAsync(i => i.Id == parsed))
+            if (!await db.Items.AnyAsync(i => i.Id == parsed && i.GmId == gmId))
                 return BadRequest("Item não encontrado.");
             itemId = parsed;
         }
@@ -56,7 +56,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             if (!Guid.TryParse(request.SpellAbilityBankEntryId, out var parsed))
                 return BadRequest("SpellAbilityBankEntryId inválido.");
-            if (!await db.SpellAbilityBankEntries.AnyAsync(e => e.Id == parsed))
+            if (!await db.SpellAbilityBankEntries.AnyAsync(e => e.Id == parsed && e.GmId == gmId))
                 return BadRequest("Entrada do Banco de Magias não encontrada.");
             bankEntryId = parsed;
         }
@@ -64,7 +64,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             if (!Guid.TryParse(request.ImageId, out var parsed))
                 return BadRequest("ImageId inválido.");
-            if (!await db.Images.AnyAsync(img => img.Id == parsed))
+            if (!await db.Images.AnyAsync(img => img.Id == parsed && img.UploadedByUserId == gmId))
                 return BadRequest("Imagem não encontrada.");
             imageId = parsed;
         }
