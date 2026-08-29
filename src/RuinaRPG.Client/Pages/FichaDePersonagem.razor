@@ -220,11 +220,21 @@
 
     <TabPage Title="Combate">
         <h3>Armas</h3>
-        <ul class="list-unstyled">
+        <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
+            <div class="mb-3">
+                <label class="form-label">Arma (Id do Catálogo)</label>
+                <InputText class="form-control" @bind-Value="_weaponForm.ItemId" />
+            </div>
+            <button type="submit" class="btn btn-primary">Adicionar Arma</button>
+        </EditForm>
+        <ul class="list-unstyled mt-3">
             @foreach (var weapon in _weapons)
             {
-                <li>@weapon.Nome — Durabilidade @weapon.DurabilidadeAtual/@weapon.DurabilidadeMaxima — @(weapon.IsEquipped ? "Equipada" : "")
+                <li>@weapon.Nome —
+                    Durabilidade <input type="number" value="@weapon.DurabilidadeAtual" @onchange="@(e => UpdateWeaponDurabilidadeAsync(weapon.Id, e.Value))" style="width:4em" />/@weapon.DurabilidadeMaxima
+                    — @(weapon.IsEquipped ? "Equipada" : "")
                     <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteWeaponAsync(weapon.Id))">Remover</button>
                 </li>
             }
         </ul>
@@ -233,15 +243,39 @@
         <ul class="list-unstyled">
             @foreach (var slot in _armorSlots)
             {
-                <li>@slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")</li>
+                <li>
+                    @slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")
+                    @if (slot.ItemId is not null)
+                    {
+                        <input type="number" value="@slot.DurabilidadeAtual" @onchange="@(e => UpdateArmorSlotDurabilidadeAsync(slot.Slot, e.Value))" style="width:4em" />
+                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => AssignArmorSlotAsync(slot.Slot, null))">Remover</button>
+                    }
+                    else
+                    {
+                        <input type="text" placeholder="Id do Catálogo" @bind="_armorSlotForm[slot.Slot]" style="width:14em" />
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</button>
+                    }
+                </li>
             }
         </ul>
 
         <h3>Escudos</h3>
-        <ul class="list-unstyled">
+        <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
+            <div class="mb-3">
+                <label class="form-label">Escudo (Id do Catálogo)</label>
+                <InputText class="form-control" @bind-Value="_shieldForm.ItemId" />
+            </div>
+            <button type="submit" class="btn btn-primary">Adicionar Escudo</button>
+        </EditForm>
+        <ul class="list-unstyled mt-3">
             @foreach (var shield in _shields)
             {
-                <li>@shield.Nome — Durabilidade @shield.DurabilidadeAtual/@shield.DurabilidadeMaxima</li>
+                <li>@shield.Nome —
+                    Durabilidade <input type="number" value="@shield.DurabilidadeAtual" @onchange="@(e => UpdateShieldDurabilidadeAsync(shield.Id, e.Value))" style="width:4em" />/@shield.DurabilidadeMaxima
+                    — @(shield.IsEquipped ? "Equipado" : "")
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EquipShieldAsync(shield.Id, !shield.IsEquipped))">@(shield.IsEquipped ? "Desequipar" : "Equipar")</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteShieldAsync(shield.Id))">Remover</button>
+                </li>
             }
         </ul>
 
@@ -525,6 +559,10 @@
     private List<CharacterWeaponResponse> _weapons = new();
     private List<CharacterArmorSlotResponse> _armorSlots = new();
     private List<CharacterShieldResponse> _shields = new();
+    private readonly WeaponFormModel _weaponForm = new();
+    private readonly ShieldFormModel _shieldForm = new();
+    // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
+    private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private SubAttributesResponse? _subAttributes;
     private RacialAbilityResponse? _racialAbility;
     private List<CharacterSpellAbilityResponse> _spellAbilities = new();
@@ -680,6 +718,76 @@
     private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
     {
         await Http.PutAsJsonAsync($"character-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
+        await LoadTabs2And3Async();
+    }
+
+    private async Task AddWeaponAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/weapons", new AddCharacterWeaponRequest(_weaponForm.ItemId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a arma.";
+            return;
+        }
+        _weaponForm.ItemId = "";
+        await LoadTabs2And3Async();
+    }
+
+    private async Task DeleteWeaponAsync(string weaponId)
+    {
+        await Http.DeleteAsync($"character-sheets/{SheetId}/weapons/{weaponId}");
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateWeaponDurabilidadeAsync(string weaponId, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var durabilidade))
+            await Http.PutAsJsonAsync($"character-sheets/{SheetId}/weapons/{weaponId}/durabilidade", durabilidade);
+        await LoadTabs2And3Async();
+    }
+
+    private async Task AssignArmorSlotAsync(string slot, string? itemId)
+    {
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/armor-slots/{slot}", new UpdateCharacterArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
+        _armorSlotForm[slot] = "";
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateArmorSlotDurabilidadeAsync(string slot, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var durabilidade))
+            await Http.PutAsJsonAsync($"character-sheets/{SheetId}/armor-slots/{slot}/durabilidade", durabilidade);
+        await LoadTabs2And3Async();
+    }
+
+    private async Task AddShieldAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/shields", new AddCharacterShieldRequest(_shieldForm.ItemId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o escudo.";
+            return;
+        }
+        _shieldForm.ItemId = "";
+        await LoadTabs2And3Async();
+    }
+
+    private async Task EquipShieldAsync(string shieldId, bool isEquipped)
+    {
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/shields/{shieldId}", isEquipped);
+        await LoadTabs2And3Async();
+    }
+
+    private async Task DeleteShieldAsync(string shieldId)
+    {
+        await Http.DeleteAsync($"character-sheets/{SheetId}/shields/{shieldId}");
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateShieldDurabilidadeAsync(string shieldId, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var durabilidade))
+            await Http.PutAsJsonAsync($"character-sheets/{SheetId}/shields/{shieldId}/durabilidade", durabilidade);
         await LoadTabs2And3Async();
     }
 
@@ -991,6 +1099,16 @@
     {
         public string ItemId { get; set; } = "";
         public int Qtd { get; set; } = 1;
+    }
+
+    private class WeaponFormModel
+    {
+        public string ItemId { get; set; } = "";
+    }
+
+    private class ShieldFormModel
+    {
+        public string ItemId { get; set; } = "";
     }
 
     private class ArtifactFormModel
