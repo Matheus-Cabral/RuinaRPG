@@ -143,6 +143,7 @@
                     <input class="form-control" @bind="_attachImageId" />
                     <button type="button" class="btn btn-primary" @onclick="AttachImageAsync">Anexar Imagem</button>
                 </div>
+                <label class="form-label mt-1">Ou enviar uma imagem nova (R0007) <InputFile OnChange="UploadAndAttachImageAsync" /></label>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Ficha de NPC (id)</label>
@@ -618,6 +619,24 @@
         var id = _attachImageId;
         _attachImageId = "";
         return AttachAsync(new AttachToCampaignRequest(null, null, null, null, id));
+    }
+
+    private async Task UploadAndAttachImageAsync(InputFileChangeEventArgs e)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(e.File.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", e.File.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
+        await AttachAsync(new AttachToCampaignRequest(null, null, null, null, body.Id));
     }
 
     private Task AttachNpcSheetAsync()
