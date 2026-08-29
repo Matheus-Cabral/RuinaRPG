@@ -214,4 +214,35 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task ListMine_returns_only_campaigns_the_player_is_a_member_of()
+    {
+        // R0009's own precondition: a player has no way to discover their campaign(s) otherwise —
+        // GET api/campaigns is GM-only and lists a different thing (campaigns the caller GMs).
+        var gmToken = await RegisterGmAndGetTokenAsync("MineGm1", "minegm1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MinePlayer1", "mineplayer1@teste.com");
+        var memberCampaignId = await CreateCampaignAsync(gmToken, "Campanha Onde Sou Membro");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{memberCampaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await CreateCampaignAsync(gmToken, "Campanha Onde Não Sou Membro"); // same GM, player never added
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/campaigns/mine", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>();
+        body!.Should().ContainSingle(c => c.Id == memberCampaignId && c.Nome == "Campanha Onde Sou Membro");
+    }
+
+    [Fact]
+    public async Task ListMine_for_a_player_in_no_campaigns_returns_an_empty_list()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MineGm2", "minegm2@teste.com");
+        var (_, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MinePlayer2", "mineplayer2@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/campaigns/mine", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>();
+        body!.Should().BeEmpty();
+    }
 }
