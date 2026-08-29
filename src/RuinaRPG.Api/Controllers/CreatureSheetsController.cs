@@ -18,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -103,7 +103,18 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             .Distinct()
             .ToListAsync();
         foreach (var encounterId in affectedEncounterIds)
-            await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+        {
+            // Item 3 of the gap audit: the sheet is already saved at this point — a hub failure
+            // must not surface as a 500 to a caller whose save genuinely succeeded.
+            try
+            {
+                await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
+            }
+        }
 
         return NoContent();
     }
