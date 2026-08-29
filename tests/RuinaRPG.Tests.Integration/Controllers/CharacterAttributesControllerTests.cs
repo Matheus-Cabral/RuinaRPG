@@ -126,6 +126,53 @@ public class CharacterAttributesControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task Budget_reports_GastoTotal_and_the_points_received_from_creation_and_levels()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttrGm6", "attr6@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer6", "attrplayer6@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes/budget", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.GastoTotal.Should().Be(5);
+        body.PontosDisponiveis.Should().Be(9); // Nível 1 default → só o grant de criação (real Tabela de Níveis)
+    }
+
+    [Fact]
+    public async Task Update_rejects_a_Gasto_that_would_make_the_8_attribute_sum_exceed_the_point_budget()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttrGm7", "attr7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer7", "attrplayer7@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
+            new UpdateCharacterAttributeRequest(10, 0, false))); // Nível 1 budget is 9
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_rejects_when_this_attribute_plus_the_others_already_spent_exceeds_the_budget()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttrGm8", "attr8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer8", "attrplayer8@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+        first.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // 5 (Forca já gasto) + 5 (Vigor) = 10 > 9.
+        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Exactly at the budget (5 + 4 = 9) is allowed.
+        var third = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+        third.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
     public async Task Update_an_attribute_by_an_unrelated_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AttrGm3", "attr3@teste.com");
