@@ -289,6 +289,48 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task AdvanceTurn_still_targets_the_right_participant_after_a_higher_Iniciativa_participant_is_added_mid_round()
+    {
+        // Épico 5 item 2 of the gap audit: CurrentParticipantIndex used to be a raw position,
+        // re-resolved against whatever the CURRENT ordering happened to be — so adding a
+        // participant ahead of the active one mid-round silently retargeted "next" to the wrong
+        // participant. Identity-based tracking must not have this bug.
+        var gmToken = await RegisterGmAndGetTokenAsync("EncGmReorder1", "encreorder1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Reordenação");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Reordenação");
+
+        var npcHigh = await CreateNpcSheetAsync(gmToken);
+        var npcMid = await CreateNpcSheetAsync(gmToken);
+        var npcLow = await CreateNpcSheetAsync(gmToken);
+        await AddParticipantAsync(gmToken, encounterId, npcHigh, 20); // index 0
+        await AddParticipantAsync(gmToken, encounterId, npcMid, 10); // index 1 — the active turn after one advance
+        await AddParticipantAsync(gmToken, encounterId, npcLow, 5); // index 2
+
+        // First advance: 0 (Alta) -> 1 (Media). Confirmed by the existing AdvanceTurn test above.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+
+        // Now insert a participant with a HIGHER Iniciativa than the currently-active one (Media,
+        // 10) but lower than Alta (20) — this reorders the list to [Alta 20, Nova 15, Media 10, Baixa 5],
+        // shifting Media from index 1 to index 2. A raw-index scheme would advance from stale
+        // index 1 to whoever now sits at index 2 (Media itself, wrongly re-triggering her own turn)
+        // or worse depending on exact arithmetic — identity-based tracking must still correctly
+        // advance PAST Media to Baixa, unaffected by the insertion.
+        var npcNova = await CreateNpcSheetAsync(gmToken);
+        await AddParticipantAsync(gmToken, encounterId, npcNova, 15);
+
+        foreach (var p in await ListParticipantsAsync(gmToken, encounterId))
+            await SetAcoesRestantesAsync(gmToken, encounterId, p, 0);
+
+        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var after = await ListParticipantsAsync(gmToken, encounterId);
+        var lowId = after.Single(p => p.Iniciativa == 5).Id;
+        after.Single(p => p.Id == lowId).AcoesRestantes.Should().Be(3, "the turn must advance from Media (the true active participant) to Baixa, not be retargeted by Nova's insertion");
+        after.Where(p => p.Id != lowId).Should().OnlyContain(p => p.AcoesRestantes == 0);
+    }
+
+    [Fact]
     public async Task Update_renames_the_encounter()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EncGmRename1", "encrename1@teste.com");

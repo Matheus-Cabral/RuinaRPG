@@ -453,7 +453,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        builder.Entity<Encounter>(entity => entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<Encounter>(entity =>
+        {
+            entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(e => e.CurrentParticipantId).OnDelete(DeleteBehavior.SetNull);
+        });
 
         builder.Entity<EncounterParticipant>(entity =>
         {
