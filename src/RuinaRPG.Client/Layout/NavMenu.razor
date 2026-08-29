@@ -64,6 +64,15 @@
                     </div>
                 </Authorized>
             </AuthorizeView>
+            <AuthorizeView Roles="Jogador" Context="jogadorContext">
+                <Authorized>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="minhas-campanhas" @onclick="NotifyLinkClicked">
+                            <span class="nav-icon" aria-hidden="true">🗺️</span> Minhas Campanhas
+                        </NavLink>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
             <div class="nav-item">
                 <NavLink class="nav-link" href="compendio" @onclick="NotifyLinkClicked">
                     <span class="nav-icon" aria-hidden="true">📖</span> Compêndio de Regras

@@ -1,0 +1,52 @@
+@page "/minhas-campanhas"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Campaigns
+
+<Breadcrumbs Items="@Crumbs" />
+
+<h1>Minhas Campanhas</h1>
+
+@if (_errorMessage is not null)
+{
+    <p class="error">@_errorMessage</p>
+}
+else if (_campaigns.Count == 0)
+{
+    <p class="text-muted">Você ainda não faz parte de nenhuma campanha.</p>
+}
+
+<div class="list-group">
+    @foreach (var campaign in _campaigns)
+    {
+        <a class="list-group-item list-group-item-action" href="@($"campanhas/{campaign.Id}/jogador")">
+            <h3 class="mb-1">@campaign.Nome</h3>
+            <p class="mb-0 text-muted">@campaign.Descricao</p>
+        </a>
+    }
+</div>
+
+@code {
+    private List<BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Minhas Campanhas"),
+    };
+
+    private List<CampaignResponse> _campaigns = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("campaigns/mine");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar suas campanhas.";
+            return;
+        }
+
+        _campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
+        _errorMessage = null;
+    }
+}

@@ -14,6 +14,23 @@ namespace RuinaRPG.Api.Controllers;
 [Route("api/campaigns/{campaignId}/player-view")]
 public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
 {
+    /// <summary>
+    /// R0009's own precondition: a player has no way to discover which campaign(s) they belong to
+    /// — GET api/campaigns is GM-only (lists campaigns the caller GMs, a different thing). This is
+    /// the "mine" a player actually needs, so it lives here alongside the rest of the player-facing
+    /// reads rather than in CampaignsController (which stays entirely GM-only).
+    /// </summary>
+    [HttpGet("~/api/campaigns/mine")]
+    public async Task<ActionResult<List<CampaignResponse>>> ListMine()
+    {
+        var callerId = CurrentUserId();
+        return await db.CampaignMembers
+            .Where(m => m.UserId == callerId)
+            .Join(db.Campaigns, m => m.CampaignId, c => c.Id, (m, c) => c)
+            .Select(c => new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao))
+            .ToListAsync();
+    }
+
     [HttpGet]
     public async Task<ActionResult<PlayerCampaignViewResponse>> Get(Guid campaignId)
     {
