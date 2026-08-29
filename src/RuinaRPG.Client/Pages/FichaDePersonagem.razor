@@ -294,6 +294,14 @@
             <p>Defesa Natural: @_subAttributes.DefesaNatural</p>
             <p>Redução Física: @_subAttributes.ReducaoFisica</p>
             <p>Redução Mágica: @_subAttributes.ReducaoMagica</p>
+            <div class="mb-3">
+                <label class="form-label">Cobertura</label>
+                <select class="form-select" value="@_form.Cobertura" @onchange="@(e => UpdateCoberturaAsync(e.Value?.ToString()))">
+                    <option value="Nenhuma">Nenhuma (+0)</option>
+                    <option value="Parcial">Parcial (+5)</option>
+                    <option value="Completa">Completa (+10)</option>
+                </select>
+            </div>
         }
     </TabPage>
 
@@ -426,6 +434,10 @@
 
     <TabPage Title="Posses">
         <h3>Inventário</h3>
+        <div class="mb-3">
+            <label class="form-label">Ciclos</label>
+            <input type="number" class="form-control" style="width:8em" value="@_form.Ciclos" @onchange="@(e => UpdateCiclosAsync(e.Value))" />
+        </div>
         <EditForm Model="_inventoryForm" OnValidSubmit="AddInventoryItemAsync">
             <div class="mb-3">
                 <label class="form-label">Item (Id do Catálogo)</label>
@@ -684,6 +696,20 @@
         }
 
         await LoadSheetAsync();
+    }
+
+    private async Task UpdateCoberturaAsync(string? value)
+    {
+        _form.Cobertura = value ?? "Nenhuma";
+        await SaveAsync();
+        await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural (2.b), loaded here, not by LoadSheetAsync.
+    }
+
+    private async Task UpdateCiclosAsync(object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var ciclos))
+            _form.Ciclos = ciclos;
+        await SaveAsync();
     }
 
     private async Task LoadTabs2And3Async()
