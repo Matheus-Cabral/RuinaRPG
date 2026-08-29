@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -65,6 +66,27 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItemGeral(nome)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateBankEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
+        return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+    }
+
+    private async Task<string> UploadImageAsync(string gmToken)
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
+        return body!.Id;
     }
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
@@ -370,5 +392,63 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
         body!.Should().ContainSingle(a => a.Id == displayAttachmentId);
         body!.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Attach_a_bank_entry_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("AttBankCrossOwner", "attbankcrossowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("AttBankCrossOther", "attbankcrossother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Banco");
+        var bankEntryOfOther = await CreateBankEntryAsync(gmTokenOther, "Bola de Fogo Alheia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+            new AttachToCampaignRequest(null, null, null, bankEntryOfOther, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attach_an_image_owned_by_another_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("AttImgCrossOwner", "attimgcrossowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("AttImgCrossOther", "attimgcrossother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Imagem");
+        var imageOfOther = await UploadImageAsync(gmTokenOther);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+            new AttachToCampaignRequest(null, null, null, null, imageOfOther)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attach_a_bank_entry_owned_by_the_caller_returns_201()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttBankOwn", "attbankown@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Banco Próprio");
+        var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, bankEntryId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.Tipo.Should().Be("SpellAbilityBankEntry");
+    }
+
+    [Fact]
+    public async Task Attach_an_image_owned_by_the_caller_returns_201()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttImgOwn", "attimgown@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Imagem Própria");
+        var imageId = await UploadImageAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.Tipo.Should().Be("Image");
     }
 }
