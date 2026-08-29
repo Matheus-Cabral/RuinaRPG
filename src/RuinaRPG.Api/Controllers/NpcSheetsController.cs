@@ -251,7 +251,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (nivel is not null)
             query = query.Where(s => s.Nivel == nivel);
 
-        return await query.Select(s => new NpcSheetSummaryResponse(s.Id.ToString(), s.Nome ?? "", s.Linhagem.ToString(), s.Vocacao.ToString(), s.SubVocacao, s.Nivel)).ToListAsync();
+        return await query
+            .GroupJoin(db.Users, s => s.OwnerId, u => (Guid?)u.Id, (s, owners) => new { Sheet = s, Owner = owners.FirstOrDefault() })
+            .Select(x => new NpcSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Linhagem.ToString(), x.Sheet.Vocacao.ToString(), x.Sheet.SubVocacao, x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null))
+            .ToListAsync();
     }
 
     /// <summary>

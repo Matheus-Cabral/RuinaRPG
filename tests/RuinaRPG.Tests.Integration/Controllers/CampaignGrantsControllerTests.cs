@@ -298,4 +298,38 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var viewB = await viewBResponse.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
         viewB!.MeusCompanheiros.Should().NotContain(c => c.Id == body!.SheetId);
     }
+
+    [Fact]
+    public async Task List_returns_the_existing_Npc_and_Creature_grants_for_the_campaign()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGm11", "grant11@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayer11", "grantplayer11@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Lista");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+
+        var npcGrantResponse = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", null));
+        var npcGrant = await npcGrantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>();
+        var creatureGrantResponse = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Creature", null));
+        var creatureGrant = await creatureGrantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmToken));
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<GrantSummaryResponse>>();
+
+        body!.Should().HaveCount(2);
+        body.Should().Contain(g => g.SheetId == npcGrant!.SheetId && g.Tipo == "Npc" && g.PlayerNickname == "GrantPlayer11");
+        body.Should().Contain(g => g.SheetId == creatureGrant!.SheetId && g.Tipo == "Creature" && g.PlayerNickname == "GrantPlayer11");
+    }
+
+    [Fact]
+    public async Task List_for_a_campaign_owned_by_another_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("GrantGmOwner12", "grantowner12@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("GrantGmOther12", "grantother12@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Grant Lista Alheia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

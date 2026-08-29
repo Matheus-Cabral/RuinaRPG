@@ -48,6 +48,7 @@
             <th>Arquétipo</th>
             <th>Rank</th>
             <th>Nível</th>
+            <th>Dono</th>
         </tr>
     </thead>
     <tbody>
@@ -59,6 +60,7 @@
                 <td>@(creature.Arquetipo ?? "—")</td>
                 <td>@(creature.Rank ?? "—")</td>
                 <td>@creature.Nivel</td>
+                <td>@(creature.OwnerNickname ?? "—")</td>
             </tr>
         }
     </tbody>

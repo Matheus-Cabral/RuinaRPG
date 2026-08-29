@@ -31,6 +31,7 @@
             <th>Vocação</th>
             <th>Sub-Vocação</th>
             <th>Nível</th>
+            <th>Dono</th>
         </tr>
     </thead>
     <tbody>
@@ -42,6 +43,7 @@
                 <td>@npc.Vocacao</td>
                 <td>@(npc.SubVocacao ?? "—")</td>
                 <td>@npc.Nivel</td>
+                <td>@(npc.OwnerNickname ?? "—")</td>
             </tr>
         }
     </tbody>

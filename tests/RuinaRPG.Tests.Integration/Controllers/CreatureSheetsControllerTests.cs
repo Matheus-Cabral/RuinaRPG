@@ -475,6 +475,23 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task List_shows_OwnerNickname_for_a_granted_sheet_and_null_for_the_GMs_own()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmListOwner", "creaturelistowner@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "CreatureGmListOwnerPlayer", "creaturelistownerplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Creature List Owner");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var ownSheetId = await CreateSheetAsync(gmToken);
+        var grantedSheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
+        body!.Single(s => s.Id == ownSheetId).OwnerNickname.Should().BeNull();
+        body!.Single(s => s.Id == grantedSheetId).OwnerNickname.Should().Be("CreatureGmListOwnerPlayer");
+    }
+
+    [Fact]
     public async Task List_can_filter_by_partial_Nome_Raca_Arquetipo_and_Rank_together()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmListFilter", "creaturelistfilter@teste.com");

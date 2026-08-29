@@ -320,6 +320,23 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task List_shows_OwnerNickname_for_a_granted_sheet_and_null_for_the_GMs_own()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListOwner", "npcgmlistowner@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "NpcGmListOwnerPlayer", "npcgmlistownerplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha List Owner");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var ownSheetId = await CreateSheetAsync(gmToken);
+        var grantedSheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
+        body!.Single(s => s.Id == ownSheetId).OwnerNickname.Should().BeNull();
+        body!.Single(s => s.Id == grantedSheetId).OwnerNickname.Should().Be("NpcGmListOwnerPlayer");
+    }
+
+    [Fact]
     public async Task List_can_filter_by_Variante()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListFilterVariante", "npcgmlistfiltervariante@teste.com");

@@ -224,6 +224,17 @@
             </div>
         </div>
         <button type="button" class="btn btn-primary mt-3" @onclick="GrantSheetAsync">Conceder</button>
+
+        <h5 class="mt-4">Concessões existentes</h5>
+        <ul class="list-unstyled">
+            @foreach (var grant in _grants)
+            {
+                <li>
+                    [@grant.Tipo] <a href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</a>
+                    — concedida a @grant.PlayerNickname
+                </li>
+            }
+        </ul>
     </TabPage>
 
     <TabPage Title="Notas Secretas">
@@ -333,6 +344,7 @@
     private List<CampaignAttachmentResponse> _attachments = new();
     private List<SecretNoteResponse> _secretNotes = new();
     private List<ImageSummaryResponse> _myImages = new();
+    private List<GrantSummaryResponse> _grants = new();
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();
     private readonly DiaryFormModel _noteForm = new();
@@ -358,7 +370,14 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync(), LoadImagesAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync(), LoadImagesAsync(), LoadGrantsAsync());
+
+    private async Task LoadGrantsAsync()
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/grants");
+        if (response.IsSuccessStatusCode)
+            _grants = await response.Content.ReadFromJsonAsync<List<GrantSummaryResponse>>() ?? new();
+    }
 
     private async Task LoadImagesAsync()
     {
@@ -680,7 +699,7 @@
         }
 
         _grantSourceSheetId = "";
-        await LoadAttachmentsAsync();
+        await Task.WhenAll(LoadAttachmentsAsync(), LoadGrantsAsync());
     }
 
     private void ToggleNoteRecipient(string userId, bool selected)
