@@ -1,0 +1,25 @@
+<section class="rr-section">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="rr-section-header">
+            <h3 class="rr-section-title">@Title</h3>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="rr-section-subtitle">@Subtitle</p>
+            }
+        </div>
+    }
+    <div class="rr-section-body">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    /// <summary>Rendered as an &lt;h3&gt; above the body. Omit for a borderless grouping with no heading.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Optional muted line under the title.</summary>
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
