@@ -94,6 +94,9 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         if (participant is null)
             return NotFound();
 
+        if (request.AcoesRestantes is < 0 or > 3)
+            return BadRequest("AcoesRestantes deve estar entre 0 e 3.");
+
         var isLive = participant.SourceCharacterSheetId is not null
             || (participant.SourceNpcSheetId is not null && (await db.NpcSheets.FindAsync(participant.SourceNpcSheetId.Value))?.OwnerId is not null)
             || (participant.SourceCreatureSheetId is not null && (await db.CreatureSheets.FindAsync(participant.SourceCreatureSheetId.Value))?.OwnerId is not null);

@@ -9,7 +9,21 @@
 @using RuinaRPG.Contracts.Encounters
 
 <Breadcrumbs Items="@Crumbs" />
-<h1>Encontro — Rodada @_encounter?.CurrentRound</h1>
+@if (_editingNome)
+{
+    <div class="input-group" style="max-width: 24rem">
+        <input class="form-control" @bind="_nomeEdit" />
+        <button type="button" class="btn btn-primary" @onclick="SaveNomeAsync">Salvar</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _editingNome = false)">Cancelar</button>
+    </div>
+}
+else
+{
+    <h1>
+        @(_encounter?.Nome ?? "Encontro") — Rodada @_encounter?.CurrentRound
+        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="StartEditNome">Renomear</button>
+    </h1>
+}
 
 @if (_errorMessage is not null)
 {
@@ -44,8 +58,8 @@
                 <td>@participant.Nome</td>
                 <td>@participant.Iniciativa</td>
                 <td>@participant.PV @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.PF</td>
-                <td>@participant.PA</td>
+                <td>@participant.PF @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
+                <td>@participant.PA @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
                 <td>@participant.AcoesRestantes</td>
                 <td>@string.Join(", ", participant.Condicoes)</td>
                 <td>
@@ -65,7 +79,7 @@
                     <td colspan="8">
                         <EditForm Model="_editParticipantForm" OnValidSubmit="@(() => SaveParticipantAsync(participant))">
                             <label>Iniciativa <InputNumber @bind-Value="_editParticipantForm.Iniciativa" /></label>
-                            <label>Ações Restantes <InputNumber @bind-Value="_editParticipantForm.AcoesRestantes" /></label>
+                            <label>Ações Restantes (0-3) <InputNumber @bind-Value="_editParticipantForm.AcoesRestantes" min="0" max="3" /></label>
                             @if (participant.IsLiveSourced)
                             {
                                 <p>PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
@@ -114,6 +128,8 @@
     private string? _errorMessage;
     private string? _editingParticipantId;
     private readonly EditParticipantFormModel _editParticipantForm = new();
+    private bool _editingNome;
+    private string _nomeEdit = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,6 +186,26 @@
 
         _addForm.SourceSheetId = "";
         _addForm.Iniciativa = 0;
+        await LoadAsync();
+    }
+
+    private void StartEditNome()
+    {
+        _nomeEdit = _encounter?.Nome ?? "";
+        _editingNome = true;
+    }
+
+    private async Task SaveNomeAsync()
+    {
+        var nome = string.IsNullOrWhiteSpace(_nomeEdit) ? null : _nomeEdit;
+        var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}", new UpdateEncounterRequest(nome));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível renomear o encontro.";
+            return;
+        }
+
+        _editingNome = false;
         await LoadAsync();
     }
 

@@ -112,7 +112,10 @@
     </TabPage>
 
     <TabPage Title="Encontros">
-        <button type="button" class="btn btn-primary" @onclick="CreateEncounterAsync">Novo Encontro</button>
+        <div class="input-group" style="max-width: 24rem">
+            <input class="form-control" placeholder="Nome do encontro (opcional)" @bind="_newEncounterNome" />
+            <button type="button" class="btn btn-primary" @onclick="CreateEncounterAsync">Novo Encontro</button>
+        </div>
         <ul class="list-unstyled mt-3">
             @foreach (var encounter in _encounters)
             {
@@ -367,6 +370,7 @@
     private string _attachNpcSheetId = "";
     private string _attachCreatureSheetId = "";
 
+    private string _newEncounterNome = "";
     private string _grantPlayerId = "";
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
@@ -451,7 +455,8 @@
 
     private async Task CreateEncounterAsync()
     {
-        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/encounters", new CreateEncounterRequest(null));
+        var nome = string.IsNullOrWhiteSpace(_newEncounterNome) ? null : _newEncounterNome;
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/encounters", new CreateEncounterRequest(nome));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível criar o encontro.";

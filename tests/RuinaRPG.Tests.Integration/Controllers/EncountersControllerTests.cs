@@ -287,4 +287,34 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         afterOrder.Single(p => p.Id == expectedNextId).AcoesRestantes.Should().Be(3);
         afterOrder.Where(p => p.Id != expectedNextId).Should().OnlyContain(p => p.AcoesRestantes == 0);
     }
+
+    [Fact]
+    public async Task Update_renames_the_encounter()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EncGmRename1", "encrename1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Renomear");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Nome Original");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmToken,
+            new UpdateEncounterRequest("Nome Novo")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        var body = await list.Content.ReadFromJsonAsync<List<EncounterResponse>>();
+        body!.Should().ContainSingle(e => e.Id == encounterId && e.Nome == "Nome Novo");
+    }
+
+    [Fact]
+    public async Task Update_on_an_encounter_owned_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("EncGmRenameOwner", "encrenameowner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("EncGmRenameOther", "encrenameother@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Renomear Alheia");
+        var encounterId = await CreateEncounterAsync(gmTokenOwner, campaignId, "Nome Original");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmTokenOther,
+            new UpdateEncounterRequest("Nome Novo")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

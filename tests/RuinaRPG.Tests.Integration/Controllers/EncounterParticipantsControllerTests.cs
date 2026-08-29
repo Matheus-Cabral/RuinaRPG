@@ -344,4 +344,25 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
         var list = await listResponse.Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>();
         list!.Should().ContainSingle().Which.Condicoes.Should().BeEquivalentTo(new[] { "Envenenado", "Enraizado" });
     }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    public async Task Update_with_an_AcoesRestantes_outside_0_to_3_returns_400(int acoesRestantes)
+    {
+        var suffix = acoesRestantes < 0 ? "Neg" : acoesRestantes.ToString();
+        var gmToken = await RegisterGmAndGetTokenAsync($"EpGm11{suffix}", $"ep11{suffix}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha AcoesRestantes Inválido");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro AcoesRestantes Inválido");
+        var npcId = await CreateNpcSheetAsync(gmToken);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(null, npcId, null, 10)));
+        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
+            new UpdateParticipantRequest(10, null, null, null, acoesRestantes, new List<string>())));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
