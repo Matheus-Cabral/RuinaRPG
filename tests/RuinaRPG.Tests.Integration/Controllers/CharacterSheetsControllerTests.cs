@@ -281,6 +281,12 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
+        // Campeão Nível 5 → Vida 24 (real Tabela de Vocação). Vigor total 3 → Vitalidade máximo
+        // 3*2+24 = 30, exactly ValidUpdate()'s VitalidadeAtual, so the clamp added for "Atual não
+        // pode exceder o máximo" (1.c) doesn't interfere with this test's real purpose (every
+        // other field round-trips unchanged).
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -423,6 +429,37 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body.FocoMaximo.Should().Be(10);
         body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
         body.EstresseMaximo.Should().Be(10); // flat
+    }
+
+    [Fact]
+    public async Task Update_clamps_every_Atual_resource_to_its_own_Maximo_instead_of_rejecting()
+    {
+        // Ficha de Personagem 1.c: "Atual não pode exceder o máximo" (Vitalidade/Foco/PA/Estresse).
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmClamp1", "sheetclamp1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerClamp1", "sheetplayerclamp1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Clamp");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Campeão Nível 1 → Vitalidade máximo 18, Foco máximo 10 (see the test above); Adrenalina
+        // and Estresse máximos (10 each) don't depend on attributes at all. Attributes are set
+        // BEFORE the sheet PUT below, since clamping happens against the máximo at save time.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+
+        var update = ValidUpdate() with
+        {
+            Vocacao = "Campeao", Nivel = 1,
+            VitalidadeAtual = 999, FocoAtual = 999, AdrenalinaAtual = 999, EstresseAtual = 999
+        };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.VitalidadeAtual.Should().Be(18);
+        body.FocoAtual.Should().Be(10);
+        body.AdrenalinaAtual.Should().Be(10);
+        body.EstresseAtual.Should().Be(10);
     }
 
     [Fact]

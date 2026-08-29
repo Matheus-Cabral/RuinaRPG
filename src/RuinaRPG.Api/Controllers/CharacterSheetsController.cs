@@ -169,10 +169,15 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.NucleosRankS = request.NucleosRankS;
         sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
         sheet.PontosDeIgnicaoTotal = request.PontosDeIgnicaoTotal;
-        sheet.VitalidadeAtual = request.VitalidadeAtual;
-        sheet.FocoAtual = request.FocoAtual;
-        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
-        sheet.EstresseAtual = request.EstresseAtual;
+
+        // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than
+        // rejected, since a Máximo can legitimately shrink (e.g. unequipping an Artefato) out
+        // from under an Atual that was valid a moment ago.
+        var maximos = await ComputeResourceMaximumsAsync(id, vocacao, request.Nivel);
+        sheet.VitalidadeAtual = Math.Min(request.VitalidadeAtual, maximos.Vitalidade);
+        sheet.FocoAtual = Math.Min(request.FocoAtual, maximos.Foco);
+        sheet.AdrenalinaAtual = Math.Min(request.AdrenalinaAtual, maximos.Adrenalina);
+        sheet.EstresseAtual = Math.Min(request.EstresseAtual, maximos.Estresse);
         sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
 
@@ -383,21 +388,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
-        // "Status de classe Vida/Foco" is not computed here — it comes from Tabela de Vocação
-        // (Vocação × Nível). That table's rows are keyed by the 5 base Vocação names, not by
-        // Sub-Vocação/Classe, so the sheet's Vocacao (not SubVocacao) is used as the lookup key —
-        // an accepted approximation (see plan's Explicitly out of scope).
-        var artefatos = await GetArtifactBonusInputsAsync(s.Id);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatos);
-        var statusVida = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
-        var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);
-        var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
-        var estresseMaximo = ResourceMaximumCalculator.Estresse();
+        var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
@@ -407,7 +398,30 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
-            vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo);
+            maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse);
+    }
+
+    /// <summary>
+    /// Shared by ToResponseAsync (display) and Update (clamping "Atual não pode exceder o
+    /// máximo", 1.c) — "Status de classe Vida/Foco" comes from Tabela de Vocação (Vocação ×
+    /// Nível); that table's rows are keyed by the 5 base Vocação names, not by Sub-Vocação/Classe,
+    /// so vocacao (not SubVocacao) is the lookup key — an accepted approximation (see plan's
+    /// Explicitly out of scope).
+    /// </summary>
+    private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(Guid sheetId, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)
+    {
+        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+        var vigorTotal = await GetAttributeTotalAsync(sheetId, Atributo.Vigor, artefatos);
+        var astuciaTotal = await GetAttributeTotalAsync(sheetId, Atributo.Astucia, artefatos);
+        var statusVida = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Vida).FirstOrDefault() : 0;
+        var statusFoco = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
+
+        return (
+            ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida),
+            ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco),
+            ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina),
+            ResourceMaximumCalculator.Estresse());
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
