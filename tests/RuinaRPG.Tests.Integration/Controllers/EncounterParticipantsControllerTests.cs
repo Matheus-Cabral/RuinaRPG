@@ -213,6 +213,52 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
     }
 
     [Fact]
+    public async Task AddParticipant_with_an_NpcSheet_granted_in_a_different_campaign_returns_400()
+    {
+        // Épico 5 item 1 of the gap audit: same-GM cross-campaign leak — a granted NPC/Criatura
+        // is campaign-scoped via its grant-link CampaignAttachment row, not just by GmId. The GM
+        // owns both campaigns here (same-tenant, no cross-account leak), but the encounter in
+        // campaign B must not be able to pull in a companion granted only in campaign A.
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm14", "ep14@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer14", "epplayer14@teste.com");
+        var campaignA = await CreateCampaignAsync(gmToken, "Campanha A Vazamento");
+        var campaignB = await CreateCampaignAsync(gmToken, "Campanha B Vazamento");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/grants", gmToken,
+            new GrantSheetRequest(playerId, "Npc", null)));
+        var npcId = (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+
+        var encounterInB = await CreateEncounterAsync(gmToken, campaignB, "Encontro Vazamento B");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterInB}/participants", gmToken,
+            new AddParticipantRequest(null, npcId, null, 10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddParticipant_with_a_CreatureSheet_granted_in_a_different_campaign_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm15", "ep15@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer15", "epplayer15@teste.com");
+        var campaignA = await CreateCampaignAsync(gmToken, "Campanha A Vazamento Criatura");
+        var campaignB = await CreateCampaignAsync(gmToken, "Campanha B Vazamento Criatura");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/grants", gmToken,
+            new GrantSheetRequest(playerId, "Creature", null)));
+        var creatureId = (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+
+        var encounterInB = await CreateEncounterAsync(gmToken, campaignB, "Encontro Vazamento Criatura B");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterInB}/participants", gmToken,
+            new AddParticipantRequest(null, null, creatureId, 10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task AddParticipant_with_two_sources_set_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EpGm3", "ep3@teste.com");
