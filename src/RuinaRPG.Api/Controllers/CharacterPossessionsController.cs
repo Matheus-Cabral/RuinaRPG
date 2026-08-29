@@ -27,9 +27,12 @@ public class CharacterPossessionsController(RuinaRpgDbContext db) : ControllerBa
         if (!Guid.TryParse(request.ItemId, out var itemId))
             return BadRequest("ItemId inválido.");
 
-        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == itemId);
+        // Ficha de Personagem 5.a: "Armas, Armaduras e Escudos não aparecem aqui" — restricted to
+        // Item Geral, unlike the base Items query this used to run (which matched any catalog
+        // type, letting a Weapon/Armor/Shield/Artefato double-count its Peso in both places).
+        var item = await db.Set<ItemGeral>().FirstOrDefaultAsync(i => i.Id == itemId);
         if (item is null)
-            return BadRequest("Item não encontrado.");
+            return BadRequest("Item Geral não encontrado.");
 
         var inventoryItem = new CharacterInventoryItem { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, Qtd = request.Qtd };
         db.CharacterInventoryItems.Add(inventoryItem);
