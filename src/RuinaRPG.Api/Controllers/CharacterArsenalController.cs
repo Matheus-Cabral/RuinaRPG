@@ -74,6 +74,22 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("weapons/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateWeaponDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
+        if (weapon is null)
+            return NotFound();
+
+        weapon.DurabilidadeAtual = durabilidadeAtual;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("weapons/{id}")]
     public async Task<IActionResult> DeleteWeapon(Guid sheetId, Guid id)
     {
@@ -135,6 +151,22 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("armor-slots/{slot}/durabilidade")]
+    public async Task<IActionResult> UpdateArmorSlotDurability(Guid sheetId, ArmorSlotType slot, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == slot);
+        if (armorSlot.ItemId is null)
+            return BadRequest("Nenhuma armadura equipada nesse slot.");
+
+        armorSlot.DurabilidadeAtual = durabilidadeAtual;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("shields")]
     public async Task<ActionResult<CharacterShieldResponse>> AddShield(Guid sheetId, AddCharacterShieldRequest request)
     {
@@ -168,6 +200,45 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         foreach (var shield in shields)
             responses.Add(await ToShieldResponseAsync(shield));
         return responses;
+    }
+
+    [HttpPut("shields/{id}")]
+    public async Task<IActionResult> UpdateShield(Guid sheetId, Guid id, [FromBody] bool isEquipped)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        if (isEquipped)
+        {
+            // Same "1 equipped at a time" default rule as weapons (UpdateWeapon) — no exception modeled yet.
+            var currentlyEquipped = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId && s.IsEquipped).ToListAsync();
+            foreach (var other in currentlyEquipped)
+                other.IsEquipped = false;
+        }
+        shield.IsEquipped = isEquipped;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("shields/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateShieldDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        shield.DurabilidadeAtual = durabilidadeAtual;
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpDelete("shields/{id}")]

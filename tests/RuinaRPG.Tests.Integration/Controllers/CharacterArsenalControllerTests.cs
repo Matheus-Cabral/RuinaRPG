@@ -354,4 +354,93 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Equipping_a_second_shield_unequips_the_first()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm16", "arsenal16@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer16", "arsenalplayer16@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, 8);
+
+        var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId1)));
+        var shield1Id = (await add1.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
+        var add2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId2)));
+        var shield2Id = (await add2.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/shields/{shield1Id}", playerToken, true));
+        var equipSecond = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/shields/{shield2Id}", playerToken, true));
+        equipSecond.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
+        body!.Single(s => s.Id == shield1Id).IsEquipped.Should().BeFalse();
+        body!.Single(s => s.Id == shield2Id).IsEquipped.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateWeaponDurability_sets_DurabilidadeAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm17", "arsenal17@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer17", "arsenalplayer17@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 12));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        body!.Single(w => w.Id == weaponId).DurabilidadeAtual.Should().Be(12);
+    }
+
+    [Fact]
+    public async Task UpdateShieldDurability_sets_DurabilidadeAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm18", "arsenal18@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer18", "arsenalplayer18@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
+        var shieldId = (await add.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/shields/{shieldId}/durabilidade", playerToken, 4));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_sets_DurabilidadeAtual_when_a_slot_has_an_item()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm19", "arsenal19@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer19", "arsenalplayer19@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete/durabilidade", playerToken, 7));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_on_an_empty_slot_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm20", "arsenal20@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer20", "arsenalplayer20@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete/durabilidade", playerToken, 7));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
