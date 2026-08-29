@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -26,9 +27,19 @@ public class CharacterAttributesController(RuinaRpgDbContext db) : ControllerBas
             return Forbid();
 
         var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+
+        // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
+        var artefatos = await db.CharacterArtifacts
+            .Where(a => a.CharacterSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
+
         return attributes
             .Select(a => new CharacterAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0)))
+                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
             .ToList();
     }
 

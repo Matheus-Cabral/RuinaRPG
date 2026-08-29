@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -93,6 +94,35 @@ public class CharacterAttributesControllerTests : IClassFixture<PostgresFixture>
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAttributeResponse>>();
         body!.Single(a => a.Atributo == "Forca").Total.Should().Be(6); // 5 + floor(3/2) + 0
+    }
+
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task Total_sums_the_Valor_of_equipped_Artefatos_targeting_that_Atributo()
+    {
+        // Ficha de Personagem 2.a: "Artefatos refere-se à soma dos Valores de Artefatos equipados
+        // cujo Tipo é Atributo e cujo Alvo é este atributo."
+        var gmToken = await RegisterGmAndGetTokenAsync("AttrGm5", "attr5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer5", "attrplayer5@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var forcaArtifactId = await CreateArtefatoItemAsync(gmToken, "Luva da Força", "Atributo", "Forca", 3);
+        var otherArtifactId = await CreateArtefatoItemAsync(gmToken, "Anel do Vigor", "Atributo", "Vigor", 7); // different Alvo — must not leak into Forca
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(forcaArtifactId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(otherArtifactId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAttributeResponse>>();
+        body!.Single(a => a.Atributo == "Forca").Total.Should().Be(8); // 5 + floor(0/2) + 3
+        body!.Single(a => a.Atributo == "Vigor").Total.Should().Be(7); // 0 + 0 + 7
     }
 
     [Fact]

@@ -614,6 +614,39 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body.ReducaoMagica.Should().Be(2);
     }
 
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_sums_Artefatos_targeting_SubAtributo_terms()
+    {
+        // Formulas.md: every Sub-Atributo formula has an "Artefato(s)" term — Requisitos - Ficha de
+        // Personagem 2.b — sourced from equipped Artefatos whose TipoDeAlvo=SubAtributo and Alvo
+        // matches the term's canonical name (SubAtributoAlvo).
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub5", "sheetsub5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub5", "sheetplayersub5@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Artefato");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var iniciativaArtifactId = await CreateArtefatoItemAsync(gmToken, "Amuleto da Presteza", "SubAtributo", "Iniciativa", 4);
+        var reducaoFisicaArtifactId = await CreateArtefatoItemAsync(gmToken, "Bracelete de Ferro", "SubAtributo", "Redução Física", 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(iniciativaArtifactId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(reducaoFisicaArtifactId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Iniciativa.Should().Be(4); // Agilidade(0) + Bruto Prontidão(0) + Artefato(4)
+        body.ReducaoFisica.Should().Be(2); // Artefato(2) + Armadura(0)
+        body.ReducaoMagica.Should().Be(0); // unaffected — different Alvo
+    }
+
     [Fact]
     public async Task SubAttributes_by_an_unrelated_jogador_returns_403()
     {
