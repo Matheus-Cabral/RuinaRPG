@@ -1,6 +1,7 @@
 @page "/compendio"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Rules
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -23,15 +24,27 @@
     <p class="error">@_errorMessage</p>
 }
 
-<ul>
-    @foreach (var result in _results)
-    {
-        <li>
-            <strong>@result.Titulo</strong> — <em>@result.Origem</em>
-            <p>@result.Conteudo</p>
-        </li>
-    }
-</ul>
+@foreach (var group in _results.GroupBy(r => r.Categoria))
+{
+    <h2>@CategoriaLabel(group.Key) (@group.Count())</h2>
+    <ul>
+        @foreach (var result in group)
+        {
+            var snippet = CompendioSnippetBuilder.Build(result.Conteudo, string.IsNullOrWhiteSpace(_query) ? null : _query);
+            <li>
+                <strong>@result.Titulo</strong> — <em>@result.Origem</em>
+                <p>
+                    @snippet.Before
+                    @if (snippet.Match is not null)
+                    {
+                        <mark>@snippet.Match</mark>
+                    }
+                    @snippet.After
+                </p>
+            </li>
+        }
+    </ul>
+}
 
 @code {
     private List<BreadcrumbItem> Crumbs => new()
@@ -93,4 +106,13 @@
         _results = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>() ?? new();
         _errorMessage = null;
     }
+
+    private static string CategoriaLabel(string categoria) => categoria switch
+    {
+        "Caracteristica" => "Características",
+        "Efeito" => "Efeitos",
+        "Tabela" => "Tabelas",
+        "Regra" => "Regras",
+        _ => categoria,
+    };
 }

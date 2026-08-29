@@ -56,4 +56,23 @@ public class CompendioSearchServiceTests
 
         results.Should().Contain(r => r.Origem == "Tabela de Níveis — Nível 1");
     }
+
+    [Fact]
+    public void Search_includes_the_Circulo_e_Grau_por_EAP_table()
+    {
+        // Épico 6 item 1 of the gap audit: this table was already parsed by IRulesDataProvider but
+        // never reached CompendioSearchService.
+        var results = CompendioSearchService.Search(query: null, categorias: [CompendioCategoria.Tabela], Traits, Rules);
+
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de Círculo e Grau por EAP"));
+    }
+
+    [Fact]
+    public void Search_includes_the_Xp_e_EAP_por_Nivel_tables()
+    {
+        var results = CompendioSearchService.Search(query: null, categorias: [CompendioCategoria.Tabela], Traits, Rules);
+
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de XP — Nível"));
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de EAP por Nível — Nível"));
+    }
 }
