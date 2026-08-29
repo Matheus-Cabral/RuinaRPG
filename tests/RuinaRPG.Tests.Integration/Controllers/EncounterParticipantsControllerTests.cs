@@ -105,6 +105,18 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
     private async Task UpdateCharacterVitalidadeAsync(string playerToken, string sheetId, string nome, int vitalidadeAtual) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidCharacterUpdate(nome, vitalidadeAtual)));
 
+    private async Task<string> CreateCreatureSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
+    }
+
+    private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest ValidCreatureUpdate(string nome, int vitalidadeAtual) => new(
+        null, nome, "Lobo", "Fisico", "Predador", "Terra", "F", 3, 200, 5, vitalidadeAtual, 8, 10, "Parcial");
+
+    private async Task UpdateCreatureVitalidadeAsync(string gmToken, string creatureId, string nome, int vitalidadeAtual) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, ValidCreatureUpdate(nome, vitalidadeAtual)));
+
     [Fact]
     public async Task AddParticipant_from_a_gm_owned_npc_copies_PV_once_and_it_becomes_independently_editable()
     {
@@ -158,6 +170,46 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>();
         list!.Should().ContainSingle().Which.PV.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task AddParticipant_from_a_gm_owned_creature_copies_PV_once_and_it_becomes_independently_editable()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EpGm12", "ep12@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Participante Criatura");
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Criatura");
+        var creatureId = await CreateCreatureSheetAsync(gmToken);
+        await UpdateCreatureVitalidadeAsync(gmToken, creatureId, "Lobo das Ruínas", 30);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(null, null, creatureId, 10)));
+
+        addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
+        added!.PV.Should().Be(30);
+        added.IsLiveSourced.Should().BeFalse();
+
+        // Change the creature's VitalidadeAtual after the fact — the participant's copy must not follow.
+        await UpdateCreatureVitalidadeAsync(gmToken, creatureId, "Lobo das Ruínas", 5);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken));
+        var list = await listResponse.Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>();
+        list!.Should().ContainSingle().Which.PV.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task AddParticipant_with_a_CreatureSheet_owned_by_a_different_gm_returns_400()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("EpGm13Owner", "ep13owner@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("EpGm13Other", "ep13other@teste.com");
+        var campaignId = await CreateCampaignAsync(gmTokenOther, "Campanha Criatura Alheia");
+        var encounterId = await CreateEncounterAsync(gmTokenOther, campaignId, "Encontro Criatura Alheia");
+        var creatureId = await CreateCreatureSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmTokenOther,
+            new AddParticipantRequest(null, null, creatureId, 10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
