@@ -101,6 +101,27 @@ public class CreatureArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("weapons/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateWeaponDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var weapon = await db.CreatureWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CreatureSheetId == sheetId);
+        if (weapon is null)
+            return NotFound();
+
+        // A manual (natural attack) weapon has no ItemId, so no catalog Durabilidade to track at all.
+        if (weapon.ItemId is null)
+            return BadRequest("Ataques naturais (manuais) não têm Durabilidade.");
+
+        var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
+        weapon.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("weapons/{id}")]
     public async Task<IActionResult> DeleteWeapon(Guid sheetId, Guid id)
     {
@@ -162,6 +183,23 @@ public class CreatureArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("armor-slots/{slot}/durabilidade")]
+    public async Task<IActionResult> UpdateArmorSlotDurability(Guid sheetId, ArmorSlotType slot, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var armorSlot = await db.CreatureArmorSlots.SingleAsync(a => a.CreatureSheetId == sheetId && a.Slot == slot);
+        if (armorSlot.ItemId is null)
+            return BadRequest("Nenhuma armadura equipada nesse slot.");
+
+        var item = await db.Set<Armadura>().SingleAsync(a => a.Id == armorSlot.ItemId);
+        armorSlot.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("shields")]
     public async Task<ActionResult<CreatureShieldResponse>> AddShield(Guid sheetId, AddCreatureShieldRequest request)
     {
@@ -195,6 +233,45 @@ public class CreatureArsenalController(RuinaRpgDbContext db) : ControllerBase
         foreach (var shield in shields)
             responses.Add(await ToShieldResponseAsync(shield));
         return responses;
+    }
+
+    [HttpPut("shields/{id}")]
+    public async Task<IActionResult> UpdateShield(Guid sheetId, Guid id, [FromBody] bool isEquipped)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.CreatureShields.FirstOrDefaultAsync(s => s.Id == id && s.CreatureSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        if (isEquipped)
+        {
+            var currentlyEquipped = await db.CreatureShields.Where(s => s.CreatureSheetId == sheetId && s.IsEquipped).ToListAsync();
+            foreach (var other in currentlyEquipped)
+                other.IsEquipped = false;
+        }
+        shield.IsEquipped = isEquipped;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("shields/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateShieldDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.CreatureShields.FirstOrDefaultAsync(s => s.Id == id && s.CreatureSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
+        shield.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpDelete("shields/{id}")]

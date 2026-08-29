@@ -74,6 +74,24 @@ public class NpcArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("weapons/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateWeaponDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.NpcSheetId == sheetId);
+        if (weapon is null)
+            return NotFound();
+
+        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.a, aplicado a NPC por R0002).
+        var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
+        weapon.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("weapons/{id}")]
     public async Task<IActionResult> DeleteWeapon(Guid sheetId, Guid id)
     {
@@ -135,6 +153,23 @@ public class NpcArsenalController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("armor-slots/{slot}/durabilidade")]
+    public async Task<IActionResult> UpdateArmorSlotDurability(Guid sheetId, ArmorSlotType slot, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var armorSlot = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == slot);
+        if (armorSlot.ItemId is null)
+            return BadRequest("Nenhuma armadura equipada nesse slot.");
+
+        var item = await db.Set<Armadura>().SingleAsync(a => a.Id == armorSlot.ItemId);
+        armorSlot.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("shields")]
     public async Task<ActionResult<NpcShieldResponse>> AddShield(Guid sheetId, AddNpcShieldRequest request)
     {
@@ -168,6 +203,45 @@ public class NpcArsenalController(RuinaRpgDbContext db) : ControllerBase
         foreach (var shield in shields)
             responses.Add(await ToShieldResponseAsync(shield));
         return responses;
+    }
+
+    [HttpPut("shields/{id}")]
+    public async Task<IActionResult> UpdateShield(Guid sheetId, Guid id, [FromBody] bool isEquipped)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.NpcSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        if (isEquipped)
+        {
+            var currentlyEquipped = await db.NpcShields.Where(s => s.NpcSheetId == sheetId && s.IsEquipped).ToListAsync();
+            foreach (var other in currentlyEquipped)
+                other.IsEquipped = false;
+        }
+        shield.IsEquipped = isEquipped;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("shields/{id}/durabilidade")]
+    public async Task<IActionResult> UpdateShieldDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.NpcSheetId == sheetId);
+        if (shield is null)
+            return NotFound();
+
+        var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
+        shield.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpDelete("shields/{id}")]
