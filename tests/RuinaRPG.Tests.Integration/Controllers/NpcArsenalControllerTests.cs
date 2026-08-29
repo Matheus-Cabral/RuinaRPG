@@ -323,4 +323,84 @@ public class NpcArsenalControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Equipping_a_second_shield_unequips_the_first()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcArsenalGm16", "npcarsenal16@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, 8);
+        var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId1)));
+        var shield1Id = (await add1.Content.ReadFromJsonAsync<NpcShieldResponse>())!.Id;
+        var add2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId2)));
+        var shield2Id = (await add2.Content.ReadFromJsonAsync<NpcShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/shields/{shield1Id}", gmToken, true));
+        var equipSecond = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/shields/{shield2Id}", gmToken, true));
+        equipSecond.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/shields", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcShieldResponse>>();
+        body!.Single(s => s.Id == shield1Id).IsEquipped.Should().BeFalse();
+        body!.Single(s => s.Id == shield2Id).IsEquipped.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateWeaponDurability_clamps_to_the_item_DurabilidadeMaxima()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcArsenalGm17", "npcarsenal17@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(weaponItemId)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<NpcWeaponResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/weapons/{weaponId}/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/weapons", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcWeaponResponse>>();
+        body!.Single(w => w.Id == weaponId).DurabilidadeAtual.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task UpdateShieldDurability_clamps_to_the_item_DurabilidadeMaxima()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcArsenalGm18", "npcarsenal18@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId)));
+        var shieldId = (await add.Content.ReadFromJsonAsync<NpcShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/shields/{shieldId}/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/shields", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcShieldResponse>>();
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_clamps_to_the_item_DurabilidadeMaxima()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcArsenalGm19", "npcarsenal19@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateNpcArmorSlotRequest(armorItemId)));
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/armor-slots", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcArmorSlotResponse>>();
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_on_an_empty_slot_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcArsenalGm20", "npcarsenal20@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete/durabilidade", gmToken, 5));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

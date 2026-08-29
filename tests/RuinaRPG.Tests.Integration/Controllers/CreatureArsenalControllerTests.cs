@@ -371,4 +371,97 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Equipping_a_second_shield_unequips_the_first()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm19", "creaturearsenal19@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, 8);
+        var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId1)));
+        var shield1Id = (await add1.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
+        var add2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId2)));
+        var shield2Id = (await add2.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/shields/{shield1Id}", gmToken, true));
+        var equipSecond = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/shields/{shield2Id}", gmToken, true));
+        equipSecond.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/shields", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureShieldResponse>>();
+        body!.Single(s => s.Id == shield1Id).IsEquipped.Should().BeFalse();
+        body!.Single(s => s.Id == shield2Id).IsEquipped.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateWeaponDurability_clamps_to_the_item_DurabilidadeMaxima_for_a_catalog_weapon()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm20", "creaturearsenal20@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/weapons/{weaponId}/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/weapons", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureWeaponResponse>>();
+        body!.Single(w => w.Id == weaponId).DurabilidadeAtual.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task UpdateWeaponDurability_on_a_manual_natural_attack_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm21", "creaturearsenal21@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(null, "Garras", "Cortante", "1D6", 2)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/weapons/{weaponId}/durabilidade", gmToken, 5));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateShieldDurability_clamps_to_the_item_DurabilidadeMaxima()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm22", "creaturearsenal22@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId)));
+        var shieldId = (await add.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/shields/{shieldId}/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/shields", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureShieldResponse>>();
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_clamps_to_the_item_DurabilidadeMaxima()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm23", "creaturearsenal23@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateCreatureArmorSlotRequest(armorItemId)));
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete/durabilidade", gmToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/armor-slots", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureArmorSlotResponse>>();
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_on_an_empty_slot_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm24", "creaturearsenal24@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete/durabilidade", gmToken, 5));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
