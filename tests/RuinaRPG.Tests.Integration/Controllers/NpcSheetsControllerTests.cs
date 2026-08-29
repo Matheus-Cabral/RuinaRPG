@@ -257,6 +257,23 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task List_can_filter_by_Variante()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListFilterVariante", "npcgmlistfiltervariante@teste.com");
+        var sheetId1 = await CreateSheetAsync(gmToken);
+        var sheetId2 = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId1}", gmToken, ValidUpdate() with { Variante = "Sinir" }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId2}", gmToken, ValidUpdate() with { Variante = "Laonir" }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets?variante=Laonir", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
+        body!.Should().ContainSingle(s => s.Id == sheetId2);
+    }
+
+    [Fact]
     public async Task List_can_filter_by_partial_Nome_Linhagem_and_Nivel_together()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListFilter", "npcgmlistfilter@teste.com");
