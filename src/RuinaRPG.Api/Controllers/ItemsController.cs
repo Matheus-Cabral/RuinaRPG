@@ -12,16 +12,19 @@ namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/items")]
-[Authorize(Roles = "GM")]
+[Authorize]
 public class ItemsController(RuinaRpgDbContext db) : ControllerBase
 {
+    // Curating the Catálogo (create/edit/delete) stays GM-only; browsing it (List, below) doesn't
+    // — a player needs to see their own GM's catalog to pick a weapon/item for their own sheet.
     [HttpPost]
+    [Authorize(Roles = "GM")]
     public async Task<ActionResult<ItemResponse>> Create(CreateItemRequest request)
     {
         if (!Enum.TryParse<ItemTipo>(request.Tipo, out var tipo))
             return BadRequest("Tipo de item desconhecido.");
 
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
 
         if (!TryParseImageId(request.ImageId, out var imageId))
             return BadRequest("ImageId inválido.");
@@ -96,7 +99,10 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         [FromQuery] string? categoria,
         [FromQuery] string? tipoDeDano)
     {
-        var gmId = CurrentGmId();
+        var gmId = await ResolveEffectiveGmIdAsync();
+        if (gmId is null)
+            return Forbid();
+
         var query = db.Items.Where(i => i.GmId == gmId);
 
         if (tipo is not null && Enum.TryParse<ItemTipo>(tipo, out var tipoParsed))
@@ -175,9 +181,10 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Update(Guid id, UpdateItemRequest request)
     {
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
         var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.GmId == gmId);
         if (item is null)
             return NotFound();
@@ -239,9 +246,10 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
         var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.GmId == gmId);
         if (item is null)
             return NotFound();
@@ -251,5 +259,21 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+
+    /// <summary>
+    /// Curating the Catálogo is GM-only, but a player needs read access to their own GM's catalog
+    /// to pick something for their own sheet — so List resolves "whose catalog" instead of always
+    /// meaning "my own": the GM's own id for a GM, or their linked GM's id for a player (a Jogador
+    /// always belongs to exactly one GM via InvitedByGmId). Null means the caller has no catalog to see.
+    /// </summary>
+    private async Task<Guid?> ResolveEffectiveGmIdAsync()
+    {
+        var callerId = CurrentUserId();
+        if (User.IsInRole("GM"))
+            return callerId;
+
+        var caller = await db.Users.FindAsync(callerId);
+        return caller?.InvitedByGmId;
+    }
 }

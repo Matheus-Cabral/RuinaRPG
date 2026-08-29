@@ -113,6 +113,24 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     }
 
     [Fact]
+    public async Task List_as_a_jogador_returns_their_own_gms_bank_only()
+    {
+        // A player needs to browse the Banco to pick a Magia/Habilidade for their own sheet —
+        // Create/Update/Delete stay GM-only, but List doesn't.
+        var gmTokenA = await RegisterGmAndGetTokenAsync("BankGmJogadorA", "bankgmjogadora@teste.com");
+        var gmTokenB = await RegisterGmAndGetTokenAsync("BankGmJogadorB", "bankgmjogadorb@teste.com");
+        var jogadorTokenA = await RegisterJogadorTokenAsync(gmTokenA, "BankJogadorScopeA", "bankjogadorscopea@teste.com");
+        await CreateAsync(gmTokenA, BolaDeFogo());
+        await CreateAsync(gmTokenB, BolaDeFogo());
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", jogadorTokenA));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task List_can_filter_by_Tipo_and_Grau_together()
     {
         var token = await RegisterGmAndGetTokenAsync("BankGmFilter1", "bankfilter1@teste.com");

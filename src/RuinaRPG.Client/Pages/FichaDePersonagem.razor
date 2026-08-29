@@ -359,48 +359,72 @@
         <h3>Magias e Habilidades</h3>
         <EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
             <div class="mb-3">
-                <label class="form-label">Nome</label>
-                <InputText class="form-control" @bind-Value="_spellAbilityForm.Nome" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Tipo</label>
-                <select class="form-select" @bind="_spellAbilityForm.Tipo">
-                    <option value="Magia">Magia</option>
-                    <option value="Habilidade">Habilidade</option>
-                    <option value="Racial">Racial</option>
+                <label class="form-label">Origem</label>
+                <select class="form-select" @bind="_spellAbilityForm.Origem">
+                    <option value="Zero">Montar do zero</option>
+                    <option value="Banco">Escolher do Banco de Magias</option>
                 </select>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Grau</label>
-                <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Grau" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Descrição</label>
-                <InputTextArea class="form-control" @bind-Value="_spellAbilityForm.Descricao" />
-            </div>
 
-            <h4>Efeitos</h4>
-            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddSpellAbilityEffect">Adicionar Efeito</button>
-            @for (var i = 0; i < _spellAbilityForm.Efeitos.Count; i++)
+            @if (_spellAbilityForm.Origem == "Banco")
             {
-                var index = i; // capture for the closures below
-                <div class="row g-3 align-items-end mb-3 mt-1">
-                    <div class="col-md-4">
-                        <label class="form-label">Nome do Efeito</label>
-                        <InputText class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].EfeitoNome" />
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Quantidade</label>
-                        <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].Quantidade" />
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Custo em PI</label>
-                        <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].CustoPI" />
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</button>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Entrada do Banco</label>
+                    <select class="form-select" @bind="_spellAbilityForm.SourceBankEntryId">
+                        <option value="">Escolha uma entrada</option>
+                        @foreach (var entry in _bankEntries)
+                        {
+                            <option value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</option>
+                        }
+                    </select>
                 </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <InputText class="form-control" @bind-Value="_spellAbilityForm.Nome" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" @bind="_spellAbilityForm.Tipo">
+                        <option value="Magia">Magia</option>
+                        <option value="Habilidade">Habilidade</option>
+                        <option value="Racial">Racial</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Grau</label>
+                    <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Grau" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <InputTextArea class="form-control" @bind-Value="_spellAbilityForm.Descricao" />
+                </div>
+
+                <h4>Efeitos</h4>
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddSpellAbilityEffect">Adicionar Efeito</button>
+                @for (var i = 0; i < _spellAbilityForm.Efeitos.Count; i++)
+                {
+                    var index = i; // capture for the closures below
+                    <div class="row g-3 align-items-end mb-3 mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label">Nome do Efeito</label>
+                            <InputText class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].EfeitoNome" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Quantidade</label>
+                            <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].Quantidade" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Custo em PI</label>
+                            <InputNumber class="form-control" @bind-Value="_spellAbilityForm.Efeitos[index].CustoPI" />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</button>
+                        </div>
+                    </div>
+                }
             }
 
             <button type="submit" class="btn btn-primary mt-3">Adicionar Magia/Habilidade</button>
@@ -652,6 +676,7 @@
     private SubAttributesResponse? _subAttributes;
     private RacialAbilityResponse? _racialAbility;
     private List<CharacterSpellAbilityResponse> _spellAbilities = new();
+    private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
     private List<CharacterRuneResponse> _runes = new();
     private readonly RuneFormModel _runeForm = new();
@@ -903,14 +928,18 @@
     private async Task LoadSpellAbilitiesAsync()
     {
         _spellAbilities = await Http.GetFromJsonAsync<List<CharacterSpellAbilityResponse>>($"character-sheets/{SheetId}/spell-abilities") ?? new();
+        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>("spell-ability-bank") ?? new();
     }
 
     private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
 
     private async Task AddSpellAbilityAsync()
     {
-        var efeitos = _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var request = new AddCharacterSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao, efeitos);
+        var request = _spellAbilityForm.Origem == "Banco"
+            ? new AddCharacterSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
+            : new AddCharacterSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
+                _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
+
         var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/spell-abilities", request);
         if (!response.IsSuccessStatusCode)
         {
@@ -918,6 +947,7 @@
             return;
         }
 
+        _spellAbilityForm.SourceBankEntryId = "";
         _spellAbilityForm.Nome = "";
         _spellAbilityForm.Tipo = "Magia";
         _spellAbilityForm.Grau = 0;
@@ -1170,6 +1200,8 @@
 
     private class SpellAbilityFormModel
     {
+        public string Origem { get; set; } = "Zero";
+        public string SourceBankEntryId { get; set; } = "";
         public string Nome { get; set; } = "";
         public string Tipo { get; set; } = "Magia";
         public int Grau { get; set; }

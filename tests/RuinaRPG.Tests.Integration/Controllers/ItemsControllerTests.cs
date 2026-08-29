@@ -223,6 +223,26 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
     }
 
     [Fact]
+    public async Task List_as_a_jogador_returns_their_own_gms_catalog_only()
+    {
+        // A player needs to browse the Catálogo to pick something for their own sheet — Create/
+        // Update/Delete stay GM-only, but List doesn't.
+        var gmTokenA = await RegisterGmAndGetTokenAsync("ItemGmJogadorA", "itemgmjogadora@teste.com");
+        var gmTokenB = await RegisterGmAndGetTokenAsync("ItemGmJogadorB", "itemgmjogadorb@teste.com");
+        var jogadorTokenA = await RegisterJogadorTokenAsync(gmTokenA, "ItemJogadorScopeA", "itemjogadorscopea@teste.com");
+        await PostItemAsync(gmTokenA, MinimalItemGeral("Corda de A"));
+        await PostItemAsync(gmTokenB, MinimalItemGeral("Corda de B"));
+
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorTokenA);
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().ContainSingle(i => i.Nome == "Corda de A");
+    }
+
+    [Fact]
     public async Task List_can_filter_by_Tipo()
     {
         var token = await RegisterGmAndGetTokenAsync("ItemGmFilter1", "itemfilter1@teste.com");
