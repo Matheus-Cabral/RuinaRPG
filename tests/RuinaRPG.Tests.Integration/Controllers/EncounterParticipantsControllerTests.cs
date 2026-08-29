@@ -139,6 +139,9 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Personagem");
         var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
+        // Vitalidade não pode exceder o Máximo (Ficha de Personagem 1.c) — Campeão Nível 5 → Vida
+        // 24 (real Tabela de Vocação); Vigor 1 pushes o máximo pra 26, folga suficiente pro 25 pedido.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(1, 0, false)));
         await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Astrel", 25);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,

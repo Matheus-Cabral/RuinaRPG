@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/npc-sheets/{sheetId}/runes")]
 public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -21,7 +22,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = request.Nome, Descricao = request.Descricao, Grau = request.Grau };
@@ -38,7 +39,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var runes = await db.NpcRunes.Where(r => r.NpcSheetId == sheetId).ToListAsync();
@@ -52,7 +53,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var rune = await db.NpcRunes.FirstOrDefaultAsync(r => r.Id == id && r.NpcSheetId == sheetId);
@@ -67,5 +68,5 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
     private static NpcRuneResponse ToResponse(NpcRune r) =>
         new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau);
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -12,7 +12,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/creature-sheets/{sheetId}/masteries")]
 public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -23,7 +23,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         if (!Enum.TryParse<Pericia>(request.Pericia, out var pericia) || !Enum.IsDefined(pericia))
@@ -51,7 +51,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var masteries = await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync();
@@ -73,7 +73,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var mastery = await db.CreatureMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CreatureSheetId == sheetId);
@@ -97,5 +97,5 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
     private static CreatureMasteryResponse ToResponse(CreatureMastery m, int total) =>
         new(m.Id.ToString(), m.Nome, m.Pericia.ToString(), m.Atributo.ToString(), m.GastoMaestria, total);
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

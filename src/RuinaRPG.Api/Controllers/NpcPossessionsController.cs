@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -12,7 +13,7 @@ using RuinaRPG.Infrastructure.Rules;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/npc-sheets/{sheetId}")]
 public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -227,7 +228,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         return null;
@@ -251,5 +252,5 @@ public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
     private static NpcTraitResponse ToTraitResponse(NpcTrait npcTrait, Trait trait) =>
         new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString());
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

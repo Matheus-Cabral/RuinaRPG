@@ -11,7 +11,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/npc-sheets/{sheetId}/affinities")]
 public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -22,7 +22,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         if (!Enum.TryParse<Elemento>(request.Elemento, out var elemento) || !Enum.TryParse<SubElemento>(request.SubElemento, out var subElemento))
@@ -45,7 +45,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var affinities = await db.NpcAffinities.Where(a => a.NpcSheetId == sheetId).ToListAsync();
@@ -59,7 +59,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var affinity = await db.NpcAffinities.FirstOrDefaultAsync(a => a.Id == id && a.NpcSheetId == sheetId);
@@ -74,5 +74,5 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
     private static NpcAffinityResponse ToResponse(NpcAffinity a) =>
         new(a.Id.ToString(), a.Elemento.ToString(), a.SubElemento.ToString(), a.CaminhoNome, a.Experiencia);
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

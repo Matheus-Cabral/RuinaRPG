@@ -11,7 +11,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/creature-sheets/{sheetId}/attributes")]
 public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -22,7 +22,7 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).ToListAsync();
@@ -39,7 +39,7 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
@@ -51,5 +51,5 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
