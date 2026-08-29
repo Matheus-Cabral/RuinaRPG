@@ -156,7 +156,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
-        sheet.EAPAtual = request.EAPAtual;
+        // sheet.EAPAtual is intentionally never written from here on — EAPAtual is now a pure
+        // function of Nivel + NucleosRank* (EapCalculator, used in ToResponseAsync), same
+        // treatment already given to Círculo/Grau. request.EAPAtual is accepted-but-ignored to
+        // avoid a wider positional-record rewrite across every existing call site.
         sheet.NucleosRankF = request.NucleosRankF;
         sheet.NucleosRankE = request.NucleosRankE;
         sheet.NucleosRankD = request.NucleosRankD;
@@ -371,8 +374,13 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
+        // EAPAtual is no longer a stored/editable value — same treatment already given to
+        // Círculo/Grau, which became a pure function instead of a directly-set column. "Segue a
+        // tabela [XP/EAP por Nível] e é somado pelo resultado de Âmbares Absorvidos" (1.b).
+        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, rules.EapPorNivel);
+
         var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
-        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
+        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
         // "Status de classe Vida/Foco" is not computed here — it comes from Tabela de Vocação
@@ -394,7 +402,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
             s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
-            s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, s.EAPAtual,
+            s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,

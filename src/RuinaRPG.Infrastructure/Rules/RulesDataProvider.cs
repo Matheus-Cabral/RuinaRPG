@@ -11,6 +11,7 @@ public class RulesDataProvider : IRulesDataProvider
     private readonly Lazy<IReadOnlyList<ArquetipoProgressao>> _arquetipos;
     private readonly Lazy<IReadOnlyList<CirculoGrauPorEap>> _circuloGrauPorEap;
     private readonly Lazy<IReadOnlyList<XpPorNivel>> _xpPorNivel;
+    private readonly Lazy<IReadOnlyList<EapPorNivel>> _eapPorNivel;
     private readonly Lazy<IReadOnlyList<GraduacaoEfeito>> _efeitos;
     private readonly Lazy<IReadOnlyList<RegraEntry>> _regras;
 
@@ -21,6 +22,7 @@ public class RulesDataProvider : IRulesDataProvider
         _arquetipos = new Lazy<IReadOnlyList<ArquetipoProgressao>>(() => ArquetipoProgressaoParser.Parse(ReadResource("Tabela de Arquetipos.md")));
         _circuloGrauPorEap = new Lazy<IReadOnlyList<CirculoGrauPorEap>>(() => CirculoGrauPorEapParser.Parse(ReadResource("Tabela de Circulo e Grau por EAP.md")));
         _xpPorNivel = new Lazy<IReadOnlyList<XpPorNivel>>(() => XpPorNivelParser.Parse(ReadResource("Tabelas de XP, Atributos, Características e EAP.md")));
+        _eapPorNivel = new Lazy<IReadOnlyList<EapPorNivel>>(() => EapPorNivelParser.Parse(ReadResource("Tabelas de XP, Atributos, Características e EAP.md")));
         _efeitos = new Lazy<IReadOnlyList<GraduacaoEfeito>>(() => GraduacaoEfeitoParser.Parse(ReadResource("GRAUS e CIRCULOS.md")));
         _regras = new Lazy<IReadOnlyList<RegraEntry>>(() => RegraEntryParser.Parse(ReadResource("Sistema Basico.md")));
     }
@@ -30,6 +32,7 @@ public class RulesDataProvider : IRulesDataProvider
     public IReadOnlyList<ArquetipoProgressao> Arquetipos => _arquetipos.Value;
     public IReadOnlyList<CirculoGrauPorEap> CirculoGrauPorEap => _circuloGrauPorEap.Value;
     public IReadOnlyList<XpPorNivel> XpPorNivel => _xpPorNivel.Value;
+    public IReadOnlyList<EapPorNivel> EapPorNivel => _eapPorNivel.Value;
     public IReadOnlyList<GraduacaoEfeito> Efeitos => _efeitos.Value;
     public IReadOnlyList<RegraEntry> Regras => _regras.Value;
 

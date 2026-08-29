@@ -16,6 +16,8 @@ public class RulesDataProviderTests
         provider.Arquetipos.Should().Contain(a => a.Arquetipo == "Fisico" && a.Nivel == 1);
         provider.CirculoGrauPorEap.Should().HaveCount(10); // Círculo/Grau 0..9
         provider.XpPorNivel.Should().HaveCount(50);
+        provider.EapPorNivel.Should().HaveCount(50);
+        provider.EapPorNivel.Should().Contain(e => e.Nivel == 1 && e.ValorAbsoluto == 0);
         provider.Efeitos.Should().Contain(e => e.Nome == "Aumentar Armadura");
         provider.Regras.Should().Contain(r => r.Titulo.Contains("Adrenalina"));
     }
