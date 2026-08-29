@@ -19,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 // api/campaigns/{campaignId}/character-sheets and api/character-sheets/{id}.
 [ApiController]
 [Authorize]
-public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub) : ControllerBase
+public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger) : ControllerBase
 {
     [HttpPost("api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
@@ -189,7 +189,20 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             .Distinct()
             .ToListAsync();
         foreach (var encounterId in affectedEncounterIds)
-            await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+        {
+            // Item 3 of the gap audit: the sheet is already saved at this point — a hub failure
+            // (e.g. the SignalR backplane being briefly unreachable) must not surface as a 500 to
+            // a caller whose save genuinely succeeded. Live sync just falls behind until the next
+            // change; it doesn't lose data.
+            try
+            {
+                await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
+            }
+        }
 
         return NoContent();
     }
