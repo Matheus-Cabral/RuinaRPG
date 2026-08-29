@@ -357,7 +357,7 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
         var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Você percebe algo estranho.", [playerId])));
+            new CreateSecretNoteRequest("Você percebe algo estranho.", [playerId], [])));
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var gmListResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
@@ -375,7 +375,7 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(otherMemberId)));
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Pista só para um deles.", [recipientId])));
+            new CreateSecretNoteRequest("Pista só para um deles.", [recipientId], [])));
 
         var otherListResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", otherMemberToken));
 
@@ -392,7 +392,7 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         // nonMemberId deliberately never added as a member
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Não deveria ser possível.", [nonMemberId])));
+            new CreateSecretNoteRequest("Não deveria ser possível.", [nonMemberId], [])));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -404,7 +404,7 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Secreta 4");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Não deveria ser possível.", ["not-a-guid"])));
+            new CreateSecretNoteRequest("Não deveria ser possível.", ["not-a-guid"], [])));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -420,11 +420,11 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(otherPlayerId)));
 
         var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Texto original.", [playerId])));
+            new CreateSecretNoteRequest("Texto original.", [playerId], [])));
         var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken,
-            new UpdateSecretNoteRequest("Texto revisado.", [otherPlayerId])));
+            new UpdateSecretNoteRequest("Texto revisado.", [otherPlayerId], [])));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
@@ -442,14 +442,14 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
         var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Texto original.", [playerId])));
+            new CreateSecretNoteRequest("Texto original.", [playerId], [])));
         var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
 
         // Same recipient list is retained across the edit — the Client's edit form pre-populates
         // existing recipients, which used to make EF Core's change tracker throw because the
         // composite key (DiaryEntryId, UserId) was simultaneously RemoveRange'd and re-Add'ed.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken,
-            new UpdateSecretNoteRequest("Texto revisado retendo destinatário.", [playerId])));
+            new UpdateSecretNoteRequest("Texto revisado retendo destinatário.", [playerId], [])));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
@@ -468,11 +468,11 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
         var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Texto original.", [playerId])));
+            new CreateSecretNoteRequest("Texto original.", [playerId], [])));
         var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken,
-            new UpdateSecretNoteRequest("Texto revisado.", [nonMemberId])));
+            new UpdateSecretNoteRequest("Texto revisado.", [nonMemberId], [])));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -486,7 +486,7 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
         var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
-            new CreateSecretNoteRequest("Texto a ser removido.", [playerId])));
+            new CreateSecretNoteRequest("Texto a ser removido.", [playerId], [])));
         var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken));
@@ -494,5 +494,59 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
         (await listResponse.Content.ReadFromJsonAsync<List<SecretNoteResponse>>())!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SecretNote_create_with_an_existing_image_returns_ImageUrls_with_the_images_prefix()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecretGm8", "secret8@teste.com");
+        var playerId = await RegisterJogadorLinkedToAsync(gmToken, "SecretPlayer8", "secretplayer8@teste.com");
+        var imageId = await UploadImageAsync(gmToken);
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Secreta com Imagem");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
+            new CreateSecretNoteRequest("Um mapa secreto.", [playerId], [imageId])));
+
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>();
+        body!.ImageUrls.Should().ContainSingle(url => url.StartsWith("/images/"));
+    }
+
+    [Fact]
+    public async Task SecretNote_create_with_a_malformed_ImageId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecretGm9", "secret9@teste.com");
+        var playerId = await RegisterJogadorLinkedToAsync(gmToken, "SecretPlayer9", "secretplayer9@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Secreta Imagem Inválida");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
+            new CreateSecretNoteRequest("Texto qualquer.", [playerId], ["not-a-guid"])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateSecretNote_replaces_the_image_set()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecretGm10", "secret10@teste.com");
+        var playerId = await RegisterJogadorLinkedToAsync(gmToken, "SecretPlayer10", "secretplayer10@teste.com");
+        var imageId1 = await UploadImageAsync(gmToken);
+        var imageId2 = await UploadImageAsync(gmToken);
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Secreta Atualiza Imagem");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
+            new CreateSecretNoteRequest("Texto original.", [playerId], [imageId1])));
+        var noteId = (await createResponse.Content.ReadFromJsonAsync<SecretNoteResponse>())!.Id;
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/secret-notes/{noteId}", gmToken,
+            new UpdateSecretNoteRequest("Texto original.", [playerId], [imageId2])));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/secret-notes", gmToken));
+        var note = (await listResponse.Content.ReadFromJsonAsync<List<SecretNoteResponse>>())!.Single(n => n.Id == noteId);
+        note.ImageUrls.Should().ContainSingle();
     }
 }

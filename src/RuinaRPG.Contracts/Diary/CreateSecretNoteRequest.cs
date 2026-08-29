@@ -1,3 +1,3 @@
 namespace RuinaRPG.Contracts.Diary;
 
-public record CreateSecretNoteRequest(string Texto, List<string> RecipientUserIds);
+public record CreateSecretNoteRequest(string Texto, List<string> RecipientUserIds, List<string> ImageIds);

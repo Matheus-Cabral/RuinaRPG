@@ -181,13 +181,21 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!await AllAreCampaignMembersAsync(campaignId, recipientIds))
             return BadRequest("Todo destinatário deve ser membro da campanha.");
 
+        if (!TryParseImageIds(request.ImageIds, out var imageIds))
+            return BadRequest("Um dos identificadores de imagem informados é inválido.");
+
+        if (!await OwnsAllImagesAsync(imageIds, gmId))
+            return BadRequest("Imagem não encontrada.");
+
         var note = new DiaryEntry { Id = Guid.NewGuid(), AuthorUserId = gmId, CampaignId = campaignId, IsSecretNote = true, Texto = request.Texto, CreatedAt = DateTime.UtcNow };
         db.DiaryEntries.Add(note);
         foreach (var recipientId in recipientIds.Distinct())
             db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = note.Id, UserId = recipientId });
+        foreach (var imageId in imageIds)
+            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = note.Id, ImageId = imageId });
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, request.RecipientUserIds));
+        return Created(string.Empty, await ToSecretNoteResponseAsync(note));
     }
 
     [HttpPut("{campaignId}/secret-notes/{noteId}")]
@@ -204,6 +212,12 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (!await AllAreCampaignMembersAsync(campaignId, recipientIds))
             return BadRequest("Todo destinatário deve ser membro da campanha.");
 
+        if (!TryParseImageIds(request.ImageIds, out var imageIds))
+            return BadRequest("Um dos identificadores de imagem informados é inválido.");
+
+        if (!await OwnsAllImagesAsync(imageIds, gmId))
+            return BadRequest("Imagem não encontrada.");
+
         note.Texto = request.Texto;
 
         var existingRecipients = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == noteId).ToListAsync();
@@ -211,6 +225,11 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         db.DiaryEntryRecipients.RemoveRange(existingRecipients.Where(r => !newRecipientIds.Contains(r.UserId)));
         foreach (var recipientId in newRecipientIds.Where(id => existingRecipients.All(r => r.UserId != id)))
             db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = noteId, UserId = recipientId });
+
+        var existingImages = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == noteId).ToListAsync();
+        db.DiaryEntryImages.RemoveRange(existingImages);
+        foreach (var imageId in imageIds)
+            db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = noteId, ImageId = imageId });
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -289,6 +308,14 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         var imageIds = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == entry.Id).Select(i => i.ImageId).ToListAsync();
         var images = await db.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
         return new DiaryEntryResponse(entry.Id.ToString(), entry.Texto, entry.CreatedAt, images.Select(i => $"/images/{i.Path}").ToList());
+    }
+
+    private async Task<SecretNoteResponse> ToSecretNoteResponseAsync(DiaryEntry note)
+    {
+        var recipientIds = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == note.Id).Select(r => r.UserId).ToListAsync();
+        var imageIds = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == note.Id).Select(i => i.ImageId).ToListAsync();
+        var images = await db.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+        return new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, recipientIds.Select(id => id.ToString()).ToList(), images.Select(i => $"/images/{i.Path}").ToList());
     }
 
     private static bool TryParseImageIds(List<string> rawImageIds, out List<Guid> imageIds)

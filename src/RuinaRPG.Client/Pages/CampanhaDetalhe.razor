@@ -5,6 +5,7 @@
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
 @using RuinaRPG.Contracts.Encounters
+@using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Players
 
 <Breadcrumbs Items="@Crumbs" />
@@ -53,6 +54,20 @@
                 <label class="form-label">Texto</label>
                 <InputTextArea class="form-control" @bind-Value="_diaryForm.Texto" />
             </div>
+            <div class="mb-3">
+                <label class="form-label">Enviar nova imagem <InputFile OnChange="@(e => UploadImageAsync(e, _diaryImageIds))" /></label>
+                <ul class="list-unstyled">
+                    @foreach (var image in _myImages)
+                    {
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" checked="@_diaryImageIds.Contains(image.Id)" @onchange="@(e => ToggleImage(_diaryImageIds, image.Id, (bool)e.Value!))" />
+                                <label class="form-check-label">@image.Url</label>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
             <button type="submit" class="btn btn-primary">Adicionar Entrada</button>
         </EditForm>
         <ul class="list-unstyled mt-3">
@@ -62,6 +77,17 @@
                     @if (_editingEntryId == entry.Id)
                     {
                         <textarea class="form-control" @bind="_editText"></textarea>
+                        <ul class="list-unstyled">
+                            @foreach (var image in _myImages)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" checked="@_editDiaryImageIds.Contains(image.Id)" @onchange="@(e => ToggleImage(_editDiaryImageIds, image.Id, (bool)e.Value!))" />
+                                        <label class="form-check-label">@image.Url</label>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditDiaryEntry">Cancelar</button>
                     }
@@ -70,6 +96,15 @@
                         <span>@entry.CreatedAt.ToString("g") — @entry.Texto</span>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditDiaryEntry(entry))">Editar</button>
                         <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
+                        @if (entry.ImageUrls.Count > 0)
+                        {
+                            <div class="mt-1">
+                                @foreach (var url in entry.ImageUrls)
+                                {
+                                    <img src="@url" alt="" style="max-width: 100px; margin-right: 4px;" />
+                                }
+                            </div>
+                        }
                     }
                 </li>
             }
@@ -209,6 +244,20 @@
                     </li>
                 }
             </ul>
+            <div class="mb-3">
+                <label class="form-label">Enviar nova imagem <InputFile OnChange="@(e => UploadImageAsync(e, _noteImageIds))" /></label>
+                <ul class="list-unstyled">
+                    @foreach (var image in _myImages)
+                    {
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" checked="@_noteImageIds.Contains(image.Id)" @onchange="@(e => ToggleImage(_noteImageIds, image.Id, (bool)e.Value!))" />
+                                <label class="form-check-label">@image.Url</label>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
             <button type="submit" class="btn btn-primary">Adicionar Nota Secreta</button>
         </EditForm>
         <ul class="list-unstyled mt-3">
@@ -229,6 +278,17 @@
                                 </li>
                             }
                         </ul>
+                        <ul class="list-unstyled">
+                            @foreach (var image in _myImages)
+                            {
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" checked="@_editNoteImageIds.Contains(image.Id)" @onchange="@(e => ToggleImage(_editNoteImageIds, image.Id, (bool)e.Value!))" />
+                                        <label class="form-check-label">@image.Url</label>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditSecretNote">Cancelar</button>
                     }
@@ -237,6 +297,15 @@
                         <span>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</span>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditSecretNote(note))">Editar</button>
                         <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</button>
+                        @if (note.ImageUrls.Count > 0)
+                        {
+                            <div class="mt-1">
+                                @foreach (var url in note.ImageUrls)
+                                {
+                                    <img src="@url" alt="" style="max-width: 100px; margin-right: 4px;" />
+                                }
+                            </div>
+                        }
                     }
                 </li>
             }
@@ -263,11 +332,16 @@
     private List<PlayerSearchResultResponse> _searchResults = new();
     private List<CampaignAttachmentResponse> _attachments = new();
     private List<SecretNoteResponse> _secretNotes = new();
+    private List<ImageSummaryResponse> _myImages = new();
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();
     private readonly DiaryFormModel _noteForm = new();
     private readonly HashSet<string> _noteRecipients = new();
     private readonly HashSet<string> _editNoteRecipients = new();
+    private readonly HashSet<string> _diaryImageIds = new();
+    private readonly HashSet<string> _editDiaryImageIds = new();
+    private readonly HashSet<string> _noteImageIds = new();
+    private readonly HashSet<string> _editNoteImageIds = new();
     private string? _errorMessage;
     private string? _editingEntryId;
     private string _editText = "";
@@ -284,7 +358,40 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync());
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync(), LoadImagesAsync());
+
+    private async Task LoadImagesAsync()
+    {
+        var response = await Http.GetAsync("images/mine");
+        if (response.IsSuccessStatusCode)
+            _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
+    }
+
+    private async Task UploadImageAsync(InputFileChangeEventArgs e, HashSet<string> targetSelection)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(e.File.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", e.File.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
+        targetSelection.Add(body.Id);
+    }
+
+    private static void ToggleImage(HashSet<string> selection, string imageId, bool selected)
+    {
+        if (selected)
+            selection.Add(imageId);
+        else
+            selection.Remove(imageId);
+    }
 
     private async Task LoadCampaignNameAsync()
     {
@@ -389,7 +496,7 @@
 
     private async Task AddDiaryEntryAsync()
     {
-        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/diary", new CreateDiaryEntryRequest(_diaryForm.Texto, new List<string>()));
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/diary", new CreateDiaryEntryRequest(_diaryForm.Texto, _diaryImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a entrada.";
@@ -397,6 +504,7 @@
         }
 
         _diaryForm.Texto = "";
+        _diaryImageIds.Clear();
         await LoadDiaryAsync();
     }
 
@@ -404,17 +512,25 @@
     {
         _editingEntryId = entry.Id;
         _editText = entry.Texto;
+        _editDiaryImageIds.Clear();
+        foreach (var url in entry.ImageUrls)
+        {
+            var image = _myImages.FirstOrDefault(i => i.Url == url);
+            if (image is not null)
+                _editDiaryImageIds.Add(image.Id);
+        }
     }
 
     private void CancelEditDiaryEntry()
     {
         _editingEntryId = null;
         _editText = "";
+        _editDiaryImageIds.Clear();
     }
 
     private async Task SaveDiaryEntryAsync(string entryId)
     {
-        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/diary/{entryId}", new UpdateDiaryEntryRequest(_editText, new List<string>()));
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/diary/{entryId}", new UpdateDiaryEntryRequest(_editText, _editDiaryImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível salvar a entrada.";
@@ -423,6 +539,7 @@
 
         _editingEntryId = null;
         _editText = "";
+        _editDiaryImageIds.Clear();
         await LoadDiaryAsync();
     }
 
@@ -584,7 +701,7 @@
 
     private async Task AddSecretNoteAsync()
     {
-        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/secret-notes", new CreateSecretNoteRequest(_noteForm.Texto, _noteRecipients.ToList()));
+        var response = await Http.PostAsJsonAsync($"campaigns/{CampaignId}/secret-notes", new CreateSecretNoteRequest(_noteForm.Texto, _noteRecipients.ToList(), _noteImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a nota secreta.";
@@ -593,6 +710,7 @@
 
         _noteForm.Texto = "";
         _noteRecipients.Clear();
+        _noteImageIds.Clear();
         await LoadSecretNotesAsync();
     }
 
@@ -603,6 +721,13 @@
         _editNoteRecipients.Clear();
         foreach (var recipientId in note.RecipientUserIds)
             _editNoteRecipients.Add(recipientId);
+        _editNoteImageIds.Clear();
+        foreach (var url in note.ImageUrls)
+        {
+            var image = _myImages.FirstOrDefault(i => i.Url == url);
+            if (image is not null)
+                _editNoteImageIds.Add(image.Id);
+        }
     }
 
     private void CancelEditSecretNote()
@@ -610,11 +735,12 @@
         _editingNoteId = null;
         _editNoteText = "";
         _editNoteRecipients.Clear();
+        _editNoteImageIds.Clear();
     }
 
     private async Task SaveSecretNoteAsync(string noteId)
     {
-        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/secret-notes/{noteId}", new UpdateSecretNoteRequest(_editNoteText, _editNoteRecipients.ToList()));
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}/secret-notes/{noteId}", new UpdateSecretNoteRequest(_editNoteText, _editNoteRecipients.ToList(), _editNoteImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível salvar a nota secreta.";
@@ -624,6 +750,7 @@
         _editingNoteId = null;
         _editNoteText = "";
         _editNoteRecipients.Clear();
+        _editNoteImageIds.Clear();
         await LoadSecretNotesAsync();
     }
 

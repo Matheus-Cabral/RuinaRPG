@@ -120,7 +120,9 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
             if (!isGm && !recipientIds.Contains(callerId))
                 continue; // R0011: a non-recipient sees nothing, not even that the note exists
 
-            results.Add(new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, recipientIds.Select(id => id.ToString()).ToList()));
+            var imageIds = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == note.Id).Select(i => i.ImageId).ToListAsync();
+            var images = await db.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+            results.Add(new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, recipientIds.Select(id => id.ToString()).ToList(), images.Select(i => $"/images/{i.Path}").ToList()));
         }
         return results;
     }
