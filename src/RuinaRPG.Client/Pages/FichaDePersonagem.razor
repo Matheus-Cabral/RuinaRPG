@@ -175,6 +175,12 @@
     </TabPage>
 
     <TabPage Title="Atributos & Perícias">
+        @if (_attributeBudget is not null)
+        {
+            <p class="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? "text-danger" : "")">
+                Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
+            </p>
+        }
         <div class="table-responsive">
         <table class="table">
             <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
@@ -554,6 +560,7 @@
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
     private List<CharacterAttributeResponse> _attributes = new();
+    private AttributePointBudgetResponse? _attributeBudget;
     private List<CharacterSkillResponse> _skills = new();
     private List<CharacterAffinityResponse> _affinities = new();
     private List<CharacterWeaponResponse> _weapons = new();
@@ -682,6 +689,7 @@
     private async Task LoadTabs2And3Async()
     {
         _attributes = await Http.GetFromJsonAsync<List<CharacterAttributeResponse>>($"character-sheets/{SheetId}/attributes") ?? new();
+        _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"character-sheets/{SheetId}/attributes/budget");
         _skills = await Http.GetFromJsonAsync<List<CharacterSkillResponse>>($"character-sheets/{SheetId}/skills") ?? new();
         _affinities = await Http.GetFromJsonAsync<List<CharacterAffinityResponse>>($"character-sheets/{SheetId}/affinities") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<CharacterWeaponResponse>>($"character-sheets/{SheetId}/weapons") ?? new();
@@ -697,7 +705,10 @@
         var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
-        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/attributes/{atributo}", new UpdateCharacterAttributeRequest(gasto, bonus, temMaestria));
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/attributes/{atributo}", new UpdateCharacterAttributeRequest(gasto, bonus, temMaestria));
+        // BadRequest(string) serializes as a JSON string literal, not plain text — deserialize it
+        // as one instead of ReadAsStringAsync() so the message doesn't render with literal quotes.
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadFromJsonAsync<string>();
         await LoadTabs2And3Async();
     }
 
