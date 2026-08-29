@@ -211,7 +211,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
     [HttpGet]
     public async Task<ActionResult<List<NpcSheetSummaryResponse>>> List(
-        [FromQuery] string? nome, [FromQuery] string? linhagem, [FromQuery] string? vocacao, [FromQuery] string? subVocacao, [FromQuery] int? nivel,
+        [FromQuery] string? nome, [FromQuery] string? linhagem, [FromQuery] string? variante, [FromQuery] string? vocacao, [FromQuery] string? subVocacao, [FromQuery] int? nivel,
         /// <summary>No-op placeholder until CampaignAttachments lands in the Campanha — Anexos plan.</summary>
         [FromQuery] string? campaignId)
     {
@@ -222,6 +222,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             query = query.Where(s => s.Nome != null && EF.Functions.ILike(s.Nome, $"%{nome}%"));
         if (linhagem is not null && Enum.TryParse<Linhagem>(linhagem, out var linhagemParsed))
             query = query.Where(s => s.Linhagem == linhagemParsed);
+        if (variante is not null && Enum.TryParse<Variante>(variante, out var variantesParsed))
+            query = query.Where(s => s.Variante == variantesParsed);
         if (vocacao is not null && Enum.TryParse<Vocacao>(vocacao, out var vocacaoParsed))
             query = query.Where(s => s.Vocacao == vocacaoParsed);
         if (!string.IsNullOrWhiteSpace(subVocacao))

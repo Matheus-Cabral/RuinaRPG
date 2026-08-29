@@ -12,7 +12,9 @@
 <div>
     <label>Nome <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
     <label>Linhagem <input @bind="_linhagemFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Variante <input @bind="_varianteFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
     <label>Vocação <input @bind="_vocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+    <label>Sub-Vocação <input @bind="_subVocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
     <label>Nível <input type="number" @bind="_nivelFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
 </div>
 
@@ -54,7 +56,9 @@
 
     private string _nomeFiltro = "";
     private string _linhagemFiltro = "";
+    private string _varianteFiltro = "";
     private string _vocacaoFiltro = "";
+    private string _subVocacaoFiltro = "";
     private int? _nivelFiltro;
     private List<NpcSheetSummaryResponse> _npcs = new();
     private string? _errorMessage;
@@ -87,8 +91,12 @@
             query.Add($"nome={Uri.EscapeDataString(_nomeFiltro)}");
         if (!string.IsNullOrWhiteSpace(_linhagemFiltro))
             query.Add($"linhagem={Uri.EscapeDataString(_linhagemFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_varianteFiltro))
+            query.Add($"variante={Uri.EscapeDataString(_varianteFiltro)}");
         if (!string.IsNullOrWhiteSpace(_vocacaoFiltro))
             query.Add($"vocacao={Uri.EscapeDataString(_vocacaoFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_subVocacaoFiltro))
+            query.Add($"subVocacao={Uri.EscapeDataString(_subVocacaoFiltro)}");
         if (_nivelFiltro is not null)
             query.Add($"nivel={_nivelFiltro}");
 
