@@ -80,6 +80,13 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
+    private async Task<string> CreateArmaItemAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Arma", nome, 1.5m, 50, null, "Espadas", null, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 20, null, null, null, null, null, null, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
     [Fact]
     public async Task AddInventoryItem_links_the_item_and_computes_total_as_peso_times_qtd()
     {
@@ -223,6 +230,22 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
 
         var deleteArtifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/artifacts/{artifactId}", otherToken));
         deleteArtifactResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AddInventoryItem_rejects_a_catalog_id_that_is_not_an_ItemGeral()
+    {
+        // Ficha de Personagem 5.a: "Armas, Armaduras e Escudos não aparecem aqui" — a Weapon
+        // catalog id must not be addable as a plain inventory row (would double-count its Peso).
+        var gmToken = await RegisterGmAndGetTokenAsync("PossGm10", "poss10@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer10", "possplayer10@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var armaItemId = await CreateArmaItemAsync(gmToken, "Espada Longa");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+            new AddCharacterInventoryItemRequest(armaItemId, 1)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
