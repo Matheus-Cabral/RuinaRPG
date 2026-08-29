@@ -17,13 +17,16 @@ namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/creature-sheets")]
-[Authorize(Roles = "GM")]
+[Authorize]
 public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub) : ControllerBase
 {
+    // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
+    // been granted one already does — same reasoning as List below.
     [HttpPost]
+    [Authorize(Roles = "GM")]
     public async Task<ActionResult<CreatureSheetResponse>> Create()
     {
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
 
         var sheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gmId };
         db.CreatureSheets.Add(sheet);
@@ -45,9 +48,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     [HttpGet("{id}")]
     public async Task<ActionResult<CreatureSheetResponse>> Get(Guid id)
     {
-        var sheet = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == id && s.GmId == CurrentGmId());
+        var sheet = await db.CreatureSheets.FindAsync(id);
         if (sheet is null)
             return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         return await ToResponseAsync(sheet);
     }
@@ -55,9 +61,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateCreatureSheetRequest request)
     {
-        var sheet = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == id && s.GmId == CurrentGmId());
+        var sheet = await db.CreatureSheets.FindAsync(id);
         if (sheet is null)
             return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         if (!TryParseImageId(request.ImageId, out var imageId))
             return BadRequest("ImageId inválido.");
@@ -102,9 +111,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var sheet = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == id && s.GmId == CurrentGmId());
+        var sheet = await db.CreatureSheets.FindAsync(id);
         if (sheet is null)
             return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         db.CreatureSheets.Remove(sheet);
         await db.SaveChangesAsync();
@@ -174,9 +186,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     [HttpGet("{id}/sub-attributes")]
     public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
     {
-        var sheet = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == id && s.GmId == CurrentGmId());
+        var sheet = await db.CreatureSheets.FindAsync(id);
         if (sheet is null)
             return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade);
         var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor);
@@ -226,13 +241,15 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
     }
 
+    // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.
     [HttpGet]
+    [Authorize(Roles = "GM")]
     public async Task<ActionResult<List<CreatureSheetSummaryResponse>>> List(
         [FromQuery] string? nome, [FromQuery] string? raca, [FromQuery] string? arquetipo, [FromQuery] string? rank,
         /// <summary>No-op placeholder until CampaignAttachments lands in the Campanha — Anexos plan.</summary>
         [FromQuery] string? campaignId)
     {
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
         var query = db.CreatureSheets.Where(s => s.GmId == gmId);
 
         if (!string.IsNullOrWhiteSpace(nome))
@@ -291,5 +308,5 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo);
     }
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

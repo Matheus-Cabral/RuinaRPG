@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -66,6 +67,34 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
+    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
+    {
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        var meResponse = await _client.SendAsync(me);
+        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
+    }
+
+    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
+        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+    }
+
+    private async Task AddMemberAsync(string gmToken, string campaignId, string playerId) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+    /// <summary>Grants a blank Npc sheet to playerId, via the real grants endpoint, and returns its Id.</summary>
+    private async Task<string> GrantBlankNpcAsync(string gmToken, string campaignId, string playerId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Npc", null)));
+        return (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+    }
+
     private static UpdateNpcSheetRequest ValidUpdate() => new(
         null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
@@ -122,6 +151,40 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Get_and_Update_by_the_player_the_sheet_was_granted_to_both_succeed()
+    {
+        // Requisitos - Campanha R0010: a granted NPC/Criatura "usa o mesmo modelo de edição" as
+        // the player's own Ficha de Personagem — the owning player, not just the GM, can edit it.
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrant1", "npcgmgrant1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorGrant1", "npcjogadorgrant1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Grant");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken));
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var update = ValidUpdate() with { Nome = "Companheiro do Jogador" };
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", playerToken, update));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getAfter = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken));
+        (await getAfter.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Nome.Should().Be("Companheiro do Jogador");
+    }
+
+    [Fact]
+    public async Task Get_by_a_jogador_the_sheet_was_never_granted_to_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrant2", "npcgmgrant2@teste.com");
+        var (_, strangerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorGrant2", "npcjogadorgrant2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken); // OwnerId stays null — never granted to anyone
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", strangerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

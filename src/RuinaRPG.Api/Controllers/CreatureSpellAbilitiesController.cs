@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -13,7 +14,7 @@ using RuinaRPG.Infrastructure.SpellsAndAbilities;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/creature-sheets/{sheetId}/spell-abilities")]
 public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -24,7 +25,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var fromScratch = request.Nome is not null && request.Tipo is not null && request.Grau is not null && request.Descricao is not null && request.Efeitos is not null;
@@ -86,7 +87,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var entries = await db.CreatureSpellAbilities.Include(e => e.Efeitos).Where(e => e.CreatureSheetId == sheetId).ToListAsync();
@@ -100,7 +101,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var entry = await db.CreatureSpellAbilities.FirstOrDefaultAsync(e => e.Id == id && e.CreatureSheetId == sheetId);
@@ -116,5 +117,5 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
         e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList());
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

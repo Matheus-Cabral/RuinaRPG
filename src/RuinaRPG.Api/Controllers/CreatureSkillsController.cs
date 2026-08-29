@@ -11,7 +11,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "GM")]
+[Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
 public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
 {
@@ -22,7 +22,7 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToListAsync();
@@ -52,7 +52,7 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (sheet is null)
             return NotFound();
 
-        if (sheet.GmId != CurrentGmId())
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
         // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values have a seeded
@@ -68,5 +68,5 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

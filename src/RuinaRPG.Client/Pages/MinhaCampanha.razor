@@ -24,7 +24,7 @@
             @foreach (var companheiro in _view.MeusCompanheiros)
             {
                 <li>
-                    @(companheiro.Nome ?? "(sem nome)")
+                    <a href="@((companheiro.Tipo == "Npc" ? "npcs/" : "criaturas/") + companheiro.Id)">@(companheiro.Nome ?? "(sem nome)")</a>
                     (@(companheiro.Tipo == "Npc" ? "NPC" : "Criatura"))
                 </li>
             }
