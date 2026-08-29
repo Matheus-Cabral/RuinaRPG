@@ -91,6 +91,40 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
     }
 
     /// <summary>
+    /// Épico 4 item 5: a GM had no way to see who already has what — granted sheets are hidden
+    /// from the Anexos tab by design (removing them there would break the player's companion
+    /// link), so this is the only place a GM can audit existing grants for a campaign.
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<List<GrantSummaryResponse>>> List(Guid campaignId)
+    {
+        var gmId = CurrentGmId();
+        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        if (!campaignExists)
+            return NotFound();
+
+        var results = new List<GrantSummaryResponse>();
+
+        var grantedNpcs = await db.NpcSheets.Where(n => n.GmId == gmId && n.OwnerId != null
+            && db.CampaignAttachments.Any(a => a.CampaignId == campaignId && a.NpcSheetId == n.Id)).ToListAsync();
+        foreach (var npc in grantedNpcs)
+        {
+            var owner = await db.Users.FindAsync(npc.OwnerId!.Value);
+            results.Add(new GrantSummaryResponse(npc.Id.ToString(), "Npc", npc.Nome, npc.OwnerId.Value.ToString(), owner?.Nickname ?? ""));
+        }
+
+        var grantedCreatures = await db.CreatureSheets.Where(c => c.GmId == gmId && c.OwnerId != null
+            && db.CampaignAttachments.Any(a => a.CampaignId == campaignId && a.CreatureSheetId == c.Id)).ToListAsync();
+        foreach (var creature in grantedCreatures)
+        {
+            var owner = await db.Users.FindAsync(creature.OwnerId!.Value);
+            results.Add(new GrantSummaryResponse(creature.Id.ToString(), "Creature", creature.Nome, creature.OwnerId.Value.ToString(), owner?.Nickname ?? ""));
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Mirrors NpcSheetsController.Create's child-row seeding exactly (one row per Atributo,
     /// per Pericia, per ArmorSlotType) — a blank grant is otherwise indistinguishable from a
     /// sheet created directly, and downstream reads (e.g. NpcSheetsController.Get) assume every

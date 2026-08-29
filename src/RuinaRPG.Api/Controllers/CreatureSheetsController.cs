@@ -261,7 +261,10 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (rank is not null && Enum.TryParse<Rank>(rank, out var rankParsed))
             query = query.Where(s => s.Rank == rankParsed);
 
-        return await query.Select(s => new CreatureSheetSummaryResponse(s.Id.ToString(), s.Nome ?? "", s.Raca, s.Arquetipo == null ? null : s.Arquetipo.ToString(), s.Rank == null ? null : s.Rank.ToString(), s.Nivel)).ToListAsync();
+        return await query
+            .GroupJoin(db.Users, s => s.OwnerId, u => (Guid?)u.Id, (s, owners) => new { Sheet = s, Owner = owners.FirstOrDefault() })
+            .Select(x => new CreatureSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Raca, x.Sheet.Arquetipo == null ? null : x.Sheet.Arquetipo.ToString(), x.Sheet.Rank == null ? null : x.Sheet.Rank.ToString(), x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null))
+            .ToListAsync();
     }
 
     /// <summary>
