@@ -433,6 +433,57 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
     }
 
     [Fact]
+    public async Task UpdateWeaponDurability_clamps_to_the_item_DurabilidadeMaxima_instead_of_rejecting()
+    {
+        // Ficha de Personagem 3.a: "não pode exceder o Máximo".
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm21", "arsenal21@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer21", "arsenalplayer21@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        body!.Single(w => w.Id == weaponId).DurabilidadeAtual.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task UpdateShieldDurability_clamps_to_the_item_DurabilidadeMaxima_instead_of_rejecting()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm22", "arsenal22@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer22", "arsenalplayer22@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
+        var shieldId = (await add.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/shields/{shieldId}/durabilidade", playerToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task UpdateArmorSlotDurability_clamps_to_the_item_DurabilidadeMaxima_instead_of_rejecting()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm23", "arsenal23@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer23", "arsenalplayer23@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete/durabilidade", playerToken, 999));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(15);
+    }
+
+    [Fact]
     public async Task UpdateArmorSlotDurability_on_an_empty_slot_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm20", "arsenal20@teste.com");

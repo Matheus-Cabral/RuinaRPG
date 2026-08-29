@@ -85,7 +85,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (weapon is null)
             return NotFound();
 
-        weapon.DurabilidadeAtual = durabilidadeAtual;
+        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.a).
+        var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
+        weapon.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -162,7 +164,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (armorSlot.ItemId is null)
             return BadRequest("Nenhuma armadura equipada nesse slot.");
 
-        armorSlot.DurabilidadeAtual = durabilidadeAtual;
+        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.b).
+        var item = await db.Set<Armadura>().SingleAsync(a => a.Id == armorSlot.ItemId);
+        armorSlot.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -236,7 +240,9 @@ public class CharacterArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (shield is null)
             return NotFound();
 
-        shield.DurabilidadeAtual = durabilidadeAtual;
+        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.c).
+        var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
+        shield.DurabilidadeAtual = Math.Min(durabilidadeAtual, item.DurabilidadeMaxima ?? 0);
         await db.SaveChangesAsync();
         return NoContent();
     }
