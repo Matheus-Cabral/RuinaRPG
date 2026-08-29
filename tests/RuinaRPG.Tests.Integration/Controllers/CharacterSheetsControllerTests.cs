@@ -339,6 +339,25 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task EAPAtual_is_the_level_base_plus_the_Ambares_by_Rank()
+    {
+        // Ficha de Personagem 1.b: "Segue a tabela ... e é somado pelo resultado de Âmbares
+        // Absorvidos". Nível 1 base = 0 (Tabelas de XP.../EAP). 2 Rank F (5 each) + 1 Rank C (120) = 130.
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmEap1", "sheeteap1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerEap1", "sheetplayereap1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha EAP");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Nivel = 1, NucleosRankF = 2, NucleosRankC = 1 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.EAPAtual.Should().Be(130); // 0 (Nível 1 base) + 2*5 + 1*120
+    }
+
+    [Fact]
     public async Task Get_labels_Graduacao_as_Grau_for_Campeao_and_computes_it_from_EAP()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad1", "sheetgrad1@teste.com");
@@ -347,12 +366,15 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var update = ValidUpdate() with { Vocacao = "Campeao", EAPAtual = 150 };
+        // EAPAtual is computed, not settable — Nível 6 gives EAP = (6-1)*30 = 150 (EapCalculator,
+        // 0 Âmbares) via the real EAP-por-Nível table.
+        var update = ValidUpdate() with { Vocacao = "Campeao", Nivel = 6 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
         var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         body!.GraduacaoLabel.Should().Be("Grau");
+        body.EAPAtual.Should().Be(150);
         body.Graduacao.Should().Be(1); // 150 EAP >= the real Tabela's Grau 1 threshold (100)
     }
 
@@ -365,7 +387,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, EAPAtual = 150 };
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, Nivel = 6 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));

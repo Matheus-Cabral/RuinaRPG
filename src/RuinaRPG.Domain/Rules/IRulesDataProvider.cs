@@ -9,6 +9,7 @@ public interface IRulesDataProvider
     IReadOnlyList<ArquetipoProgressao> Arquetipos { get; }
     IReadOnlyList<CirculoGrauPorEap> CirculoGrauPorEap { get; }
     IReadOnlyList<XpPorNivel> XpPorNivel { get; }
+    IReadOnlyList<EapPorNivel> EapPorNivel { get; }
     IReadOnlyList<GraduacaoEfeito> Efeitos { get; }
     IReadOnlyList<RegraEntry> Regras { get; }
 }
