@@ -40,6 +40,22 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
         return await db.Encounters.Where(e => e.CampaignId == campaignId).Select(e => ToResponse(e)).ToListAsync();
     }
 
+    [HttpPut("~/api/encounters/{encounterId}")]
+    public async Task<IActionResult> Update(Guid encounterId, UpdateEncounterRequest request)
+    {
+        var gmId = CurrentGmId();
+        var encounter = await db.Encounters.FindAsync(encounterId);
+        if (encounter is null)
+            return NotFound();
+        var isOwner = await db.Campaigns.AnyAsync(c => c.Id == encounter.CampaignId && c.GmId == gmId);
+        if (!isOwner)
+            return NotFound();
+
+        encounter.Nome = request.Nome;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("~/api/encounters/{encounterId}/advance-turn")]
     public async Task<IActionResult> AdvanceTurn(Guid encounterId)
     {
