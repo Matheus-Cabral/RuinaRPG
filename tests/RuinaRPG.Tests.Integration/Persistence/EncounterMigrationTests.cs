@@ -32,7 +32,7 @@ public class EncounterMigrationTests : IClassFixture<PostgresFixture>
         db.Campaigns.Add(campaign);
         await db.SaveChangesAsync();
 
-        var encounter = new Encounter { Id = Guid.NewGuid(), CampaignId = campaign.Id, Nome = "Emboscada na Estrada", CurrentRound = 1, CurrentParticipantIndex = 0 };
+        var encounter = new Encounter { Id = Guid.NewGuid(), CampaignId = campaign.Id, Nome = "Emboscada na Estrada", CurrentRound = 1, CurrentParticipantId = null };
         db.Encounters.Add(encounter);
         await db.SaveChangesAsync();
 
@@ -57,11 +57,16 @@ public class EncounterMigrationTests : IClassFixture<PostgresFixture>
         db.EncounterParticipantConditions.Add(condition);
         await db.SaveChangesAsync();
 
+        // CurrentParticipantId is a real FK (ON DELETE SET NULL) into EncounterParticipants —
+        // round-trip it too, now that the participant it would reference actually exists.
+        encounter.CurrentParticipantId = participant.Id;
+        await db.SaveChangesAsync();
+
         var reloadedEncounter = await db.Encounters.SingleAsync();
         reloadedEncounter.Nome.Should().Be("Emboscada na Estrada");
         reloadedEncounter.CampaignId.Should().Be(campaign.Id);
         reloadedEncounter.CurrentRound.Should().Be(1);
-        reloadedEncounter.CurrentParticipantIndex.Should().Be(0);
+        reloadedEncounter.CurrentParticipantId.Should().Be(participant.Id);
 
         var reloadedParticipant = await db.EncounterParticipants.SingleAsync();
         reloadedParticipant.EncounterId.Should().Be(encounter.Id);

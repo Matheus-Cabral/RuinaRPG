@@ -26,7 +26,7 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
         db.Encounters.Add(encounter);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(encounter));
+        return Created(string.Empty, await ToResponseAsync(encounter));
     }
 
     [HttpGet]
@@ -37,7 +37,11 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
         if (!campaignExists)
             return NotFound();
 
-        return await db.Encounters.Where(e => e.CampaignId == campaignId).Select(e => ToResponse(e)).ToListAsync();
+        var encounters = await db.Encounters.Where(e => e.CampaignId == campaignId).ToListAsync();
+        var responses = new List<EncounterResponse>();
+        foreach (var encounter in encounters)
+            responses.Add(await ToResponseAsync(encounter));
+        return responses;
     }
 
     [HttpPut("~/api/encounters/{encounterId}")]
@@ -67,26 +71,34 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
         if (!isOwner)
             return NotFound();
 
-        var participantCount = await db.EncounterParticipants.CountAsync(p => p.EncounterId == encounterId);
-        if (participantCount == 0)
-            return BadRequest("Adicione ao menos um participante antes de avançar o turno.");
-
-        var (nextRound, nextIndex) = RuinaRPG.Domain.Encounters.TurnAdvanceCalculator.Advance(encounter.CurrentRound, encounter.CurrentParticipantIndex, participantCount);
-        encounter.CurrentRound = nextRound;
-        encounter.CurrentParticipantIndex = nextIndex;
-
-        var nextParticipant = await db.EncounterParticipants
+        var participants = await db.EncounterParticipants
             .Where(p => p.EncounterId == encounterId)
             .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
-            .Skip(nextIndex)
-            .FirstAsync();
-        nextParticipant.AcoesRestantes = 3;
+            .ToListAsync();
+        if (participants.Count == 0)
+            return BadRequest("Adicione ao menos um participante antes de avançar o turno.");
+
+        var orderedIds = participants.Select(p => p.Id).ToList();
+        var (nextRound, nextParticipantId) = RuinaRPG.Domain.Encounters.TurnAdvanceCalculator.Advance(encounter.CurrentRound, encounter.CurrentParticipantId, orderedIds);
+        encounter.CurrentRound = nextRound;
+        encounter.CurrentParticipantId = nextParticipantId;
+
+        participants.Single(p => p.Id == nextParticipantId).AcoesRestantes = 3;
 
         await db.SaveChangesAsync();
         return NoContent();
     }
 
-    private static EncounterResponse ToResponse(Encounter e) => new(e.Id.ToString(), e.Nome, e.CurrentRound, e.CurrentParticipantIndex);
+    private async Task<EncounterResponse> ToResponseAsync(Encounter e)
+    {
+        var orderedIds = await db.EncounterParticipants
+            .Where(p => p.EncounterId == e.Id)
+            .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
+            .Select(p => p.Id)
+            .ToListAsync();
+        var index = RuinaRPG.Domain.Encounters.TurnAdvanceCalculator.IndexOf(e.CurrentParticipantId, orderedIds);
+        return new EncounterResponse(e.Id.ToString(), e.Nome, e.CurrentRound, index);
+    }
 
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
