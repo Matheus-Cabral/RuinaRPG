@@ -181,14 +181,24 @@
 
         <div class="table-responsive">
         <table class="table">
-            <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
+            <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
             <tbody>
                 @foreach (var skill in _skills)
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillAsync(skill.Pericia, e.Value))" /></td>
+                        <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillGastoAsync(skill.Pericia, e.Value))" /></td>
                         <td>@skill.Modificador</td>
+                        <td>
+                            <select class="form-select" value="@skill.AtributoEscolhido" @onchange="@(e => UpdateSkillAtributoAsync(skill.Pericia, e.Value))">
+                                <option value="">—</option>
+                                @foreach (var attr in _attributes)
+                                {
+                                    <option value="@attr.Atributo">@attr.Atributo</option>
+                                }
+                            </select>
+                        </td>
+                        <td>@skill.Total</td>
                     </tr>
                 }
             </tbody>
@@ -578,11 +588,19 @@
         await LoadTabs2And3Async();
     }
 
-    private async Task UpdateSkillAsync(string pericia, object? value)
+    private async Task UpdateSkillGastoAsync(string pericia, object? value)
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, null));
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, current.AtributoEscolhido));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateSkillAtributoAsync(string pericia, object? value)
+    {
+        var current = _skills.Single(s => s.Pericia == pericia);
+        var atributoEscolhido = value?.ToString();
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
     }
 

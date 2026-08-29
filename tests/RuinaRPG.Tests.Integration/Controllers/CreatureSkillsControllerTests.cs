@@ -77,7 +77,7 @@ public class CreatureSkillsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task List_with_atributoEscolhido_echoes_the_attribute_and_computes_Total()
+    public async Task Update_with_AtributoEscolhido_persists_it_per_skill_and_List_computes_Total()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureSkillGm4", "creatureskill4@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -87,17 +87,40 @@ public class CreatureSkillsControllerTests : IClassFixture<PostgresFixture>, IAs
             new UpdateCreatureAttributeRequest(4, 0, false)));
         attrResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Atletismo: Gasto 9 -> Modificador 3 (SkillFormulas.Modificador)
+        // Atletismo: Gasto 9 -> Modificador 3 (SkillFormulas.Modificador), Atributo escolhido Forca
         var skillResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Atletismo", gmToken,
-            new UpdateCreatureSkillRequest(9, null)));
+            new UpdateCreatureSkillRequest(9, "Forca")));
         skillResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/skills?atributoEscolhido=Forca", gmToken));
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/skills", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureSkillResponse>>();
+
         var atletismo = body!.Single(s => s.Pericia == "Atletismo");
         atletismo.AtributoEscolhido.Should().Be("Forca");
         atletismo.Modificador.Should().Be(3);
         atletismo.Total.Should().Be(7); // SkillFormulas.Total(modificador: 3, atributoTotal: 4)
+
+        var acrobacia = body!.Single(s => s.Pericia == "Acrobacia");
+        acrobacia.AtributoEscolhido.Should().BeNull();
+        acrobacia.Total.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task List_returns_skills_in_alphabetical_order_and_stays_stable_after_an_update()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureSkillGm7", "creatureskill7@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/skills", gmToken));
+        var before = (await beforeResponse.Content.ReadFromJsonAsync<List<CreatureSkillResponse>>())!;
+        before.Select(s => s.Pericia).Should().BeInAscendingOrder(StringComparer.Ordinal).And.HaveCount(20);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Reflexos", gmToken,
+            new UpdateCreatureSkillRequest(3, null)));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/skills", gmToken));
+        var after = (await afterResponse.Content.ReadFromJsonAsync<List<CreatureSkillResponse>>())!;
+        after.Select(s => s.Pericia).Should().Equal(before.Select(s => s.Pericia));
     }
 
     [Fact]

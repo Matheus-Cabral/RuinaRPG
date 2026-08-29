@@ -16,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId, [FromQuery] string? atributoEscolhido)
+    public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
     {
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         if (sheet is null)
@@ -25,22 +25,20 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (sheet.GmId != CurrentGmId())
             return NotFound();
 
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToListAsync();
+        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
 
-        int? atributoTotal = null;
-        if (Enum.TryParse<AtributoCriatura>(atributoEscolhido, out var parsedAtributo))
-        {
-            var attribute = await db.CreatureAttributes.SingleOrDefaultAsync(a => a.CreatureSheetId == sheetId && a.Atributo == parsedAtributo);
-            if (attribute is not null)
-                atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
-        }
+        var attributeTotals = await db.CreatureAttributes
+            .Where(a => a.CreatureSheetId == sheetId)
+            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0));
 
         return skills
             .Select(s =>
             {
                 var modificador = SkillFormulas.Modificador(s.Gasto);
-                var total = atributoTotal is not null ? SkillFormulas.Total(modificador, atributoTotal.Value) : (int?)null;
-                return new CreatureSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, atributoEscolhido, total);
+                var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
+                    ? SkillFormulas.Total(modificador, atributoTotal)
+                    : (int?)null;
+                return new CreatureSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
             })
             .ToList();
     }
@@ -63,6 +61,7 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
 
         var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.Pericia == pericia);
         skill.Gasto = request.Gasto;
+        skill.AtributoEscolhido = Enum.TryParse<AtributoCriatura>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();
 
         return NoContent();
