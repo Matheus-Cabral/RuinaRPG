@@ -140,8 +140,19 @@ else
             {
                 options.AccessTokenProvider = async () => await AuthState.GetAccessTokenAsync();
             })
+            .WithAutomaticReconnect()
             .Build();
         _hubConnection.On("ParticipantsChanged", async () => { await LoadAsync(); StateHasChanged(); });
+        // A reconnect gets a brand-new connection id server-side, so group membership (JoinEncounter)
+        // doesn't survive it — without re-joining here, live sync would silently stop after any
+        // network hiccup until the whole page was manually reloaded (item 5 of the gap audit).
+        // Also re-fetch state in case anything changed while disconnected.
+        _hubConnection.Reconnected += async _ =>
+        {
+            await _hubConnection.SendAsync("JoinEncounter", EncounterId);
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        };
         await _hubConnection.StartAsync();
         await _hubConnection.SendAsync("JoinEncounter", EncounterId);
     }
