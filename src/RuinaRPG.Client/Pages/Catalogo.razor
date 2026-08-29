@@ -10,14 +10,20 @@
 <button @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
 
 <div>
-    <select @bind="_tipoFiltro" @bind:after="LoadAsync">
-        <option value="">Todos os Tipos</option>
-        <option value="ItemGeral">Item Geral</option>
-        <option value="Arma">Arma</option>
-        <option value="Armadura">Armadura</option>
-        <option value="Escudo">Escudo</option>
-        <option value="Artefato">Artefato</option>
-    </select>
+    <label>Tipo
+        <select @bind="_tipoFiltro" @bind:after="LoadAsync">
+            <option value="">Todos os Tipos</option>
+            <option value="ItemGeral">Item Geral</option>
+            <option value="Arma">Arma</option>
+            <option value="Armadura">Armadura</option>
+            <option value="Escudo">Escudo</option>
+            <option value="Artefato">Artefato</option>
+        </select>
+    </label>
+    <label>Subcategoria <input @bind="_subcategoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
+    <label>Tier <input @bind="_tierFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
+    <label>Categoria <input @bind="_categoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
+    <label>Tipo de Dano <input @bind="_tipoDeDanoFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
 </div>
 
 @if (_errorMessage is not null)
@@ -62,6 +68,10 @@
     };
 
     private string _tipoFiltro = "";
+    private string _subcategoriaFiltro = "";
+    private string _tierFiltro = "";
+    private string _categoriaFiltro = "";
+    private string _tipoDeDanoFiltro = "";
     private List<ItemResponse> _items = new();
     private string? _errorMessage;
 
@@ -69,7 +79,19 @@
 
     private async Task LoadAsync()
     {
-        var queryString = string.IsNullOrEmpty(_tipoFiltro) ? "" : $"?tipo={_tipoFiltro}";
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(_tipoFiltro))
+            query.Add($"tipo={_tipoFiltro}");
+        if (!string.IsNullOrWhiteSpace(_subcategoriaFiltro))
+            query.Add($"subcategoria={Uri.EscapeDataString(_subcategoriaFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_tierFiltro))
+            query.Add($"tier={Uri.EscapeDataString(_tierFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_categoriaFiltro))
+            query.Add($"categoria={Uri.EscapeDataString(_categoriaFiltro)}");
+        if (!string.IsNullOrWhiteSpace(_tipoDeDanoFiltro))
+            query.Add($"tipoDeDano={Uri.EscapeDataString(_tipoDeDanoFiltro)}");
+
+        var queryString = query.Count > 0 ? $"?{string.Join("&", query)}" : "";
         var response = await Http.GetAsync($"items{queryString}");
         if (!response.IsSuccessStatusCode)
         {

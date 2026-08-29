@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.SpellsAndAbilities
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -40,13 +41,16 @@
         </div>
     }
 
-    <p>Gasto em PI (calculado ao salvar): @_form.Efeitos.Sum(e => e.CustoPI)</p>
+    <p>Gasto em PI (calculado ao salvar): @GastoEmPI</p>
+    <p>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</p>
 
     <button type="submit">Salvar</button>
 </EditForm>
 
 @code {
     [Parameter] public string? EntryId { get; set; }
+
+    private int GastoEmPI => SpellAbilityCostCalculator.GastoEmPI(_form.Efeitos.Select(e => e.CustoPI));
 
     private List<BreadcrumbItem> Crumbs => new()
     {
