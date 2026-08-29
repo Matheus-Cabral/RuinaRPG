@@ -286,6 +286,29 @@
         <h3>Magias e Habilidades</h3>
         <EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
             <div class="mb-3">
+                <label class="form-label">Origem</label>
+                <select class="form-select" @bind="_spellAbilityForm.Origem">
+                    <option value="Zero">Montar do zero</option>
+                    <option value="Banco">Escolher do Banco de Magias</option>
+                </select>
+            </div>
+
+            @if (_spellAbilityForm.Origem == "Banco")
+            {
+                <div class="mb-3">
+                    <label class="form-label">Entrada do Banco</label>
+                    <select class="form-select" @bind="_spellAbilityForm.SourceBankEntryId">
+                        <option value="">Escolha uma entrada</option>
+                        @foreach (var entry in _bankEntries)
+                        {
+                            <option value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</option>
+                        }
+                    </select>
+                </div>
+            }
+            else
+            {
+            <div class="mb-3">
                 <label class="form-label">Nome</label>
                 <InputText class="form-control" @bind-Value="_spellAbilityForm.Nome" />
             </div>
@@ -328,6 +351,7 @@
                         <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</button>
                     </div>
                 </div>
+            }
             }
 
             <button type="submit" class="btn btn-primary mt-3">Adicionar Magia/Habilidade</button>
@@ -492,6 +516,7 @@
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private SubAttributesResponse? _subAttributes;
     private List<CreatureSpellAbilityResponse> _spellAbilities = new();
+    private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
     private List<CreatureMasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
@@ -673,14 +698,18 @@
     private async Task LoadSpellAbilitiesAsync()
     {
         _spellAbilities = await Http.GetFromJsonAsync<List<CreatureSpellAbilityResponse>>($"creature-sheets/{SheetId}/spell-abilities") ?? new();
+        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>("spell-ability-bank") ?? new();
     }
 
     private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
 
     private async Task AddSpellAbilityAsync()
     {
-        var efeitos = _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var request = new AddCreatureSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao, efeitos);
+        var request = _spellAbilityForm.Origem == "Banco"
+            ? new AddCreatureSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
+            : new AddCreatureSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
+                _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
+
         var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spell-abilities", request);
         if (!response.IsSuccessStatusCode)
         {
@@ -688,6 +717,7 @@
             return;
         }
 
+        _spellAbilityForm.SourceBankEntryId = "";
         _spellAbilityForm.Nome = "";
         _spellAbilityForm.Tipo = "Magia";
         _spellAbilityForm.Grau = 0;
@@ -866,6 +896,8 @@
 
     private class SpellAbilityFormModel
     {
+        public string Origem { get; set; } = "Zero";
+        public string SourceBankEntryId { get; set; } = "";
         public string Nome { get; set; } = "";
         public string Tipo { get; set; } = "Magia";
         public int Grau { get; set; }

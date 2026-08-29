@@ -12,10 +12,13 @@ namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/spell-ability-bank")]
-[Authorize(Roles = "GM")]
+[Authorize]
 public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
 {
+    // Curating the Banco (create/edit/delete) stays GM-only; browsing it (List, below) doesn't —
+    // a player needs to see their own GM's bank to pick a Magia/Habilidade for their own sheet.
     [HttpPost]
+    [Authorize(Roles = "GM")]
     public async Task<ActionResult<SpellAbilityEntryResponse>> Create(CreateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
@@ -26,7 +29,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         var entry = new SpellAbilityBankEntry
         {
             Id = Guid.NewGuid(),
-            GmId = CurrentGmId(),
+            GmId = CurrentUserId(),
             Nome = request.Nome,
             Tipo = tipo,
             Grau = request.Grau,
@@ -50,7 +53,10 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         [FromQuery] string? tipo,
         [FromQuery] int? grau)
     {
-        var gmId = CurrentGmId();
+        var gmId = await ResolveEffectiveGmIdAsync();
+        if (gmId is null)
+            return Forbid();
+
         var query = db.SpellAbilityBankEntries
             .Include(e => e.Efeitos)
             .Where(e => e.GmId == gmId);
@@ -69,12 +75,13 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Update(Guid id, UpdateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
             return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
 
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
         var entry = await db.SpellAbilityBankEntries
             .FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
         if (entry is null)
@@ -106,9 +113,10 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var gmId = CurrentGmId();
+        var gmId = CurrentUserId();
         var entry = await db.SpellAbilityBankEntries.FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
         if (entry is null)
             return NotFound();
@@ -122,5 +130,16 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
         entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
 
-    private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+
+    /// <summary>Same reasoning as ItemsController.ResolveEffectiveGmIdAsync — see there.</summary>
+    private async Task<Guid?> ResolveEffectiveGmIdAsync()
+    {
+        var callerId = CurrentUserId();
+        if (User.IsInRole("GM"))
+            return callerId;
+
+        var caller = await db.Users.FindAsync(callerId);
+        return caller?.InvitedByGmId;
+    }
 }
