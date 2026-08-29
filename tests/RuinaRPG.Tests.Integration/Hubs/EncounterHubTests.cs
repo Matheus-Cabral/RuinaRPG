@@ -96,6 +96,15 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
 
+    private async Task<string> CreateCreatureSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
+    }
+
+    private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest ValidCreatureUpdate(string nome, int vitalidadeAtual) => new(
+        null, nome, "Lobo", "Fisico", "Predador", "Terra", "F", 3, 200, 5, vitalidadeAtual, 8, 10, "Parcial");
+
     private async Task<HubConnection> ConnectAndJoinAsync(string token, string encounterId)
     {
         var connection = new HubConnectionBuilder()
@@ -195,6 +204,36 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         updateResponse.EnsureSuccessStatusCode();
 
         (await waitTask).Should().BeTrue("updating a granted (live-sourced) NpcSheet participant should broadcast ParticipantsChanged to the encounter's group");
+    }
+
+    [Fact]
+    public async Task Updating_a_granted_live_sourced_CreatureSheet_participant_broadcasts_ParticipantsChanged_to_its_encounter_group()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("HubGm5", "hub5@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer5", "hubplayer5@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Hub Criatura Concedida");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Hub Criatura Concedida");
+
+        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+            new GrantSheetRequest(playerId, "Creature", null)));
+        grantResponse.EnsureSuccessStatusCode();
+        var creatureId = (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+            new AddParticipantRequest(null, null, creatureId, 10)));
+        addResponse.EnsureSuccessStatusCode();
+        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
+        added!.IsLiveSourced.Should().BeTrue();
+
+        await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
+        var waitTask = WaitForParticipantsChangedAsync(connection);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken,
+            ValidCreatureUpdate("Lobo Concedido", 7)));
+        updateResponse.EnsureSuccessStatusCode();
+
+        (await waitTask).Should().BeTrue("updating a granted (live-sourced) CreatureSheet participant should broadcast ParticipantsChanged to the encounter's group");
     }
 
     [Fact]
