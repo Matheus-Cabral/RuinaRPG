@@ -25,7 +25,6 @@
 **Files:**
 - Modify: `src/RuinaRPG.Client/RuinaRPG.Client.csproj`
 - Modify: `src/RuinaRPG.Client/Program.cs`
-- Modify: `src/RuinaRPG.Client/_Imports.razor`
 - Modify: `src/RuinaRPG.Client/wwwroot/index.html`
 - Delete: `src/RuinaRPG.Client/wwwroot/css/bootstrap/` (entire directory)
 - Delete: `src/RuinaRPG.Client/wwwroot/css/components.css`
@@ -64,13 +63,11 @@ builder.Services.AddMudServices();
 
 (add anywhere after `builder.Services.AddBlazoredLocalStorage();` — order relative to the other DI registrations doesn't matter)
 
-- [ ] **Step 4: Add the global `@using MudBlazor` import**
+- [ ] **Step 4: Do NOT add a global `@using MudBlazor` — add it per-file instead**
 
-Every later task's Razor markup uses bare MudBlazor component tags (`<MudPaper>`, `<MudSelect>`, …) and enums (`Color.Inherit`, `Typo.h6`, …) without a per-file `@using` — that only resolves via a project-wide import. Add one line to `src/RuinaRPG.Client/_Imports.razor`, alongside the existing `@using RuinaRPG.Client.Shared` line:
+`_Imports.razor` already has `@using RuinaRPG.Client.Shared`, which brings this app's own `Shared/BreadcrumbItem.cs` (`record BreadcrumbItem(string Text, string? Href = null)`) into scope everywhere. `MudBlazor` also declares its own `BreadcrumbItem` type. Adding `@using MudBlazor` globally puts both in scope project-wide, and every bare `BreadcrumbItem` reference anywhere in the app (there are several, in pages outside this plan's scope) becomes a CS0104 ambiguous-reference build error — this was caught by Task 1's implementer hitting exactly that build failure, not predicted up front; do not repeat the global-import approach.
 
-```razor
-@using MudBlazor
-```
+Leave `_Imports.razor` untouched in this task. Instead, every later task in this plan that adds a `.razor` file using MudBlazor components adds its own `@using MudBlazor` at the top of that specific file (each later task's step text says so explicitly). The one exception is `Breadcrumbs.razor` (Task 5), which references the app's own `BreadcrumbItem` by its bare name and therefore must NOT add `@using MudBlazor` — it fully-qualifies the one MudBlazor type it needs instead (see Task 5).
 
 - [ ] **Step 5: Rewire `wwwroot/index.html`**
 
@@ -210,6 +207,7 @@ rm src/RuinaRPG.Client/Layout/NavMenu.razor.css
 Same route list, same role-gating, same `OnLinkClicked`/logout behavior as before — only the markup changes, from bare `<nav>`/`<NavLink>` to `MudNavMenu`/`MudNavLink`/`MudNavGroup`:
 
 ```razor
+@using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject AuthStateService AuthState
@@ -272,6 +270,7 @@ Note: `MudNavLink`'s `OnClick` fires on every click regardless of whether it als
 
 ```razor
 @inherits LayoutComponentBase
+@using MudBlazor
 @using RuinaRPG.Client.Theme
 
 <MudThemeProvider Theme="RrMudTheme.Instance" />
@@ -538,7 +537,7 @@ Expected: a record with `Text` (string) and `Href` (string?) — if the actual s
 ```razor
 @if (Items is { Count: > 0 })
 {
-    <MudBreadcrumbs Items="_mudItems" Separator="/" />
+    <MudBlazor.MudBreadcrumbs Items="_mudItems" Separator="/" />
 }
 
 @code {
@@ -556,7 +555,7 @@ Expected: a record with `Text` (string) and `Href` (string?) — if the actual s
 }
 ```
 
-`MudBlazor.BreadcrumbItem` is the library's own record (name collides with this app's `BreadcrumbItem` — hence the fully-qualified reference); its `disabled` flag is what renders an item as plain text instead of a link, replacing the old markup's `isLast`/`item.Href is not null` branch.
+This file does NOT add `@using MudBlazor` (unlike every other task in this plan) — it needs the app's own `BreadcrumbItem` (`Shared/BreadcrumbItem.cs`) unqualified for its `Items` parameter, and that name collides with `MudBlazor.BreadcrumbItem`. Every MudBlazor reference here is instead fully qualified: the `<MudBlazor.MudBreadcrumbs>` tag and the `MudBlazor.BreadcrumbItem` record construction. Its `disabled` flag is what renders an item as plain text instead of a link, replacing the old markup's `isLast`/`item.Href is not null` branch.
 
 - [ ] **Step 3: Build**
 
@@ -584,6 +583,8 @@ git commit -m "feat: rebuild Breadcrumbs on MudBreadcrumbs"
 - [ ] **Step 1: Rewrite `Section.razor`**
 
 ```razor
+@using MudBlazor
+
 <MudPaper Elevation="0" Class="rr-section">
     @if (!string.IsNullOrWhiteSpace(Title))
     {
@@ -840,6 +841,7 @@ Expected: FAIL to compile — `EntityPicker` doesn't yet expose `SearchAsyncForT
 - [ ] **Step 7: Rewrite `EntityPicker.razor`**
 
 ```razor
+@using MudBlazor
 @*
     Replaces a raw-GUID field with a debounced live-search + click-to-select control, over
     MudAutocomplete, reusing each page's existing search endpoint (via the caller-supplied
@@ -1018,6 +1020,8 @@ Expected: FAIL to compile — `LinhagemVarianteFields` doesn't exist yet.
 - [ ] **Step 3: Write `LinhagemVarianteFields.razor`**
 
 ```razor
+@using MudBlazor
+
 <MudSelect T="string" Label="Linhagem" Value="Linhagem" ValueChanged="OnLinhagemChangedAsync" Placeholder="Escolha uma Linhagem">
     @foreach (var linhagem in Linhagens)
     {
@@ -1150,6 +1154,8 @@ Expected: FAIL to compile.
 - [ ] **Step 7: Write `VocacaoSubVocacaoFields.razor`**
 
 ```razor
+@using MudBlazor
+
 <MudSelect T="string" Label="Vocação" Value="Vocacao" ValueChanged="OnVocacaoChangedAsync" Placeholder="Escolha uma Vocação">
     @foreach (var (valor, rotulo) in Vocacoes)
     {
@@ -1231,6 +1237,8 @@ Expected: PASS (6/6).
 - [ ] **Step 9: Write `AfinidadeSelect.razor`** (no cascade, no test needed beyond the build — it's a flat 18-item list, same class of triviality as a static lookup table)
 
 ```razor
+@using MudBlazor
+
 <MudSelect T="string" Label="Afinidade" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Afinidade">
     @foreach (var (valor, rotulo) in Afinidades)
     {
