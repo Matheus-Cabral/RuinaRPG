@@ -1,0 +1,40 @@
+@using RuinaRPG.Client.Shared.Fields
+
+<div class="rr-identity-badge rr-glyph-@GlyphKey.ToLowerInvariant() rr-polaridade-@Polaridade.ToLowerInvariant()"
+     title="@Title" aria-label="@Title">
+    <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+        <circle class="rr-identity-ring" cx="16" cy="16" r="14" />
+        <text class="rr-identity-glyph" x="16" y="21" text-anchor="middle">@GlyphChar</text>
+    </svg>
+</div>
+
+@code {
+    [Parameter] public string? Linhagem { get; set; }
+    [Parameter] public string? Variante { get; set; }
+
+    // One character per Linhagem — deliberately abstract/geometric, not a literal illustration.
+    private static readonly Dictionary<string, string> GlyphByLinhagem = new()
+    {
+        ["Humano"] = "H",
+        ["Phylauc"] = "Φ",
+        ["Nephrytes"] = "N",
+        ["Econos"] = "E",
+    };
+
+    private string GlyphKey => Linhagem is not null && GlyphByLinhagem.ContainsKey(Linhagem) && HasValidVariante ? Linhagem : "None";
+
+    private string GlyphChar => Linhagem is not null && GlyphByLinhagem.TryGetValue(Linhagem, out var g) && HasValidVariante ? g : "?";
+
+    private string Polaridade =>
+        HasValidVariante
+            ? LinhagemVarianteFields.VariantesPorLinhagem[Linhagem!].First(o => o.Valor == Variante).Polaridade
+            : "Neutra";
+
+    private bool HasValidVariante =>
+        Linhagem is not null
+        && Variante is not null
+        && LinhagemVarianteFields.VariantesPorLinhagem.TryGetValue(Linhagem, out var options)
+        && options.Any(o => o.Valor == Variante);
+
+    private string Title => HasValidVariante ? $"{Linhagem} — {Variante}" : "Linhagem não definida";
+}

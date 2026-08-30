@@ -1,0 +1,39 @@
+.rr-identity-badge {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+}
+
+.rr-identity-ring {
+    fill: var(--rr-surface);
+    stroke: var(--rr-border);
+    stroke-width: 1.5;
+}
+
+.rr-identity-glyph {
+    font-family: var(--rr-font-heading);
+    font-size: 0.95rem;
+    font-weight: 700;
+    fill: var(--rr-text-muted);
+}
+
+/* Sol variants: solid primary-colored ring. Lua variants: dashed accent-colored ring — the same
+   Sol/Lua polarity every Variante already carries (Sistema Básico §7), not invented here. */
+.rr-polaridade-sol .rr-identity-ring {
+    stroke: var(--rr-primary);
+    stroke-width: 2;
+}
+
+.rr-polaridade-sol .rr-identity-glyph {
+    fill: var(--rr-primary);
+}
+
+.rr-polaridade-lua .rr-identity-ring {
+    stroke: var(--rr-accent);
+    stroke-width: 2;
+    stroke-dasharray: 3 2;
+}
+
+.rr-polaridade-lua .rr-identity-glyph {
+    fill: var(--rr-accent);
+}
