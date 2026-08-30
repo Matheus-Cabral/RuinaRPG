@@ -8,51 +8,45 @@
 
 <h1>Cadastro</h1>
 
-<div>
-    <button @onclick='() => _activeTab = "gm"' disabled="@(_activeTab == "gm")">Gamemaster</button>
-    <button @onclick='() => _activeTab = "jogador"' disabled="@(_activeTab == "jogador")">Jogador</button>
-</div>
-
-@if (_activeTab == "gm")
-{
-    <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
-        <DataAnnotationsValidator />
-        <label>Nickname <InputText @bind-Value="_gmRequest.Nickname" /></label>
-        <ValidationMessage For="@(() => _gmRequest.Nickname)" />
-        <label>Email <InputText @bind-Value="_gmRequest.Email" /></label>
-        <ValidationMessage For="@(() => _gmRequest.Email)" />
-        <label>Senha <InputText type="password" @bind-Value="_gmRequest.Senha" /></label>
-        <ValidationMessage For="@(() => _gmRequest.Senha)" />
-        <label>Confirmação da Senha <InputText type="password" @bind-Value="_gmRequest.ConfirmacaoSenha" /></label>
-        <ValidationMessage For="@(() => _gmRequest.ConfirmacaoSenha)" />
-        <button type="submit">Cadastrar</button>
-    </EditForm>
-}
-else
-{
-    <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
-        <DataAnnotationsValidator />
-        <label>Nickname <InputText @bind-Value="_jogadorRequest.Nickname" /></label>
-        <ValidationMessage For="@(() => _jogadorRequest.Nickname)" />
-        <label>Email <InputText @bind-Value="_jogadorRequest.Email" /></label>
-        <ValidationMessage For="@(() => _jogadorRequest.Email)" />
-        <label>Senha <InputText type="password" @bind-Value="_jogadorRequest.Senha" /></label>
-        <ValidationMessage For="@(() => _jogadorRequest.Senha)" />
-        <label>Confirmação da Senha <InputText type="password" @bind-Value="_jogadorRequest.ConfirmacaoSenha" /></label>
-        <ValidationMessage For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
-        <label>Código de acesso <InputText @bind-Value="_jogadorRequest.CodigoDeAcesso" /></label>
-        <ValidationMessage For="@(() => _jogadorRequest.CodigoDeAcesso)" />
-        <button type="submit">Cadastrar</button>
-    </EditForm>
-}
-
 @if (_errorMessage is not null)
 {
     <p class="error">@_errorMessage</p>
 }
 
+<TabControl>
+    <TabPage Title="Gamemaster">
+        <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
+            <DataAnnotationsValidator />
+            <label>Nickname <InputText @bind-Value="_gmRequest.Nickname" /></label>
+            <ValidationMessage For="@(() => _gmRequest.Nickname)" />
+            <label>Email <InputText @bind-Value="_gmRequest.Email" /></label>
+            <ValidationMessage For="@(() => _gmRequest.Email)" />
+            <label>Senha <InputText type="password" @bind-Value="_gmRequest.Senha" /></label>
+            <ValidationMessage For="@(() => _gmRequest.Senha)" />
+            <label>Confirmação da Senha <InputText type="password" @bind-Value="_gmRequest.ConfirmacaoSenha" /></label>
+            <ValidationMessage For="@(() => _gmRequest.ConfirmacaoSenha)" />
+            <button type="submit">Cadastrar</button>
+        </EditForm>
+    </TabPage>
+    <TabPage Title="Jogador">
+        <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
+            <DataAnnotationsValidator />
+            <label>Nickname <InputText @bind-Value="_jogadorRequest.Nickname" /></label>
+            <ValidationMessage For="@(() => _jogadorRequest.Nickname)" />
+            <label>Email <InputText @bind-Value="_jogadorRequest.Email" /></label>
+            <ValidationMessage For="@(() => _jogadorRequest.Email)" />
+            <label>Senha <InputText type="password" @bind-Value="_jogadorRequest.Senha" /></label>
+            <ValidationMessage For="@(() => _jogadorRequest.Senha)" />
+            <label>Confirmação da Senha <InputText type="password" @bind-Value="_jogadorRequest.ConfirmacaoSenha" /></label>
+            <ValidationMessage For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
+            <label>Código de acesso <InputText @bind-Value="_jogadorRequest.CodigoDeAcesso" /></label>
+            <ValidationMessage For="@(() => _jogadorRequest.CodigoDeAcesso)" />
+            <button type="submit">Cadastrar</button>
+        </EditForm>
+    </TabPage>
+</TabControl>
+
 @code {
-    private string _activeTab = "gm";
     private readonly GmFormModel _gmRequest = new();
     private readonly JogadorFormModel _jogadorRequest = new();
     private string? _errorMessage;
