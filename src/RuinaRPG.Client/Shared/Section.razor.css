@@ -1,28 +1,26 @@
-.rr-section {
-  background: var(--rr-surface-alt);
-  border: 1px solid var(--rr-border);
-  border-radius: var(--rr-radius-md);
-  padding: var(--rr-space-4);
+::deep .rr-section {
+    border-top: 2px solid var(--rr-accent);
+    padding: var(--rr-space-4);
+    background: var(--rr-surface-alt);
 }
 
-.rr-section + .rr-section {
-  margin-top: var(--rr-space-4);
+::deep .rr-section + .rr-section {
+    margin-top: var(--rr-space-4);
 }
 
-.rr-section-header {
-  margin-bottom: var(--rr-space-3);
+::deep .rr-section-header {
+    margin-bottom: var(--rr-space-3);
 }
 
-.rr-section-title {
-  margin: 0;
+::deep .rr-section-title {
+    font-family: var(--rr-font-heading);
 }
 
-.rr-section-subtitle {
-  margin: var(--rr-space-1) 0 0;
-  color: var(--rr-text-muted);
-  font-size: 0.9rem;
+::deep .rr-section-subtitle {
+    color: var(--rr-text-muted);
+    margin-top: var(--rr-space-1);
 }
 
-.rr-section-body > :last-child {
-  margin-bottom: 0;
+::deep .rr-section-body > :last-child {
+    margin-bottom: 0;
 }
