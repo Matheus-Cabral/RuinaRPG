@@ -7,12 +7,13 @@ namespace RuinaRPG.Tests.Unit.Rules;
 public class RulesDataProviderTests
 {
     [Fact]
-    public void All_seven_collections_are_populated_from_the_real_embedded_docs()
+    public void All_eight_collections_are_populated_from_the_real_embedded_docs()
     {
         IRulesDataProvider provider = new RulesDataProvider();
 
         provider.Niveis.Should().HaveCount(50);
         provider.Vocacoes.Should().HaveCountGreaterThan(0).And.Contain(v => v.Vocacao == "Campeão" && v.Nivel == 1);
+        provider.Classes.Should().HaveCountGreaterThan(0).And.Contain(c => c.Classe == "Duelista" && c.Nivel == 1 && c.Vida == 0 && c.Arcana == 0);
         provider.Arquetipos.Should().Contain(a => a.Arquetipo == "Fisico" && a.Nivel == 1);
         provider.CirculoGrauPorEap.Should().HaveCount(10); // Círculo/Grau 0..9
         provider.XpPorNivel.Should().HaveCount(50);

@@ -28,6 +28,8 @@ public static class CompendioSearchService
                 new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Níveis — Nível {n.Nivel}", $"Nível {n.Nivel}", n.BonusText)));
             results.AddRange(rules.Vocacoes.Select(v =>
                 new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Vocação — {v.Vocacao}, Nível {v.Nivel}", v.Vocacao, $"Vida {v.Vida}, Arcana {v.Arcana}")));
+            results.AddRange(rules.Classes.Select(c =>
+                new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Classes — {c.Classe}, Nível {c.Nivel}", c.Classe, $"Vida {c.Vida}, Arcana {c.Arcana}")));
             results.AddRange(rules.Arquetipos.Select(a =>
                 new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Arquétipos — {a.Arquetipo}, Nível {a.Nivel}", a.Arquetipo, $"Vida {a.Vida}, Arcana {a.Arcana}")));
             results.AddRange(rules.CirculoGrauPorEap.Select(c =>
