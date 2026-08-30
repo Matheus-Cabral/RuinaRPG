@@ -7,15 +7,33 @@
 
 <h1>NPCs do GM</h1>
 
-<button @onclick="CreateAsync">Novo NPC</button>
+<button type="button" class="btn btn-primary" @onclick="CreateAsync">Novo NPC</button>
 
-<div>
-    <label>Nome <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Linhagem <input @bind="_linhagemFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Variante <input @bind="_varianteFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Vocação <input @bind="_vocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Sub-Vocação <input @bind="_subVocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Nível <input type="number" @bind="_nivelFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
+<div class="row g-3 my-1">
+    <div class="col-md-4">
+        <label class="form-label">Nome</label>
+        <input class="form-control" @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Linhagem</label>
+        <input class="form-control" @bind="_linhagemFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Variante</label>
+        <input class="form-control" @bind="_varianteFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Vocação</label>
+        <input class="form-control" @bind="_vocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Sub-Vocação</label>
+        <input class="form-control" @bind="_subVocacaoFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Nível</label>
+        <input type="number" class="form-control" @bind="_nivelFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
 </div>
 
 @if (_errorMessage is not null)
@@ -23,7 +41,7 @@
     <p class="error">@_errorMessage</p>
 }
 
-<table>
+<table class="table">
     <thead>
         <tr>
             <th>Nome</th>

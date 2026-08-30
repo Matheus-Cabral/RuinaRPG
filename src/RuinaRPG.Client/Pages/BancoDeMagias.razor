@@ -7,17 +7,26 @@
 
 <h1>Banco de Magias e Habilidades</h1>
 
-<button @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
+<button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
 
-<div>
-    <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Nome" />
-    <select @bind="_tipoFiltro" @bind:after="LoadAsync">
-        <option value="">Todos os Tipos</option>
-        <option value="Magia">Magia</option>
-        <option value="Habilidade">Habilidade</option>
-        <option value="Racial">Racial</option>
-    </select>
-    <input type="number" @bind="_grauFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Grau" />
+<div class="row g-3 my-1">
+    <div class="col-md-4">
+        <label class="form-label">Nome</label>
+        <input class="form-control" @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Nome" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" @bind="_tipoFiltro" @bind:after="LoadAsync">
+            <option value="">Todos os Tipos</option>
+            <option value="Magia">Magia</option>
+            <option value="Habilidade">Habilidade</option>
+            <option value="Racial">Racial</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Grau</label>
+        <input type="number" class="form-control" @bind="_grauFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Grau" />
+    </div>
 </div>
 
 @if (_errorMessage is not null)
@@ -25,7 +34,7 @@
     <p class="error">@_errorMessage</p>
 }
 
-<table>
+<table class="table">
     <thead>
         <tr>
             <th>Nome</th>
@@ -46,8 +55,8 @@
                 <td>@entry.GastoEmPI</td>
                 <td>@entry.Custo</td>
                 <td>
-                    <button @onclick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</button>
-                    <button @onclick="@(() => DeleteAsync(entry.Id))">Excluir</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAsync(entry.Id))">Excluir</button>
                 </td>
             </tr>
         }
