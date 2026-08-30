@@ -3,6 +3,8 @@
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Contracts.Items
+@using RuinaRPG.Contracts.Rules
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -177,8 +179,8 @@
             @if (_weaponForm.Origem == "Catalogo")
             {
                 <div class="mb-3">
-                    <label class="form-label">Arma (Id do Catálogo)</label>
-                    <InputText class="form-control" @bind-Value="_weaponForm.ItemId" />
+                    <label class="form-label">Arma</label>
+                    <EntityPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." />
                 </div>
             }
             else
@@ -243,7 +245,9 @@
                     }
                     else
                     {
-                        <input type="text" placeholder="Id do Catálogo" @bind="_armorSlotForm[slot.Slot]" style="width:14em" />
+                        <span style="display: inline-block; width: 16em; vertical-align: middle;">
+                            <EntityPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." />
+                        </span>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</button>
                     }
                 </li>
@@ -253,8 +257,8 @@
         <h3>Escudos</h3>
         <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
             <div class="mb-3">
-                <label class="form-label">Escudo (Id do Catálogo)</label>
-                <InputText class="form-control" @bind-Value="_shieldForm.ItemId" />
+                <label class="form-label">Escudo</label>
+                <EntityPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." />
             </div>
             <button type="submit" class="btn btn-primary">Adicionar Escudo</button>
         </EditForm>
@@ -412,8 +416,8 @@
         <Section Title="Espólios">
         <EditForm Model="_spoilForm" OnValidSubmit="AddSpoilAsync">
             <div class="mb-3">
-                <label class="form-label">Item (Id do Catálogo)</label>
-                <InputText class="form-control" @bind-Value="_spoilForm.ItemId" />
+                <label class="form-label">Item</label>
+                <EntityPicker @bind-Value="_spoilForm.ItemId" SearchItems="SearchAllItemsAsync" Placeholder="Buscar item..." />
             </div>
             <div class="mb-3">
                 <label class="form-label">Quantidade</label>
@@ -436,8 +440,8 @@
         <Section Title="Artefatos">
         <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
             <div class="mb-3">
-                <label class="form-label">Artefato (Id do Catálogo)</label>
-                <InputText class="form-control" @bind-Value="_artifactForm.ArtifactItemId" />
+                <label class="form-label">Artefato</label>
+                <EntityPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." />
             </div>
             <button type="submit" class="btn btn-primary">Adicionar Artefato</button>
         </EditForm>
@@ -476,8 +480,8 @@
         <Section Title="Características">
         <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
             <div class="mb-3">
-                <label class="form-label">Característica (Id)</label>
-                <InputText class="form-control" @bind-Value="_traitForm.TraitId" />
+                <label class="form-label">Característica</label>
+                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
             </div>
             <button type="submit" class="btn btn-primary">Adicionar Característica</button>
         </EditForm>
@@ -534,6 +538,32 @@
     private readonly AffectionFormModel _affectionForm = new();
     private CreatureTraitsListResponse? _traits;
     private readonly TraitFormModel _traitForm = new();
+
+    private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
+    {
+        var response = await Http.GetAsync($"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}");
+        if (!response.IsSuccessStatusCode) return new();
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
+    }
+
+    // Espólios has no Tipo restriction server-side (AddSpoil accepts any catalog Item) — unlike
+    // Inventário/Weapon/Armor/Artefato, which are each scoped to a single Tipo.
+    private async Task<List<PickerOption>> SearchAllItemsAsync(string query)
+    {
+        var response = await Http.GetAsync($"items?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
+    }
+
+    private async Task<List<PickerOption>> SearchTraitsAsync(string query)
+    {
+        var response = await Http.GetAsync($"traits?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var traits = await response.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
+        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
+    }
 
     protected override Task OnInitializedAsync() => Task.WhenAll(
         LoadSheetAsync(), LoadTabs2And3Async(),
