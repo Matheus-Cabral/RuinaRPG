@@ -1,35 +1,27 @@
+@using MudBlazor
 @*
-    Replaces a raw-GUID text field with a debounced live-search + click-to-select control, reusing
-    each page's existing search/list endpoint (via the caller-supplied SearchItems delegate) —
-    the same debounce pattern already used by every live-search page in this app, no JS interop.
+    Replaces a raw-GUID field with a debounced live-search + click-to-select control, over
+    MudAutocomplete, reusing each page's existing search endpoint (via the caller-supplied
+    SearchItems delegate).
 
     Every one of these fields is an "add new X" action, never an edit of an existing selection, so
     the component never needs to resolve an incoming Value back into a label on its own; it always
     starts empty and the caller resets Value to "" after a successful add, which this component
     picks up via OnParametersSet to clear its own confirmed-selection display.
 *@
-<div>
-    @if (!string.IsNullOrEmpty(Value) && _selectedLabel is not null)
-    {
-        <div class="input-group">
-            <span class="form-control">@_selectedLabel</span>
-            <button type="button" class="btn btn-outline-secondary" @onclick="ClearAsync">Trocar</button>
-        </div>
-    }
-    else
-    {
-        <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" placeholder="@Placeholder" />
-        @if (_results.Count > 0)
-        {
-            <ul class="list-group mt-1">
-                @foreach (var option in _results)
-                {
-                    <li class="list-group-item list-group-item-action" style="cursor: pointer" @onclick="@(() => SelectAsync(option))">@option.Label</li>
-                }
-            </ul>
-        }
-    }
-</div>
+@if (!string.IsNullOrEmpty(Value) && _selectedLabel is not null)
+{
+    <div class="entity-picker-selected">
+        <span>@_selectedLabel</span>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="ClearAsync">Trocar</MudButton>
+    </div>
+}
+else
+{
+    <MudAutocomplete T="PickerOption" Placeholder="@Placeholder" SearchFunc="SearchFuncAsync"
+                      ToStringFunc="@(o => o?.Label ?? string.Empty)" ValueChanged="SelectAsync" ResetValueOnEmptyText="true"
+                      CoerceText="false" Clearable="true" />
+}
 
 @code {
     [Parameter] public string? Value { get; set; }
@@ -37,10 +29,7 @@
     [Parameter, EditorRequired] public Func<string, Task<List<PickerOption>>> SearchItems { get; set; } = null!;
     [Parameter] public string Placeholder { get; set; } = "Buscar...";
 
-    private string _query = "";
-    private List<PickerOption> _results = new();
     private string? _selectedLabel;
-    private CancellationTokenSource? _debounceCts;
 
     protected override void OnParametersSet()
     {
@@ -50,29 +39,20 @@
             _selectedLabel = null;
     }
 
-    private async Task SearchAsync()
+    private async Task<IEnumerable<PickerOption>> SearchFuncAsync(string query, CancellationToken token)
     {
-        _debounceCts?.Cancel();
-        _debounceCts = new CancellationTokenSource();
-        var token = _debounceCts.Token;
-        try
-        {
-            await Task.Delay(300, token);
-        }
-        catch (TaskCanceledException)
-        {
-            return;
-        }
-
-        _results = string.IsNullOrWhiteSpace(_query) ? new() : await SearchItems(_query);
+        if (string.IsNullOrWhiteSpace(query))
+            return [];
+        return await SearchItems(query);
     }
 
-    private async Task SelectAsync(PickerOption option)
+    private async Task SelectAsync(PickerOption? option)
     {
+        if (option is null)
+            return;
         _selectedLabel = option.Label;
-        _results = new();
-        _query = "";
         Value = option.Id;
+        StateHasChanged();
         await ValueChanged.InvokeAsync(Value);
     }
 
@@ -80,6 +60,14 @@
     {
         _selectedLabel = null;
         Value = "";
+        StateHasChanged();
         await ValueChanged.InvokeAsync(Value);
     }
+
+    // Test-only seams: MudAutocomplete owns its own debounce/open-state internally, which bUnit's
+    // synchronous TestContext can't drive through real elapsed time or a real click-outside event.
+    // These let EntityPickerTests exercise the same SearchItems/selection code paths deterministically.
+    internal Task<IEnumerable<PickerOption>> SearchAsyncForTests(string query) => SearchFuncAsync(query, CancellationToken.None);
+    internal Task SelectForTests(PickerOption option) => SelectAsync(option);
+    internal void SetSelectedLabelForTests(string label) => _selectedLabel = label;
 }
