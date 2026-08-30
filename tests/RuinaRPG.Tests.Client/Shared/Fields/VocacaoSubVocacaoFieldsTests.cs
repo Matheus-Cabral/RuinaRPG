@@ -1,25 +1,12 @@
 using Bunit;
 using FluentAssertions;
-using MudBlazor.Services;
 using RuinaRPG.Client.Shared.Fields;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
-public class VocacaoSubVocacaoFieldsTests : BunitContext, IAsyncLifetime
+public class VocacaoSubVocacaoFieldsTests : MudBunitContext
 {
-    public VocacaoSubVocacaoFieldsTests()
-    {
-        Services.AddMudServices();
-        JSInterop.Mode = JSRuntimeMode.Loose;
-    }
-
-    // Same MudBlazor-DI-teardown fix as Task 7's EntityPickerTests and Task 8's
-    // LinhagemVarianteFieldsTests — see either for why this is needed.
-    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
-
-    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
-
     [Theory]
     [InlineData("Campeao", new[] { "Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião" })]
     [InlineData("Cacador", new[] { "Arqueiro", "Domador", "Assassino" })]
@@ -32,7 +19,7 @@ public class VocacaoSubVocacaoFieldsTests : BunitContext, IAsyncLifetime
             .Add(x => x.Vocacao, vocacao)
             .Add(x => x.SubVocacao, (string?)null));
 
-        cut.Instance.SubVocacaoOptionsForTests().Should().BeEquivalentTo(expected);
+        cut.Instance.SubVocacaoOptions().Should().BeEquivalentTo(expected);
     }
 
     [Fact]

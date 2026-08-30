@@ -14,7 +14,7 @@
 else
 {
     <MudSelect T="string" Label="Sub-vocação" Value="SubVocacao" ValueChanged="OnSubVocacaoChangedAsync" Placeholder="Escolha uma Sub-vocação">
-        @foreach (var subVocacao in SubVocacaoOptionsForTests())
+        @foreach (var subVocacao in SubVocacaoOptions())
         {
             <MudSelectItem Value="@subVocacao">@subVocacao</MudSelectItem>
         }
@@ -45,7 +45,7 @@ else
         ["Bruxo"] = ["Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista"],
     };
 
-    internal string[] SubVocacaoOptionsForTests() =>
+    internal string[] SubVocacaoOptions() =>
         !string.IsNullOrEmpty(Vocacao) && SubVocacoesPorVocacao.TryGetValue(Vocacao, out var options) ? options : [];
 
     internal Task SetVocacaoForTests(string? vocacao) => OnVocacaoChangedAsync(vocacao);

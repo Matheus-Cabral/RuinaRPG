@@ -10,6 +10,14 @@
 
     protected override void OnParametersSet()
     {
+        // The markup's own guard runs after this, so a caller binding an explicit null (or an empty
+        // list) would otherwise dereference Items.Count here and throw.
+        if (Items is not { Count: > 0 })
+        {
+            _mudItems = new();
+            return;
+        }
+
         var lastIndex = Items.Count - 1;
         _mudItems = Items
             .Select((item, i) => new MudBlazor.BreadcrumbItem(item.Text, item.Href, disabled: i == lastIndex || item.Href is null))

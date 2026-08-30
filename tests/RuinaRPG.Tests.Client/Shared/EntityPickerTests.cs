@@ -1,27 +1,12 @@
 using Bunit;
 using FluentAssertions;
-using MudBlazor.Services;
 using RuinaRPG.Client.Shared;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared;
 
-public class EntityPickerTests : BunitContext, IAsyncLifetime
+public class EntityPickerTests : MudBunitContext
 {
-    public EntityPickerTests()
-    {
-        Services.AddMudServices();
-        JSInterop.Mode = JSRuntimeMode.Loose;
-    }
-
-    // MudBlazor registers at least one DI service (PointerEventsNoneService) that only implements
-    // IAsyncDisposable. xUnit's default synchronous IDisposable.Dispose() teardown can't dispose
-    // that cleanly, so route teardown through IAsyncLifetime.DisposeAsync() -> BunitContext's own
-    // async-safe disposal instead.
-    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
-
-    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
-
     [Fact]
     public async Task SearchFunc_delegates_to_the_caller_supplied_SearchItems_for_a_non_empty_query()
     {
@@ -81,11 +66,11 @@ public class EntityPickerTests : BunitContext, IAsyncLifetime
         var cut = Render<EntityPicker>(p => p
             .Add(x => x.Value, "id-1")
             .Add(x => x.SearchItems, _ => Task.FromResult(new List<PickerOption>())));
-        cut.Render(p => p.Add(x => x.Value, "id-1"));
         cut.Instance.SetSelectedLabelForTests("Espada Longa"); // simulate a prior confirmed selection
 
         cut.Render(p => p.Add(x => x.Value, ""));
+        cut.Render(p => p.Add(x => x.Value, "id-2")); // a different selection, made externally without going through SelectAsync
 
-        cut.Markup.Should().Contain("<input");
+        cut.Markup.Should().NotContain("Espada Longa"); // proves _selectedLabel was actually cleared, not just that Value=="" alone hid it
     }
 }

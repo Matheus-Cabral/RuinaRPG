@@ -1,27 +1,12 @@
 using Bunit;
 using FluentAssertions;
-using MudBlazor.Services;
 using RuinaRPG.Client.Shared.Fields;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
-public class LinhagemVarianteFieldsTests : BunitContext, IAsyncLifetime
+public class LinhagemVarianteFieldsTests : MudBunitContext
 {
-    public LinhagemVarianteFieldsTests()
-    {
-        Services.AddMudServices();
-        JSInterop.Mode = JSRuntimeMode.Loose;
-    }
-
-    // MudBlazor registers at least one DI service (PointerEventsNoneService) that only implements
-    // IAsyncDisposable. xUnit's default synchronous IDisposable.Dispose() teardown can't dispose
-    // that cleanly, so route teardown through IAsyncLifetime.DisposeAsync() -> BunitContext's own
-    // async-safe disposal instead. (Same fix Task 7's EntityPickerTests already applies — copy it.)
-    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
-
-    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
-
     [Theory]
     [InlineData("Humano", new[] { "Sinir", "Laonir" })]
     [InlineData("Phylauc", new[] { "PhylacTai", "EsPhylauc" })]
@@ -33,7 +18,7 @@ public class LinhagemVarianteFieldsTests : BunitContext, IAsyncLifetime
             .Add(x => x.Linhagem, linhagem)
             .Add(x => x.Variante, (string?)null));
 
-        var options = cut.Instance.VarianteOptionsForTests().Select(o => o.Valor);
+        var options = cut.Instance.VarianteOptions().Select(o => o.Valor);
 
         options.Should().BeEquivalentTo(expectedVariantes);
     }
@@ -59,6 +44,6 @@ public class LinhagemVarianteFieldsTests : BunitContext, IAsyncLifetime
             .Add(x => x.Linhagem, (string?)null)
             .Add(x => x.Variante, (string?)null));
 
-        cut.Instance.VarianteOptionsForTests().Should().BeEmpty();
+        cut.Instance.VarianteOptions().Should().BeEmpty();
     }
 }

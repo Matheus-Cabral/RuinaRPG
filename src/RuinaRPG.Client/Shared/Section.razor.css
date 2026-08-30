@@ -1,26 +1,30 @@
-::deep .rr-section {
-    border-top: 2px solid var(--rr-accent);
+.rr-section-root ::deep .rr-section {
+    border-top: 1px solid var(--rr-border);
     padding: var(--rr-space-4);
     background: var(--rr-surface-alt);
 }
 
-::deep .rr-section + .rr-section {
+.rr-section-root + .rr-section-root {
     margin-top: var(--rr-space-4);
 }
 
-::deep .rr-section-header {
+.rr-section-header {
     margin-bottom: var(--rr-space-3);
 }
 
-::deep .rr-section-title {
+.rr-section-root ::deep .rr-section-title {
     font-family: var(--rr-font-heading);
 }
 
-::deep .rr-section-subtitle {
+.rr-section-root ::deep .rr-section-subtitle {
     color: var(--rr-text-muted);
     margin-top: var(--rr-space-1);
 }
 
-::deep .rr-section-body > :last-child {
+/* ::deep is required here (unlike .rr-section-header above): the last child of .rr-section-body is
+   caller-supplied ChildContent, which carries the CALLER's scope attribute, not this component's.
+   Without ::deep the compiler emits `.rr-section-body > :last-child[b-<section>]`, which can never
+   match. With it, the scope moves to the .rr-section-root ancestor and the rule works. */
+.rr-section-root ::deep .rr-section-body > :last-child {
     margin-bottom: 0;
 }

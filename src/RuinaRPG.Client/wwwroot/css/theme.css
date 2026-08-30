@@ -90,6 +90,11 @@
   --mud-palette-primary: var(--rr-primary) !important;
   --mud-palette-primary-text: var(--rr-primary-contrast) !important;
   --mud-palette-primary-hover: var(--rr-primary-hover) !important;
+  /* MudBlazor's own CSS also builds rgba() from the *-rgb triplets (borders, ripples, focus
+     rings). They can't be var()-derived from a hex token, so they're the decimal components of
+     the same --rr-* hex above: --rr-primary #c8932c, --rr-danger #a3312a, --rr-success #4f7942.
+     Only primary/error/success are bridged — the roles Fase 0 actually renders. */
+  --mud-palette-primary-rgb: 200, 147, 44 !important;
   --mud-palette-secondary: var(--rr-accent) !important;
   --mud-palette-secondary-text: var(--rr-primary-contrast) !important;
   --mud-palette-tertiary: var(--rr-accent) !important;
@@ -98,10 +103,16 @@
   --mud-palette-background: var(--rr-bg) !important;
   --mud-palette-background-gray: var(--rr-surface-alt) !important;
   --mud-palette-surface: var(--rr-surface) !important;
-  --mud-palette-drawer-background: var(--rr-sidebar-bg) !important;
+  /* --rr-sidebar-bg is a linear-gradient, and MudBlazor consumes these two slots as
+     `background-color:` — an invalid value there would drop the whole declaration and leave the
+     chrome transparent. So these carry a solid fallback, and the gradient is painted separately
+     via `background-image` on .mud-appbar/.mud-drawer below. Text/icon still track
+     --rr-sidebar-text, because they sit on the gradient (dark-toned in both themes), not on the
+     fallback. */
+  --mud-palette-drawer-background: var(--rr-surface-alt) !important;
   --mud-palette-drawer-text: var(--rr-sidebar-text) !important;
   --mud-palette-drawer-icon: var(--rr-sidebar-text) !important;
-  --mud-palette-appbar-background: var(--rr-sidebar-bg) !important;
+  --mud-palette-appbar-background: var(--rr-surface-alt) !important;
   --mud-palette-appbar-text: var(--rr-sidebar-text) !important;
 
   --mud-palette-text-primary: var(--rr-text) !important;
@@ -122,8 +133,12 @@
 
   --mud-palette-error: var(--rr-danger) !important;
   --mud-palette-error-text: #fff !important;
+  --mud-palette-error-rgb: 163, 49, 42 !important;
+  --mud-palette-error-hover: var(--rr-danger) !important;
   --mud-palette-success: var(--rr-success) !important;
   --mud-palette-success-text: #fff !important;
+  --mud-palette-success-rgb: 79, 121, 66 !important;
+  --mud-palette-success-hover: var(--rr-success) !important;
   --mud-palette-info: var(--rr-primary) !important;
   --mud-palette-info-text: var(--rr-primary-contrast) !important;
   --mud-palette-warning: var(--rr-accent) !important;
@@ -131,6 +146,14 @@
 
   --mud-palette-overlay-dark: var(--rr-shadow) !important;
   --mud-palette-overlay-light: var(--rr-shadow) !important;
+}
+
+/* The actual sidebar/app-bar gradient. Not theme-scoped — --rr-sidebar-bg already has its own
+   Sol/Lua value — and applied as background-image so it layers over the solid background-color
+   fallback the palette slots above provide. */
+.mud-appbar,
+.mud-drawer {
+  background-image: var(--rr-sidebar-bg);
 }
 
 :root[data-theme='dark'] {
@@ -154,6 +177,13 @@
   --rr-sidebar-text: #e5e2fb;
   --rr-sidebar-text-muted: #9b93bd;
   --rr-sidebar-active-bg: rgba(182, 179, 224, 0.22);
+
+  /* Dark-theme components of the same three --rr-* hex values above:
+     --rr-primary #b6b3e0, --rr-danger #e0685f, --rr-success #7fc98f. Every other bridged slot is
+     var()-based and re-resolves on its own with the tokens redefined in this block. */
+  --mud-palette-primary-rgb: 182, 179, 224 !important;
+  --mud-palette-error-rgb: 224, 104, 95 !important;
+  --mud-palette-success-rgb: 127, 201, 143 !important;
 }
 
 html, body {

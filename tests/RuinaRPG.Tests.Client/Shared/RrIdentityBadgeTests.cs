@@ -1,24 +1,12 @@
 using Bunit;
 using FluentAssertions;
-using MudBlazor.Services;
 using RuinaRPG.Client.Shared;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared;
 
-public class RrIdentityBadgeTests : BunitContext, IAsyncLifetime
+public class RrIdentityBadgeTests : MudBunitContext
 {
-    public RrIdentityBadgeTests()
-    {
-        Services.AddMudServices();
-        JSInterop.Mode = JSRuntimeMode.Loose;
-    }
-
-    // Same MudBlazor-DI-teardown fix as Task 7's EntityPickerTests and Task 8's field tests.
-    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
-
-    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
-
     [Theory]
     [InlineData("Humano", "Sinir", "Humano", "Sol")]
     [InlineData("Humano", "Laonir", "Humano", "Lua")]

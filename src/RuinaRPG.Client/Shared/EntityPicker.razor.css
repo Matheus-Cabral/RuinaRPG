@@ -1,0 +1,17 @@
+/* No ::deep: .entity-picker-selected is a plain <div> EntityPicker renders itself, so it carries
+   this component's scope attribute directly. ::deep would compile to `[b-<picker>] .entity-picker-
+   selected`, which needs a scoped ancestor this component never renders — the row IS the top-level
+   element of that branch. */
+.entity-picker-selected {
+    display: flex;
+    align-items: center;
+    gap: var(--rr-space-2);
+    padding: var(--rr-space-2) var(--rr-space-3);
+    border: 1px solid var(--rr-border);
+    border-radius: var(--rr-radius-sm);
+    background: var(--rr-surface);
+}
+
+.entity-picker-selected > span {
+    flex: 1 1 auto;
+}

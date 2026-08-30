@@ -14,7 +14,7 @@
 else
 {
     <MudSelect T="string" Label="Variante" Value="Variante" ValueChanged="OnVarianteChangedAsync" Placeholder="Escolha uma Variante">
-        @foreach (var (valor, rotulo, _) in VarianteOptionsForTests())
+        @foreach (var (valor, rotulo, _) in VarianteOptions())
         {
             <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
         }
@@ -39,7 +39,7 @@ else
         ["Econos"] = [("Alora", "Alóra (Lua)", "Lua")],
     };
 
-    internal (string Valor, string Rotulo, string Polaridade)[] VarianteOptionsForTests() =>
+    internal (string Valor, string Rotulo, string Polaridade)[] VarianteOptions() =>
         !string.IsNullOrEmpty(Linhagem) && VariantesPorLinhagem.TryGetValue(Linhagem, out var options) ? options : [];
 
     internal Task SetLinhagemForTests(string? linhagem) => OnLinhagemChangedAsync(linhagem);

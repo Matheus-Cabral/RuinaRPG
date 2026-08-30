@@ -1,6 +1,9 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Routing
 @using RuinaRPG.Client.Theme
+@inject NavigationManager Navigation
 
 <MudThemeProvider Theme="RrMudTheme.Instance" />
 <MudPopoverProvider />
@@ -29,4 +32,23 @@
     private bool _drawerOpen = true;
 
     private void CloseDrawer() => _drawerOpen = false;
+
+    // MudNavLink ignores OnClick whenever Href is set, so nav clicks can't tell the layout to close
+    // the drawer. Close it on every navigation instead — the same unconditional behaviour the
+    // pre-MudBlazor NavMenu had. Above Breakpoint.Md MudDrawer stays visible regardless of Open.
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _drawerOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 }

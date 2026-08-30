@@ -1,20 +1,25 @@
 @using MudBlazor
 
-<MudPaper Elevation="0" Class="rr-section">
-    @if (!string.IsNullOrWhiteSpace(Title))
-    {
-        <div class="rr-section-header">
-            <MudText Typo="Typo.h6" Class="rr-section-title">@Title</MudText>
-            @if (!string.IsNullOrWhiteSpace(Subtitle))
-            {
-                <MudText Typo="Typo.body2" Class="rr-section-subtitle">@Subtitle</MudText>
-            }
+@* The wrapper div is what gives CSS isolation a scoped ancestor: .rr-section lives on MudPaper's
+   own rendered element, which this component never gets a scope attribute onto, so ::deep needs
+   something above it to hang off of. See Section.razor.css. *@
+<div class="rr-section-root">
+    <MudPaper Elevation="0" Class="rr-section">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <div class="rr-section-header">
+                <MudText Typo="Typo.h6" Class="rr-section-title">@Title</MudText>
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <MudText Typo="Typo.body2" Class="rr-section-subtitle">@Subtitle</MudText>
+                }
+            </div>
+        }
+        <div class="rr-section-body">
+            @ChildContent
         </div>
-    }
-    <div class="rr-section-body">
-        @ChildContent
-    </div>
-</MudPaper>
+    </MudPaper>
+</div>
 
 @code {
     /// <summary>Rendered as a heading above the body. Omit for a borderless grouping with no heading.</summary>
