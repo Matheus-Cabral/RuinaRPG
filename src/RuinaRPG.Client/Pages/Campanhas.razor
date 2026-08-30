@@ -8,9 +8,15 @@
 <h1>Campanhas</h1>
 
 <EditForm Model="_form" OnValidSubmit="CreateAsync">
-    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
-    <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
-    <button type="submit">Criar Campanha</button>
+    <div class="mb-3">
+        <label class="form-label">Nome</label>
+        <InputText class="form-control" @bind-Value="_form.Nome" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Descrição</label>
+        <InputTextArea class="form-control" @bind-Value="_form.Descricao" />
+    </div>
+    <button type="submit" class="btn btn-primary">Criar Campanha</button>
 </EditForm>
 
 @if (_errorMessage is not null)

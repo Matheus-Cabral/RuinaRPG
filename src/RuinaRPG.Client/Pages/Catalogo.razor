@@ -7,11 +7,12 @@
 
 <h1>Catálogo de Itens e Equipamentos</h1>
 
-<button @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
+<button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
 
-<div>
-    <label>Tipo
-        <select @bind="_tipoFiltro" @bind:after="LoadAsync">
+<div class="row g-3 my-1">
+    <div class="col-md-4">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" @bind="_tipoFiltro" @bind:after="LoadAsync">
             <option value="">Todos os Tipos</option>
             <option value="ItemGeral">Item Geral</option>
             <option value="Arma">Arma</option>
@@ -19,11 +20,23 @@
             <option value="Escudo">Escudo</option>
             <option value="Artefato">Artefato</option>
         </select>
-    </label>
-    <label>Subcategoria <input @bind="_subcategoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
-    <label>Tier <input @bind="_tierFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
-    <label>Categoria <input @bind="_categoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
-    <label>Tipo de Dano <input @bind="_tipoDeDanoFiltro" @bind:event="oninput" @bind:after="LoadAsync" /></label>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Subcategoria</label>
+        <input class="form-control" @bind="_subcategoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Tier</label>
+        <input class="form-control" @bind="_tierFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Categoria</label>
+        <input class="form-control" @bind="_categoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Tipo de Dano</label>
+        <input class="form-control" @bind="_tipoDeDanoFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
+    </div>
 </div>
 
 @if (_errorMessage is not null)
@@ -31,7 +44,7 @@
     <p class="error">@_errorMessage</p>
 }
 
-<table>
+<table class="table">
     <thead>
         <tr>
             <th>Nome</th>
@@ -52,8 +65,8 @@
                 <td>@item.Peso</td>
                 <td>@item.Preco</td>
                 <td>
-                    <button @onclick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</button>
-                    <button @onclick="@(() => DeleteAsync(item.Id))">Excluir</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAsync(item.Id))">Excluir</button>
                 </td>
             </tr>
         }

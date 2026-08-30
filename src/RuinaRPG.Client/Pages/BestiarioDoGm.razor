@@ -7,22 +7,28 @@
 
 <h1>Bestiário do GM</h1>
 
-<button @onclick="CreateAsync">Nova Criatura</button>
+<button type="button" class="btn btn-primary" @onclick="CreateAsync">Nova Criatura</button>
 
-<div>
-    <label>Nome <input @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>Raça <input @bind="_racaFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" /></label>
-    <label>
-        Arquétipo
-        <select @bind="_arquetipoFiltro" @bind:after="LoadAsync">
+<div class="row g-3 my-1">
+    <div class="col-md-3">
+        <label class="form-label">Nome</label>
+        <input class="form-control" @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Raça</label>
+        <input class="form-control" @bind="_racaFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Arquétipo</label>
+        <select class="form-select" @bind="_arquetipoFiltro" @bind:after="LoadAsync">
             <option value="">Todos</option>
             <option value="Fisico">Físico</option>
             <option value="Arcano">Arcano</option>
         </select>
-    </label>
-    <label>
-        Rank
-        <select @bind="_rankFiltro" @bind:after="LoadAsync">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Rank</label>
+        <select class="form-select" @bind="_rankFiltro" @bind:after="LoadAsync">
             <option value="">Todos</option>
             <option value="F">F</option>
             <option value="E">E</option>
@@ -32,7 +38,7 @@
             <option value="A">A</option>
             <option value="S">S</option>
         </select>
-    </label>
+    </div>
 </div>
 
 @if (_errorMessage is not null)
@@ -40,7 +46,7 @@
     <p class="error">@_errorMessage</p>
 }
 
-<table>
+<table class="table">
     <thead>
         <tr>
             <th>Nome</th>

@@ -7,15 +7,18 @@
 
 <h1>Compêndio de Regras</h1>
 
-<div>
-    <input @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar..." />
+<div class="mb-3">
+    <label class="form-label">Buscar</label>
+    <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar..." />
+</div>
+<div class="mb-3">
     @foreach (var categoria in _categorias)
     {
-        <label>
-            <input type="checkbox" checked="@_selectedCategorias.Contains(categoria)"
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" checked="@_selectedCategorias.Contains(categoria)"
                    @onchange="@(e => ToggleCategoriaAsync(categoria, (bool)e.Value!))" />
-            @categoria
-        </label>
+            <label class="form-check-label">@categoria</label>
+        </div>
     }
 </div>
 
