@@ -13,11 +13,22 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Requisitos - Técnico R0003's chosen logging stack. Structured console output (captured by
+// `docker logs`/`make logs`, same as the default logger it replaces) driven by the standard
+// Logging:LogLevel config section already in appsettings.json/appsettings.*.json — no separate
+// Serilog:* section needed for this project's scale.
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console());
 
 // nginx is the only reverse proxy in front of the Api, and it reaches Kestrel over the
 // private Docker network on an address that changes with every `docker compose up`.
@@ -149,6 +160,8 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging();
 
 // Must run before anything that reads the connection (CORS, rate limiting, auth),
 // so those see the real client IP rather than nginx's.
