@@ -6,31 +6,47 @@
 
 <h1>Jogadores</h1>
 
-<input @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar por nickname ou e-mail" />
+<div class="mb-3">
+    <label class="form-label">Buscar por nickname ou e-mail</label>
+    <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar por nickname ou e-mail" />
+</div>
 
 @if (_errorMessage is not null)
 {
     <p class="error">@_errorMessage</p>
 }
 
-<ul>
+<ul class="list-unstyled">
     @foreach (var player in _players)
     {
-        <li>
+        <li class="mb-2">
             @player.Nickname (@player.Email)
-            <button @onclick="() => StartReset(player.Id)">Redefinir senha</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => StartReset(player.Id)">Redefinir senha</button>
+
+            @if (_resettingPlayerId == player.Id)
+            {
+                <Section Title="@("Redefinir senha de " + player.Nickname)">
+                    <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">Nova senha</label>
+                                <InputText type="password" class="form-control" @bind-Value="_resetRequest.NovaSenha" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Confirmação da nova senha</label>
+                                <InputText type="password" class="form-control" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" />
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary">Confirmar</button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CancelReset">Cancelar</button>
+                            </div>
+                        </div>
+                    </EditForm>
+                </Section>
+            }
         </li>
     }
 </ul>
-
-@if (_resettingPlayerId is not null)
-{
-    <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
-        <label>Nova senha <InputText type="password" @bind-Value="_resetRequest.NovaSenha" /></label>
-        <label>Confirmação da nova senha <InputText type="password" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" /></label>
-        <button type="submit">Confirmar</button>
-    </EditForm>
-}
 
 @code {
     private List<BreadcrumbItem> Crumbs => new()
@@ -80,6 +96,13 @@
     }
 
     private void StartReset(string playerId) => _resettingPlayerId = playerId;
+
+    private void CancelReset()
+    {
+        _resettingPlayerId = null;
+        _resetRequest.NovaSenha = "";
+        _resetRequest.ConfirmacaoNovaSenha = "";
+    }
 
     private async Task ConfirmResetAsync()
     {
