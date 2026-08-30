@@ -72,55 +72,57 @@
         </EditForm>
     </MudTabPanel>
 
-    <TabPage Title="Atributos & Perícias">
+    <MudTabPanel Text="Atributos & Perícias">
         @if (_attributeBudget is not null)
         {
-            <p class="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? "text-danger" : "")">
+            <MudText Color="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? Color.Error : Color.Default)">
                 Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
-            </p>
+            </MudText>
         }
-        <div class="table-responsive">
-        <table class="table">
+        <MudSimpleTable Dense="true" Hover="true">
             <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
             <tbody>
                 @foreach (var attr in _attributes)
                 {
                     <tr>
                         <td>@attr.Atributo</td>
-                        <td><input type="number" value="@attr.Gasto" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Gasto", e.Value))" /></td>
-                        <td><input type="number" value="@attr.Bonus" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Bonus", e.Value))" /></td>
-                        <td><input type="checkbox" checked="@attr.TemMaestria" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "TemMaestria", e.Value))" /></td>
+                        <td><MudNumericField T="int" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" Dense="true" /></td>
+                        <td><MudNumericField T="int" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" Dense="true" /></td>
+                        <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
                         <td>@attr.Total</td>
                     </tr>
                 }
             </tbody>
-        </table>
-        </div>
+        </MudSimpleTable>
 
-        <div class="table-responsive">
-        <table class="table">
+        <MudSimpleTable Dense="true" Hover="true">
             <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
             <tbody>
                 @foreach (var skill in _skills)
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillAsync(skill.Pericia, e.Value))" /></td>
+                        <td><MudNumericField T="int" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" Dense="true" /></td>
                         <td>@skill.Modificador</td>
                     </tr>
                 }
             </tbody>
-        </table>
-        </div>
+        </MudSimpleTable>
 
-        <h3>Afinidades</h3>
-        <ul class="list-unstyled">
-            @foreach (var affinity in _affinities)
-            {
-                <li>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia) <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</button></li>
-            }
-        </ul>
-    </TabPage>
+        <Section Title="Afinidades">
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var affinity in _affinities)
+                    {
+                        <tr>
+                            <td>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia)</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+    </MudTabPanel>
 
     <TabPage Title="Combate">
         <h3>Armas</h3>
