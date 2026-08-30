@@ -1,91 +1,40 @@
+@using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 @inject TokenAuthenticationStateProvider AuthProvider
 
-<nav class="nav-menu">
-    <div class="nav-item">
-        <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="NotifyLinkClicked">
-            <span class="nav-icon" aria-hidden="true">🏠</span> Início
-        </NavLink>
-    </div>
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" OnClick="NotifyLinkClicked">🏠 Início</MudNavLink>
 
     <AuthorizeView>
         <NotAuthorized>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="login" @onclick="NotifyLinkClicked">
-                    <span class="nav-icon" aria-hidden="true">🔑</span> Entrar
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="cadastro" @onclick="NotifyLinkClicked">
-                    <span class="nav-icon" aria-hidden="true">✒️</span> Cadastrar
-                </NavLink>
-            </div>
+            <MudNavLink Href="login" OnClick="NotifyLinkClicked">🔑 Entrar</MudNavLink>
+            <MudNavLink Href="cadastro" OnClick="NotifyLinkClicked">✒️ Cadastrar</MudNavLink>
         </NotAuthorized>
         <Authorized>
             <AuthorizeView Roles="GM" Context="gmContext">
                 <Authorized>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="painel/convites" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">✉️</span> Convidar Jogador
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="painel/jogadores" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">👥</span> Jogadores
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="catalogo" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">🎒</span> Catálogo de Itens
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="npcs" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">🎭</span> NPCs do GM
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="bestiario" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">🐺</span> Bestiário do GM
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="banco-de-magias" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">📜</span> Banco de Magias e Habilidades
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="campanhas" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">🗺️</span> Campanhas
-                        </NavLink>
-                    </div>
+                    <MudNavLink Href="painel/convites" OnClick="NotifyLinkClicked">✉️ Convidar Jogador</MudNavLink>
+                    <MudNavLink Href="painel/jogadores" OnClick="NotifyLinkClicked">👥 Jogadores</MudNavLink>
+                    <MudNavLink Href="catalogo" OnClick="NotifyLinkClicked">🎒 Catálogo de Itens</MudNavLink>
+                    <MudNavLink Href="npcs" OnClick="NotifyLinkClicked">🎭 NPCs do GM</MudNavLink>
+                    <MudNavLink Href="bestiario" OnClick="NotifyLinkClicked">🐺 Bestiário do GM</MudNavLink>
+                    <MudNavLink Href="banco-de-magias" OnClick="NotifyLinkClicked">📜 Banco de Magias e Habilidades</MudNavLink>
+                    <MudNavLink Href="campanhas" OnClick="NotifyLinkClicked">🗺️ Campanhas</MudNavLink>
                 </Authorized>
             </AuthorizeView>
             <AuthorizeView Roles="Jogador" Context="jogadorContext">
                 <Authorized>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="minhas-campanhas" @onclick="NotifyLinkClicked">
-                            <span class="nav-icon" aria-hidden="true">🗺️</span> Minhas Campanhas
-                        </NavLink>
-                    </div>
+                    <MudNavLink Href="minhas-campanhas" OnClick="NotifyLinkClicked">🗺️ Minhas Campanhas</MudNavLink>
                 </Authorized>
             </AuthorizeView>
-            <div class="nav-item">
-                <NavLink class="nav-link" href="compendio" @onclick="NotifyLinkClicked">
-                    <span class="nav-icon" aria-hidden="true">📖</span> Compêndio de Regras
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <a class="nav-link" href="javascript:void(0)" @onclick="LogoutAsync">
-                    <span class="nav-icon" aria-hidden="true">🚪</span> Sair
-                </a>
-            </div>
+            <MudNavLink Href="compendio" OnClick="NotifyLinkClicked">📖 Compêndio de Regras</MudNavLink>
+            <MudNavLink OnClick="LogoutAsync">🚪 Sair</MudNavLink>
         </Authorized>
     </AuthorizeView>
-</nav>
+</MudNavMenu>
 
 @code {
     [Parameter] public EventCallback OnLinkClicked { get; set; }

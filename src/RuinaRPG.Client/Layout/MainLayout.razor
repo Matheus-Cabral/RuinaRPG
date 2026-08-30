@@ -1,36 +1,32 @@
 @inherits LayoutComponentBase
+@using MudBlazor
+@using RuinaRPG.Client.Theme
 
-<div class="page">
-    <aside class="sidebar @(_sidebarOpen ? "sidebar-open" : "")">
-        <NavMenu OnLinkClicked="CloseSidebar" />
-    </aside>
+<MudThemeProvider Theme="RrMudTheme.Instance" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-    @if (_sidebarOpen)
-    {
-        <div class="sidebar-backdrop" @onclick="CloseSidebar"></div>
-    }
+<MudLayout>
+    <MudAppBar Elevation="0">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                        OnClick="@(() => _drawerOpen = !_drawerOpen)" title="Abrir menu" aria-label="Abrir menu de navegação" />
+        <MudText Typo="Typo.h6" Class="ml-2">Ruína RPG</MudText>
+        <MudSpacer />
+        <ThemeToggle />
+    </MudAppBar>
 
-    <div class="main-column">
-        <header class="top-bar">
-            <button class="hamburger" @onclick="ToggleSidebar" title="Abrir menu" aria-label="Abrir menu de navegação">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <span class="top-bar-title">Ruína RPG</span>
-            <ThemeToggle />
-        </header>
+    <MudDrawer @bind-Open="_drawerOpen" Breakpoint="Breakpoint.Md" Elevation="0" ClipMode="DrawerClipMode.Always">
+        <NavMenu OnLinkClicked="CloseDrawer" />
+    </MudDrawer>
 
-        <main class="content">
-            @Body
-        </main>
-    </div>
-</div>
+    <MudMainContent Class="content">
+        @Body
+    </MudMainContent>
+</MudLayout>
 
 @code {
-    private bool _sidebarOpen;
+    private bool _drawerOpen = true;
 
-    private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
-
-    private void CloseSidebar() => _sidebarOpen = false;
+    private void CloseDrawer() => _drawerOpen = false;
 }
