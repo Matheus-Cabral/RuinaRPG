@@ -1,6 +1,7 @@
 @inject IJSRuntime JS
 
-<button class="theme-toggle" @onclick="ToggleAsync" title="Alternar entre tema Sol e Lua" aria-label="Alternar entre tema Sol e Lua">
+<button type="button" class="theme-toggle" @onclick="ToggleAsync"
+        title="Alternar entre tema Sol e Lua" aria-label="Alternar entre tema Sol e Lua">
     <span class="theme-toggle-icon @(_theme == "light" ? "active" : "")" aria-hidden="true">☀️</span>
     <span class="theme-toggle-icon @(_theme == "dark" ? "active" : "")" aria-hidden="true">🌙</span>
 </button>

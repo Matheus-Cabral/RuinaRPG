@@ -9,6 +9,11 @@
     cursor: pointer;
 }
 
+.theme-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem var(--rr-shadow);
+}
+
 .theme-toggle-icon {
     opacity: 0.35;
     font-size: 1rem;
