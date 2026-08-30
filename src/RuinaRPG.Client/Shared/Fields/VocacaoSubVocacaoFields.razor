@@ -1,0 +1,73 @@
+@using MudBlazor
+
+<MudSelect T="string" Label="Vocação" Value="Vocacao" ValueChanged="OnVocacaoChangedAsync" Placeholder="Escolha uma Vocação">
+    @foreach (var (valor, rotulo) in Vocacoes)
+    {
+        <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+    }
+</MudSelect>
+
+@if (string.IsNullOrEmpty(Vocacao))
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Escolha uma Vocação antes da Sub-vocação.</MudText>
+}
+else
+{
+    <MudSelect T="string" Label="Sub-vocação" Value="SubVocacao" ValueChanged="OnSubVocacaoChangedAsync" Placeholder="Escolha uma Sub-vocação">
+        @foreach (var subVocacao in SubVocacaoOptionsForTests())
+        {
+            <MudSelectItem Value="@subVocacao">@subVocacao</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public string? Vocacao { get; set; }
+    [Parameter] public EventCallback<string?> VocacaoChanged { get; set; }
+    [Parameter] public string? SubVocacao { get; set; }
+    [Parameter] public EventCallback<string?> SubVocacaoChanged { get; set; }
+
+    // (valor, rótulo) — value == label server-side today except for the "Cacador"/"Campeao" ascii
+    // keys, matching what FichaDePersonagem.razor already sends.
+    public static readonly (string Valor, string Rotulo)[] Vocacoes =
+    [
+        ("Campeao", "Campeão"), ("Cacador", "Caçador"), ("Feiticeiro", "Feiticeiro"), ("Adepto", "Adepto"), ("Bruxo", "Bruxo"),
+    ];
+
+    // From "Relação de Vocacão e Classes.md" — Sub-vocação is free text server-side (no enum), so
+    // value == label.
+    public static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
+    {
+        ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],
+        ["Cacador"] = ["Arqueiro", "Domador", "Assassino"],
+        ["Feiticeiro"] = ["Aeromante", "Biomante", "Fluxomante", "Piromante", "Sábio"],
+        ["Adepto"] = ["Paladino", "Arauto", "Trovador", "Eremita"],
+        ["Bruxo"] = ["Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista"],
+    };
+
+    internal string[] SubVocacaoOptionsForTests() =>
+        !string.IsNullOrEmpty(Vocacao) && SubVocacoesPorVocacao.TryGetValue(Vocacao, out var options) ? options : [];
+
+    internal Task SetVocacaoForTests(string? vocacao) => OnVocacaoChangedAsync(vocacao);
+
+    private async Task OnVocacaoChangedAsync(string? novaVocacao)
+    {
+        Vocacao = novaVocacao;
+        await VocacaoChanged.InvokeAsync(Vocacao);
+
+        var aindaValida = novaVocacao is not null
+            && SubVocacoesPorVocacao.TryGetValue(novaVocacao, out var options)
+            && options.Contains(SubVocacao);
+        if (!aindaValida && SubVocacao is not null)
+        {
+            SubVocacao = null;
+            await SubVocacaoChanged.InvokeAsync(null);
+        }
+    }
+
+    private async Task OnSubVocacaoChangedAsync(string? novaSubVocacao)
+    {
+        SubVocacao = novaSubVocacao;
+        await SubVocacaoChanged.InvokeAsync(SubVocacao);
+    }
+}

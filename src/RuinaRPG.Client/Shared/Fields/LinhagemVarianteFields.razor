@@ -1,0 +1,67 @@
+@using MudBlazor
+
+<MudSelect T="string" Label="Linhagem" Value="Linhagem" ValueChanged="OnLinhagemChangedAsync" Placeholder="Escolha uma Linhagem">
+    @foreach (var linhagem in Linhagens)
+    {
+        <MudSelectItem Value="@linhagem">@linhagem</MudSelectItem>
+    }
+</MudSelect>
+
+@if (string.IsNullOrEmpty(Linhagem))
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Escolha uma Linhagem antes da Variante.</MudText>
+}
+else
+{
+    <MudSelect T="string" Label="Variante" Value="Variante" ValueChanged="OnVarianteChangedAsync" Placeholder="Escolha uma Variante">
+        @foreach (var (valor, rotulo, _) in VarianteOptionsForTests())
+        {
+            <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public string? Linhagem { get; set; }
+    [Parameter] public EventCallback<string?> LinhagemChanged { get; set; }
+    [Parameter] public string? Variante { get; set; }
+    [Parameter] public EventCallback<string?> VarianteChanged { get; set; }
+
+    public static readonly string[] Linhagens = ["Humano", "Phylauc", "Nephrytes", "Econos"];
+
+    // From Ruína RPG - Sistema Básico.md §7 — each variant's Sol/Lua polarity is the game's own
+    // mythology, not decoration; RrIdentityBadge (Task 9) reads this same table.
+    public static readonly Dictionary<string, (string Valor, string Rotulo, string Polaridade)[]> VariantesPorLinhagem = new()
+    {
+        ["Humano"] = [("Sinir", "Sinir (Sol)", "Sol"), ("Laonir", "Laonir (Lua)", "Lua")],
+        ["Phylauc"] = [("PhylacTai", "Phylac'tai (Sol)", "Sol"), ("EsPhylauc", "Es'Phylauc (Lua)", "Lua")],
+        ["Nephrytes"] = [("Koroanos", "Koroanos (Sol)", "Sol"), ("Yavos", "Yavos (Lua)", "Lua")],
+        ["Econos"] = [("Alora", "Alóra (Lua)", "Lua")],
+    };
+
+    internal (string Valor, string Rotulo, string Polaridade)[] VarianteOptionsForTests() =>
+        !string.IsNullOrEmpty(Linhagem) && VariantesPorLinhagem.TryGetValue(Linhagem, out var options) ? options : [];
+
+    internal Task SetLinhagemForTests(string? linhagem) => OnLinhagemChangedAsync(linhagem);
+
+    private async Task OnLinhagemChangedAsync(string? novaLinhagem)
+    {
+        Linhagem = novaLinhagem;
+        await LinhagemChanged.InvokeAsync(Linhagem);
+
+        var aindaValida = novaLinhagem is not null
+            && VariantesPorLinhagem.TryGetValue(novaLinhagem, out var options)
+            && options.Any(o => o.Valor == Variante);
+        if (!aindaValida && Variante is not null)
+        {
+            Variante = null;
+            await VarianteChanged.InvokeAsync(null);
+        }
+    }
+
+    private async Task OnVarianteChangedAsync(string? novaVariante)
+    {
+        Variante = novaVariante;
+        await VarianteChanged.InvokeAsync(Variante);
+    }
+}

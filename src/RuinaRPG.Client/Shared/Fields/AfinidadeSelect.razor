@@ -1,0 +1,28 @@
+@using MudBlazor
+
+<MudSelect T="string" Label="Afinidade" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Afinidade">
+    @foreach (var (valor, rotulo) in Afinidades)
+    {
+        <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    // R0001 1.a — 4 Elementos + 14 Sub-Elementos da Matriz Elemental.
+    public static readonly (string Valor, string Rotulo)[] Afinidades =
+    [
+        ("Terra", "Terra"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Ar", "Ar"), ("Gelo", "Gelo"),
+        ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"), ("Alma", "Alma"),
+        ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
+        ("Vida", "Vida"), ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
+    ];
+
+    private async Task OnValueChangedAsync(string? novoValor)
+    {
+        Value = novoValor;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
