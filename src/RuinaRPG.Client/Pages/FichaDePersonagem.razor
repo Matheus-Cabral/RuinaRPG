@@ -352,11 +352,12 @@
     </TabPage>
 
     <TabPage Title="Magias & Habilidades">
-        <h3>Habilidade Racial</h3>
-        <p>@(_racialAbility?.Nome ?? "—")</p>
-        <p>@(_racialAbility?.Descricao ?? "—")</p>
+        <Section Title="Habilidade Racial">
+            <p>@(_racialAbility?.Nome ?? "—")</p>
+            <p>@(_racialAbility?.Descricao ?? "—")</p>
+        </Section>
 
-        <h3>Magias e Habilidades</h3>
+        <Section Title="Magias e Habilidades">
         <EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
             <div class="mb-3">
                 <label class="form-label">Origem</label>
@@ -438,8 +439,9 @@
                 </li>
             }
         </ul>
+        </Section>
 
-        <h3>Runas</h3>
+        <Section Title="Runas">
         <EditForm Model="_runeForm" OnValidSubmit="AddRuneAsync">
             <div class="mb-3">
                 <label class="form-label">Nome</label>
@@ -461,8 +463,9 @@
                 <li>@rune.Nome (Grau @rune.Grau) — @rune.Descricao <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteRuneAsync(rune.Id))">Remover</button></li>
             }
         </ul>
+        </Section>
 
-        <h3>Maestrias</h3>
+        <Section Title="Maestrias">
         <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
             <div class="mb-3">
                 <label class="form-label">Nome</label>
@@ -500,10 +503,11 @@
                 <li>@mastery.Nome — @mastery.Pericia / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</button></li>
             }
         </ul>
+        </Section>
     </TabPage>
 
     <TabPage Title="Posses">
-        <h3>Inventário</h3>
+        <Section Title="Inventário">
         <div class="mb-3">
             <label class="form-label">Ciclos</label>
             <input type="number" class="form-control" style="width:8em" value="@_form.Ciclos" @onchange="@(e => UpdateCiclosAsync(e.Value))" />
@@ -525,8 +529,9 @@
                 <li>@item.Nome — Peso @item.Peso — Qtd @item.Qtd — Total @item.Total <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteInventoryItemAsync(item.Id))">Remover</button></li>
             }
         </ul>
+        </Section>
 
-        <h3>Artefatos</h3>
+        <Section Title="Artefatos">
         <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
             <div class="mb-3">
                 <label class="form-label">Artefato (Id do Catálogo)</label>
@@ -544,8 +549,9 @@
                 }
             </ul>
         }
+        </Section>
 
-        <h3>Afeições</h3>
+        <Section Title="Afeições">
         <EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
             <div class="mb-3">
                 <label class="form-label">Nome</label>
@@ -563,8 +569,9 @@
                 <li>@affection.Nome — Favorabilidade @affection.Favorabilidade <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAffectionAsync(affection.Id))">Remover</button></li>
             }
         </ul>
+        </Section>
 
-        <h3>Características</h3>
+        <Section Title="Características">
         <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
             <div class="mb-3">
                 <label class="form-label">Característica (Id)</label>
@@ -586,6 +593,7 @@
                 <li>@trait.Nome (@trait.Custo) — @trait.Descricao <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteTraitAsync(trait.Id))">Remover</button></li>
             }
         </ul>
+        </Section>
     </TabPage>
 
     <TabPage Title="Diário">
