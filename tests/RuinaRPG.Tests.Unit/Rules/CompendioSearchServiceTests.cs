@@ -75,4 +75,14 @@ public class CompendioSearchServiceTests
         results.Should().Contain(r => r.Origem.StartsWith("Tabela de XP — Nível"));
         results.Should().Contain(r => r.Origem.StartsWith("Tabela de EAP por Nível — Nível"));
     }
+
+    [Fact]
+    public void Search_includes_the_Tabela_de_Classes()
+    {
+        // Épico 6 item 2 of the gap audit: Tabela de Classes.md wasn't even embedded, parsed, or
+        // indexed at all — unlike item 1's tables, which were only missing from the search wiring.
+        var results = CompendioSearchService.Search(query: null, categorias: [CompendioCategoria.Tabela], Traits, Rules);
+
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de Classes — Duelista"));
+    }
 }

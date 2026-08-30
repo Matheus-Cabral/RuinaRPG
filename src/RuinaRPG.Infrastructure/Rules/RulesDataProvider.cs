@@ -8,6 +8,7 @@ public class RulesDataProvider : IRulesDataProvider
 {
     private readonly Lazy<IReadOnlyList<LevelBonus>> _niveis;
     private readonly Lazy<IReadOnlyList<VocacaoProgressao>> _vocacoes;
+    private readonly Lazy<IReadOnlyList<ClasseProgressao>> _classes;
     private readonly Lazy<IReadOnlyList<ArquetipoProgressao>> _arquetipos;
     private readonly Lazy<IReadOnlyList<CirculoGrauPorEap>> _circuloGrauPorEap;
     private readonly Lazy<IReadOnlyList<XpPorNivel>> _xpPorNivel;
@@ -19,6 +20,7 @@ public class RulesDataProvider : IRulesDataProvider
     {
         _niveis = new Lazy<IReadOnlyList<LevelBonus>>(() => NivelBonusParser.Parse(ReadResource("Tabela de Níveis.md")));
         _vocacoes = new Lazy<IReadOnlyList<VocacaoProgressao>>(() => VocacaoProgressaoParser.Parse(ReadResource("Tabela de Vocação.md")));
+        _classes = new Lazy<IReadOnlyList<ClasseProgressao>>(() => ClasseProgressaoParser.Parse(ReadResource("Tabela de Classes.md")));
         _arquetipos = new Lazy<IReadOnlyList<ArquetipoProgressao>>(() => ArquetipoProgressaoParser.Parse(ReadResource("Tabela de Arquetipos.md")));
         _circuloGrauPorEap = new Lazy<IReadOnlyList<CirculoGrauPorEap>>(() => CirculoGrauPorEapParser.Parse(ReadResource("Tabela de Circulo e Grau por EAP.md")));
         _xpPorNivel = new Lazy<IReadOnlyList<XpPorNivel>>(() => XpPorNivelParser.Parse(ReadResource("Tabelas de XP, Atributos, Características e EAP.md")));
@@ -29,6 +31,7 @@ public class RulesDataProvider : IRulesDataProvider
 
     public IReadOnlyList<LevelBonus> Niveis => _niveis.Value;
     public IReadOnlyList<VocacaoProgressao> Vocacoes => _vocacoes.Value;
+    public IReadOnlyList<ClasseProgressao> Classes => _classes.Value;
     public IReadOnlyList<ArquetipoProgressao> Arquetipos => _arquetipos.Value;
     public IReadOnlyList<CirculoGrauPorEap> CirculoGrauPorEap => _circuloGrauPorEap.Value;
     public IReadOnlyList<XpPorNivel> XpPorNivel => _xpPorNivel.Value;
