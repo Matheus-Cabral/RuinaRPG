@@ -3,6 +3,7 @@
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 @inject TokenAuthenticationStateProvider AuthProvider
+@using System.ComponentModel.DataAnnotations
 @using RuinaRPG.Contracts.Auth
 
 <h1>Cadastro</h1>
@@ -15,21 +16,32 @@
 @if (_activeTab == "gm")
 {
     <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
+        <DataAnnotationsValidator />
         <label>Nickname <InputText @bind-Value="_gmRequest.Nickname" /></label>
+        <ValidationMessage For="@(() => _gmRequest.Nickname)" />
         <label>Email <InputText @bind-Value="_gmRequest.Email" /></label>
+        <ValidationMessage For="@(() => _gmRequest.Email)" />
         <label>Senha <InputText type="password" @bind-Value="_gmRequest.Senha" /></label>
+        <ValidationMessage For="@(() => _gmRequest.Senha)" />
         <label>Confirmação da Senha <InputText type="password" @bind-Value="_gmRequest.ConfirmacaoSenha" /></label>
+        <ValidationMessage For="@(() => _gmRequest.ConfirmacaoSenha)" />
         <button type="submit">Cadastrar</button>
     </EditForm>
 }
 else
 {
     <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
+        <DataAnnotationsValidator />
         <label>Nickname <InputText @bind-Value="_jogadorRequest.Nickname" /></label>
+        <ValidationMessage For="@(() => _jogadorRequest.Nickname)" />
         <label>Email <InputText @bind-Value="_jogadorRequest.Email" /></label>
+        <ValidationMessage For="@(() => _jogadorRequest.Email)" />
         <label>Senha <InputText type="password" @bind-Value="_jogadorRequest.Senha" /></label>
+        <ValidationMessage For="@(() => _jogadorRequest.Senha)" />
         <label>Confirmação da Senha <InputText type="password" @bind-Value="_jogadorRequest.ConfirmacaoSenha" /></label>
+        <ValidationMessage For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
         <label>Código de acesso <InputText @bind-Value="_jogadorRequest.CodigoDeAcesso" /></label>
+        <ValidationMessage For="@(() => _jogadorRequest.CodigoDeAcesso)" />
         <button type="submit">Cadastrar</button>
     </EditForm>
 }
@@ -79,18 +91,38 @@ else
 
     private class GmFormModel
     {
+        [Required(ErrorMessage = "Informe o Nickname.")]
         public string Nickname { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe o email.")]
+        [EmailAddress(ErrorMessage = "Email inválido.")]
         public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe a senha.")]
         public string Senha { get; set; } = "";
+
+        [Required(ErrorMessage = "Confirme a senha.")]
+        [Compare(nameof(Senha), ErrorMessage = "A confirmação de senha não confere com a senha.")]
         public string ConfirmacaoSenha { get; set; } = "";
     }
 
     private class JogadorFormModel
     {
+        [Required(ErrorMessage = "Informe o Nickname.")]
         public string Nickname { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe o email.")]
+        [EmailAddress(ErrorMessage = "Email inválido.")]
         public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe a senha.")]
         public string Senha { get; set; } = "";
+
+        [Required(ErrorMessage = "Confirme a senha.")]
+        [Compare(nameof(Senha), ErrorMessage = "A confirmação de senha não confere com a senha.")]
         public string ConfirmacaoSenha { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe o código de acesso.")]
         public string CodigoDeAcesso { get; set; } = "";
     }
 }
