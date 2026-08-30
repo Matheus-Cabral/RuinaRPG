@@ -6,7 +6,10 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using RuinaRPG.Client.Services
 @using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.Encounters
+@using RuinaRPG.Contracts.NpcSheets
 
 <Breadcrumbs Items="@Crumbs" />
 @if (_editingNome)
@@ -35,15 +38,15 @@ else
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">Origem</label>
-                <select class="form-select" @bind="_addForm.SourceKind">
+                <select class="form-select" @bind="_addForm.SourceKind" @bind:after="@(() => _addForm.SourceSheetId = "")">
                     <option value="CharacterSheet">Ficha de Personagem</option>
                     <option value="NpcSheet">Ficha de NPC</option>
                     <option value="CreatureSheet">Ficha de Criatura</option>
                 </select>
             </div>
             <div class="col-md-5">
-                <label class="form-label">Ficha de origem (id)</label>
-                <InputText class="form-control" @bind-Value="_addForm.SourceSheetId" />
+                <label class="form-label">Ficha de origem</label>
+                <EntityPicker @bind-Value="_addForm.SourceSheetId" SearchItems="SearchSourceSheetsAsync" Placeholder="Buscar ficha..." />
             </div>
             <div class="col-md-2">
                 <label class="form-label">Iniciativa</label>
@@ -207,6 +210,39 @@ else
         _encounter = encounters.SingleOrDefault(e => e.Id == EncounterId);
 
         _participants = await Http.GetFromJsonAsync<List<EncounterParticipantResponse>>($"encounters/{EncounterId}/participants") ?? new();
+    }
+
+    private async Task<List<PickerOption>> SearchSourceSheetsAsync(string query)
+    {
+        switch (_addForm.SourceKind)
+        {
+            case "NpcSheet":
+            {
+                var response = await Http.GetAsync($"npc-sheets?nome={Uri.EscapeDataString(query)}");
+                if (!response.IsSuccessStatusCode) return new();
+                var sheets = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>() ?? new();
+                return sheets.Select(s => new PickerOption(s.Id, s.Nome)).ToList();
+            }
+            case "CreatureSheet":
+            {
+                var response = await Http.GetAsync($"creature-sheets?nome={Uri.EscapeDataString(query)}");
+                if (!response.IsSuccessStatusCode) return new();
+                var sheets = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>() ?? new();
+                return sheets.Select(s => new PickerOption(s.Id, s.Nome)).ToList();
+            }
+            default:
+            {
+                // No dedicated search-by-name endpoint for CharacterSheets — the campaign's own
+                // roster (already scoped, typically small) is fetched and filtered client-side.
+                var response = await Http.GetAsync($"campaigns/{CampaignId}/character-sheets");
+                if (!response.IsSuccessStatusCode) return new();
+                var sheets = await response.Content.ReadFromJsonAsync<List<CharacterSheetResponse>>() ?? new();
+                return sheets
+                    .Where(s => (s.Nome ?? "").Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Select(s => new PickerOption(s.Id, s.Nome ?? "(sem nome)"))
+                    .ToList();
+            }
+        }
     }
 
     private async Task AddParticipantAsync()
