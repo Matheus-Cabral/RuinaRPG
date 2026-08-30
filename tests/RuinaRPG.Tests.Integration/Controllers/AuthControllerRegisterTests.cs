@@ -113,4 +113,17 @@ public class AuthControllerRegisterTests : IClassFixture<PostgresFixture>, IAsyn
 
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Two_gms_with_independently_generated_random_nicknames_can_both_register()
+    {
+        var first = new RegisterGmRequest(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail(), "Senha!123", "Senha!123");
+        var second = new RegisterGmRequest(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail(), "Senha!123", "Senha!123");
+
+        var firstResponse = await _client.PostAsJsonAsync("/api/auth/register/gm", first);
+        var secondResponse = await _client.PostAsJsonAsync("/api/auth/register/gm", second);
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
 }
