@@ -202,8 +202,8 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Afinidade | enum (Elemento \| Sub-Elemento), nullable | 1.a |
 | Propriedade | string, nullable | 1.a |
 | Nivel | int | 1.b |
-| Circulo | int | 1.b |
-| Grau | int | 1.b |
+| Circulo | int | 1.b — colunas vestigiais: mantidas no schema mas não mais atualizadas pela aplicação; a Graduação exibida (`GraduacaoLabel`/`Graduacao` na response) é hoje **computada em tempo de leitura** a partir de `EAPAtual`/`Vocacao`, não lida daqui. Mesma situação em NpcSheets (6.2), que herda esta tabela sem diferença nesses dois campos. |
+| Grau | int | 1.b — ver nota de `Circulo` acima. |
 | PossuiCoracaoDeMana | bool | 1.b |
 | ExperienciaAtual | int | 1.b |
 | EAPAtual | int | 1.b |
