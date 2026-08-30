@@ -18,34 +18,39 @@
 
 <TabControl>
     <TabPage Title="Membros">
-        <div class="mb-3">
-            <label class="form-label">Buscar jogador para adicionar</label>
-            <input class="form-control" @bind="_memberSearch" @bind:event="oninput" @bind:after="DebouncedSearchPlayersAsync" placeholder="Buscar jogador para adicionar" />
-        </div>
-        <ul class="list-unstyled mt-3">
-            @foreach (var player in _searchResults)
-            {
-                <li>@player.Nickname (@player.Email) <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AddMemberAsync(player.Id))">Adicionar</button></li>
-            }
-        </ul>
-        <ul class="list-unstyled">
-            @foreach (var member in _members)
-            {
-                <li>
-                    @member.Nickname (@member.Email)
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
-                    <ul class="list-unstyled">
-                        @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
-                        {
-                            <li>
-                                <a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a>
-                                <span class="text-muted">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</span>
-                            </li>
-                        }
-                    </ul>
-                </li>
-            }
-        </ul>
+        <Section Title="Adicionar Jogador">
+            <div class="mb-3">
+                <label class="form-label">Buscar jogador para adicionar</label>
+                <input class="form-control" @bind="_memberSearch" @bind:event="oninput" @bind:after="DebouncedSearchPlayersAsync" placeholder="Buscar jogador para adicionar" />
+            </div>
+            <ul class="list-unstyled mt-3">
+                @foreach (var player in _searchResults)
+                {
+                    <li>@player.Nickname (@player.Email) <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AddMemberAsync(player.Id))">Adicionar</button></li>
+                }
+            </ul>
+        </Section>
+
+        <Section Title="Membros">
+            <ul class="list-unstyled">
+                @foreach (var member in _members)
+                {
+                    <li>
+                        @member.Nickname (@member.Email)
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</button>
+                        <ul class="list-unstyled">
+                            @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
+                            {
+                                <li>
+                                    <a href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</a>
+                                    <span class="text-muted">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</span>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+            </ul>
+        </Section>
     </TabPage>
 
     <TabPage Title="Diário">
@@ -127,80 +132,87 @@
     <TabPage Title="Anexos">
         <div class="row g-3 mb-3">
             <div class="col-md-6">
-                <label class="form-label">Item (id)</label>
-                <div class="input-group">
-                    <input class="form-control" @bind="_attachItemId" />
-                    <button type="button" class="btn btn-primary" @onclick="AttachItemAsync">Anexar Item</button>
-                </div>
+                <Section Title="Item" Subtitle="Id do item no Catálogo">
+                    <div class="input-group">
+                        <input class="form-control" @bind="_attachItemId" />
+                        <button type="button" class="btn btn-primary" @onclick="AttachItemAsync">Anexar Item</button>
+                    </div>
+                </Section>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Entrada do Banco de Magias (id)</label>
-                <div class="input-group">
-                    <input class="form-control" @bind="_attachBankEntryId" />
-                    <button type="button" class="btn btn-primary" @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button>
-                </div>
+                <Section Title="Entrada do Banco de Magias" Subtitle="Id da entrada no Banco de Magias">
+                    <div class="input-group">
+                        <input class="form-control" @bind="_attachBankEntryId" />
+                        <button type="button" class="btn btn-primary" @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button>
+                    </div>
+                </Section>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Imagem (id)</label>
-                <div class="input-group">
-                    <input class="form-control" @bind="_attachImageId" />
-                    <button type="button" class="btn btn-primary" @onclick="AttachImageAsync">Anexar Imagem</button>
-                </div>
-                <label class="form-label mt-1">Ou enviar uma imagem nova (R0007) <InputFile OnChange="UploadAndAttachImageAsync" /></label>
+                <Section Title="Imagem" Subtitle="Id de uma imagem já enviada">
+                    <div class="input-group">
+                        <input class="form-control" @bind="_attachImageId" />
+                        <button type="button" class="btn btn-primary" @onclick="AttachImageAsync">Anexar Imagem</button>
+                    </div>
+                    <label class="form-label mt-1">Ou enviar uma imagem nova (R0007) <InputFile OnChange="UploadAndAttachImageAsync" /></label>
+                </Section>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Ficha de NPC (id)</label>
-                <div class="input-group">
-                    <input class="form-control" @bind="_attachNpcSheetId" />
-                    <button type="button" class="btn btn-primary" @onclick="AttachNpcSheetAsync">Anexar NPC</button>
-                </div>
+                <Section Title="Ficha de NPC" Subtitle="Id da ficha de NPC">
+                    <div class="input-group">
+                        <input class="form-control" @bind="_attachNpcSheetId" />
+                        <button type="button" class="btn btn-primary" @onclick="AttachNpcSheetAsync">Anexar NPC</button>
+                    </div>
+                </Section>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Ficha de Criatura (id)</label>
-                <div class="input-group">
-                    <input class="form-control" @bind="_attachCreatureSheetId" />
-                    <button type="button" class="btn btn-primary" @onclick="AttachCreatureSheetAsync">Anexar Criatura</button>
-                </div>
+                <Section Title="Ficha de Criatura" Subtitle="Id da ficha de Criatura">
+                    <div class="input-group">
+                        <input class="form-control" @bind="_attachCreatureSheetId" />
+                        <button type="button" class="btn btn-primary" @onclick="AttachCreatureSheetAsync">Anexar Criatura</button>
+                    </div>
+                </Section>
             </div>
         </div>
-        <ul class="list-unstyled">
-            @foreach (var attachment in _attachments)
-            {
-                <li>
-                    [@attachment.Tipo] @attachment.Nome
-                    @if (attachment.Tipo == "NpcSheet")
-                    {
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" checked="@attachment.NpcNomePublico" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, (bool)e.Value!, attachment.NpcImagemPublica ?? false))" />
-                            <label class="form-check-label">Nome público</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" checked="@attachment.NpcImagemPublica" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, (bool)e.Value!))" />
-                            <label class="form-check-label">Imagem pública</label>
-                        </div>
-                    }
-                    else if (attachment.Tipo == "CreatureSheet")
-                    {
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" checked="@attachment.CreatureNomePublico" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, (bool)e.Value!, attachment.CreatureImagemPublica ?? false))" />
-                            <label class="form-check-label">Nome público</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" checked="@attachment.CreatureImagemPublica" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, (bool)e.Value!))" />
-                            <label class="form-check-label">Imagem pública</label>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" checked="@attachment.IsPublic" @onchange="@(e => ToggleVisibilityAsync(attachment, (bool)e.Value!))" />
-                            <label class="form-check-label">Público</label>
-                        </div>
-                    }
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</button>
-                </li>
-            }
-        </ul>
+        <Section Title="Anexos existentes">
+            <ul class="list-unstyled">
+                @foreach (var attachment in _attachments)
+                {
+                    <li>
+                        [@attachment.Tipo] @attachment.Nome
+                        @if (attachment.Tipo == "NpcSheet")
+                        {
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" checked="@attachment.NpcNomePublico" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, (bool)e.Value!, attachment.NpcImagemPublica ?? false))" />
+                                <label class="form-check-label">Nome público</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" checked="@attachment.NpcImagemPublica" @onchange="@(e => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, (bool)e.Value!))" />
+                                <label class="form-check-label">Imagem pública</label>
+                            </div>
+                        }
+                        else if (attachment.Tipo == "CreatureSheet")
+                        {
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" checked="@attachment.CreatureNomePublico" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, (bool)e.Value!, attachment.CreatureImagemPublica ?? false))" />
+                                <label class="form-check-label">Nome público</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" checked="@attachment.CreatureImagemPublica" @onchange="@(e => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, (bool)e.Value!))" />
+                                <label class="form-check-label">Imagem pública</label>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" checked="@attachment.IsPublic" @onchange="@(e => ToggleVisibilityAsync(attachment, (bool)e.Value!))" />
+                                <label class="form-check-label">Público</label>
+                            </div>
+                        }
+                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</button>
+                    </li>
+                }
+            </ul>
+        </Section>
     </TabPage>
 
     <TabPage Title="Conceder Ficha">
