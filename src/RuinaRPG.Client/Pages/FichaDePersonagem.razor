@@ -6,221 +6,71 @@
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Personagem</h1>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
 }
 
 @if (_levelUpBonuses.Count > 0)
 {
-    <div class="level-up-notice">
-        <h2>Novo Nível!</h2>
+    <MudAlert Severity="Severity.Success" Class="mb-3">
+        <MudText Typo="Typo.h6">Novo Nível!</MudText>
         <ul>
             @foreach (var bonus in _levelUpBonuses)
             {
                 <li>@bonus</li>
             }
         </ul>
-        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DismissLevelUpAsync">Fechar</button>
-    </div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="DismissLevelUpAsync">Fechar</MudButton>
+    </MudAlert>
 }
 
-<TabControl>
-    <TabPage Title="Informações Básicas">
+<MudTabs>
+    <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Nome</label>
-                    <InputText class="form-control" @bind-Value="_form.Nome" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Linhagem</label>
-                    <select class="form-select" @bind="_form.Linhagem">
-                        <option value="">Escolha uma Linhagem</option>
-                        <option value="Humano">Humano</option>
-                        <option value="Phylauc">Phylauc</option>
-                        <option value="Nephrytes">Nephrytes</option>
-                        <option value="Econos">Ecônos</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Variante</label>
-                    @if (string.IsNullOrEmpty(_form.Linhagem))
-                    {
-                        <p class="mb-0 text-muted">Escolha uma Linhagem antes da Variante.</p>
-                    }
-                    else
-                    {
-                        <select class="form-select" @bind="_form.Variante">
-                            <option value="">Escolha uma Variante</option>
-                            @foreach (var (valor, rotulo) in VariantesPorLinhagem[_form.Linhagem])
-                            {
-                                <option value="@valor">@rotulo</option>
-                            }
-                        </select>
-                    }
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Vocação</label>
-                    <select class="form-select" @bind="_form.Vocacao">
-                        <option value="">Escolha uma Vocação</option>
-                        <option value="Campeao">Campeão</option>
-                        <option value="Cacador">Caçador</option>
-                        <option value="Feiticeiro">Feiticeiro</option>
-                        <option value="Adepto">Adepto</option>
-                        <option value="Bruxo">Bruxo</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Sub-vocação</label>
-                    @if (string.IsNullOrEmpty(_form.Vocacao))
-                    {
-                        <p class="mb-0 text-muted">Escolha uma Vocação antes da Sub-vocação.</p>
-                    }
-                    else
-                    {
-                        <select class="form-select" @bind="_form.SubVocacao">
-                            <option value="">Escolha uma Sub-vocação</option>
-                            @foreach (var subVocacao in SubVocacoesPorVocacao[_form.Vocacao])
-                            {
-                                <option value="@subVocacao">@subVocacao</option>
-                            }
-                        </select>
-                    }
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Afinidade</label>
-                    <select class="form-select" @bind="_form.Afinidade">
-                        <option value="">Escolha uma Afinidade</option>
-                        <option value="Terra">Terra</option>
-                        <option value="Agua">Água</option>
-                        <option value="Fogo">Fogo</option>
-                        <option value="Ar">Ar</option>
-                        <option value="Gelo">Gelo</option>
-                        <option value="Flora">Flora</option>
-                        <option value="Ferro">Ferro</option>
-                        <option value="Raio">Raio</option>
-                        <option value="Prever">Prever</option>
-                        <option value="Alma">Alma</option>
-                        <option value="Purificar">Purificar</option>
-                        <option value="Ecomancia">Ecomancia</option>
-                        <option value="Hemomancia">Hemomancia</option>
-                        <option value="Curar">Curar</option>
-                        <option value="Vida">Vida</option>
-                        <option value="Aprimorar">Aprimorar</option>
-                        <option value="Necromancia">Necromancia</option>
-                        <option value="Invocacao">Invocação</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Propriedade</label>
-                    <InputText class="form-control" @bind-Value="_form.Propriedade" />
-                </div>
-            </div>
+            <Section Title="Identidade">
+                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+                <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" />
+                <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" />
+                <AfinidadeSelect @bind-Value="_form.Afinidade" />
+                <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" />
+            </Section>
 
-            <div class="row g-3 mt-1">
-                <div class="col-md-2">
-                    <label class="form-label">Nível</label>
-                    <InputNumber class="form-control" @bind-Value="_form.Nivel" />
-                </div>
-                <div class="col-md-3 pt-4">
-                    <p class="mb-0">@_form.GraduacaoLabel: @_form.Graduacao</p>
-                </div>
-                <div class="col-md-3 pt-4">
-                    <div class="form-check">
-                        <InputCheckbox class="form-check-input" @bind-Value="_form.PossuiCoracaoDeMana" />
-                        <label class="form-check-label">Possui Coração de Mana?</label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Experiência Atual</label>
-                    <InputNumber class="form-control" @bind-Value="_form.ExperienciaAtual" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">EAP Atual</label>
-                    <p class="mb-0">@_form.EAPAtual</p>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Pontos de Ignição Atual</label>
-                    <InputNumber class="form-control" @bind-Value="_form.PontosDeIgnicaoAtual" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Pontos de Ignição Total</label>
-                    <InputNumber class="form-control" @bind-Value="_form.PontosDeIgnicaoTotal" />
-                </div>
-            </div>
+            <Section Title="Nível e Progressão">
+                <MudNumericField T="int" @bind-Value="_form.Nivel" Label="Nível" />
+                <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
+                <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" />
+                <MudNumericField T="int" @bind-Value="_form.ExperienciaAtual" Label="Experiência Atual" />
+                <MudText>EAP Atual: @_form.EAPAtual</MudText>
+                <MudNumericField T="int" @bind-Value="_form.PontosDeIgnicaoAtual" Label="Pontos de Ignição Atual" />
+                <MudNumericField T="int" @bind-Value="_form.PontosDeIgnicaoTotal" Label="Pontos de Ignição Total" />
+            </Section>
 
-            <h3>Âmbares Absorvidos</h3>
-            <div class="row g-3">
-                <div class="col">
-                    <label class="form-label">Rank F</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankF" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank E</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankE" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank D</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankD" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank C</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankC" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank B</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankB" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank A</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankA" />
-                </div>
-                <div class="col">
-                    <label class="form-label">Rank S</label>
-                    <InputNumber class="form-control" @bind-Value="_form.NucleosRankS" />
-                </div>
-            </div>
+            <Section Title="Âmbares Absorvidos">
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankF" Label="Rank F" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankE" Label="Rank E" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankD" Label="Rank D" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankC" Label="Rank C" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankB" Label="Rank B" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankA" Label="Rank A" />
+                <MudNumericField T="int" @bind-Value="_form.NucleosRankS" Label="Rank S" />
+            </Section>
 
-            <h3>Recursos</h3>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Adrenalina (PA)</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.AdrenalinaAtual" />
-                        <span class="input-group-text">/ @_form.AdrenalinaMaximo</span>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Foco (PF)</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.FocoAtual" />
-                        <span class="input-group-text">/ @_form.FocoMaximo</span>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Estresse</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.EstresseAtual" />
-                        <span class="input-group-text">/ @_form.EstresseMaximo</span>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Vitalidade</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.VitalidadeAtual" />
-                        <span class="input-group-text">/ @_form.VitalidadeMaximo</span>
-                    </div>
-                </div>
-            </div>
+            <Section Title="Recursos">
+                <MudNumericField T="int" @bind-Value="_form.AdrenalinaAtual" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
+                <MudNumericField T="int" @bind-Value="_form.FocoAtual" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
+                <MudNumericField T="int" @bind-Value="_form.EstresseAtual" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
+                <MudNumericField T="int" @bind-Value="_form.VitalidadeAtual" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
+            </Section>
 
-            <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
-    </TabPage>
+    </MudTabPanel>
 
     <TabPage Title="Atributos & Perícias">
         @if (_attributeBudget is not null)
@@ -633,35 +483,14 @@
 @code {
     [Parameter] public string SheetId { get; set; } = "";
 
-    // Value must match the Variante enum member name exactly (server parses it); label is the
-    // real Sistema Básico display name (Ruína RPG - Sistema Básico §7).
-    private static readonly Dictionary<string, (string Valor, string Rotulo)[]> VariantesPorLinhagem = new()
-    {
-        ["Humano"] = [("Sinir", "Sinir (Sol)"), ("Laonir", "Laonir (Lua)")],
-        ["Phylauc"] = [("PhylacTai", "Phylac'tai (Sol)"), ("EsPhylauc", "Es'Phylauc (Lua)")],
-        ["Nephrytes"] = [("Koroanos", "Koroanos (Sol)"), ("Yavos", "Yavos (Lua)")],
-        ["Econos"] = [("Alora", "Alóra (Lua)")],
-    };
-
-    // Sub-Vocação is free text server-side (no enum), so value == label here — from "Relação de
-    // Vocacão e Classes.md".
-    private static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
-    {
-        ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],
-        ["Cacador"] = ["Arqueiro", "Domador", "Assassino"],
-        ["Feiticeiro"] = ["Aeromante", "Biomante", "Fluxomante", "Piromante", "Sábio"],
-        ["Adepto"] = ["Paladino", "Arauto", "Trovador", "Eremita"],
-        ["Bruxo"] = ["Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista"],
-    };
-
     private string? _campaignId;
     private string? _campaignName;
 
-    private List<BreadcrumbItem> Crumbs
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs
     {
         get
         {
-            var crumbs = new List<BreadcrumbItem> { new("Painel", "painel") };
+            var crumbs = new List<RuinaRPG.Client.Shared.BreadcrumbItem> { new("Painel", "painel") };
             if (_campaignName is not null && _campaignId is not null)
                 crumbs.Add(new("Campanhas", "campanhas"));
             if (_campaignName is not null && _campaignId is not null)
