@@ -2,6 +2,7 @@ using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor.Services;
 using RuinaRPG.Client;
 using RuinaRPG.Client.Services;
 
@@ -10,6 +11,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddMudServices();
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<TokenAuthenticationStateProvider>();
