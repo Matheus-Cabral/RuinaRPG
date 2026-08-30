@@ -1,0 +1,85 @@
+@*
+    Replaces a raw-GUID text field with a debounced live-search + click-to-select control, reusing
+    each page's existing search/list endpoint (via the caller-supplied SearchItems delegate) —
+    the same debounce pattern already used by every live-search page in this app, no JS interop.
+
+    Every one of these fields is an "add new X" action, never an edit of an existing selection, so
+    the component never needs to resolve an incoming Value back into a label on its own; it always
+    starts empty and the caller resets Value to "" after a successful add, which this component
+    picks up via OnParametersSet to clear its own confirmed-selection display.
+*@
+<div>
+    @if (!string.IsNullOrEmpty(Value) && _selectedLabel is not null)
+    {
+        <div class="input-group">
+            <span class="form-control">@_selectedLabel</span>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ClearAsync">Trocar</button>
+        </div>
+    }
+    else
+    {
+        <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" placeholder="@Placeholder" />
+        @if (_results.Count > 0)
+        {
+            <ul class="list-group mt-1">
+                @foreach (var option in _results)
+                {
+                    <li class="list-group-item list-group-item-action" style="cursor: pointer" @onclick="@(() => SelectAsync(option))">@option.Label</li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter, EditorRequired] public Func<string, Task<List<PickerOption>>> SearchItems { get; set; } = null!;
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+
+    private string _query = "";
+    private List<PickerOption> _results = new();
+    private string? _selectedLabel;
+    private CancellationTokenSource? _debounceCts;
+
+    protected override void OnParametersSet()
+    {
+        // The caller reset Value externally (e.g. after a successful add) — drop our own
+        // confirmed-selection display so the search box reappears empty, ready for the next pick.
+        if (string.IsNullOrEmpty(Value))
+            _selectedLabel = null;
+    }
+
+    private async Task SearchAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        _results = string.IsNullOrWhiteSpace(_query) ? new() : await SearchItems(_query);
+    }
+
+    private async Task SelectAsync(PickerOption option)
+    {
+        _selectedLabel = option.Label;
+        _results = new();
+        _query = "";
+        Value = option.Id;
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task ClearAsync()
+    {
+        _selectedLabel = null;
+        Value = "";
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

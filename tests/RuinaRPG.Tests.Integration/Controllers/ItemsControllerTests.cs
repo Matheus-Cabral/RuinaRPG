@@ -272,6 +272,21 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
     }
 
     [Fact]
+    public async Task List_can_filter_by_partial_Nome_case_insensitively()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmFilter3", "itemfilter3@teste.com");
+        await PostItemAsync(token, MinimalItemGeral("Corda Resistente"));
+        await PostItemAsync(token, MinimalArma("Espada Longa"));
+
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?nome=espada");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+
+        var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Should().ContainSingle(i => i.Nome == "Espada Longa");
+    }
+
+    [Fact]
     public async Task Update_an_owned_item_returns_204_and_the_change_is_visible_on_list()
     {
         var token = await RegisterGmAndGetTokenAsync("ItemGmUpdate1", "itemupdate1@teste.com");

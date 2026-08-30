@@ -6,7 +6,11 @@
 @using RuinaRPG.Contracts.Diary
 @using RuinaRPG.Contracts.Encounters
 @using RuinaRPG.Contracts.Images
+@using RuinaRPG.Contracts.Items
+@using RuinaRPG.Contracts.CreatureSheets
+@using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.Players
+@using RuinaRPG.Contracts.SpellsAndAbilities
 
 <Breadcrumbs Items="@Crumbs" />
 <h1>@(_campaignName ?? "Campanha")</h1>
@@ -132,44 +136,34 @@
     <TabPage Title="Anexos">
         <div class="row g-3 mb-3">
             <div class="col-md-6">
-                <Section Title="Item" Subtitle="Id do item no Catálogo">
-                    <div class="input-group">
-                        <input class="form-control" @bind="_attachItemId" />
-                        <button type="button" class="btn btn-primary" @onclick="AttachItemAsync">Anexar Item</button>
-                    </div>
+                <Section Title="Item">
+                    <EntityPicker @bind-Value="_attachItemId" SearchItems="SearchItemsAsync" Placeholder="Buscar item..." />
+                    <button type="button" class="btn btn-primary mt-2" @onclick="AttachItemAsync">Anexar Item</button>
                 </Section>
             </div>
             <div class="col-md-6">
-                <Section Title="Entrada do Banco de Magias" Subtitle="Id da entrada no Banco de Magias">
-                    <div class="input-group">
-                        <input class="form-control" @bind="_attachBankEntryId" />
-                        <button type="button" class="btn btn-primary" @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button>
-                    </div>
+                <Section Title="Entrada do Banco de Magias">
+                    <EntityPicker @bind-Value="_attachBankEntryId" SearchItems="SearchBankEntriesAsync" Placeholder="Buscar magia/habilidade..." />
+                    <button type="button" class="btn btn-primary mt-2" @onclick="AttachBankEntryAsync">Anexar Magia/Habilidade</button>
                 </Section>
             </div>
             <div class="col-md-6">
-                <Section Title="Imagem" Subtitle="Id de uma imagem já enviada">
-                    <div class="input-group">
-                        <input class="form-control" @bind="_attachImageId" />
-                        <button type="button" class="btn btn-primary" @onclick="AttachImageAsync">Anexar Imagem</button>
-                    </div>
-                    <label class="form-label mt-1">Ou enviar uma imagem nova (R0007) <InputFile OnChange="UploadAndAttachImageAsync" /></label>
+                <Section Title="Imagem">
+                    <EntityPicker @bind-Value="_attachImageId" SearchItems="SearchImagesAsync" Placeholder="Buscar imagem já enviada..." />
+                    <button type="button" class="btn btn-primary mt-2" @onclick="AttachImageAsync">Anexar Imagem</button>
+                    <label class="form-label mt-2">Ou enviar uma imagem nova (R0007) <InputFile OnChange="UploadAndAttachImageAsync" /></label>
                 </Section>
             </div>
             <div class="col-md-6">
-                <Section Title="Ficha de NPC" Subtitle="Id da ficha de NPC">
-                    <div class="input-group">
-                        <input class="form-control" @bind="_attachNpcSheetId" />
-                        <button type="button" class="btn btn-primary" @onclick="AttachNpcSheetAsync">Anexar NPC</button>
-                    </div>
+                <Section Title="Ficha de NPC">
+                    <EntityPicker @bind-Value="_attachNpcSheetId" SearchItems="SearchNpcSheetsAsync" Placeholder="Buscar ficha de NPC..." />
+                    <button type="button" class="btn btn-primary mt-2" @onclick="AttachNpcSheetAsync">Anexar NPC</button>
                 </Section>
             </div>
             <div class="col-md-6">
-                <Section Title="Ficha de Criatura" Subtitle="Id da ficha de Criatura">
-                    <div class="input-group">
-                        <input class="form-control" @bind="_attachCreatureSheetId" />
-                        <button type="button" class="btn btn-primary" @onclick="AttachCreatureSheetAsync">Anexar Criatura</button>
-                    </div>
+                <Section Title="Ficha de Criatura">
+                    <EntityPicker @bind-Value="_attachCreatureSheetId" SearchItems="SearchCreatureSheetsAsync" Placeholder="Buscar ficha de Criatura..." />
+                    <button type="button" class="btn btn-primary mt-2" @onclick="AttachCreatureSheetAsync">Anexar Criatura</button>
                 </Section>
             </div>
         </div>
@@ -235,8 +229,8 @@
                 </select>
             </div>
             <div class="col-md-5">
-                <label class="form-label">Ficha de origem (id, opcional — em branco cria uma ficha nova)</label>
-                <input class="form-control" @bind="_grantSourceSheetId" />
+                <label class="form-label">Ficha de origem (opcional — em branco cria uma ficha nova)</label>
+                <EntityPicker @bind-Value="_grantSourceSheetId" SearchItems="SearchGrantSourceSheetsAsync" Placeholder="Buscar ficha existente..." />
             </div>
         </div>
         <button type="button" class="btn btn-primary mt-3" @onclick="GrantSheetAsync">Conceder</button>
@@ -402,6 +396,48 @@
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
     }
+
+    private async Task<List<PickerOption>> SearchItemsAsync(string query)
+    {
+        var response = await Http.GetAsync($"items?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
+    }
+
+    private async Task<List<PickerOption>> SearchBankEntriesAsync(string query)
+    {
+        var response = await Http.GetAsync($"spell-ability-bank?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
+        return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} ({e.Tipo}, Grau {e.Grau})")).ToList();
+    }
+
+    // No new HTTP call needed — _myImages is already loaded for the Diário/Notas Secretas image
+    // picker, and images don't have a separate name to search by, just their upload timestamp.
+    private Task<List<PickerOption>> SearchImagesAsync(string query) => Task.FromResult(
+        _myImages.Where(i => i.Url.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Select(i => new PickerOption(i.Id, $"{i.Url} ({i.CreatedAt:g})"))
+            .ToList());
+
+    private async Task<List<PickerOption>> SearchNpcSheetsAsync(string query)
+    {
+        var response = await Http.GetAsync($"npc-sheets?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var sheets = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>() ?? new();
+        return sheets.Select(s => new PickerOption(s.Id, s.Nome)).ToList();
+    }
+
+    private async Task<List<PickerOption>> SearchCreatureSheetsAsync(string query)
+    {
+        var response = await Http.GetAsync($"creature-sheets?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var sheets = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>() ?? new();
+        return sheets.Select(s => new PickerOption(s.Id, s.Nome)).ToList();
+    }
+
+    private Task<List<PickerOption>> SearchGrantSourceSheetsAsync(string query) =>
+        _grantTipo == "Npc" ? SearchNpcSheetsAsync(query) : SearchCreatureSheetsAsync(query);
 
     private async Task UploadImageAsync(InputFileChangeEventArgs e, HashSet<string> targetSelection)
     {

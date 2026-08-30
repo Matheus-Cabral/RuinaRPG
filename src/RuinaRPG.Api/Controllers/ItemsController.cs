@@ -93,6 +93,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<ItemResponse>>> List(
+        [FromQuery] string? nome,
         [FromQuery] string? tipo,
         [FromQuery] string? subcategoria,
         [FromQuery] string? tier,
@@ -105,6 +106,8 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
 
         var query = db.Items.Where(i => i.GmId == gmId);
 
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(i => EF.Functions.ILike(i.Nome, $"%{nome}%"));
         if (tipo is not null && Enum.TryParse<ItemTipo>(tipo, out var tipoParsed))
             query = query.Where(i => EF.Property<string>(i, "Tipo") == tipoParsed.ToString());
 
