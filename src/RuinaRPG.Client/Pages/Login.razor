@@ -3,13 +3,17 @@
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 @inject TokenAuthenticationStateProvider AuthProvider
+@using System.ComponentModel.DataAnnotations
 @using RuinaRPG.Contracts.Auth
 
 <h1>Entrar</h1>
 
 <EditForm Model="_request" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
     <label>Nickname <InputText @bind-Value="_request.Nickname" /></label>
+    <ValidationMessage For="@(() => _request.Nickname)" />
     <label>Senha <InputText type="password" @bind-Value="_request.Senha" /></label>
+    <ValidationMessage For="@(() => _request.Senha)" />
     <button type="submit">Entrar</button>
 </EditForm>
 
@@ -40,7 +44,10 @@
 
     private class LoginFormModel
     {
+        [Required(ErrorMessage = "Informe o Nickname.")]
         public string Nickname { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe a senha.")]
         public string Senha { get; set; } = "";
     }
 }
