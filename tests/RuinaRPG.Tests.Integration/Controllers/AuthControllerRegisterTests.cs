@@ -76,6 +76,18 @@ public class AuthControllerRegisterTests : IClassFixture<PostgresFixture>, IAsyn
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Register_gm_with_an_empty_or_whitespace_nickname_returns_400(string nickname)
+    {
+        var request = new RegisterGmRequest(nickname, "nickvazio@teste.com", "Senha!123", "Senha!123");
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task Register_gm_with_a_duplicate_nickname_leaves_login_working()
     {

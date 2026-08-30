@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/invite-codes")]
 [Authorize(Roles = "GM")]
-public class InviteCodesController(RuinaRpgDbContext db) : ControllerBase
+public class InviteCodesController(RuinaRpgDbContext db, IOptions<InviteOptions> inviteOptions) : ControllerBase
 {
     private const string CodeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private const int CodeLength = 8;
@@ -34,7 +35,7 @@ public class InviteCodesController(RuinaRpgDbContext db) : ControllerBase
                 Code = GenerateRandomCode(),
                 GmId = gmId,
                 GeneratedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(48)
+                ExpiresAt = DateTime.UtcNow.AddHours(inviteOptions.Value.CodeExpirationHours)
             };
 
             db.InviteCodes.Add(code);

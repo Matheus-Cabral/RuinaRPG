@@ -33,6 +33,7 @@ services:
       Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
       Storage__ImagesPath: /images
       Img__MaxSizeMb: ${IMG_MAX_SIZE_MB}
+      Invite__CodeExpirationHours: ${INVITE_CODE_EXPIRATION_HOURS}
     volumes:
       - images:/images
 
