@@ -86,6 +86,40 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return responses;
     }
 
+    /// <summary>
+    /// Painel do Jogador (canvas "01 - Visão Geral" — the login/signup/panel flow diagram):
+    /// a player lands on a list of their own character sheets across every campaign, not scoped
+    /// to one — unlike ListForCampaign above, which is the GM's per-campaign roster view.
+    /// </summary>
+    [HttpGet("~/api/character-sheets/mine")]
+    [Authorize(Roles = "Jogador")]
+    public async Task<ActionResult<List<MyCharacterSheetSummaryResponse>>> ListMine()
+    {
+        var playerId = CurrentUserId();
+
+        var sheets = await db.CharacterSheets
+            .Where(s => s.OwnerId == playerId)
+            .GroupJoin(db.Campaigns, s => s.CampaignId, c => c.Id, (s, campaigns) => new { Sheet = s, Campaign = campaigns.FirstOrDefault() })
+            .ToListAsync();
+
+        var responses = new List<MyCharacterSheetSummaryResponse>();
+        foreach (var x in sheets)
+        {
+            string? imageUrl = null;
+            if (x.Sheet.ImageId is not null)
+            {
+                var image = await db.Images.FindAsync(x.Sheet.ImageId.Value);
+                imageUrl = image is not null ? $"/images/{image.Path}" : null;
+            }
+
+            responses.Add(new MyCharacterSheetSummaryResponse(
+                x.Sheet.Id.ToString(), imageUrl, x.Sheet.Nome, x.Sheet.Nivel,
+                x.Sheet.CampaignId.ToString(), x.Campaign?.Nome ?? ""));
+        }
+
+        return responses;
+    }
+
     [HttpGet("api/character-sheets/{id}")]
     public async Task<ActionResult<CharacterSheetResponse>> Get(Guid id)
     {

@@ -3,17 +3,111 @@
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 @inject TokenAuthenticationStateProvider AuthProvider
+@using RuinaRPG.Contracts.Auth
+@using RuinaRPG.Contracts.CharacterSheets
+
+<Breadcrumbs Items="@Crumbs" />
 
 <h1>Painel</h1>
-<p>Em construção.</p>
-<button @onclick="LogoutAsync">Sair</button>
+
+@if (_me is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <p>Bem-vindo(a), @_me.Nickname.</p>
+
+    @if (_me.Role == "GM")
+    {
+        <div class="list-group">
+            <a class="list-group-item list-group-item-action" href="painel/convites">
+                <h3 class="mb-1">Convidar Jogador</h3>
+                <p class="mb-0 text-muted">Gere e acompanhe códigos de convite.</p>
+            </a>
+            <a class="list-group-item list-group-item-action" href="bestiario">
+                <h3 class="mb-1">Bestiário do GM</h3>
+                <p class="mb-0 text-muted">Suas fichas de criatura.</p>
+            </a>
+            <a class="list-group-item list-group-item-action" href="npcs">
+                <h3 class="mb-1">NPCs do GM</h3>
+                <p class="mb-0 text-muted">Suas fichas de NPC.</p>
+            </a>
+            <a class="list-group-item list-group-item-action" href="catalogo">
+                <h3 class="mb-1">Itens e Equipamentos</h3>
+                <p class="mb-0 text-muted">Catálogo de itens, armas, armaduras e artefatos.</p>
+            </a>
+            <a class="list-group-item list-group-item-action" href="campanhas">
+                <h3 class="mb-1">Campanhas</h3>
+                <p class="mb-0 text-muted">Conceda fichas, gerencie o diário e os anexos de cada campanha.</p>
+            </a>
+        </div>
+    }
+    else
+    {
+        @if (_errorMessage is not null)
+        {
+            <p class="error">@_errorMessage</p>
+        }
+        else if (_myCharacters.Count == 0)
+        {
+            <p class="text-muted">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</p>
+        }
+
+        <div class="list-group">
+            @foreach (var sheet in _myCharacters)
+            {
+                <a class="list-group-item list-group-item-action" href="@($"fichas/{sheet.Id}")">
+                    @if (sheet.ImageUrl is not null)
+                    {
+                        <img src="@sheet.ImageUrl" alt="" style="max-width: 48px; margin-right: 0.75rem;" />
+                    }
+                    <h3 class="mb-1">@(sheet.Nome ?? "(sem nome)")</h3>
+                    <p class="mb-0 text-muted">Nível @sheet.Nivel — @sheet.CampanhaNome</p>
+                </a>
+            }
+        </div>
+    }
+}
+
+<button type="button" class="btn btn-outline-secondary mt-3" @onclick="LogoutAsync">Sair</button>
 
 @code {
+    private List<BreadcrumbItem> Crumbs => new() { new("Painel") };
+
+    private MeResponse? _me;
+    private List<MyCharacterSheetSummaryResponse> _myCharacters = new();
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var meResponse = await Http.GetAsync("auth/me");
+        if (!meResponse.IsSuccessStatusCode)
+            return;
+
+        _me = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
+        if (_me?.Role == "Jogador")
+            await LoadMyCharactersAsync();
+    }
+
+    private async Task LoadMyCharactersAsync()
+    {
+        var response = await Http.GetAsync("character-sheets/mine");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar suas fichas.";
+            return;
+        }
+
+        _myCharacters = await response.Content.ReadFromJsonAsync<List<MyCharacterSheetSummaryResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
     private async Task LogoutAsync()
     {
         var refreshToken = await AuthState.GetRefreshTokenAsync();
         if (refreshToken is not null)
-            await Http.PostAsJsonAsync("auth/logout", new RuinaRPG.Contracts.Auth.RefreshRequest(refreshToken));
+            await Http.PostAsJsonAsync("auth/logout", new RefreshRequest(refreshToken));
 
         await AuthState.ClearAsync();
         AuthProvider.NotifyUserChanged();

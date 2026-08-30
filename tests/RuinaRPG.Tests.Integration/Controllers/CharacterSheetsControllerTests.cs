@@ -738,4 +738,55 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
         (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
     }
+
+    [Fact]
+    public async Task ListMine_returns_the_players_own_sheets_across_every_campaign_with_the_campaigns_name()
+    {
+        // Painel do Jogador (canvas "01 - Visão Geral"): a cross-campaign list, unlike
+        // ListForCampaign above which is scoped to one campaign and GM-only.
+        var gmToken = await RegisterGmAndGetTokenAsync(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+        var campaignA = await CreateCampaignAsync(gmToken, "Campanha A do Painel");
+        var campaignB = await CreateCampaignAsync(gmToken, "Campanha B do Painel");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignB}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetInA = await CreateSheetForMemberAsync(gmToken, campaignA, playerId);
+        var sheetInB = await CreateSheetForMemberAsync(gmToken, campaignB, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetInA}", playerToken, ValidUpdate() with { Nome = "Vann de A" }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/character-sheets/mine", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<MyCharacterSheetSummaryResponse>>();
+        body!.Should().HaveCount(2);
+        body.Should().ContainSingle(s => s.Id == sheetInA && s.Nome == "Vann de A" && s.CampanhaNome == "Campanha A do Painel");
+        body.Should().ContainSingle(s => s.Id == sheetInB && s.CampanhaNome == "Campanha B do Painel");
+    }
+
+    [Fact]
+    public async Task ListMine_does_not_include_another_players_sheets()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+        var (playerAId, playerAToken) = await RegisterJogadorLinkedToAsync(gmToken, TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+        var (playerBId, _) = await RegisterJogadorLinkedToAsync(gmToken, TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Compartilhada");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerAId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerBId)));
+        await CreateSheetForMemberAsync(gmToken, campaignId, playerBId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/character-sheets/mine", playerAToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<MyCharacterSheetSummaryResponse>>();
+        body!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListMine_by_a_gm_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail());
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/character-sheets/mine", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
