@@ -25,7 +25,7 @@ Esta spec cobre **duas fases** de um projeto maior, decompostas porque o todo é
 - `Pages/` — pelo menos as 3 Fichas nesta rodada; o resto migra em fases futuras.
 - `Layout/` (`MainLayout`, `NavMenu`, `ThemeToggle`) — inteiro, nesta fase.
 - `Shared/` (`Section`, `TabControl`/`TabPage`, `Breadcrumbs`, `EntityPicker`) — inteiro, nesta fase. Nomes/API podem mudar livremente; nada aqui é "mantido por compatibilidade".
-- `wwwroot/css/*` — `bootstrap/`, `components.css`, `app.css` são descartados. `theme.css` é **reduzido**, não reescrito: fica só com os `@font-face` e os tokens de cor `--rr-*` (claro/escuro) exatamente como estão hoje — nenhum hex novo, nenhuma fonte nova. Tudo que hoje é `components.css` (re-skin de Bootstrap/elementos crus) desaparece — quem faz esse trabalho agora é o tema do MudBlazor.
+- `wwwroot/css/*` — `bootstrap/`, `components.css`, `app.css` são descartados **imediatamente** (incl. a referência a `bootstrap.min.css` em `index.html`), sem preocupação de manter o visual das páginas ainda não migradas. `theme.css` é **reduzido**, não reescrito: fica só com os `@font-face` e os tokens de cor `--rr-*` (claro/escuro) exatamente como estão hoje — nenhum hex novo, nenhuma fonte nova. Tudo que hoje é `components.css` (re-skin de Bootstrap/elementos crus) desaparece — quem faz esse trabalho agora é o tema do MudBlazor.
 
 **Mantido como está (infraestrutura, não é "cara"):**
 - `Services/` (`AuthStateService`, `TokenAuthenticationStateProvider`, `BearerTokenHandler`) — testado e corrigido no backlog recente, invisível ao usuário.
@@ -34,9 +34,11 @@ Esta spec cobre **duas fases** de um projeto maior, decompostas porque o todo é
 - `wwwroot/js/theme.js` e o script inline em `index.html` que seta `data-theme` antes do primeiro paint — mecanismo correto, só o visual do `ThemeToggle` que o consome é reconstruído.
 - `RuinaRPG.Contracts`, `RuinaRPG.Domain`, toda a API — fora de escopo, já corretos.
 
-## Estratégia de transição (coexistência com Bootstrap)
+## Sem estratégia de transição — quebra visual das páginas fora de escopo é aceitável
 
-Este app roda numa stack Docker já em uso (ver memória `local-stack-runs-in-production-mode`). Migrar só 3 de ~20 páginas por rodada não pode deixar as outras 17 quebradas visualmente entre rodadas. Decisão: **`bootstrap.min.css` continua referenciado em `index.html` até a última fase futura que migrar a última página restante** — MudBlazor não depende de Bootstrap e suas classes (`mud-*`) não colidem com as classes Bootstrap que as páginas ainda não migradas continuam usando. Só quando não sobrar nenhuma página em Bootstrap é que a referência sai do `index.html`. Isso é uma decisão desta fase, documentada aqui para quem migrar a próxima página não se perguntar por que o link ainda está lá.
+Este projeto não está em produção; parar de funcionar temporariamente ou perder dados de banco não é um problema (decisão explícita do usuário — uma estratégia de coexistência/transição só enviesaria a execução da interface nova em favor de compatibilidade com a antiga). Portanto: **nenhum esforço é gasto mantendo as ~17 páginas fora desta fase visualmente funcionais.** `bootstrap.min.css` sai de `index.html` nesta própria fase, não na última. Páginas ainda não migradas podem renderizar sem estilo (HTML cru) até sua própria fase — isso é esperado e não é um defeito a corrigir aqui.
+
+A única obrigação que **permanece**, porque é padrão de qualidade do repositório (`CLAUDE.md`) e não uma preocupação de continuidade visual: `dotnet build` tem que continuar em 0 warnings/0 errors. Isso significa que qualquer componente de `Shared/` referenciado por páginas fora de escopo (`EntityPicker`, `Section`, `TabControl`/`TabPage`) só pode ser removido ou ter sua API quebrada se os call-sites dessas páginas forem atualizados junto — mecanicamente (trocar `<Section>` por `<MudPaper>`, etc.), mesmo sem se importar com o resultado visual. Decisão de implementação: mais barato manter o nome/assinatura pública estável (ex. `EntityPicker` continua aceitando `Value`/`ValueChanged`/`SearchItems`) do que tocar ~15 páginas só para não quebrar o build.
 
 ## Direção estética — mantendo cor e tipografia como estão
 
@@ -60,7 +62,7 @@ Este app roda numa stack Docker já em uso (ver memória `local-stack-runs-in-pr
 
 **Componentes compartilhados (`Shared/`, reescritos):**
 - Um componente de seção/card (substitui `Section.razor`) sobre `MudPaper Elevation="0"` + regra hairline, título em Cormorant Garamond.
-- `EntityPicker` reescrito sobre `MudAutocomplete<T>`, mantendo a mesma API pública que as ~15 páginas que já o consomem esperam (`Value`/`ValueChanged`/`SearchItems`/`Placeholder`) — só a Fase 1 toca os call-sites das Fichas; páginas ainda não migradas continuam usando a versão antiga até sua própria fase (então o `EntityPicker` antigo só é apagado quando não sobrar consumidor — decisão de implementação: manter os dois nomeados diferente durante a transição, ou migrar todos os consumidores de uma vez nesta fase; ver plano de implementação).
+- `EntityPicker` reescrito sobre `MudAutocomplete<T>`, mantendo a mesma API pública (`Value`/`ValueChanged`/`SearchItems`/`Placeholder`) que os outros ~10 consumidores fora desta fase esperam — não por preocupação visual (essas páginas podem ficar sem estilo, ver seção acima), mas só pra não quebrar o build delas.
 - `Breadcrumbs` sobre `MudBreadcrumbs`.
 - Campos de domínio compartilhados novos: seletor de Linhagem/Variante em cascata, de Vocação/Sub-vocação em cascata, de Afinidade — hoje essas listas estão *hardcoded e duplicadas* em cada Ficha; nesta fase viram um único componente/fonte de dados reutilizado pelas 3 Fichas.
 - `RrIdentityBadge` (Selo de Linhagem, ver seção estética).
@@ -80,8 +82,7 @@ Verificação end-a-fim: `dotnet build` (0/0), mais verificação visual — est
 
 ## Riscos e mitigação
 
-- **Duas bibliotecas de UI coexistindo (Bootstrap nas páginas antigas + MudBlazor nas novas) durante toda a transição multi-fase** — mitigado por classes prefixadas (`mud-*` vs. `btn`/`form-control`) não colidirem; risco residual de densidade/espaçamento inconsistente entre uma página antiga e uma nova lado a lado é aceito como custo normal de migração incremental.
-- **`EntityPicker` com dois donos durante a transição** (versão nova nas Fichas, antiga em páginas não migradas) — decisão de nome/local fica para o plano de implementação, mas o risco de quebrar os ~10 outros consumidores precisa ser verificado por grep antes de qualquer rename.
+- **Build quebrado nas páginas fora de escopo** — o único risco que importa de fato (não o visual). Mitigado mantendo a API pública dos componentes de `Shared/` reaproveitados (`EntityPicker`, `Breadcrumbs`) estável, e fazendo um grep por todo consumidor antes de remover/renomear qualquer componente que páginas fora desta fase ainda referenciam (`TabControl`/`TabPage`/`Section`, se forem removidos em vez de mantidos).
 - **bUnit é infraestrutura nova** — primeira vez que este repo roda testes de componente Blazor; risco de fricção de setup (mock de `IJSRuntime`/`HttpClient`) é esperado e deve ser tratado como parte normal da Fase 0, não bloqueador.
 
 ## Fora de escopo (fases futuras, não desta spec)
@@ -93,5 +94,5 @@ Campanha (`CampanhaDetalhe`, `Campanhas`, `MinhaCampanha`, `MinhasCampanhas`), G
 - `dotnet build` limpo (0 warnings/0 errors) com MudBlazor integrado.
 - As 3 Fichas renderizam e salvam corretamente em ambos os temas (Sol/Lua), com os mesmos endpoints de hoje, sem regressão funcional.
 - Nenhuma cor/hex nova introduzida fora de `--rr-*`; nenhuma fonte nova fora de Cormorant Garamond/Inter.
-- Páginas ainda não migradas continuam funcionando visualmente como hoje (Bootstrap intacto) — a transição não quebra o que não foi tocado.
 - `EntityPicker`/campos compartilhados novos têm cobertura bUnit para sua lógica não-trivial.
+- Não é critério de aceite as páginas fora de escopo continuarem com aparência funcional — só precisam continuar compilando.
