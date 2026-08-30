@@ -16,33 +16,36 @@
 
 <EditForm Model="_form" OnValidSubmit="SubmitAsync">
     <DataAnnotationsValidator />
-    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
-    <label>
-        Tipo
-        <select @bind="_form.Tipo">
-            <option value="Magia">Magia</option>
-            <option value="Habilidade">Habilidade</option>
-            <option value="Racial">Racial</option>
-        </select>
-    </label>
-    <label>Grau <InputNumber @bind-Value="_form.Grau" /></label>
-    <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+    <Section Title="Geral">
+        <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+        <label>
+            Tipo
+            <select @bind="_form.Tipo">
+                <option value="Magia">Magia</option>
+                <option value="Habilidade">Habilidade</option>
+                <option value="Racial">Racial</option>
+            </select>
+        </label>
+        <label>Grau <InputNumber @bind-Value="_form.Grau" /></label>
+        <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+    </Section>
 
-    <h2>Efeitos</h2>
-    <button type="button" @onclick="AddEffect">Adicionar Efeito</button>
-    @for (var i = 0; i < _form.Efeitos.Count; i++)
-    {
-        var index = i; // capture for the closures below
-        <div>
-            <label>Nome do Efeito <InputText @bind-Value="_form.Efeitos[index].EfeitoNome" /></label>
-            <label>Quantidade <InputNumber @bind-Value="_form.Efeitos[index].Quantidade" /></label>
-            <label>Custo em PI <InputNumber @bind-Value="_form.Efeitos[index].CustoPI" /></label>
-            <button type="button" @onclick="@(() => _form.Efeitos.RemoveAt(index))">Remover</button>
-        </div>
-    }
+    <Section Title="Efeitos">
+        <button type="button" @onclick="AddEffect">Adicionar Efeito</button>
+        @for (var i = 0; i < _form.Efeitos.Count; i++)
+        {
+            var index = i; // capture for the closures below
+            <div style="border-bottom: 1px solid var(--rr-border); padding-bottom: var(--rr-space-2); margin-bottom: var(--rr-space-2);">
+                <label>Nome do Efeito <InputText @bind-Value="_form.Efeitos[index].EfeitoNome" /></label>
+                <label>Quantidade <InputNumber @bind-Value="_form.Efeitos[index].Quantidade" /></label>
+                <label>Custo em PI <InputNumber @bind-Value="_form.Efeitos[index].CustoPI" /></label>
+                <button type="button" @onclick="@(() => _form.Efeitos.RemoveAt(index))">Remover</button>
+            </div>
+        }
 
-    <p>Gasto em PI (calculado ao salvar): @GastoEmPI</p>
-    <p>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</p>
+        <p>Gasto em PI (calculado ao salvar): @GastoEmPI</p>
+        <p>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</p>
+    </Section>
 
     <button type="submit">Salvar</button>
 </EditForm>

@@ -15,76 +15,86 @@
 }
 
 <EditForm Model="_form" OnValidSubmit="SubmitAsync">
-    @if (ItemId is null)
-    {
+    <Section Title="Geral">
+        @if (ItemId is null)
+        {
+            <label>
+                Tipo
+                <select @bind="_form.Tipo">
+                    <option value="ItemGeral">Item Geral</option>
+                    <option value="Arma">Arma</option>
+                    <option value="Armadura">Armadura</option>
+                    <option value="Escudo">Escudo</option>
+                    <option value="Artefato">Artefato</option>
+                </select>
+            </label>
+        }
+
+        <label>Nome <InputText @bind-Value="_form.Nome" /></label>
+        <label>Peso <InputNumber @bind-Value="_form.Peso" /></label>
+        <label>Preço (Ciclos) <InputNumber @bind-Value="_form.Preco" /></label>
+
+        <label>Enviar nova imagem <InputFile OnChange="UploadImageAsync" /></label>
         <label>
-            Tipo
-            <select @bind="_form.Tipo">
-                <option value="ItemGeral">Item Geral</option>
-                <option value="Arma">Arma</option>
-                <option value="Armadura">Armadura</option>
-                <option value="Escudo">Escudo</option>
-                <option value="Artefato">Artefato</option>
+            Ou reutilizar uma imagem já enviada (R0010)
+            <select @bind="_form.ImageId">
+                <option value="">— nenhuma —</option>
+                @foreach (var image in _myImages)
+                {
+                    <option value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</option>
+                }
             </select>
         </label>
-    }
-
-    <label>Nome <InputText @bind-Value="_form.Nome" /></label>
-    <label>Peso <InputNumber @bind-Value="_form.Peso" /></label>
-    <label>Preço (Ciclos) <InputNumber @bind-Value="_form.Preco" /></label>
-
-    <label>Enviar nova imagem <InputFile OnChange="UploadImageAsync" /></label>
-    <label>
-        Ou reutilizar uma imagem já enviada (R0010)
-        <select @bind="_form.ImageId">
-            <option value="">— nenhuma —</option>
-            @foreach (var image in _myImages)
-            {
-                <option value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</option>
-            }
-        </select>
-    </label>
+    </Section>
 
     @if (_form.Tipo == "ItemGeral")
     {
-        <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
-        <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+        <Section Title="Item Geral">
+            <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
+            <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+        </Section>
     }
     else if (_form.Tipo == "Arma")
     {
-        <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
-        <label>Tier <InputText @bind-Value="_form.Tier" /></label>
-        <label>Empunhadura <InputText @bind-Value="_form.Empunhadura" /></label>
-        <label>Dados <InputText @bind-Value="_form.Dados" /></label>
-        <label>Dano <InputNumber @bind-Value="_form.Dano" /></label>
-        <label>Crítico <InputText @bind-Value="_form.Critico" /></label>
-        <label>Alcance <InputNumber @bind-Value="_form.Alcance" /></label>
-        <label>Tipo de Dano <InputText @bind-Value="_form.TipoDeDano" /></label>
-        <label>Requisito de Atributo <InputText @bind-Value="_form.RequisitoAtributo" /></label>
-        <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+        <Section Title="Arma">
+            <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
+            <label>Tier <InputText @bind-Value="_form.Tier" /></label>
+            <label>Empunhadura <InputText @bind-Value="_form.Empunhadura" /></label>
+            <label>Dados <InputText @bind-Value="_form.Dados" /></label>
+            <label>Dano <InputNumber @bind-Value="_form.Dano" /></label>
+            <label>Crítico <InputText @bind-Value="_form.Critico" /></label>
+            <label>Alcance <InputNumber @bind-Value="_form.Alcance" /></label>
+            <label>Tipo de Dano <InputText @bind-Value="_form.TipoDeDano" /></label>
+            <label>Requisito de Atributo <InputText @bind-Value="_form.RequisitoAtributo" /></label>
+            <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+        </Section>
     }
     else if (_form.Tipo is "Armadura" or "Escudo")
     {
-        <label>Categoria <InputText @bind-Value="_form.Categoria" /></label>
-        @if (_form.Tipo == "Armadura")
-        {
-            <label>Defesa <InputNumber @bind-Value="_form.Defesa" /></label>
-            <label>RF <InputNumber @bind-Value="_form.RF" /></label>
-            <label>RM <InputNumber @bind-Value="_form.RM" /></label>
-        }
-        else
-        {
-            <label>Bônus de Defesa <InputNumber @bind-Value="_form.BonusDefesa" /></label>
-        }
-        <label>Penalidade <InputText @bind-Value="_form.Penalidade" /></label>
-        <label>Requisito de Vigor <InputNumber @bind-Value="_form.RequisitoVigor" /></label>
-        <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+        <Section Title="@(_form.Tipo == "Armadura" ? "Armadura" : "Escudo")">
+            <label>Categoria <InputText @bind-Value="_form.Categoria" /></label>
+            @if (_form.Tipo == "Armadura")
+            {
+                <label>Defesa <InputNumber @bind-Value="_form.Defesa" /></label>
+                <label>RF <InputNumber @bind-Value="_form.RF" /></label>
+                <label>RM <InputNumber @bind-Value="_form.RM" /></label>
+            }
+            else
+            {
+                <label>Bônus de Defesa <InputNumber @bind-Value="_form.BonusDefesa" /></label>
+            }
+            <label>Penalidade <InputText @bind-Value="_form.Penalidade" /></label>
+            <label>Requisito de Vigor <InputNumber @bind-Value="_form.RequisitoVigor" /></label>
+            <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+        </Section>
     }
     else if (_form.Tipo == "Artefato")
     {
-        <label>Tipo de Alvo <InputText @bind-Value="_form.TipoDeAlvo" /></label>
-        <label>Alvo <InputText @bind-Value="_form.Alvo" /></label>
-        <label>Valor <InputNumber @bind-Value="_form.Valor" /></label>
+        <Section Title="Artefato">
+            <label>Tipo de Alvo <InputText @bind-Value="_form.TipoDeAlvo" /></label>
+            <label>Alvo <InputText @bind-Value="_form.Alvo" /></label>
+            <label>Valor <InputNumber @bind-Value="_form.Valor" /></label>
+        </Section>
     }
 
     <button type="submit">Salvar</button>
