@@ -80,6 +80,59 @@
   --rr-sidebar-active-bg: rgba(255, 223, 158, 0.28);
 }
 
+/* ==========================================================================
+   MudBlazor color bridge — every --mud-palette-* MudThemeProvider generates
+   is forced (!important — see plan/task notes) to resolve to the existing
+   --rr-* tokens above, so MudBlazor never renders its own default Material
+   palette. This block never introduces a new color; it only re-points names.
+   ========================================================================== */
+:root {
+  --mud-palette-primary: var(--rr-primary) !important;
+  --mud-palette-primary-text: var(--rr-primary-contrast) !important;
+  --mud-palette-primary-hover: var(--rr-primary-hover) !important;
+  --mud-palette-secondary: var(--rr-accent) !important;
+  --mud-palette-secondary-text: var(--rr-primary-contrast) !important;
+  --mud-palette-tertiary: var(--rr-accent) !important;
+  --mud-palette-tertiary-text: var(--rr-primary-contrast) !important;
+
+  --mud-palette-background: var(--rr-bg) !important;
+  --mud-palette-background-gray: var(--rr-surface-alt) !important;
+  --mud-palette-surface: var(--rr-surface) !important;
+  --mud-palette-drawer-background: var(--rr-sidebar-bg) !important;
+  --mud-palette-drawer-text: var(--rr-sidebar-text) !important;
+  --mud-palette-drawer-icon: var(--rr-sidebar-text) !important;
+  --mud-palette-appbar-background: var(--rr-sidebar-bg) !important;
+  --mud-palette-appbar-text: var(--rr-sidebar-text) !important;
+
+  --mud-palette-text-primary: var(--rr-text) !important;
+  --mud-palette-text-secondary: var(--rr-text-muted) !important;
+  --mud-palette-text-disabled: var(--rr-text-muted) !important;
+
+  --mud-palette-action-default: var(--rr-text-muted) !important;
+  --mud-palette-action-disabled: var(--rr-text-muted) !important;
+  --mud-palette-action-disabled-background: var(--rr-surface-alt) !important;
+
+  --mud-palette-divider: var(--rr-border) !important;
+  --mud-palette-divider-light: var(--rr-border) !important;
+  --mud-palette-lines-default: var(--rr-border) !important;
+  --mud-palette-lines-inputs: var(--rr-border) !important;
+  --mud-palette-table-lines: var(--rr-border) !important;
+  --mud-palette-table-striped: var(--rr-surface-alt) !important;
+  --mud-palette-table-hover: var(--rr-shadow) !important;
+
+  --mud-palette-error: var(--rr-danger) !important;
+  --mud-palette-error-text: #fff !important;
+  --mud-palette-success: var(--rr-success) !important;
+  --mud-palette-success-text: #fff !important;
+  --mud-palette-info: var(--rr-primary) !important;
+  --mud-palette-info-text: var(--rr-primary-contrast) !important;
+  --mud-palette-warning: var(--rr-accent) !important;
+  --mud-palette-warning-text: #fff !important;
+
+  --mud-palette-overlay-dark: var(--rr-shadow) !important;
+  --mud-palette-overlay-light: var(--rr-shadow) !important;
+}
+
 :root[data-theme='dark'] {
   color-scheme: dark;
 
