@@ -6,6 +6,7 @@
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -86,8 +87,8 @@
                 {
                     <tr>
                         <td>@attr.Atributo</td>
-                        <td><MudNumericField T="int" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" Dense="true" /></td>
-                        <td><MudNumericField T="int" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" Dense="true" /></td>
+                        <td><MudNumericField T="int" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
+                        <td><MudNumericField T="int" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
                         <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
                         <td>@attr.Total</td>
                     </tr>
@@ -102,7 +103,7 @@
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><MudNumericField T="int" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" Dense="true" /></td>
+                        <td><MudNumericField T="int" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" /></td>
                         <td>@skill.Modificador</td>
                     </tr>
                 }
@@ -124,90 +125,107 @@
         </Section>
     </MudTabPanel>
 
-    <TabPage Title="Combate">
-        <h3>Armas</h3>
-        <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
-            <div class="mb-3">
-                <label class="form-label">Arma</label>
+    <MudTabPanel Text="Combate">
+        <Section Title="Armas">
+            <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
                 <EntityPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Arma</button>
-        </EditForm>
-        <ul class="list-unstyled mt-3">
-            @foreach (var weapon in _weapons)
-            {
-                <li>@weapon.Nome —
-                    Durabilidade <input type="number" value="@weapon.DurabilidadeAtual" @onchange="@(e => UpdateWeaponDurabilidadeAsync(weapon.Id, e.Value))" style="width:4em" />/@weapon.DurabilidadeMaxima
-                    — @(weapon.IsEquipped ? "Equipada" : "")
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteWeaponAsync(weapon.Id))">Remover</button>
-                </li>
-            }
-        </ul>
-
-        <h3>Armaduras</h3>
-        <ul class="list-unstyled">
-            @foreach (var slot in _armorSlots)
-            {
-                <li>
-                    @slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")
-                    @if (slot.ItemId is not null)
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Arma</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var weapon in _weapons)
                     {
-                        <input type="number" value="@slot.DurabilidadeAtual" @onchange="@(e => UpdateArmorSlotDurabilidadeAsync(slot.Slot, e.Value))" style="width:4em" />
-                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => AssignArmorSlotAsync(slot.Slot, null))">Remover</button>
+                        <tr>
+                            <td>@weapon.Nome</td>
+                            <td>
+                                Durabilidade
+                                <MudNumericField T="int" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />
+                                / @weapon.DurabilidadeMaxima
+                            </td>
+                            <td>@(weapon.IsEquipped ? "Equipada" : "")</td>
+                            <td>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteWeaponAsync(weapon.Id))">Remover</MudButton>
+                            </td>
+                        </tr>
                     }
-                    else
-                    {
-                        <span style="display: inline-block; width: 16em; vertical-align: middle;">
-                            <EntityPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." />
-                        </span>
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</button>
-                    }
-                </li>
-            }
-        </ul>
+                </tbody>
+            </MudSimpleTable>
+        </Section>
 
-        <h3>Escudos</h3>
-        <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
-            <div class="mb-3">
-                <label class="form-label">Escudo</label>
+        <Section Title="Armaduras">
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var slot in _armorSlots)
+                    {
+                        <tr>
+                            <td>@slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")</td>
+                            <td>
+                                @if (slot.ItemId is not null)
+                                {
+                                    <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => UpdateArmorSlotDurabilidadeAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, null))">Remover</MudButton>
+                                }
+                                else
+                                {
+                                    <span style="display: inline-block; width: 16em; vertical-align: middle;">
+                                        <EntityPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." />
+                                    </span>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</MudButton>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+
+        <Section Title="Escudos">
+            <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
                 <EntityPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Escudo</button>
-        </EditForm>
-        <ul class="list-unstyled mt-3">
-            @foreach (var shield in _shields)
-            {
-                <li>@shield.Nome —
-                    Durabilidade <input type="number" value="@shield.DurabilidadeAtual" @onchange="@(e => UpdateShieldDurabilidadeAsync(shield.Id, e.Value))" style="width:4em" />/@shield.DurabilidadeMaxima
-                    — @(shield.IsEquipped ? "Equipado" : "")
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EquipShieldAsync(shield.Id, !shield.IsEquipped))">@(shield.IsEquipped ? "Desequipar" : "Equipar")</button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteShieldAsync(shield.Id))">Remover</button>
-                </li>
-            }
-        </ul>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var shield in _shields)
+                    {
+                        <tr>
+                            <td>@shield.Nome</td>
+                            <td>
+                                Durabilidade
+                                <MudNumericField T="int" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
+                                / @shield.DurabilidadeMaxima
+                            </td>
+                            <td>@(shield.IsEquipped ? "Equipado" : "")</td>
+                            <td>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => EquipShieldAsync(shield.Id, !shield.IsEquipped))">@(shield.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteShieldAsync(shield.Id))">Remover</MudButton>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
 
         @if (_subAttributes is not null)
         {
-            <h3>Sub-Atributos</h3>
-            <p>Iniciativa: @_subAttributes.Iniciativa</p>
-            <p>Movimentação: @_subAttributes.Movimentacao</p>
-            <p>Esquiva Natural: @_subAttributes.EsquivaNatural</p>
-            <p>Defesa Natural: @_subAttributes.DefesaNatural</p>
-            <p>Redução Física: @_subAttributes.ReducaoFisica</p>
-            <p>Redução Mágica: @_subAttributes.ReducaoMagica</p>
-            <div class="mb-3">
-                <label class="form-label">Cobertura</label>
-                <select class="form-select" value="@_form.Cobertura" @onchange="@(e => UpdateCoberturaAsync(e.Value?.ToString()))">
-                    <option value="Nenhuma">Nenhuma (+0)</option>
-                    <option value="Parcial">Parcial (+5)</option>
-                    <option value="Completa">Completa (+10)</option>
-                </select>
-            </div>
+            <Section Title="Sub-Atributos">
+                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
+                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
+                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
+                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
+                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
+                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
+                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
+                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
+                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
+                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
+                </MudSelect>
+            </Section>
         }
-    </TabPage>
+    </MudTabPanel>
 
-    <TabPage Title="Magias & Habilidades">
+    <MudTabPanel Text="Magias & Habilidades">
         <Section Title="Habilidade Racial">
             <p>@(_racialAbility?.Nome ?? "—")</p>
             <p>@(_racialAbility?.Descricao ?? "—")</p>
@@ -360,9 +378,9 @@
             }
         </ul>
         </Section>
-    </TabPage>
+    </MudTabPanel>
 
-    <TabPage Title="Posses">
+    <MudTabPanel Text="Posses">
         <Section Title="Inventário">
         <div class="mb-3">
             <label class="form-label">Ciclos</label>
@@ -450,9 +468,9 @@
             }
         </ul>
         </Section>
-    </TabPage>
+    </MudTabPanel>
 
-    <TabPage Title="Diário">
+    <MudTabPanel Text="Diário">
         <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
             <div class="mb-3">
                 <label class="form-label">Texto</label>
@@ -479,8 +497,8 @@
                 </li>
             }
         </ul>
-    </TabPage>
-</TabControl>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
