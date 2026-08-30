@@ -30,24 +30,35 @@ else
     <p class="error">@_errorMessage</p>
 }
 
-<h2>Adicionar Participante</h2>
-<EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">
-    <label>
-        Origem
-        <select @bind="_addForm.SourceKind">
-            <option value="CharacterSheet">Ficha de Personagem</option>
-            <option value="NpcSheet">Ficha de NPC</option>
-            <option value="CreatureSheet">Ficha de Criatura</option>
-        </select>
-    </label>
-    <label>Ficha de origem (id) <InputText @bind-Value="_addForm.SourceSheetId" /></label>
-    <label>Iniciativa <InputNumber @bind-Value="_addForm.Iniciativa" /></label>
-    <button type="submit">Adicionar Participante</button>
-</EditForm>
+<Section Title="Adicionar Participante">
+    <EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Origem</label>
+                <select class="form-select" @bind="_addForm.SourceKind">
+                    <option value="CharacterSheet">Ficha de Personagem</option>
+                    <option value="NpcSheet">Ficha de NPC</option>
+                    <option value="CreatureSheet">Ficha de Criatura</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Ficha de origem (id)</label>
+                <InputText class="form-control" @bind-Value="_addForm.SourceSheetId" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Iniciativa</label>
+                <InputNumber class="form-control" @bind-Value="_addForm.Iniciativa" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Adicionar Participante</button>
+            </div>
+        </div>
+    </EditForm>
+</Section>
 
-<button @onclick="AdvanceTurnAsync">Próximo Turno</button>
+<button type="button" class="btn btn-primary my-3" @onclick="AdvanceTurnAsync">Próximo Turno</button>
 
-<table>
+<table class="table">
     <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < _participants.Count; i++)
@@ -65,11 +76,11 @@ else
                 <td>
                     @if (_editingParticipantId == participant.Id)
                     {
-                        <button @onclick="CancelEditParticipant">Cancelar</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditParticipant">Cancelar</button>
                     }
                     else
                     {
-                        <button @onclick="@(() => StartEditParticipant(participant))">Editar</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditParticipant(participant))">Editar</button>
                     }
                 </td>
             </tr>
@@ -78,20 +89,44 @@ else
                 <tr>
                     <td colspan="8">
                         <EditForm Model="_editParticipantForm" OnValidSubmit="@(() => SaveParticipantAsync(participant))">
-                            <label>Iniciativa <InputNumber @bind-Value="_editParticipantForm.Iniciativa" /></label>
-                            <label>Ações Restantes (0-3) <InputNumber @bind-Value="_editParticipantForm.AcoesRestantes" min="0" max="3" /></label>
-                            @if (participant.IsLiveSourced)
-                            {
-                                <p>PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
-                            }
-                            else
-                            {
-                                <label>PV <InputNumber @bind-Value="_editParticipantForm.PV" /></label>
-                                <label>PF <InputNumber @bind-Value="_editParticipantForm.PF" /></label>
-                                <label>PA <InputNumber @bind-Value="_editParticipantForm.PA" /></label>
-                            }
-                            <label>Condições (substitui a lista atual) <InputText @bind-Value="_editParticipantForm.CondicoesText" /></label>
-                            <button type="submit">Salvar</button>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">Iniciativa</label>
+                                    <InputNumber class="form-control" @bind-Value="_editParticipantForm.Iniciativa" />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Ações Restantes (0-3)</label>
+                                    <InputNumber class="form-control" @bind-Value="_editParticipantForm.AcoesRestantes" min="0" max="3" />
+                                </div>
+                                @if (participant.IsLiveSourced)
+                                {
+                                    <div class="col-md-8">
+                                        <p class="text-muted mb-0">PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col-md-2">
+                                        <label class="form-label">PV</label>
+                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PV" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">PF</label>
+                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PF" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">PA</label>
+                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PA" />
+                                    </div>
+                                }
+                                <div class="col-md-6">
+                                    <label class="form-label">Condições (substitui a lista atual)</label>
+                                    <InputText class="form-control" @bind-Value="_editParticipantForm.CondicoesText" />
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary">Salvar</button>
+                                </div>
+                            </div>
                         </EditForm>
                     </td>
                 </tr>
