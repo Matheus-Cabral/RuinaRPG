@@ -142,4 +142,18 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<PostgresFixture>
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Theory]
+    [InlineData("", "0")]
+    [InlineData("   ", "1")]
+    public async Task Register_jogador_with_an_empty_or_whitespace_nickname_returns_400(string nickname, string suffix)
+    {
+        var (gmToken, _) = await RegisterGmAsync($"JogadorGm6{suffix}", $"jogadorgm6{suffix}@teste.com");
+        var code = await GenerateCodeAsync(gmToken);
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, $"jogador6{suffix}@teste.com", "Senha!123", "Senha!123", code));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

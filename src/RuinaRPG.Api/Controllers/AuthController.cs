@@ -32,6 +32,9 @@ public class AuthController(
         if (request.Senha != request.ConfirmacaoSenha)
             return BadRequest("A confirmação de senha não confere com a senha.");
 
+        if (string.IsNullOrWhiteSpace(request.Nickname))
+            return BadRequest("Nickname é obrigatório.");
+
         // Login e Cadastro R0003 - o Nickname é único no sistema. Checked here for a clean
         // message; the unique index on NormalizedNickname is what actually guarantees it,
         // and the catch below turns the race-losing insert into the same 400.
@@ -74,6 +77,9 @@ public class AuthController(
     {
         if (request.Senha != request.ConfirmacaoSenha)
             return BadRequest("A confirmação de senha não confere com a senha.");
+
+        if (string.IsNullOrWhiteSpace(request.Nickname))
+            return BadRequest("Nickname é obrigatório.");
 
         if (await NicknameIsTakenAsync(request.Nickname))
             return BadRequest(NicknameTakenMessage);

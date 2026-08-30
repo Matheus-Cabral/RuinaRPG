@@ -1,6 +1,7 @@
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
+using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Domain.Rules;
@@ -62,6 +63,11 @@ builder.Services.Configure<ImageStorageOptions>(options =>
     options.MaxSizeMb = ImageStorageOptions.ResolveMaxSizeMb(builder.Configuration["Img:MaxSizeMb"]);
 });
 builder.Services.AddScoped<IImageFileStore, DiskImageFileStore>();
+
+builder.Services.Configure<InviteOptions>(options =>
+{
+    options.CodeExpirationHours = InviteOptions.ResolveCodeExpirationHours(builder.Configuration["Invite:CodeExpirationHours"]);
+});
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
