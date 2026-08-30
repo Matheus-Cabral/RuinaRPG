@@ -87,8 +87,8 @@
                 {
                     <tr>
                         <td>@attr.Atributo</td>
-                        <td><MudNumericField T="int" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
-                        <td><MudNumericField T="int" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
+                        <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
+                        <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
                         <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
                         <td>@attr.Total</td>
                     </tr>
@@ -103,7 +103,7 @@
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><MudNumericField T="int" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" /></td>
+                        <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" /></td>
                         <td>@skill.Modificador</td>
                     </tr>
                 }
@@ -139,7 +139,7 @@
                             <td>@weapon.Nome</td>
                             <td>
                                 Durabilidade
-                                <MudNumericField T="int" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />
+                                <MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />
                                 / @weapon.DurabilidadeMaxima
                             </td>
                             <td>@(weapon.IsEquipped ? "Equipada" : "")</td>
@@ -193,7 +193,7 @@
                             <td>@shield.Nome</td>
                             <td>
                                 Durabilidade
-                                <MudNumericField T="int" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
+                                <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
                                 / @shield.DurabilidadeMaxima
                             </td>
                             <td>@(shield.IsEquipped ? "Equipado" : "")</td>
@@ -226,6 +226,9 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
+        @* Tabs 4-6 (this one, Posses, Diário): outer tag only migrated to MudTabPanel — contents still
+           old Bootstrap markup, deliberately, until the ficha-de-personagem-magias-posses-diario plan
+           migrates them. *@
         <Section Title="Habilidade Racial">
             <p>@(_racialAbility?.Nome ?? "—")</p>
             <p>@(_racialAbility?.Descricao ?? "—")</p>
