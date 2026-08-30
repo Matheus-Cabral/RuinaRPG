@@ -745,6 +745,8 @@ Expected: both build with 0 errors (no test files exist yet, that's fine).
 
 - [ ] **Step 5: Write the failing tests for `EntityPicker`**
 
+**Note (found during execution, kept here for the historical record — Tasks 8 and 9's own test snippets below are already written with the correct names):** the code block below uses `TestContext`/`RenderComponent<T>`/`cut.SetParametersAndRender(...)`, which do not exist in the pinned `bunit` 2.9.0 (renamed to `BunitContext`/`Render<T>(...)`/`cut.Render(...)`) — and bUnit+MudBlazor's teardown needs the test class to implement `IAsyncLifetime` routing to `BunitContext`'s own `DisposeAsync()` (MudBlazor registers a DI service that's `IAsyncDisposable`-only). The actual shipped file, `tests/RuinaRPG.Tests.Client/Shared/EntityPickerTests.cs`, has the corrected names and the `IAsyncLifetime` boilerplate — read that file instead of transcribing the block below verbatim.
+
 Create `tests/RuinaRPG.Tests.Client/Shared/EntityPickerTests.cs`:
 
 ```csharp
@@ -962,13 +964,21 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
-public class LinhagemVarianteFieldsTests : TestContext
+public class LinhagemVarianteFieldsTests : BunitContext, IAsyncLifetime
 {
     public LinhagemVarianteFieldsTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
+
+    // MudBlazor registers at least one DI service (PointerEventsNoneService) that only implements
+    // IAsyncDisposable. xUnit's default synchronous IDisposable.Dispose() teardown can't dispose
+    // that cleanly, so route teardown through IAsyncLifetime.DisposeAsync() -> BunitContext's own
+    // async-safe disposal instead. (Same fix Task 7's EntityPickerTests already applies — copy it.)
+    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
+
+    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
 
     [Theory]
     [InlineData("Humano", new[] { "Sinir", "Laonir" })]
@@ -977,7 +987,7 @@ public class LinhagemVarianteFieldsTests : TestContext
     [InlineData("Econos", new[] { "Alora" })]
     public void Variante_options_are_scoped_to_the_selected_Linhagem(string linhagem, string[] expectedVariantes)
     {
-        var cut = RenderComponent<LinhagemVarianteFields>(p => p
+        var cut = Render<LinhagemVarianteFields>(p => p
             .Add(x => x.Linhagem, linhagem)
             .Add(x => x.Variante, (string?)null));
 
@@ -990,7 +1000,7 @@ public class LinhagemVarianteFieldsTests : TestContext
     public async Task Changing_Linhagem_clears_a_now_invalid_Variante()
     {
         string? newVariante = "not-cleared-yet";
-        var cut = RenderComponent<LinhagemVarianteFields>(p => p
+        var cut = Render<LinhagemVarianteFields>(p => p
             .Add(x => x.Linhagem, "Humano")
             .Add(x => x.Variante, "Sinir")
             .Add(x => x.VarianteChanged, v => newVariante = v));
@@ -1003,7 +1013,7 @@ public class LinhagemVarianteFieldsTests : TestContext
     [Fact]
     public void No_Linhagem_selected_yields_no_Variante_options()
     {
-        var cut = RenderComponent<LinhagemVarianteFields>(p => p
+        var cut = Render<LinhagemVarianteFields>(p => p
             .Add(x => x.Linhagem, (string?)null)
             .Add(x => x.Variante, (string?)null));
 
@@ -1107,13 +1117,19 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
-public class VocacaoSubVocacaoFieldsTests : TestContext
+public class VocacaoSubVocacaoFieldsTests : BunitContext, IAsyncLifetime
 {
     public VocacaoSubVocacaoFieldsTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
+
+    // Same MudBlazor-DI-teardown fix as Task 7's EntityPickerTests and Task 8's
+    // LinhagemVarianteFieldsTests — see either for why this is needed.
+    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
+
+    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
 
     [Theory]
     [InlineData("Campeao", new[] { "Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião" })]
@@ -1123,7 +1139,7 @@ public class VocacaoSubVocacaoFieldsTests : TestContext
     [InlineData("Bruxo", new[] { "Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista" })]
     public void SubVocacao_options_are_scoped_to_the_selected_Vocacao(string vocacao, string[] expected)
     {
-        var cut = RenderComponent<VocacaoSubVocacaoFields>(p => p
+        var cut = Render<VocacaoSubVocacaoFields>(p => p
             .Add(x => x.Vocacao, vocacao)
             .Add(x => x.SubVocacao, (string?)null));
 
@@ -1134,7 +1150,7 @@ public class VocacaoSubVocacaoFieldsTests : TestContext
     public async Task Changing_Vocacao_clears_a_now_invalid_SubVocacao()
     {
         string? newSubVocacao = "not-cleared-yet";
-        var cut = RenderComponent<VocacaoSubVocacaoFields>(p => p
+        var cut = Render<VocacaoSubVocacaoFields>(p => p
             .Add(x => x.Vocacao, "Campeao")
             .Add(x => x.SubVocacao, "Duelista")
             .Add(x => x.SubVocacaoChanged, v => newSubVocacao = v));
@@ -1307,13 +1323,18 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared;
 
-public class RrIdentityBadgeTests : TestContext
+public class RrIdentityBadgeTests : BunitContext, IAsyncLifetime
 {
     public RrIdentityBadgeTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
+
+    // Same MudBlazor-DI-teardown fix as Task 7's EntityPickerTests and Task 8's field tests.
+    Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;
+
+    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync();
 
     [Theory]
     [InlineData("Humano", "Sinir", "Humano", "Sol")]
@@ -1324,7 +1345,7 @@ public class RrIdentityBadgeTests : TestContext
     public void Renders_the_right_glyph_and_polaridade_for_a_known_pair(
         string linhagem, string variante, string expectedGlyphKey, string expectedPolaridade)
     {
-        var cut = RenderComponent<RrIdentityBadge>(p => p
+        var cut = Render<RrIdentityBadge>(p => p
             .Add(x => x.Linhagem, linhagem)
             .Add(x => x.Variante, variante));
 
@@ -1339,7 +1360,7 @@ public class RrIdentityBadgeTests : TestContext
     [InlineData("Humano", "NaoExiste")]
     public void Renders_a_neutral_placeholder_for_an_unknown_or_incomplete_pair(string? linhagem, string? variante)
     {
-        var cut = RenderComponent<RrIdentityBadge>(p => p
+        var cut = Render<RrIdentityBadge>(p => p
             .Add(x => x.Linhagem, linhagem)
             .Add(x => x.Variante, variante));
 
