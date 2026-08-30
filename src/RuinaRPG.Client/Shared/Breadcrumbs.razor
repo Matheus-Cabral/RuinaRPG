@@ -1,26 +1,18 @@
 @if (Items is { Count: > 0 })
 {
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            @for (var i = 0; i < Items.Count; i++)
-            {
-                var item = Items[i];
-                var isLast = i == Items.Count - 1;
-                <li class="breadcrumb-item @(isLast ? "active" : "")" aria-current="@(isLast ? "page" : null)">
-                    @if (!isLast && item.Href is not null)
-                    {
-                        <a href="@item.Href">@item.Text</a>
-                    }
-                    else
-                    {
-                        @item.Text
-                    }
-                </li>
-            }
-        </ol>
-    </nav>
+    <MudBlazor.MudBreadcrumbs Items="_mudItems" Separator="/" />
 }
 
 @code {
     [Parameter, EditorRequired] public List<BreadcrumbItem> Items { get; set; } = new();
+
+    private List<MudBlazor.BreadcrumbItem> _mudItems = new();
+
+    protected override void OnParametersSet()
+    {
+        var lastIndex = Items.Count - 1;
+        _mudItems = Items
+            .Select((item, i) => new MudBlazor.BreadcrumbItem(item.Text, item.Href, disabled: i == lastIndex || item.Href is null))
+            .ToList();
+    }
 }
