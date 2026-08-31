@@ -445,31 +445,32 @@
 
     <MudTabPanel Text="Diário">
         <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
-            <div class="mb-3">
-                <label class="form-label">Texto</label>
-                <InputTextArea class="form-control" @bind-Value="_diaryForm.Texto" />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Entrada</button>
+            <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
         </EditForm>
-        <ul class="list-unstyled mt-3">
-            @foreach (var entry in _diaryEntries)
-            {
-                <li>
-                    @if (_editingDiaryEntryId == entry.Id)
-                    {
-                        <textarea class="form-control" @bind="_editDiaryText"></textarea>
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditDiaryEntry">Cancelar</button>
-                    }
-                    else
-                    {
-                        <span>@entry.CreatedAt.ToString("g") — @entry.Texto</span>
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditDiaryEntry(entry))">Editar</button>
-                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</button>
-                    }
-                </li>
-            }
-        </ul>
+        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+            <tbody>
+                @foreach (var entry in _diaryEntries)
+                {
+                    <tr>
+                        <td>
+                            @if (_editingDiaryEntryId == entry.Id)
+                            {
+                                <MudTextField T="string" @bind-Value="_editDiaryText" Lines="3" />
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
+                            }
+                            else
+                            {
+                                <MudText>@entry.CreatedAt.ToString("g") — @entry.Texto</MudText>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
     </MudTabPanel>
 </MudTabs>
 
