@@ -625,6 +625,16 @@
 
     private async Task SaveAsync()
     {
+        if (_form.Nivel is null || _form.ExperienciaAtual is null
+            || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
+            || _form.NucleosRankC is null || _form.NucleosRankB is null || _form.NucleosRankA is null || _form.NucleosRankS is null
+            || _form.PontosDeIgnicaoAtual is null || _form.PontosDeIgnicaoTotal is null
+            || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null || _form.EstresseAtual is null)
+        {
+            _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
+            return;
+        }
+
         var request = new UpdateCharacterSheetRequest(null, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
             _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
