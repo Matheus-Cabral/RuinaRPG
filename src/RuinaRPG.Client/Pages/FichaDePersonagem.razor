@@ -8,6 +8,7 @@
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
+@using System.ComponentModel.DataAnnotations
 
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Personagem</h1>
@@ -34,6 +35,7 @@
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
             <Section Title="Identidade">
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
                 <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" />
@@ -43,30 +45,30 @@
             </Section>
 
             <Section Title="Nível e Progressão">
-                <MudNumericField T="int" @bind-Value="_form.Nivel" Label="Nível" />
+                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" />
                 <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
                 <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" />
-                <MudNumericField T="int" @bind-Value="_form.ExperienciaAtual" Label="Experiência Atual" />
+                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" />
                 <MudText>EAP Atual: @_form.EAPAtual</MudText>
-                <MudNumericField T="int" @bind-Value="_form.PontosDeIgnicaoAtual" Label="Pontos de Ignição Atual" />
-                <MudNumericField T="int" @bind-Value="_form.PontosDeIgnicaoTotal" Label="Pontos de Ignição Total" />
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" />
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" />
             </Section>
 
             <Section Title="Âmbares Absorvidos">
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankF" Label="Rank F" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankE" Label="Rank E" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankD" Label="Rank D" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankC" Label="Rank C" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankB" Label="Rank B" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankA" Label="Rank A" />
-                <MudNumericField T="int" @bind-Value="_form.NucleosRankS" Label="Rank S" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankF" For="@(() => _form.NucleosRankF)" Label="Rank F" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankE" For="@(() => _form.NucleosRankE)" Label="Rank E" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankD" For="@(() => _form.NucleosRankD)" Label="Rank D" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankC" For="@(() => _form.NucleosRankC)" Label="Rank C" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankB" For="@(() => _form.NucleosRankB)" Label="Rank B" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankA" For="@(() => _form.NucleosRankA)" Label="Rank A" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" />
             </Section>
 
             <Section Title="Recursos">
-                <MudNumericField T="int" @bind-Value="_form.AdrenalinaAtual" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
-                <MudNumericField T="int" @bind-Value="_form.FocoAtual" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
-                <MudNumericField T="int" @bind-Value="_form.EstresseAtual" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
-                <MudNumericField T="int" @bind-Value="_form.VitalidadeAtual" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
             </Section>
 
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
@@ -655,9 +657,9 @@
     private async Task SaveAsync()
     {
         var request = new UpdateCharacterSheetRequest(null, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
-            _form.Afinidade, _form.Propriedade, _form.Nivel, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual, _form.EAPAtual,
-            _form.NucleosRankF, _form.NucleosRankE, _form.NucleosRankD, _form.NucleosRankC, _form.NucleosRankB, _form.NucleosRankA, _form.NucleosRankS,
-            _form.PontosDeIgnicaoAtual, _form.PontosDeIgnicaoTotal, _form.VitalidadeAtual, _form.FocoAtual, _form.AdrenalinaAtual, _form.EstresseAtual,
+            _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
+            _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
+            _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal!.Value, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
             _form.Cobertura, _form.Ciclos);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
@@ -1051,25 +1053,40 @@
         public string? SubVocacao { get; set; }
         public string? Afinidade { get; set; }
         public string? Propriedade { get; set; }
-        public int Nivel { get; set; } = 1;
+        [Required(ErrorMessage = "Informe o Nível.")]
+        public int? Nivel { get; set; } = 1;
         public int Graduacao { get; set; }
         public string GraduacaoLabel { get; set; } = "Grau";
         public bool PossuiCoracaoDeMana { get; set; }
-        public int ExperienciaAtual { get; set; }
+        [Required(ErrorMessage = "Informe a Experiência Atual.")]
+        public int? ExperienciaAtual { get; set; }
         public int EAPAtual { get; set; }
-        public int NucleosRankF { get; set; }
-        public int NucleosRankE { get; set; }
-        public int NucleosRankD { get; set; }
-        public int NucleosRankC { get; set; }
-        public int NucleosRankB { get; set; }
-        public int NucleosRankA { get; set; }
-        public int NucleosRankS { get; set; }
-        public int PontosDeIgnicaoAtual { get; set; }
-        public int PontosDeIgnicaoTotal { get; set; }
-        public int VitalidadeAtual { get; set; }
-        public int FocoAtual { get; set; }
-        public int AdrenalinaAtual { get; set; }
-        public int EstresseAtual { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]
+        public int? NucleosRankF { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank E.")]
+        public int? NucleosRankE { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank D.")]
+        public int? NucleosRankD { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank C.")]
+        public int? NucleosRankC { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank B.")]
+        public int? NucleosRankB { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank A.")]
+        public int? NucleosRankA { get; set; }
+        [Required(ErrorMessage = "Informe os Núcleos de Rank S.")]
+        public int? NucleosRankS { get; set; }
+        [Required(ErrorMessage = "Informe os Pontos de Ignição Atual.")]
+        public int? PontosDeIgnicaoAtual { get; set; }
+        [Required(ErrorMessage = "Informe os Pontos de Ignição Total.")]
+        public int? PontosDeIgnicaoTotal { get; set; }
+        [Required(ErrorMessage = "Informe a Vitalidade.")]
+        public int? VitalidadeAtual { get; set; }
+        [Required(ErrorMessage = "Informe o Foco.")]
+        public int? FocoAtual { get; set; }
+        [Required(ErrorMessage = "Informe a Adrenalina.")]
+        public int? AdrenalinaAtual { get; set; }
+        [Required(ErrorMessage = "Informe o Estresse.")]
+        public int? EstresseAtual { get; set; }
         public string Cobertura { get; set; } = "Nenhuma";
         public int Ciclos { get; set; }
         public int VitalidadeMaximo { get; set; }
