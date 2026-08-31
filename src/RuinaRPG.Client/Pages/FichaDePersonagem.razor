@@ -351,91 +351,95 @@
 
     <MudTabPanel Text="Posses">
         <Section Title="Inventário">
-        <div class="mb-3">
-            <label class="form-label">Ciclos</label>
-            <input type="number" class="form-control" style="width:8em" value="@_form.Ciclos" @onchange="@(e => UpdateCiclosAsync(e.Value))" />
-        </div>
-        <EditForm Model="_inventoryForm" OnValidSubmit="AddInventoryItemAsync">
-            <div class="mb-3">
-                <label class="form-label">Item</label>
+            <MudNumericField T="int?" Value="@_form.Ciclos" ValueChanged="@(v => UpdateCiclosAsync(v))" Label="Ciclos" Style="width:8em;" />
+            <EditForm Model="_inventoryForm" OnValidSubmit="AddInventoryItemAsync">
                 <EntityPicker @bind-Value="_inventoryForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "ItemGeral"))" Placeholder="Buscar item..." />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Quantidade</label>
-                <InputNumber class="form-control" @bind-Value="_inventoryForm.Qtd" />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Item</button>
-        </EditForm>
-        <ul class="list-unstyled mt-3">
-            @foreach (var item in _inventory)
-            {
-                <li>@item.Nome — Peso @item.Peso — Qtd @item.Qtd — Total @item.Total <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteInventoryItemAsync(item.Id))">Remover</button></li>
-            }
-        </ul>
+                <MudNumericField T="int" @bind-Value="_inventoryForm.Qtd" Label="Quantidade" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Item</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var item in _inventory)
+                    {
+                        <tr>
+                            <td>@item.Nome — Peso @item.Peso — Qtd @item.Qtd — Total @item.Total</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteInventoryItemAsync(item.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
         </Section>
 
         <Section Title="Artefatos">
-        <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
-            <div class="mb-3">
-                <label class="form-label">Artefato</label>
+            <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
                 <EntityPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Artefato</button>
-        </EditForm>
-        @foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
-        {
-            <h4>@group.Key</h4>
-            <ul class="list-unstyled">
-                @foreach (var artifact in group)
-                {
-                    <li>@artifact.Nome — Alvo @artifact.Alvo — Valor @artifact.Valor <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</button></li>
-                }
-            </ul>
-        }
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Artefato</MudButton>
+            </EditForm>
+            @foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
+            {
+                <MudText Typo="Typo.h6" Class="mt-3">@group.Key</MudText>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <tbody>
+                        @foreach (var artifact in group)
+                        {
+                            <tr>
+                                <td>@artifact.Nome — Alvo @artifact.Alvo — Valor @artifact.Valor</td>
+                                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
         </Section>
 
         <Section Title="Afeições">
-        <EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
-            <div class="mb-3">
-                <label class="form-label">Nome</label>
-                <InputText class="form-control" @bind-Value="_affectionForm.Nome" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Favorabilidade</label>
-                <InputNumber class="form-control" @bind-Value="_affectionForm.Favorabilidade" />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Afeição</button>
-        </EditForm>
-        <ul class="list-unstyled mt-3">
-            @foreach (var affection in _affections)
-            {
-                <li>@affection.Nome — Favorabilidade @affection.Favorabilidade <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAffectionAsync(affection.Id))">Remover</button></li>
-            }
-        </ul>
+            <EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
+                <MudTextField T="string" @bind-Value="_affectionForm.Nome" Label="Nome" />
+                <MudNumericField T="int" @bind-Value="_affectionForm.Favorabilidade" Label="Favorabilidade" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afeição</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var affection in _affections)
+                    {
+                        <tr>
+                            <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffectionAsync(affection.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
         </Section>
 
         <Section Title="Características">
-        <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-            <div class="mb-3">
-                <label class="form-label">Característica</label>
+            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
                 <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-            </div>
-            <button type="submit" class="btn btn-primary">Adicionar Característica</button>
-        </EditForm>
-        <h4>Positivas (Total: @(_traits?.TotalPositivas ?? 0))</h4>
-        <ul class="list-unstyled">
-            @foreach (var trait in _traits?.Positivas ?? new())
-            {
-                <li>@trait.Nome (@trait.Custo) — @trait.Descricao <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteTraitAsync(trait.Id))">Remover</button></li>
-            }
-        </ul>
-        <h4>Negativas (Total: @(_traits?.TotalNegativas ?? 0))</h4>
-        <ul class="list-unstyled">
-            @foreach (var trait in _traits?.Negativas ?? new())
-            {
-                <li>@trait.Nome (@trait.Custo) — @trait.Descricao <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteTraitAsync(trait.Id))">Remover</button></li>
-            }
-        </ul>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
+            </EditForm>
+            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Positivas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Negativas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
         </Section>
     </MudTabPanel>
 
