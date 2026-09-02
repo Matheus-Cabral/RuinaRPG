@@ -1,32 +1,30 @@
 @page "/minhas-campanhas"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Campaigns
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Minhas Campanhas</h1>
+<MudText Typo="Typo.h3">Minhas Campanhas</MudText>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 else if (_campaigns.Count == 0)
 {
-    <p class="text-muted">Você ainda não faz parte de nenhuma campanha.</p>
+    <MudText Color="Color.Secondary" Class="mt-3">Você ainda não faz parte de nenhuma campanha.</MudText>
 }
 
-<div class="list-group">
+<MudList T="string" Class="mt-3">
     @foreach (var campaign in _campaigns)
     {
-        <a class="list-group-item list-group-item-action" href="@($"campanhas/{campaign.Id}/jogador")">
-            <h3 class="mb-1">@campaign.Nome</h3>
-            <p class="mb-0 text-muted">@campaign.Descricao</p>
-        </a>
+        <MudListItem T="string" Text="@campaign.Nome" SecondaryText="@campaign.Descricao" Href="@($"campanhas/{campaign.Id}/jogador")" />
     }
-</div>
+</MudList>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Minhas Campanhas"),

@@ -1,7 +1,10 @@
 @page "/"
+@using MudBlazor
 
-<h1>Ruína RPG</h1>
-<p>Um sistema de RPG de mesa de fantasia sombria, ambientado em Trevo — um mundo moldado por dois archaios rivais, Helônios (o Sol) e Nyxara (a Lua), cuja influência define até os corpos e poderes de seus povos. Humanos versáteis, Phylauc felinos e orgulhosos de sua honra, Nephrytes alados nascidos de uma ilha que voa, e os Ecônos — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua: todos convivem à sombra da Ruína. Crie seu personagem, junte-se a uma campanha, e escreva sua própria lenda nas cinzas do que restou.</p>
+<MudText Typo="Typo.h3">Ruína RPG</MudText>
+<MudText Class="mt-3">Um sistema de RPG de mesa de fantasia sombria, ambientado em Trevo — um mundo moldado por dois archaios rivais, Helônios (o Sol) e Nyxara (a Lua), cuja influência define até os corpos e poderes de seus povos. Humanos versáteis, Phylauc felinos e orgulhosos de sua honra, Nephrytes alados nascidos de uma ilha que voa, e os Ecônos — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua: todos convivem à sombra da Ruína. Crie seu personagem, junte-se a uma campanha, e escreva sua própria lenda nas cinzas do que restou.</MudText>
 
-<a href="/cadastro">Cadastrar</a>
-<a href="/login">Entrar</a>
+<MudStack Row="true" Spacing="2" Class="mt-4">
+    <MudButton Href="/cadastro" Variant="Variant.Filled" Color="Color.Primary">Cadastrar</MudButton>
+    <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Primary">Entrar</MudButton>
+</MudStack>

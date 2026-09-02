@@ -1,19 +1,20 @@
 @page "/painel/convites"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Invites
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Convidar Jogador</h1>
+<MudText Typo="Typo.h3">Convidar Jogador</MudText>
 
-<button @onclick="GenerateAsync">Gerar código de convite</button>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="GenerateAsync">Gerar código de convite</MudButton>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<table>
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
     <thead>
         <tr>
             <th>Código</th>
@@ -38,16 +39,16 @@
                 <td>
                     @if (item.Status == "Ativo")
                     {
-                        <button @onclick="() => RevokeAsync(item.Code)">Revogar</button>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RevokeAsync(item.Code))">Revogar</MudButton>
                     }
                 </td>
             </tr>
         }
     </tbody>
-</table>
+</MudSimpleTable>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Convidar Jogador"),

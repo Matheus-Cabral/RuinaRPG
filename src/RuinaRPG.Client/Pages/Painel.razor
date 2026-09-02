@@ -5,75 +5,65 @@
 @inject TokenAuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Painel</h1>
+<MudText Typo="Typo.h3">Painel</MudText>
 
 @if (_me is null)
 {
-    <p>Carregando...</p>
+    <MudText Class="mt-3">Carregando...</MudText>
 }
 else
 {
-    <p>Bem-vindo(a), @_me.Nickname.</p>
+    <MudText Class="mt-3">Bem-vindo(a), @_me.Nickname.</MudText>
 
     @if (_me.Role == "GM")
     {
-        <div class="list-group">
-            <a class="list-group-item list-group-item-action" href="painel/convites">
-                <h3 class="mb-1">Convidar Jogador</h3>
-                <p class="mb-0 text-muted">Gere e acompanhe códigos de convite.</p>
-            </a>
-            <a class="list-group-item list-group-item-action" href="bestiario">
-                <h3 class="mb-1">Bestiário do GM</h3>
-                <p class="mb-0 text-muted">Suas fichas de criatura.</p>
-            </a>
-            <a class="list-group-item list-group-item-action" href="npcs">
-                <h3 class="mb-1">NPCs do GM</h3>
-                <p class="mb-0 text-muted">Suas fichas de NPC.</p>
-            </a>
-            <a class="list-group-item list-group-item-action" href="catalogo">
-                <h3 class="mb-1">Itens e Equipamentos</h3>
-                <p class="mb-0 text-muted">Catálogo de itens, armas, armaduras e artefatos.</p>
-            </a>
-            <a class="list-group-item list-group-item-action" href="campanhas">
-                <h3 class="mb-1">Campanhas</h3>
-                <p class="mb-0 text-muted">Conceda fichas, gerencie o diário e os anexos de cada campanha.</p>
-            </a>
-        </div>
+        <MudList T="string" Class="mt-3">
+            <MudListItem T="string" Text="Convidar Jogador" SecondaryText="Gere e acompanhe códigos de convite." Href="painel/convites" />
+            <MudListItem T="string" Text="Bestiário do GM" SecondaryText="Suas fichas de criatura." Href="bestiario" />
+            <MudListItem T="string" Text="NPCs do GM" SecondaryText="Suas fichas de NPC." Href="npcs" />
+            <MudListItem T="string" Text="Itens e Equipamentos" SecondaryText="Catálogo de itens, armas, armaduras e artefatos." Href="catalogo" />
+            <MudListItem T="string" Text="Campanhas" SecondaryText="Conceda fichas, gerencie o diário e os anexos de cada campanha." Href="campanhas" />
+        </MudList>
     }
     else
     {
         @if (_errorMessage is not null)
         {
-            <p class="error">@_errorMessage</p>
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
         }
         else if (_myCharacters.Count == 0)
         {
-            <p class="text-muted">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</p>
+            <MudText Color="Color.Secondary" Class="mt-3">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</MudText>
         }
 
-        <div class="list-group">
+        <MudList T="string" Class="mt-3">
             @foreach (var sheet in _myCharacters)
             {
-                <a class="list-group-item list-group-item-action" href="@($"fichas/{sheet.Id}")">
-                    @if (sheet.ImageUrl is not null)
-                    {
-                        <img src="@sheet.ImageUrl" alt="" style="max-width: 48px; margin-right: 0.75rem;" />
-                    }
-                    <h3 class="mb-1">@(sheet.Nome ?? "(sem nome)")</h3>
-                    <p class="mb-0 text-muted">Nível @sheet.Nivel — @sheet.CampanhaNome</p>
-                </a>
+                <MudListItem T="string" Href="@($"fichas/{sheet.Id}")">
+                    <ChildContent>
+                        @if (sheet.ImageUrl is not null)
+                        {
+                            <MudAvatar Class="mr-3"><MudImage Src="@sheet.ImageUrl" /></MudAvatar>
+                        }
+                        <div>
+                            <MudText Typo="Typo.subtitle1">@(sheet.Nome ?? "(sem nome)")</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Nível @sheet.Nivel — @sheet.CampanhaNome</MudText>
+                        </div>
+                    </ChildContent>
+                </MudListItem>
             }
-        </div>
+        </MudList>
     }
 }
 
-<button type="button" class="btn btn-outline-secondary mt-3" @onclick="LogoutAsync">Sair</button>
+<MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="mt-3" OnClick="LogoutAsync">Sair</MudButton>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new() { new("Painel") };
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new() { new("Painel") };
 
     private MeResponse? _me;
     private List<MyCharacterSheetSummaryResponse> _myCharacters = new();

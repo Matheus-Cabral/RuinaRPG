@@ -5,21 +5,20 @@
 @inject TokenAuthenticationStateProvider AuthProvider
 @using System.ComponentModel.DataAnnotations
 @using RuinaRPG.Contracts.Auth
+@using MudBlazor
 
-<h1>Entrar</h1>
+<MudText Typo="Typo.h3">Entrar</MudText>
 
 <EditForm Model="_request" OnValidSubmit="SubmitAsync">
     <DataAnnotationsValidator />
-    <label>Nickname <InputText @bind-Value="_request.Nickname" /></label>
-    <ValidationMessage For="@(() => _request.Nickname)" />
-    <label>Senha <InputText type="password" @bind-Value="_request.Senha" /></label>
-    <ValidationMessage For="@(() => _request.Senha)" />
-    <button type="submit">Entrar</button>
+    <MudTextField T="string" @bind-Value="_request.Nickname" Label="Nickname" For="@(() => _request.Nickname)" />
+    <MudTextField T="string" @bind-Value="_request.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _request.Senha)" />
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Entrar</MudButton>
 </EditForm>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
 @code {
