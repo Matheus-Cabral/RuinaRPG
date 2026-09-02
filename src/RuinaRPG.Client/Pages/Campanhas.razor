@@ -7,24 +7,27 @@
 <Breadcrumbs Items="@Crumbs" />
 
 <MudText Typo="Typo.h3">Campanhas</MudText>
+<Section>
+    <EditForm Model="_form" OnValidSubmit="CreateAsync">
+        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Criar Campanha</MudButton>
+    </EditForm>
+</Section>
 
-<EditForm Model="_form" OnValidSubmit="CreateAsync">
-    <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
-    <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
-    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Criar Campanha</MudButton>
-</EditForm>
-
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
-
-<MudList T="string" Class="mt-3">
-    @foreach (var campaign in _campaigns)
+<Section>
+    @if (_errorMessage is not null)
     {
-        <MudListItem T="string" Text="@campaign.Nome" SecondaryText="@campaign.Descricao" Href="@($"campanhas/{campaign.Id}")" />
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
     }
-</MudList>
+
+    <MudList T="string" Class="mt-3">
+        @foreach (var campaign in _campaigns)
+        {
+            <MudListItem T="string" Text="@campaign.Nome" SecondaryText="@campaign.Descricao" Href="@($"campanhas/{campaign.Id}")" />
+        }
+    </MudList>
+</Section>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()

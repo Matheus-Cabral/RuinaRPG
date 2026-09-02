@@ -8,66 +8,71 @@
 
 <MudText Typo="Typo.h3">Catálogo de Itens e Equipamentos</MudText>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</MudButton>
+<Section Title="Filtros">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</MudButton>
 
-<MudGrid Class="mt-3">
-    <MudItem xs="12" md="4">
-        <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
-            <MudSelectItem Value="@("")">Todos os Tipos</MudSelectItem>
-            <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
-            <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
-            <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
-            <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
-            <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_subcategoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Subcategoria" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_tierFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tier" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_categoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Categoria" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_tipoDeDanoFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tipo de Dano" />
-    </MudItem>
-</MudGrid>
+    <MudGrid Class="mt-3">
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
+                <MudSelectItem Value="@("")">Todos os Tipos</MudSelectItem>
+                <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
+                <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
+                <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
+                <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
+                <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_subcategoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Subcategoria" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_tierFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tier" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_categoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Categoria" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_tipoDeDanoFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tipo de Dano" />
+        </MudItem>
+    </MudGrid>
+</Section>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<Section Title="Itens">
 
-<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th>Tipo</th>
-            <th>Subcategoria</th>
-            <th>Peso</th>
-            <th>Preço</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in _items)
-        {
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+    }
+
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
             <tr>
-                <td>@item.Nome</td>
-                <td>@item.Tipo</td>
-                <td>@(item.Subcategoria ?? "—")</td>
-                <td>@item.Peso</td>
-                <td>@item.Preco</td>
-                <td>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(item.Id))">Excluir</MudButton>
-                </td>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Subcategoria</th>
+                <th>Peso</th>
+                <th>Preço</th>
+                <th></th>
             </tr>
-        }
-    </tbody>
-</MudSimpleTable>
+        </thead>
+        <tbody>
+            @foreach (var item in _items)
+            {
+                <tr>
+                    <td>@item.Nome</td>
+                    <td>@item.Tipo</td>
+                    <td>@(item.Subcategoria ?? "—")</td>
+                    <td>@item.Peso</td>
+                    <td>@item.Preco</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(item.Id))">Excluir</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()

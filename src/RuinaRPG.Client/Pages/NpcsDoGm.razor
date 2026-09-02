@@ -8,59 +8,63 @@
 
 <MudText Typo="Typo.h3">NPCs do GM</MudText>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Novo NPC</MudButton>
+<Section Title="Filtros">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Novo NPC</MudButton>
 
-<MudGrid Class="mt-3">
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_linhagemFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Linhagem" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_varianteFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Variante" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_vocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Vocação" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField T="string" @bind-Value="_subVocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Sub-Vocação" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudNumericField T="int?" @bind-Value="_nivelFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nível" />
-    </MudItem>
-</MudGrid>
+    <MudGrid Class="mt-3">
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_linhagemFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Linhagem" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_varianteFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Variante" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_vocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Vocação" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="_subVocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Sub-Vocação" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudNumericField T="int?" @bind-Value="_nivelFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nível" />
+        </MudItem>
+    </MudGrid>
+</Section>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<Section Title="NPC's">
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+    }
 
-<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th>Linhagem</th>
-            <th>Vocação</th>
-            <th>Sub-Vocação</th>
-            <th>Nível</th>
-            <th>Dono</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var npc in _npcs)
-        {
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
             <tr>
-                <td><MudLink Href="@($"npcs/{npc.Id}")">@npc.Nome</MudLink></td>
-                <td>@npc.Linhagem</td>
-                <td>@npc.Vocacao</td>
-                <td>@(npc.SubVocacao ?? "—")</td>
-                <td>@npc.Nivel</td>
-                <td>@(npc.OwnerNickname ?? "—")</td>
+                <th>Nome</th>
+                <th>Linhagem</th>
+                <th>Vocação</th>
+                <th>Sub-Vocação</th>
+                <th>Nível</th>
+                <th>Dono</th>
             </tr>
-        }
-    </tbody>
-</MudSimpleTable>
+        </thead>
+        <tbody>
+            @foreach (var npc in _npcs)
+            {
+                <tr>
+                    <td><MudLink Href="@($"npcs/{npc.Id}")">@npc.Nome</MudLink></td>
+                    <td>@npc.Linhagem</td>
+                    <td>@npc.Vocacao</td>
+                    <td>@(npc.SubVocacao ?? "—")</td>
+                    <td>@npc.Nivel</td>
+                    <td>@(npc.OwnerNickname ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()

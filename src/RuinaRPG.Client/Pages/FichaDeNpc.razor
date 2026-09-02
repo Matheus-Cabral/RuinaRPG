@@ -61,45 +61,49 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
-        <MudSimpleTable Dense="true" Hover="true">
-            <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
-            <tbody>
-                @foreach (var attr in _attributes)
-                {
-                    <tr>
-                        <td>@attr.Atributo</td>
-                        <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
-                        <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
-                        <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
-                        <td>@attr.Total</td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <Section Title="Atributos">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
+                <tbody>
+                    @foreach (var attr in _attributes)
+                    {
+                        <tr>
+                            <td>@attr.Atributo</td>
+                            <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
+                            <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
+                            <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
+                            <td>@attr.Total</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
 
-        <MudSimpleTable Dense="true" Hover="true">
-            <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
-            <tbody>
-                @foreach (var skill in _skills)
-                {
-                    <tr>
-                        <td>@skill.Pericia</td>
-                        <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
-                        <td>@skill.Modificador</td>
-                        <td>
-                            <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
-                                <MudSelectItem Value="@("")">—</MudSelectItem>
-                                @foreach (var attr in _attributes)
-                                {
-                                    <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
-                                }
-                            </MudSelect>
-                        </td>
-                        <td>@skill.Total</td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <Section Title="Perícias">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
+                <tbody>
+                    @foreach (var skill in _skills)
+                    {
+                        <tr>
+                            <td>@skill.Pericia</td>
+                            <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
+                            <td>@skill.Modificador</td>
+                            <td>
+                                <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
+                                    <MudSelectItem Value="@("")">—</MudSelectItem>
+                                    @foreach (var attr in _attributes)
+                                    {
+                                        <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td>@skill.Total</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
 
         <Section Title="Afinidades">
             <MudSimpleTable Dense="true" Hover="true">

@@ -45,7 +45,7 @@
                 {
                     <MudListItem T="string">
                         <ChildContent>
-                            <MudText>@member.Nickname (@member.Email)</MudText>
+                            <MudText>@member.Nickname</MudText>
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</MudButton>
                             <MudList T="string" Dense="true">
                                 @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
@@ -64,74 +64,86 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Diário">
-        <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
-            <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
-            <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _diaryImageIds))" Class="mt-3">
-                <CustomContent Context="fileUploadContext">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                </CustomContent>
-            </MudFileUpload>
-            <MudList T="string" Dense="true">
-                @foreach (var image in _myImages)
-                {
-                    <MudListItem T="string">
-                        <MudCheckBox T="bool" Value="@_diaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_diaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                    </MudListItem>
-                }
-            </MudList>
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
-        </EditForm>
-        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-            <tbody>
-                @foreach (var entry in _diaryEntries)
-                {
-                    <tr>
-                        <td>
-                            @if (_editingEntryId == entry.Id)
-                            {
-                                <MudTextField T="string" @bind-Value="_editText" Lines="3" />
-                                <MudList T="string" Dense="true">
-                                    @foreach (var image in _myImages)
-                                    {
-                                        <MudListItem T="string">
-                                            <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
-                            }
-                            else
-                            {
-                                <MudText>@entry.CreatedAt.ToString("g") — @entry.Texto</MudText>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
-                                @if (entry.ImageUrls.Count > 0)
+        <Section Title="Adicionar entrada">
+            <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
+                <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
+                <MudExpansionPanel Text="Anexar imagens">
+                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _diaryImageIds))" Class="mt-3">
+                        <CustomContent Context="fileUploadContext">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudList T="string" Dense="true">
+                        @foreach (var image in _myImages)
+                        {
+                            <MudListItem T="string">
+                                <MudCheckBox T="bool" Value="@_diaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_diaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudExpansionPanel>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
+            </EditForm>
+        </Section>
+
+        <Section Title="Entradas">
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var entry in _diaryEntries)
+                    {
+                        <tr>
+                            <td>
+                                @if (_editingEntryId == entry.Id)
                                 {
-                                    <div class="mt-1">
-                                        @foreach (var url in entry.ImageUrls)
+                                    <MudTextField T="string" @bind-Value="_editText" Lines="3" />
+                                    <MudList T="string" Dense="true">
+                                        @foreach (var image in _myImages)
                                         {
-                                            <MudImage Src="@url" Width="100" Class="mr-1" />
+                                            <MudListItem T="string">
+                                                <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                                            </MudListItem>
                                         }
-                                    </div>
+                                    </MudList>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                 }
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+                                else
+                                {
+                                    <MudText>@entry.CreatedAt.ToString("g") — @entry.Texto</MudText>
+                                    @if (entry.ImageUrls.Count > 0)
+                                    {
+                                        <div class="mt-1">
+                                            @foreach (var url in entry.ImageUrls)
+                                            {
+                                                <MudImage Src="@url" Width="100" Class="mr-1" />
+                                            }
+                                        </div>
+                                    }
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Encontros">
-        <MudTextField T="string" @bind-Value="_newEncounterNome" Label="Nome do encontro (opcional)" Style="max-width:24rem" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="CreateEncounterAsync">Novo Encontro</MudButton>
-        <MudList T="string" Class="mt-3">
-            @foreach (var encounter in _encounters)
-            {
-                <MudListItem T="string" Text="@(encounter.Nome ?? "(sem nome)")" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")" />
-            }
-        </MudList>
+        <Section Title="Criar encontro">
+            <MudTextField T="string" @bind-Value="_newEncounterNome" Label="Nome do encontro (opcional)" Style="max-width:24rem" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="CreateEncounterAsync">Novo Encontro</MudButton>
+        </Section>
+
+        <Section Title="Encontros">
+            <MudList T="string" Class="mt-3">
+                @foreach (var encounter in _encounters)
+                {
+                    <MudListItem T="string" Text="@(encounter.Nome ?? "(sem nome)")" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")" />
+                }
+            </MudList>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Anexos">
@@ -154,7 +166,7 @@
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachImageAsync">Anexar Imagem</MudButton>
                     <MudFileUpload T="IBrowserFile" FilesChanged="UploadAndAttachImageAsync" Class="mt-2">
                         <CustomContent Context="fileUploadContext">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Ou enviar uma imagem nova (R0007)</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Ou enviar uma imagem nova</MudButton>
                         </CustomContent>
                     </MudFileUpload>
                 </Section>
@@ -204,119 +216,129 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Conceder Ficha">
-        <MudGrid Class="mt-3">
-            <MudItem xs="12" md="4">
-                <MudSelect T="string" @bind-Value="_grantPlayerId" Label="Jogador">
-                    <MudSelectItem Value="@("")">(selecione)</MudSelectItem>
-                    @foreach (var member in _members)
-                    {
-                        <MudSelectItem Value="@member.UserId">@member.Nickname</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="3">
-                <MudSelect T="string" @bind-Value="_grantTipo" Label="Tipo">
-                    <MudSelectItem Value="@("Npc")">NPC</MudSelectItem>
-                    <MudSelectItem Value="@("Creature")">Criatura</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="5">
-                <EntityPicker @bind-Value="_grantSourceSheetId" SearchItems="SearchGrantSourceSheetsAsync" Placeholder="Buscar ficha existente (opcional — em branco cria uma ficha nova)..." />
-            </MudItem>
-        </MudGrid>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="GrantSheetAsync">Conceder</MudButton>
+        <Section Title="Conceder Ficha">
+            <MudGrid Class="mt-3">
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="_grantPlayerId" Label="Jogador">
+                        <MudSelectItem Value="@("")">(selecione)</MudSelectItem>
+                        @foreach (var member in _members)
+                        {
+                            <MudSelectItem Value="@member.UserId">@member.Nickname</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" @bind-Value="_grantTipo" Label="Tipo">
+                        <MudSelectItem Value="@("Npc")">NPC</MudSelectItem>
+                        <MudSelectItem Value="@("Creature")">Criatura</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <EntityPicker @bind-Value="_grantSourceSheetId" SearchItems="SearchGrantSourceSheetsAsync" Placeholder="Buscar ficha existente (opcional — em branco cria uma ficha nova)..." />
+                </MudItem>
+            </MudGrid>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="GrantSheetAsync">Conceder</MudButton>
+        </Section>
 
-        <MudText Typo="Typo.h6" Class="mt-4">Concessões existentes</MudText>
-        <MudSimpleTable Dense="true" Hover="true">
-            <tbody>
-                @foreach (var grant in _grants)
-                {
-                    <tr>
-                        <td>
-                            [@grant.Tipo] <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
-                            — concedida a @grant.PlayerNickname
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <Section Title="Concessões existentes">
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var grant in _grants)
+                    {
+                        <tr>
+                            <td>
+                                [@grant.Tipo] <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
+                                — concedida a @grant.PlayerNickname
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Notas Secretas">
-        <EditForm Model="_noteForm" OnValidSubmit="AddSecretNoteAsync">
-            <MudTextField T="string" @bind-Value="_noteForm.Texto" Label="Texto" Lines="3" />
-            <MudText Typo="Typo.subtitle2" Class="mt-3">Destinatários:</MudText>
-            <MudList T="string" Dense="true">
-                @foreach (var member in _members)
-                {
-                    <MudListItem T="string">
-                        <MudCheckBox T="bool" Value="@_noteRecipients.Contains(member.UserId)" ValueChanged="@(v => ToggleNoteRecipient(member.UserId, v))" Label="@member.Nickname" Dense="true" />
-                    </MudListItem>
-                }
-            </MudList>
-            <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _noteImageIds))" Class="mt-3">
-                <CustomContent Context="fileUploadContext">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                </CustomContent>
-            </MudFileUpload>
-            <MudList T="string" Dense="true">
-                @foreach (var image in _myImages)
-                {
-                    <MudListItem T="string">
-                        <MudCheckBox T="bool" Value="@_noteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_noteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                    </MudListItem>
-                }
-            </MudList>
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Nota Secreta</MudButton>
-        </EditForm>
-        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-            <tbody>
-                @foreach (var note in _secretNotes)
-                {
-                    <tr>
-                        <td>
-                            @if (_editingNoteId == note.Id)
-                            {
-                                <MudTextField T="string" @bind-Value="_editNoteText" Lines="3" />
-                                <MudList T="string" Dense="true">
-                                    @foreach (var member in _members)
-                                    {
-                                        <MudListItem T="string">
-                                            <MudCheckBox T="bool" Value="@_editNoteRecipients.Contains(member.UserId)" ValueChanged="@(v => ToggleEditNoteRecipient(member.UserId, v))" Label="@member.Nickname" Dense="true" />
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                                <MudList T="string" Dense="true">
-                                    @foreach (var image in _myImages)
-                                    {
-                                        <MudListItem T="string">
-                                            <MudCheckBox T="bool" Value="@_editNoteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editNoteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditSecretNote">Cancelar</MudButton>
-                            }
-                            else
-                            {
-                                <MudText>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</MudText>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditSecretNote(note))">Editar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</MudButton>
-                                @if (note.ImageUrls.Count > 0)
+        <Section Title="Enviar nota secreta">
+            <EditForm Model="_noteForm" OnValidSubmit="AddSecretNoteAsync">
+                <MudTextField T="string" @bind-Value="_noteForm.Texto" Label="Texto" Lines="3" />
+                <MudText Typo="Typo.subtitle2" Class="mt-3">Destinatários:</MudText>
+                <MudList T="string" Dense="true">
+                    @foreach (var member in _members)
+                    {
+                        <MudListItem T="string">
+                            <MudCheckBox T="bool" Value="@_noteRecipients.Contains(member.UserId)" ValueChanged="@(v => ToggleNoteRecipient(member.UserId, v))" Label="@member.Nickname" Dense="true" />
+                        </MudListItem>
+                    }
+                </MudList>
+                <MudExpansionPanel Text="Anexar imagens">
+                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _noteImageIds))" Class="mt-3">
+                        <CustomContent Context="fileUploadContext">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudList T="string" Dense="true">
+                        @foreach (var image in _myImages)
+                        {
+                            <MudListItem T="string">
+                                <MudCheckBox T="bool" Value="@_noteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_noteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudExpansionPanel>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Nota Secreta</MudButton>
+            </EditForm>
+        </Section>
+
+        <Section Title="Notas secretas enviadas">
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var note in _secretNotes)
+                    {
+                        <tr>
+                            <td>
+                                @if (_editingNoteId == note.Id)
                                 {
-                                    <div class="mt-1">
-                                        @foreach (var url in note.ImageUrls)
+                                    <MudTextField T="string" @bind-Value="_editNoteText" Lines="3" />
+                                    <MudList T="string" Dense="true">
+                                        @foreach (var member in _members)
                                         {
-                                            <MudImage Src="@url" Width="100" Class="mr-1" />
+                                            <MudListItem T="string">
+                                                <MudCheckBox T="bool" Value="@_editNoteRecipients.Contains(member.UserId)" ValueChanged="@(v => ToggleEditNoteRecipient(member.UserId, v))" Label="@member.Nickname" Dense="true" />
+                                            </MudListItem>
                                         }
-                                    </div>
+                                    </MudList>
+                                    <MudList T="string" Dense="true">
+                                        @foreach (var image in _myImages)
+                                        {
+                                            <MudListItem T="string">
+                                                <MudCheckBox T="bool" Value="@_editNoteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editNoteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditSecretNote">Cancelar</MudButton>
                                 }
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+                                else
+                                {
+                                    <MudText>@note.CreatedAt.ToString("g") — @note.Texto (destinatários: @note.RecipientUserIds.Count)</MudText>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditSecretNote(note))">Editar</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSecretNoteAsync(note.Id))">Excluir</MudButton>
+                                    @if (note.ImageUrls.Count > 0)
+                                    {
+                                        <div class="mt-1">
+                                            @foreach (var url in note.ImageUrls)
+                                            {
+                                                <MudImage Src="@url" Width="100" Class="mr-1" />
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
     </MudTabPanel>
 </MudTabs>
 
