@@ -48,6 +48,7 @@
                 <th>Sub-Vocação</th>
                 <th>Nível</th>
                 <th>Dono</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -60,6 +61,10 @@
                     <td>@(npc.SubVocacao ?? "—")</td>
                     <td>@npc.Nivel</td>
                     <td>@(npc.OwnerNickname ?? "—")</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/npcs/{npc.Id}"))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(npc.Id))">Excluir</MudButton>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -142,5 +147,17 @@
 
         var npc = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
         Navigation.NavigateTo($"/npcs/{npc!.Id}");
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"npc-sheets/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir o NPC.";
+            return;
+        }
+
+        await LoadAsync();
     }
 }
