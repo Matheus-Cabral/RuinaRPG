@@ -91,41 +91,45 @@
         </Section>
 
         <Section Title="Entradas">
-            <MudTimeline Class="mt-3">
+            <MudTimeline Class="mt-3" TimelinePosition="TimelinePosition.Right">
                 @foreach (var entry in _diaryEntries)
                 {
                     <MudTimelineItem Color="Color.Primary">
                         <ItemContent>
-                            @if (_editingEntryId == entry.Id)
-                            {
-                                <MudTextField T="string" @bind-Value="_editText" Lines="3" />
-                                <MudList T="string" Dense="true">
-                                    @foreach (var image in _myImages)
+                            <MudCard>
+                                <MudCardContent>
+                                    @if (_editingEntryId == entry.Id)
                                     {
-                                        <MudListItem T="string">
-                                            <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                                        </MudListItem>
+                                        <MudTextField T="string" @bind-Value="_editText" Lines="3" />
+                                        <MudList T="string" Dense="true">
+                                            @foreach (var image in _myImages)
+                                            {
+                                                <MudListItem T="string">
+                                                    <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                                                </MudListItem>
+                                            }
+                                        </MudList>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                     }
-                                </MudList>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@entry.CreatedAt.ToString("g")</MudText>
-                                <MudText>@entry.Texto</MudText>
-                                @if (entry.ImageUrls.Count > 0)
-                                {
-                                    <div class="mt-1">
-                                        @foreach (var url in entry.ImageUrls)
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@entry.CreatedAt.ToString("g")</MudText>
+                                        <MudText>@entry.Texto</MudText>
+                                        @if (entry.ImageUrls.Count > 0)
                                         {
-                                            <MudImage Src="@url" Width="100" Class="mr-1" />
+                                            <div class="mt-1">
+                                                @foreach (var url in entry.ImageUrls)
+                                                {
+                                                    <MudImage Src="@url" Width="100" Class="mr-1" />
+                                                }
+                                            </div>
                                         }
-                                    </div>
-                                }
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
-                            }
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
+                                    }
+                                </MudCardContent>
+                            </MudCard>
                         </ItemContent>
                     </MudTimelineItem>
                 }
