@@ -2,51 +2,48 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.CreatureSheets
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Bestiário do GM</h1>
+<MudText Typo="Typo.h3">Bestiário do GM</MudText>
 
-<button type="button" class="btn btn-primary" @onclick="CreateAsync">Nova Criatura</button>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Nova Criatura</MudButton>
 
-<div class="row g-3 my-1">
-    <div class="col-md-3">
-        <label class="form-label">Nome</label>
-        <input class="form-control" @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Raça</label>
-        <input class="form-control" @bind="_racaFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" />
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Arquétipo</label>
-        <select class="form-select" @bind="_arquetipoFiltro" @bind:after="LoadAsync">
-            <option value="">Todos</option>
-            <option value="Fisico">Físico</option>
-            <option value="Arcano">Arcano</option>
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Rank</label>
-        <select class="form-select" @bind="_rankFiltro" @bind:after="LoadAsync">
-            <option value="">Todos</option>
-            <option value="F">F</option>
-            <option value="E">E</option>
-            <option value="D">D</option>
-            <option value="C">C</option>
-            <option value="B">B</option>
-            <option value="A">A</option>
-            <option value="S">S</option>
-        </select>
-    </div>
-</div>
+<MudGrid Class="mt-3">
+    <MudItem xs="12" md="3">
+        <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudTextField T="string" @bind-Value="_racaFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Raça" />
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudSelect T="string" @bind-Value="_arquetipoFiltro" @bind-Value:after="LoadAsync" Label="Arquétipo">
+            <MudSelectItem Value="@("")">Todos</MudSelectItem>
+            <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
+            <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudSelect T="string" @bind-Value="_rankFiltro" @bind-Value:after="LoadAsync" Label="Rank">
+            <MudSelectItem Value="@("")">Todos</MudSelectItem>
+            <MudSelectItem Value="@("F")">F</MudSelectItem>
+            <MudSelectItem Value="@("E")">E</MudSelectItem>
+            <MudSelectItem Value="@("D")">D</MudSelectItem>
+            <MudSelectItem Value="@("C")">C</MudSelectItem>
+            <MudSelectItem Value="@("B")">B</MudSelectItem>
+            <MudSelectItem Value="@("A")">A</MudSelectItem>
+            <MudSelectItem Value="@("S")">S</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+</MudGrid>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<table class="table">
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
     <thead>
         <tr>
             <th>Nome</th>
@@ -61,7 +58,7 @@
         @foreach (var creature in _creatures)
         {
             <tr>
-                <td><a href="@($"criaturas/{creature.Id}")">@creature.Nome</a></td>
+                <td><MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink></td>
                 <td>@(creature.Raca ?? "—")</td>
                 <td>@(creature.Arquetipo ?? "—")</td>
                 <td>@(creature.Rank ?? "—")</td>
@@ -70,10 +67,10 @@
             </tr>
         }
     </tbody>
-</table>
+</MudSimpleTable>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Bestiário do GM"),

@@ -2,55 +2,54 @@
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Domain.Rules
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Compêndio de Regras</h1>
+<MudText Typo="Typo.h3">Compêndio de Regras</MudText>
 
-<div class="mb-3">
-    <label class="form-label">Buscar</label>
-    <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar..." />
-</div>
-<div class="mb-3">
+<MudTextField T="string" @bind-Value="_query" Immediate="true" @bind-Value:after="DebouncedSearchAsync" Label="Buscar" Class="mt-3" />
+
+<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mt-3">
     @foreach (var categoria in _categorias)
     {
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" checked="@_selectedCategorias.Contains(categoria)"
-                   @onchange="@(e => ToggleCategoriaAsync(categoria, (bool)e.Value!))" />
-            <label class="form-check-label">@categoria</label>
-        </div>
+        <MudCheckBox T="bool" Value="@_selectedCategorias.Contains(categoria)" ValueChanged="@(v => ToggleCategoriaAsync(categoria, v))" Label="@categoria" />
     }
-</div>
+</MudStack>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
 @foreach (var group in _results.GroupBy(r => r.Categoria))
 {
-    <h2>@CategoriaLabel(group.Key) (@group.Count())</h2>
-    <ul>
-        @foreach (var result in group)
-        {
-            var snippet = CompendioSnippetBuilder.Build(result.Conteudo, string.IsNullOrWhiteSpace(_query) ? null : _query);
-            <li>
-                <strong>@result.Titulo</strong> — <em>@result.Origem</em>
-                <p>
-                    @snippet.Before
-                    @if (snippet.Match is not null)
-                    {
-                        <mark>@snippet.Match</mark>
-                    }
-                    @snippet.After
-                </p>
-            </li>
-        }
-    </ul>
+    <MudText Typo="Typo.h5" Class="mt-3">@CategoriaLabel(group.Key) (@group.Count())</MudText>
+    <MudSimpleTable Dense="true" Hover="true">
+        <tbody>
+            @foreach (var result in group)
+            {
+                var snippet = CompendioSnippetBuilder.Build(result.Conteudo, string.IsNullOrWhiteSpace(_query) ? null : _query);
+                <tr>
+                    <td>
+                        <MudText Typo="Typo.subtitle1"><strong>@result.Titulo</strong> — <em>@result.Origem</em></MudText>
+                        <MudText Typo="Typo.body2">
+                            @snippet.Before
+                            @if (snippet.Match is not null)
+                            {
+                                <mark>@snippet.Match</mark>
+                            }
+                            @snippet.After
+                        </MudText>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
 }
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Compêndio de Regras"),

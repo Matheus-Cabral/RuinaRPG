@@ -1,55 +1,45 @@
 @page "/painel/jogadores"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Players
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Jogadores</h1>
+<MudText Typo="Typo.h3">Jogadores</MudText>
 
-<div class="mb-3">
-    <label class="form-label">Buscar por nickname ou e-mail</label>
-    <input class="form-control" @bind="_query" @bind:event="oninput" @bind:after="DebouncedSearchAsync" placeholder="Buscar por nickname ou e-mail" />
-</div>
+<MudTextField T="string" @bind-Value="_query" Immediate="true" @bind-Value:after="DebouncedSearchAsync" Label="Buscar por nickname ou e-mail" Class="mt-3" />
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<ul class="list-unstyled">
+<MudList T="string" Class="mt-3">
     @foreach (var player in _players)
     {
-        <li class="mb-2">
-            @player.Nickname (@player.Email)
-            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => StartReset(player.Id)">Redefinir senha</button>
+        <MudListItem T="string">
+            <ChildContent>
+                <MudText>@player.Nickname (@player.Email)</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="() => StartReset(player.Id)">Redefinir senha</MudButton>
 
-            @if (_resettingPlayerId == player.Id)
-            {
-                <Section Title="@("Redefinir senha de " + player.Nickname)">
-                    <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label">Nova senha</label>
-                                <InputText type="password" class="form-control" @bind-Value="_resetRequest.NovaSenha" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Confirmação da nova senha</label>
-                                <InputText type="password" class="form-control" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" />
-                            </div>
-                            <div class="col-md-4">
-                                <button type="submit" class="btn btn-primary">Confirmar</button>
-                                <button type="button" class="btn btn-outline-secondary" @onclick="CancelReset">Cancelar</button>
-                            </div>
-                        </div>
-                    </EditForm>
-                </Section>
-            }
-        </li>
+                @if (_resettingPlayerId == player.Id)
+                {
+                    <Section Title="@("Redefinir senha de " + player.Nickname)">
+                        <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
+                            <MudTextField T="string" @bind-Value="_resetRequest.NovaSenha" InputType="InputType.Password" Label="Nova senha" />
+                            <MudTextField T="string" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" InputType="InputType.Password" Label="Confirmação da nova senha" />
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Confirmar</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="mt-3" OnClick="CancelReset">Cancelar</MudButton>
+                        </EditForm>
+                    </Section>
+                }
+            </ChildContent>
+        </MudListItem>
     }
-</ul>
+</MudList>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Jogadores"),
