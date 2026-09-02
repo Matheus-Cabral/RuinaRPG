@@ -8,66 +8,75 @@
 
 <MudText Typo="Typo.h3">Bestiário do GM</MudText>
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Nova Criatura</MudButton>
+<Section Title="Filtros">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Nova Criatura</MudButton>
 
-<MudGrid Class="mt-3">
-    <MudItem xs="12" md="3">
-        <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
-    </MudItem>
-    <MudItem xs="12" md="3">
-        <MudTextField T="string" @bind-Value="_racaFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Raça" />
-    </MudItem>
-    <MudItem xs="12" md="3">
-        <MudSelect T="string" @bind-Value="_arquetipoFiltro" @bind-Value:after="LoadAsync" Label="Arquétipo">
-            <MudSelectItem Value="@("")">Todos</MudSelectItem>
-            <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
-            <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="12" md="3">
-        <MudSelect T="string" @bind-Value="_rankFiltro" @bind-Value:after="LoadAsync" Label="Rank">
-            <MudSelectItem Value="@("")">Todos</MudSelectItem>
-            <MudSelectItem Value="@("F")">F</MudSelectItem>
-            <MudSelectItem Value="@("E")">E</MudSelectItem>
-            <MudSelectItem Value="@("D")">D</MudSelectItem>
-            <MudSelectItem Value="@("C")">C</MudSelectItem>
-            <MudSelectItem Value="@("B")">B</MudSelectItem>
-            <MudSelectItem Value="@("A")">A</MudSelectItem>
-            <MudSelectItem Value="@("S")">S</MudSelectItem>
-        </MudSelect>
-    </MudItem>
-</MudGrid>
+    <MudGrid Class="mt-3">
+        <MudItem xs="12" md="3">
+            <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudTextField T="string" @bind-Value="_racaFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Raça" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" @bind-Value="_arquetipoFiltro" @bind-Value:after="LoadAsync" Label="Arquétipo">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
+                <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" @bind-Value="_rankFiltro" @bind-Value:after="LoadAsync" Label="Rank">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("F")">F</MudSelectItem>
+                <MudSelectItem Value="@("E")">E</MudSelectItem>
+                <MudSelectItem Value="@("D")">D</MudSelectItem>
+                <MudSelectItem Value="@("C")">C</MudSelectItem>
+                <MudSelectItem Value="@("B")">B</MudSelectItem>
+                <MudSelectItem Value="@("A")">A</MudSelectItem>
+                <MudSelectItem Value="@("S")">S</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</Section>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<Section Title="Criaturas">
+    @if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+    }
 
-<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th>Raça</th>
-            <th>Arquétipo</th>
-            <th>Rank</th>
-            <th>Nível</th>
-            <th>Dono</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var creature in _creatures)
-        {
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
             <tr>
-                <td><MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink></td>
-                <td>@(creature.Raca ?? "—")</td>
-                <td>@(creature.Arquetipo ?? "—")</td>
-                <td>@(creature.Rank ?? "—")</td>
-                <td>@creature.Nivel</td>
-                <td>@(creature.OwnerNickname ?? "—")</td>
+                <th>Nome</th>
+                <th>Raça</th>
+                <th>Arquétipo</th>
+                <th>Rank</th>
+                <th>Nível</th>
+                <th>Dono</th>
+                <th></th>
             </tr>
-        }
-    </tbody>
-</MudSimpleTable>
+        </thead>
+        <tbody>
+            @foreach (var creature in _creatures)
+            {
+                <tr>
+                    <td><MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink></td>
+                    <td>@(creature.Raca ?? "—")</td>
+                    <td>@(creature.Arquetipo ?? "—")</td>
+                    <td>@(creature.Rank ?? "—")</td>
+                    <td>@creature.Nivel</td>
+                    <td>@(creature.OwnerNickname ?? "—")</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/criaturas/{creature.Id}"))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(creature.Id))">Excluir</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
@@ -139,5 +148,17 @@
 
         var creature = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         Navigation.NavigateTo($"/criaturas/{creature!.Id}");
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"creature-sheets/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a criatura.";
+            return;
+        }
+
+        await LoadAsync();
     }
 }
