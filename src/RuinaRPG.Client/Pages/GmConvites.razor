@@ -34,8 +34,9 @@
             {
                 <tr>
                     <td>
+                        @item.Code
                         <MudTooltip Text="Clique para copiar">
-                            <MudChip T="string" OnClick="@(() => CopyCodeAsync(item.Code))" Icon="@Icons.Material.Filled.ContentCopy" Style="cursor:pointer">@item.Code</MudChip>
+                            <MudChip T="string" OnClick="@(() => CopyCodeAsync(item.Code))" Icon="@Icons.Material.Filled.ContentCopy" Style="cursor:pointer"></MudChip>
                         </MudTooltip>
                     </td>
                     <td>@item.Status</td>
