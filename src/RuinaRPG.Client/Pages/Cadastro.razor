@@ -5,46 +5,38 @@
 @inject TokenAuthenticationStateProvider AuthProvider
 @using System.ComponentModel.DataAnnotations
 @using RuinaRPG.Contracts.Auth
+@using MudBlazor
 
-<h1>Cadastro</h1>
+<MudText Typo="Typo.h3">Cadastro</MudText>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<TabControl>
-    <TabPage Title="Gamemaster">
+<MudTabs Class="mt-3">
+    <MudTabPanel Text="Gamemaster">
         <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
             <DataAnnotationsValidator />
-            <label>Nickname <InputText @bind-Value="_gmRequest.Nickname" /></label>
-            <ValidationMessage For="@(() => _gmRequest.Nickname)" />
-            <label>Email <InputText @bind-Value="_gmRequest.Email" /></label>
-            <ValidationMessage For="@(() => _gmRequest.Email)" />
-            <label>Senha <InputText type="password" @bind-Value="_gmRequest.Senha" /></label>
-            <ValidationMessage For="@(() => _gmRequest.Senha)" />
-            <label>Confirmação da Senha <InputText type="password" @bind-Value="_gmRequest.ConfirmacaoSenha" /></label>
-            <ValidationMessage For="@(() => _gmRequest.ConfirmacaoSenha)" />
-            <button type="submit">Cadastrar</button>
+            <MudTextField T="string" @bind-Value="_gmRequest.Nickname" Label="Nickname" For="@(() => _gmRequest.Nickname)" />
+            <MudTextField T="string" @bind-Value="_gmRequest.Email" Label="Email" For="@(() => _gmRequest.Email)" />
+            <MudTextField T="string" @bind-Value="_gmRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _gmRequest.Senha)" />
+            <MudTextField T="string" @bind-Value="_gmRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _gmRequest.ConfirmacaoSenha)" />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Cadastrar</MudButton>
         </EditForm>
-    </TabPage>
-    <TabPage Title="Jogador">
+    </MudTabPanel>
+    <MudTabPanel Text="Jogador">
         <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
             <DataAnnotationsValidator />
-            <label>Nickname <InputText @bind-Value="_jogadorRequest.Nickname" /></label>
-            <ValidationMessage For="@(() => _jogadorRequest.Nickname)" />
-            <label>Email <InputText @bind-Value="_jogadorRequest.Email" /></label>
-            <ValidationMessage For="@(() => _jogadorRequest.Email)" />
-            <label>Senha <InputText type="password" @bind-Value="_jogadorRequest.Senha" /></label>
-            <ValidationMessage For="@(() => _jogadorRequest.Senha)" />
-            <label>Confirmação da Senha <InputText type="password" @bind-Value="_jogadorRequest.ConfirmacaoSenha" /></label>
-            <ValidationMessage For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
-            <label>Código de acesso <InputText @bind-Value="_jogadorRequest.CodigoDeAcesso" /></label>
-            <ValidationMessage For="@(() => _jogadorRequest.CodigoDeAcesso)" />
-            <button type="submit">Cadastrar</button>
+            <MudTextField T="string" @bind-Value="_jogadorRequest.Nickname" Label="Nickname" For="@(() => _jogadorRequest.Nickname)" />
+            <MudTextField T="string" @bind-Value="_jogadorRequest.Email" Label="Email" For="@(() => _jogadorRequest.Email)" />
+            <MudTextField T="string" @bind-Value="_jogadorRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.Senha)" />
+            <MudTextField T="string" @bind-Value="_jogadorRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
+            <MudTextField T="string" @bind-Value="_jogadorRequest.CodigoDeAcesso" Label="Código de acesso" For="@(() => _jogadorRequest.CodigoDeAcesso)" />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Cadastrar</MudButton>
         </EditForm>
-    </TabPage>
-</TabControl>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
     private readonly GmFormModel _gmRequest = new();

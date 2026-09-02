@@ -2,40 +2,32 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Campaigns
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Campanhas</h1>
+<MudText Typo="Typo.h3">Campanhas</MudText>
 
 <EditForm Model="_form" OnValidSubmit="CreateAsync">
-    <div class="mb-3">
-        <label class="form-label">Nome</label>
-        <InputText class="form-control" @bind-Value="_form.Nome" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Descrição</label>
-        <InputTextArea class="form-control" @bind-Value="_form.Descricao" />
-    </div>
-    <button type="submit" class="btn btn-primary">Criar Campanha</button>
+    <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+    <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Criar Campanha</MudButton>
 </EditForm>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<div class="list-group">
+<MudList T="string" Class="mt-3">
     @foreach (var campaign in _campaigns)
     {
-        <a class="list-group-item list-group-item-action" href="@($"campanhas/{campaign.Id}")">
-            <h3 class="mb-1">@campaign.Nome</h3>
-            <p class="mb-0 text-muted">@campaign.Descricao</p>
-        </a>
+        <MudListItem T="string" Text="@campaign.Nome" SecondaryText="@campaign.Descricao" Href="@($"campanhas/{campaign.Id}")" />
     }
-</div>
+</MudList>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Campanhas"),
