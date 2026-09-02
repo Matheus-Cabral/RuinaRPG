@@ -2,49 +2,45 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Items
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Catálogo de Itens e Equipamentos</h1>
+<MudText Typo="Typo.h3">Catálogo de Itens e Equipamentos</MudText>
 
-<button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</button>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</MudButton>
 
-<div class="row g-3 my-1">
-    <div class="col-md-4">
-        <label class="form-label">Tipo</label>
-        <select class="form-select" @bind="_tipoFiltro" @bind:after="LoadAsync">
-            <option value="">Todos os Tipos</option>
-            <option value="ItemGeral">Item Geral</option>
-            <option value="Arma">Arma</option>
-            <option value="Armadura">Armadura</option>
-            <option value="Escudo">Escudo</option>
-            <option value="Artefato">Artefato</option>
-        </select>
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Subcategoria</label>
-        <input class="form-control" @bind="_subcategoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Tier</label>
-        <input class="form-control" @bind="_tierFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Categoria</label>
-        <input class="form-control" @bind="_categoriaFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Tipo de Dano</label>
-        <input class="form-control" @bind="_tipoDeDanoFiltro" @bind:event="oninput" @bind:after="LoadAsync" />
-    </div>
-</div>
+<MudGrid Class="mt-3">
+    <MudItem xs="12" md="4">
+        <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
+            <MudSelectItem Value="@("")">Todos os Tipos</MudSelectItem>
+            <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
+            <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
+            <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
+            <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
+            <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" @bind-Value="_subcategoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Subcategoria" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" @bind-Value="_tierFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tier" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" @bind-Value="_categoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Categoria" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" @bind-Value="_tipoDeDanoFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tipo de Dano" />
+    </MudItem>
+</MudGrid>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<table class="table">
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
     <thead>
         <tr>
             <th>Nome</th>
@@ -65,16 +61,16 @@
                 <td>@item.Peso</td>
                 <td>@item.Preco</td>
                 <td>
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAsync(item.Id))">Excluir</button>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/catalogo/{item.Id}/editar"))">Editar</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(item.Id))">Excluir</MudButton>
                 </td>
             </tr>
         }
     </tbody>
-</table>
+</MudSimpleTable>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Catálogo de Itens"),

@@ -4,106 +4,106 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Images
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>@(ItemId is null ? "Novo Item" : "Editar Item")</h1>
+<MudText Typo="Typo.h3">@(ItemId is null ? "Novo Item" : "Editar Item")</MudText>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
 <EditForm Model="_form" OnValidSubmit="SubmitAsync">
     <Section Title="Geral">
         @if (ItemId is null)
         {
-            <label>
-                Tipo
-                <select @bind="_form.Tipo">
-                    <option value="ItemGeral">Item Geral</option>
-                    <option value="Arma">Arma</option>
-                    <option value="Armadura">Armadura</option>
-                    <option value="Escudo">Escudo</option>
-                    <option value="Artefato">Artefato</option>
-                </select>
-            </label>
+            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo">
+                <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
+                <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
+                <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
+                <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
+                <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
+            </MudSelect>
         }
 
-        <label>Nome <InputText @bind-Value="_form.Nome" /></label>
-        <label>Peso <InputNumber @bind-Value="_form.Peso" /></label>
-        <label>Preço (Ciclos) <InputNumber @bind-Value="_form.Preco" /></label>
+        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+        <MudNumericField T="decimal" @bind-Value="_form.Peso" Label="Peso" />
+        <MudNumericField T="int" @bind-Value="_form.Preco" Label="Preço (Ciclos)" />
 
-        <label>Enviar nova imagem <InputFile OnChange="UploadImageAsync" /></label>
-        <label>
-            Ou reutilizar uma imagem já enviada (R0010)
-            <select @bind="_form.ImageId">
-                <option value="">— nenhuma —</option>
-                @foreach (var image in _myImages)
-                {
-                    <option value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</option>
-                }
-            </select>
-        </label>
+        <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync">
+            <CustomContent Context="fileUploadContext">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+            </CustomContent>
+        </MudFileUpload>
+        <MudSelect T="string" @bind-Value="_form.ImageId" Label="Ou reutilizar uma imagem já enviada (R0010)">
+            <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
+            @foreach (var image in _myImages)
+            {
+                <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
+            }
+        </MudSelect>
     </Section>
 
     @if (_form.Tipo == "ItemGeral")
     {
         <Section Title="Item Geral">
-            <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
-            <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" />
+            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
         </Section>
     }
     else if (_form.Tipo == "Arma")
     {
         <Section Title="Arma">
-            <label>Subcategoria <InputText @bind-Value="_form.Subcategoria" /></label>
-            <label>Tier <InputText @bind-Value="_form.Tier" /></label>
-            <label>Empunhadura <InputText @bind-Value="_form.Empunhadura" /></label>
-            <label>Dados <InputText @bind-Value="_form.Dados" /></label>
-            <label>Dano <InputNumber @bind-Value="_form.Dano" /></label>
-            <label>Crítico <InputText @bind-Value="_form.Critico" /></label>
-            <label>Alcance <InputNumber @bind-Value="_form.Alcance" /></label>
-            <label>Tipo de Dano <InputText @bind-Value="_form.TipoDeDano" /></label>
-            <label>Requisito de Atributo <InputText @bind-Value="_form.RequisitoAtributo" /></label>
-            <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" />
+            <MudTextField T="string" @bind-Value="_form.Tier" Label="Tier" />
+            <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" />
+            <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" />
+            <MudNumericField T="int?" @bind-Value="_form.Dano" Label="Dano" />
+            <MudTextField T="string" @bind-Value="_form.Critico" Label="Crítico" />
+            <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" />
+            <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" />
+            <MudTextField T="string" @bind-Value="_form.RequisitoAtributo" Label="Requisito de Atributo" />
+            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" Label="Durabilidade" />
         </Section>
     }
     else if (_form.Tipo is "Armadura" or "Escudo")
     {
         <Section Title="@(_form.Tipo == "Armadura" ? "Armadura" : "Escudo")">
-            <label>Categoria <InputText @bind-Value="_form.Categoria" /></label>
+            <MudTextField T="string" @bind-Value="_form.Categoria" Label="Categoria" />
             @if (_form.Tipo == "Armadura")
             {
-                <label>Defesa <InputNumber @bind-Value="_form.Defesa" /></label>
-                <label>RF <InputNumber @bind-Value="_form.RF" /></label>
-                <label>RM <InputNumber @bind-Value="_form.RM" /></label>
+                <MudNumericField T="int?" @bind-Value="_form.Defesa" Label="Defesa" />
+                <MudNumericField T="int?" @bind-Value="_form.RF" Label="RF" />
+                <MudNumericField T="int?" @bind-Value="_form.RM" Label="RM" />
             }
             else
             {
-                <label>Bônus de Defesa <InputNumber @bind-Value="_form.BonusDefesa" /></label>
+                <MudNumericField T="int?" @bind-Value="_form.BonusDefesa" Label="Bônus de Defesa" />
             }
-            <label>Penalidade <InputText @bind-Value="_form.Penalidade" /></label>
-            <label>Requisito de Vigor <InputNumber @bind-Value="_form.RequisitoVigor" /></label>
-            <label>Durabilidade <InputNumber @bind-Value="_form.DurabilidadeMaxima" /></label>
+            <MudTextField T="string" @bind-Value="_form.Penalidade" Label="Penalidade" />
+            <MudNumericField T="int?" @bind-Value="_form.RequisitoVigor" Label="Requisito de Vigor" />
+            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" Label="Durabilidade" />
         </Section>
     }
     else if (_form.Tipo == "Artefato")
     {
         <Section Title="Artefato">
-            <label>Tipo de Alvo <InputText @bind-Value="_form.TipoDeAlvo" /></label>
-            <label>Alvo <InputText @bind-Value="_form.Alvo" /></label>
-            <label>Valor <InputNumber @bind-Value="_form.Valor" /></label>
+            <MudTextField T="string" @bind-Value="_form.TipoDeAlvo" Label="Tipo de Alvo" />
+            <MudTextField T="string" @bind-Value="_form.Alvo" Label="Alvo" />
+            <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" />
         </Section>
     }
 
-    <button type="submit">Salvar</button>
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
 </EditForm>
 
 @code {
     [Parameter] public string? ItemId { get; set; }
 
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Catálogo de Itens", "catalogo"),
@@ -160,11 +160,11 @@
         _form.Valor = existing.Valor;
     }
 
-    private async Task UploadImageAsync(InputFileChangeEventArgs e)
+    private async Task UploadImageAsync(IBrowserFile file)
     {
         using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(e.File.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", e.File.Name);
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", file.Name);
 
         var response = await Http.PostAsync("images", content);
         if (!response.IsSuccessStatusCode)

@@ -4,50 +4,53 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.SpellsAndAbilities
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</h1>
+<MudText Typo="Typo.h3">@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</MudText>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
 <EditForm Model="_form" OnValidSubmit="SubmitAsync">
     <DataAnnotationsValidator />
     <Section Title="Geral">
-        <label>Nome <InputText @bind-Value="_form.Nome" /></label>
-        <label>
-            Tipo
-            <select @bind="_form.Tipo">
-                <option value="Magia">Magia</option>
-                <option value="Habilidade">Habilidade</option>
-                <option value="Racial">Racial</option>
-            </select>
-        </label>
-        <label>Grau <InputNumber @bind-Value="_form.Grau" /></label>
-        <label>Descrição <InputTextArea @bind-Value="_form.Descricao" /></label>
+        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+        <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo">
+            <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+            <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+            <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_form.Grau" Label="Grau" />
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
     </Section>
 
     <Section Title="Efeitos">
-        <button type="button" @onclick="AddEffect">Adicionar Efeito</button>
-        @for (var i = 0; i < _form.Efeitos.Count; i++)
-        {
-            var index = i; // capture for the closures below
-            <div style="border-bottom: 1px solid var(--rr-border); padding-bottom: var(--rr-space-2); margin-bottom: var(--rr-space-2);">
-                <label>Nome do Efeito <InputText @bind-Value="_form.Efeitos[index].EfeitoNome" /></label>
-                <label>Quantidade <InputNumber @bind-Value="_form.Efeitos[index].Quantidade" /></label>
-                <label>Custo em PI <InputNumber @bind-Value="_form.Efeitos[index].CustoPI" /></label>
-                <button type="button" @onclick="@(() => _form.Efeitos.RemoveAt(index))">Remover</button>
-            </div>
-        }
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddEffect">Adicionar Efeito</MudButton>
+        <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
+            <thead><tr><th>Nome do Efeito</th><th>Quantidade</th><th>Custo em PI</th><th></th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < _form.Efeitos.Count; i++)
+                {
+                    var index = i; // capture for the closures below
+                    <tr>
+                        <td><MudTextField T="string" @bind-Value="_form.Efeitos[index].EfeitoNome" /></td>
+                        <td><MudNumericField T="int?" @bind-Value="_form.Efeitos[index].Quantidade" /></td>
+                        <td><MudNumericField T="int" @bind-Value="_form.Efeitos[index].CustoPI" /></td>
+                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => _form.Efeitos.RemoveAt(index))">Remover</MudButton></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
 
-        <p>Gasto em PI (calculado ao salvar): @GastoEmPI</p>
-        <p>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</p>
+        <MudText Class="mt-3">Gasto em PI (calculado ao salvar): @GastoEmPI</MudText>
+        <MudText>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</MudText>
     </Section>
 
-    <button type="submit">Salvar</button>
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
 </EditForm>
 
 @code {
@@ -55,7 +58,7 @@
 
     private int GastoEmPI => SpellAbilityCostCalculator.GastoEmPI(_form.Efeitos.Select(e => e.CustoPI));
 
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Banco de Magias e Habilidades", "banco-de-magias"),

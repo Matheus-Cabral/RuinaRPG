@@ -2,39 +2,37 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 
-<h1>Banco de Magias e Habilidades</h1>
+<MudText Typo="Typo.h3">Banco de Magias e Habilidades</MudText>
 
-<button type="button" class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</button>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</MudButton>
 
-<div class="row g-3 my-1">
-    <div class="col-md-4">
-        <label class="form-label">Nome</label>
-        <input class="form-control" @bind="_nomeFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Nome" />
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Tipo</label>
-        <select class="form-select" @bind="_tipoFiltro" @bind:after="LoadAsync">
-            <option value="">Todos os Tipos</option>
-            <option value="Magia">Magia</option>
-            <option value="Habilidade">Habilidade</option>
-            <option value="Racial">Racial</option>
-        </select>
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Grau</label>
-        <input type="number" class="form-control" @bind="_grauFiltro" @bind:event="oninput" @bind:after="DebouncedLoadAsync" placeholder="Grau" />
-    </div>
-</div>
+<MudGrid Class="mt-3">
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
+            <MudSelectItem Value="@("")">Todos os Tipos</MudSelectItem>
+            <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+            <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+            <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudNumericField T="int?" @bind-Value="_grauFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Grau" />
+    </MudItem>
+</MudGrid>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<table class="table">
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
     <thead>
         <tr>
             <th>Nome</th>
@@ -55,16 +53,16 @@
                 <td>@entry.GastoEmPI</td>
                 <td>@entry.Custo</td>
                 <td>
-                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="@(() => DeleteAsync(entry.Id))">Excluir</button>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(entry.Id))">Excluir</MudButton>
                 </td>
             </tr>
         }
     </tbody>
-</table>
+</MudSimpleTable>
 
 @code {
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Banco de Magias e Habilidades"),
