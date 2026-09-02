@@ -51,6 +51,10 @@
                                 @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
                                 {
                                     <MudListItem T="string">
+                                        @if (sheet.ImageUrl is not null)
+                                        {
+                                            <MudAvatar Size="Size.Small" Class="mr-2"><MudImage Src="@sheet.ImageUrl" /></MudAvatar>
+                                        }
                                         <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</MudText>
                                     </MudListItem>

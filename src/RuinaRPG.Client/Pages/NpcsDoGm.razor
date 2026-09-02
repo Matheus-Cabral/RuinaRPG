@@ -55,7 +55,13 @@
             @foreach (var npc in _npcs)
             {
                 <tr>
-                    <td><MudLink Href="@($"npcs/{npc.Id}")">@npc.Nome</MudLink></td>
+                    <td>
+                        @if (npc.ImageUrl is not null)
+                        {
+                            <MudAvatar Size="Size.Small" Class="mr-2"><MudImage Src="@npc.ImageUrl" /></MudAvatar>
+                        }
+                        <MudLink Href="@($"npcs/{npc.Id}")">@npc.Nome</MudLink>
+                    </td>
                     <td>@npc.Linhagem</td>
                     <td>@npc.Vocacao</td>
                     <td>@(npc.SubVocacao ?? "—")</td>

@@ -3,6 +3,7 @@
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
+@using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Contracts.SpellsAndAbilities
@@ -37,6 +38,52 @@
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
             <DataAnnotationsValidator />
             <Section Title="Identidade">
+                <div class="mb-4">
+                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = !_imageExpanded)">
+                        @if (_form.ImageUrl is not null)
+                        {
+                            <MudImage Src="@_form.ImageUrl" ObjectFit="ObjectFit.Cover" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                        }
+                    </MudAvatar>
+
+                    @if (_imageExpanded)
+                    {
+                        <div class="mt-2">
+                            @if (_form.ImageUrl is not null)
+                            {
+                                <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
+                            }
+                            <div>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
+                                @if (_form.ImageId is not null)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
+                                }
+                            </div>
+
+                            @if (_imageEditing)
+                            {
+                                <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
+                                    <CustomContent Context="fileUploadContext">
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                                    </CustomContent>
+                                </MudFileUpload>
+                                <MudSelect T="string" Value="_form.ImageId" ValueChanged="SelectExistingImage" Label="Ou reutilizar uma imagem já enviada (R0010)">
+                                    <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
+                                    @foreach (var image in _myImages)
+                                    {
+                                        <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                        </div>
+                    }
+                </div>
+
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
                 <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" />
@@ -515,6 +562,9 @@
     private readonly SheetFormModel _form = new();
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
+    private List<ImageSummaryResponse> _myImages = new();
+    private bool _imageExpanded;
+    private bool _imageEditing;
     private List<CharacterAttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<CharacterSkillResponse> _skills = new();
@@ -566,11 +616,52 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // LoadSheetAsync matches the sheet's ImageUrl against _myImages, so images must be
+        // loaded first rather than joining the WhenAll below.
+        await LoadImagesAsync();
         await LoadSheetAsync();
         await Task.WhenAll(LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
             LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadDiaryAsync(),
             LoadCampaignNameAsync());
+    }
+
+    private async Task LoadImagesAsync()
+    {
+        var response = await Http.GetAsync("images/mine");
+        if (response.IsSuccessStatusCode)
+            _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
+    }
+
+    private async Task UploadImageAsync(IBrowserFile file)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", file.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _form.ImageId = body!.Id;
+        _form.ImageUrl = body.Url;
+        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
+    }
+
+    private void SelectExistingImage(string? id)
+    {
+        _form.ImageId = id;
+        _form.ImageUrl = id is null ? null : _myImages.FirstOrDefault(i => i.Id == id)?.Url;
+    }
+
+    private void RemoveImage()
+    {
+        _form.ImageId = null;
+        _form.ImageUrl = null;
     }
 
     private async Task LoadCampaignNameAsync()
@@ -593,6 +684,8 @@
 
         var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         _campaignId = sheet!.CampaignId;
+        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == sheet.ImageUrl)?.Id;
+        _form.ImageUrl = sheet.ImageUrl;
         _form.Nome = sheet!.Nome;
         _form.Linhagem = sheet.Linhagem;
         _form.Variante = sheet.Variante;
@@ -653,7 +746,7 @@
             return;
         }
 
-        var request = new UpdateCharacterSheetRequest(null, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
+        var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
             _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal!.Value, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
@@ -1051,6 +1144,8 @@
 
     private class SheetFormModel
     {
+        public string? ImageId { get; set; }
+        public string? ImageUrl { get; set; }
         public string? Nome { get; set; }
         public string? Linhagem { get; set; }
         public string? Variante { get; set; }

@@ -274,7 +274,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         return await query
             .GroupJoin(db.Users, s => s.OwnerId, u => (Guid?)u.Id, (s, owners) => new { Sheet = s, Owner = owners.FirstOrDefault() })
-            .Select(x => new CreatureSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Raca, x.Sheet.Arquetipo == null ? null : x.Sheet.Arquetipo.ToString(), x.Sheet.Rank == null ? null : x.Sheet.Rank.ToString(), x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null))
+            .GroupJoin(db.Images, x => x.Sheet.ImageId, i => (Guid?)i.Id, (x, images) => new { x.Sheet, x.Owner, Image = images.FirstOrDefault() })
+            .Select(x => new CreatureSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Raca, x.Sheet.Arquetipo == null ? null : x.Sheet.Arquetipo.ToString(), x.Sheet.Rank == null ? null : x.Sheet.Rank.ToString(), x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null, x.Image != null ? "/images/" + x.Image.Path : null))
             .ToListAsync();
     }
 

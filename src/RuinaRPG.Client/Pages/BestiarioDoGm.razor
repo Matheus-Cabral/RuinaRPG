@@ -62,7 +62,13 @@
             @foreach (var creature in _creatures)
             {
                 <tr>
-                    <td><MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink></td>
+                    <td>
+                        @if (creature.ImageUrl is not null)
+                        {
+                            <MudAvatar Size="Size.Small" Class="mr-2"><MudImage Src="@creature.ImageUrl" /></MudAvatar>
+                        }
+                        <MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink>
+                    </td>
                     <td>@(creature.Raca ?? "—")</td>
                     <td>@(creature.Arquetipo ?? "—")</td>
                     <td>@(creature.Rank ?? "—")</td>
