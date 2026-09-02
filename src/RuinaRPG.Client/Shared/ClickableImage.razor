@@ -1,0 +1,30 @@
+@using MudBlazor
+
+@* Any displayed image is clickable to open a full-size popup instead of just sitting there —
+   the click on the thumbnail always stops propagation and prevents default, so this is safe to
+   drop into a row/list item that itself navigates on click (e.g. Painel's MudListItem Href).
+   The stopPropagation/preventDefault directives only apply to real DOM elements, not component
+   parameters, so the wrapping div (not MudImage itself) carries the click handler. *@
+<div style="display:inline-block;cursor:pointer" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
+    <MudImage Src="@Src" Alt="@Alt" Width="@Width" Height="@Height" ObjectFit="@ObjectFit" Class="@Class" />
+</div>
+
+<MudDialog @bind-Visible="_open">
+    <DialogContent>
+        <MudImage Src="@Src" Alt="@Alt" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public string? Alt { get; set; }
+    [Parameter] public int Width { get; set; }
+    [Parameter] public int Height { get; set; }
+    [Parameter] public ObjectFit ObjectFit { get; set; } = ObjectFit.Cover;
+    [Parameter] public string? Class { get; set; }
+
+    private bool _open;
+}

@@ -24,7 +24,7 @@
             <DataAnnotationsValidator />
             <Section Title="Identidade">
                 <div class="mb-4">
-                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = !_imageExpanded)">
+                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = true)">
                         @if (_form.ImageUrl is not null)
                         {
                             <MudImage Src="@_form.ImageUrl" ObjectFit="ObjectFit.Cover" />
@@ -34,40 +34,42 @@
                             <MudIcon Icon="@Icons.Material.Filled.Person" />
                         }
                     </MudAvatar>
+                </div>
 
-                    @if (_imageExpanded)
-                    {
-                        <div class="mt-2">
-                            @if (_form.ImageUrl is not null)
+                <MudDialog @bind-Visible="_imageExpanded">
+                    <DialogContent>
+                        @if (_form.ImageUrl is not null)
+                        {
+                            <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
+                        }
+                        <div>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
+                            @if (_form.ImageId is not null)
                             {
-                                <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
-                            }
-                            <div>
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
-                                @if (_form.ImageId is not null)
-                                {
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
-                                }
-                            </div>
-
-                            @if (_imageEditing)
-                            {
-                                <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
-                                    <CustomContent Context="fileUploadContext">
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                                    </CustomContent>
-                                </MudFileUpload>
-                                <MudSelect T="string" Value="_form.ImageId" ValueChanged="SelectExistingImage" Label="Ou reutilizar uma imagem já enviada (R0010)">
-                                    <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
-                                    @foreach (var image in _myImages)
-                                    {
-                                        <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
-                                    }
-                                </MudSelect>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
                             }
                         </div>
-                    }
-                </div>
+
+                        @if (_imageEditing)
+                        {
+                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
+                                <CustomContent Context="fileUploadContext">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                                </CustomContent>
+                            </MudFileUpload>
+                            <MudSelect T="string" Value="_form.ImageId" ValueChanged="SelectExistingImage" Label="Ou reutilizar uma imagem já enviada (R0010)">
+                                <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
+                                @foreach (var image in _myImages)
+                                {
+                                    <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </DialogContent>
+                    <DialogActions>
+                        <MudButton OnClick="@(() => _imageExpanded = false)">Fechar</MudButton>
+                    </DialogActions>
+                </MudDialog>
 
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
                 <MudTextField T="string" @bind-Value="_form.Raca" Label="Raça" />

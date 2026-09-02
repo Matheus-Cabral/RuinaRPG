@@ -39,7 +39,7 @@
                             [@anexo.Tipo] @(anexo.Nome ?? "(sem nome público)")
                             @if (anexo.ImageUrl is not null)
                             {
-                                <MudImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="120" Class="ml-2" />
+                                <ClickableImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="120" Class="ml-2" />
                             }
                         </td>
                     </tr>

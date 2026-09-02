@@ -58,7 +58,7 @@
                     <td>
                         @if (npc.ImageUrl is not null)
                         {
-                            <MudAvatar Size="Size.Small" Class="mr-2"><MudImage Src="@npc.ImageUrl" /></MudAvatar>
+                            <ClickableAvatarImage Src="@npc.ImageUrl" Size="Size.Small" Class="mr-2" />
                         }
                         <MudLink Href="@($"npcs/{npc.Id}")">@npc.Nome</MudLink>
                     </td>

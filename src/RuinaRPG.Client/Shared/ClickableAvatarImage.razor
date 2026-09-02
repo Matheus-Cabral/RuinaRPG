@@ -1,0 +1,28 @@
+@using MudBlazor
+
+@* Same idea as ClickableImage, but owns the MudAvatar wrapper itself: MudAvatar's CSS
+   (.mud-avatar > .mud-image) targets a direct child, so the click-handling div has to wrap the
+   whole avatar from outside rather than sit between the avatar and its image. *@
+<div style="display:inline-block;cursor:pointer" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
+    <MudAvatar Size="@Size" Class="@Class">
+        <MudImage Src="@Src" Alt="@Alt" />
+    </MudAvatar>
+</div>
+
+<MudDialog @bind-Visible="_open">
+    <DialogContent>
+        <MudImage Src="@Src" Alt="@Alt" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public string? Alt { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+    [Parameter] public string? Class { get; set; }
+
+    private bool _open;
+}

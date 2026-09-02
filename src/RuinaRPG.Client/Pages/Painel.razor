@@ -48,7 +48,7 @@
                         <ChildContent>
                             @if (sheet.ImageUrl is not null)
                             {
-                                <MudAvatar Class="mr-3"><MudImage Src="@sheet.ImageUrl" /></MudAvatar>
+                                <ClickableAvatarImage Src="@sheet.ImageUrl" Class="mr-3" />
                             }
                             <div>
                                 <MudText Typo="Typo.subtitle1">@(sheet.Nome ?? "(sem nome)")</MudText>

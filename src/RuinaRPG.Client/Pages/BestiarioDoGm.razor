@@ -65,7 +65,7 @@
                     <td>
                         @if (creature.ImageUrl is not null)
                         {
-                            <MudAvatar Size="Size.Small" Class="mr-2"><MudImage Src="@creature.ImageUrl" /></MudAvatar>
+                            <ClickableAvatarImage Src="@creature.ImageUrl" Size="Size.Small" Class="mr-2" />
                         }
                         <MudLink Href="@($"criaturas/{creature.Id}")">@creature.Nome</MudLink>
                     </td>
