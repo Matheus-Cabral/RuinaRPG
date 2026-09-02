@@ -1,51 +1,53 @@
 @page "/campanhas/{CampaignId}/jogador"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Campaigns
+@using MudBlazor
 
-<h1>Minha Campanha</h1>
+<MudText Typo="Typo.h3">Minha Campanha</MudText>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<TabControl>
-    <TabPage Title="Minhas Fichas">
-        <ul class="list-unstyled">
+<MudTabs Class="mt-3">
+    <MudTabPanel Text="Minhas Fichas">
+        <MudList T="string">
             @foreach (var ficha in _view.MinhasFichas)
             {
-                <li><a href="@($"fichas/{ficha.Id}")">@(ficha.Nome ?? "(sem nome)")</a> — Nível @ficha.Nivel</li>
+                <MudListItem T="string" Text="@($"{(ficha.Nome ?? "(sem nome)")} — Nível {ficha.Nivel}")" Href="@($"fichas/{ficha.Id}")" />
             }
-        </ul>
-    </TabPage>
+        </MudList>
+    </MudTabPanel>
 
-    <TabPage Title="Meus Companheiros">
-        <ul class="list-unstyled">
+    <MudTabPanel Text="Meus Companheiros">
+        <MudList T="string">
             @foreach (var companheiro in _view.MeusCompanheiros)
             {
-                <li>
-                    <a href="@((companheiro.Tipo == "Npc" ? "npcs/" : "criaturas/") + companheiro.Id)">@(companheiro.Nome ?? "(sem nome)")</a>
-                    (@(companheiro.Tipo == "Npc" ? "NPC" : "Criatura"))
-                </li>
+                <MudListItem T="string" Text="@($"{(companheiro.Nome ?? "(sem nome)")} ({(companheiro.Tipo == "Npc" ? "NPC" : "Criatura")})")" Href="@((companheiro.Tipo == "Npc" ? "npcs/" : "criaturas/") + companheiro.Id)" />
             }
-        </ul>
-    </TabPage>
+        </MudList>
+    </MudTabPanel>
 
-    <TabPage Title="Anexos Públicos">
-        <ul class="list-unstyled">
-            @foreach (var anexo in _view.AnexosPublicos)
-            {
-                <li>
-                    [@anexo.Tipo] @(anexo.Nome ?? "(sem nome público)")
-                    @if (anexo.ImageUrl is not null)
-                    {
-                        <img src="@anexo.ImageUrl" alt="@anexo.Nome" style="max-width: 120px;" />
-                    }
-                </li>
-            }
-        </ul>
-    </TabPage>
-</TabControl>
+    <MudTabPanel Text="Anexos Públicos">
+        <MudSimpleTable Dense="true" Hover="true">
+            <tbody>
+                @foreach (var anexo in _view.AnexosPublicos)
+                {
+                    <tr>
+                        <td>
+                            [@anexo.Tipo] @(anexo.Nome ?? "(sem nome público)")
+                            @if (anexo.ImageUrl is not null)
+                            {
+                                <MudImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="120" Class="ml-2" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";

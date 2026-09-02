@@ -10,58 +10,54 @@
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.Encounters
 @using RuinaRPG.Contracts.NpcSheets
+@using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
 @if (_editingNome)
 {
-    <div class="input-group" style="max-width: 24rem">
-        <input class="form-control" @bind="_nomeEdit" />
-        <button type="button" class="btn btn-primary" @onclick="SaveNomeAsync">Salvar</button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _editingNome = false)">Cancelar</button>
-    </div>
+    <MudTextField T="string" @bind-Value="_nomeEdit" Style="max-width:24rem" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="SaveNomeAsync">Salvar</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="mt-2" OnClick="@(() => _editingNome = false)">Cancelar</MudButton>
 }
 else
 {
-    <h1>
+    <MudText Typo="Typo.h3">
         @(_encounter?.Nome ?? "Encontro") — Rodada @_encounter?.CurrentRound
-        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="StartEditNome">Renomear</button>
-    </h1>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="StartEditNome" Class="ml-2">Renomear</MudButton>
+    </MudText>
 }
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
 <Section Title="Adicionar Participante">
     <EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label">Origem</label>
-                <select class="form-select" @bind="_addForm.SourceKind" @bind:after="@(() => _addForm.SourceSheetId = "")">
-                    <option value="CharacterSheet">Ficha de Personagem</option>
-                    <option value="NpcSheet">Ficha de NPC</option>
-                    <option value="CreatureSheet">Ficha de Criatura</option>
-                </select>
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">Ficha de origem</label>
+        <MudGrid Class="mt-3">
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" @bind-Value="_addForm.SourceKind" @bind-Value:after="@(() => _addForm.SourceSheetId = "")" Label="Origem">
+                    <MudSelectItem Value="@("CharacterSheet")">Ficha de Personagem</MudSelectItem>
+                    <MudSelectItem Value="@("NpcSheet")">Ficha de NPC</MudSelectItem>
+                    <MudSelectItem Value="@("CreatureSheet")">Ficha de Criatura</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="5">
                 <EntityPicker @bind-Value="_addForm.SourceSheetId" SearchItems="SearchSourceSheetsAsync" Placeholder="Buscar ficha..." />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Iniciativa</label>
-                <InputNumber class="form-control" @bind-Value="_addForm.Iniciativa" />
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary">Adicionar Participante</button>
-            </div>
-        </div>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField T="int" @bind-Value="_addForm.Iniciativa" Label="Iniciativa" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Participante</MudButton>
+            </MudItem>
+        </MudGrid>
     </EditForm>
 </Section>
 
-<button type="button" class="btn btn-primary my-3" @onclick="AdvanceTurnAsync">Próximo Turno</button>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="my-3" OnClick="AdvanceTurnAsync">Próximo Turno</MudButton>
 
-<table class="table">
+<MudSimpleTable Dense="true" Hover="true">
     <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < _participants.Count; i++)
@@ -79,11 +75,11 @@ else
                 <td>
                     @if (_editingParticipantId == participant.Id)
                     {
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelEditParticipant">Cancelar</button>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditParticipant">Cancelar</MudButton>
                     }
                     else
                     {
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => StartEditParticipant(participant))">Editar</button>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditParticipant(participant))">Editar</MudButton>
                     }
                 </td>
             </tr>
@@ -92,51 +88,45 @@ else
                 <tr>
                     <td colspan="8">
                         <EditForm Model="_editParticipantForm" OnValidSubmit="@(() => SaveParticipantAsync(participant))">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-2">
-                                    <label class="form-label">Iniciativa</label>
-                                    <InputNumber class="form-control" @bind-Value="_editParticipantForm.Iniciativa" />
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Ações Restantes (0-3)</label>
-                                    <InputNumber class="form-control" @bind-Value="_editParticipantForm.AcoesRestantes" min="0" max="3" />
-                                </div>
+                            <MudGrid Class="mt-3">
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int" @bind-Value="_editParticipantForm.Iniciativa" Label="Iniciativa" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int" @bind-Value="_editParticipantForm.AcoesRestantes" Label="Ações Restantes (0-3)" Min="0" Max="3" />
+                                </MudItem>
                                 @if (participant.IsLiveSourced)
                                 {
-                                    <div class="col-md-8">
-                                        <p class="text-muted mb-0">PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</p>
-                                    </div>
+                                    <MudItem xs="12" md="8">
+                                        <MudText Color="Color.Secondary">PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</MudText>
+                                    </MudItem>
                                 }
                                 else
                                 {
-                                    <div class="col-md-2">
-                                        <label class="form-label">PV</label>
-                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PV" />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">PF</label>
-                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PF" />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">PA</label>
-                                        <InputNumber class="form-control" @bind-Value="_editParticipantForm.PA" />
-                                    </div>
+                                    <MudItem xs="12" md="2">
+                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="2">
+                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="2">
+                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
+                                    </MudItem>
                                 }
-                                <div class="col-md-6">
-                                    <label class="form-label">Condições (substitui a lista atual)</label>
-                                    <InputText class="form-control" @bind-Value="_editParticipantForm.CondicoesText" />
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-primary">Salvar</button>
-                                </div>
-                            </div>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField T="string" @bind-Value="_editParticipantForm.CondicoesText" Label="Condições (substitui a lista atual)" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Salvar</MudButton>
+                                </MudItem>
+                            </MudGrid>
                         </EditForm>
                     </td>
                 </tr>
             }
         }
     </tbody>
-</table>
+</MudSimpleTable>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
@@ -144,11 +134,11 @@ else
 
     private string? _campaignName;
 
-    private List<BreadcrumbItem> Crumbs
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs
     {
         get
         {
-            var crumbs = new List<BreadcrumbItem> { new("Painel", "painel") };
+            var crumbs = new List<RuinaRPG.Client.Shared.BreadcrumbItem> { new("Painel", "painel") };
             if (_campaignName is not null)
             {
                 crumbs.Add(new("Campanhas", "campanhas"));
