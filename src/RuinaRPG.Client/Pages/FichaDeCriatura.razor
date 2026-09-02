@@ -5,165 +5,93 @@
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Shared.Fields
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
 
 <Breadcrumbs Items="@Crumbs" />
-
 <h1>Ficha de Criatura</h1>
 
 @if (_errorMessage is not null)
 {
-    <p class="error">@_errorMessage</p>
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
 }
 
-<TabControl>
-    <TabPage Title="Informações Básicas">
+<MudTabs>
+    <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label class="form-label">Nome</label>
-                    <InputText class="form-control" @bind-Value="_form.Nome" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Raça</label>
-                    <InputText class="form-control" @bind-Value="_form.Raca" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Arquétipo</label>
-                    <select class="form-select" @bind="_form.Arquetipo">
-                        <option value="">Escolha um Arquétipo</option>
-                        <option value="Fisico">Físico</option>
-                        <option value="Arcano">Arcano</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Sub Arquétipo</label>
-                    <InputText class="form-control" @bind-Value="_form.SubArquetipo" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Afinidade</label>
-                    <select class="form-select" @bind="_form.Afinidade">
-                        <option value="">Escolha uma Afinidade</option>
-                        <option value="Terra">Terra</option>
-                        <option value="Agua">Água</option>
-                        <option value="Fogo">Fogo</option>
-                        <option value="Ar">Ar</option>
-                        <option value="Gelo">Gelo</option>
-                        <option value="Flora">Flora</option>
-                        <option value="Ferro">Ferro</option>
-                        <option value="Raio">Raio</option>
-                        <option value="Prever">Prever</option>
-                        <option value="Alma">Alma</option>
-                        <option value="Purificar">Purificar</option>
-                        <option value="Ecomancia">Ecomancia</option>
-                        <option value="Hemomancia">Hemomancia</option>
-                        <option value="Curar">Curar</option>
-                        <option value="Vida">Vida</option>
-                        <option value="Aprimorar">Aprimorar</option>
-                        <option value="Necromancia">Necromancia</option>
-                        <option value="Invocacao">Invocação</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Rank</label>
-                    <select class="form-select" @bind="_form.Rank">
-                        <option value="">Escolha um Rank</option>
-                        <option value="F">F</option>
-                        <option value="E">E</option>
-                        <option value="D">D</option>
-                        <option value="C">C</option>
-                        <option value="B">B</option>
-                        <option value="A">A</option>
-                        <option value="S">S</option>
-                    </select>
-                </div>
-            </div>
+            <DataAnnotationsValidator />
+            <Section Title="Identidade">
+                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+                <MudTextField T="string" @bind-Value="_form.Raca" Label="Raça" />
+                <MudSelect T="string" @bind-Value="_form.Arquetipo" Label="Arquétipo">
+                    <MudSelectItem Value="@("")">Escolha um Arquétipo</MudSelectItem>
+                    <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
+                    <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
+                </MudSelect>
+                <MudTextField T="string" @bind-Value="_form.SubArquetipo" Label="Sub Arquétipo" />
+                <AfinidadeSelect @bind-Value="_form.Afinidade" />
+                <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank">
+                    <MudSelectItem Value="@("")">Escolha um Rank</MudSelectItem>
+                    <MudSelectItem Value="@("F")">F</MudSelectItem>
+                    <MudSelectItem Value="@("E")">E</MudSelectItem>
+                    <MudSelectItem Value="@("D")">D</MudSelectItem>
+                    <MudSelectItem Value="@("C")">C</MudSelectItem>
+                    <MudSelectItem Value="@("B")">B</MudSelectItem>
+                    <MudSelectItem Value="@("A")">A</MudSelectItem>
+                    <MudSelectItem Value="@("S")">S</MudSelectItem>
+                </MudSelect>
+            </Section>
 
-            <h3>Nível e Progressão</h3>
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label class="form-label">Nível</label>
-                    <InputNumber class="form-control" @bind-Value="_form.Nivel" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Experiência Atual</label>
-                    <InputNumber class="form-control" @bind-Value="_form.ExperienciaAtual" />
-                </div>
-                <div class="col-md-2 pt-4">
-                    <p class="mb-0">Kill: @_form.Kill</p>
-                </div>
-                <div class="col-md-2 pt-4">
-                    <p class="mb-0">Assistência: @_form.Assistencia</p>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Pontos de Ignição</label>
-                    <InputNumber class="form-control" @bind-Value="_form.PontosDeIgnicao" />
-                </div>
-            </div>
+            <Section Title="Nível e Progressão">
+                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" />
+                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" />
+                <MudText>Kill: @_form.Kill</MudText>
+                <MudText>Assistência: @_form.Assistencia</MudText>
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" />
+            </Section>
 
-            <h3>Recursos</h3>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Adrenalina (PA)</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.AdrenalinaAtual" />
-                        <span class="input-group-text">/ @_form.AdrenalinaMaximo</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Arcana (PF)</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.FocoAtual" />
-                        <span class="input-group-text">/ @_form.FocoMaximo</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Vitalidade</label>
-                    <div class="input-group">
-                        <InputNumber class="form-control" @bind-Value="_form.VitalidadeAtual" />
-                        <span class="input-group-text">/ @_form.VitalidadeMaximo</span>
-                    </div>
-                </div>
-            </div>
+            <Section Title="Recursos">
+                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Arcana (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
+            </Section>
 
-            <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
-    </TabPage>
+    </MudTabPanel>
 
-    <TabPage Title="Atributos & Perícias">
-        <div class="table-responsive">
-        <table class="table">
+    <MudTabPanel Text="Atributos & Perícias">
+        <MudSimpleTable Dense="true" Hover="true">
             <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Maestria</th><th>Total</th></tr></thead>
             <tbody>
                 @foreach (var attr in _attributes)
                 {
                     <tr>
                         <td>@attr.Atributo</td>
-                        <td><input type="number" value="@attr.Gasto" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Gasto", e.Value))" /></td>
-                        <td><input type="number" value="@attr.Bonus" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "Bonus", e.Value))" /></td>
-                        <td><input type="checkbox" checked="@attr.TemMaestria" @onchange="@(e => UpdateAttributeAsync(attr.Atributo, "TemMaestria", e.Value))" /></td>
+                        <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
+                        <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
+                        <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
                         <td>@attr.Total</td>
                     </tr>
                 }
             </tbody>
-        </table>
-        </div>
+        </MudSimpleTable>
 
-        <div class="table-responsive">
-        <table class="table">
+        <MudSimpleTable Dense="true" Hover="true">
             <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
             <tbody>
                 @foreach (var skill in _skills)
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><input type="number" value="@skill.Gasto" @onchange="@(e => UpdateSkillAsync(skill.Pericia, e.Value))" /></td>
+                        <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" /></td>
                         <td>@skill.Modificador</td>
                     </tr>
                 }
             </tbody>
-        </table>
-        </div>
-    </TabPage>
+        </MudSimpleTable>
+    </MudTabPanel>
 
     <TabPage Title="Combate">
         <h3>Armas</h3>
@@ -506,7 +434,7 @@
 @code {
     [Parameter] public string SheetId { get; set; } = "";
 
-    private List<BreadcrumbItem> Crumbs => new()
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
         new("Bestiário do GM", "bestiario"),
@@ -603,9 +531,16 @@
 
     private async Task SaveAsync()
     {
+        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.PontosDeIgnicao is null
+            || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null)
+        {
+            _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
+            return;
+        }
+
         var request = new UpdateCreatureSheetRequest(null, _form.Nome, _form.Raca, _form.Arquetipo, _form.SubArquetipo,
-            _form.Afinidade, _form.Rank, _form.Nivel, _form.ExperienciaAtual, _form.PontosDeIgnicao,
-            _form.VitalidadeAtual, _form.FocoAtual, _form.AdrenalinaAtual, _form.Cobertura);
+            _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicao!.Value,
+            _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura);
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -901,14 +836,20 @@
         public string? SubArquetipo { get; set; }
         public string? Afinidade { get; set; }
         public string? Rank { get; set; }
-        public int Nivel { get; set; } = 1;
-        public int ExperienciaAtual { get; set; }
+        [Required(ErrorMessage = "Informe o Nível.")]
+        public int? Nivel { get; set; } = 1;
+        [Required(ErrorMessage = "Informe a Experiência Atual.")]
+        public int? ExperienciaAtual { get; set; }
         public int Kill { get; set; }
         public int Assistencia { get; set; }
-        public int PontosDeIgnicao { get; set; }
-        public int VitalidadeAtual { get; set; }
-        public int FocoAtual { get; set; }
-        public int AdrenalinaAtual { get; set; }
+        [Required(ErrorMessage = "Informe os Pontos de Ignição.")]
+        public int? PontosDeIgnicao { get; set; }
+        [Required(ErrorMessage = "Informe a Vitalidade.")]
+        public int? VitalidadeAtual { get; set; }
+        [Required(ErrorMessage = "Informe o Foco.")]
+        public int? FocoAtual { get; set; }
+        [Required(ErrorMessage = "Informe a Adrenalina.")]
+        public int? AdrenalinaAtual { get; set; }
         public string Cobertura { get; set; } = "Nenhuma";
         public int VitalidadeMaximo { get; set; }
         public int FocoMaximo { get; set; }
