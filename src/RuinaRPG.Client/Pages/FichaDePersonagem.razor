@@ -509,33 +509,69 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Diário">
-        <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
-            <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
-        </EditForm>
-        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-            <tbody>
+        <Section Title="Adicionar Entrada">
+            <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
+                <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
+                <MudExpansionPanel Text="Anexar imagens">
+                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadDiaryImageAsync(f, _diaryImageIds))" Class="mt-3">
+                        <CustomContent Context="fileUploadContext">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudList T="string" Dense="true">
+                        @foreach (var image in _myImages)
+                        {
+                            <MudListItem T="string">
+                                <MudCheckBox T="bool" Value="@_diaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_diaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudExpansionPanel>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
+            </EditForm>
+        </Section>
+
+        <Section Title="Entradas">
+            <MudTimeline Class="mt-3">
                 @foreach (var entry in _diaryEntries)
                 {
-                    <tr>
-                        <td>
+                    <MudTimelineItem Color="Color.Primary">
+                        <ItemContent>
                             @if (_editingDiaryEntryId == entry.Id)
                             {
                                 <MudTextField T="string" @bind-Value="_editDiaryText" Lines="3" />
+                                <MudList T="string" Dense="true">
+                                    @foreach (var image in _myImages)
+                                    {
+                                        <MudListItem T="string">
+                                            <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
+                                        </MudListItem>
+                                    }
+                                </MudList>
                                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
                                 <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                             }
                             else
                             {
-                                <MudText>@entry.CreatedAt.ToString("g") — @entry.Texto</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@entry.CreatedAt.ToString("g")</MudText>
+                                <MudText>@entry.Texto</MudText>
+                                @if (entry.ImageUrls.Count > 0)
+                                {
+                                    <div class="mt-1">
+                                        @foreach (var url in entry.ImageUrls)
+                                        {
+                                            <MudImage Src="@url" Width="100" Class="mr-1" />
+                                        }
+                                    </div>
+                                }
                                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditDiaryEntry(entry))">Editar</MudButton>
                                 <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteDiaryEntryAsync(entry.Id))">Excluir</MudButton>
                             }
-                        </td>
-                    </tr>
+                        </ItemContent>
+                    </MudTimelineItem>
                 }
-            </tbody>
-        </MudSimpleTable>
+            </MudTimeline>
+        </Section>
     </MudTabPanel>
 </MudTabs>
 
@@ -597,6 +633,8 @@
     private readonly DiaryFormModel _diaryForm = new();
     private string? _editingDiaryEntryId;
     private string _editDiaryText = "";
+    private readonly HashSet<string> _diaryImageIds = new();
+    private readonly HashSet<string> _editDiaryImageIds = new();
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
     {
@@ -1097,9 +1135,35 @@
         _diaryEntries = await Http.GetFromJsonAsync<List<DiaryEntryResponse>>($"character-sheets/{SheetId}/diary") ?? new();
     }
 
+    private async Task UploadDiaryImageAsync(IBrowserFile file, HashSet<string> targetSelection)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", file.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
+        targetSelection.Add(body.Id);
+    }
+
+    private static void ToggleImage(HashSet<string> selection, string imageId, bool selected)
+    {
+        if (selected)
+            selection.Add(imageId);
+        else
+            selection.Remove(imageId);
+    }
+
     private async Task AddDiaryEntryAsync()
     {
-        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/diary", new CreateDiaryEntryRequest(_diaryForm.Texto, new List<string>()));
+        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/diary", new CreateDiaryEntryRequest(_diaryForm.Texto, _diaryImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a entrada.";
@@ -1107,6 +1171,7 @@
         }
 
         _diaryForm.Texto = "";
+        _diaryImageIds.Clear();
         await LoadDiaryAsync();
     }
 
@@ -1114,17 +1179,25 @@
     {
         _editingDiaryEntryId = entry.Id;
         _editDiaryText = entry.Texto;
+        _editDiaryImageIds.Clear();
+        foreach (var url in entry.ImageUrls)
+        {
+            var image = _myImages.FirstOrDefault(i => i.Url == url);
+            if (image is not null)
+                _editDiaryImageIds.Add(image.Id);
+        }
     }
 
     private void CancelEditDiaryEntry()
     {
         _editingDiaryEntryId = null;
         _editDiaryText = "";
+        _editDiaryImageIds.Clear();
     }
 
     private async Task SaveDiaryEntryAsync(string entryId)
     {
-        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/diary/{entryId}", new UpdateDiaryEntryRequest(_editDiaryText, new List<string>()));
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/diary/{entryId}", new UpdateDiaryEntryRequest(_editDiaryText, _editDiaryImageIds.ToList()));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível salvar a entrada.";
@@ -1133,6 +1206,7 @@
 
         _editingDiaryEntryId = null;
         _editDiaryText = "";
+        _editDiaryImageIds.Clear();
         await LoadDiaryAsync();
     }
 
