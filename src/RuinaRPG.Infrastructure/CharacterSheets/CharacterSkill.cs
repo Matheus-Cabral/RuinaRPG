@@ -8,4 +8,5 @@ public class CharacterSkill
     public Guid CharacterSheetId { get; set; }
     public Pericia Pericia { get; set; }
     public int Gasto { get; set; }
+    public Atributo? AtributoEscolhido { get; set; }
 }

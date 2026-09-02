@@ -15,7 +15,7 @@ namespace RuinaRPG.Api.Controllers;
 public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId, [FromQuery] string? atributoEscolhido)
+    public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId)
     {
         var sheet = await db.NpcSheets.FindAsync(sheetId);
         if (sheet is null)
@@ -24,22 +24,20 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).ToListAsync();
+        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
 
-        int? atributoTotal = null;
-        if (Enum.TryParse<Atributo>(atributoEscolhido, out var parsedAtributo))
-        {
-            var attribute = await db.NpcAttributes.SingleOrDefaultAsync(a => a.NpcSheetId == sheetId && a.Atributo == parsedAtributo);
-            if (attribute is not null)
-                atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
-        }
+        var attributeTotals = await db.NpcAttributes
+            .Where(a => a.NpcSheetId == sheetId)
+            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0));
 
         return skills
             .Select(s =>
             {
                 var modificador = SkillFormulas.Modificador(s.Gasto);
-                var total = atributoTotal is not null ? SkillFormulas.Total(modificador, atributoTotal.Value) : (int?)null;
-                return new NpcSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, atributoEscolhido, total);
+                var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
+                    ? SkillFormulas.Total(modificador, atributoTotal)
+                    : (int?)null;
+                return new NpcSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
             })
             .ToList();
     }
@@ -56,6 +54,7 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
 
         var skill = await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheetId && s.Pericia == pericia);
         skill.Gasto = request.Gasto;
+        skill.AtributoEscolhido = Enum.TryParse<Atributo>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();
 
         return NoContent();

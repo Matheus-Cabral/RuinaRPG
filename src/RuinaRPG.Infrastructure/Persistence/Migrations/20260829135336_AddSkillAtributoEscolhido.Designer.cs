@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RuinaRPG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    partial class RuinaRpgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829135336_AddSkillAtributoEscolhido")]
+    partial class AddSkillAtributoEscolhido
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1227,8 +1230,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CampaignId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CurrentParticipantId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("CurrentParticipantIndex")
+                        .HasColumnType("integer");
 
                     b.Property<int>("CurrentRound")
                         .HasColumnType("integer");
@@ -1239,8 +1242,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CampaignId");
-
-                    b.HasIndex("CurrentParticipantId");
 
                     b.ToTable("Encounters");
                 });
@@ -2763,11 +2764,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CampaignId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", null)
-                        .WithMany()
-                        .HasForeignKey("CurrentParticipantId")
-                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", b =>

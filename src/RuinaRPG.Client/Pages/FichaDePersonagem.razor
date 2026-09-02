@@ -99,14 +99,24 @@
         </MudSimpleTable>
 
         <MudSimpleTable Dense="true" Hover="true">
-            <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th></tr></thead>
+            <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
             <tbody>
                 @foreach (var skill in _skills)
                 {
                     <tr>
                         <td>@skill.Pericia</td>
-                        <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillAsync(skill.Pericia, v))" /></td>
+                        <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                         <td>@skill.Modificador</td>
+                        <td>
+                            <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
+                                <MudSelectItem Value="@("")">—</MudSelectItem>
+                                @foreach (var attr in _attributes)
+                                {
+                                    <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td>@skill.Total</td>
                     </tr>
                 }
             </tbody>
@@ -691,11 +701,19 @@
         await LoadTabs2And3Async();
     }
 
-    private async Task UpdateSkillAsync(string pericia, object? value)
+    private async Task UpdateSkillGastoAsync(string pericia, object? value)
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, null));
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, current.AtributoEscolhido));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateSkillAtributoAsync(string pericia, object? value)
+    {
+        var current = _skills.Single(s => s.Pericia == pericia);
+        var atributoEscolhido = value?.ToString();
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
     }
 
