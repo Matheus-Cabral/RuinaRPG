@@ -25,17 +25,58 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         db.Campaigns.Add(campaign);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(campaign));
+        return Created(string.Empty, await ToResponseAsync(campaign));
     }
 
     [HttpGet]
     public async Task<ActionResult<List<CampaignResponse>>> List()
     {
         var gmId = CurrentGmId();
-        return await db.Campaigns
-            .Where(c => c.GmId == gmId)
-            .Select(c => new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao))
-            .ToListAsync();
+        var campaigns = await db.Campaigns.Where(c => c.GmId == gmId).ToListAsync();
+
+        var responses = new List<CampaignResponse>();
+        foreach (var campaign in campaigns)
+            responses.Add(await ToResponseAsync(campaign));
+        return responses;
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, UpdateCampaignRequest request)
+    {
+        var gmId = CurrentGmId();
+        var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == id && c.GmId == gmId);
+        if (campaign is null)
+            return NotFound();
+
+        if (!TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        if (imageId is not null && !await OwnsImageAsync(imageId.Value, gmId))
+            return BadRequest("Imagem não encontrada.");
+
+        campaign.Nome = request.Nome;
+        campaign.Descricao = request.Descricao;
+        campaign.ImageId = imageId;
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id, DeleteCampaignRequest request)
+    {
+        var gmId = CurrentGmId();
+        var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == id && c.GmId == gmId);
+        if (campaign is null)
+            return NotFound();
+
+        var user = await userManager.FindByIdAsync(gmId.ToString());
+        if (user is null || !await userManager.CheckPasswordAsync(user, request.Senha))
+            return Unauthorized("Senha inválida.");
+
+        db.Campaigns.Remove(campaign);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpPost("{campaignId}/members")]
@@ -335,7 +376,31 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         return true;
     }
 
-    private static CampaignResponse ToResponse(Campaign c) => new(c.Id.ToString(), c.Nome, c.Descricao);
+    private static bool TryParseImageId(string? raw, out Guid? imageId)
+    {
+        imageId = null;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+        if (!Guid.TryParse(raw, out var parsed))
+            return false;
+        imageId = parsed;
+        return true;
+    }
+
+    private Task<bool> OwnsImageAsync(Guid imageId, Guid gmId) =>
+        db.Images.AnyAsync(i => i.Id == imageId && i.UploadedByUserId == gmId);
+
+    private async Task<CampaignResponse> ToResponseAsync(Campaign c)
+    {
+        string? imageUrl = null;
+        if (c.ImageId is not null)
+        {
+            var image = await db.Images.FindAsync(c.ImageId.Value);
+            imageUrl = image is not null ? $"/images/{image.Path}" : null;
+        }
+
+        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl);
+    }
 
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

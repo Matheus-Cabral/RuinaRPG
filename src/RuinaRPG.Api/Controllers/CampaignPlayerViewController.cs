@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -24,11 +25,15 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
     public async Task<ActionResult<List<CampaignResponse>>> ListMine()
     {
         var callerId = CurrentUserId();
-        return await db.CampaignMembers
+        var campaigns = await db.CampaignMembers
             .Where(m => m.UserId == callerId)
             .Join(db.Campaigns, m => m.CampaignId, c => c.Id, (m, c) => c)
-            .Select(c => new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao))
             .ToListAsync();
+
+        var responses = new List<CampaignResponse>();
+        foreach (var campaign in campaigns)
+            responses.Add(await ToResponseAsync(campaign));
+        return responses;
     }
 
     [HttpGet]
@@ -125,6 +130,18 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
             results.Add(new SecretNoteResponse(note.Id.ToString(), note.Texto, note.CreatedAt, recipientIds.Select(id => id.ToString()).ToList(), images.Select(i => $"/images/{i.Path}").ToList()));
         }
         return results;
+    }
+
+    private async Task<CampaignResponse> ToResponseAsync(Campaign c)
+    {
+        string? imageUrl = null;
+        if (c.ImageId is not null)
+        {
+            var image = await db.Images.FindAsync(c.ImageId.Value);
+            imageUrl = image is not null ? $"/images/{image.Path}" : null;
+        }
+
+        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

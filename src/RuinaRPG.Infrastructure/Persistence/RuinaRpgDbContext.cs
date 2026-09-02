@@ -158,6 +158,10 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(c => c.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>()
+                .WithMany()
+                .HasForeignKey(c => c.ImageId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<CharacterSheet>(entity =>

@@ -340,12 +340,71 @@
             </MudSimpleTable>
         </Section>
     </MudTabPanel>
+
+    <MudTabPanel Text="Detalhes">
+        <Section Title="Editar Campanha">
+            <EditForm Model="_detailsForm" OnValidSubmit="SaveDetailsAsync">
+                <MudTextField T="string" @bind-Value="_detailsForm.Nome" Label="Nome" />
+                <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" />
+
+                @if (_campaign?.ImageUrl is not null)
+                {
+                    <MudImage Src="@_campaign.ImageUrl" Width="200" Class="mt-2 mb-2" />
+                }
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="UploadDetailsImageAsync" Class="mt-2">
+                    <CustomContent Context="fileUploadContext">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+                <MudSelect T="string" @bind-Value="_detailsForm.ImageId" Label="Ou reutilizar uma imagem já enviada (R0010)">
+                    <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
+                    @foreach (var image in _myImages)
+                    {
+                        <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
+            </EditForm>
+        </Section>
+
+        <Section Title="Excluir Campanha">
+            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                Excluir esta campanha apaga permanentemente todas as fichas de personagem, entradas de diário e notas secretas associadas a ela. Esta ação não pode ser desfeita.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => _deleteDialogOpen = true)">Excluir Campanha</MudButton>
+        </Section>
+    </MudTabPanel>
 </MudTabs>
+
+<MudDialog @bind-Visible="_deleteDialogOpen">
+    <TitleContent>Excluir Campanha</TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            Esta ação é permanente: todas as fichas de personagem, entradas de diário e notas secretas da campanha "@_campaignName" serão apagadas.
+        </MudAlert>
+        @if (_deleteErrorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_deleteErrorMessage</MudAlert>
+        }
+        <MudTextField T="string" @bind-Value="_deletePassword" Label="Senha" InputType="InputType.Password" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmDeleteAsync">Confirmar Exclusão</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
 
     private string? _campaignName;
+    private CampaignResponse? _campaign;
+    private readonly CampaignDetailsFormModel _detailsForm = new();
+    private bool _deleteDialogOpen;
+    private string _deletePassword = "";
+    private string? _deleteErrorMessage;
 
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
@@ -389,7 +448,13 @@
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync(), LoadImagesAsync(), LoadGrantsAsync());
+    protected override async Task OnInitializedAsync()
+    {
+        // LoadCampaignNameAsync matches the loaded campaign's ImageUrl against _myImages, so
+        // images must be loaded first rather than joining the WhenAll below.
+        await LoadImagesAsync();
+        await Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadDiaryAsync(), LoadEncountersAsync(), LoadAttachmentsAsync(), LoadSecretNotesAsync(), LoadCampaignNameAsync(), SearchPlayersAsync(), LoadGrantsAsync());
+    }
 
     private async Task LoadGrantsAsync()
     {
@@ -478,7 +543,62 @@
         var response = await Http.GetAsync("campaigns");
         if (!response.IsSuccessStatusCode) return;
         var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
-        _campaignName = campaigns.FirstOrDefault(c => c.Id == CampaignId)?.Nome;
+        _campaign = campaigns.FirstOrDefault(c => c.Id == CampaignId);
+        _campaignName = _campaign?.Nome;
+
+        if (_campaign is not null)
+        {
+            _detailsForm.Nome = _campaign.Nome;
+            _detailsForm.Descricao = _campaign.Descricao;
+            _detailsForm.ImageId = _myImages.FirstOrDefault(i => i.Url == _campaign.ImageUrl)?.Id;
+        }
+    }
+
+    private async Task UploadDetailsImageAsync(IBrowserFile file)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", file.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível enviar a imagem.";
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        _detailsForm.ImageId = body!.Id;
+        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
+    }
+
+    private async Task SaveDetailsAsync()
+    {
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}", new UpdateCampaignRequest(_detailsForm.Nome, _detailsForm.Descricao, _detailsForm.ImageId));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a campanha.";
+            return;
+        }
+
+        _errorMessage = null;
+        await LoadCampaignNameAsync();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        var response = await Http.SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"campaigns/{CampaignId}")
+        {
+            Content = JsonContent.Create(new DeleteCampaignRequest(_deletePassword))
+        });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _deleteErrorMessage = "Senha inválida.";
+            return;
+        }
+
+        Navigation.NavigateTo("campanhas");
     }
 
     private async Task LoadMembersAsync()
@@ -868,6 +988,13 @@
     private class DiaryFormModel
     {
         public string Texto { get; set; } = "";
+    }
+
+    private class CampaignDetailsFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public string? ImageId { get; set; }
     }
 
     private record NpcVisibilityBody(bool NomePublico, bool ImagemPublica);
