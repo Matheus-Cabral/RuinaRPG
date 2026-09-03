@@ -152,7 +152,13 @@
         </Section>
 
         <Section Title="Afinidades">
-            <MudSimpleTable Dense="true" Hover="true">
+            <EditForm Model="_affinityForm" OnValidSubmit="AddAffinityAsync">
+                <ElementoSubElementoFields @bind-Elemento="_affinityForm.Elemento" @bind-SubElemento="_affinityForm.SubElemento" />
+                <MudTextField T="string" @bind-Value="_affinityForm.CaminhoNome" Label="Caminho" />
+                <MudNumericField T="int" @bind-Value="_affinityForm.Experiencia" Label="Experiência" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afinidade</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
                 <tbody>
                     @foreach (var affinity in _affinities)
                     {
@@ -523,6 +529,7 @@
     private List<NpcAttributeResponse> _attributes = new();
     private List<NpcSkillResponse> _skills = new();
     private List<NpcAffinityResponse> _affinities = new();
+    private readonly AffinityFormModel _affinityForm = new();
     private List<NpcWeaponResponse> _weapons = new();
     private List<NpcArmorSlotResponse> _armorSlots = new();
     private List<NpcShieldResponse> _shields = new();
@@ -737,6 +744,23 @@
         var current = _skills.Single(s => s.Pericia == pericia);
         var atributoEscolhido = value?.ToString();
         await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
+        await LoadTabs2And3Async();
+    }
+
+    private async Task AddAffinityAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affinities",
+            new AddNpcAffinityRequest(_affinityForm.Elemento, _affinityForm.SubElemento, _affinityForm.CaminhoNome, _affinityForm.Experiencia));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a afinidade.";
+            return;
+        }
+
+        _affinityForm.Elemento = "";
+        _affinityForm.SubElemento = "";
+        _affinityForm.CaminhoNome = "";
+        _affinityForm.Experiencia = 0;
         await LoadTabs2And3Async();
     }
 
@@ -1126,6 +1150,14 @@
     {
         public string Nome { get; set; } = "";
         public int Favorabilidade { get; set; }
+    }
+
+    private class AffinityFormModel
+    {
+        public string Elemento { get; set; } = "";
+        public string SubElemento { get; set; } = "";
+        public string CaminhoNome { get; set; } = "";
+        public int Experiencia { get; set; }
     }
 
     private class TraitFormModel
