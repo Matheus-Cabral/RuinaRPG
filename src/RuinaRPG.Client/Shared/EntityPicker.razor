@@ -8,6 +8,10 @@
     the component never needs to resolve an incoming Value back into a label on its own; it always
     starts empty and the caller resets Value to "" after a successful add, which this component
     picks up via OnParametersSet to clear its own confirmed-selection display.
+
+    MaxItems="null" — MudAutocomplete defaults to showing only the first 10 matches and silently
+    dropping the rest, which is wrong for a search box: every match a query returns should be
+    reachable by scrolling the list, not just the first 10.
 *@
 @if (!string.IsNullOrEmpty(Value) && _selectedLabel is not null)
 {
@@ -20,7 +24,7 @@ else
 {
     <MudAutocomplete T="PickerOption" Placeholder="@Placeholder" SearchFunc="SearchFuncAsync"
                       ToStringFunc="@(o => o?.Label ?? string.Empty)" ValueChanged="SelectAsync" ResetValueOnEmptyText="true"
-                      CoerceText="false" Clearable="true" />
+                      CoerceText="false" Clearable="true" MaxItems="null" />
 }
 
 @code {

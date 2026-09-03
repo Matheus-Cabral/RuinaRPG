@@ -1,5 +1,6 @@
 using Bunit;
 using FluentAssertions;
+using MudBlazor;
 using RuinaRPG.Client.Shared;
 using Xunit;
 
@@ -58,6 +59,19 @@ public class EntityPickerTests : MudBunitContext
         boundValue.Should().Be("id-1");
         cut.Markup.Should().Contain("Espada Longa");
         cut.Markup.Should().NotContain("<input");
+    }
+
+    [Fact]
+    public void Does_not_cap_the_number_of_results_shown()
+    {
+        // MudAutocomplete's MaxItems defaults to 10, silently hiding any match past the 10th —
+        // every search field in the app goes through this one component, so it must ask for the
+        // full list (MaxItems = null) rather than let a common query truncate results.
+        var cut = Render<EntityPicker>(p => p
+            .Add(x => x.Value, "")
+            .Add(x => x.SearchItems, _ => Task.FromResult(new List<PickerOption>())));
+
+        cut.FindComponent<MudAutocomplete<PickerOption>>().Instance.MaxItems.Should().BeNull();
     }
 
     [Fact]
