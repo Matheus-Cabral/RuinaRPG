@@ -272,9 +272,16 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (rank is not null && Enum.TryParse<Rank>(rank, out var rankParsed))
             query = query.Where(s => s.Rank == rankParsed);
 
+        // Two chained GroupJoins over an already-anonymous-typed source don't translate on this
+        // EF Core/Npgsql version ("could not be translated") — a correlated FirstOrDefault
+        // subquery per join is the reliable equivalent and translates to a plain LEFT JOIN each.
         return await query
-            .GroupJoin(db.Users, s => s.OwnerId, u => (Guid?)u.Id, (s, owners) => new { Sheet = s, Owner = owners.FirstOrDefault() })
-            .GroupJoin(db.Images, x => x.Sheet.ImageId, i => (Guid?)i.Id, (x, images) => new { x.Sheet, x.Owner, Image = images.FirstOrDefault() })
+            .Select(s => new
+            {
+                Sheet = s,
+                Owner = db.Users.FirstOrDefault(u => u.Id == s.OwnerId),
+                Image = db.Images.FirstOrDefault(i => i.Id == s.ImageId)
+            })
             .Select(x => new CreatureSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Raca, x.Sheet.Arquetipo == null ? null : x.Sheet.Arquetipo.ToString(), x.Sheet.Rank == null ? null : x.Sheet.Rank.ToString(), x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null, x.Image != null ? "/images/" + x.Image.Path : null))
             .ToListAsync();
     }

@@ -262,9 +262,16 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (nivel is not null)
             query = query.Where(s => s.Nivel == nivel);
 
+        // Two chained GroupJoins over an already-anonymous-typed source don't translate on this
+        // EF Core/Npgsql version ("could not be translated") — a correlated FirstOrDefault
+        // subquery per join is the reliable equivalent and translates to a plain LEFT JOIN each.
         return await query
-            .GroupJoin(db.Users, s => s.OwnerId, u => (Guid?)u.Id, (s, owners) => new { Sheet = s, Owner = owners.FirstOrDefault() })
-            .GroupJoin(db.Images, x => x.Sheet.ImageId, i => (Guid?)i.Id, (x, images) => new { x.Sheet, x.Owner, Image = images.FirstOrDefault() })
+            .Select(s => new
+            {
+                Sheet = s,
+                Owner = db.Users.FirstOrDefault(u => u.Id == s.OwnerId),
+                Image = db.Images.FirstOrDefault(i => i.Id == s.ImageId)
+            })
             .Select(x => new NpcSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Linhagem.ToString(), x.Sheet.Vocacao.ToString(), x.Sheet.SubVocacao, x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null, x.Image != null ? "/images/" + x.Image.Path : null))
             .ToListAsync();
     }
