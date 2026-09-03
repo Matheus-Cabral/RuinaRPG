@@ -1,72 +1,56 @@
 @using MudBlazor
 
-<MudSelect T="string" Label="Elemento" Value="Elemento" ValueChanged="OnElementoChangedAsync" Placeholder="Escolha um Elemento">
+<MudSelect T="string" Value="Elemento" ValueChanged="OnElementoChangedAsync" Placeholder="Elemento" Margin="Margin.Dense">
     @foreach (var (valor, rotulo) in Elementos)
     {
         <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
     }
 </MudSelect>
 
-@if (string.IsNullOrEmpty(Elemento))
-{
-    <MudText Typo="Typo.body2" Color="Color.Secondary">Escolha um Elemento antes do Sub-Elemento.</MudText>
-}
-else
-{
-    <MudSelect T="string" Label="Sub-Elemento" Value="SubElemento" ValueChanged="OnSubElementoChangedAsync" Placeholder="Escolha um Sub-Elemento">
-        @foreach (var (valor, rotulo) in SubElementoOptions())
-        {
-            <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
-        }
-    </MudSelect>
-}
+<MudSelect T="string" Value="SubElemento" ValueChanged="OnSubElementoChangedAsync" Placeholder="Sub-Elemento" Margin="Margin.Dense">
+    @foreach (var (valor, rotulo) in SubElementos)
+    {
+        <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+    }
+</MudSelect>
 
 @code {
+    // R0001 2.c descreve Sub-Elemento como um dropdown em cascata (filtrado pelo Elemento
+    // escolhido). Na prática isso deixava o campo de Sub-Elemento sumindo da tabela até um
+    // Elemento ser escolhido — o backend já valida a combinação (ElementoSubElementoValidator),
+    // então aqui os dois ficam sempre visíveis e independentes, sem filtro nem limpeza automática.
     [Parameter] public string? Elemento { get; set; }
     [Parameter] public EventCallback<string?> ElementoChanged { get; set; }
     [Parameter] public string? SubElemento { get; set; }
     [Parameter] public EventCallback<string?> SubElementoChanged { get; set; }
 
-    // R0001 2.c — 4 Elementos da Matriz Elemental ("Mundano", presente na matriz apenas como
-    // referência, não é uma opção válida aqui).
+    // Os 4 Elementos da Matriz Elemental ("Mundano", presente na matriz apenas como referência,
+    // não é uma opção válida aqui).
     public static readonly (string Valor, string Rotulo)[] Elementos =
     [
         ("Ar", "Ar"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Terra", "Terra"),
     ];
 
-    // Sub-Elemento é um dropdown em cascata: as opções dependem do Elemento escolhido, conforme a
-    // Matriz Elemental (espelha RuinaRPG.Domain.CharacterSheets.ElementoSubElementoValidator).
-    public static readonly Dictionary<string, (string Valor, string Rotulo)[]> SubElementosPorElemento = new()
-    {
-        ["Ar"] = [("Gelo", "Gelo"), ("Raio", "Raio"), ("Prever", "Prever"), ("Ecomancia", "Ecomancia"), ("Alma", "Alma")],
-        ["Agua"] = [("Gelo", "Gelo"), ("Flora", "Flora"), ("Purificar", "Purificar"), ("Hemomancia", "Hemomancia"), ("Alma", "Alma")],
-        ["Fogo"] = [("Raio", "Raio"), ("Ferro", "Ferro"), ("Curar", "Curar"), ("Necromancia", "Necromancia"), ("Vida", "Vida")],
-        ["Terra"] = [("Ferro", "Ferro"), ("Flora", "Flora"), ("Aprimorar", "Aprimorar"), ("Invocacao", "Invocação"), ("Vida", "Vida")],
-    };
-
-    internal (string Valor, string Rotulo)[] SubElementoOptions() =>
-        !string.IsNullOrEmpty(Elemento) && SubElementosPorElemento.TryGetValue(Elemento, out var options) ? options : [];
+    // Os 14 Sub-Elementos da Matriz Elemental, mesmos rótulos usados em AfinidadeSelect.
+    public static readonly (string Valor, string Rotulo)[] SubElementos =
+    [
+        ("Gelo", "Gelo"), ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"), ("Alma", "Alma"),
+        ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
+        ("Vida", "Vida"), ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
+    ];
 
     internal Task SetElementoForTests(string? elemento) => OnElementoChangedAsync(elemento);
+    internal Task SetSubElementoForTests(string? subElemento) => OnSubElementoChangedAsync(subElemento);
 
-    private async Task OnElementoChangedAsync(string? novoElemento)
+    private Task OnElementoChangedAsync(string? novoElemento)
     {
         Elemento = novoElemento;
-        await ElementoChanged.InvokeAsync(Elemento);
-
-        var aindaValido = novoElemento is not null
-            && SubElementosPorElemento.TryGetValue(novoElemento, out var options)
-            && options.Any(o => o.Valor == SubElemento);
-        if (!aindaValido && SubElemento is not null)
-        {
-            SubElemento = null;
-            await SubElementoChanged.InvokeAsync(null);
-        }
+        return ElementoChanged.InvokeAsync(Elemento);
     }
 
-    private async Task OnSubElementoChangedAsync(string? novoSubElemento)
+    private Task OnSubElementoChangedAsync(string? novoSubElemento)
     {
         SubElemento = novoSubElemento;
-        await SubElementoChanged.InvokeAsync(SubElemento);
+        return SubElementoChanged.InvokeAsync(SubElemento);
     }
 }
