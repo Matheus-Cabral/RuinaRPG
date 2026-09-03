@@ -40,4 +40,5 @@ public record CharacterSheetResponse(
     int AdrenalinaMaximo,
     int EstresseMaximo,
     int? XpParaProximoNivel,
-    int PontosDeIgnicaoBonusManual);
+    int PontosDeIgnicaoBonusManual,
+    int PontosDePericiaBonusCritico);

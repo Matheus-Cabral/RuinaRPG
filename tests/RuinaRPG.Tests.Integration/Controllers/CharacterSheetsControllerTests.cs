@@ -187,7 +187,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
-        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0);
 
     [Fact]
     public async Task Get_returns_the_sheet()

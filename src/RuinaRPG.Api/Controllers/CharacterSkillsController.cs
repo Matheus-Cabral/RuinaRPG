@@ -55,7 +55,10 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var gastoTotal = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).SumAsync(s => s.Gasto);
+        var gastoBruto = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).SumAsync(s => s.Gasto);
+        // Pontos ganhos por Acerto Crítico não vêm do orçamento por Nível — subtraídos do Gasto
+        // Total para não acusar "acima do máximo" por um ganho legítimo (2.d).
+        var gastoTotal = gastoBruto - sheet.PontosDePericiaBonusCritico;
         var pontosDisponiveis = SkillPointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
         return new SkillPointBudgetResponse(gastoTotal, pontosDisponiveis);
     }

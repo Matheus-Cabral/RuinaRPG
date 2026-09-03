@@ -220,6 +220,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.EstresseAtual = Math.Min(request.EstresseAtual, maximos.Estresse);
         sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
+        sheet.PontosDePericiaBonusCritico = request.PontosDePericiaBonusCritico;
 
         await db.SaveChangesAsync();
 
@@ -454,7 +455,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
-            s.PontosDeIgnicaoBonusManual);
+            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico);
     }
 
     /// <summary>

@@ -60,6 +60,11 @@ public class CharacterSheet
     /// conceder PI para os jogadores acrescentarem neste contador").</summary>
     public int PontosDeIgnicaoBonusManual { get; set; }
 
+    /// <summary>Skill points earned from rolling max on the dice (§2 of Ruína RPG - Sistema
+    /// Básico) — subtracted from the Perícia budget's Gasto Total (2.d) so the level-derived
+    /// budget doesn't flag legitimately-earned points as over budget.</summary>
+    public int PontosDePericiaBonusCritico { get; set; }
+
     // 1.c Recursos (Atual only — see plan Architecture note on máximo)
     public int VitalidadeAtual { get; set; }
     public int FocoAtual { get; set; }

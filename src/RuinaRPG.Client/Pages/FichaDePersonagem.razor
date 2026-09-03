@@ -166,7 +166,12 @@
                     Pontos de Perícia: @_skillBudget.GastoTotal / @_skillBudget.PontosDisponiveis
                 </MudText>
             }
-            <MudSimpleTable Dense="true" Hover="true">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Pontos ganhos por Acerto Crítico: @_form.PontosDePericiaBonusCritico</MudText>
+            <div class="d-flex align-center mt-2" style="gap:8px">
+                <MudNumericField T="int?" @bind-Value="_periciaCriticoDelta" Label="Adicionar/subtrair pontos de Acerto Crítico" Style="max-width:18rem" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPericiaCriticoDeltaAsync">Aplicar</MudButton>
+            </div>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
                 <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
                 <tbody>
                     @foreach (var skill in _skills)
@@ -617,6 +622,7 @@
     private readonly SheetFormModel _form = new();
     private int? _xpDelta;
     private int? _piDelta;
+    private int? _periciaCriticoDelta;
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
     private List<ImageSummaryResponse> _myImages = new();
@@ -773,6 +779,7 @@
         _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
         _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
         _form.PontosDeIgnicaoBonusManual = sheet.PontosDeIgnicaoBonusManual;
+        _form.PontosDePericiaBonusCritico = sheet.PontosDePericiaBonusCritico;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
@@ -815,7 +822,7 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -856,6 +863,24 @@
         _form.PontosDeIgnicaoBonusManual += _piDelta.Value;
         _piDelta = null;
         await SaveAsync();
+    }
+
+    /// <summary>
+    /// "Quando um jogador tira números máximos nos dados, ele tem direito a colocar um ponto na
+    /// perícia correspondente ao teste" — those points don't come from the level-derived Perícia
+    /// budget (2.d), so they're tracked separately and subtracted from Gasto Total by the
+    /// /skills/budget endpoint. Reloads the skill budget too, since SaveAsync alone only refreshes
+    /// the sheet, not _skillBudget.
+    /// </summary>
+    private async Task ApplyPericiaCriticoDeltaAsync()
+    {
+        if (_periciaCriticoDelta is null || _periciaCriticoDelta == 0)
+            return;
+
+        _form.PontosDePericiaBonusCritico += _periciaCriticoDelta.Value;
+        _periciaCriticoDelta = null;
+        await SaveAsync();
+        await LoadTabs2And3Async();
     }
 
     private async Task UpdateCoberturaAsync(string? value)
@@ -1316,6 +1341,7 @@
         // longer directly editable, same treatment as Nível.
         public int PontosDeIgnicaoTotal { get; set; }
         public int PontosDeIgnicaoBonusManual { get; set; }
+        public int PontosDePericiaBonusCritico { get; set; }
         [Required(ErrorMessage = "Informe a Vitalidade.")]
         public int? VitalidadeAtual { get; set; }
         [Required(ErrorMessage = "Informe o Foco.")]

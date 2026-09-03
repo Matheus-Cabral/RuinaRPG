@@ -26,4 +26,5 @@ public record UpdateCharacterSheetRequest(
     int AdrenalinaAtual,
     int EstresseAtual,
     string Cobertura,
-    int Ciclos);
+    int Ciclos,
+    int PontosDePericiaBonusCritico);
