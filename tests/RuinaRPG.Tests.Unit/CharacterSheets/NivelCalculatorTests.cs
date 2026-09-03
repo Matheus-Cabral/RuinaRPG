@@ -23,14 +23,20 @@ public class NivelCalculatorTests
     }
 
     [Fact]
-    public void Compute_exactly_at_a_levels_threshold_stays_at_that_level()
+    public void Compute_one_xp_below_a_levels_threshold_stays_at_the_previous_level()
     {
-        // 50 is Nível 1's max XP — still Nível 1, not yet Nível 2.
-        NivelCalculator.Compute(50, Tabela).Should().Be(1);
+        NivelCalculator.Compute(49, Tabela).Should().Be(1);
     }
 
     [Fact]
-    public void Compute_one_xp_past_a_levels_threshold_advances_to_the_next_level()
+    public void Compute_exactly_at_a_levels_threshold_already_advances_to_that_level()
+    {
+        // 50 is Nível 2's threshold — reaching it exactly already counts as Nível 2, not Nível 1.
+        NivelCalculator.Compute(50, Tabela).Should().Be(2);
+    }
+
+    [Fact]
+    public void Compute_past_a_levels_threshold_stays_at_the_level_it_reached()
     {
         NivelCalculator.Compute(51, Tabela).Should().Be(2);
     }
@@ -38,7 +44,8 @@ public class NivelCalculatorTests
     [Fact]
     public void Compute_at_a_later_levels_threshold_skips_intermediate_levels_correctly()
     {
-        NivelCalculator.Compute(151, Tabela).Should().Be(3);
+        // 150 is Nível 2's threshold — reaching it exactly is already Nível 3.
+        NivelCalculator.Compute(150, Tabela).Should().Be(3);
     }
 
     [Fact]

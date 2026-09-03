@@ -100,7 +100,9 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
 
     private static UpdateCharacterSheetRequest ValidCharacterUpdate(string nome, int vitalidadeAtual) => new(
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
-        true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
+        // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
+        // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
 
     private async Task UpdateCharacterVitalidadeAsync(string playerToken, string sheetId, string nome, int vitalidadeAtual) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidCharacterUpdate(nome, vitalidadeAtual)));

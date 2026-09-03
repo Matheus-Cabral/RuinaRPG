@@ -5,8 +5,9 @@ namespace RuinaRPG.Domain.CharacterSheets;
 /// <summary>
 /// Nível is now a pure function of Experiência Atual (1.b, "Para o próximo") instead of a
 /// directly-editable field — GM overrides are no longer a thing for Ficha de Personagem. Each
-/// XpPorNivel row's XpAbsoluto is the maximum XP a character can hold while still being that
-/// Nível; the "Nível 50" row is the non-numeric "Lvl. Max" sentinel (no further threshold).
+/// XpPorNivel row's XpAbsoluto is the XP at which a character reaches that Nível — reaching it
+/// exactly already counts (e.g. XP=50 is already Nível 2, not Nível 1); the "Nível 50" row is
+/// the non-numeric "Lvl. Max" sentinel (no further threshold).
 /// </summary>
 public static class NivelCalculator
 {
@@ -18,7 +19,7 @@ public static class NivelCalculator
             if (!int.TryParse(row.XpAbsoluto, out var threshold))
                 continue; // "Lvl. Max" row (Nível 50) isn't a real numeric threshold to compare against
 
-            if (experienciaAtual > threshold)
+            if (experienciaAtual >= threshold)
                 nivel = row.Nivel + 1;
         }
 

@@ -185,7 +185,9 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
     private static UpdateCharacterSheetRequest ValidUpdate() => new(
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
-        true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
+        // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
 
     [Fact]
     public async Task Get_returns_the_sheet()
@@ -374,9 +376,10 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
         // EAPAtual is computed, not settable — Nível 6 gives EAP = (6-1)*30 = 150 (EapCalculator,
-        // 0 Âmbares) via the real EAP-por-Nível table. 1050 XP is Nível 6's exact max (real Tabela
-        // de XP), so ExperienciaAtual drives Nível here instead of setting it directly.
-        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 1050 };
+        // 0 Âmbares) via the real EAP-por-Nível table. 1049 XP is one below Nível 7's threshold
+        // (1050), keeping this at Nível 6 — Nível is derived, so ExperienciaAtual drives it here
+        // instead of setting it directly.
+        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 1049 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
@@ -395,7 +398,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, ExperienciaAtual = 1050 };
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, ExperienciaAtual = 1049 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
@@ -472,8 +475,9 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp");
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        // 150 XP is Nível 2's exact max (real Tabela de XP) — Nível is derived, not settable directly.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
+        // 149 XP is one below Nível 3's threshold (150), keeping this at Nível 2 — Nível is
+        // derived now, not settable directly.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 149 }));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
 
@@ -489,7 +493,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 2");
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 149 }));
 
         var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
         dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
