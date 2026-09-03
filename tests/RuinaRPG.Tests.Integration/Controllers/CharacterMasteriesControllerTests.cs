@@ -181,4 +181,90 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
         body!.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Update_an_existing_mastery_returns_200_and_recomputes_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryGm7", "mastery7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer7", "masteryplayer7@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", playerToken,
+            new AddCharacterMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+
+        // Bruto[Furtividade] = Modificador(9) = 3; AtributoTotal[Agilidade] = 4 (Gasto 4, sem maestria)
+        var skillUpdate = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Furtividade", gmToken,
+            new UpdateCharacterSkillRequest(9, null)));
+        skillUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var attributeUpdate = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+        attributeUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/masteries/{added!.Id}", playerToken,
+            new UpdateCharacterMasteryRequest("Maestria em Furtividade", "Furtividade", "Agilidade", 5)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+        updated!.Nome.Should().Be("Maestria em Furtividade");
+        updated.Pericia.Should().Be("Furtividade");
+        updated.Atributo.Should().Be("Agilidade");
+        updated.GastoMaestria.Should().Be(5);
+        // Total = GastoMaestria (5) + Bruto[Furtividade] (3) + AtributoTotal[Agilidade] (4) = 12
+        updated.Total.Should().Be(12);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/masteries", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
+        body!.Should().ContainSingle(m => m.Id == added.Id && m.Total == 12);
+    }
+
+    [Fact]
+    public async Task Update_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryGm8", "mastery8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer8", "masteryplayer8@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer8b", "masteryplayer8b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", playerToken,
+            new AddCharacterMasteryRequest("Maestria em Atletismo", "Atletismo", "Vigor", 1)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/masteries/{added!.Id}", otherToken,
+            new UpdateCharacterMasteryRequest("Maestria Alheia", "Atletismo", "Vigor", 2)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Update_a_nonexistent_mastery_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryGm9", "mastery9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer9", "masteryplayer9@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/masteries/{Guid.NewGuid()}", playerToken,
+            new UpdateCharacterMasteryRequest("Maestria Inexistente", "Atletismo", "Vigor", 1)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Update_with_an_out_of_range_numeric_Pericia_or_Atributo_returns_400_and_does_not_change_the_stored_row()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryGm10", "mastery10@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryPlayer10", "masteryplayer10@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", playerToken,
+            new AddCharacterMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/masteries/{added!.Id}", playerToken,
+            new UpdateCharacterMasteryRequest("Maestria Inválida", "999", "Destreza", 3)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/masteries", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
+        body!.Should().ContainSingle(m => m.Id == added.Id && m.Pericia == "Pontaria" && m.GastoMaestria == 3);
+    }
 }

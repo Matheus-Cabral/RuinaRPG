@@ -62,6 +62,36 @@ public class CharacterMasteriesController(RuinaRpgDbContext db) : ControllerBase
         return responses;
     }
 
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CharacterMasteryResponse>> Update(Guid sheetId, Guid id, UpdateCharacterMasteryRequest request)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        if (!Enum.TryParse<Pericia>(request.Pericia, out var pericia) || !Enum.IsDefined(pericia))
+            return BadRequest("Perícia ou Atributo desconhecido.");
+        if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
+            return BadRequest("Perícia ou Atributo desconhecido.");
+
+        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CharacterSheetId == sheetId);
+        if (mastery is null)
+            return NotFound();
+
+        mastery.Nome = request.Nome;
+        mastery.Pericia = pericia;
+        mastery.Atributo = atributo;
+        mastery.GastoMaestria = request.GastoMaestria;
+        await db.SaveChangesAsync();
+
+        var total = await ComputeTotalAsync(sheetId, pericia, atributo, mastery.GastoMaestria);
+        return Ok(ToResponse(mastery, total));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid sheetId, Guid id)
     {

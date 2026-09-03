@@ -123,6 +123,44 @@
 
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
+
+        <Section Title="Características">
+            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
+                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
+            </EditForm>
+            @{
+                var gastoLiquido = (_traits?.TotalPositivas ?? 0) + (_traits?.TotalNegativas ?? 0);
+                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
+            }
+            <MudText Color="@(gastoLiquido > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
+                Pontos de Características: @gastoLiquido / @pontosDisponiveis
+            </MudText>
+            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Positivas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Negativas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
@@ -390,11 +428,14 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead><tr><th>Nome</th><th>Descrição</th><th>Grau</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var rune in _runes)
                     {
                         <tr>
-                            <td>@rune.Nome (Grau @rune.Grau) — @rune.Descricao</td>
+                            <td><MudTextField T="string" Value="@rune.Nome" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Nome", v))" /></td>
+                            <td><MudTextField T="string" Value="@rune.Descricao" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Descricao", v))" /></td>
+                            <td><MudNumericField T="int" Value="@rune.Grau" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Grau", v))" /></td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -423,11 +464,30 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead><tr><th>Nome</th><th>Perícia</th><th>Atributo</th><th>Gasto Maestria</th><th>Total</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @mastery.Pericia / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td><MudTextField T="string" Value="@mastery.Nome" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Nome", v))" /></td>
+                            <td>
+                                <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
+                                    @foreach (var skill in _skills)
+                                    {
+                                        <MudSelectItem Value="@skill.Pericia">@skill.Pericia</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td>
+                                <MudSelect T="string" Value="@mastery.Atributo" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Atributo", v))">
+                                    @foreach (var attr in _attributes)
+                                    {
+                                        <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td><MudNumericField T="int" Value="@mastery.GastoMaestria" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "GastoMaestria", v))" /></td>
+                            <td>@mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -486,50 +546,14 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afeição</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead><tr><th>Nome</th><th>Favorabilidade</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var affection in _affections)
                     {
                         <tr>
-                            <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
+                            <td><MudTextField T="string" Value="@affection.Nome" ValueChanged="@(v => UpdateAffectionAsync(affection.Id, "Nome", v))" /></td>
+                            <td><MudNumericField T="int" Value="@affection.Favorabilidade" ValueChanged="@(v => UpdateAffectionAsync(affection.Id, "Favorabilidade", v))" /></td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffectionAsync(affection.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            @{
-                var gastoLiquido = (_traits?.TotalPositivas ?? 0) + (_traits?.TotalNegativas ?? 0);
-                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
-            }
-            <MudText Color="@(gastoLiquido > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
-                Pontos de Características: @gastoLiquido / @pontosDisponiveis
-            </MudText>
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
                         </tr>
                     }
                 </tbody>
@@ -1091,6 +1115,17 @@
         await LoadRunesAsync();
     }
 
+    private async Task UpdateRuneAsync(string id, string field, object? value)
+    {
+        var current = _runes.Single(r => r.Id == id);
+        var nome = field == "Nome" ? value?.ToString() ?? current.Nome : current.Nome;
+        var descricao = field == "Descricao" ? value?.ToString() ?? current.Descricao : current.Descricao;
+        var grau = field == "Grau" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Grau) : current.Grau;
+
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/runes/{id}", new UpdateCharacterRuneRequest(nome, descricao, grau));
+        await LoadRunesAsync();
+    }
+
     private async Task LoadMasteriesAsync()
     {
         _masteries = await Http.GetFromJsonAsync<List<CharacterMasteryResponse>>($"character-sheets/{SheetId}/masteries") ?? new();
@@ -1114,6 +1149,19 @@
     private async Task DeleteMasteryAsync(string id)
     {
         await Http.DeleteAsync($"character-sheets/{SheetId}/masteries/{id}");
+        await LoadMasteriesAsync();
+    }
+
+    private async Task UpdateMasteryAsync(string id, string field, object? value)
+    {
+        var current = _masteries.Single(m => m.Id == id);
+        var nome = field == "Nome" ? value?.ToString() ?? current.Nome : current.Nome;
+        var pericia = field == "Pericia" ? value?.ToString() ?? current.Pericia : current.Pericia;
+        var atributo = field == "Atributo" ? value?.ToString() ?? current.Atributo : current.Atributo;
+        var gastoMaestria = field == "GastoMaestria" ? (int.TryParse(value?.ToString(), out var g) ? g : current.GastoMaestria) : current.GastoMaestria;
+
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/masteries/{id}", new UpdateCharacterMasteryRequest(nome, pericia, atributo, gastoMaestria));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadFromJsonAsync<string>();
         await LoadMasteriesAsync();
     }
 
@@ -1188,6 +1236,16 @@
     private async Task DeleteAffectionAsync(string id)
     {
         await Http.DeleteAsync($"character-sheets/{SheetId}/affections/{id}");
+        await LoadAffectionsAsync();
+    }
+
+    private async Task UpdateAffectionAsync(string id, string field, object? value)
+    {
+        var current = _affections.Single(a => a.Id == id);
+        var nome = field == "Nome" ? value?.ToString() ?? current.Nome : current.Nome;
+        var favorabilidade = field == "Favorabilidade" ? (int.TryParse(value?.ToString(), out var f) ? f : current.Favorabilidade) : current.Favorabilidade;
+
+        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/affections/{id}", new UpdateCharacterAffectionRequest(nome, favorabilidade));
         await LoadAffectionsAsync();
     }
 

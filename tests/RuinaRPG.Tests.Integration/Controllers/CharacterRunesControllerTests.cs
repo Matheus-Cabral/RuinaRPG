@@ -130,4 +130,59 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task Update_an_existing_rune_returns_200_and_the_list_reflects_the_change()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneGm5", "rune5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer5", "runeplayer5@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa do Fogo", "Queima o alvo.", 1)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterRuneResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", playerToken,
+            new UpdateCharacterRuneRequest("Runa do Gelo", "Congela o alvo.", 2)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterRuneResponse>();
+        updated!.Nome.Should().Be("Runa do Gelo");
+        updated.Descricao.Should().Be("Congela o alvo.");
+        updated.Grau.Should().Be(2);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterRuneResponse>>();
+        body!.Should().ContainSingle(r => r.Id == added.Id && r.Nome == "Runa do Gelo" && r.Descricao == "Congela o alvo." && r.Grau == 2);
+    }
+
+    [Fact]
+    public async Task Update_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneGm6", "rune6@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer6", "runeplayer6@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer6b", "runeplayer6b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa da Luz", "Ilumina a área.", 1)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterRuneResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", otherToken,
+            new UpdateCharacterRuneRequest("Runa da Sombra", "Escurece a área.", 1)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Update_a_nonexistent_rune_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneGm7", "rune7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer7", "runeplayer7@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/runes/{Guid.NewGuid()}", playerToken,
+            new UpdateCharacterRuneRequest("Runa Inexistente", "N/A", 1)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

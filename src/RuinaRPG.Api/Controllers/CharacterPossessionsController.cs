@@ -156,6 +156,24 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         return affections.Select(ToAffectionResponse).ToList();
     }
 
+    [HttpPut("affections/{id}")]
+    public async Task<ActionResult<CharacterAffectionResponse>> UpdateAffection(Guid sheetId, Guid id, UpdateCharacterAffectionRequest request)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        if (affection is null)
+            return NotFound();
+
+        affection.Nome = request.Nome;
+        affection.Favorabilidade = request.Favorabilidade;
+        await db.SaveChangesAsync();
+
+        return Ok(ToAffectionResponse(affection));
+    }
+
     [HttpDelete("affections/{id}")]
     public async Task<IActionResult> DeleteAffection(Guid sheetId, Guid id)
     {

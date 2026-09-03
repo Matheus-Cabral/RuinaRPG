@@ -107,6 +107,60 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
     }
 
     [Fact]
+    public async Task UpdateAffection_returns_200_and_the_list_reflects_the_change()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm6", "afftraitgm6@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer6", "afftraitplayer6@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
+            new AddCharacterAffectionRequest("Amigo de infância", 5)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", playerToken,
+            new UpdateCharacterAffectionRequest("Rival de infância", -3)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+        updated!.Nome.Should().Be("Rival de infância");
+        updated.Favorabilidade.Should().Be(-3);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffectionResponse>>();
+        body!.Should().ContainSingle(a => a.Id == added.Id && a.Nome == "Rival de infância" && a.Favorabilidade == -3);
+    }
+
+    [Fact]
+    public async Task UpdateAffection_by_an_unrelated_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm7", "afftraitgm7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer7", "afftraitplayer7@teste.com");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer7b", "afftraitplayer7b@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
+            new AddCharacterAffectionRequest("Mentor", 8)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", otherToken,
+            new UpdateCharacterAffectionRequest("Impostor", 0)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UpdateAffection_for_a_nonexistent_id_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm5", "afftraitgm5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer5", "afftraitplayer5@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{Guid.NewGuid()}", playerToken,
+            new UpdateCharacterAffectionRequest("Ninguém", 0)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task AddTrait_lands_in_the_correct_bucket_with_correct_totals_and_DeleteTrait_removes_it()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AffGm2", "afftraitgm2@teste.com");
