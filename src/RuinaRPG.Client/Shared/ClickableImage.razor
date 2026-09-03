@@ -6,7 +6,22 @@
    The stopPropagation/preventDefault directives only apply to real DOM elements, not component
    parameters, so the wrapping div (not MudImage itself) carries the click handler. *@
 <div style="display:inline-block;cursor:pointer" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
-    <MudImage Src="@Src" Alt="@Alt" Width="@Width" Height="@Height" ObjectFit="@ObjectFit" Class="@Class" />
+    @if (Width is not null && Height is not null)
+    {
+        <MudImage Src="@Src" Alt="@Alt" Width="@Width.Value" Height="@Height.Value" ObjectFit="@ObjectFit" Class="@Class" />
+    }
+    else if (Width is not null)
+    {
+        <MudImage Src="@Src" Alt="@Alt" Width="@Width.Value" ObjectFit="@ObjectFit" Class="@Class" />
+    }
+    else if (Height is not null)
+    {
+        <MudImage Src="@Src" Alt="@Alt" Height="@Height.Value" ObjectFit="@ObjectFit" Class="@Class" />
+    }
+    else
+    {
+        <MudImage Src="@Src" Alt="@Alt" ObjectFit="@ObjectFit" Class="@Class" />
+    }
 </div>
 
 <MudDialog @bind-Visible="_open">
@@ -21,8 +36,8 @@
 @code {
     [Parameter] public string? Src { get; set; }
     [Parameter] public string? Alt { get; set; }
-    [Parameter] public int Width { get; set; }
-    [Parameter] public int Height { get; set; }
+    [Parameter] public int? Width { get; set; }
+    [Parameter] public int? Height { get; set; }
     [Parameter] public ObjectFit ObjectFit { get; set; } = ObjectFit.Cover;
     [Parameter] public string? Class { get; set; }
 
