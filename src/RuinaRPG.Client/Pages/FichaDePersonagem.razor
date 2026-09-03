@@ -230,21 +230,25 @@
         <br/>
 
         <Section Title="Afinidades">
-            <EditForm Model="_affinityForm" OnValidSubmit="AddAffinityAsync">
-                <ElementoSubElementoFields @bind-Elemento="_affinityForm.Elemento" @bind-SubElemento="_affinityForm.SubElemento" />
-                <MudTextField T="string" @bind-Value="_affinityForm.CaminhoNome" Label="Caminho" />
-                <MudNumericField T="int" @bind-Value="_affinityForm.Experiencia" Label="Experiência" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afinidade</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead><tr><th>Elemento</th><th>Sub-Elemento</th><th>Caminho</th><th>Experiência</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var affinity in _affinities)
                     {
                         <tr>
-                            <td>@affinity.Elemento / @affinity.SubElemento — @affinity.CaminhoNome (@affinity.Experiencia)</td>
+                            <td>@affinity.Elemento</td>
+                            <td>@affinity.SubElemento</td>
+                            <td>@affinity.CaminhoNome</td>
+                            <td>@affinity.Experiencia</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</MudButton></td>
                         </tr>
                     }
+                    <tr>
+                        <td colspan="2"><ElementoSubElementoFields @bind-Elemento="_affinityForm.Elemento" @bind-SubElemento="_affinityForm.SubElemento" /></td>
+                        <td><MudTextField T="string" @bind-Value="_affinityForm.CaminhoNome" Label="Caminho" /></td>
+                        <td><MudNumericField T="int" @bind-Value="_affinityForm.Experiencia" Label="Experiência" /></td>
+                        <td><MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="AddAffinityAsync">Adicionar</MudButton></td>
+                    </tr>
                 </tbody>
             </MudSimpleTable>
         </Section>
