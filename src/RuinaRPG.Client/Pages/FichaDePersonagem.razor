@@ -969,9 +969,7 @@
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/attributes/{atributo}", new UpdateCharacterAttributeRequest(gasto, bonus, temMaestria));
-        // BadRequest(string) serializes as a JSON string literal, not plain text — deserialize it
-        // as one instead of ReadAsStringAsync() so the message doesn't render with literal quotes.
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadFromJsonAsync<string>();
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 
@@ -1023,7 +1021,7 @@
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/affinities/{id}",
             new UpdateCharacterAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia));
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadFromJsonAsync<string>();
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 
@@ -1223,7 +1221,7 @@
         var gastoMaestria = field == "GastoMaestria" ? (int.TryParse(value?.ToString(), out var g) ? g : current.GastoMaestria) : current.GastoMaestria;
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/masteries/{id}", new UpdateCharacterMasteryRequest(nome, pericia, atributo, gastoMaestria));
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadFromJsonAsync<string>();
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadMasteriesAsync();
     }
 

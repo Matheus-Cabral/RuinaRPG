@@ -62,10 +62,7 @@
     {
         if (!response.IsSuccessStatusCode)
         {
-            // BadRequest(string) serializes as a JSON string literal — read it as one instead of
-            // ReadAsStringAsync() so the message doesn't render with literal quotes (matches the
-            // fix already applied in FichaDePersonagem.razor).
-            _errorMessage = await response.Content.ReadFromJsonAsync<string>();
+            _errorMessage = await response.Content.ReadErrorMessageAsync();
             return;
         }
 
