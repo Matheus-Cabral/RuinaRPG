@@ -185,7 +185,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
     private static UpdateCharacterSheetRequest ValidUpdate() => new(
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
 
     [Fact]
     public async Task Get_returns_the_sheet()
@@ -355,7 +355,8 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var update = ValidUpdate() with { Nivel = 1, NucleosRankF = 2, NucleosRankC = 1 };
+        // Nível is derived from ExperienciaAtual now — 0 XP computes to Nível 1 (real Tabela de XP).
+        var update = ValidUpdate() with { ExperienciaAtual = 0, NucleosRankF = 2, NucleosRankC = 1 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
@@ -373,8 +374,9 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
         // EAPAtual is computed, not settable — Nível 6 gives EAP = (6-1)*30 = 150 (EapCalculator,
-        // 0 Âmbares) via the real EAP-por-Nível table.
-        var update = ValidUpdate() with { Vocacao = "Campeao", Nivel = 6 };
+        // 0 Âmbares) via the real EAP-por-Nível table. 1050 XP is Nível 6's exact max (real Tabela
+        // de XP), so ExperienciaAtual drives Nível here instead of setting it directly.
+        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 1050 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
@@ -393,7 +395,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, Nivel = 6 };
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", PossuiCoracaoDeMana = false, ExperienciaAtual = 1050 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
@@ -414,7 +416,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         // Campeão Nível 1 → Vida 8, Arcana 4 (real Tabela de Vocação excerpt, same as
         // VocacaoProgressaoParserTests). This vocação is specifically chosen because it
         // exercises the accented-name lookup bug (Campeão/Caçador) fixed in this task.
-        var update = ValidUpdate() with { Vocacao = "Campeao", Nivel = 1 };
+        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 0 };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         // Vigor total = Gasto(5) + Bonus(0)/2 (sem maestria) = 5 → Vitalidade = 5*2 + 8 = 18.
@@ -449,7 +451,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         var update = ValidUpdate() with
         {
-            Vocacao = "Campeao", Nivel = 1,
+            Vocacao = "Campeao", ExperienciaAtual = 0,
             VitalidadeAtual = 999, FocoAtual = 999, AdrenalinaAtual = 999, EstresseAtual = 999
         };
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
@@ -470,7 +472,8 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp");
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Nivel = 2 }));
+        // 150 XP is Nível 2's exact max (real Tabela de XP) — Nível is derived, not settable directly.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
 
@@ -486,7 +489,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 2");
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Nivel = 2 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
 
         var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
         dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);

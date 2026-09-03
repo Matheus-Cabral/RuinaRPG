@@ -100,7 +100,7 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
 
     private static UpdateCharacterSheetRequest ValidCharacterUpdate(string nome, int vitalidadeAtual) => new(
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
+        true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
 
     private async Task UpdateCharacterVitalidadeAsync(string playerToken, string sheetId, string nome, int vitalidadeAtual) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidCharacterUpdate(nome, vitalidadeAtual)));

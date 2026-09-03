@@ -187,7 +187,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.SubVocacao = request.SubVocacao;
         sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
-        sheet.Nivel = request.Nivel;
+        // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
+        // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
+        var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);
+        sheet.Nivel = nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
         // sheet.EAPAtual is intentionally never written from here on — EAPAtual is now a pure
@@ -207,7 +210,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than
         // rejected, since a Máximo can legitimately shrink (e.g. unequipping an Artefato) out
         // from under an Atual that was valid a moment ago.
-        var maximos = await ComputeResourceMaximumsAsync(id, vocacao, request.Nivel);
+        var maximos = await ComputeResourceMaximumsAsync(id, vocacao, nivel);
         sheet.VitalidadeAtual = Math.Min(request.VitalidadeAtual, maximos.Vitalidade);
         sheet.FocoAtual = Math.Min(request.FocoAtual, maximos.Foco);
         sheet.AdrenalinaAtual = Math.Min(request.AdrenalinaAtual, maximos.Adrenalina);
@@ -436,6 +439,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
         var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
+        var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, rules.XpPorNivel);
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
@@ -445,7 +449,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
-            maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse);
+            maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel);
     }
 
     /// <summary>

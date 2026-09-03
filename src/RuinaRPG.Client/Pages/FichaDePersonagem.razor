@@ -91,10 +91,17 @@
             </Section>
 
             <Section Title="Nível e Progressão">
-                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" />
+                <MudText Typo="Typo.h6">Nível: @_form.Nivel</MudText>
                 <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
                 <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" />
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
+                </MudText>
+                <div class="d-flex align-center mt-2" style="gap:8px">
+                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:14rem" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
+                </div>
                 <MudText>EAP Atual: @_form.EAPAtual</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" />
@@ -591,6 +598,7 @@
     }
 
     private readonly SheetFormModel _form = new();
+    private int? _xpDelta;
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
     private List<ImageSummaryResponse> _myImages = new();
@@ -734,6 +742,7 @@
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
         _form.PossuiCoracaoDeMana = sheet.PossuiCoracaoDeMana;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
+        _form.XpParaProximoNivel = sheet.XpParaProximoNivel;
         _form.EAPAtual = sheet.EAPAtual;
         _form.NucleosRankF = sheet.NucleosRankF;
         _form.NucleosRankE = sheet.NucleosRankE;
@@ -772,7 +781,7 @@
 
     private async Task SaveAsync()
     {
-        if (_form.Nivel is null || _form.ExperienciaAtual is null
+        if (_form.ExperienciaAtual is null
             || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
             || _form.NucleosRankC is null || _form.NucleosRankB is null || _form.NucleosRankA is null || _form.NucleosRankS is null
             || _form.PontosDeIgnicaoAtual is null || _form.PontosDeIgnicaoTotal is null
@@ -783,7 +792,7 @@
         }
 
         var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
-            _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
+            _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal!.Value, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
             _form.Cobertura, _form.Ciclos);
@@ -796,6 +805,22 @@
         }
 
         await LoadSheetAsync();
+    }
+
+    /// <summary>
+    /// The "adicionar ou subtrair xp do montante total" field: applies a signed delta to
+    /// Experiência Atual (never below 0) and saves immediately, same immediate-action pattern as
+    /// UpdateCoberturaAsync/UpdateCiclosAsync below. Nível is derived server-side from the new
+    /// total, so LoadSheetAsync (inside SaveAsync) picks up whatever Nível that XP now computes to.
+    /// </summary>
+    private async Task ApplyXpDeltaAsync()
+    {
+        if (_xpDelta is null || _xpDelta == 0)
+            return;
+
+        _form.ExperienciaAtual = Math.Max(0, (_form.ExperienciaAtual ?? 0) + _xpDelta.Value);
+        _xpDelta = null;
+        await SaveAsync();
     }
 
     private async Task UpdateCoberturaAsync(string? value)
@@ -1225,13 +1250,15 @@
         public string? SubVocacao { get; set; }
         public string? Afinidade { get; set; }
         public string? Propriedade { get; set; }
-        [Required(ErrorMessage = "Informe o Nível.")]
-        public int? Nivel { get; set; } = 1;
+        // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
+        // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
+        public int Nivel { get; set; } = 1;
         public int Graduacao { get; set; }
         public string GraduacaoLabel { get; set; } = "Grau";
         public bool PossuiCoracaoDeMana { get; set; }
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
+        public int? XpParaProximoNivel { get; set; }
         public int EAPAtual { get; set; }
         [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]
         public int? NucleosRankF { get; set; }

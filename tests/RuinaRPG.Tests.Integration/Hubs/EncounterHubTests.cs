@@ -94,7 +94,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
     private static UpdateCharacterSheetRequest ValidCharacterUpdate(string nome, int vitalidadeAtual) => new(
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
+        true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {

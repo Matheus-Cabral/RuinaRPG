@@ -48,11 +48,11 @@
 
   
 
-- *Nível*: campo numérico de 1 a 50, conforme a "[[Tabela de Níveis]]". Valor padrão salvo no banco; quando NULL assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
+- *Nível*: campo **calculado**, de 1 a 50 — não é mais editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo os limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]"; com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
 
 - *Graduação*: campo numérico de 0 a 9, calculado a partir do EAP atual segundo a tabela em "[[Tabela de Circulo e Grau por EAP]]". Se a Vocação for **Campeão** ou **Caçador**, o campo é rotulado **Grau**, não editável, e sempre calculado normalmente pelo EAP. Se a Vocação for qualquer outra, o campo é rotulado **Círculo** e depende de um checkbox "Possui coração de mana?" (ver §1 de "[[GRAUS & CÍRCULOS]]"): marcado, o Círculo é calculado normalmente pelo EAP; desmarcado, o Círculo é exibido como **0** independentemente do EAP acumulado (o personagem pode perder um coração de mana em jogo, desmarcando o checkbox). Quando NULL, o checkbox assume **desmarcado** e o valor assume **0**.
 
-- *Experiência atual*: campo numérico (inteiro ≥ 0) que registra a XP acumulada do personagem. Quando NULL assume **0**.
+- *Experiência atual*: campo numérico (inteiro ≥ 0) que registra a XP acumulada do personagem. Quando NULL assume **0**. Além da edição direta do valor total, um campo dedicado permite adicionar ou subtrair uma quantidade de XP ao total atual (nunca abaixo de **0**); qualquer uma das duas formas recalcula o *Nível* imediatamente.
 
 - *Para o próximo*: valor que indica a XP necessária para o próximo nível. A tabela com os valores está no documento [[Tabelas de XP, Atributos, Características e EAP]].
 
@@ -357,6 +357,6 @@ O jogador dono pode editar ou excluir qualquer entrada já publicada. Diferente 
 
 # **R0002** - Ao subir de Nível, a ficha deve avisar o que foi recebido.
 
-**Descrição**: Toda vez que o campo *Nível* (1.b) aumenta — seja o jogador subindo organicamente, seja o GM editando o valor diretamente — uma caixa de aviso aparece no topo da página, listando os bônus daquele novo Nível conforme a "[[Tabela de Níveis]]" (ex: "+9 Pontos de Atributo, +Status de Vida Aprimorado, +10 Pontos de Ignição..."). Se o personagem subir mais de um Nível de uma vez, a caixa lista os bônus de todos os Níveis ganhos, em ordem.
+**Descrição**: Toda vez que o campo *Nível* (1.b) aumenta — pela Experiência Atual cruzando um novo limiar em "[[Tabelas de XP, Atributos, Características e EAP]]" — uma caixa de aviso aparece no topo da página, listando os bônus daquele novo Nível conforme a "[[Tabela de Níveis]]" (ex: "+9 Pontos de Atributo, +Status de Vida Aprimorado, +10 Pontos de Ignição..."). Se o personagem subir mais de um Nível de uma vez, a caixa lista os bônus de todos os Níveis ganhos, em ordem.
 
 A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece — o estado "fechada" persiste (sobrevive a recarregar a página ou sair e voltar a entrar na ficha).
