@@ -339,6 +339,8 @@ Duas listas incrementais, **Positivas** e **Negativas**, de características esc
 
 Cada lista exibe um **Total** (soma dos Custos daquela lista). Uma linha pode ser removida pelo jogador a qualquer momento.
 
+Como o Custo das Negativas já é armazenado negativo (uma Negativa devolve pontos para gastar em Positivas), a soma dos dois Totais é o gasto líquido; ele é exibido ao lado do total de Pontos de Característica concedidos por nível (conforme a "[[Tabela de Níveis]]", campo "Espaço de Característica"), só como referência — assim como em Perícias (2.d), não bloqueia o Custo acima do valor da tabela.
+
   
 
 ## 6. Diário
