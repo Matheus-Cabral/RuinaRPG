@@ -13,7 +13,7 @@
             <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
         }
     </MudSelect>
-    <MudNumericField T="int" Value="Valor" ValueChanged="OnValorChangedAsync" Margin="Margin.Dense" Style="max-width:4.5rem" />
+    <MudNumericField T="int?" Value="Valor" ValueChanged="OnValorChangedAsync" Margin="Margin.Dense" Style="max-width:4.5rem" />
 </div>
 
 @code {
@@ -21,8 +21,8 @@
     [Parameter, EditorRequired] public (string Valor, string Rotulo)[] Opcoes { get; set; } = [];
     [Parameter] public string? Nome { get; set; }
     [Parameter] public EventCallback<string?> NomeChanged { get; set; }
-    [Parameter] public int Valor { get; set; }
-    [Parameter] public EventCallback<int> ValorChanged { get; set; }
+    [Parameter] public int? Valor { get; set; }
+    [Parameter] public EventCallback<int?> ValorChanged { get; set; }
 
     // Os 4 Elementos da Matriz Elemental ("Mundano", presente na matriz apenas como referência,
     // não é uma opção válida aqui).
@@ -40,7 +40,7 @@
     ];
 
     internal Task SetNomeForTests(string? nome) => OnNomeChangedAsync(nome);
-    internal Task SetValorForTests(int valor) => OnValorChangedAsync(valor);
+    internal Task SetValorForTests(int? valor) => OnValorChangedAsync(valor);
 
     private Task OnNomeChangedAsync(string? novoNome)
     {
@@ -48,7 +48,7 @@
         return NomeChanged.InvokeAsync(Nome);
     }
 
-    private Task OnValorChangedAsync(int novoValor)
+    private Task OnValorChangedAsync(int? novoValor)
     {
         Valor = novoValor;
         return ValorChanged.InvokeAsync(Valor);

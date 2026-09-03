@@ -121,15 +121,15 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
   
 
-Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): 3 blocos de campos por linha — Essência Básica, Sub-Elemento, Caminho e Experiência:
+Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): 3 blocos de campos por linha — Essência Básica, Sub-Elemento, Caminho e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
 
 - *Elemento*: dropdown fixo com os 4 elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`; "Mundano", presente na matriz apenas como referência, não é uma opção válida aqui).
-- *Valor do Elemento*: campo numérico ≥ 0, editável, sem relação de cálculo com os demais campos da linha. Quando NULL, assume **0**.
-- *Sub-Elemento*: dropdown fixo com os 14 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Alma, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Vida, Aprimorar, Invocação. O cliente não filtra as opções pelo Elemento escolhido na mesma linha (evita esconder o campo até o Elemento ser preenchido); o servidor segue validando que o par Elemento/Sub-Elemento é um dos combináveis pela Matriz Elemental, rejeitando o resto.
-- *Valor do Sub-Elemento*: campo numérico ≥ 0, editável, mesma regra do Valor do Elemento. Quando NULL, assume **0**.
-- *Caminho e Experiência*: um nome livre, customizável pelo jogador (o "Caminho" trilhado dentro daquele Sub-Elemento) acompanhado de um valor numérico ≥ 0 (a "Experiência" naquele Caminho). Quando NULL, o valor numérico assume **0**.
+- *Valor do Elemento*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
+- *Sub-Elemento*: dropdown fixo com os 14 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Alma, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Vida, Aprimorar, Invocação. O cliente não filtra as opções pelo Elemento escolhido na mesma linha (evita esconder o campo até o Elemento ser preenchido); quando os dois já foram escolhidos, o servidor valida que o par Elemento/Sub-Elemento é um dos combináveis pela Matriz Elemental, rejeitando o resto.
+- *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor do Elemento.
+- *Caminho e Experiência*: um nome livre, customizável pelo jogador (o "Caminho" trilhado dentro daquele Sub-Elemento) acompanhado de um valor numérico ≥ 0 (a "Experiência" naquele Caminho).
 
-Uma linha de Afinidade pode ser removida pelo jogador a qualquer momento.
+Qualquer campo de uma linha de Afinidade já existente pode ser editado pelo jogador a qualquer momento (não só no momento de adicionar a linha), e a linha pode ser removida a qualquer momento.
 
   
 

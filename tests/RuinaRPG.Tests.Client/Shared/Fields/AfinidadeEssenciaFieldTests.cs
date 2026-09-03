@@ -38,16 +38,31 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     [Fact]
     public async Task Changing_the_value_raises_ValorChanged_independently_of_the_name()
     {
-        int newValor = -1;
+        int? newValor = -1;
         var cut = Render<AfinidadeEssenciaField>(p => p
             .Add(x => x.Label, "Sub-Elemento")
             .Add(x => x.Opcoes, AfinidadeEssenciaField.SubElementos)
             .Add(x => x.Nome, "Vida")
-            .Add(x => x.Valor, 0)
+            .Add(x => x.Valor, (int?)null)
             .Add(x => x.ValorChanged, v => newValor = v));
 
         await cut.InvokeAsync(() => cut.Instance.SetValorForTests(7));
 
         newValor.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task The_value_can_be_cleared_back_to_null()
+    {
+        int? newValor = 3;
+        var cut = Render<AfinidadeEssenciaField>(p => p
+            .Add(x => x.Label, "Elemento")
+            .Add(x => x.Opcoes, AfinidadeEssenciaField.Elementos)
+            .Add(x => x.Valor, 3)
+            .Add(x => x.ValorChanged, v => newValor = v));
+
+        await cut.InvokeAsync(() => cut.Instance.SetValorForTests(null));
+
+        newValor.Should().BeNull();
     }
 }
