@@ -13,25 +13,21 @@
         {
             <MudText Color="Color.Secondary">Nenhuma imagem enviada ainda.</MudText>
         }
-        <MudGrid>
+        <div style="display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px">
             @if (AllowClear)
             {
-                <MudItem xs="4" sm="3" md="2">
-                    <div style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100px;height:100px;border:2px dashed var(--mud-palette-lines-default);border-radius:4px"
-                         @onclick="@(() => OnPick.InvokeAsync(null))">
-                        <MudText Typo="Typo.caption" Align="Align.Center">Nenhuma</MudText>
-                    </div>
-                </MudItem>
+                <div style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100px;height:100px;border:2px dashed var(--mud-palette-lines-default);border-radius:4px"
+                     @onclick="@(() => OnPick.InvokeAsync(null))">
+                    <MudText Typo="Typo.caption" Align="Align.Center">Nenhuma</MudText>
+                </div>
             }
             @foreach (var image in Images)
             {
-                <MudItem xs="4" sm="3" md="2">
-                    <div style="@BorderStyle(image.Id)" @onclick="@(() => OnPick.InvokeAsync(image.Id))">
-                        <MudImage Src="@image.Url" Width="100" Height="100" ObjectFit="ObjectFit.Cover" />
-                    </div>
-                </MudItem>
+                <div style="@BorderStyle(image.Id)" @onclick="@(() => OnPick.InvokeAsync(image.Id))">
+                    <MudImage Src="@image.Url" Width="100" Height="100" ObjectFit="ObjectFit.Cover" />
+                </div>
             }
-        </MudGrid>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => VisibleChanged.InvokeAsync(false))">Fechar</MudButton>
