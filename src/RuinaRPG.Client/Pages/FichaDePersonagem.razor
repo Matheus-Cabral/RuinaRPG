@@ -121,6 +121,44 @@
                 <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" />
             </Section>
 
+            <Section Title="Características">
+            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
+                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
+            </EditForm>
+            @{
+                var gastoLiquido = (_traits?.TotalPositivas ?? 0) + (_traits?.TotalNegativas ?? 0);
+                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
+            }
+            <MudText Color="@(gastoLiquido > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
+                Pontos de Características: @gastoLiquido / @pontosDisponiveis
+            </MudText>
+            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Positivas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Negativas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
     </MudTabPanel>
@@ -498,43 +536,6 @@
             </MudSimpleTable>
         </Section>
 
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            @{
-                var gastoLiquido = (_traits?.TotalPositivas ?? 0) + (_traits?.TotalNegativas ?? 0);
-                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
-            }
-            <MudText Color="@(gastoLiquido > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
-                Pontos de Características: @gastoLiquido / @pontosDisponiveis
-            </MudText>
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Diário">
