@@ -57,13 +57,10 @@
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
                                 </CustomContent>
                             </MudFileUpload>
-                            <MudSelect T="string" Value="_form.ImageId" ValueChanged="SelectExistingImage" Label="Ou reutilizar uma imagem já enviada (R0010)">
-                                <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
-                                @foreach (var image in _myImages)
-                                {
-                                    <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
-                                }
-                            </MudSelect>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
+                            <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
+                                                 IsSelectedFunc="@(id => id == _form.ImageId)"
+                                                 OnPick="@(id => { SelectExistingImage(id); _imageGalleryOpen = false; })" />
                         }
                     </DialogContent>
                     <DialogActions>
@@ -490,6 +487,7 @@
     private List<ImageSummaryResponse> _myImages = new();
     private bool _imageExpanded;
     private bool _imageEditing;
+    private bool _imageGalleryOpen;
     private List<CreatureAttributeResponse> _attributes = new();
     private List<CreatureSkillResponse> _skills = new();
     private List<CreatureWeaponResponse> _weapons = new();

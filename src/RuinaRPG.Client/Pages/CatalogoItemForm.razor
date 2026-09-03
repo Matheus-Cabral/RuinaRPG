@@ -38,13 +38,10 @@
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
             </CustomContent>
         </MudFileUpload>
-        <MudSelect T="string" @bind-Value="_form.ImageId" Label="Ou reutilizar uma imagem já enviada (R0010)">
-            <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
-            @foreach (var image in _myImages)
-            {
-                <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
-            }
-        </MudSelect>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
+        <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
+                             IsSelectedFunc="@(id => id == _form.ImageId)"
+                             OnPick="@(id => { _form.ImageId = id; _imageGalleryOpen = false; })" />
     </Section>
 
     @if (_form.Tipo == "ItemGeral")
@@ -112,6 +109,7 @@
 
     private readonly ItemFormModel _form = new();
     private List<ImageSummaryResponse> _myImages = new();
+    private bool _imageGalleryOpen;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()

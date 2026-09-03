@@ -77,14 +77,10 @@
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
                         </CustomContent>
                     </MudFileUpload>
-                    <MudList T="string" Dense="true">
-                        @foreach (var image in _myImages)
-                        {
-                            <MudListItem T="string">
-                                <MudCheckBox T="bool" Value="@_diaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_diaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                            </MudListItem>
-                        }
-                    </MudList>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _diaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
+                    <ImageGalleryDialog @bind-Visible="_diaryGalleryOpen" Images="_myImages"
+                                         IsSelectedFunc="@(id => _diaryImageIds.Contains(id))"
+                                         OnPick="@(id => ToggleImage(_diaryImageIds, id!, !_diaryImageIds.Contains(id!)))" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
             </EditForm>
@@ -101,14 +97,10 @@
                                     @if (_editingEntryId == entry.Id)
                                     {
                                         <MudTextField T="string" @bind-Value="_editText" Lines="3" />
-                                        <MudList T="string" Dense="true">
-                                            @foreach (var image in _myImages)
-                                            {
-                                                <MudListItem T="string">
-                                                    <MudCheckBox T="bool" Value="@_editDiaryImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editDiaryImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                                                </MudListItem>
-                                            }
-                                        </MudList>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editDiaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
+                                        <ImageGalleryDialog @bind-Visible="_editDiaryGalleryOpen" Images="_myImages"
+                                                             IsSelectedFunc="@(id => _editDiaryImageIds.Contains(id))"
+                                                             OnPick="@(id => ToggleImage(_editDiaryImageIds, id!, !_editDiaryImageIds.Contains(id!)))" />
                                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
                                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                     }
@@ -283,14 +275,10 @@
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
                         </CustomContent>
                     </MudFileUpload>
-                    <MudList T="string" Dense="true">
-                        @foreach (var image in _myImages)
-                        {
-                            <MudListItem T="string">
-                                <MudCheckBox T="bool" Value="@_noteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_noteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                            </MudListItem>
-                        }
-                    </MudList>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _noteGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
+                    <ImageGalleryDialog @bind-Visible="_noteGalleryOpen" Images="_myImages"
+                                         IsSelectedFunc="@(id => _noteImageIds.Contains(id))"
+                                         OnPick="@(id => ToggleImage(_noteImageIds, id!, !_noteImageIds.Contains(id!)))" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Nota Secreta</MudButton>
             </EditForm>
@@ -314,14 +302,10 @@
                                             </MudListItem>
                                         }
                                     </MudList>
-                                    <MudList T="string" Dense="true">
-                                        @foreach (var image in _myImages)
-                                        {
-                                            <MudListItem T="string">
-                                                <MudCheckBox T="bool" Value="@_editNoteImageIds.Contains(image.Id)" ValueChanged="@(v => ToggleImage(_editNoteImageIds, image.Id, v))" Label="@image.Url" Dense="true" />
-                                            </MudListItem>
-                                        }
-                                    </MudList>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editNoteGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
+                                    <ImageGalleryDialog @bind-Visible="_editNoteGalleryOpen" Images="_myImages"
+                                                         IsSelectedFunc="@(id => _editNoteImageIds.Contains(id))"
+                                                         OnPick="@(id => ToggleImage(_editNoteImageIds, id!, !_editNoteImageIds.Contains(id!)))" />
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</MudButton>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditSecretNote">Cancelar</MudButton>
                                 }
@@ -364,13 +348,10 @@
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
                     </CustomContent>
                 </MudFileUpload>
-                <MudSelect T="string" @bind-Value="_detailsForm.ImageId" Label="Ou reutilizar uma imagem já enviada (R0010)">
-                    <MudSelectItem Value="@((string?)null)">— nenhuma —</MudSelectItem>
-                    @foreach (var image in _myImages)
-                    {
-                        <MudSelectItem Value="@image.Id">@image.Url (@image.CreatedAt.ToString("g"))</MudSelectItem>
-                    }
-                </MudSelect>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _detailsImageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
+                <ImageGalleryDialog @bind-Visible="_detailsImageGalleryOpen" Images="_myImages" AllowClear="true"
+                                     IsSelectedFunc="@(id => id == _detailsForm.ImageId)"
+                                     OnPick="@(id => { _detailsForm.ImageId = id; _detailsImageGalleryOpen = false; })" />
 
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
             </EditForm>
@@ -428,6 +409,11 @@
     private List<CampaignAttachmentResponse> _attachments = new();
     private List<SecretNoteResponse> _secretNotes = new();
     private List<ImageSummaryResponse> _myImages = new();
+    private bool _diaryGalleryOpen;
+    private bool _editDiaryGalleryOpen;
+    private bool _noteGalleryOpen;
+    private bool _editNoteGalleryOpen;
+    private bool _detailsImageGalleryOpen;
     private List<GrantSummaryResponse> _grants = new();
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();

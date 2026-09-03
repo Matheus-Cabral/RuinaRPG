@@ -1,0 +1,64 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Images
+
+@* Replaces the old MudSelect/MudList-of-checkboxes "reuse an already uploaded image" pickers with
+   a visual gallery popup. This component only browses/picks among already-uploaded images —
+   callers keep their own "Enviar nova imagem" MudFileUpload button next to the trigger button.
+   Single-select callers set AllowClear and close the dialog from OnPick; multi-select callers
+   (toggling a HashSet) leave it open so more than one image can be picked in a row. *@
+<MudDialog Visible="Visible" VisibleChanged="@(v => VisibleChanged.InvokeAsync(v))">
+    <TitleContent>Galeria de Imagens</TitleContent>
+    <DialogContent>
+        @if (Images.Count == 0)
+        {
+            <MudText Color="Color.Secondary">Nenhuma imagem enviada ainda.</MudText>
+        }
+        <MudGrid>
+            @if (AllowClear)
+            {
+                <MudItem xs="4" sm="3" md="2">
+                    <div style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100px;height:100px;border:2px dashed var(--mud-palette-lines-default);border-radius:4px"
+                         @onclick="@(() => OnPick.InvokeAsync(null))">
+                        <MudText Typo="Typo.caption" Align="Align.Center">Nenhuma</MudText>
+                    </div>
+                </MudItem>
+            }
+            @foreach (var image in Images)
+            {
+                <MudItem xs="4" sm="3" md="2">
+                    <div style="@BorderStyle(image.Id)" @onclick="@(() => OnPick.InvokeAsync(image.Id))">
+                        <MudImage Src="@image.Url" Width="100" Height="100" ObjectFit="ObjectFit.Cover" />
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => VisibleChanged.InvokeAsync(false))">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public List<ImageSummaryResponse> Images { get; set; } = new();
+
+    /// <summary>Highlights a thumbnail as currently selected. Omit for a multi-select gallery
+    /// that doesn't want a highlight (still works — every thumbnail just renders unselected).</summary>
+    [Parameter] public Func<string, bool>? IsSelectedFunc { get; set; }
+
+    /// <summary>Fires with the clicked image's Id, or null when the "Nenhuma" tile is clicked
+    /// (only rendered when AllowClear is true).</summary>
+    [Parameter] public EventCallback<string?> OnPick { get; set; }
+
+    /// <summary>Shows a "Nenhuma" tile that clears the selection — meant for single-select
+    /// callers (profile picture, item/campaign image). Multi-select callers leave this false.</summary>
+    [Parameter] public bool AllowClear { get; set; }
+
+    private string BorderStyle(string id)
+    {
+        var selected = IsSelectedFunc?.Invoke(id) ?? false;
+        var color = selected ? "var(--mud-palette-primary)" : "transparent";
+        return $"cursor:pointer;display:inline-block;border:3px solid {color};border-radius:4px;padding:2px";
+    }
+}
