@@ -104,7 +104,11 @@
                 </div>
                 <MudText>EAP Atual: @_form.EAPAtual</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" />
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" />
+                <MudText>Pontos de Ignição Total: @_form.PontosDeIgnicaoTotal</MudText>
+                <div class="d-flex align-center mt-2" style="gap:8px">
+                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:16rem" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPiDeltaAsync">Aplicar</MudButton>
+                </div>
             </Section>
 
             <Section Title="Âmbares Absorvidos">
@@ -156,6 +160,12 @@
         <br/>
 
         <Section Title="Perícias">
+            @if (_skillBudget is not null)
+            {
+                <MudText Color="@(_skillBudget.GastoTotal > _skillBudget.PontosDisponiveis ? Color.Error : Color.Default)">
+                    Pontos de Perícia: @_skillBudget.GastoTotal / @_skillBudget.PontosDisponiveis
+                </MudText>
+            }
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
                 <tbody>
@@ -599,6 +609,7 @@
 
     private readonly SheetFormModel _form = new();
     private int? _xpDelta;
+    private int? _piDelta;
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
     private List<ImageSummaryResponse> _myImages = new();
@@ -607,6 +618,7 @@
     private bool _imageGalleryOpen;
     private List<CharacterAttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
+    private SkillPointBudgetResponse? _skillBudget;
     private List<CharacterSkillResponse> _skills = new();
     private List<CharacterAffinityResponse> _affinities = new();
     private List<CharacterWeaponResponse> _weapons = new();
@@ -753,6 +765,7 @@
         _form.NucleosRankS = sheet.NucleosRankS;
         _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
         _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
+        _form.PontosDeIgnicaoBonusManual = sheet.PontosDeIgnicaoBonusManual;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
@@ -784,7 +797,7 @@
         if (_form.ExperienciaAtual is null
             || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
             || _form.NucleosRankC is null || _form.NucleosRankB is null || _form.NucleosRankA is null || _form.NucleosRankS is null
-            || _form.PontosDeIgnicaoAtual is null || _form.PontosDeIgnicaoTotal is null
+            || _form.PontosDeIgnicaoAtual is null
             || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null || _form.EstresseAtual is null)
         {
             _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
@@ -794,7 +807,7 @@
         var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
-            _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal!.Value, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
+            _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
             _form.Cobertura, _form.Ciclos);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
@@ -823,6 +836,21 @@
         await SaveAsync();
     }
 
+    /// <summary>
+    /// The "GM também pode conceder PI" manual bonus (1.b): applies a signed delta to
+    /// PontosDeIgnicaoBonusManual and saves immediately, same pattern as ApplyXpDeltaAsync above.
+    /// PontosDeIgnicaoTotal is derived server-side from Nível + this bonus.
+    /// </summary>
+    private async Task ApplyPiDeltaAsync()
+    {
+        if (_piDelta is null || _piDelta == 0)
+            return;
+
+        _form.PontosDeIgnicaoBonusManual += _piDelta.Value;
+        _piDelta = null;
+        await SaveAsync();
+    }
+
     private async Task UpdateCoberturaAsync(string? value)
     {
         _form.Cobertura = value ?? "Nenhuma";
@@ -842,6 +870,7 @@
         _attributes = await Http.GetFromJsonAsync<List<CharacterAttributeResponse>>($"character-sheets/{SheetId}/attributes") ?? new();
         _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"character-sheets/{SheetId}/attributes/budget");
         _skills = await Http.GetFromJsonAsync<List<CharacterSkillResponse>>($"character-sheets/{SheetId}/skills") ?? new();
+        _skillBudget = await Http.GetFromJsonAsync<SkillPointBudgetResponse>($"character-sheets/{SheetId}/skills/budget");
         _affinities = await Http.GetFromJsonAsync<List<CharacterAffinityResponse>>($"character-sheets/{SheetId}/affinities") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<CharacterWeaponResponse>>($"character-sheets/{SheetId}/weapons") ?? new();
         _armorSlots = await Http.GetFromJsonAsync<List<CharacterArmorSlotResponse>>($"character-sheets/{SheetId}/armor-slots") ?? new();
@@ -1276,8 +1305,10 @@
         public int? NucleosRankS { get; set; }
         [Required(ErrorMessage = "Informe os Pontos de Ignição Atual.")]
         public int? PontosDeIgnicaoAtual { get; set; }
-        [Required(ErrorMessage = "Informe os Pontos de Ignição Total.")]
-        public int? PontosDeIgnicaoTotal { get; set; }
+        // PontosDeIgnicaoTotal is derived server-side (Nível + PontosDeIgnicaoBonusManual) — no
+        // longer directly editable, same treatment as Nível.
+        public int PontosDeIgnicaoTotal { get; set; }
+        public int PontosDeIgnicaoBonusManual { get; set; }
         [Required(ErrorMessage = "Informe a Vitalidade.")]
         public int? VitalidadeAtual { get; set; }
         [Required(ErrorMessage = "Informe o Foco.")]

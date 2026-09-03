@@ -205,7 +205,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.NucleosRankA = request.NucleosRankA;
         sheet.NucleosRankS = request.NucleosRankS;
         sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
-        sheet.PontosDeIgnicaoTotal = request.PontosDeIgnicaoTotal;
+        // PontosDeIgnicaoTotal is a pure function of Nível + PontosDeIgnicaoBonusManual now (1.b,
+        // "os bônus de PI por nível constam na Tabela de Níveis") — same treatment already given
+        // to EAPAtual. Only the manual bonus on top is ever written from here on.
+        sheet.PontosDeIgnicaoBonusManual = request.PontosDeIgnicaoBonusManual;
 
         // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than
         // rejected, since a Máximo can legitimately shrink (e.g. unequipping an Artefato) out
@@ -440,16 +443,18 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
         var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, rules.XpPorNivel);
+        var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, rules.Niveis);
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
             s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
             s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
-            s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
+            s.PontosDeIgnicaoAtual, pontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
-            maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel);
+            maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
+            s.PontosDeIgnicaoBonusManual);
     }
 
     /// <summary>

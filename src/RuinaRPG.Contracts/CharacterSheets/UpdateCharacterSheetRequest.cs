@@ -20,7 +20,7 @@ public record UpdateCharacterSheetRequest(
     int NucleosRankA,
     int NucleosRankS,
     int PontosDeIgnicaoAtual,
-    int PontosDeIgnicaoTotal,
+    int PontosDeIgnicaoBonusManual,
     int VitalidadeAtual,
     int FocoAtual,
     int AdrenalinaAtual,

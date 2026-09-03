@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -12,7 +13,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db) : ControllerBase
+public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
@@ -41,6 +42,22 @@ public class CharacterSkillsController(RuinaRpgDbContext db) : ControllerBase
                 return new CharacterSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
             })
             .ToList();
+    }
+
+    [HttpGet("budget")]
+    public async Task<ActionResult<SkillPointBudgetResponse>> Budget(Guid sheetId)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var gastoTotal = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).SumAsync(s => s.Gasto);
+        var pontosDisponiveis = SkillPointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
+        return new SkillPointBudgetResponse(gastoTotal, pontosDisponiveis);
     }
 
     [HttpPut("{pericia}")]

@@ -46,7 +46,19 @@ public class CharacterSheet
     public int NucleosRankA { get; set; }
     public int NucleosRankS { get; set; }
     public int PontosDeIgnicaoAtual { get; set; }
+
+    /// <summary>
+    /// Currently unused — nothing writes this column, so it stays at whatever it was before
+    /// Pontos de Ignição Total became computed. The authoritative value is
+    /// <c>PontosDeIgnicaoTotal</c> on <c>CharacterSheetResponse</c>, computed on read by
+    /// <see cref="RuinaRPG.Domain.CharacterSheets.PontosDeIgnicaoCalculator"/> from Nível and
+    /// <see cref="PontosDeIgnicaoBonusManual"/>. Do not read this property expecting a live value.
+    /// </summary>
     public int PontosDeIgnicaoTotal { get; set; }
+
+    /// <summary>Extra PI the GM grants on top of the level-derived total (1.b, "o GM também pode
+    /// conceder PI para os jogadores acrescentarem neste contador").</summary>
+    public int PontosDeIgnicaoBonusManual { get; set; }
 
     // 1.c Recursos (Atual only — see plan Architecture note on máximo)
     public int VitalidadeAtual { get; set; }

@@ -19,6 +19,9 @@ public static partial class AttributePointBudgetCalculator
             .Where(n => n.Nivel <= nivel)
             .Sum(n => PontosDeAtributoRegex().Matches(n.BonusText).Sum(m => int.Parse(m.Groups[1].Value)));
 
-    [GeneratedRegex(@"\+(\d+)\s+Pontos?\s+de\s+Atributo\b")]
+    // IgnoreCase: the source table capitalizes "Atributo" inconsistently (e.g. Nível 10's own row
+    // spells it "Pontos de atributo", lowercase) — a case-sensitive match silently dropped every
+    // lowercase occurrence.
+    [GeneratedRegex(@"\+(\d+)\s+Pontos?\s+de\s+Atributo\b", RegexOptions.IgnoreCase)]
     private static partial Regex PontosDeAtributoRegex();
 }

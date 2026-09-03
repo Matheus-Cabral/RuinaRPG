@@ -42,4 +42,14 @@ public class AttributePointBudgetCalculatorTests
         // 9 (level 1) + 1 (level 2) + 6 (level 40) = 16.
         AttributePointBudgetCalculator.Compute(nivel: 40, Niveis).Should().Be(16);
     }
+
+    [Fact]
+    public void Compute_counts_a_grant_even_when_atributo_is_spelled_lowercase()
+    {
+        // Real bug: Nível 10's own row spells it "Pontos de atributo" (lowercase) — a
+        // case-sensitive regex silently dropped this and every other lowercase occurrence.
+        var niveisComMinuscula = new List<LevelBonus> { new(10, "+2 Pontos de atributo") };
+
+        AttributePointBudgetCalculator.Compute(nivel: 10, niveisComMinuscula).Should().Be(2);
+    }
 }
