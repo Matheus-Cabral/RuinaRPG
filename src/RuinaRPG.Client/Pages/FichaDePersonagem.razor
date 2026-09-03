@@ -121,13 +121,6 @@
                 <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" />
             </Section>
 
-            <Section Title="Recursos">
-                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
-            </Section>
-
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
     </MudTabPanel>
@@ -214,6 +207,30 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
+        <Section>
+                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
+        </Section>
+
+        @if (_subAttributes is not null)
+        {
+            <Section Title="Sub-Atributos">
+                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
+                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
+                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
+                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
+                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
+                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
+                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
+                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
+                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
+                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
+                </MudSelect>
+            </Section>
+        }
+
         <Section Title="Armas">
             <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
                 <EntityPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." />
@@ -295,22 +312,6 @@
             </MudSimpleTable>
         </Section>
 
-        @if (_subAttributes is not null)
-        {
-            <Section Title="Sub-Atributos">
-                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
-                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
-                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
-                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
-                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
-                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
-                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
-                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
-                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
-                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
-                </MudSelect>
-            </Section>
-        }
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
