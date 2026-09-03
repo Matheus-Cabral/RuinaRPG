@@ -31,7 +31,11 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (!ElementoSubElementoValidator.IsValidCombination(elemento, subElemento))
             return BadRequest("Essa combinação de Elemento e Sub-Elemento não existe na Matriz Elemental.");
 
-        var affinity = new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = elemento, SubElemento = subElemento, CaminhoNome = request.CaminhoNome, Experiencia = request.Experiencia };
+        var affinity = new NpcAffinity
+        {
+            Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
+            SubElemento = subElemento, SubElementoValor = request.SubElementoValor, CaminhoNome = request.CaminhoNome, Experiencia = request.Experiencia
+        };
         db.NpcAffinities.Add(affinity);
         await db.SaveChangesAsync();
 
@@ -72,7 +76,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     private static NpcAffinityResponse ToResponse(NpcAffinity a) =>
-        new(a.Id.ToString(), a.Elemento.ToString(), a.SubElemento.ToString(), a.CaminhoNome, a.Experiencia);
+        new(a.Id.ToString(), a.Elemento.ToString(), a.ElementoValor, a.SubElemento.ToString(), a.SubElementoValor, a.CaminhoNome, a.Experiencia);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

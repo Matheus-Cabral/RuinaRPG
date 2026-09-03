@@ -73,13 +73,14 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", "Vida", "Caminho da Fênix", 10)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>();
-        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.SubElemento == "Vida" && a.CaminhoNome == "Caminho da Fênix" && a.Experiencia == 10);
+        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SubElemento == "Vida" && a.SubElementoValor == 2
+            && a.CaminhoNome == "Caminho da Fênix" && a.Experiencia == 10);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Ar", "Ferro", "Caminho Inválido", 0)));
+            new AddCharacterAffinityRequest("Ar", 0, "Ferro", 0, "Caminho Inválido", 0)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -103,7 +104,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Terra", "Vida", "Caminho da Terra", 5)));
+            new AddCharacterAffinityRequest("Terra", 1, "Vida", 1, "Caminho da Terra", 5)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken));
@@ -123,7 +124,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", otherToken,
-            new AddCharacterAffinityRequest("Terra", "Vida", "Caminho da Terra", 5)));
+            new AddCharacterAffinityRequest("Terra", 1, "Vida", 1, "Caminho da Terra", 5)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

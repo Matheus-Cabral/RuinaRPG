@@ -1,3 +1,3 @@
 namespace RuinaRPG.Contracts.NpcSheets;
 
-public record NpcAffinityResponse(string Id, string Elemento, string SubElemento, string CaminhoNome, int Experiencia);
+public record NpcAffinityResponse(string Id, string Elemento, int ElementoValor, string SubElemento, int SubElementoValor, string CaminhoNome, int Experiencia);
