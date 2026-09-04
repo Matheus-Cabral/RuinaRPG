@@ -50,12 +50,14 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
-    private static MultipartFormDataContent BuildUpload(byte[] bytes, string fileName = "test.png")
+    private static MultipartFormDataContent BuildUpload(byte[] bytes, string fileName = "test.png", string? campaignId = null)
     {
         var content = new MultipartFormDataContent();
         var fileContent = new ByteArrayContent(bytes);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         content.Add(fileContent, "file", fileName);
+        if (campaignId is not null)
+            content.Add(new StringContent(campaignId), "campaignId");
         return content;
     }
 
@@ -193,5 +195,97 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         body.Should().HaveCount(2);
         body!.Select(i => i.Id).Should().Equal(secondBody!.Id, firstBody!.Id);
         body.Should().BeInDescendingOrder(i => i.CreatedAt);
+    }
+
+    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedWithIdAsync(string gmToken, string nickname, string email)
+    {
+        var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
+        codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var codeResponse = await _client.SendAsync(codeMessage);
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        var meResponse = await _client.SendAsync(me);
+        var meBody = await meResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Auth.MeResponse>();
+        return (meBody!.Id, tokens.AccessToken);
+    }
+
+    private async Task<string> CreateCampaignAndAddMemberAsync(string gmToken, string playerId)
+    {
+        var campaignResponse = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/campaigns")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", gmToken) },
+            Content = JsonContent.Create(new RuinaRPG.Contracts.Campaigns.CreateCampaignRequest("Campanha Upload", ""))
+        });
+        var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignResponse>())!.Id;
+
+        var memberMessage = new HttpRequestMessage(HttpMethod.Post, $"/api/campaigns/{campaignId}/members")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", gmToken) },
+            Content = JsonContent.Create(new RuinaRPG.Contracts.Campaigns.AddCampaignMemberRequest(playerId))
+        };
+        await _client.SendAsync(memberMessage);
+        return campaignId;
+    }
+
+    [Fact]
+    public async Task Upload_by_a_jogador_with_a_campaignId_auto_attaches_it_as_public()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ImageAutoGm1", "imageautogm1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedWithIdAsync(gmToken, "ImageAutoPlayer1", "imageautoplayer1@teste.com");
+        var campaignId = await CreateCampaignAndAddMemberAsync(gmToken, playerId);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
+
+        var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
+        availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
+        var availableResponse = await _client.SendAsync(availableMessage);
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
+        available!.Should().ContainSingle(i => i.Id == imageId);
+    }
+
+    [Fact]
+    public async Task Upload_by_a_gm_with_a_campaignId_does_not_auto_attach()
+    {
+        // GM uploads stay private-by-default via the existing GM-driven Anexos flow — a
+        // campaignId on the upload itself is only a Jogador-side convenience.
+        var gmToken = await RegisterGmAndGetTokenAsync("ImageAutoGm2", "imageautogm2@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedWithIdAsync(gmToken, "ImageAutoPlayer2", "imageautoplayer2@teste.com");
+        var campaignId = await CreateCampaignAndAddMemberAsync(gmToken, playerId);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+
+        var response = await _client.SendAsync(message);
+        var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
+
+        var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
+        availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var availableResponse = await _client.SendAsync(availableMessage);
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
+        available!.Should().NotContain(i => i.Id == imageId);
+    }
+
+    [Fact]
+    public async Task Upload_with_a_campaignId_for_a_campaign_the_jogador_is_not_a_member_of_still_succeeds_without_attaching()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ImageAutoGm3", "imageautogm3@teste.com");
+        var (_, playerToken) = await RegisterJogadorLinkedWithIdAsync(gmToken, "ImageAutoPlayer3", "imageautoplayer3@teste.com");
+        var campaignId = await CreateCampaignAndAddMemberAsync(gmToken, Guid.NewGuid().ToString()); // player never added
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created); // upload itself never fails on this
     }
 }

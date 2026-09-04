@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RuinaRPG.Contracts.Images;
 using RuinaRPG.Domain.Images;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -18,7 +19,7 @@ public class ImagesController(RuinaRpgDbContext db, IImageFileStore fileStore, I
 {
     [HttpPost]
     [RequestSizeLimit(20_000_000)]
-    public async Task<ActionResult<ImageUploadResponse>> Upload(IFormFile file)
+    public async Task<ActionResult<ImageUploadResponse>> Upload(IFormFile file, [FromForm] string? campaignId = null)
     {
         using var memoryStream = new MemoryStream();
         await file.CopyToAsync(memoryStream);
@@ -51,6 +52,28 @@ public class ImagesController(RuinaRpgDbContext db, IImageFileStore fileStore, I
             CreatedAt = DateTime.UtcNow
         };
         db.Images.Add(image);
+
+        // Requisitos - Campanha R0012: an image a Jogador uploads is auto-attached to that
+        // campaign as public, no GM approval step. GM uploads never auto-attach — the GM's
+        // existing Anexos flow attaches explicitly and defaults to private (R0008). A malformed
+        // or non-member campaignId is silently ignored — it's best-effort context, not a
+        // requirement of the upload itself.
+        if (campaignId is not null && Guid.TryParse(campaignId, out var parsedCampaignId) && User.IsInRole("Jogador"))
+        {
+            var callerId = CurrentUserId();
+            var isMember = await db.CampaignMembers.AnyAsync(m => m.CampaignId == parsedCampaignId && m.UserId == callerId);
+            if (isMember)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = parsedCampaignId,
+                    ImageId = image.Id,
+                    IsPublic = true
+                });
+            }
+        }
+
         await db.SaveChangesAsync();
 
         return Created(string.Empty, new ImageUploadResponse(image.Id.ToString(), $"/images/{fileName}"));
