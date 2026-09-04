@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
@@ -75,6 +76,26 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         };
         bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.SpellAbilityBankEntries.Add(bankCopy);
+
+        // Same rule as CharacterSpellAbilitiesController (see its comment) — the granted-sheet
+        // "campaign" isn't a stored column, it's resolved through the grant-link CampaignAttachment.
+        if (CurrentUserId() != sheet.GmId)
+        {
+            var campaignId = await db.CampaignAttachments
+                .Where(a => a.NpcSheetId == sheetId)
+                .Select(a => (Guid?)a.CampaignId)
+                .FirstOrDefaultAsync();
+            if (campaignId is not null)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = campaignId.Value,
+                    SpellAbilityBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
+        }
 
         await db.SaveChangesAsync();
         return Created(string.Empty, ToResponse(sheetCopy));

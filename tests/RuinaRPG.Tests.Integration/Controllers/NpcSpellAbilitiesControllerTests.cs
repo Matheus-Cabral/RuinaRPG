@@ -157,4 +157,59 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
+    {
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+        var meResponse = await _client.SendAsync(me);
+        return ((await meResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Auth.MeResponse>())!.Id, tokens.AccessToken);
+    }
+
+    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new RuinaRPG.Contracts.Campaigns.CreateCampaignRequest(nome, "")));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignResponse>())!.Id;
+    }
+
+    private async Task<string> GrantBlankNpcAsync(string gmToken, string campaignId, string playerId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+            new RuinaRPG.Contracts.Campaigns.GrantSheetRequest(playerId, "Npc", null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.GrantSheetResponse>())!.SheetId;
+    }
+
+    [Fact]
+    public async Task AddFromScratch_by_the_granted_player_auto_attaches_the_bank_copy_as_public()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcMagiasAutoGm1", "npcmagiasauto1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcMagiasAutoPlayer1", "npcmagiasautoplayer1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Magia Auto");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new RuinaRPG.Contracts.Campaigns.AddCampaignMemberRequest(playerId)));
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", playerToken, BolaDeFogoFromScratch()));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var availableResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-spell-abilities", playerToken));
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        available!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
+    }
+
+    [Fact]
+    public async Task AddFromScratch_by_the_gm_on_their_own_npc_does_not_auto_attach()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcMagiasAutoGm2", "npcmagiasauto2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bank = await GetBankAsync(gmToken);
+        bank.Should().ContainSingle(e => e.Nome == "Bola de Fogo"); // the bank copy still happens (R0001) — just no CampaignAttachment
+    }
 }
