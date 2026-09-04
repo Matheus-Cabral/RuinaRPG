@@ -1,0 +1,22 @@
+@using MudBlazor
+
+@* A "[Tipo]" bracket-string dressed up as a real tag. Covers both value domains that show up as
+   "Tipo" across the app: campaign-attachment Tipo (Item/SpellAbilityBankEntry/Image/NpcSheet/
+   CreatureSheet — CampaignAttachmentResponse, PublicAttachmentSummary) and grant Tipo
+   (Npc/Creature — GrantSummaryResponse). An unrecognized value falls back to itself rather than
+   disappearing, so a future Tipo doesn't render as a blank chip. *@
+<MudChip T="string" Size="Size.Small" Color="Color.Default">@Label</MudChip>
+
+@code {
+    [Parameter, EditorRequired] public string Tipo { get; set; } = "";
+
+    private string Label => Tipo switch
+    {
+        "Item" => "Item",
+        "Image" => "Imagem",
+        "SpellAbilityBankEntry" => "Magia/Habilidade",
+        "NpcSheet" or "Npc" => "NPC",
+        "CreatureSheet" or "Creature" => "Criatura",
+        _ => Tipo,
+    };
+}

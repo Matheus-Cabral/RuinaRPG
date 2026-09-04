@@ -186,7 +186,7 @@
                                 }
                             </td>
                             <td>
-                                [@attachment.Tipo] @attachment.Nome
+                                <TipoChip Tipo="@attachment.Tipo" /> @attachment.Nome
                                 @if (attachment.Tipo == "NpcSheet")
                                 {
                                     <MudCheckBox T="bool" Value="@(attachment.NpcNomePublico ?? false)" ValueChanged="@(v => ToggleNpcVisibilityAsync(attachment, v, attachment.NpcImagemPublica ?? false))" Label="Nome público" Dense="true" Class="d-inline-flex" />
@@ -242,7 +242,7 @@
                     {
                         <tr>
                             <td>
-                                [@grant.Tipo] <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
+                                <TipoChip Tipo="@grant.Tipo" /> <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
                                 — concedida a @grant.PlayerNickname
                             </td>
                         </tr>

@@ -36,7 +36,7 @@
                 {
                     <tr>
                         <td>
-                            [@anexo.Tipo] @(anexo.Nome ?? "(sem nome público)")
+                            <TipoChip Tipo="@anexo.Tipo" /> @(anexo.Nome ?? "(sem nome público)")
                             @if (anexo.ImageUrl is not null)
                             {
                                 <ClickableImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="120" Class="ml-2" />
