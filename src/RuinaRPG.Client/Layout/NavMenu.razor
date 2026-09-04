@@ -12,32 +12,32 @@
     navigation (including browser back/forward). Only "Sair", which has no Href, keeps an OnClick.
 *@
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All"><span aria-hidden="true">🏠</span> Início</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All">Início</MudNavLink>
 
     <AuthorizeView>
         <NotAuthorized>
-            <MudNavLink Href="login"><span aria-hidden="true">🔑</span> Entrar</MudNavLink>
-            <MudNavLink Href="cadastro"><span aria-hidden="true">✒️</span> Cadastrar</MudNavLink>
+            <MudNavLink Href="login">Entrar</MudNavLink>
+            <MudNavLink Href="cadastro">Cadastrar</MudNavLink>
         </NotAuthorized>
         <Authorized>
             <AuthorizeView Roles="GM" Context="gmContext">
                 <Authorized>
-                    <MudNavLink Href="painel/convites"><span aria-hidden="true">✉️</span> Convidar Jogador</MudNavLink>
-                    <MudNavLink Href="painel/jogadores"><span aria-hidden="true">👥</span> Jogadores</MudNavLink>
-                    <MudNavLink Href="catalogo"><span aria-hidden="true">🎒</span> Catálogo de Itens</MudNavLink>
-                    <MudNavLink Href="npcs"><span aria-hidden="true">🎭</span> NPCs do GM</MudNavLink>
-                    <MudNavLink Href="bestiario"><span aria-hidden="true">🐺</span> Bestiário do GM</MudNavLink>
-                    <MudNavLink Href="banco-de-magias"><span aria-hidden="true">📜</span> Banco de Magias e Habilidades</MudNavLink>
-                    <MudNavLink Href="campanhas"><span aria-hidden="true">🗺️</span> Campanhas</MudNavLink>
+                    <MudNavLink Href="painel/convites">Convidar Jogador</MudNavLink>
+                    <MudNavLink Href="painel/jogadores">Jogadores</MudNavLink>
+                    <MudNavLink Href="catalogo">Catálogo de Itens</MudNavLink>
+                    <MudNavLink Href="npcs">NPCs do GM</MudNavLink>
+                    <MudNavLink Href="bestiario">Bestiário do GM</MudNavLink>
+                    <MudNavLink Href="banco-de-magias">Banco de Magias e Habilidades</MudNavLink>
+                    <MudNavLink Href="campanhas">Campanhas</MudNavLink>
                 </Authorized>
             </AuthorizeView>
             <AuthorizeView Roles="Jogador" Context="jogadorContext">
                 <Authorized>
-                    <MudNavLink Href="minhas-campanhas"><span aria-hidden="true">🗺️</span> Minhas Campanhas</MudNavLink>
+                    <MudNavLink Href="minhas-campanhas">Minhas Campanhas</MudNavLink>
                 </Authorized>
             </AuthorizeView>
-            <MudNavLink Href="livro-de-regras"><span aria-hidden="true">📖</span> Livro de Regras</MudNavLink>
-            <MudNavLink OnClick="LogoutAsync"><span aria-hidden="true">🚪</span> Sair</MudNavLink>
+            <MudNavLink Href="livro-de-regras">Livro de Regras</MudNavLink>
+            <MudNavLink OnClick="LogoutAsync">Sair</MudNavLink>
         </Authorized>
     </AuthorizeView>
 </MudNavMenu>
