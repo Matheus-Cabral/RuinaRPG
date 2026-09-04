@@ -1,0 +1,50 @@
+@page "/livro-de-regras"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+
+<MudText Typo="Typo.h3">Livro de Regras</MudText>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+}
+
+@if (_documents.Count > 0)
+{
+    <MudTabs Class="mt-3">
+        @foreach (var document in _documents)
+        {
+            <MudTabPanel Text="@document.Titulo">
+                <div class="rulebook-content">
+                    @((MarkupString)document.Html)
+                </div>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Livro de Regras"),
+    };
+
+    private List<RulebookDocumentResponse> _documents = new();
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.GetAsync("rulebook");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar o livro de regras.";
+            return;
+        }
+
+        _documents = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>() ?? new();
+    }
+}
