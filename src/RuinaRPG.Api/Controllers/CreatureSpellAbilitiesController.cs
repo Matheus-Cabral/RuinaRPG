@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
@@ -75,6 +76,24 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         };
         bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.SpellAbilityBankEntries.Add(bankCopy);
+
+        if (CurrentUserId() != sheet.GmId)
+        {
+            var campaignId = await db.CampaignAttachments
+                .Where(a => a.CreatureSheetId == sheetId)
+                .Select(a => (Guid?)a.CampaignId)
+                .FirstOrDefaultAsync();
+            if (campaignId is not null)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = campaignId.Value,
+                    SpellAbilityBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
+        }
 
         await db.SaveChangesAsync();
         return Created(string.Empty, ToResponse(sheetCopy));
