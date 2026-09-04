@@ -38,4 +38,5 @@ public record NpcSheetResponse(
     int FocoMaximo,
     int AdrenalinaMaximo,
     int EstresseMaximo,
-    string? CampaignId);
+    string? CampaignId,
+    string? ImageId);

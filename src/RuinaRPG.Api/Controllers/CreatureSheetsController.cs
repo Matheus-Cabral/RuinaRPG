@@ -323,7 +323,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
 
         var campaignId = await db.CampaignAttachments
-            .Where(a => a.CreatureSheetId == s.Id)
+            .Where(a => a.CreatureSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))
             .Select(a => (Guid?)a.CampaignId)
             .FirstOrDefaultAsync();
 
@@ -333,7 +333,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, kill, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,
-            campaignId?.ToString());
+            campaignId?.ToString(), s.ImageId?.ToString());
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

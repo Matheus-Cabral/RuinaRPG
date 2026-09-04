@@ -82,7 +82,7 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         if (CurrentUserId() != sheet.GmId)
         {
             var campaignId = await db.CampaignAttachments
-                .Where(a => a.NpcSheetId == sheetId)
+                .Where(a => a.NpcSheetId == sheetId && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
                 .Select(a => (Guid?)a.CampaignId)
                 .FirstOrDefaultAsync();
             if (campaignId is not null)

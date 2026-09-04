@@ -553,12 +553,10 @@
         _isGmCaller = authState.User.IsInRole("GM");
 
         // LoadSheetAsync sets _campaignId, which LoadImagesAsync now needs (a Jogador's image
-        // list is scoped to that campaign) — the reverse of the old ordering, which only needed
-        // _myImages loaded first to resolve the sheet's ImageUrl back to an id. That resolution
-        // now happens explicitly, right after LoadImagesAsync, instead of inside LoadSheetAsync.
+        // list is scoped to that campaign). LoadSheetAsync also sets _form.ImageId directly from
+        // the sheet's own ImageId, so it no longer needs to be resolved by matching _myImages.
         await LoadSheetAsync();
         await LoadImagesAsync();
-        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == _form.ImageUrl)?.Id;
 
         await Task.WhenAll(
             LoadTabs2And3Async(),
@@ -619,6 +617,7 @@
         var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         _campaignId = sheet!.CampaignId;
         _form.ImageUrl = sheet.ImageUrl;
+        _form.ImageId = sheet.ImageId;
         _form.Nome = sheet.Nome;
         _form.Raca = sheet.Raca;
         _form.Arquetipo = sheet.Arquetipo;

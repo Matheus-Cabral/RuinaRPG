@@ -5,4 +5,4 @@ public record CreatureSheetResponse(
     string? Afinidade, string? Rank, int Nivel, int ExperienciaAtual, int Kill, int Assistencia,
     int PontosDeIgnicao, int VitalidadeAtual, int FocoAtual, int AdrenalinaAtual, string Cobertura,
     int VitalidadeMaximo, int FocoMaximo, int AdrenalinaMaximo,
-    string? CampaignId);
+    string? CampaignId, string? ImageId);

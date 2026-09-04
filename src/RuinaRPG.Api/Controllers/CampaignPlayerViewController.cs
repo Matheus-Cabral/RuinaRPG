@@ -90,14 +90,14 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         {
             var npc = await db.NpcSheets.FindAsync(a.NpcSheetId!.Value);
             var nome = a.NpcNomePublico ? npc!.Nome : null;
-            var imageUrl = a.NpcImagemPublica && npc!.ImageId is not null ? $"/{(await db.Images.FindAsync(npc.ImageId.Value))!.Path}" : null;
+            var imageUrl = a.NpcImagemPublica && npc!.ImageId is not null ? $"/images/{(await db.Images.FindAsync(npc.ImageId.Value))!.Path}" : null;
             anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "NpcSheet", nome, imageUrl));
         }
         foreach (var a in attachments.Where(a => a.CreatureSheetId is not null && (a.CreatureNomePublico || a.CreatureImagemPublica)))
         {
             var creature = await db.CreatureSheets.FindAsync(a.CreatureSheetId!.Value);
             var nome = a.CreatureNomePublico ? creature!.Nome : null;
-            var imageUrl = a.CreatureImagemPublica && creature!.ImageId is not null ? $"/{(await db.Images.FindAsync(creature.ImageId.Value))!.Path}" : null;
+            var imageUrl = a.CreatureImagemPublica && creature!.ImageId is not null ? $"/images/{(await db.Images.FindAsync(creature.ImageId.Value))!.Path}" : null;
             anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "CreatureSheet", nome, imageUrl));
         }
 

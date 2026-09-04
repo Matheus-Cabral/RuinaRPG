@@ -605,7 +605,6 @@
         // note in FichaDePersonagem.razor's OnInitializedAsync.
         await LoadSheetAsync();
         await LoadImagesAsync();
-        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == _form.ImageUrl)?.Id;
 
         await Task.WhenAll(
             LoadTabs2And3Async(),
@@ -666,6 +665,7 @@
         var sheet = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
         _campaignId = sheet!.CampaignId;
         _form.ImageUrl = sheet!.ImageUrl;
+        _form.ImageId = sheet.ImageId;
         _form.Nome = sheet!.Nome;
         _form.Linhagem = sheet.Linhagem;
         _form.Variante = sheet.Variante;

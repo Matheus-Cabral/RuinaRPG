@@ -41,4 +41,5 @@ public record CharacterSheetResponse(
     int EstresseMaximo,
     int? XpParaProximoNivel,
     int PontosDeIgnicaoBonusManual,
-    int PontosDePericiaBonusCritico);
+    int PontosDePericiaBonusCritico,
+    string? ImageId);

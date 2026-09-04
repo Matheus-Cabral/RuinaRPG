@@ -362,7 +362,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var estresseMaximo = ResourceMaximumCalculator.Estresse();
 
         var campaignId = await db.CampaignAttachments
-            .Where(a => a.NpcSheetId == s.Id)
+            .Where(a => a.NpcSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))
             .Select(a => (Guid?)a.CampaignId)
             .FirstOrDefaultAsync();
 
@@ -375,7 +375,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
-            campaignId?.ToString());
+            campaignId?.ToString(), s.ImageId?.ToString());
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

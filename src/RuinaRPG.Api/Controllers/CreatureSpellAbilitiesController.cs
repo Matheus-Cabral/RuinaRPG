@@ -80,7 +80,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         if (CurrentUserId() != sheet.GmId)
         {
             var campaignId = await db.CampaignAttachments
-                .Where(a => a.CreatureSheetId == sheetId)
+                .Where(a => a.CreatureSheetId == sheetId && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
                 .Select(a => (Guid?)a.CampaignId)
                 .FirstOrDefaultAsync();
             if (campaignId is not null)

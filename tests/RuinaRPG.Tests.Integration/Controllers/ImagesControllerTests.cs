@@ -287,5 +287,14 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var response = await _client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created); // upload itself never fails on this
+        var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
+
+        // GM is always an allowed caller per CampaignCatalogController's membership check, even
+        // though the player who uploaded isn't a member of this campaign.
+        var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
+        availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var availableResponse = await _client.SendAsync(availableMessage);
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
+        available!.Should().NotContain(i => i.Id == imageId);
     }
 }
