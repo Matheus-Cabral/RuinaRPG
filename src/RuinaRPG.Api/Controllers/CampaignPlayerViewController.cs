@@ -74,7 +74,7 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in attachments.Where(a => a.IsPublic && a.ItemId is not null))
         {
             var item = await db.Items.FindAsync(a.ItemId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Item", item!.Nome, item.ImageId is not null ? $"/{(await db.Images.FindAsync(item.ImageId.Value))!.Path}" : null));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Item", item!.Nome, item.ImageId is not null ? $"/images/{(await db.Images.FindAsync(item.ImageId.Value))!.Path}" : null));
         }
         foreach (var a in attachments.Where(a => a.IsPublic && a.SpellAbilityBankEntryId is not null))
         {
@@ -84,7 +84,7 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in attachments.Where(a => a.IsPublic && a.ImageId is not null))
         {
             var image = await db.Images.FindAsync(a.ImageId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Image", null, $"/{image!.Path}"));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Image", null, $"/images/{image!.Path}"));
         }
         foreach (var a in attachments.Where(a => a.NpcSheetId is not null && (a.NpcNomePublico || a.NpcImagemPublica)))
         {

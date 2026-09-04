@@ -152,6 +152,42 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     }
 
     [Fact]
+    public async Task PlayerView_Item_ImageUrl_uses_the_images_prefix()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("PvImgGm", "pvimggm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PvImgPlayer", "pvimgplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha PV Img");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+        var itemRequest = MinimalItemGeral("Espelho") with { ImageId = imageId };
+        var itemResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, itemRequest));
+        var itemId = (await itemResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        var attachmentId = await AttachAsync(gmToken, campaignId, new AttachToCampaignRequest(itemId, null, null, null, null));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/player-view", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        var entry = body!.AnexosPublicos.Should().ContainSingle(a => a.Id == attachmentId).Subject;
+        entry.ImageUrl.Should().Be(imageUrl);
+    }
+
+    private async Task<(string Id, string Url)> UploadImageWithUrlAsync(string gmToken)
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
+        return (body!.Id, body.Url);
+    }
+
+    [Fact]
     public async Task PlayerView_for_an_npc_attachment_shows_only_the_toggled_public_fields()
     {
         var setup = await BuildSetupAsync("Npc");
