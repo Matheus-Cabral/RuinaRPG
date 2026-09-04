@@ -9,8 +9,6 @@
 <MudText Typo="Typo.h3">NPCs do GM</MudText>
 
 <Section Title="Filtros">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Novo NPC</MudButton>
-
     <MudGrid Class="mt-3">
         <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
@@ -34,6 +32,8 @@
 </Section>
 
 <Section Title="NPC's">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Novo NPC</MudButton>
+
     @if (_errorMessage is not null)
     {
         <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>

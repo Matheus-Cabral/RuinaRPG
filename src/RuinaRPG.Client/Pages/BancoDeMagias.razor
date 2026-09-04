@@ -9,8 +9,6 @@
 <MudText Typo="Typo.h3">Banco de Magias e Habilidades</MudText>
 
 <Section Title="Filtros">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</MudButton>
-
     <MudGrid Class="mt-3">
         <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
@@ -30,6 +28,8 @@
 </Section>
 
 <Section Title="Magias e Habilidades">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/banco-de-magias/novo"))">Nova Entrada</MudButton>
+
     @if (_errorMessage is not null)
     {
         <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>

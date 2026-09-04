@@ -9,8 +9,6 @@
 <MudText Typo="Typo.h3">Catálogo de Itens e Equipamentos</MudText>
 
 <Section Title="Filtros">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</MudButton>
-
     <MudGrid Class="mt-3">
         <MudItem xs="12" md="4">
             <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
@@ -38,6 +36,7 @@
 </Section>
 
 <Section Title="Itens">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/catalogo/novo"))">Novo Item</MudButton>
 
     @if (_errorMessage is not null)
     {
