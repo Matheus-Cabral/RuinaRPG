@@ -1,5 +1,6 @@
 @page "/npcs/{SheetId}"
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Contracts.CharacterSheets
@@ -542,6 +543,8 @@
     private readonly SheetFormModel _form = new();
     private string? _errorMessage;
     private List<ImageSummaryResponse> _myImages = new();
+    private bool _isGmCaller;
+    private string? _campaignId;
     private bool _imageExpanded;
     private bool _imageEditing;
     private bool _imageGalleryOpen;
@@ -576,7 +579,10 @@
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
     {
-        var response = await Http.GetAsync($"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}");
+        var url = _isGmCaller
+            ? $"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}"
+            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}&tipo={tipo}";
+        var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return new();
         var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
         return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
@@ -592,18 +598,25 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // LoadSheetAsync matches the sheet's ImageUrl against _myImages, so images must be
-        // loaded first rather than joining the WhenAll below.
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        _isGmCaller = authState.User.IsInRole("GM");
+
+        // LoadSheetAsync sets _campaignId, which LoadImagesAsync now needs — see the identical
+        // note in FichaDePersonagem.razor's OnInitializedAsync.
+        await LoadSheetAsync();
         await LoadImagesAsync();
+        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == _form.ImageUrl)?.Id;
+
         await Task.WhenAll(
-            LoadSheetAsync(), LoadTabs2And3Async(),
+            LoadTabs2And3Async(),
             LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
             LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync());
     }
 
     private async Task LoadImagesAsync()
     {
-        var response = await Http.GetAsync("images/mine");
+        var url = _isGmCaller ? "images/mine" : $"campaigns/{_campaignId}/available-images";
+        var response = await Http.GetAsync(url);
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
     }
@@ -613,6 +626,8 @@
         using var content = new MultipartFormDataContent();
         var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
         content.Add(fileContent, "file", file.Name);
+        if (!_isGmCaller && _campaignId is not null)
+            content.Add(new StringContent(_campaignId), "campaignId");
 
         var response = await Http.PostAsync("images", content);
         if (!response.IsSuccessStatusCode)
@@ -649,7 +664,7 @@
         }
 
         var sheet = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == sheet!.ImageUrl)?.Id;
+        _campaignId = sheet!.CampaignId;
         _form.ImageUrl = sheet!.ImageUrl;
         _form.Nome = sheet!.Nome;
         _form.Linhagem = sheet.Linhagem;
@@ -892,7 +907,8 @@
     private async Task LoadSpellAbilitiesAsync()
     {
         _spellAbilities = await Http.GetFromJsonAsync<List<NpcSpellAbilityResponse>>($"npc-sheets/{SheetId}/spell-abilities") ?? new();
-        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>("spell-ability-bank") ?? new();
+        var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
+        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
     }
 
     private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
