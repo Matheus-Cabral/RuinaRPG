@@ -26,7 +26,7 @@ public class RulebookRenderer : IRulebookRenderer
     private static IReadOnlyList<RulebookDocument> BuildDocuments() =>
     [
         new("caracteristicas", "Características", RenderPlain(RulesDataProvider.ReadResource("Caracteristicas.md"))),
-        new("sistema-basico", "Ruína RPG - Sistema Básico", RenderPlain(RulesDataProvider.ReadResource("Sistema Basico.md"))),
+        new("sistema-basico", "Sistema Básico", RenderPlain(RulesDataProvider.ReadResource("Sistema Basico.md"))),
         new("graus-e-circulos", "Graus & Círculos", RenderGrausECirculos(RulesDataProvider.ReadResource("GRAUS e CIRCULOS.md"))),
         new("tabela-de-niveis", "Tabela de Níveis", RenderPlain(RulesDataProvider.ReadResource("Tabela de Níveis.md"))),
     ];

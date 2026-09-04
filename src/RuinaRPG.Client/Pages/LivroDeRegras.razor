@@ -18,9 +18,11 @@
         @foreach (var document in _documents)
         {
             <MudTabPanel Text="@document.Titulo">
-                <div class="rulebook-content">
-                    @((MarkupString)document.Html)
-                </div>
+                <Section>
+                    <div class="rulebook-content">
+                        @((MarkupString)document.Html)
+                    </div>
+                </Section>
             </MudTabPanel>
         }
     </MudTabs>

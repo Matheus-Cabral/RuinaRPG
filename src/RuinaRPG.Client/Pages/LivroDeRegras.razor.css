@@ -1,0 +1,99 @@
+/* Typography for the raw HTML Markdig renders into .rulebook-content via @((MarkupString)...) —
+   that markup carries no scope attribute of its own (it's injected, not authored here), so every
+   rule needs ::deep to reach it. Reuses the app's existing --rr-* design tokens rather than
+   introducing new colors/spacing, so the rendered documents read like the rest of the app instead
+   of unstyled browser defaults. */
+
+::deep .rulebook-content h1,
+::deep .rulebook-content h2,
+::deep .rulebook-content h3,
+::deep .rulebook-content h4,
+::deep .rulebook-content h5,
+::deep .rulebook-content h6 {
+    font-family: var(--rr-font-heading);
+    color: var(--rr-text);
+    margin-top: var(--rr-space-4);
+    margin-bottom: var(--rr-space-2);
+}
+
+::deep .rulebook-content h1:first-child,
+::deep .rulebook-content h2:first-child {
+    margin-top: 0;
+}
+
+::deep .rulebook-content h1 {
+    border-bottom: 1px solid var(--rr-border);
+    padding-bottom: var(--rr-space-2);
+}
+
+::deep .rulebook-content p {
+    line-height: 1.6;
+    margin-bottom: var(--rr-space-3);
+}
+
+::deep .rulebook-content ul,
+::deep .rulebook-content ol {
+    margin-bottom: var(--rr-space-3);
+    padding-left: var(--rr-space-4);
+    line-height: 1.6;
+}
+
+::deep .rulebook-content li > ul,
+::deep .rulebook-content li > ol {
+    margin-bottom: 0;
+}
+
+::deep .rulebook-content blockquote {
+    margin: 0 0 var(--rr-space-3) 0;
+    padding: var(--rr-space-2) var(--rr-space-3);
+    border-left: 3px solid var(--rr-primary);
+    background: var(--rr-surface);
+    color: var(--rr-text-muted);
+}
+
+::deep .rulebook-content hr {
+    border: none;
+    border-top: 1px solid var(--rr-border);
+    margin: var(--rr-space-4) 0;
+}
+
+::deep .rulebook-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: var(--rr-space-4);
+}
+
+::deep .rulebook-content th,
+::deep .rulebook-content td {
+    border: 1px solid var(--rr-border);
+    padding: var(--rr-space-2);
+    text-align: left;
+}
+
+::deep .rulebook-content th {
+    font-family: var(--rr-font-heading);
+    background: var(--rr-surface);
+}
+
+::deep .rulebook-content tbody tr:nth-child(even) {
+    background: var(--rr-surface);
+}
+
+::deep .rulebook-content figure {
+    margin: 0 0 var(--rr-space-3) 0;
+}
+
+::deep .rulebook-content figcaption {
+    color: var(--rr-text-muted);
+    font-size: 0.85rem;
+    margin-top: var(--rr-space-1);
+    text-align: center;
+}
+
+::deep .rulebook-content code {
+    font-family: monospace;
+    background: var(--rr-surface);
+    border: 1px solid var(--rr-border);
+    border-radius: var(--rr-radius-sm);
+    padding: 0 4px;
+}
