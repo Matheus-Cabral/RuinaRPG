@@ -1,9 +1,11 @@
 @page "/catalogo/novo"
 @page "/catalogo/{ItemId}/editar"
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Images
+@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 
@@ -16,7 +18,12 @@
     <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<EditForm Model="_form" OnValidSubmit="SubmitAsync">
+<EditForm EditContext="_editContext">
+    <DataAnnotationsValidator />
+    @if (ItemId is not null)
+    {
+        <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+    }
     <Section Title="Geral">
         @if (ItemId is null)
         {
@@ -29,66 +36,69 @@
             </MudSelect>
         }
 
-        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
-        <MudNumericField T="decimal" @bind-Value="_form.Peso" Label="Peso" />
-        <MudNumericField T="int" @bind-Value="_form.Preco" Label="Preço (Ciclos)" />
+        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+        <MudNumericField T="decimal" @bind-Value="_form.Peso" For="@(() => _form.Peso)" Label="Peso" @bind-Value:after="NotifySavedAsync" />
+        <MudNumericField T="int" @bind-Value="_form.Preco" For="@(() => _form.Preco)" Label="Preço (Ciclos)" @bind-Value:after="NotifySavedAsync" />
 
         <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
-                              SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); })"
+                              SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); if (ItemId is not null) NotifySavedAsync(); })"
                               OnError="@(e => _errorMessage = e)" Multiple="false" />
     </Section>
 
     @if (_form.Tipo == "ItemGeral")
     {
         <Section Title="Item Geral">
-            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" />
-            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo == "Arma")
     {
         <Section Title="Arma">
-            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" />
-            <MudTextField T="string" @bind-Value="_form.Tier" Label="Tier" />
-            <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" />
-            <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" />
-            <MudNumericField T="int?" @bind-Value="_form.Dano" Label="Dano" />
-            <MudTextField T="string" @bind-Value="_form.Critico" Label="Crítico" />
-            <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" />
-            <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" />
-            <MudTextField T="string" @bind-Value="_form.RequisitoAtributo" Label="Requisito de Atributo" />
-            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" Label="Durabilidade" />
+            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Tier" Label="Tier" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.Dano" Label="Dano" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Critico" Label="Crítico" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.RequisitoAtributo" Label="Requisito de Atributo" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" For="@(() => _form.DurabilidadeMaxima)" Label="Durabilidade" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo is "Armadura" or "Escudo")
     {
         <Section Title="@(_form.Tipo == "Armadura" ? "Armadura" : "Escudo")">
-            <MudTextField T="string" @bind-Value="_form.Categoria" Label="Categoria" />
+            <MudTextField T="string" @bind-Value="_form.Categoria" Label="Categoria" @bind-Value:after="NotifySavedAsync" />
             @if (_form.Tipo == "Armadura")
             {
-                <MudNumericField T="int?" @bind-Value="_form.Defesa" Label="Defesa" />
-                <MudNumericField T="int?" @bind-Value="_form.RF" Label="RF" />
-                <MudNumericField T="int?" @bind-Value="_form.RM" Label="RM" />
+                <MudNumericField T="int?" @bind-Value="_form.Defesa" Label="Defesa" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.RF" Label="RF" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.RM" Label="RM" @bind-Value:after="NotifySavedAsync" />
             }
             else
             {
-                <MudNumericField T="int?" @bind-Value="_form.BonusDefesa" Label="Bônus de Defesa" />
+                <MudNumericField T="int?" @bind-Value="_form.BonusDefesa" Label="Bônus de Defesa" @bind-Value:after="NotifySavedAsync" />
             }
-            <MudTextField T="string" @bind-Value="_form.Penalidade" Label="Penalidade" />
-            <MudNumericField T="int?" @bind-Value="_form.RequisitoVigor" Label="Requisito de Vigor" />
-            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" Label="Durabilidade" />
+            <MudTextField T="string" @bind-Value="_form.Penalidade" Label="Penalidade" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.RequisitoVigor" Label="Requisito de Vigor" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" For="@(() => _form.DurabilidadeMaxima)" Label="Durabilidade" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo == "Artefato")
     {
         <Section Title="Artefato">
-            <MudTextField T="string" @bind-Value="_form.TipoDeAlvo" Label="Tipo de Alvo" />
-            <MudTextField T="string" @bind-Value="_form.Alvo" Label="Alvo" />
-            <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" />
+            <MudTextField T="string" @bind-Value="_form.TipoDeAlvo" Label="Tipo de Alvo" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Alvo" Label="Alvo" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
 
-    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
+    @if (ItemId is null)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Salvar</MudButton>
+    }
 </EditForm>
 
 @code {
@@ -102,9 +112,32 @@
     };
 
     private readonly ItemFormModel _form = new();
+    // Constructed synchronously (not inside OnInitializedAsync, and not after any await there) so
+    // it is never null on first render — EditContext only holds a reference to _form and reads its
+    // properties lazily at validation time, so it doesn't need _form to already be populated from
+    // the server first.
+    private readonly EditContext _editContext;
+    private readonly AutoSaveCoordinator _autoSave = new();
     private List<ImageSummaryResponse> _myImages = new();
     private List<string> _imageIds = new();
     private string? _errorMessage;
+
+    public CatalogoItemForm()
+    {
+        _editContext = new EditContext(_form);
+    }
+
+    protected override void OnInitialized()
+    {
+        _autoSave.StateChanged += StateHasChangedFromAutoSave;
+    }
+
+    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,27 +186,17 @@
         _form.Valor = existing.Valor;
     }
 
-    private async Task SubmitAsync()
+    private async Task CreateAsync()
     {
-        HttpResponseMessage response;
-        if (ItemId is null)
-        {
-            var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-                _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-                _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
-                _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
-                _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
-            response = await Http.PostAsJsonAsync("items", request);
-        }
-        else
-        {
-            var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-                _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-                _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
-                _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
-                _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
-            response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
-        }
+        if (!_editContext.Validate())
+            return;
+
+        var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
+            _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+        var response = await Http.PostAsJsonAsync("items", request);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -184,11 +207,43 @@
         Navigation.NavigateTo("/catalogo");
     }
 
+    private async Task<bool> SaveIfValidAsync()
+    {
+        if (!_editContext.Validate())
+            return false;
+
+        var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
+            _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+        var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException("Não foi possível salvar o item.");
+
+        return true;
+    }
+
+    private Task NotifySavedAsync()
+    {
+        // Guard, not the brief's literal sketch: the plain-field @bind-Value:after callbacks have
+        // no per-field ItemId check (unlike the ImageAttachmentField callback above), so without
+        // this guard every field blur during create mode would fire a PUT to "items/" (empty id)
+        // and flip _autoSave to Error — silently, since AutoSaveIndicator isn't rendered there.
+        // Create mode keeps its explicit "Salvar" -> CreateAsync path untouched.
+        if (ItemId is not null)
+            _autoSave.NotifyChanged(SaveIfValidAsync);
+        return Task.CompletedTask;
+    }
+
     private class ItemFormModel
     {
         public string Tipo { get; set; } = "ItemGeral";
         public string Nome { get; set; } = "";
+        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal Peso { get; set; }
+        [Range(0, int.MaxValue)]
         public int Preco { get; set; }
         public string? ImageId { get; set; }
         public string? Subcategoria { get; set; }
@@ -201,6 +256,7 @@
         public int? Alcance { get; set; }
         public string? TipoDeDano { get; set; }
         public string? RequisitoAtributo { get; set; }
+        [Range(0, int.MaxValue)]
         public int? DurabilidadeMaxima { get; set; }
         public string? Categoria { get; set; }
         public int? Defesa { get; set; }
