@@ -179,6 +179,12 @@
                     {
                         <tr>
                             <td>
+                                @if (attachment.ImageUrl is not null)
+                                {
+                                    <ClickableImage Src="@attachment.ImageUrl" Width="40" Height="40" Class="mr-2" />
+                                }
+                            </td>
+                            <td>
                                 [@attachment.Tipo] @attachment.Nome
                                 @if (attachment.Tipo == "NpcSheet")
                                 {

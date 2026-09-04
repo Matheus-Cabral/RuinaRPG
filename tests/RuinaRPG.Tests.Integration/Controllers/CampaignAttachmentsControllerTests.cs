@@ -75,7 +75,9 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
     }
 
-    private async Task<string> UploadImageAsync(string gmToken)
+    private async Task<string> UploadImageAsync(string gmToken) => (await UploadImageWithUrlAsync(gmToken)).Id;
+
+    private async Task<(string Id, string Url)> UploadImageWithUrlAsync(string gmToken)
     {
         byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
         var content = new MultipartFormDataContent();
@@ -86,8 +88,23 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         var response = await _client.SendAsync(message);
         var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
-        return body!.Id;
+        return (body!.Id, body.Url);
     }
+
+    private async Task<string> CreateItemWithImageAsync(string gmToken, string nome, string imageId)
+    {
+        var request = MinimalItemGeral(nome) with { ImageId = imageId };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private static RuinaRPG.Contracts.NpcSheets.UpdateNpcSheetRequest NpcUpdateWithImage(string? imageId) => new(
+        imageId, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+
+    private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest CreatureUpdateWithImage(string? imageId) => new(
+        imageId, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra",
+        "F", 3, 200, 5, 12, 8, 10, "Parcial");
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
@@ -450,5 +467,100 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
         body!.Tipo.Should().Be("Image");
+    }
+
+    [Fact]
+    public async Task Attaching_an_item_with_an_image_surfaces_the_items_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttItemImgGm", "attitemimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Item Com Imagem");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+        var itemId = await CreateItemWithImageAsync(gmToken, "Escudo Retumbante", imageId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
+    public async Task An_item_attachment_without_an_image_has_a_null_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttItemNoImgGm", "attitemnoimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Item Sem Imagem");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null)));
+
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Attaching_an_npc_sheet_with_an_image_surfaces_its_profile_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttNpcImgGm", "attnpcimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Com Imagem");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var npcId = (await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken, NpcUpdateWithImage(imageId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, npcId, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
+    public async Task Attaching_a_creature_sheet_with_an_image_surfaces_its_profile_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttCreatureImgGm", "attcreatureimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Criatura Com Imagem");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var creatureId = (await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, CreatureUpdateWithImage(imageId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, creatureId, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
+    public async Task Attaching_an_image_directly_surfaces_its_own_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttImgSelfGm", "attimgself@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Imagem Direta");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
+    public async Task A_bank_entry_attachment_has_no_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttBankImgGm", "attbankimg@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Banco Sem Imagem");
+        var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, bankEntryId, null)));
+
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.ImageUrl.Should().BeNull();
     }
 }
