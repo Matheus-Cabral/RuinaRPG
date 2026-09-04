@@ -1,9 +1,12 @@
 @page "/banco-de-magias/novo"
 @page "/banco-de-magias/{EntryId}/editar"
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.SpellsAndAbilities
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -15,17 +18,21 @@
     <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
 }
 
-<EditForm Model="_form" OnValidSubmit="SubmitAsync">
+<EditForm EditContext="_editContext">
     <DataAnnotationsValidator />
+    @if (EntryId is not null)
+    {
+        <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+    }
     <Section Title="Geral">
-        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
-        <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo">
+        <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+        <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
             <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
             <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
             <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
         </MudSelect>
-        <MudNumericField T="int" @bind-Value="_form.Grau" Label="Grau" />
-        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+        <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
     </Section>
 
     <Section Title="Efeitos">
@@ -37,10 +44,10 @@
                 {
                     var index = i; // capture for the closures below
                     <tr>
-                        <td><MudTextField T="string" @bind-Value="_form.Efeitos[index].EfeitoNome" /></td>
-                        <td><MudNumericField T="int?" @bind-Value="_form.Efeitos[index].Quantidade" /></td>
-                        <td><MudNumericField T="int" @bind-Value="_form.Efeitos[index].CustoPI" /></td>
-                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => _form.Efeitos.RemoveAt(index))">Remover</MudButton></td>
+                        <td><MudTextField T="string" @bind-Value="_form.Efeitos[index].EfeitoNome" @bind-Value:after="NotifySavedAsync" /></td>
+                        <td><MudNumericField T="int?" @bind-Value="_form.Efeitos[index].Quantidade" @bind-Value:after="NotifySavedAsync" /></td>
+                        <td><MudNumericField T="int" @bind-Value="_form.Efeitos[index].CustoPI" @bind-Value:after="NotifySavedAsync" /></td>
+                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveEffect(index))">Remover</MudButton></td>
                     </tr>
                 }
             </tbody>
@@ -50,7 +57,10 @@
         <MudText>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</MudText>
     </Section>
 
-    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
+    @if (EntryId is null)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Salvar</MudButton>
+    }
 </EditForm>
 
 @code {
@@ -66,7 +76,30 @@
     };
 
     private readonly EntryFormModel _form = new();
+    // Constructed synchronously (not inside OnInitializedAsync, and not after any await there) so
+    // it is never null on first render — EditContext only holds a reference to _form and reads its
+    // properties lazily at validation time, so it doesn't need _form to already be populated from
+    // the server first.
+    private readonly EditContext _editContext;
+    private readonly AutoSaveCoordinator _autoSave = new();
     private string? _errorMessage;
+
+    public BancoDeMagiasForm()
+    {
+        _editContext = new EditContext(_form);
+    }
+
+    protected override void OnInitialized()
+    {
+        _autoSave.StateChanged += StateHasChangedFromAutoSave;
+    }
+
+    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -93,13 +126,19 @@
 
     private void AddEffect() => _form.Efeitos.Add(new EffectFormModel());
 
-    private async Task SubmitAsync()
+    private void RemoveEffect(int index)
     {
-        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
+        _form.Efeitos.RemoveAt(index);
+        NotifySavedAsync();
+    }
 
-        HttpResponseMessage response = EntryId is null
-            ? await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos))
-            : await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
+    private async Task CreateAsync()
+    {
+        if (!_editContext.Validate())
+            return;
+
+        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
+        var response = await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -110,10 +149,40 @@
         Navigation.NavigateTo("/banco-de-magias");
     }
 
+    private async Task<bool> SaveIfValidAsync()
+    {
+        if (!_editContext.Validate())
+            return false;
+
+        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
+        var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException("Não foi possível salvar a entrada.");
+
+        return true;
+    }
+
+    private Task NotifySavedAsync()
+    {
+        // Guard, not the brief's literal sketch: the plain-field @bind-Value:after callbacks (and
+        // RemoveEffect) have no per-field EntryId check, so without this single choke-point guard
+        // every field blur during create mode would fire a PUT to "spell-ability-bank/" (null/empty
+        // id) and flip _autoSave to Error — silently, since AutoSaveIndicator isn't rendered there.
+        // Create mode keeps its explicit "Salvar" -> CreateAsync path untouched.
+        if (EntryId is null)
+            return Task.CompletedTask;
+
+        _autoSave.NotifyChanged(SaveIfValidAsync);
+        return Task.CompletedTask;
+    }
+
     private class EntryFormModel
     {
+        [Required(AllowEmptyStrings = false)]
         public string Nome { get; set; } = "";
         public string Tipo { get; set; } = "Magia";
+        [Range(0, int.MaxValue)]
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
         public List<EffectFormModel> Efeitos { get; set; } = new();
@@ -123,6 +192,7 @@
     {
         public string EfeitoNome { get; set; } = "";
         public int? Quantidade { get; set; }
+        [Range(0, int.MaxValue)]
         public int CustoPI { get; set; }
     }
 }
