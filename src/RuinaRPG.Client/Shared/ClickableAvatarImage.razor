@@ -2,8 +2,12 @@
 
 @* Same idea as ClickableImage, but owns the MudAvatar wrapper itself: MudAvatar's CSS
    (.mud-avatar > .mud-image) targets a direct child, so the click-handling div has to wrap the
-   whole avatar from outside rather than sit between the avatar and its image. *@
-<div style="display:inline-block;cursor:pointer" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
+   whole avatar from outside rather than sit between the avatar and its image.
+
+   vertical-align:middle — every caller sits this next to a name/link as plain inline content
+   (e.g. "<ClickableAvatarImage .../> <MudLink>Nome</MudLink>"), and inline-block's default
+   baseline alignment leaves the avatar visibly low against the text next to it. *@
+<div style="display:inline-block;vertical-align:middle;cursor:pointer" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
     <MudAvatar Size="@Size" Class="@Class">
         <MudImage Src="@Src" Alt="@Alt" />
     </MudAvatar>
