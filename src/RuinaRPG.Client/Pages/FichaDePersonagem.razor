@@ -1,5 +1,6 @@
 @page "/fichas/{SheetId}"
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
@@ -592,7 +593,8 @@
                 <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
                 <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
                     <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_diaryImageIds"
-                                          SelectedIdsChanged="@(v => _diaryImageIds = v)" OnError="@(e => _errorMessage = e)" />
+                                          SelectedIdsChanged="@(v => _diaryImageIds = v)" OnError="@(e => _errorMessage = e)"
+                                          CampaignId="@(_isGmCaller ? null : _campaignId)" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
             </EditForm>
@@ -611,7 +613,7 @@
                                         <MudTextField T="string" @bind-Value="_editDiaryText" Lines="3" />
                                         <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_editDiaryImageIds"
                                                               SelectedIdsChanged="@(v => _editDiaryImageIds = v)" OnError="@(e => _errorMessage = e)"
-                                                              ButtonSize="Size.Small" />
+                                                              ButtonSize="Size.Small" CampaignId="@(_isGmCaller ? null : _campaignId)" />
                                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
                                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                     }
@@ -646,6 +648,7 @@
 
     private string? _campaignId;
     private string? _campaignName;
+    private bool _isGmCaller;
 
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs
     {
@@ -710,7 +713,10 @@
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
     {
-        var response = await Http.GetAsync($"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}");
+        var url = _isGmCaller
+            ? $"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}"
+            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}&tipo={tipo}";
+        var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return new();
         var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
         return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
@@ -726,10 +732,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // LoadSheetAsync matches the sheet's ImageUrl against _myImages, so images must be
-        // loaded first rather than joining the WhenAll below.
-        await LoadImagesAsync();
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        _isGmCaller = authState.User.IsInRole("GM");
+
+        // LoadSheetAsync sets _campaignId, which LoadImagesAsync now needs (a Jogador's image
+        // list is scoped to that campaign) — the reverse of the old ordering, which only needed
+        // _myImages loaded first to resolve the sheet's ImageUrl back to an id. That resolution
+        // now happens explicitly, right after LoadImagesAsync, instead of inside LoadSheetAsync.
         await LoadSheetAsync();
+        await LoadImagesAsync();
+        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == _form.ImageUrl)?.Id;
+
         await Task.WhenAll(LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
             LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadDiaryAsync(),
@@ -738,7 +751,8 @@
 
     private async Task LoadImagesAsync()
     {
-        var response = await Http.GetAsync("images/mine");
+        var url = _isGmCaller ? "images/mine" : $"campaigns/{_campaignId}/available-images";
+        var response = await Http.GetAsync(url);
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
     }
@@ -748,6 +762,8 @@
         using var content = new MultipartFormDataContent();
         var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
         content.Add(fileContent, "file", file.Name);
+        if (!_isGmCaller && _campaignId is not null)
+            content.Add(new StringContent(_campaignId), "campaignId");
 
         var response = await Http.PostAsync("images", content);
         if (!response.IsSuccessStatusCode)
@@ -794,7 +810,6 @@
 
         var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         _campaignId = sheet!.CampaignId;
-        _form.ImageId = _myImages.FirstOrDefault(i => i.Url == sheet.ImageUrl)?.Id;
         _form.ImageUrl = sheet.ImageUrl;
         _form.Nome = sheet!.Nome;
         _form.Linhagem = sheet.Linhagem;
@@ -1105,7 +1120,8 @@
     private async Task LoadSpellAbilitiesAsync()
     {
         _spellAbilities = await Http.GetFromJsonAsync<List<CharacterSpellAbilityResponse>>($"character-sheets/{SheetId}/spell-abilities") ?? new();
-        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>("spell-ability-bank") ?? new();
+        var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
+        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
     }
 
     private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
