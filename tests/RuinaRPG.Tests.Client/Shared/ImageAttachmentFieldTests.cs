@@ -185,4 +185,40 @@ public class ImageAttachmentFieldTests : MudBunitContext
         error.Should().Be("Não foi possível enviar a imagem.");
         changed.Should().BeNull();
     }
+
+    [Fact]
+    public async Task Uploading_with_a_CampaignId_set_includes_it_in_the_multipart_request()
+    {
+        // The component's HandleUploadAsync builds the MultipartFormDataContent in a `using`
+        // block, so it's disposed (and its parts become unreadable) as soon as UploadForTests
+        // returns. The campaignId part has to be read synchronously inside the fake handler,
+        // while the request is still in flight, rather than from a captured reference afterwards.
+        bool requestSeen = false;
+        string? campaignIdValue = null;
+        var http = FakeHttpMessageHandler.CreateClient(req =>
+        {
+            requestSeen = true;
+            if (req.Content is MultipartFormDataContent content)
+            {
+                var campaignIdPart = content.FirstOrDefault(p => p.Headers.ContentDisposition?.Name == "campaignId");
+                campaignIdValue = campaignIdPart?.ReadAsStringAsync().GetAwaiter().GetResult();
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new ImageUploadResponse("new-id", "https://cdn.example/new.png")),
+            };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<ImageAttachmentField>(p => p
+            .Add(x => x.AvailableImages, new List<ImageSummaryResponse>())
+            .Add(x => x.SelectedIds, new List<string>())
+            .Add(x => x.CampaignId, "campaign-123"));
+
+        await cut.InvokeAsync(() => cut.Instance.UploadForTests(new FakeBrowserFile("foto.png")));
+
+        requestSeen.Should().BeTrue();
+        campaignIdValue.Should().Be("campaign-123");
+    }
 }

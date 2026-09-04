@@ -53,6 +53,12 @@
     [Parameter] public int ThumbnailSize { get; set; } = 100;
     [Parameter] public Size ButtonSize { get; set; } = Size.Medium;
 
+    /// <summary>When set, every upload through this field includes it as a "campaignId" form
+    /// field, letting the server auto-attach the new image to that campaign as public
+    /// (ImagesController.Upload, gated to a Jogador caller who's actually a member — see there).
+    /// Leave null for GM-facing usages, which never auto-attach.</summary>
+    [Parameter] public string? CampaignId { get; set; }
+
     private bool _galleryOpen;
 
     private string ChooseLabel => Multiple ? "Escolher imagens já enviadas" : "Escolher imagem já enviada";
@@ -66,6 +72,9 @@
         using var content = new MultipartFormDataContent();
         var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
         content.Add(fileContent, "file", file.Name);
+
+        if (CampaignId is not null)
+            content.Add(new StringContent(CampaignId), "campaignId");
 
         var response = await Http.PostAsync("images", content);
         if (!response.IsSuccessStatusCode)
