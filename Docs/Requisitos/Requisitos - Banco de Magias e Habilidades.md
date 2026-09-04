@@ -43,3 +43,7 @@
 # **R0006** - O GM pode editar e excluir qualquer entrada do banco.
 
 **Descrição**: A partir da lista (R0004), o GM pode editar qualquer campo de uma entrada ou excluí-la. Excluir uma entrada do banco não afeta nenhuma ficha que já a usou como base (ver R0003) — são cópias independentes.
+
+# **R0007** - A cópia criada por um jogador também vira um anexo público da campanha.
+
+> Quando quem cria a entrada (do zero ou reaproveitando outra) é um **jogador**, não o GM que gerencia a ficha, a cópia independente que R0001 já cria no banco também é anexada automaticamente à campanha daquela ficha como pública, conforme Requisitos - Campanha R0012.

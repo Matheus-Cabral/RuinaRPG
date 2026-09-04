@@ -361,3 +361,9 @@ O jogador dono pode editar ou excluir qualquer entrada já publicada. Diferente 
 **Descrição**: Toda vez que o campo *Nível* (1.b) aumenta — pela Experiência Atual cruzando um novo limiar em "[[Tabelas de XP, Atributos, Características e EAP]]" — uma caixa de aviso aparece no topo da página, listando os bônus daquele novo Nível conforme a "[[Tabela de Níveis]]" (ex: "+9 Pontos de Atributo, +Status de Vida Aprimorado, +10 Pontos de Ignição..."). Se o personagem subir mais de um Nível de uma vez, a caixa lista os bônus de todos os Níveis ganhos, em ordem.
 
 A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece — o estado "fechada" persiste (sobrevive a recarregar a página ou sair e voltar a entrar na ficha).
+
+# **R0003** - Os campos de Item, Magia/Habilidade e Imagem só oferecem o que a campanha liberou.
+
+> Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 6. Diário só listam Itens, entradas do Banco de Magias e Habilidades e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
+>
+> Um **GM** editando qualquer ficha (a própria, ou a de um jogador) continua com acesso irrestrito ao catálogo/banco/imagens, como hoje.

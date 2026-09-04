@@ -139,3 +139,7 @@ Acesso:
 
 - O **GM** pode referenciar a Imagem de qualquer item, NPC ou Criatura seus.
 - Um **jogador** só pode referenciar uma imagem que esteja disponível para ele: de um item anexado a uma campanha da qual é membro e marcado como público (ver "[[Requisitos - Campanha]]" R0006 e R0008); ou de um NPC/Criatura anexado a essa campanha com a Imagem individualmente liberada (ver "[[Requisitos - Ficha de NPCs]]" R0004 e "[[Requisitos - Ficha de Criaturas]]" R0003).
+
+# **R0011** - O escopo de R0010 vale para todo campo de Item na ficha, não só o de reaproveitar Imagem.
+
+> R0010 já limita um jogador a imagens de itens anexados-e-públicos à sua campanha. A mesma regra vale de forma geral para qualquer campo de Item nas fichas (Armas, Armaduras, Escudos, Inventário, Artefatos — Requisitos - Ficha de Personagem R0003): um jogador só pode escolher um Item que esteja anexado à campanha da ficha **e** marcado como público (Requisitos - Campanha R0008/R0009), nunca todo o catálogo do GM.

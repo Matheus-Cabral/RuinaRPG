@@ -88,3 +88,9 @@ Em ambos os casos, a partir da concessão a ficha passa a ter um **jogador dono*
 De dentro da campanha, o GM cria uma Nota Secreta escolhendo um ou mais jogadores membros como destinatários. Mesmo padrão de entrada dos outros diários: **Data/hora** (automática), **Texto** e **Imagens** (opcionais). O GM pode editar ou excluir uma Nota Secreta já publicada.
 
 Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos — os demais membros da campanha não a veem, nem sabem que ela existe. É via de mão única: o jogador só lê, não há resposta pelo sistema.
+
+# **R0012** - Conteúdo criado por um jogador é anexado à campanha automaticamente como público.
+
+> Uma Magia/Habilidade que um jogador cria em sua ficha (Requisitos - Ficha de Personagem R0003, Requisitos - Banco de Magias e Habilidades R0001), e uma Imagem que um jogador envia a partir de sua ficha, são anexadas à campanha correspondente automaticamente como **públicas** — sem etapa de aprovação do GM. Isso não se aplica a Itens: um jogador nunca cria um Item, então este anexo automático não existe para eles.
+>
+> A tela de gerenciamento da campanha (Membros, Anexos, Diário, Notas Secretas, Conceder Ficha, Detalhes) nunca é alcançável por um jogador — a tela dele é a descrita em R0009.
