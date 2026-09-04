@@ -1,4 +1,5 @@
 @page "/campanhas/{CampaignId}"
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
@@ -322,15 +323,14 @@
 
     <MudTabPanel Text="Detalhes">
         <Section Title="Editar Campanha">
-            <EditForm Model="_detailsForm" OnValidSubmit="SaveDetailsAsync">
-                <MudTextField T="string" @bind-Value="_detailsForm.Nome" Label="Nome" />
-                <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" />
+            <EditForm Model="_detailsForm">
+                <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+                <MudTextField T="string" @bind-Value="_detailsForm.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+                <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
 
                 <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_detailsImageIds"
-                                      SelectedIdsChanged="@(v => { _detailsImageIds = v; _detailsForm.ImageId = v.FirstOrDefault(); })"
+                                      SelectedIdsChanged="@(v => { _detailsImageIds = v; _detailsForm.ImageId = v.FirstOrDefault(); NotifySavedAsync(); })"
                                       OnError="@(e => _errorMessage = e)" Multiple="false" />
-
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
             </EditForm>
         </Section>
 
@@ -367,6 +367,7 @@
     private string? _campaignName;
     private CampaignResponse? _campaign;
     private readonly CampaignDetailsFormModel _detailsForm = new();
+    private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
     private bool _deleteDialogOpen;
     private string _deletePassword = "";
     private string? _deleteErrorMessage;
@@ -413,6 +414,18 @@
     private string _grantPlayerId = "";
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
+
+    protected override void OnInitialized()
+    {
+        _autoSave.StateChanged += StateHasChangedFromAutoSave;
+    }
+
+    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -495,17 +508,20 @@
         }
     }
 
-    private async Task SaveDetailsAsync()
+    private async Task<bool> SaveIfValidAsync()
     {
         var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}", new UpdateCampaignRequest(_detailsForm.Nome, _detailsForm.Descricao, _detailsForm.ImageId));
         if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível salvar a campanha.";
-            return;
-        }
+            throw new InvalidOperationException("Não foi possível salvar a campanha.");
 
-        _errorMessage = null;
         await LoadCampaignNameAsync();
+        return true;
+    }
+
+    private Task NotifySavedAsync()
+    {
+        _autoSave.NotifyChanged(SaveIfValidAsync);
+        return Task.CompletedTask;
     }
 
     private async Task ConfirmDeleteAsync()
