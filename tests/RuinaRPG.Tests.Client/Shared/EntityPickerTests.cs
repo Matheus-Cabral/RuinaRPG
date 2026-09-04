@@ -28,21 +28,25 @@ public class EntityPickerTests : MudBunitContext
     }
 
     [Fact]
-    public async Task SearchFunc_returns_no_results_for_a_blank_query_without_calling_SearchItems()
+    public async Task A_blank_query_still_calls_SearchItems_so_opening_the_field_lists_everything()
     {
+        // MudAutocomplete's defaults (MinCharacters=0, OpenOnFocus=true) already search with the
+        // empty string as soon as the field opens — SearchItems must see that blank query (every
+        // backend "nome" filter already treats it as "no filter", i.e. return everything for this
+        // GM) instead of the component swallowing it and showing an empty dropdown until typed in.
         var searchItemsCalled = false;
         var cut = Render<EntityPicker>(p => p
             .Add(x => x.Value, "")
-            .Add(x => x.SearchItems, _ =>
+            .Add(x => x.SearchItems, query =>
             {
                 searchItemsCalled = true;
-                return Task.FromResult(new List<PickerOption>());
+                return Task.FromResult(new List<PickerOption> { new("id-1", $"matched '{query}'") });
             }));
 
         var results = await cut.Instance.SearchAsyncForTests("   ");
 
-        results.Should().BeEmpty();
-        searchItemsCalled.Should().BeFalse();
+        searchItemsCalled.Should().BeTrue();
+        results.Should().ContainSingle(o => o.Id == "id-1");
     }
 
     [Fact]

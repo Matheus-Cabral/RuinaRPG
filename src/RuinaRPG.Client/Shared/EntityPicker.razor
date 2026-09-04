@@ -12,6 +12,13 @@
     MaxItems="null" — MudAutocomplete defaults to showing only the first 10 matches and silently
     dropping the rest, which is wrong for a search box: every match a query returns should be
     reachable by scrolling the list, not just the first 10.
+
+    SearchFuncAsync forwards even a blank query straight to SearchItems — MudAutocomplete's own
+    defaults (MinCharacters=0, OpenOnFocus=true) already call it with the empty string as soon as
+    the field is focused/opened, and every backend "nome" filter this feeds already treats a blank
+    query as "no filter" (return everything for this GM). So opening the field lists everything,
+    and typing narrows it down — it must NOT short-circuit to an empty result here, or opening the
+    field would always show nothing until the first keystroke.
 *@
 @if (!string.IsNullOrEmpty(Value) && _selectedLabel is not null)
 {
@@ -43,12 +50,7 @@ else
             _selectedLabel = null;
     }
 
-    private async Task<IEnumerable<PickerOption>> SearchFuncAsync(string query, CancellationToken token)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-            return [];
-        return await SearchItems(query);
-    }
+    private async Task<IEnumerable<PickerOption>> SearchFuncAsync(string query, CancellationToken token) => await SearchItems(query);
 
     private async Task SelectAsync(PickerOption? option)
     {
