@@ -1,49 +1,50 @@
 /* Typography for the raw HTML Markdig renders into .rulebook-content via @((MarkupString)...) —
-   that markup carries no scope attribute of its own (it's injected, not authored here), so every
-   rule needs ::deep to reach it. Reuses the app's existing --rr-* design tokens rather than
-   introducing new colors/spacing, so the rendered documents read like the rest of the app instead
-   of unstyled browser defaults. */
+   that markup carries no scope attribute of its own (it's injected, not authored here). The scope
+   attribute must attach to .rulebook-content itself (the last element actually authored in this
+   file), so ::deep goes AFTER it — "<scoped> ::deep <unscoped descendant>", same pattern as
+   Section.razor.css's ".rr-section-root ::deep .rr-section". Reuses the app's existing --rr-*
+   design tokens rather than introducing new colors/spacing. */
 
-::deep .rulebook-content h1,
-::deep .rulebook-content h2,
-::deep .rulebook-content h3,
-::deep .rulebook-content h4,
-::deep .rulebook-content h5,
-::deep .rulebook-content h6 {
+.rulebook-content ::deep h1,
+.rulebook-content ::deep h2,
+.rulebook-content ::deep h3,
+.rulebook-content ::deep h4,
+.rulebook-content ::deep h5,
+.rulebook-content ::deep h6 {
     font-family: var(--rr-font-heading);
     color: var(--rr-text);
     margin-top: var(--rr-space-4);
     margin-bottom: var(--rr-space-2);
 }
 
-::deep .rulebook-content h1:first-child,
-::deep .rulebook-content h2:first-child {
+.rulebook-content ::deep h1:first-child,
+.rulebook-content ::deep h2:first-child {
     margin-top: 0;
 }
 
-::deep .rulebook-content h1 {
+.rulebook-content ::deep h1 {
     border-bottom: 1px solid var(--rr-border);
     padding-bottom: var(--rr-space-2);
 }
 
-::deep .rulebook-content p {
+.rulebook-content ::deep p {
     line-height: 1.6;
     margin-bottom: var(--rr-space-3);
 }
 
-::deep .rulebook-content ul,
-::deep .rulebook-content ol {
+.rulebook-content ::deep ul,
+.rulebook-content ::deep ol {
     margin-bottom: var(--rr-space-3);
     padding-left: var(--rr-space-4);
     line-height: 1.6;
 }
 
-::deep .rulebook-content li > ul,
-::deep .rulebook-content li > ol {
+.rulebook-content ::deep li > ul,
+.rulebook-content ::deep li > ol {
     margin-bottom: 0;
 }
 
-::deep .rulebook-content blockquote {
+.rulebook-content ::deep blockquote {
     margin: 0 0 var(--rr-space-3) 0;
     padding: var(--rr-space-2) var(--rr-space-3);
     border-left: 3px solid var(--rr-primary);
@@ -51,46 +52,46 @@
     color: var(--rr-text-muted);
 }
 
-::deep .rulebook-content hr {
+.rulebook-content ::deep hr {
     border: none;
     border-top: 1px solid var(--rr-border);
     margin: var(--rr-space-4) 0;
 }
 
-::deep .rulebook-content table {
+.rulebook-content ::deep table {
     border-collapse: collapse;
     width: 100%;
     margin-bottom: var(--rr-space-4);
 }
 
-::deep .rulebook-content th,
-::deep .rulebook-content td {
+.rulebook-content ::deep th,
+.rulebook-content ::deep td {
     border: 1px solid var(--rr-border);
     padding: var(--rr-space-2);
     text-align: left;
 }
 
-::deep .rulebook-content th {
+.rulebook-content ::deep th {
     font-family: var(--rr-font-heading);
     background: var(--rr-surface);
 }
 
-::deep .rulebook-content tbody tr:nth-child(even) {
+.rulebook-content ::deep tbody tr:nth-child(even) {
     background: var(--rr-surface);
 }
 
-::deep .rulebook-content figure {
+.rulebook-content ::deep figure {
     margin: 0 0 var(--rr-space-3) 0;
 }
 
-::deep .rulebook-content figcaption {
+.rulebook-content ::deep figcaption {
     color: var(--rr-text-muted);
     font-size: 0.85rem;
     margin-top: var(--rr-space-1);
     text-align: center;
 }
 
-::deep .rulebook-content code {
+.rulebook-content ::deep code {
     font-family: monospace;
     background: var(--rr-surface);
     border: 1px solid var(--rr-border);
