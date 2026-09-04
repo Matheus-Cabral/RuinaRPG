@@ -1,7 +1,5 @@
 @page "/painel/convites"
 @inject HttpClient Http
-@inject IJSRuntime JS
-@inject ISnackbar Snackbar
 @using RuinaRPG.Contracts.Invites
 @using MudBlazor
 
@@ -34,10 +32,7 @@
             {
                 <tr>
                     <td>
-                        @item.Code
-                        <MudTooltip Text="Clique para copiar">
-                            <MudChip T="string" OnClick="@(() => CopyCodeAsync(item.Code))" Icon="@Icons.Material.Filled.ContentCopy" Style="cursor:pointer"></MudChip>
-                        </MudTooltip>
+                        <CopyableCode Value="@item.Code" />
                     </td>
                     <td>@item.Status</td>
                     <td>@item.GeneratedAt</td>
@@ -91,12 +86,6 @@
         }
 
         await LoadAsync();
-    }
-
-    private async Task CopyCodeAsync(string code)
-    {
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
-        Snackbar.Add("Código copiado!", Severity.Success);
     }
 
     private async Task RevokeAsync(string code)

@@ -1,0 +1,25 @@
+@using MudBlazor
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+@* A code/token (e.g. an invite code) shown as a clickable chip that copies itself to the
+   clipboard. Goes through ruinaClipboard.copy (wwwroot/js/clipboard.js) rather than
+   navigator.clipboard directly — the Clipboard API only exists in a secure context (HTTPS or
+   localhost); a plain-HTTP LAN deployment has no such API, so that helper falls back to the
+   legacy document.execCommand('copy') there instead of silently failing. *@
+<MudTooltip Text="Clique para copiar">
+    <MudChip T="string" OnClick="CopyAsync" Icon="@Icons.Material.Filled.ContentCopy" Style="cursor:pointer">@Value</MudChip>
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+
+    internal Task CopyForTests() => CopyAsync();
+
+    private async Task CopyAsync()
+    {
+        var copied = await JS.InvokeAsync<bool>("ruinaClipboard.copy", Value);
+        Snackbar.Add(copied ? "Código copiado!" : "Não foi possível copiar automaticamente — selecione o código manualmente.",
+            copied ? Severity.Success : Severity.Warning);
+    }
+}
