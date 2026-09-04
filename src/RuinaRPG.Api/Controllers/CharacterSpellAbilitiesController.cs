@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
@@ -76,6 +77,20 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         };
         bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.SpellAbilityBankEntries.Add(bankCopy);
+
+        // Requisitos - Banco de Magias e Habilidades R0007: when the creator is the owning
+        // Jogador (not the GM managing the sheet), the bank copy also becomes a public campaign
+        // attachment — no GM approval step, per Requisitos - Campanha R0012.
+        if (CurrentUserId() != campaignGmId)
+        {
+            db.CampaignAttachments.Add(new CampaignAttachment
+            {
+                Id = Guid.NewGuid(),
+                CampaignId = sheet.CampaignId,
+                SpellAbilityBankEntryId = bankCopy.Id,
+                IsPublic = true
+            });
+        }
 
         await db.SaveChangesAsync();
         return Created(string.Empty, ToResponse(sheetCopy));

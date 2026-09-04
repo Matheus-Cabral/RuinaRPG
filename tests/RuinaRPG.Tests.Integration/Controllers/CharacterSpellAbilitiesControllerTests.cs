@@ -182,4 +182,44 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    private async Task<(string SheetId, string CampaignId)> SetUpSheetWithCampaignAsync(string gmToken, string playerId)
+    {
+        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+        return (sheetId, campaignId);
+    }
+
+    [Fact]
+    public async Task AddFromScratch_by_the_player_auto_attaches_the_bank_copy_as_public()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasAutoGm1", "magiasauto1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasAutoPlayer1", "magiasautoplayer1@teste.com");
+        var (sheetId, campaignId) = await SetUpSheetWithCampaignAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken, BolaDeFogoFromScratch()));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var availableResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-spell-abilities", playerToken));
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        available!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
+    }
+
+    [Fact]
+    public async Task AddFromScratch_by_the_gm_does_not_auto_attach()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasAutoGm2", "magiasauto2@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasAutoPlayer2", "magiasautoplayer2@teste.com");
+        var (sheetId, campaignId) = await SetUpSheetWithCampaignAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var availableResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-spell-abilities", gmToken));
+        var available = await availableResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        available!.Should().NotContain(e => e.Nome == "Bola de Fogo");
+    }
 }
