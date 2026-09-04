@@ -520,4 +520,23 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         bodyAll[0].Arquetipo.Should().Be("Fisico");
         bodyAll[0].Rank.Should().Be("F");
     }
+
+    [Fact]
+    public async Task CampaignId_is_populated_for_a_granted_sheet_and_null_for_an_ungranted_one()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureCampaignIdGm1", "creaturecampaignid1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CreatureCampaignIdPlayer1", "creaturecampaignidplayer1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Creature CampaignId");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var grantedSheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
+        var ungrantedSheetId = await CreateSheetAsync(gmToken);
+
+        var grantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{grantedSheetId}", playerToken));
+        var granted = await grantedResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        granted!.CampaignId.Should().Be(campaignId);
+
+        var ungrantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{ungrantedSheetId}", gmToken));
+        var ungranted = await ungrantedResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        ungranted!.CampaignId.Should().BeNull();
+    }
 }

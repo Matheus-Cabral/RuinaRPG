@@ -37,4 +37,5 @@ public record NpcSheetResponse(
     int VitalidadeMaximo,
     int FocoMaximo,
     int AdrenalinaMaximo,
-    int EstresseMaximo);
+    int EstresseMaximo,
+    string? CampaignId);

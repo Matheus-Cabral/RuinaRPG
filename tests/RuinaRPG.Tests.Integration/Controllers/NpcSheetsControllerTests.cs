@@ -526,4 +526,23 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
         body.EstresseMaximo.Should().Be(10); // flat
     }
+
+    [Fact]
+    public async Task CampaignId_is_populated_for_a_granted_sheet_and_null_for_an_ungranted_one()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcCampaignIdGm1", "npccampaignid1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcCampaignIdPlayer1", "npccampaignidplayer1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC CampaignId");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var grantedSheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+        var ungrantedSheetId = await CreateSheetAsync(gmToken); // read helper: POST npc-sheets, no update needed
+
+        var grantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{grantedSheetId}", playerToken));
+        var granted = await grantedResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        granted!.CampaignId.Should().Be(campaignId);
+
+        var ungrantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{ungrantedSheetId}", gmToken));
+        var ungranted = await ungrantedResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        ungranted!.CampaignId.Should().BeNull();
+    }
 }

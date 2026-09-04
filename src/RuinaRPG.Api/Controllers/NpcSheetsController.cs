@@ -361,6 +361,11 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
         var estresseMaximo = ResourceMaximumCalculator.Estresse();
 
+        var campaignId = await db.CampaignAttachments
+            .Where(a => a.NpcSheetId == s.Id)
+            .Select(a => (Guid?)a.CampaignId)
+            .FirstOrDefaultAsync();
+
         return new NpcSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
             s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
@@ -369,7 +374,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
-            vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo);
+            vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
+            campaignId?.ToString());
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
