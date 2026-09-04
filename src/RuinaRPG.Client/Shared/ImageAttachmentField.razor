@@ -1,0 +1,114 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Images
+@inject HttpClient Http
+
+@* The "attach image(s) to a form field" pattern (upload new / choose already-uploaded, both
+   feeding the same selection, previewed as thumbnails) used to be copy-pasted independently in
+   every caller (Diário, Notas Secretas, capa da campanha, imagem do item, anexo de imagem da
+   campanha). This component is the single implementation: it owns the upload HTTP call, the
+   ImageGalleryDialog wiring, and the selected-thumbnails preview, so callers only pass their
+   image pool and selection. *@
+
+<div class="raf-image-attachment-buttons" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <MudFileUpload T="IBrowserFile" FilesChanged="HandleUploadAsync">
+        <CustomContent Context="fileUploadContext">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="ButtonSize" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+        </CustomContent>
+    </MudFileUpload>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="ButtonSize" OnClick="@(() => _galleryOpen = true)">@ChooseLabel</MudButton>
+</div>
+
+<ImageGalleryDialog @bind-Visible="_galleryOpen" Images="AvailableImages" AllowClear="!Multiple"
+                     IsSelectedFunc="@(id => SelectedIds.Contains(id))"
+                     OnPick="HandlePickAsync" />
+
+@if (SelectedIds.Count > 0)
+{
+    <div class="raf-image-attachment-grid mt-2" style="display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px">
+        @foreach (var id in SelectedIds)
+        {
+            var url = AvailableImages.FirstOrDefault(i => i.Id == id)?.Url;
+            if (url is not null)
+            {
+                <div style="display:flex;flex-direction:column;align-items:center">
+                    <ClickableImage Src="@url" Width="ThumbnailSize" Height="ThumbnailSize" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => RemoveAsync(id))" />
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<ImageSummaryResponse> AvailableImages { get; set; } = new();
+    [Parameter, EditorRequired] public List<string> SelectedIds { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> SelectedIdsChanged { get; set; }
+
+    /// <summary>True (default): the gallery stays open after a pick so several images can be
+    /// selected in a row, and picks toggle membership. False: picking replaces the single current
+    /// selection and closes the gallery; the gallery also gets a "Nenhuma" tile to clear it.</summary>
+    [Parameter] public bool Multiple { get; set; } = true;
+
+    [Parameter] public EventCallback<string> OnError { get; set; }
+    [Parameter] public int ThumbnailSize { get; set; } = 100;
+    [Parameter] public Size ButtonSize { get; set; } = Size.Medium;
+
+    private bool _galleryOpen;
+
+    private string ChooseLabel => Multiple ? "Escolher imagens já enviadas" : "Escolher imagem já enviada";
+
+    internal Task UploadForTests(IBrowserFile file) => HandleUploadAsync(file);
+    internal Task PickForTests(string? id) => HandlePickAsync(id);
+    internal Task RemoveForTests(string id) => RemoveAsync(id);
+
+    private async Task HandleUploadAsync(IBrowserFile file)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
+        content.Add(fileContent, "file", file.Name);
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            await OnError.InvokeAsync("Não foi possível enviar a imagem.");
+            return;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        AvailableImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
+        await SelectAsync(body.Id);
+    }
+
+    private Task HandlePickAsync(string? id) => id is null ? ClearAsync() : SelectAsync(id, closeGalleryIfSingle: true);
+
+    private async Task SelectAsync(string id, bool closeGalleryIfSingle = false)
+    {
+        if (Multiple)
+        {
+            if (!SelectedIds.Remove(id))
+                SelectedIds.Add(id);
+        }
+        else
+        {
+            SelectedIds.Clear();
+            SelectedIds.Add(id);
+            if (closeGalleryIfSingle)
+                _galleryOpen = false;
+        }
+
+        await SelectedIdsChanged.InvokeAsync(SelectedIds);
+    }
+
+    private async Task ClearAsync()
+    {
+        SelectedIds.Clear();
+        _galleryOpen = false;
+        await SelectedIdsChanged.InvokeAsync(SelectedIds);
+    }
+
+    private async Task RemoveAsync(string id)
+    {
+        SelectedIds.Remove(id);
+        await SelectedIdsChanged.InvokeAsync(SelectedIds);
+    }
+}

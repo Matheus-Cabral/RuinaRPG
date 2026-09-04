@@ -33,15 +33,9 @@
         <MudNumericField T="decimal" @bind-Value="_form.Peso" Label="Peso" />
         <MudNumericField T="int" @bind-Value="_form.Preco" Label="Preço (Ciclos)" />
 
-        <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync">
-            <CustomContent Context="fileUploadContext">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-            </CustomContent>
-        </MudFileUpload>
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
-        <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
-                             IsSelectedFunc="@(id => id == _form.ImageId)"
-                             OnPick="@(id => { _form.ImageId = id; _imageGalleryOpen = false; })" />
+        <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
+                              SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); })"
+                              OnError="@(e => _errorMessage = e)" Multiple="false" />
     </Section>
 
     @if (_form.Tipo == "ItemGeral")
@@ -109,7 +103,7 @@
 
     private readonly ItemFormModel _form = new();
     private List<ImageSummaryResponse> _myImages = new();
-    private bool _imageGalleryOpen;
+    private List<string> _imageIds = new();
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -133,6 +127,7 @@
         _form.Tipo = existing.Tipo;
         _form.Nome = existing.Nome;
         _form.ImageId = _myImages.FirstOrDefault(i => i.Url == existing.ImageUrl)?.Id;
+        _imageIds = _form.ImageId is null ? new() : new() { _form.ImageId };
         _form.Peso = existing.Peso;
         _form.Preco = existing.Preco;
         _form.Subcategoria = existing.Subcategoria;
@@ -156,24 +151,6 @@
         _form.TipoDeAlvo = existing.TipoDeAlvo;
         _form.Alvo = existing.Alvo;
         _form.Valor = existing.Valor;
-    }
-
-    private async Task UploadImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _form.ImageId = body!.Id;
-        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow)); // so the <select> has an option matching the ID just set
     }
 
     private async Task SubmitAsync()

@@ -71,16 +71,9 @@
         <Section Title="Adicionar entrada">
             <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
                 <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
-                <MudExpansionPanel Text="Anexar imagens">
-                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _diaryImageIds))" Class="mt-3">
-                        <CustomContent Context="fileUploadContext">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                        </CustomContent>
-                    </MudFileUpload>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _diaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                    <ImageGalleryDialog @bind-Visible="_diaryGalleryOpen" Images="_myImages"
-                                         IsSelectedFunc="@(id => _diaryImageIds.Contains(id))"
-                                         OnPick="@(id => ToggleImage(_diaryImageIds, id!, !_diaryImageIds.Contains(id!)))" />
+                <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
+                    <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_diaryImageIds"
+                                          SelectedIdsChanged="@(v => _diaryImageIds = v)" OnError="@(e => _errorMessage = e)" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
             </EditForm>
@@ -97,11 +90,10 @@
                                     @if (_editingEntryId == entry.Id)
                                     {
                                         <MudTextField T="string" @bind-Value="_editText" Lines="3" />
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editDiaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                                        <ImageGalleryDialog @bind-Visible="_editDiaryGalleryOpen" Images="_myImages"
-                                                             IsSelectedFunc="@(id => _editDiaryImageIds.Contains(id))"
-                                                             OnPick="@(id => ToggleImage(_editDiaryImageIds, id!, !_editDiaryImageIds.Contains(id!)))" />
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
+                                        <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_editDiaryImageIds"
+                                                              SelectedIdsChanged="@(v => _editDiaryImageIds = v)" OnError="@(e => _errorMessage = e)"
+                                                              ButtonSize="Size.Small" />
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
                                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                     }
                                     else
@@ -161,13 +153,10 @@
             </MudItem>
             <MudItem xs="12" md="6">
                 <Section Title="Imagem">
-                    <EntityPicker @bind-Value="_attachImageId" SearchItems="SearchImagesAsync" Placeholder="Buscar imagem já enviada..." />
+                    <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_attachImageIds"
+                                          SelectedIdsChanged="@(v => _attachImageIds = v)" OnError="@(e => _errorMessage = e)"
+                                          Multiple="false" />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachImageAsync">Anexar Imagem</MudButton>
-                    <MudFileUpload T="IBrowserFile" FilesChanged="UploadAndAttachImageAsync" Class="mt-2">
-                        <CustomContent Context="fileUploadContext">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Ou enviar uma imagem nova</MudButton>
-                        </CustomContent>
-                    </MudFileUpload>
                 </Section>
             </MudItem>
             <MudItem xs="12" md="6">
@@ -269,16 +258,9 @@
                         </MudListItem>
                     }
                 </MudList>
-                <MudExpansionPanel Text="Anexar imagens">
-                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadImageAsync(f, _noteImageIds))" Class="mt-3">
-                        <CustomContent Context="fileUploadContext">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                        </CustomContent>
-                    </MudFileUpload>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _noteGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                    <ImageGalleryDialog @bind-Visible="_noteGalleryOpen" Images="_myImages"
-                                         IsSelectedFunc="@(id => _noteImageIds.Contains(id))"
-                                         OnPick="@(id => ToggleImage(_noteImageIds, id!, !_noteImageIds.Contains(id!)))" />
+                <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
+                    <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_noteImageIds"
+                                          SelectedIdsChanged="@(v => _noteImageIds = v)" OnError="@(e => _errorMessage = e)" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Nota Secreta</MudButton>
             </EditForm>
@@ -302,11 +284,10 @@
                                             </MudListItem>
                                         }
                                     </MudList>
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editNoteGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                                    <ImageGalleryDialog @bind-Visible="_editNoteGalleryOpen" Images="_myImages"
-                                                         IsSelectedFunc="@(id => _editNoteImageIds.Contains(id))"
-                                                         OnPick="@(id => ToggleImage(_editNoteImageIds, id!, !_editNoteImageIds.Contains(id!)))" />
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</MudButton>
+                                    <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_editNoteImageIds"
+                                                          SelectedIdsChanged="@(v => _editNoteImageIds = v)" OnError="@(e => _errorMessage = e)"
+                                                          ButtonSize="Size.Small" />
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => SaveSecretNoteAsync(note.Id))">Salvar</MudButton>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditSecretNote">Cancelar</MudButton>
                                 }
                                 else
@@ -338,20 +319,9 @@
                 <MudTextField T="string" @bind-Value="_detailsForm.Nome" Label="Nome" />
                 <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" />
 
-                @if (_campaign?.ImageUrl is not null)
-                {
-                    <ClickableImage Src="@_campaign.ImageUrl" Width="200" Class="mt-2 mb-2" />
-                }
-
-                <MudFileUpload T="IBrowserFile" FilesChanged="UploadDetailsImageAsync" Class="mt-2">
-                    <CustomContent Context="fileUploadContext">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                    </CustomContent>
-                </MudFileUpload>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _detailsImageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
-                <ImageGalleryDialog @bind-Visible="_detailsImageGalleryOpen" Images="_myImages" AllowClear="true"
-                                     IsSelectedFunc="@(id => id == _detailsForm.ImageId)"
-                                     OnPick="@(id => { _detailsForm.ImageId = id; _detailsImageGalleryOpen = false; })" />
+                <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_detailsImageIds"
+                                      SelectedIdsChanged="@(v => { _detailsImageIds = v; _detailsForm.ImageId = v.FirstOrDefault(); })"
+                                      OnError="@(e => _errorMessage = e)" Multiple="false" />
 
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
             </EditForm>
@@ -409,21 +379,17 @@
     private List<CampaignAttachmentResponse> _attachments = new();
     private List<SecretNoteResponse> _secretNotes = new();
     private List<ImageSummaryResponse> _myImages = new();
-    private bool _diaryGalleryOpen;
-    private bool _editDiaryGalleryOpen;
-    private bool _noteGalleryOpen;
-    private bool _editNoteGalleryOpen;
-    private bool _detailsImageGalleryOpen;
     private List<GrantSummaryResponse> _grants = new();
     private string _memberSearch = "";
     private readonly DiaryFormModel _diaryForm = new();
     private readonly DiaryFormModel _noteForm = new();
     private readonly HashSet<string> _noteRecipients = new();
     private readonly HashSet<string> _editNoteRecipients = new();
-    private readonly HashSet<string> _diaryImageIds = new();
-    private readonly HashSet<string> _editDiaryImageIds = new();
-    private readonly HashSet<string> _noteImageIds = new();
-    private readonly HashSet<string> _editNoteImageIds = new();
+    private List<string> _diaryImageIds = new();
+    private List<string> _editDiaryImageIds = new();
+    private List<string> _noteImageIds = new();
+    private List<string> _editNoteImageIds = new();
+    private List<string> _detailsImageIds = new();
     private string? _errorMessage;
     private string? _editingEntryId;
     private string _editText = "";
@@ -432,7 +398,7 @@
 
     private string _attachItemId = "";
     private string _attachBankEntryId = "";
-    private string _attachImageId = "";
+    private List<string> _attachImageIds = new();
     private string _attachNpcSheetId = "";
     private string _attachCreatureSheetId = "";
 
@@ -479,13 +445,6 @@
         return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} ({e.Tipo}, Grau {e.Grau})")).ToList();
     }
 
-    // No new HTTP call needed — _myImages is already loaded for the Diário/Notas Secretas image
-    // picker, and images don't have a separate name to search by, just their upload timestamp.
-    private Task<List<PickerOption>> SearchImagesAsync(string query) => Task.FromResult(
-        _myImages.Where(i => i.Url.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Select(i => new PickerOption(i.Id, $"{i.Url} ({i.CreatedAt:g})"))
-            .ToList());
-
     private async Task<List<PickerOption>> SearchNpcSheetsAsync(string query)
     {
         var response = await Http.GetAsync($"npc-sheets?nome={Uri.EscapeDataString(query)}");
@@ -505,32 +464,6 @@
     private Task<List<PickerOption>> SearchGrantSourceSheetsAsync(string query) =>
         _grantTipo == "Npc" ? SearchNpcSheetsAsync(query) : SearchCreatureSheetsAsync(query);
 
-    private async Task UploadImageAsync(IBrowserFile file, HashSet<string> targetSelection)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
-        targetSelection.Add(body.Id);
-    }
-
-    private static void ToggleImage(HashSet<string> selection, string imageId, bool selected)
-    {
-        if (selected)
-            selection.Add(imageId);
-        else
-            selection.Remove(imageId);
-    }
-
     private async Task LoadCampaignNameAsync()
     {
         var response = await Http.GetAsync("campaigns");
@@ -544,25 +477,8 @@
             _detailsForm.Nome = _campaign.Nome;
             _detailsForm.Descricao = _campaign.Descricao;
             _detailsForm.ImageId = _myImages.FirstOrDefault(i => i.Url == _campaign.ImageUrl)?.Id;
+            _detailsImageIds = _detailsForm.ImageId is null ? new() : new() { _detailsForm.ImageId };
         }
-    }
-
-    private async Task UploadDetailsImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _detailsForm.ImageId = body!.Id;
-        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
     }
 
     private async Task SaveDetailsAsync()
@@ -790,27 +706,9 @@
 
     private Task AttachImageAsync()
     {
-        var id = _attachImageId;
-        _attachImageId = "";
+        var id = _attachImageIds.FirstOrDefault();
+        _attachImageIds = new();
         return AttachAsync(new AttachToCampaignRequest(null, null, null, null, id));
-    }
-
-    private async Task UploadAndAttachImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
-        await AttachAsync(new AttachToCampaignRequest(null, null, null, null, body.Id));
     }
 
     private Task AttachNpcSheetAsync()

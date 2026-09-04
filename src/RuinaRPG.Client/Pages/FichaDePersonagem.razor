@@ -590,16 +590,9 @@
         <Section Title="Adicionar Entrada">
             <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
                 <MudTextField T="string" @bind-Value="_diaryForm.Texto" Label="Texto" Lines="3" />
-                <MudExpansionPanel Text="Anexar imagens">
-                    <MudFileUpload T="IBrowserFile" FilesChanged="@(f => UploadDiaryImageAsync(f, _diaryImageIds))" Class="mt-3">
-                        <CustomContent Context="fileUploadContext">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                        </CustomContent>
-                    </MudFileUpload>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _diaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                    <ImageGalleryDialog @bind-Visible="_diaryGalleryOpen" Images="_myImages"
-                                         IsSelectedFunc="@(id => _diaryImageIds.Contains(id))"
-                                         OnPick="@(id => ToggleImage(_diaryImageIds, id!, !_diaryImageIds.Contains(id!)))" />
+                <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
+                    <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_diaryImageIds"
+                                          SelectedIdsChanged="@(v => _diaryImageIds = v)" OnError="@(e => _errorMessage = e)" />
                 </MudExpansionPanel>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
             </EditForm>
@@ -616,11 +609,10 @@
                                     @if (_editingDiaryEntryId == entry.Id)
                                     {
                                         <MudTextField T="string" @bind-Value="_editDiaryText" Lines="3" />
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editDiaryGalleryOpen = true)">Escolher imagens já enviadas</MudButton>
-                                        <ImageGalleryDialog @bind-Visible="_editDiaryGalleryOpen" Images="_myImages"
-                                                             IsSelectedFunc="@(id => _editDiaryImageIds.Contains(id))"
-                                                             OnPick="@(id => ToggleImage(_editDiaryImageIds, id!, !_editDiaryImageIds.Contains(id!)))" />
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
+                                        <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_editDiaryImageIds"
+                                                              SelectedIdsChanged="@(v => _editDiaryImageIds = v)" OnError="@(e => _errorMessage = e)"
+                                                              ButtonSize="Size.Small" />
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => SaveDiaryEntryAsync(entry.Id))">Salvar</MudButton>
                                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditDiaryEntry">Cancelar</MudButton>
                                     }
                                     else
@@ -713,10 +705,8 @@
     private readonly DiaryFormModel _diaryForm = new();
     private string? _editingDiaryEntryId;
     private string _editDiaryText = "";
-    private readonly HashSet<string> _diaryImageIds = new();
-    private readonly HashSet<string> _editDiaryImageIds = new();
-    private bool _diaryGalleryOpen;
-    private bool _editDiaryGalleryOpen;
+    private List<string> _diaryImageIds = new();
+    private List<string> _editDiaryImageIds = new();
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
     {
@@ -1336,32 +1326,6 @@
     private async Task LoadDiaryAsync()
     {
         _diaryEntries = await Http.GetFromJsonAsync<List<DiaryEntryResponse>>($"character-sheets/{SheetId}/diary") ?? new();
-    }
-
-    private async Task UploadDiaryImageAsync(IBrowserFile file, HashSet<string> targetSelection)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _myImages.Insert(0, new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow));
-        targetSelection.Add(body.Id);
-    }
-
-    private static void ToggleImage(HashSet<string> selection, string imageId, bool selected)
-    {
-        if (selected)
-            selection.Add(imageId);
-        else
-            selection.Remove(imageId);
     }
 
     private async Task AddDiaryEntryAsync()
