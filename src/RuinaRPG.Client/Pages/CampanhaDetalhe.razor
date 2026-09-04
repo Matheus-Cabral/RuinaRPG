@@ -1,6 +1,7 @@
 @page "/campanhas/{CampaignId}"
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Diary
@@ -415,6 +416,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        if (!authState.User.IsInRole("GM"))
+        {
+            Navigation.NavigateTo($"campanhas/{CampaignId}/jogador", replace: true);
+            return;
+        }
+
         // LoadCampaignNameAsync matches the loaded campaign's ImageUrl against _myImages, so
         // images must be loaded first rather than joining the WhenAll below.
         await LoadImagesAsync();
