@@ -1,4 +1,5 @@
 @page "/fichas/{SheetId}"
+@implements IDisposable
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
@@ -36,8 +37,9 @@
 
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
-        <EditForm Model="_form" OnValidSubmit="SaveAsync">
+        <EditForm Model="_form">
             <DataAnnotationsValidator />
+            <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
             <Section Title="Identidade">
                 <div class="mb-4">
                     <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = true)">
@@ -84,18 +86,18 @@
                     </DialogActions>
                 </MudDialog>
 
-                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
-                <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" />
-                <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" />
-                <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" />
+                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+                <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
+                <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
+                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" />
+                <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
             <Section Title="Nível e Progressão">
                 <MudText Typo="Typo.h6">Nível: @_form.Nivel</MudText>
                 <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
-                <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" />
-                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" />
+                <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudText Typo="Typo.body2" Color="Color.Secondary">
                     @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
                 </MudText>
@@ -104,7 +106,7 @@
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
                 </div>
                 <MudText>EAP Atual: @_form.EAPAtual</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" />
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudText>Pontos de Ignição Total: @_form.PontosDeIgnicaoTotal</MudText>
                 <div class="d-flex align-center mt-2" style="gap:8px">
                     <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:16rem" />
@@ -113,16 +115,15 @@
             </Section>
 
             <Section Title="Âmbares Absorvidos">
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankF" For="@(() => _form.NucleosRankF)" Label="Rank F" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankE" For="@(() => _form.NucleosRankE)" Label="Rank E" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankD" For="@(() => _form.NucleosRankD)" Label="Rank D" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankC" For="@(() => _form.NucleosRankC)" Label="Rank C" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankB" For="@(() => _form.NucleosRankB)" Label="Rank B" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankA" For="@(() => _form.NucleosRankA)" Label="Rank A" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankF" For="@(() => _form.NucleosRankF)" Label="Rank F" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankE" For="@(() => _form.NucleosRankE)" Label="Rank E" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankD" For="@(() => _form.NucleosRankD)" Label="Rank D" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankC" For="@(() => _form.NucleosRankC)" Label="Rank C" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankB" For="@(() => _form.NucleosRankB)" Label="Rank B" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankA" For="@(() => _form.NucleosRankA)" Label="Rank A" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Salvar</MudButton>
         </EditForm>
 
         <Section Title="Características">
@@ -272,10 +273,10 @@
 
     <MudTabPanel Text="Combate">
         <Section>
-                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" />
-                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" />
+                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
         </Section>
 
         @if (_subAttributes is not null)
@@ -665,6 +666,7 @@
     }
 
     private readonly SheetFormModel _form = new();
+    private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
     private int? _xpDelta;
     private int? _piDelta;
     private int? _periciaCriticoDelta;
@@ -730,6 +732,18 @@
         return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
     }
 
+    protected override void OnInitialized()
+    {
+        _autoSave.StateChanged += StateHasChangedFromAutoSave;
+    }
+
+    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
@@ -774,18 +788,21 @@
         _form.ImageId = body!.Id;
         _form.ImageUrl = body.Url;
         _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
+        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private void SelectExistingImage(string? id)
     {
         _form.ImageId = id;
         _form.ImageUrl = id is null ? null : _myImages.FirstOrDefault(i => i.Id == id)?.Url;
+        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private void RemoveImage()
     {
         _form.ImageId = null;
         _form.ImageUrl = null;
+        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private async Task LoadCampaignNameAsync()
@@ -861,7 +878,7 @@
         _levelUpBonuses.Clear();
     }
 
-    private async Task SaveAsync()
+    private async Task<bool> SaveIfValidAsync()
     {
         if (_form.ExperienciaAtual is null
             || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
@@ -870,9 +887,10 @@
             || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null || _form.EstresseAtual is null)
         {
             _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
-            return;
+            return false;
         }
 
+        _errorMessage = null;
         var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
@@ -881,19 +899,23 @@
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível salvar a ficha.";
-            return;
-        }
+            throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        return true;
+    }
+
+    private Task NotifySavedAsync()
+    {
+        _autoSave.NotifyChanged(SaveIfValidAsync);
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// The "adicionar ou subtrair xp do montante total" field: applies a signed delta to
     /// Experiência Atual (never below 0) and saves immediately, same immediate-action pattern as
     /// UpdateCoberturaAsync/UpdateCiclosAsync below. Nível is derived server-side from the new
-    /// total, so LoadSheetAsync (inside SaveAsync) picks up whatever Nível that XP now computes to.
+    /// total, so LoadSheetAsync (inside SaveIfValidAsync) picks up whatever Nível that XP now computes to.
     /// </summary>
     private async Task ApplyXpDeltaAsync()
     {
@@ -902,7 +924,14 @@
 
         _form.ExperienciaAtual = Math.Max(0, (_form.ExperienciaAtual ?? 0) + _xpDelta.Value);
         _xpDelta = null;
-        await SaveAsync();
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
     }
 
     /// <summary>
@@ -917,14 +946,21 @@
 
         _form.PontosDeIgnicaoBonusManual += _piDelta.Value;
         _piDelta = null;
-        await SaveAsync();
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
     }
 
     /// <summary>
     /// "Quando um jogador tira números máximos nos dados, ele tem direito a colocar um ponto na
     /// perícia correspondente ao teste" — those points don't come from the level-derived Perícia
     /// budget (2.d), so they're tracked separately and subtracted from Gasto Total by the
-    /// /skills/budget endpoint. Reloads the skill budget too, since SaveAsync alone only refreshes
+    /// /skills/budget endpoint. Reloads the skill budget too, since SaveIfValidAsync alone only refreshes
     /// the sheet, not _skillBudget.
     /// </summary>
     private async Task ApplyPericiaCriticoDeltaAsync()
@@ -934,14 +970,28 @@
 
         _form.PontosDePericiaBonusCritico += _periciaCriticoDelta.Value;
         _periciaCriticoDelta = null;
-        await SaveAsync();
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
         await LoadTabs2And3Async();
     }
 
     private async Task UpdateCoberturaAsync(string? value)
     {
         _form.Cobertura = value ?? "Nenhuma";
-        await SaveAsync();
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
         await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural (2.b), loaded here, not by LoadSheetAsync.
     }
 
@@ -949,7 +999,14 @@
     {
         if (int.TryParse(value?.ToString(), out var ciclos))
             _form.Ciclos = ciclos;
-        await SaveAsync();
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
     }
 
     private async Task LoadTabs2And3Async()
