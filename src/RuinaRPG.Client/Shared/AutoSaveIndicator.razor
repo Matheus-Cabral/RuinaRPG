@@ -1,0 +1,20 @@
+@using MudBlazor
+@using RuinaRPG.Client.Services
+
+@if (State != AutoSaveState.Idle)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="rr-autosave-indicator">@Label</MudText>
+}
+
+@code {
+    [Parameter, EditorRequired] public AutoSaveState State { get; set; }
+    [Parameter] public DateTime? LastSavedAt { get; set; }
+
+    private string Label => State switch
+    {
+        AutoSaveState.Saving => "Salvando...",
+        AutoSaveState.Saved => $"Salvo às {LastSavedAt:HH:mm}",
+        AutoSaveState.Error => "Erro ao salvar",
+        _ => "",
+    };
+}
