@@ -7,36 +7,54 @@
 
 <MudText Typo="Typo.h3">Jogadores</MudText>
 
-<MudTextField T="string" @bind-Value="_query" Immediate="true" @bind-Value:after="DebouncedSearchAsync" Label="Buscar por nickname ou e-mail" Class="mt-3" />
+<Section Title="Filtros">
+    <MudTextField T="string" @bind-Value="_query" Immediate="true" @bind-Value:after="DebouncedSearchAsync" Label="Buscar por nickname ou e-mail" />
+</Section>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
-
-<MudList T="string" Class="mt-3">
-    @foreach (var player in _players)
+<Section Title="Jogadores">
+    @if (_errorMessage is not null)
     {
-        <MudListItem T="string">
-            <ChildContent>
-                <MudText>@player.Nickname (@player.Email)</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="() => StartReset(player.Id)">Redefinir senha</MudButton>
-
-                @if (_resettingPlayerId == player.Id)
-                {
-                    <Section Title="@("Redefinir senha de " + player.Nickname)">
-                        <EditForm Model="_resetRequest" OnValidSubmit="ConfirmResetAsync">
-                            <MudTextField T="string" @bind-Value="_resetRequest.NovaSenha" InputType="InputType.Password" Label="Nova senha" />
-                            <MudTextField T="string" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" InputType="InputType.Password" Label="Confirmação da nova senha" />
-                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Confirmar</MudButton>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="mt-3" OnClick="CancelReset">Cancelar</MudButton>
-                        </EditForm>
-                    </Section>
-                }
-            </ChildContent>
-        </MudListItem>
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
     }
-</MudList>
+
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nickname</th>
+                <th>E-mail</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var player in _players)
+            {
+                <tr>
+                    <td>@player.Nickname</td>
+                    <td>@player.Email</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartReset(player.Id, player.Nickname))">Redefinir senha</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<MudDialog @bind-Visible="_resetDialogOpen">
+    <TitleContent>Redefinir senha de @_resettingPlayerNickname</TitleContent>
+    <DialogContent>
+        @if (_resetErrorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_resetErrorMessage</MudAlert>
+        }
+        <MudTextField T="string" @bind-Value="_resetRequest.NovaSenha" InputType="InputType.Password" Label="Nova senha" />
+        <MudTextField T="string" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" InputType="InputType.Password" Label="Confirmação da nova senha" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelReset">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmResetAsync">Confirmar</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
@@ -49,6 +67,9 @@
     private List<PlayerSearchResultResponse> _players = new();
     private string? _errorMessage;
     private string? _resettingPlayerId;
+    private string? _resettingPlayerNickname;
+    private bool _resetDialogOpen;
+    private string? _resetErrorMessage;
     private readonly ResetFormModel _resetRequest = new();
 
     protected override Task OnInitializedAsync() => SearchAsync();
@@ -85,11 +106,19 @@
         _players = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
     }
 
-    private void StartReset(string playerId) => _resettingPlayerId = playerId;
+    private void StartReset(string playerId, string nickname)
+    {
+        _resettingPlayerId = playerId;
+        _resettingPlayerNickname = nickname;
+        _resetDialogOpen = true;
+    }
 
     private void CancelReset()
     {
+        _resetDialogOpen = false;
         _resettingPlayerId = null;
+        _resettingPlayerNickname = null;
+        _resetErrorMessage = null;
         _resetRequest.NovaSenha = "";
         _resetRequest.ConfirmacaoNovaSenha = "";
     }
@@ -101,14 +130,11 @@
 
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível redefinir a senha.";
+            _resetErrorMessage = "Não foi possível redefinir a senha.";
             return;
         }
 
-        _errorMessage = null;
-        _resettingPlayerId = null;
-        _resetRequest.NovaSenha = "";
-        _resetRequest.ConfirmacaoNovaSenha = "";
+        CancelReset();
     }
 
     private class ResetFormModel
