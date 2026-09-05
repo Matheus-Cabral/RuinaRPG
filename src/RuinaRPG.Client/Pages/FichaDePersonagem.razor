@@ -912,6 +912,24 @@
     }
 
     /// <summary>
+    /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via _autoSave.NotifyChanged), for
+    /// the pre-existing "Aplicar"/inline-update handlers below that saved immediately before this
+    /// tab had autosave. Preserves their original behavior of surfacing a save failure via
+    /// _errorMessage instead of letting SaveIfValidAsync's exception go unhandled.
+    /// </summary>
+    private async Task SaveIgnoringResultAsync()
+    {
+        try
+        {
+            await SaveIfValidAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>
     /// The "adicionar ou subtrair xp do montante total" field: applies a signed delta to
     /// Experiência Atual (never below 0) and saves immediately, same immediate-action pattern as
     /// UpdateCoberturaAsync/UpdateCiclosAsync below. Nível is derived server-side from the new
@@ -924,14 +942,7 @@
 
         _form.ExperienciaAtual = Math.Max(0, (_form.ExperienciaAtual ?? 0) + _xpDelta.Value);
         _xpDelta = null;
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
+        await SaveIgnoringResultAsync();
     }
 
     /// <summary>
@@ -946,14 +957,7 @@
 
         _form.PontosDeIgnicaoBonusManual += _piDelta.Value;
         _piDelta = null;
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
+        await SaveIgnoringResultAsync();
     }
 
     /// <summary>
@@ -970,28 +974,14 @@
 
         _form.PontosDePericiaBonusCritico += _periciaCriticoDelta.Value;
         _periciaCriticoDelta = null;
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
+        await SaveIgnoringResultAsync();
         await LoadTabs2And3Async();
     }
 
     private async Task UpdateCoberturaAsync(string? value)
     {
         _form.Cobertura = value ?? "Nenhuma";
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
+        await SaveIgnoringResultAsync();
         await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural (2.b), loaded here, not by LoadSheetAsync.
     }
 
@@ -999,14 +989,7 @@
     {
         if (int.TryParse(value?.ToString(), out var ciclos))
             _form.Ciclos = ciclos;
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
+        await SaveIgnoringResultAsync();
     }
 
     private async Task LoadTabs2And3Async()
