@@ -126,6 +126,29 @@ public class CharacterAttributesControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task List_returns_attributes_in_canonical_order_and_stays_stable_after_an_update()
+    {
+        // R0001 §2.a: "Os 8 atributos (Instinto, Vontade, Vigor, Influência, Agilidade,
+        // Destreza, Astúcia e Força ...)" — this is the declared display order, matching
+        // the Atributo enum's declaration order, not alphabetical (unlike Perícias).
+        var gmToken = await RegisterGmAndGetTokenAsync("AttrGm9", "attr9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer9", "attrplayer9@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes", playerToken));
+        var before = (await beforeResponse.Content.ReadFromJsonAsync<List<CharacterAttributeResponse>>())!;
+        before.Select(a => a.Atributo).Should().Equal(
+            "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca");
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vontade", playerToken,
+            new UpdateCharacterAttributeRequest(3, 0, false)));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes", playerToken));
+        var after = (await afterResponse.Content.ReadFromJsonAsync<List<CharacterAttributeResponse>>())!;
+        after.Select(a => a.Atributo).Should().Equal(before.Select(a => a.Atributo));
+    }
+
+    [Fact]
     public async Task Budget_reports_GastoTotal_and_the_points_received_from_creation_and_levels()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AttrGm6", "attr6@teste.com");

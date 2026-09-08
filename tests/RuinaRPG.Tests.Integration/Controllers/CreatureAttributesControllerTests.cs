@@ -100,6 +100,26 @@ public class CreatureAttributesControllerTests : IClassFixture<PostgresFixture>,
     }
 
     [Fact]
+    public async Task List_returns_attributes_in_canonical_order_and_stays_stable_after_an_update()
+    {
+        // Requisitos - Ficha de Criaturas R0005 §2.a: "Força, Vigor, Agilidade, Destreza,
+        // Astúcia e Ego" — matches the AtributoCriatura enum's declaration order.
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrGm9", "creatureattr9@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
+        var before = (await beforeResponse.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>())!;
+        before.Select(a => a.Atributo).Should().Equal("Forca", "Vigor", "Agilidade", "Destreza", "Astucia", "Ego");
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateCreatureAttributeRequest(3, 0, false)));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
+        var after = (await afterResponse.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>())!;
+        after.Select(a => a.Atributo).Should().Equal(before.Select(a => a.Atributo));
+    }
+
+    [Fact]
     public async Task Update_an_attribute_by_a_different_gm_returns_404()
     {
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureAttrGmOwner3", "creatureattrowner3@teste.com");

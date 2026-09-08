@@ -27,7 +27,7 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
 
         // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
         var artefatos = await db.CharacterArtifacts

@@ -24,7 +24,7 @@ public class NpcAttributesController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var attributes = await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).ToListAsync();
+        var attributes = await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
         return attributes
             .Select(a => new NpcAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
                 AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0)))
