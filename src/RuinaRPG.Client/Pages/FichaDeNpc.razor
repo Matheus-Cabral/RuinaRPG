@@ -416,6 +416,14 @@
 
     <MudTabPanel Text="Posses">
         <Section Title="Inventário">
+            @if (_subAttributes?.PesoAtual is not null && _subAttributes.PesoMaximo is not null)
+            {
+                <MudText>Peso: @_subAttributes.PesoAtual / @_subAttributes.PesoMaximo</MudText>
+                @if (_subAttributes.PesoAtual > _subAttributes.PesoMaximo)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
+                }
+            }
             <MudNumericField T="int?" Value="@_form.Ciclos" ValueChanged="@(v => UpdateCiclosAsync(v))" Label="Ciclos" Style="width:8em;" />
             <EditForm Model="_inventoryForm" OnValidSubmit="AddInventoryItemAsync">
                 <EntityPicker @bind-Value="_inventoryForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "ItemGeral"))" Placeholder="Buscar item..." />
