@@ -18,11 +18,73 @@
         @foreach (var document in _documents)
         {
             <MudTabPanel Text="@document.Titulo">
-                <Section>
-                    <div class="rulebook-content">
-                        @((MarkupString)document.Html)
-                    </div>
-                </Section>
+                @if (document.Slug == "caracteristicas")
+                {
+                    <MudTextField T="string" @bind-Value="_caracteristicasFilter" Label="Buscar característica..." Immediate="true" Class="mb-4" />
+                    @if (document.IntroHtml is not null)
+                    {
+                        <Section>
+                            <div class="rulebook-content">@((MarkupString)document.IntroHtml)</div>
+                        </Section>
+                    }
+                    @foreach (var group in document.Sections.GroupBy(s => s.Grupo))
+                    {
+                        var filtered = group
+                            .Where(s => string.IsNullOrWhiteSpace(_caracteristicasFilter) || s.Titulo.Contains(_caracteristicasFilter, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                        @if (filtered.Count > 0)
+                        {
+                            <MudText Typo="Typo.h5" Class="rulebook-group-title">@group.Key</MudText>
+                            @foreach (var trait in filtered)
+                            {
+                                <Section Title="@trait.Titulo">
+                                    <div class="rulebook-content">@((MarkupString)trait.Html)</div>
+                                </Section>
+                            }
+                        }
+                    }
+                }
+                else if (document.Sections.Count == 0)
+                {
+                    <Section>
+                        @if (document.IntroHtml is not null)
+                        {
+                            <div class="rulebook-content">@((MarkupString)document.IntroHtml)</div>
+                        }
+                    </Section>
+                }
+                else
+                {
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <nav class="rulebook-toc">
+                                <MudText Typo="Typo.subtitle1" Class="rulebook-toc-title">Sumário</MudText>
+                                <ul>
+                                    @foreach (var entry in document.Sections)
+                                    {
+                                        <li><a href="@("livro-de-regras#" + entry.Id)">@entry.Titulo</a></li>
+                                    }
+                                </ul>
+                            </nav>
+                        </MudItem>
+                        <MudItem xs="12" md="9">
+                            @if (document.IntroHtml is not null)
+                            {
+                                <Section>
+                                    <div class="rulebook-content">@((MarkupString)document.IntroHtml)</div>
+                                </Section>
+                            }
+                            @foreach (var entry in document.Sections)
+                            {
+                                <div id="@entry.Id" class="rulebook-section-anchor">
+                                    <Section Title="@entry.Titulo">
+                                        <div class="rulebook-content">@((MarkupString)entry.Html)</div>
+                                    </Section>
+                                </div>
+                            }
+                        </MudItem>
+                    </MudGrid>
+                }
             </MudTabPanel>
         }
     </MudTabs>
@@ -37,6 +99,7 @@
 
     private List<RulebookDocumentResponse> _documents = new();
     private string? _errorMessage;
+    private string _caracteristicasFilter = "";
 
     protected override async Task OnInitializedAsync()
     {

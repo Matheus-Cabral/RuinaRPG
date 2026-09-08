@@ -52,7 +52,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_returns_the_four_documents_with_rendered_html()
+    public async Task Get_returns_the_four_documents_split_into_sections()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm1", "rulebook1@teste.com");
 
@@ -62,20 +62,40 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         body!.Select(d => d.Slug).Should().Equal(
             "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis");
-        body!.Single(d => d.Slug == "tabela-de-niveis").Html.Should().Contain("<table");
-        body!.Where(d => d.Slug != "tabela-de-niveis").Should().OnlyContain(d => d.Html.Contains("<h"));
+
+        var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
+        sistemaBasico.Sections.Should().HaveCount(7);
+        sistemaBasico.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
+
+        var tabelaDeNiveis = body!.Single(d => d.Slug == "tabela-de-niveis");
+        tabelaDeNiveis.Sections.Should().BeEmpty();
+        tabelaDeNiveis.IntroHtml.Should().Contain("<table");
     }
 
     [Fact]
-    public async Task GrausECirculos_html_includes_the_two_reference_images()
+    public async Task Caracteristicas_sections_are_tagged_with_their_Positivas_or_Negativas_group()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm2", "rulebook2@teste.com");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        var caracteristicas = body!.Single(d => d.Slug == "caracteristicas");
+        caracteristicas.Sections.Should().HaveCountGreaterThan(50);
+        caracteristicas.Sections.Should().OnlyContain(s => s.Grupo == "Positivas" || s.Grupo == "Negativas");
+    }
+
+    [Fact]
+    public async Task GrausECirculos_IntroHtml_includes_the_two_reference_images()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RulebookGm3", "rulebook3@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var grausECirculos = body!.Single(d => d.Slug == "graus-e-circulos");
-        grausECirculos.Html.Should().Contain("/rulebook/Escolas_de_Magia.png");
-        grausECirculos.Html.Should().Contain("/rulebook/Matriz_Elemental.png");
+        grausECirculos.IntroHtml.Should().Contain("/rulebook/Escolas_de_Magia.png");
+        grausECirculos.IntroHtml.Should().Contain("/rulebook/Matriz_Elemental.png");
+        grausECirculos.Sections.Should().HaveCount(9);
     }
 }

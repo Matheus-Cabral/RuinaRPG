@@ -30,3 +30,24 @@
 # **R0003** - O conteúdo do Livro de Regras é somente leitura.
 
 **Descrição**: Nem GM nem jogadores podem editar, criar ou excluir conteúdo do Livro de Regras pela interface — ele reflete diretamente os documentos fonte em `Docs/Sistema RPG`.
+
+  
+
+# **R0004** - Cada aba deve ser dividida em seções navegáveis, não um bloco único de texto corrido.
+
+**Descrição**: Documentos longos (até 60 títulos) eram exibidos como um único bloco de HTML contínuo, sem nenhuma forma de navegação interna — difícil de ler e de localizar uma regra específica. Cada documento é dividido em seções a partir de um nível de título escolhido (ver a tabela abaixo), e cada seção é exibida como um cartão visualmente separado, não mais texto corrido:
+
+| Aba | Nível de divisão | Seções resultantes |
+|---|---|---|
+| Sistema Básico | `##` | 7 (uma por seção numerada do documento) |
+| Graus & Círculos | `#` | 9 (uma por Grau/Círculo; os efeitos de cada Grau, que são `##`, continuam dentro do cartão do próprio Grau) |
+| Tabela de Níveis | — | nenhuma (o documento não tem títulos — é uma única tabela) |
+| Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
+
+Para as abas com seções (Sistema Básico e Graus & Círculos), um sumário fixo ao lado do conteúdo lista o título de cada seção; clicar em uma entrada rola a página até aquela seção. Conteúdo anterior ao primeiro título de divisão (ex: a tabela de custo de Grau, em Graus & Círculos) continua sendo exibido no topo da aba, antes do sumário e das seções.
+
+  
+
+# **R0005** - A aba de Características deve ser uma lista filtrável por nome, não prosa corrida.
+
+**Descrição**: Características tem mais de 50 entradas — um sumário lateral não é útil nesse volume. Em vez disso, a aba exibe um campo de busca no topo; digitar filtra a lista pelo nome da característica (busca parcial, sem diferenciar maiúsculas/minúsculas). As características continuam agrupadas por "Positivas" e "Negativas" (títulos `#` do documento fonte), cada uma exibida como seu próprio cartão.

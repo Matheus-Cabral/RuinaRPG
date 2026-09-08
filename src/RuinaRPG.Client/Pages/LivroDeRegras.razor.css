@@ -3,7 +3,57 @@
    attribute must attach to .rulebook-content itself (the last element actually authored in this
    file), so ::deep goes AFTER it — "<scoped> ::deep <unscoped descendant>", same pattern as
    Section.razor.css's ".rr-section-root ::deep .rr-section". Reuses the app's existing --rr-*
-   design tokens rather than introducing new colors/spacing. */
+   design tokens rather than introducing new colors/spacing.
+
+   .rulebook-content is now applied once per section (not once per whole document) — each section
+   renders inside its own Section card, which is what actually fixes "text condensed into one
+   block": real visual breaks between sections come from Section.razor's own card styling, not from
+   anything here. This file stays purely typographic. */
+
+.rulebook-toc {
+    position: sticky;
+    top: var(--rr-space-3);
+}
+
+.rulebook-section-anchor {
+    scroll-margin-top: var(--rr-space-3);
+}
+
+.rulebook-toc-title {
+    margin-bottom: var(--rr-space-2);
+}
+
+.rulebook-toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--rr-space-1);
+}
+
+.rulebook-toc a {
+    display: block;
+    padding: var(--rr-space-1) var(--rr-space-2);
+    border-radius: var(--rr-radius-sm);
+    color: var(--rr-text-muted);
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.rulebook-toc a:hover {
+    background: var(--rr-surface);
+    color: var(--rr-text);
+}
+
+.rulebook-group-title {
+    margin-top: var(--rr-space-4);
+    margin-bottom: var(--rr-space-2);
+}
+
+.rulebook-group-title:first-child {
+    margin-top: 0;
+}
 
 .rulebook-content ::deep h1,
 .rulebook-content ::deep h2,
