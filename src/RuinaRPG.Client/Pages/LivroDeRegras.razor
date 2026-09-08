@@ -34,7 +34,7 @@
                             .ToList();
                         @if (filtered.Count > 0)
                         {
-                            <MudText Typo="Typo.h5" Class="rulebook-group-title">@group.Key</MudText>
+                            <MudText Typo="Typo.h5" Class="mt-4">@group.Key</MudText>
                             @foreach (var trait in filtered)
                             {
                                 <Section Title="@trait.Titulo">
@@ -55,17 +55,16 @@
                 }
                 else
                 {
-                    <MudGrid>
+                    <MudGrid Class="mt-3">
                         <MudItem xs="12" md="3">
-                            <nav class="rulebook-toc">
-                                <MudText Typo="Typo.subtitle1" Class="rulebook-toc-title">Sumário</MudText>
-                                <ul>
+                            <Section Title="Sumário">
+                                <MudList T="string">
                                     @foreach (var entry in document.Sections)
                                     {
-                                        <li><a href="@("livro-de-regras#" + entry.Id)">@entry.Titulo</a></li>
+                                        <MudListItem T="string" Text="@entry.Titulo" Href="@("livro-de-regras#" + entry.Id)" />
                                     }
-                                </ul>
-                            </nav>
+                                </MudList>
+                            </Section>
                         </MudItem>
                         <MudItem xs="12" md="9">
                             @if (document.IntroHtml is not null)

@@ -10,49 +10,13 @@
    block": real visual breaks between sections come from Section.razor's own card styling, not from
    anything here. This file stays purely typographic. */
 
-.rulebook-toc {
-    position: sticky;
-    top: var(--rr-space-3);
-}
+/* The table of contents itself (Section + MudList) uses the app's normal components and their own
+   built-in styling — deliberately not position:sticky (no other page in this app uses a sticky
+   element, and a sticky sidebar here fought the fixed MudAppBar's stacking, intercepting clicks on
+   the tab strip once scrolled). It just scrolls with the rest of the column, like everything else. */
 
 .rulebook-section-anchor {
     scroll-margin-top: var(--rr-space-3);
-}
-
-.rulebook-toc-title {
-    margin-bottom: var(--rr-space-2);
-}
-
-.rulebook-toc ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--rr-space-1);
-}
-
-.rulebook-toc a {
-    display: block;
-    padding: var(--rr-space-1) var(--rr-space-2);
-    border-radius: var(--rr-radius-sm);
-    color: var(--rr-text-muted);
-    text-decoration: none;
-    line-height: 1.4;
-}
-
-.rulebook-toc a:hover {
-    background: var(--rr-surface);
-    color: var(--rr-text);
-}
-
-.rulebook-group-title {
-    margin-top: var(--rr-space-4);
-    margin-bottom: var(--rr-space-2);
-}
-
-.rulebook-group-title:first-child {
-    margin-top: 0;
 }
 
 .rulebook-content ::deep h1,
