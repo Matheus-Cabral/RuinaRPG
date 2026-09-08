@@ -10,6 +10,7 @@ public class AutoSaveCoordinator
 {
     private const int DebounceMilliseconds = 400;
     private CancellationTokenSource? _debounceCts;
+    private Task _inFlight = Task.CompletedTask;
 
     public AutoSaveState State { get; private set; } = AutoSaveState.Idle;
     public DateTime? LastSavedAt { get; private set; }
@@ -42,27 +43,44 @@ public class AutoSaveCoordinator
         if (token.IsCancellationRequested)
             return;
 
-        State = AutoSaveState.Saving;
-        StateChanged?.Invoke();
-
+        // Serialize saves: wait for any prior save still in flight to finish before this one
+        // starts, so an older, slower save can never complete after (and overwrite) a newer one.
+        var previous = _inFlight;
+        var tcs = new TaskCompletionSource();
+        _inFlight = tcs.Task;
         try
         {
-            var attempted = await validateAndSaveAsync();
-            if (attempted)
-            {
-                State = AutoSaveState.Saved;
-                LastSavedAt = DateTime.Now;
-            }
-            else
-            {
-                State = AutoSaveState.Idle;
-            }
-        }
-        catch
-        {
-            State = AutoSaveState.Error;
-        }
+            await previous;
 
-        StateChanged?.Invoke();
+            if (token.IsCancellationRequested)
+                return;
+
+            State = AutoSaveState.Saving;
+            StateChanged?.Invoke();
+
+            try
+            {
+                var attempted = await validateAndSaveAsync();
+                if (attempted)
+                {
+                    State = AutoSaveState.Saved;
+                    LastSavedAt = DateTime.Now;
+                }
+                else
+                {
+                    State = AutoSaveState.Idle;
+                }
+            }
+            catch
+            {
+                State = AutoSaveState.Error;
+            }
+
+            StateChanged?.Invoke();
+        }
+        finally
+        {
+            tcs.SetResult();
+        }
     }
 }

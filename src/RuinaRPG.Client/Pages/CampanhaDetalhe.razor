@@ -15,6 +15,7 @@
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
+@using System.ComponentModel.DataAnnotations
 
 <Breadcrumbs Items="@Crumbs" />
 <MudText Typo="Typo.h3">@(_campaignName ?? "Campanha")</MudText>
@@ -323,9 +324,10 @@
 
     <MudTabPanel Text="Detalhes">
         <Section Title="Editar Campanha">
-            <EditForm Model="_detailsForm">
+            <EditForm EditContext="_editContext">
+                <DataAnnotationsValidator />
                 <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
-                <MudTextField T="string" @bind-Value="_detailsForm.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+                <MudTextField T="string" @bind-Value="_detailsForm.Nome" For="@(() => _detailsForm.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
 
                 <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_detailsImageIds"
@@ -367,6 +369,9 @@
     private string? _campaignName;
     private CampaignResponse? _campaign;
     private readonly CampaignDetailsFormModel _detailsForm = new();
+    // Constructed synchronously (not inside OnInitializedAsync, and not after any await there) so
+    // it is never null on first render — same reasoning as CatalogoItemForm.razor's _editContext.
+    private readonly EditContext _editContext;
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
     private bool _deleteDialogOpen;
     private string _deletePassword = "";
@@ -414,6 +419,11 @@
     private string _grantPlayerId = "";
     private string _grantTipo = "Npc";
     private string _grantSourceSheetId = "";
+
+    public CampanhaDetalhe()
+    {
+        _editContext = new EditContext(_detailsForm);
+    }
 
     protected override void OnInitialized()
     {
@@ -510,6 +520,9 @@
 
     private async Task<bool> SaveIfValidAsync()
     {
+        if (!_editContext.Validate())
+            return false;
+
         var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}", new UpdateCampaignRequest(_detailsForm.Nome, _detailsForm.Descricao, _detailsForm.ImageId));
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException("Não foi possível salvar a campanha.");
@@ -913,6 +926,7 @@
 
     private class CampaignDetailsFormModel
     {
+        [Required(AllowEmptyStrings = false)]
         public string Nome { get; set; } = "";
         public string Descricao { get; set; } = "";
         public string? ImageId { get; set; }

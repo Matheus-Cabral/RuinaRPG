@@ -50,6 +50,47 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
+    public async Task A_valid_Preco_change_in_edit_mode_fires_the_PUT()
+    {
+        // Regression test for Finding 4 of the final review: the existing tests only assert PUT
+        // does NOT fire (validation-blocked cases). Nothing proved the @bind-Value:after wiring
+        // itself is actually present on the fields — this locks that down with a valid edit.
+        var putCalled = false;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("images/mine"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("items"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
+                          RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
+                          RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                          TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null }
+                }) };
+            if (request.Method == HttpMethod.Put)
+            {
+                putCalled = true;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.ItemId, "item-1"));
+        await Task.Delay(50); // let OnInitializedAsync finish populating _form
+
+        var preco = cut.FindComponents<MudBlazor.MudNumericField<int>>().Single(c => c.Instance.Label == "Preço (Ciclos)");
+        await cut.InvokeAsync(() => preco.Instance.ValueChanged.InvokeAsync(25));
+
+        await Task.Delay(700); // past the 400ms debounce
+
+        putCalled.Should().BeTrue("a valid Preço change must trigger the auto-save PUT via the @bind-Value:after wiring");
+    }
+
+    [Fact]
     public async Task Blurring_a_field_in_create_mode_never_calls_PUT()
     {
         var putCalled = false;
