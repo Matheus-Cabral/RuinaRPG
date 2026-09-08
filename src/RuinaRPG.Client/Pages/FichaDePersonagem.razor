@@ -347,15 +347,44 @@
 
         <Section Title="Armaduras">
             <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Slot</th>
+                        <th>Armadura</th>
+                        <th>Categoria</th>
+                        <th>Defesa</th>
+                        <th>RF</th>
+                        <th>RM</th>
+                        <th>Penalidade</th>
+                        <th>Requisito de Vigor</th>
+                        <th>Peso</th>
+                        <th>Durabilidade</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var slot in _armorSlots)
                     {
                         <tr>
-                            <td>@slot.Slot: @(slot.Nome ?? "—") @(slot.DurabilidadeAtual is not null ? $"({slot.DurabilidadeAtual}/{slot.DurabilidadeMaxima})" : "")</td>
+                            <td>@slot.Slot</td>
+                            <td>@(slot.Nome ?? "—")</td>
+                            <td>@(slot.Categoria ?? "—")</td>
+                            <td>@(slot.Defesa?.ToString() ?? "—")</td>
+                            <td>@(slot.RF?.ToString() ?? "—")</td>
+                            <td>@(slot.RM?.ToString() ?? "—")</td>
+                            <td>@(slot.Penalidade ?? "—")</td>
+                            <td>@(slot.RequisitoVigor?.ToString() ?? "—")</td>
+                            <td>@(slot.Peso?.ToString() ?? "—")</td>
                             <td>
                                 @if (slot.ItemId is not null)
                                 {
                                     <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => UpdateArmorSlotDurabilidadeAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
+                                    <text> / @slot.DurabilidadeMaxima</text>
+                                }
+                            </td>
+                            <td>
+                                @if (slot.ItemId is not null)
+                                {
                                     <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, null))">Remover</MudButton>
                                 }
                                 else
@@ -378,13 +407,30 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Categoria</th>
+                        <th>Bônus de Defesa</th>
+                        <th>Penalidade</th>
+                        <th>Requisito de Vigor</th>
+                        <th>Peso</th>
+                        <th>Durabilidade</th>
+                        <th>Equipado</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var shield in _shields)
                     {
                         <tr>
                             <td>@shield.Nome</td>
+                            <td>@(shield.Categoria ?? "—")</td>
+                            <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
+                            <td>@(shield.Penalidade ?? "—")</td>
+                            <td>@(shield.RequisitoVigor?.ToString() ?? "—")</td>
+                            <td>@shield.Peso</td>
                             <td>
-                                Durabilidade
                                 <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
                                 / @shield.DurabilidadeMaxima
                             </td>
