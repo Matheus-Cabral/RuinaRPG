@@ -418,7 +418,7 @@
         <Section Title="Inventário">
             @if (_subAttributes?.PesoAtual is not null && _subAttributes.PesoMaximo is not null)
             {
-                <MudText>Peso: @_subAttributes.PesoAtual / @_subAttributes.PesoMaximo</MudText>
+                <MudText>Peso: @_subAttributes.PesoAtual?.ToString("0.##") / @_subAttributes.PesoMaximo?.ToString("0.##")</MudText>
                 @if (_subAttributes.PesoAtual > _subAttributes.PesoMaximo)
                 {
                     <MudAlert Severity="Severity.Warning" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
@@ -1058,12 +1058,14 @@
         _inventoryForm.ItemId = "";
         _inventoryForm.Qtd = 1;
         await LoadInventoryAsync();
+        await LoadTabs2And3Async();
     }
 
     private async Task DeleteInventoryItemAsync(string id)
     {
         await Http.DeleteAsync($"npc-sheets/{SheetId}/inventory/{id}");
         await LoadInventoryAsync();
+        await LoadTabs2And3Async();
     }
 
     private async Task LoadArtifactsAsync()
