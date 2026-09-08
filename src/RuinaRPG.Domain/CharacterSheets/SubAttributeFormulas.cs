@@ -5,10 +5,9 @@ public static class SubAttributeFormulas
     public static int Iniciativa(int agilidade, int brutoProntidao, int artefatoOuItem) =>
         agilidade + brutoProntidao + artefatoOuItem;
 
-    public static int Movimentacao(int agilidade, int artefato, int pesoTotalCarregado, int forca, int vigor)
+    public static int Movimentacao(int agilidade, int artefato, decimal pesoAtual, decimal pesoMaximo)
     {
-        var limiteDeCarga = (forca + vigor) / 2;
-        var sobrepeso = Math.Max(0, pesoTotalCarregado - limiteDeCarga);
+        var sobrepeso = (int)Math.Ceiling(Math.Max(0m, pesoAtual - pesoMaximo));
         var raw = agilidade * 2 + artefato - sobrepeso;
         return Math.Max(1, raw);
     }

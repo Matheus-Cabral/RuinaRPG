@@ -15,10 +15,9 @@ public class SubAttributeFormulasTests
     [Fact]
     public void Movimentacao_applies_the_formula_with_no_sobrepeso()
     {
-        // "Movimentação = (Agilidade × 2) + Artefato − Sobrepeso", Sobrepeso = max(0, Peso Total −
-        // Limite de Carga), Limite de Carga = piso((Força + Vigor) / 2) — 2.b.
-        // Limite de Carga = floor((10+10)/2) = 10; Peso Total 5 <= 10 → Sobrepeso 0.
-        var result = SubAttributeFormulas.Movimentacao(agilidade: 4, artefato: 0, pesoTotalCarregado: 5, forca: 10, vigor: 10);
+        // "Movimentação = (Agilidade × 2) + Artefato − Sobrepeso" — 2.b. PesoAtual 5 <= PesoMaximo
+        // 10 → Sobrepeso 0.
+        var result = SubAttributeFormulas.Movimentacao(agilidade: 4, artefato: 0, pesoAtual: 5m, pesoMaximo: 10m);
 
         result.Should().Be(8); // (4*2) + 0 - 0
     }
@@ -26,8 +25,8 @@ public class SubAttributeFormulasTests
     [Fact]
     public void Movimentacao_subtracts_sobrepeso_when_carried_weight_exceeds_the_limit()
     {
-        // Limite de Carga = floor((4+4)/2) = 4; Peso Total 10 → Sobrepeso = 10 - 4 = 6.
-        var result = SubAttributeFormulas.Movimentacao(agilidade: 4, artefato: 0, pesoTotalCarregado: 10, forca: 4, vigor: 4);
+        // PesoAtual 10, PesoMaximo 4 → Sobrepeso = 10 - 4 = 6.
+        var result = SubAttributeFormulas.Movimentacao(agilidade: 4, artefato: 0, pesoAtual: 10m, pesoMaximo: 4m);
 
         result.Should().Be(2); // (4*2) + 0 - 6 = 2, above the floor of 1
     }
@@ -35,11 +34,20 @@ public class SubAttributeFormulasTests
     [Fact]
     public void Movimentacao_never_goes_below_the_absolute_minimum_of_1()
     {
-        // Limite de Carga = floor((2+2)/2) = 2; Peso Total 100 → Sobrepeso huge → formula goes deeply
-        // negative, but "mínimo absoluto de 1" clamps it.
-        var result = SubAttributeFormulas.Movimentacao(agilidade: 1, artefato: 0, pesoTotalCarregado: 100, forca: 2, vigor: 2);
+        var result = SubAttributeFormulas.Movimentacao(agilidade: 1, artefato: 0, pesoAtual: 100m, pesoMaximo: 2m);
 
         result.Should().Be(1);
+    }
+
+    [Fact]
+    public void Movimentacao_rounds_a_fractional_sobrepeso_up_rather_than_truncating()
+    {
+        // PesoAtual 5.5, PesoMaximo 5 → Sobrepeso 0.5, rounded UP to 1 (not truncated to 0) — half a
+        // kilo over the limit still costs a point. This is the precision fix over the old code's
+        // `(int)` cast, which would have silently discarded the 0.5 and reported no penalty at all.
+        var result = SubAttributeFormulas.Movimentacao(agilidade: 4, artefato: 0, pesoAtual: 5.5m, pesoMaximo: 5m);
+
+        result.Should().Be(7); // (4*2) + 0 - 1
     }
 
     [Fact]
