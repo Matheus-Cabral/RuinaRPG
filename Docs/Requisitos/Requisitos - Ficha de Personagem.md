@@ -337,10 +337,11 @@ Duas listas incrementais, **Positivas** e **Negativas**, de características esc
 
 - *Característica*: dropdown/busca vinculado a uma característica cadastrada em "[[Características]]", filtrado pela lista (Positiva ou Negativa) em que a linha está.
 - *Custo*: herdado da característica escolhida (somente leitura, em pontos, ver "[[Características]]").
+- *Especificação*: campo de texto livre, obrigatório apenas para as características de "[[Características]]" que pedem ao jogador para escolher/nomear algo (ex.: qual sentido em Sentidos Aguçados, qual substância em Alergia) — inofensivo/ignorado para as demais.
 
 Cada lista exibe um **Total** (soma dos Custos daquela lista). Uma linha pode ser removida pelo jogador a qualquer momento.
 
-Como o Custo das Negativas já é armazenado negativo (uma Negativa devolve pontos para gastar em Positivas), a soma dos dois Totais é o gasto líquido; ele é exibido ao lado do total de Pontos de Característica concedidos por nível (conforme a "[[Tabela de Níveis]]", campo "Espaço de Característica"), só como referência — assim como em Perícias (2.d), não bloqueia o Custo acima do valor da tabela.
+O orçamento de pontos de Característica é **5 de base na criação** (concedido a todo personagem, sem aparecer como "+X Espaço de Característica" na "[[Tabela de Níveis]]" — lá, ao contrário de Atributo/Perícia, a linha do nível 1 não inclui esse bônus) mais a soma de todo "+X Espaço de Característica" concedido até o nível atual do personagem. Diferentemente do gasto líquido (que pode ser lido nas duas listas somadas, já que o Custo das Negativas é armazenado negativo), o orçamento se aplica **separadamente a cada lista**: o Total de Positivas não pode ultrapassar o orçamento, e o valor absoluto do Total de Negativas também não pode ultrapassar o orçamento — assim como em Atributos (2.a), tentar adicionar uma característica que estoure o teto do lado correspondente é rejeitado.
 
   
 

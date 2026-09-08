@@ -76,6 +76,29 @@ public class TraitSeedParserTests
     }
 
     [Fact]
+    public void Parse_flags_RequerEspecificacao_only_for_the_curated_list_of_traits_that_need_a_player_supplied_detail()
+    {
+        var result = TraitSeedParser.Parse(Markdown);
+
+        result.Should().ContainSingle(t => t.Nome == "Alergia").Which.RequerEspecificacao.Should().BeTrue();
+        result.Should().ContainSingle(t => t.Nome == "Alfabetizado").Which.RequerEspecificacao.Should().BeFalse();
+        result.Where(t => t.Nome.StartsWith("Aparência Inofensiva")).Should().OnlyContain(t => !t.RequerEspecificacao);
+        result.Should().ContainSingle(t => t.Nome == "Código de Honra").Which.RequerEspecificacao.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_flags_every_cost_tier_of_a_multi_tier_trait_that_needs_a_detail()
+    {
+        // Deficiente Físico is multi-tier (3 cost tiers) in the real document — the flag must apply
+        // to every tier the base heading produces, not just a bare "Deficiente Físico" match.
+        var result = TraitSeedParser.Parse(RulesDataProvider.ReadResource("Caracteristicas.md"));
+
+        var tiers = result.Where(t => t.Nome.StartsWith("Deficiente Físico")).ToList();
+        tiers.Should().HaveCount(3);
+        tiers.Should().OnlyContain(t => t.RequerEspecificacao);
+    }
+
+    [Fact]
     public void Parse_extracts_exactly_69_traits_from_the_real_source_document()
     {
         // 30 Positivas (24 traits, 5 of them multi-tier: Aparência Inofensiva x2, Arma ou Artefato

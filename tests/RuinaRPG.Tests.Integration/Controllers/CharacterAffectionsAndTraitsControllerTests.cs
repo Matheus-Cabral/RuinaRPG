@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -70,14 +71,41 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
 
     // Traits are seeded at app startup by TraitSeeder from Características.md (imported ahead of
     // schedule from the Compêndio de Regras plan). Pull one positive and one negative real Trait
-    // straight out of the running app's database rather than inserting synthetic ones.
+    // straight out of the running app's database rather than inserting synthetic ones. Restricted to
+    // !RequerEspecificacao so callers that don't care about that field can add the trait with a bare
+    // TraitId, no Especificacao required.
     private async Task<(string PositiveTraitId, string NegativeTraitId)> GetSeededTraitIdsAsync()
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var positive = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva);
-        var negative = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Negativa);
+        var positive = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
+        var negative = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Negativa && !t.RequerEspecificacao && t.Custo >= -3);
         return (positive.Id.ToString(), negative.Id.ToString());
+    }
+
+    // "Alergia" is a real, stable single-tier Negativa (-1 ponto) that RequerEspecificacao — used
+    // directly by name, mirroring TraitSeedParserTests' own convention of referencing it verbatim.
+    private async Task<Trait> GetTraitAsync(string nome)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        return await db.Traits.SingleAsync(t => t.Nome == nome);
+    }
+
+    // The two highest-cost traits on a side (excluding ones needing a specification, to isolate the
+    // budget check from the specification check) — real Características.md data, at least 5 points
+    // apart when combined, safely exceeding the level-1 budget of 5.
+    private async Task<List<(string Id, int Custo)>> GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade polaridade, int take)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        // Each candidate's own |Custo| must stay within the level-1 budget (5) on its own — the test
+        // using this helper adds them one at a time and expects the FIRST to succeed, so a trait that
+        // alone already exceeds the budget (e.g. a -10 magnitude Negativa) would be a false failure.
+        var ordered = polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva
+            ? await db.Traits.Where(t => t.Polaridade == polaridade && !t.RequerEspecificacao && t.Custo <= 5).OrderByDescending(t => t.Custo).Take(take).ToListAsync()
+            : await db.Traits.Where(t => t.Polaridade == polaridade && !t.RequerEspecificacao && t.Custo >= -5).OrderBy(t => t.Custo).Take(take).ToListAsync();
+        return ordered.Select(t => (t.Id.ToString(), t.Custo)).ToList();
     }
 
     [Fact]
@@ -169,10 +197,10 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
         var (positiveTraitId, negativeTraitId) = await GetSeededTraitIdsAsync();
 
         var addPositiveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
-            new AddCharacterTraitRequest(positiveTraitId)));
+            new AddCharacterTraitRequest(positiveTraitId, null)));
         addPositiveResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var addNegativeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
-            new AddCharacterTraitRequest(negativeTraitId)));
+            new AddCharacterTraitRequest(negativeTraitId, null)));
         addNegativeResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var addedNegative = await addNegativeResponse.Content.ReadFromJsonAsync<CharacterTraitResponse>();
 
@@ -200,9 +228,79 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
-            new AddCharacterTraitRequest(Guid.NewGuid().ToString())));
+            new AddCharacterTraitRequest(Guid.NewGuid().ToString(), null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddTrait_rejects_a_Positiva_that_would_push_the_side_total_past_the_budget()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm8", "afftraitgm8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer8", "afftraitplayer8@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Positiva, 2);
+        top.Sum(t => t.Custo).Should().BeGreaterThan(5); // level-1 creation budget
+
+        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(top[0].Id, null)));
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(top[1].Id, null)));
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddTrait_rejects_a_Negativa_that_would_push_the_side_total_past_the_budget()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm9", "afftraitgm9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer9", "afftraitplayer9@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Negativa, 2);
+        Math.Abs(top.Sum(t => t.Custo)).Should().BeGreaterThan(5); // level-1 creation budget
+
+        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(top[0].Id, null)));
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(top[1].Id, null)));
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddTrait_rejects_a_RequerEspecificacao_trait_added_without_an_Especificacao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm10", "afftraitgm10@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer10", "afftraitplayer10@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var alergia = await GetTraitAsync("Alergia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(alergia.Id.ToString(), null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddTrait_persists_and_returns_the_Especificacao_for_a_RequerEspecificacao_trait()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm11", "afftraitgm11@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer11", "afftraitplayer11@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var alergia = await GetTraitAsync("Alergia");
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(alergia.Id.ToString(), "Poeira")));
+        addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterTraitResponse>();
+        added!.Especificacao.Should().Be("Poeira");
+        added.RequerEspecificacao.Should().BeTrue();
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
+        var list = await listResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        list!.Negativas.Should().ContainSingle(t => t.Id == added.Id && t.Especificacao == "Poeira");
     }
 
     [Fact]
@@ -216,7 +314,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
 
         var addAffection = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken, new AddCharacterAffectionRequest("Rival", -2)));
         var affectionId = (await addAffection.Content.ReadFromJsonAsync<CharacterAffectionResponse>())!.Id;
-        var addTrait = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddCharacterTraitRequest(positiveTraitId)));
+        var addTrait = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddCharacterTraitRequest(positiveTraitId, null)));
         var traitId = (await addTrait.Content.ReadFromJsonAsync<CharacterTraitResponse>())!.Id;
 
         var addAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", otherToken, new AddCharacterAffectionRequest("Rival", -2)));
@@ -228,7 +326,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
         var deleteAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affections/{affectionId}", otherToken));
         deleteAffectionResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var addTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", otherToken, new AddCharacterTraitRequest(positiveTraitId)));
+        var addTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", otherToken, new AddCharacterTraitRequest(positiveTraitId, null)));
         addTraitResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var listTraitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", otherToken));

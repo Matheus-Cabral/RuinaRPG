@@ -1,3 +1,3 @@
 namespace RuinaRPG.Contracts.CharacterSheets;
 
-public record AddCharacterTraitRequest(string TraitId);
+public record AddCharacterTraitRequest(string TraitId, string? Especificacao);

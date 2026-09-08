@@ -25,7 +25,8 @@ public static class TraitSeeder
                 Nome = seed.Nome,
                 Descricao = seed.Descricao,
                 Custo = seed.Custo,
-                Polaridade = Enum.Parse<Polaridade>(seed.Polaridade)
+                Polaridade = Enum.Parse<Polaridade>(seed.Polaridade),
+                RequerEspecificacao = seed.RequerEspecificacao
             })
             .ToList();
 

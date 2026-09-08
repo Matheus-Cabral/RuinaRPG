@@ -15,20 +15,24 @@ public class TraitPointBudgetCalculatorTests
     ];
 
     [Fact]
-    public void Compute_below_the_first_grant_is_zero()
+    public void Compute_below_the_first_table_grant_is_just_the_creation_base_of_5()
     {
-        TraitPointBudgetCalculator.Compute(nivel: 3, Niveis).Should().Be(0);
+        // 5 is a flat creation grant that never appears as "+X Espaço de Característica" text in
+        // Tabela de Níveis (unlike Atributo/Perícia, whose level-1 row IS their creation grant) —
+        // confirmed by reading the real table: its first "Espaço de Característica" bonus is at
+        // level 4, nothing at level 1, so this base has to be added here instead.
+        TraitPointBudgetCalculator.Compute(nivel: 3, Niveis).Should().Be(5);
     }
 
     [Fact]
-    public void Compute_at_the_first_grant_is_one()
+    public void Compute_at_the_first_table_grant_is_the_base_plus_one()
     {
-        TraitPointBudgetCalculator.Compute(nivel: 4, Niveis).Should().Be(1);
+        TraitPointBudgetCalculator.Compute(nivel: 4, Niveis).Should().Be(6);
     }
 
     [Fact]
-    public void Compute_sums_every_grant_up_to_and_including_the_current_level()
+    public void Compute_sums_every_table_grant_up_to_and_including_the_current_level_on_top_of_the_base()
     {
-        TraitPointBudgetCalculator.Compute(nivel: 8, Niveis).Should().Be(2);
+        TraitPointBudgetCalculator.Compute(nivel: 8, Niveis).Should().Be(7);
     }
 }

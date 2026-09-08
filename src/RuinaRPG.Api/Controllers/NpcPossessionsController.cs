@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}")]
-public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
+public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
 {
     [HttpPost("inventory")]
     public async Task<ActionResult<NpcInventoryItemResponse>> AddInventoryItem(Guid sheetId, AddNpcInventoryItemRequest request)
@@ -182,7 +183,26 @@ public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
-        var npcTrait = new NpcTrait { Id = Guid.NewGuid(), NpcSheetId = sheetId, TraitId = traitId, Polaridade = trait.Polaridade };
+        if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
+            return BadRequest("Esta característica exige uma especificação.");
+
+        var sheet = await db.NpcSheets.FindAsync(sheetId);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var existingTotal = await db.NpcTraits
+            .Where(t => t.NpcSheetId == sheetId && t.Polaridade == trait.Polaridade)
+            .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => t.Custo)
+            .SumAsync();
+        if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
+            return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
+
+        var npcTrait = new NpcTrait
+        {
+            Id = Guid.NewGuid(),
+            NpcSheetId = sheetId,
+            TraitId = traitId,
+            Polaridade = trait.Polaridade,
+            Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
+        };
         db.NpcTraits.Add(npcTrait);
         await db.SaveChangesAsync();
 
@@ -198,12 +218,14 @@ public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
 
         var rows = await db.NpcTraits
             .Where(t => t.NpcSheetId == sheetId)
-            .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new NpcTraitResponse(nt.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString()))
+            .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new NpcTraitResponse(nt.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), nt.Especificacao, t.RequerEspecificacao))
             .ToListAsync();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
-        return new NpcTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo));
+        var sheet = await db.NpcSheets.FindAsync(sheetId);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        return new NpcTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
     }
 
     [HttpDelete("traits/{id}")]
@@ -250,7 +272,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db) : ControllerBase
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
     private static NpcTraitResponse ToTraitResponse(NpcTrait npcTrait, Trait trait) =>
-        new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString());
+        new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), npcTrait.Especificacao, trait.RequerEspecificacao);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

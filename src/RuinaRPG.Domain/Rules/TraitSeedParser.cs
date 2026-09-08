@@ -5,6 +5,19 @@ namespace RuinaRPG.Domain.Rules;
 
 public static partial class TraitSeedParser
 {
+    /// <summary>
+    /// Traits whose own description in Características.md explicitly asks the player to name/choose
+    /// something specific (which sense, which substance, which language, ...) rather than being a
+    /// fixed, self-contained effect. Matched against the trait's base heading — every cost tier a
+    /// multi-tier trait produces (e.g. "Deficiente Físico (3 pontos)") inherits the same flag.
+    /// </summary>
+    private static readonly HashSet<string> TraitsRequiringEspecificacao =
+    [
+        "Alergia", "Alergia Grave", "Sentidos Aguçados", "Lingüísta", "Desvantagem Elemental",
+        "Fobia", "Mania", "Intolerância", "Dependência", "Fanático", "Código de Honra",
+        "Fetiche Material", "Deficiente Físico",
+    ];
+
     public static IReadOnlyList<TraitSeed> Parse(string markdown)
     {
         var sections = MarkdownSectionParser.Parse(markdown);
@@ -21,11 +34,12 @@ public static partial class TraitSeedParser
                     continue; // traits with no parseable cost line (e.g. a pure prose prerequisite paragraph) are skipped
 
                 var multiTier = tiers.Count > 1;
+                var requerEspecificacao = TraitsRequiringEspecificacao.Contains(trait.Title);
                 foreach (Match tier in tiers)
                 {
                     var custo = int.Parse(tier.Groups[1].Value) * (tier.Groups[1].Value.StartsWith('-') ? 1 : polaridade == "Negativa" ? -1 : 1);
                     var nome = multiTier ? $"{trait.Title} ({tier.Groups[1].Value.TrimStart('-')} ponto{(Math.Abs(custo) == 1 ? "" : "s")})" : trait.Title;
-                    results.Add(new TraitSeed(nome, tier.Groups[2].Value.Trim(), custo, polaridade));
+                    results.Add(new TraitSeed(nome, tier.Groups[2].Value.Trim(), custo, polaridade, requerEspecificacao));
                 }
             }
         }

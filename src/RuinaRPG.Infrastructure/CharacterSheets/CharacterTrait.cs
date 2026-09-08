@@ -8,4 +8,5 @@ public class CharacterTrait
     public Guid CharacterSheetId { get; set; }
     public Guid TraitId { get; set; }
     public Polaridade Polaridade { get; set; }
+    public string? Especificacao { get; set; }
 }

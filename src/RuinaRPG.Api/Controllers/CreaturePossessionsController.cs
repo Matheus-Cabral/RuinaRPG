@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreaturePossessionsController(RuinaRpgDbContext db) : ControllerBase
+public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
 {
     /// <summary>
     /// R0006 3.d: Butim (Spoils), not the plain inventory the Personagem/NPC sheet has — Custo and
@@ -187,7 +188,26 @@ public class CreaturePossessionsController(RuinaRpgDbContext db) : ControllerBas
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
-        var creatureTrait = new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheetId, TraitId = traitId, Polaridade = trait.Polaridade };
+        if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
+            return BadRequest("Esta característica exige uma especificação.");
+
+        var sheet = await db.CreatureSheets.FindAsync(sheetId);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var existingTotal = await db.CreatureTraits
+            .Where(t => t.CreatureSheetId == sheetId && t.Polaridade == trait.Polaridade)
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
+            .SumAsync();
+        if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
+            return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
+
+        var creatureTrait = new CreatureTrait
+        {
+            Id = Guid.NewGuid(),
+            CreatureSheetId = sheetId,
+            TraitId = traitId,
+            Polaridade = trait.Polaridade,
+            Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
+        };
         db.CreatureTraits.Add(creatureTrait);
         await db.SaveChangesAsync();
 
@@ -203,12 +223,14 @@ public class CreaturePossessionsController(RuinaRpgDbContext db) : ControllerBas
 
         var rows = await db.CreatureTraits
             .Where(t => t.CreatureSheetId == sheetId)
-            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CreatureTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString()))
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CreatureTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
             .ToListAsync();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
-        return new CreatureTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo));
+        var sheet = await db.CreatureSheets.FindAsync(sheetId);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        return new CreatureTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
     }
 
     [HttpDelete("traits/{id}")]
@@ -255,7 +277,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db) : ControllerBas
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
     private static CreatureTraitResponse ToTraitResponse(CreatureTrait creatureTrait, Trait trait) =>
-        new(creatureTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString());
+        new(creatureTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), creatureTrait.Especificacao, trait.RequerEspecificacao);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

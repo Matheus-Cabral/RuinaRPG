@@ -11,8 +11,8 @@ public class CompendioSearchServiceTests
 
     private static readonly IReadOnlyList<TraitSeed> Traits = new[]
     {
-        new TraitSeed("Ambidestria", "Manuseia armas com as duas mãos.", 2, "Positiva"),
-        new TraitSeed("Alergia", "É alérgico a alguma coisa.", -1, "Negativa")
+        new TraitSeed("Ambidestria", "Manuseia armas com as duas mãos.", 2, "Positiva", RequerEspecificacao: false),
+        new TraitSeed("Alergia", "É alérgico a alguma coisa.", -1, "Negativa", RequerEspecificacao: true)
     };
 
     [Fact]

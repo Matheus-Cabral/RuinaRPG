@@ -204,7 +204,29 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
-        var characterTrait = new CharacterTrait { Id = Guid.NewGuid(), CharacterSheetId = sheetId, TraitId = traitId, Polaridade = trait.Polaridade };
+        if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
+            return BadRequest("Esta característica exige uma especificação.");
+
+        // Características 5.d: the budget applies independently to each list — Positivas total may
+        // not exceed it, and Negativas total (magnitude; Custo is stored negative) may not exceed it
+        // either. Mirrors CharacterAttributesController's Atributos enforcement (2.a).
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var existingTotal = await db.CharacterTraits
+            .Where(t => t.CharacterSheetId == sheetId && t.Polaridade == trait.Polaridade)
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
+            .SumAsync();
+        if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
+            return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
+
+        var characterTrait = new CharacterTrait
+        {
+            Id = Guid.NewGuid(),
+            CharacterSheetId = sheetId,
+            TraitId = traitId,
+            Polaridade = trait.Polaridade,
+            Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
+        };
         db.CharacterTraits.Add(characterTrait);
         await db.SaveChangesAsync();
 
@@ -220,7 +242,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
 
         var rows = await db.CharacterTraits
             .Where(t => t.CharacterSheetId == sheetId)
-            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CharacterTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString()))
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CharacterTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
             .ToListAsync();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
@@ -275,7 +297,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
     private static CharacterTraitResponse ToTraitResponse(CharacterTrait characterTrait, Trait trait) =>
-        new(characterTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString());
+        new(characterTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), characterTrait.Especificacao, trait.RequerEspecificacao);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

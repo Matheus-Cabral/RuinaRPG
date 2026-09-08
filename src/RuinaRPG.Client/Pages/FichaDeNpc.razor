@@ -554,15 +554,25 @@
         <Section Title="Características">
             <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
                 <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
             </EditForm>
+            @{
+                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
+            }
+            <MudText Color="@((_traits?.TotalPositivas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
+                Positivas: @(_traits?.TotalPositivas ?? 0) / @pontosDisponiveis
+            </MudText>
+            <MudText Color="@(Math.Abs(_traits?.TotalNegativas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)">
+                Negativas: @Math.Abs(_traits?.TotalNegativas ?? 0) / @pontosDisponiveis
+            </MudText>
             <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
                     @foreach (var trait in _traits?.Positivas ?? new())
                     {
                         <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -574,7 +584,7 @@
                     @foreach (var trait in _traits?.Negativas ?? new())
                     {
                         <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao</td>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -1191,14 +1201,15 @@
 
     private async Task AddTraitAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/traits", new AddNpcTraitRequest(_traitForm.TraitId));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/traits", new AddNpcTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar a característica.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";
             return;
         }
 
         _traitForm.TraitId = "";
+        _traitForm.Especificacao = "";
         await LoadTraitsAsync();
     }
 
@@ -1335,5 +1346,6 @@
     private class TraitFormModel
     {
         public string TraitId { get; set; } = "";
+        public string? Especificacao { get; set; }
     }
 }

@@ -9,4 +9,5 @@ public class Trait
     public required string Descricao { get; set; }
     public int Custo { get; set; }
     public Polaridade Polaridade { get; set; }
+    public bool RequerEspecificacao { get; set; }
 }

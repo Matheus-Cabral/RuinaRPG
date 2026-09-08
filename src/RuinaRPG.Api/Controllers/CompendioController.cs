@@ -18,7 +18,7 @@ public class CompendioController(RuinaRpgDbContext db, IRulesDataProvider rules)
         [FromQuery] List<CompendioCategoria>? categorias)
     {
         var traits = await db.Traits
-            .Select(t => new TraitSeed(t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString()))
+            .Select(t => new TraitSeed(t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), t.RequerEspecificacao))
             .ToListAsync();
 
         // Model binding gives an empty (not null) List<T> when the query string omits
