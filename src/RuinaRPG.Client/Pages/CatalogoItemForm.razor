@@ -50,6 +50,7 @@
         <Section Title="Item Geral">
             <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="decimal?" @bind-Value="_form.CapacidadeExtra" For="@(() => _form.CapacidadeExtra)" Label="Capacidade Extra" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo == "Arma")
@@ -165,6 +166,7 @@
         _form.Preco = existing.Preco;
         _form.Subcategoria = existing.Subcategoria;
         _form.Descricao = existing.Descricao;
+        _form.CapacidadeExtra = existing.CapacidadeExtra;
         _form.Tier = existing.Tier;
         _form.Empunhadura = existing.Empunhadura;
         _form.Dados = existing.Dados;
@@ -195,7 +197,7 @@
             _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
             _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PostAsJsonAsync("items", request);
 
         if (!response.IsSuccessStatusCode)
@@ -216,7 +218,7 @@
             _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
             _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor);
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
 
         if (!response.IsSuccessStatusCode)
@@ -248,6 +250,8 @@
         public string? ImageId { get; set; }
         public string? Subcategoria { get; set; }
         public string? Descricao { get; set; }
+        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        public decimal? CapacidadeExtra { get; set; }
         public string? Tier { get; set; }
         public string? Empunhadura { get; set; }
         public string? Dados { get; set; }
