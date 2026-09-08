@@ -128,9 +128,9 @@ public class CharacterAttributesControllerTests : IClassFixture<PostgresFixture>
     [Fact]
     public async Task List_returns_attributes_in_canonical_order_and_stays_stable_after_an_update()
     {
-        // R0001 §2.a: "Os 8 atributos (Instinto, Vontade, Vigor, Influência, Agilidade,
-        // Destreza, Astúcia e Força ...)" — this is the declared display order, matching
-        // the Atributo enum's declaration order, not alphabetical (unlike Perícias).
+        // Display order per AttributeDisplayOrder (Domain): Força, Vigor, Agilidade,
+        // Destreza, Astúcia, Instinto, Influência, Vontade — independent of the
+        // Atributo enum's underlying persisted int value.
         var gmToken = await RegisterGmAndGetTokenAsync("AttrGm9", "attr9@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AttrPlayer9", "attrplayer9@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
@@ -138,7 +138,7 @@ public class CharacterAttributesControllerTests : IClassFixture<PostgresFixture>
         var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/attributes", playerToken));
         var before = (await beforeResponse.Content.ReadFromJsonAsync<List<CharacterAttributeResponse>>())!;
         before.Select(a => a.Atributo).Should().Equal(
-            "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca");
+            "Forca", "Vigor", "Agilidade", "Destreza", "Astucia", "Instinto", "Influencia", "Vontade");
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vontade", playerToken,
             new UpdateCharacterAttributeRequest(3, 0, false)));

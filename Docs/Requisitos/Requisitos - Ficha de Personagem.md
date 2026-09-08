@@ -90,7 +90,7 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
   
 
-Os 8 atributos (Instinto, Vontade, Vigor, Influência, Agilidade, Destreza, Astúcia e Força — ver §1 de "[[Ruína RPG - Sistema Básico]]") são exibidos em bloco, cada um com os campos:
+Os 8 atributos (ver §1 de "[[Ruína RPG - Sistema Básico]]" para a definição de cada um) são exibidos em bloco nesta ordem — Força, Vigor, Agilidade, Destreza, Astúcia, Instinto, Influência e Vontade —, cada um com os campos:
 
 - *Gasto*: campo numérico ≥ 0, editável pelo jogador. Acumula os pontos alocados manualmente no atributo: os 9 pontos de distribuição inicial da criação de personagem mais os "Pontos de Atributo" recebidos ao subir de nível (ver "[[Tabela de Níveis]]"). Quando NULL, assume **0**. A soma de Gasto de todos os 8 atributos deve ser exibida e não pode ultrapassar o total de pontos que o personagem já recebeu (criação + níveis).
 - *Bônus*: campo numérico ≥ 0, editável pelo jogador. Acumula bônus recebidos de outras fontes que não a alocação manual: o bônus racial de Linhagem/Variante (ver §7 de "[[Ruína RPG - Sistema Básico]]") e pontos de atributo comprados com Pontos de Ignição (ver "[[GRAUS & CÍRCULOS]]", efeito "Pontos de Atributo"). Quando NULL, assume **0**.

@@ -27,7 +27,11 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
+        // Display order is independent of the enum's underlying (persisted) int value —
+        // see AttributeDisplayOrder's doc comment — so this sorts in memory, not in SQL.
+        var attributes = (await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).ToListAsync())
+            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
+            .ToList();
 
         // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
         var artefatos = await db.CharacterArtifacts

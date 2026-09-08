@@ -102,15 +102,15 @@ public class NpcAttributesControllerTests : IClassFixture<PostgresFixture>, IAsy
     [Fact]
     public async Task List_returns_attributes_in_canonical_order_and_stays_stable_after_an_update()
     {
-        // Same canonical order as CharacterAttributesController's equivalent test (R0001 §2.a),
-        // NPC uses the identical Atributo enum.
+        // Same canonical order as CharacterAttributesController's equivalent test
+        // (AttributeDisplayOrder, Domain) — NPC uses the identical Atributo enum.
         var gmToken = await RegisterGmAndGetTokenAsync("NpcAttrGm9", "npcattr9@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
         var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", gmToken));
         var before = (await beforeResponse.Content.ReadFromJsonAsync<List<NpcAttributeResponse>>())!;
         before.Select(a => a.Atributo).Should().Equal(
-            "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca");
+            "Forca", "Vigor", "Agilidade", "Destreza", "Astucia", "Instinto", "Influencia", "Vontade");
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vontade", gmToken,
             new UpdateNpcAttributeRequest(3, 0, false)));
