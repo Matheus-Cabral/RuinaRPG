@@ -34,7 +34,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
 
         Item item = tipo switch
         {
-            ItemTipo.ItemGeral => new ItemGeral { Nome = request.Nome, Subcategoria = request.Subcategoria, Descricao = request.Descricao },
+            ItemTipo.ItemGeral => new ItemGeral { Nome = request.Nome, Subcategoria = request.Subcategoria, Descricao = request.Descricao, CapacidadeExtra = request.CapacidadeExtra },
             ItemTipo.Arma => new Arma
             {
                 Nome = request.Nome,
@@ -166,19 +166,19 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
                 g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null),
+                null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
                 a.Subcategoria, null, a.Tier?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
-                a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null),
+                a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
                 null, null, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,
-                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null),
+                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null),
             Escudo e => new ItemResponse(e.Id.ToString(), "Escudo", e.Nome, e.Peso, e.Preco, imageUrl,
                 null, null, null, null, null, null, null, null, null, null, e.DurabilidadeMaxima,
-                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null),
+                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null),
             Artefato ar => new ItemResponse(ar.Id.ToString(), "Artefato", ar.Nome, ar.Peso, ar.Preco, imageUrl,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor),
+                null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
         };
     }
@@ -208,6 +208,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             case ItemGeral g:
                 g.Subcategoria = request.Subcategoria;
                 g.Descricao = request.Descricao;
+                g.CapacidadeExtra = request.CapacidadeExtra;
                 break;
             case Arma a:
                 a.Subcategoria = request.Subcategoria;

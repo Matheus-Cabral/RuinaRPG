@@ -27,4 +27,5 @@ public record UpdateItemRequest(
     int? BonusDefesa,
     string? TipoDeAlvo,
     string? Alvo,
-    int? Valor);
+    int? Valor,
+    [Range(typeof(decimal), "0", "79228162514264337593543950335")] decimal? CapacidadeExtra);

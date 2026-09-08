@@ -27,4 +27,5 @@ public record ItemResponse(
     int? BonusDefesa,
     string? TipoDeAlvo,
     string? Alvo,
-    int? Valor);
+    int? Valor,
+    decimal? CapacidadeExtra);

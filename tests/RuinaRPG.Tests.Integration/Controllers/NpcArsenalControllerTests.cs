@@ -53,21 +53,21 @@ public class NpcArsenalControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     private async Task<string> CreateArmaItemAsync(string gmToken, int durabilidadeMaxima)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Arma", "Espada", 1.5m, 50, null, "Espadas", null, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("Arma", "Espada", 1.5m, 50, null, "Espadas", null, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int durabilidadeMaxima)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null)));
+            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateEscudoItemAsync(string gmToken, int durabilidadeMaxima)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Escudo", "Broquel", 2m, 25, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null)));
+            new CreateItemRequest("Escudo", "Broquel", 2m, 25, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 

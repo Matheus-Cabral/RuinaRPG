@@ -60,7 +60,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
             null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, null, null, null);
+            null, null, null, null, null);
 
     private async Task<string> CreateItemAsync(string gmToken, string nome)
     {

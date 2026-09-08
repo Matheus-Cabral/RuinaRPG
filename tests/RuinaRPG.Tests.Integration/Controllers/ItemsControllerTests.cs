@@ -53,31 +53,31 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
             null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, null, null, null);
+            null, null, null, null, null);
 
     private static CreateItemRequest MinimalArma(string nome) =>
         new("Arma", nome, 1.5m, 50, null, "Espadas", null,
             "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
             null, null, null, null, null, null,
-            null, null, null, null);
+            null, null, null, null, null);
 
     private static CreateItemRequest MinimalArmadura(string nome) =>
         new("Armadura", nome, 8m, 100, null, null, null,
             null, null, null, null, null, null, null, null, 15,
             "Pesada", 5, 2, 1, null, 12,
-            null, null, null, null);
+            null, null, null, null, null);
 
     private static CreateItemRequest MinimalEscudo(string nome) =>
         new("Escudo", nome, 4m, 60, null, null, null,
             null, null, null, null, null, null, null, null, 20,
             "Leve", null, null, null, "Desvantagem em Furtividade", 8,
-            3, null, null, null);
+            3, null, null, null, null);
 
     private static CreateItemRequest MinimalArtefato(string nome) =>
         new("Artefato", nome, 0.2m, 200, null, null, null,
             null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, "Atributo", "Força", 2);
+            null, "Atributo", "Força", 2, null);
 
     [Fact]
     public async Task Create_without_a_token_returns_401()
@@ -296,7 +296,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var update = new UpdateItemRequest("Corda Reforçada", 0.6m, 8, null, "Equipamentos de Aventura", "Mais resistente.",
             null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, null, null, null);
+            null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -312,6 +312,65 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
     }
 
     [Fact]
+    public async Task Create_an_ItemGeral_with_CapacidadeExtra_returns_it_in_the_response()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra1", "itemcapextra1@teste.com");
+
+        var request = new CreateItemRequest("ItemGeral", "Mochila de Couro", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, 10m);
+        var response = await PostItemAsync(token, request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.CapacidadeExtra.Should().Be(10m);
+    }
+
+    [Fact]
+    public async Task Create_an_Arma_ignores_CapacidadeExtra_even_if_sent()
+    {
+        // CapacidadeExtra only makes sense for ItemGeral — sending it for another Tipo must be
+        // silently ignored, matching how every other Tipo-specific field on this shared request
+        // already behaves for a Tipo it doesn't apply to.
+        var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra2", "itemcapextra2@teste.com");
+
+        var request = new CreateItemRequest("Arma", "Espada Estranha", 1.5m, 50, null, "Espadas", null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+            null, null, null, null, null, null,
+            null, null, null, null, 10m);
+        var response = await PostItemAsync(token, request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
+        body!.CapacidadeExtra.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Update_an_ItemGeral_changes_its_CapacidadeExtra()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra3", "itemcapextra3@teste.com");
+        var createResponse = await PostItemAsync(token, MinimalItemGeral("Mochila"));
+        var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+
+        var update = new UpdateItemRequest("Mochila", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, 8m);
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var listResponse = await _client.SendAsync(listMessage);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Single(i => i.Id == itemId).CapacidadeExtra.Should().Be(8m);
+    }
+
+    [Fact]
     public async Task Update_a_item_owned_by_another_gm_returns_404()
     {
         var tokenOwner = await RegisterGmAndGetTokenAsync("ItemGmUpdateOwner", "itemupdateowner@teste.com");
@@ -319,7 +378,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var createResponse = await PostItemAsync(tokenOwner, MinimalItemGeral("Corda"));
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
-        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenOther);
 
