@@ -487,6 +487,114 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body.ReducaoMagica.Should().Be(2);
     }
 
+    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, decimal? capacidadeExtra = null)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("ItemGeral", nome, peso, 5, null, "Diversos", "Um item qualquer",
+                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null, null, null, capacidadeExtra)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
+                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+                null, null, null, null, null, null,
+                null, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
+                null, null, null, null, null, null, null, null, null,
+                "Leve", null, null, null, "-1 Agilidade", 1,
+                2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_includes_Inventario_items()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso1", "npcpeso1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var itemId = await CreateItemGeralAsync(gmToken, "Corda", peso: 2m);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
+            new AddNpcInventoryItemRequest(itemId, 3)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(6m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_excludes_equipped_weapons_and_shields_but_includes_unequipped_ones()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso2", "npcpeso2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var equippedWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Equipada", peso: 1.5m);
+        var addEquippedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(equippedWeaponItemId)));
+        var equippedWeaponId = (await addEquippedResponse.Content.ReadFromJsonAsync<NpcWeaponResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/weapons/{equippedWeaponId}", gmToken, true));
+
+        var reserveWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Reserva", peso: 1.5m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(reserveWeaponItemId)));
+
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "Escudo Guardado", peso: 2m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(3.5m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_never_counts_armor()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso3", "npcpeso3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 0, rm: 0);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete", gmToken,
+            new UpdateNpcArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_Capacidade_Extra_raises_PesoMaximo_and_its_own_Peso_is_excluded_from_PesoAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso4", "npcpeso4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var mochilaItemId = await CreateItemGeralAsync(gmToken, "Mochila", peso: 1m, capacidadeExtra: 10m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
+            new AddNpcInventoryItemRequest(mochilaItemId, 2)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(0m);
+        body.PesoMaximo.Should().Be(24m);
+    }
+
     [Fact]
     public async Task SubAttributes_by_a_different_gm_returns_404()
     {

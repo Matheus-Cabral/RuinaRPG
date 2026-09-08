@@ -195,9 +195,21 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var brutoFortitude = BrutoOf(Pericia.Fortitude);
 
         var weapons = await db.NpcWeapons.Where(w => w.NpcSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var armorSlots = await db.NpcArmorSlots.Where(a => a.NpcSheetId == id && a.ItemId != null).Join(db.Items, a => a.ItemId!.Value, i => i.Id, (a, i) => i.Peso).ToListAsync();
-        var shields = await db.NpcShields.Where(s => s.NpcSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => i.Peso).ToListAsync();
-        var pesoTotalCarregado = weapons.Sum(w => w.Peso) + armorSlots.Sum() + shields.Sum();
+        var shields = await db.NpcShields.Where(s => s.NpcSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
+        var inventoryItems = await db.NpcInventoryItems.Where(i => i.NpcSheetId == id)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
+            .ToListAsync();
+
+        // Peso Total 2.b (corrected — see docs/superpowers/specs/2026-09-08-inventory-weight-and-
+        // capacity-design.md): Inventário (5.a) + Armas/Escudos DESequipados. Armaduras never count
+        // — an NpcArmorSlot with an ItemId is inherently worn (no unequipped state exists for armor
+        // in this schema). A Capacidade Extra ("mochila") item doesn't add its own Peso here — it
+        // raises pesoMaximo instead.
+        var pesoAtual = inventoryItems.Where(i => CarryWeightCalculator.CountsTowardPesoAtual(i.CapacidadeExtra)).Sum(i => i.Peso * i.Qtd)
+            + weapons.Where(w => !w.IsEquipped).Sum(w => w.Peso)
+            + shields.Where(s => !s.IsEquipped).Sum(s => s.Peso);
+        var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
+        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal);
 
         var equippedShield = await db.NpcShields
             .Where(s => s.NpcSheetId == id && s.IsEquipped)
@@ -217,14 +229,16 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: 0),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, (int)pesoTotalCarregado, forca, vigor),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, pesoAtual, pesoMaximo),
             // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
             // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
             // numeric formula term today. Unlike Bruto above, this is a real, still-open gap.
             EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: 0, penalidadeArmadura: 0),
             DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm),
+            PesoAtual: pesoAtual,
+            PesoMaximo: pesoMaximo);
     }
 
     /// <summary>

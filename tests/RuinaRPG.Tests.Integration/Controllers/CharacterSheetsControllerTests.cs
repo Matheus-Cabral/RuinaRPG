@@ -713,6 +713,130 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body.ReducaoMagica.Should().Be(0); // unaffected — different Alvo
     }
 
+    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, decimal? capacidadeExtra = null)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("ItemGeral", nome, peso, 5, null, "Diversos", "Um item qualquer",
+                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null, null, null, capacidadeExtra)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
+                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+                null, null, null, null, null, null,
+                null, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    private async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
+                null, null, null, null, null, null, null, null, null,
+                "Leve", null, null, null, "-1 Agilidade", 1,
+                2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_includes_Inventario_items()
+    {
+        // The bug this task fixes: PesoAtual used to only sum Armas/Armaduras/Escudos, never the
+        // Inventário list, contradicting Requisitos - Ficha de Personagem 2.b's own formula text.
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso1", "sheetpeso1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso1", "sheetplayerpeso1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 1");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        var itemId = await CreateItemGeralAsync(gmToken, "Corda", peso: 2m);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+            new AddCharacterInventoryItemRequest(itemId, 3)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(6m); // 2 * 3
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_excludes_equipped_weapons_and_shields_but_includes_unequipped_ones()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso2", "sheetpeso2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso2", "sheetplayerpeso2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 2");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var equippedWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Equipada", peso: 1.5m);
+        var addEquippedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(equippedWeaponItemId)));
+        var equippedWeaponId = (await addEquippedResponse.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{equippedWeaponId}", playerToken, true));
+
+        var reserveWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Reserva", peso: 1.5m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(reserveWeaponItemId)));
+
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "Escudo Guardado", peso: 2m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(3.5m); // 1.5 (unequipped reserve weapon) + 2 (unequipped shield) — the equipped weapon is excluded
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoAtual_never_counts_armor()
+    {
+        // A CharacterArmorSlot with an ItemId is inherently worn — no unequipped state exists for
+        // armor, so it never contributes to PesoAtual.
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso3", "sheetpeso3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso3", "sheetplayerpeso3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 0, rm: 0);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken,
+            new UpdateCharacterArmorSlotRequest(armorItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_Capacidade_Extra_raises_PesoMaximo_and_its_own_Peso_is_excluded_from_PesoAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso4", "sheetpeso4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso4", "sheetplayerpeso4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 4");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+
+        var mochilaItemId = await CreateItemGeralAsync(gmToken, "Mochila", peso: 1m, capacidadeExtra: 10m);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+            new AddCharacterInventoryItemRequest(mochilaItemId, 2)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoAtual.Should().Be(0m); // the 2 mochilas' own Peso (1*2=2) is excluded
+        body.PesoMaximo.Should().Be(24m); // floor((4+4)/2)=4, + (10*2)=20
+    }
+
     [Fact]
     public async Task SubAttributes_by_an_unrelated_jogador_returns_403()
     {
