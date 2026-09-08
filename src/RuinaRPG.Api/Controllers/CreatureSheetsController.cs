@@ -242,14 +242,18 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: 0),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, (int)pesoTotalCarregado, forca, vigor),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m)),
             // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
             // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
             // numeric formula term today. Same real, still-open gap as the Ficha de NPCs version.
             EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: 0, penalidadeArmadura: 0),
             DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm));
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm),
+            // Espólios (5.a) is loot dropped when defeated, not a carried inventory — out of scope
+            // for this feature. See docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md.
+            PesoAtual: null,
+            PesoMaximo: null);
     }
 
     // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.

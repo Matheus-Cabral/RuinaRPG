@@ -385,6 +385,8 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
+        body.PesoAtual.Should().BeNull(); // Espólios is loot, not carried inventory — see docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md
+        body.PesoMaximo.Should().BeNull();
     }
 
     [Fact]
