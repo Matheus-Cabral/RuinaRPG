@@ -198,8 +198,8 @@ if (args.Contains("--migrate"))
     migrateDb.Database.Migrate();
 
     var migrateCaracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
-    var migrateInsertedCount = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
-    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted", migrateInsertedCount);
+    var migrateSeedResult = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
+    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", migrateSeedResult.Inserted, migrateSeedResult.Updated);
     return;
 }
 
@@ -210,8 +210,8 @@ if (app.Environment.IsDevelopment())
     db.Database.Migrate();
 
     var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
-    var insertedCount = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
-    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted", insertedCount);
+    var seedResult = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
+    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", seedResult.Inserted, seedResult.Updated);
 }
 
 app.Run();

@@ -26,14 +26,16 @@ public class TraitMigrationAndSeedTests : IClassFixture<PostgresFixture>
         appliedMigrations.Should().Contain(m => m.EndsWith("AddTraits"));
 
         var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
-        var insertedCount = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
+        var result = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
 
-        insertedCount.Should().BeGreaterThan(0);
-        (await db.Traits.CountAsync()).Should().Be(insertedCount);
+        result.Inserted.Should().BeGreaterThan(0);
+        (await db.Traits.CountAsync()).Should().Be(result.Inserted);
 
-        // Re-seeding is idempotent — running it again against already-seeded rows inserts nothing new.
-        var secondRunInsertedCount = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
-        secondRunInsertedCount.Should().Be(0);
+        // Re-seeding is idempotent — running it again against already-seeded, already-correct rows
+        // inserts and updates nothing new.
+        var secondRun = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
+        secondRun.Inserted.Should().Be(0);
+        secondRun.Updated.Should().Be(0);
 
         var trait = await db.Traits.FirstAsync();
         trait.Nome.Should().NotBeNullOrWhiteSpace();
