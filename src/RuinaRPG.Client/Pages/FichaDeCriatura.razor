@@ -183,15 +183,35 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Arma</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo de Dano</th>
+                        <th>Alcance</th>
+                        <th>Dados</th>
+                        <th>Dano</th>
+                        <th>Crítico</th>
+                        <th>Tier</th>
+                        <th>Durabilidade</th>
+                        <th>Equipada</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var weapon in _weapons)
                     {
                         <tr>
-                            <td>@weapon.Nome@(weapon.TipoDeDano is not null ? $" ({weapon.TipoDeDano})" : "")</td>
+                            <td>@weapon.Nome</td>
+                            <td>@(weapon.TipoDeDano ?? "—")</td>
+                            <td>@(weapon.Alcance?.ToString() ?? "—")</td>
+                            <td>@(weapon.Dados ?? "—")</td>
+                            <td>@(weapon.Dano?.ToString() ?? "—")</td>
+                            <td>@(weapon.Critico ?? "—")</td>
+                            <td>@(weapon.Tier ?? "—")</td>
                             <td>
                                 @if (weapon.ItemId is not null)
                                 {
-                                    <text>Durabilidade <MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" /> / @weapon.DurabilidadeMaximo</text>
+                                    <text><MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" /> / @weapon.DurabilidadeMaximo</text>
                                 }
                                 else
                                 {

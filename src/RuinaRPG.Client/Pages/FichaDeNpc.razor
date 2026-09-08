@@ -199,13 +199,34 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Arma</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo de Dano</th>
+                        <th>Alcance</th>
+                        <th>Dados</th>
+                        <th>Dano</th>
+                        <th>Crítico</th>
+                        <th>Tier</th>
+                        <th>Peso</th>
+                        <th>Durabilidade</th>
+                        <th>Equipada</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var weapon in _weapons)
                     {
                         <tr>
                             <td>@weapon.Nome</td>
+                            <td>@(weapon.TipoDeDano ?? "—")</td>
+                            <td>@(weapon.Alcance?.ToString() ?? "—")</td>
+                            <td>@(weapon.Dados ?? "—")</td>
+                            <td>@(weapon.Dano?.ToString() ?? "—")</td>
+                            <td>@(weapon.Critico ?? "—")</td>
+                            <td>@(weapon.Tier ?? "—")</td>
+                            <td>@weapon.Peso</td>
                             <td>
-                                Durabilidade
                                 <MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />
                                 / @weapon.DurabilidadeMaxima
                             </td>
