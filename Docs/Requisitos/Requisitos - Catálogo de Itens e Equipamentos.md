@@ -43,6 +43,7 @@
 - **Subcategoria**: dropdown extensível — o GM pode escolher uma subcategoria existente ou cadastrar uma nova. As subcategorias observadas no levantamento atual são: Equipamentos de Aventura, Equipamentos Animais, Munição, Alimentação, Serviços, Veículos e Materiais de Estudo & Rituais.
 - **Descrição**: texto livre, descrevendo o efeito ou uso do item (ex: "+10 em testes de Arrombamento").
 - **Peso**: valor numérico decimal (float) ≥ 0 — itens podem pesar frações, ex. `0,1`. Usado no cálculo de Sobrepeso (ver "[[Requisitos - Ficha de Personagem]]", Sub-Atributos).
+- **Capacidade Extra**: opcional, valor numérico decimal ≥ 0. Quando preenchido, o item é tratado como um recipiente (ex: mochila) — ao entrar no Inventário de uma ficha (ver "[[Requisitos - Ficha de Personagem]]" 5.a), seu próprio Peso deixa de contar no Peso Atual do personagem, e `Capacidade Extra × Qtd` passa a somar ao Peso Máximo. Quando NULL ou 0, o item se comporta normalmente (sem esse efeito).
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008).
 - **Imagem**: opcional. Upload nos formatos WebP, JPEG, JPG, PNG e GIF, no tamanho máximo definido pela variável *img_max_size* no **.env** — mesma convenção da Imagem do Personagem (ver "[[Requisitos - Ficha de Personagem]]" 1.a).
 

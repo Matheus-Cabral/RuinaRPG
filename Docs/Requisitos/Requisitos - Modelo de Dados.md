@@ -87,6 +87,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | ImageId | FK → Images, nullable | todos |
 | Subcategoria | string, nullable | ItemGeral, Arma |
 | Descricao | text, nullable | ItemGeral |
+| CapacidadeExtra | decimal, nullable | ItemGeral — ver "[[Requisitos - Ficha de Personagem]]" 2.b/5.a e "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 |
 | Tier | enum F..S, nullable | Arma |
 | Empunhadura | enum, nullable | Arma |
 | Dados | string, nullable | Arma |

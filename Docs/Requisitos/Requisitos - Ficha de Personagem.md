@@ -106,7 +106,7 @@ Os 8 atributos (ver §1 de "[[Ruína RPG - Sistema Básico]]" para a definição
 Sub-atributos são valores derivados, calculados automaticamente (não editáveis diretamente pelo jogador, salvo indicação em contrário). As fórmulas estão em "[[Formulas]]"; "*Bruto [Perícia]*" se refere ao modificador daquela Perícia sozinho, sem somar o atributo-chave dela (ver §2 de "[[Ruína RPG - Sistema Básico]]" — a cada 3 pontos investidos na Perícia, +1 permanente). Perícias são detalhadas em 2.d.
 
 - *Iniciativa*: `Agilidade + Bruto Prontidão + Artefato ou item`.
-- *Movimentação*: `(Agilidade × 2) + Artefato − Sobrepeso`, com mínimo absoluto de **1**. *Sobrepeso* = `max(0, Peso Total Carregado − Limite de Carga)`, onde *Limite de Carga* = `piso((Força + Vigor) / 2)` e *Peso Total Carregado* é a soma do campo Peso (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todos os itens no Inventário e no arsenal de Armas/Escudos do personagem, equipados ou não (ver aba "Posses" e 3.a/3.c).
+- *Movimentação*: `(Agilidade × 2) + Artefato − Sobrepeso`, com mínimo absoluto de **1**. *Sobrepeso* = `max(0, Peso Atual − Peso Máximo)`, onde *Peso Máximo* = `piso((Força + Vigor) / 2) + Capacidade Extra` e *Peso Atual* é a soma do campo Peso (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todos os itens do Inventário que não tiverem Capacidade Extra (ver 5.a) mais as Armas e Escudos **não equipados** do arsenal (ver 3.a/3.c) — Armaduras nunca entram nessa soma, pois todo slot preenchido está sempre equipado, sem estado "desequipado" (ver 3.b). *Capacidade Extra* é a soma do campo homônimo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todo item do Inventário que o tiver, multiplicada pela Qtd da linha. Peso Atual/Máximo e um aviso de sobrepeso são exibidos na aba "Posses" (ver 5.a).
 - *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`.
 - *Defesa Natural*: `Vigor + Bruto Fortitude + Escudo + Artefatos + Cobertura`.
 - *Cobertura*: duas opções mutuamente exclusivas, **Parcial** (+5) e **Completa** (+10), ou nenhuma selecionada (+0). Alimenta a fórmula de Defesa Natural acima.
@@ -157,7 +157,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 Lista tipo arsenal: o jogador adiciona quantas armas quiser (inclui varinhas e cajados mágicos, que são subcategorias de Arma no catálogo — não há distinção de "condutor" à parte). Cada linha:
 
 - *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Tier** são preenchidos automaticamente a partir do item, somente leitura.
-- *Peso*: herdado do item (somente leitura), somado ao Peso Total Carregado (ver 2.b, Movimentação) independentemente de estar equipada ou não.
+- *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada — uma arma equipada é considerada "no corpo", não uma carga extra.
 - *Equipada*: seleção exclusiva — apenas 1 arma do arsenal pode estar marcada como equipada por vez, exceto se o personagem tiver a característica **Ambidestria** (ver aba "Posses", Características), que permite 2.
 - *Durabilidade*: par **Atual / Máximo**. O Máximo é herdado do item (somente leitura, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004) — diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo.
 
@@ -172,7 +172,7 @@ Uma linha pode ser removida pelo jogador a qualquer momento.
 Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**. Cada slot:
 
 - *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
-- *Peso*: herdado do item (somente leitura) de cada slot preenchido, somado ao Peso Total Carregado.
+- *Peso*: herdado do item (somente leitura) de cada slot preenchido. **Não** soma ao Peso Atual (ver 2.b, Movimentação) — todo slot preenchido está sempre equipado (não há estado "desequipado" para Armadura), então seu peso é sempre considerado "no corpo".
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo herdado do item (R0005), Atual editável pelo jogador e específico daquele slot.
 
   
@@ -184,7 +184,7 @@ Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**.
 Lista tipo arsenal, mesmo padrão de 3.a: o jogador adiciona quantos escudos quiser. Cada linha:
 
 - *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria**, **Bônus de Defesa**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura.
-- *Peso*: herdado do item (somente leitura), somado ao Peso Total Carregado independentemente de estar equipado ou não.
+- *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada, mesma regra de 3.a.
 - *Equipado*: seleção exclusiva — apenas 1 escudo do arsenal pode estar marcado como equipado por vez (sem exceção).
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo herdado do item (R0006), Atual editável pelo jogador e específico daquela linha.
 
@@ -291,12 +291,14 @@ Uma Maestria pode ser removida pelo jogador a qualquer momento.
 
   
 
+Exibe **Peso Atual / Peso Máximo** (ver 2.b, Movimentação) acima da lista; quando o Atual excede o Máximo, um aviso de sobrepeso é exibido (a Movimentação do personagem fica reduzida).
+
 - *Ciclos*: campo numérico inteiro ≥ 0 — a moeda do sistema. Quando NULL, assume **0**.
 - Lista incremental de itens carregados. Cada linha:
   - *Item*: dropdown/busca vinculado a um item do tipo Item Geral no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0003). Armas, Armaduras e Escudos não aparecem aqui — eles têm suas próprias listas em 3.a/3.b/3.c.
   - *Peso*: herdado do item (somente leitura).
   - *Qtd*: campo numérico inteiro ≥ 1, editável.
-  - *Total*: campo calculado, não editável. `Total = Peso × Qtd`. Soma ao Peso Total Carregado (ver 2.b, Movimentação).
+  - *Total*: campo calculado, não editável. `Total = Peso × Qtd`. Soma ao Peso Atual (ver 2.b, Movimentação) — **exceto** quando o item tem Capacidade Extra (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003): nesse caso o Total da linha não conta como peso carregado, e `Capacidade Extra × Qtd` soma ao Peso Máximo em vez disso (ex: mochilas).
 
 Uma linha pode ser removida pelo jogador a qualquer momento.
 
