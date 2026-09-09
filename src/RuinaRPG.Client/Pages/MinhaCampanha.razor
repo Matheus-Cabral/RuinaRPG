@@ -12,12 +12,34 @@
 
 <MudTabs Class="mt-3">
     <MudTabPanel Text="Minhas Fichas">
-        <MudList T="string">
+        <MudGrid>
             @foreach (var ficha in _view.MinhasFichas)
             {
-                <MudListItem T="string" Text="@($"{(ficha.Nome ?? "(sem nome)")} — Nível {ficha.Nivel}")" Href="@($"fichas/{ficha.Id}")" />
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                @if (ficha.ImageUrl is not null)
+                                {
+                                    <ClickableAvatarImage Src="@ficha.ImageUrl" Size="Size.Large" />
+                                }
+                                else
+                                {
+                                    <MudAvatar Size="Size.Large" />
+                                }
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@(ficha.Nome ?? "(sem nome)")</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Nível @ficha.Nivel</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"fichas/{ficha.Id}")">Abrir</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
             }
-        </MudList>
+        </MudGrid>
     </MudTabPanel>
 
     <MudTabPanel Text="Meus Companheiros">

@@ -140,6 +140,22 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     }
 
     [Fact]
+    public async Task PlayerView_MinhasFichas_ImageUrl_uses_the_images_prefix()
+    {
+        var setup = await BuildSetupAsync("SheetImg");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
+        var update = new UpdateCharacterSheetRequest(imageId, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
+            true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{setup.CharacterSheetId}", setup.PlayerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        var ficha = body!.MinhasFichas.Should().ContainSingle(s => s.Id == setup.CharacterSheetId).Subject;
+        ficha.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
     public async Task PlayerView_includes_only_the_public_item_not_the_private_one()
     {
         var setup = await BuildSetupAsync("Item");

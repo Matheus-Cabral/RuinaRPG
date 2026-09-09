@@ -48,10 +48,20 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         if (!isMember)
             return Forbid();
 
-        var minhasFichas = await db.CharacterSheets
+        var minhasFichasEntities = await db.CharacterSheets
             .Where(s => s.CampaignId == campaignId && s.OwnerId == callerId)
-            .Select(s => new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel))
             .ToListAsync();
+        var minhasFichas = new List<CharacterSheetSummary>();
+        foreach (var s in minhasFichasEntities)
+        {
+            string? imageUrl = null;
+            if (s.ImageId is not null)
+            {
+                var image = await db.Images.FindAsync(s.ImageId.Value);
+                imageUrl = image is not null ? $"/images/{image.Path}" : null;
+            }
+            minhasFichas.Add(new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel, imageUrl));
+        }
 
         var meusNpcs = await db.CampaignAttachments
             .Where(a => a.CampaignId == campaignId && a.NpcSheetId != null)
