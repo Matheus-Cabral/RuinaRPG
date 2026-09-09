@@ -7,36 +7,45 @@
 @using RuinaRPG.Contracts.Auth
 @using MudBlazor
 
-<MudText Typo="Typo.h3">Cadastro</MudText>
+<div class="rr-auth">
+    <div class="rr-auth-card">
+        <img src="branding/logo-pequena.png" alt="Ruína RPG" class="rr-auth-logo" />
+        <MudText Typo="Typo.h4" Class="rr-auth-title">Cadastro</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+        @if (_errorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+        }
 
-<MudTabs Class="mt-3">
-    <MudTabPanel Text="Gamemaster">
-        <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
-            <DataAnnotationsValidator />
-            <MudTextField T="string" @bind-Value="_gmRequest.Nickname" Label="Nickname" For="@(() => _gmRequest.Nickname)" />
-            <MudTextField T="string" @bind-Value="_gmRequest.Email" Label="Email" For="@(() => _gmRequest.Email)" />
-            <MudTextField T="string" @bind-Value="_gmRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _gmRequest.Senha)" />
-            <MudTextField T="string" @bind-Value="_gmRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _gmRequest.ConfirmacaoSenha)" />
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Cadastrar</MudButton>
-        </EditForm>
-    </MudTabPanel>
-    <MudTabPanel Text="Jogador">
-        <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
-            <DataAnnotationsValidator />
-            <MudTextField T="string" @bind-Value="_jogadorRequest.Nickname" Label="Nickname" For="@(() => _jogadorRequest.Nickname)" />
-            <MudTextField T="string" @bind-Value="_jogadorRequest.Email" Label="Email" For="@(() => _jogadorRequest.Email)" />
-            <MudTextField T="string" @bind-Value="_jogadorRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.Senha)" />
-            <MudTextField T="string" @bind-Value="_jogadorRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.ConfirmacaoSenha)" />
-            <MudTextField T="string" @bind-Value="_jogadorRequest.CodigoDeAcesso" Label="Código de acesso" For="@(() => _jogadorRequest.CodigoDeAcesso)" />
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Cadastrar</MudButton>
-        </EditForm>
-    </MudTabPanel>
-</MudTabs>
+        <MudTabs>
+            <MudTabPanel Text="Gamemaster">
+                <EditForm Model="_gmRequest" OnValidSubmit="SubmitGmAsync">
+                    <DataAnnotationsValidator />
+                    <MudTextField T="string" @bind-Value="_gmRequest.Nickname" Label="Nickname" For="@(() => _gmRequest.Nickname)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_gmRequest.Email" Label="Email" For="@(() => _gmRequest.Email)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_gmRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _gmRequest.Senha)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_gmRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _gmRequest.ConfirmacaoSenha)" FullWidth="true" Class="mt-3" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4">Cadastrar</MudButton>
+                </EditForm>
+            </MudTabPanel>
+            <MudTabPanel Text="Jogador">
+                <EditForm Model="_jogadorRequest" OnValidSubmit="SubmitJogadorAsync">
+                    <DataAnnotationsValidator />
+                    <MudTextField T="string" @bind-Value="_jogadorRequest.Nickname" Label="Nickname" For="@(() => _jogadorRequest.Nickname)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_jogadorRequest.Email" Label="Email" For="@(() => _jogadorRequest.Email)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_jogadorRequest.Senha" Label="Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.Senha)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_jogadorRequest.ConfirmacaoSenha" Label="Confirmação da Senha" InputType="InputType.Password" For="@(() => _jogadorRequest.ConfirmacaoSenha)" FullWidth="true" Class="mt-3" />
+                    <MudTextField T="string" @bind-Value="_jogadorRequest.CodigoDeAcesso" Label="Código de acesso" For="@(() => _jogadorRequest.CodigoDeAcesso)" FullWidth="true" Class="mt-3" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4">Cadastrar</MudButton>
+                </EditForm>
+            </MudTabPanel>
+        </MudTabs>
+
+        <MudText Typo="Typo.body2" Class="rr-auth-switch">
+            Já tem conta? <MudLink Href="/login">Entrar</MudLink>
+        </MudText>
+    </div>
+</div>
 
 @code {
     private readonly GmFormModel _gmRequest = new();

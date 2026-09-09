@@ -1,0 +1,44 @@
+/* Same "parchment card" identity as Login.razor.css — see the comment there for the full
+   rationale (hardcoded Tema Sol colors, ::deep required for Class="..." on child components).
+   This card is wider than Login's (480px vs 420px) since the Jogador tab carries five fields
+   plus the GM/Jogador tab strip itself. */
+
+.rr-auth {
+    display: flex;
+    justify-content: center;
+    padding: var(--rr-space-5) var(--rr-space-3);
+}
+
+.rr-auth-card {
+    width: 100%;
+    max-width: 480px;
+    padding: var(--rr-space-5) var(--rr-space-4);
+    border-radius: var(--rr-radius-lg);
+    background-color: #f6ecd9;
+    border: 1px solid #d9c39a;
+    box-shadow: 0 4px 24px rgba(59, 42, 26, 0.18);
+    text-align: center;
+}
+
+.rr-auth-logo {
+    display: block;
+    width: 100%;
+    max-width: 140px;
+    margin: 0 auto var(--rr-space-3) auto;
+}
+
+.rr-auth ::deep .rr-auth-title {
+    font-family: var(--rr-font-heading);
+    color: #3b2a1a;
+    margin-bottom: var(--rr-space-4);
+}
+
+.rr-auth ::deep form {
+    text-align: left;
+}
+
+.rr-auth ::deep .rr-auth-switch {
+    display: block;
+    margin-top: var(--rr-space-4);
+    color: #6b5636;
+}

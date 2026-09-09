@@ -1,0 +1,52 @@
+/* Login and Cadastro are the two remaining unauthenticated pages, and share this "parchment card"
+   identity with the Landing hero — colors hardcoded to Tema Sol's own values (not --rr-*), for the
+   same reason as the hero: this identity is meant to look the same regardless of which site theme
+   is active, not repaint itself under Tema Lua. Unlike the Landing hero (deliberately full-bleed),
+   a login form reads better as a small centered card than a page-wide band, so this one keeps a
+   max-width and border-radius on all four sides instead.
+
+   .rr-auth and .rr-auth-card are bare <div>s this file authors directly, so they carry the Blazor
+   CSS-isolation scope attribute. Every other rule here targets a class passed via Class="..." into
+   a *child component* (MudText, MudLink) or a <form> rendered by EditForm's own template (not this
+   file's) — none of those receive the scope attribute themselves (the same class of bug this app's
+   Section/NavMenu/Landing files already ran into), so each such rule hangs off ".rr-auth ::deep". */
+
+.rr-auth {
+    display: flex;
+    justify-content: center;
+    padding: var(--rr-space-5) var(--rr-space-3);
+}
+
+.rr-auth-card {
+    width: 100%;
+    max-width: 420px;
+    padding: var(--rr-space-5) var(--rr-space-4);
+    border-radius: var(--rr-radius-lg);
+    background-color: #f6ecd9;
+    border: 1px solid #d9c39a;
+    box-shadow: 0 4px 24px rgba(59, 42, 26, 0.18);
+    text-align: center;
+}
+
+.rr-auth-logo {
+    display: block;
+    width: 100%;
+    max-width: 140px;
+    margin: 0 auto var(--rr-space-3) auto;
+}
+
+.rr-auth ::deep .rr-auth-title {
+    font-family: var(--rr-font-heading);
+    color: #3b2a1a;
+    margin-bottom: var(--rr-space-4);
+}
+
+.rr-auth ::deep form {
+    text-align: left;
+}
+
+.rr-auth ::deep .rr-auth-switch {
+    display: block;
+    margin-top: var(--rr-space-4);
+    color: #6b5636;
+}
