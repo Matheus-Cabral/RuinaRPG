@@ -83,7 +83,7 @@
                 <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
                 <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.EAPAtual" For="@(() => _form.EAPAtual)" Label="EAP Atual" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.EAPAtual" For="@(() => _form.EAPAtual)" Label="VIS Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" @bind-Value:after="NotifySavedAsync" />
             </Section>
@@ -640,8 +640,8 @@
         ["Econos"] = [("Alora", "Alóra (Lua)")],
     };
 
-    // Sub-Vocação is free text server-side (no enum), so value == label here — from "Relação de
-    // Vocacão e Classes.md".
+    // Classe (displayed label; SubVocacao is the internal property/DB column name, kept as-is) is
+    // free text server-side (no enum), so value == label here — from "Relação de Vocacão e Classes.md".
     private static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
     {
         ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],
@@ -1286,7 +1286,7 @@
         public bool PossuiCoracaoDeMana { get; set; }
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
-        [Required(ErrorMessage = "Informe o EAP Atual.")]
+        [Required(ErrorMessage = "Informe o VIS Atual.")]
         public int? EAPAtual { get; set; }
         [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]
         public int? NucleosRankF { get; set; }

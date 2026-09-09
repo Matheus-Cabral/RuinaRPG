@@ -34,7 +34,7 @@
 
 - *Vocação*: Um dropdown exibindo as 5 vocações (classes) definidas na "[[Tabela de Vocação]]", sendo elas, **Campeão**, **Caçador**, **Feiticeiro**, **Adepto** e **Bruxo**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso o valor for NULL, exibe o placeholder *Escolha uma Vocação*. A vocação escolhida determina as colunas de Vida e Arcana usadas na progressão de nível (ver *Vida* e *Arcana* no subgrupo Recursos).
 
-- *Sub-vocação*: Um dropdown exibindo os nomes das sub-vocações (subclasses) correspondentes à Vocação escolhida, listadas na "[[Tabela de Classes]]". O comportamento é análogo ao de *Variante* em relação a *Linhagem*: caso for NULL exibe o placeholder *Escolha uma Sub-vocação* e, se a Vocação estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma vocação antes da sub-vocação. A relação de Vocação e Classe está em [[Relação de Vocacão e Classes]].
+- *Classe*: Um dropdown exibindo os nomes das classes (subclasses) correspondentes à Vocação escolhida, listadas na "[[Tabela de Classes]]". O comportamento é análogo ao de *Variante* em relação a *Linhagem*: caso for NULL exibe o placeholder *Escolha uma Classe* e, se a Vocação estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma vocação antes da classe. A relação de Vocação e Classe está em [[Relação de Vocacão e Classes]]. (Chamado de "Sub-Vocação" no código e no banco de dados — só o rótulo exibido mudou.)
 
 - *Trabalho*: campo previsto porém ainda não implementado. Vamos apenas não implementa-lo.
 
@@ -50,17 +50,17 @@
 
 - *Nível*: campo **calculado**, de 1 a 50 — não é mais editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo os limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]"; com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
 
-- *Graduação*: campo numérico de 0 a 9, calculado a partir do EAP atual segundo a tabela em "[[Tabela de Circulo e Grau por EAP]]". Se a Vocação for **Campeão** ou **Caçador**, o campo é rotulado **Grau**, não editável, e sempre calculado normalmente pelo EAP. Se a Vocação for qualquer outra, o campo é rotulado **Círculo** e depende de um checkbox "Possui coração de mana?" (ver §1 de "[[GRAUS & CÍRCULOS]]"): marcado, o Círculo é calculado normalmente pelo EAP; desmarcado, o Círculo é exibido como **0** independentemente do EAP acumulado (o personagem pode perder um coração de mana em jogo, desmarcando o checkbox). Quando NULL, o checkbox assume **desmarcado** e o valor assume **0**.
+- *Graduação*: campo numérico de 0 a 9, calculado a partir do VIS atual segundo a tabela em "[[Tabela de Circulo e Grau por EAP]]". Se a Vocação for **Campeão** ou **Caçador**, o campo é rotulado **Grau**, não editável, e sempre calculado normalmente pelo VIS. Se a Vocação for qualquer outra, o campo é rotulado **Círculo** e depende de um checkbox "Possui coração de mana?" (ver §1 de "[[GRAUS & CÍRCULOS]]"): marcado, o Círculo é calculado normalmente pelo VIS; desmarcado, o Círculo é exibido como **0** independentemente do VIS acumulado (o personagem pode perder um coração de mana em jogo, desmarcando o checkbox). Quando NULL, o checkbox assume **desmarcado** e o valor assume **0**.
 
 - *Experiência atual*: campo numérico (inteiro ≥ 0) que registra a XP acumulada do personagem. Quando NULL assume **0**. Além da edição direta do valor total, um campo dedicado permite adicionar ou subtrair uma quantidade de XP ao total atual (nunca abaixo de **0**); qualquer uma das duas formas recalcula o *Nível* imediatamente.
 
 - *Para o próximo*: valor que indica a XP necessária para o próximo nível. A tabela com os valores está no documento [[Tabelas de XP, Atributos, Características e EAP]].
 
-- *EAP atual*: campo numérico. Segue a tabela no documento [[Tabelas de XP, Atributos, Características e EAP]] e é somado pelo resultado de Âmbares Absorvidos.
+- *VIS atual*: campo numérico. Segue a tabela no documento [[Tabelas de XP, Atributos, Características e EAP]] e é somado pelo resultado de Âmbares Absorvidos. (Chamado de "EAP" no código e no banco de dados — só o rótulo exibido mudou.)
 
 - *Pontos de Ignição (PI)*: recurso usado na compra de efeitos de magias e habilidades (ver "[[GRAUS & CÍRCULOS]]"). Exibir o valor **atual**, editável diretamente, e o **total** acumulado. O *total* é **calculado**, não editável diretamente: soma dos bônus de PI por Nível (conforme a "[[Tabela de Níveis]]") mais um bônus manual que o GM concede à parte — um campo dedicado permite adicionar ou subtrair esse bônus manual (mesmo padrão do campo de XP em "Experiência atual", acima). Quando NULL, o *atual* e o bônus manual assumem **0**.
 
-- *Âmbares Absorvidos*: contador numérico dos Âmbares absorvidos pelo personagem. Acompanhado dos contadores por **Rank** (**F**, **E**, **D**, **C**, **B**, **A**, **S**), cada um um inteiro ≥ 0 que assume **0** quando NULL. Cada Âmbar absorvido aumenta o EAP com um valor de acordo com seu Rank, sendo estes valores: Rank F = 5; Rank E = 15; Rank D = 40; Rank C = 120; Rank B = 350; Rank A = 1000; Rank S = 3000.
+- *Âmbares Absorvidos*: contador numérico dos Âmbares absorvidos pelo personagem. Acompanhado dos contadores por **Rank** (**F**, **E**, **D**, **C**, **B**, **A**, **S**), cada um um inteiro ≥ 0 que assume **0** quando NULL. Cada Âmbar absorvido aumenta o VIS com um valor de acordo com seu Rank, sendo estes valores: Rank F = 5; Rank E = 15; Rank D = 40; Rank C = 120; Rank B = 350; Rank A = 1000; Rank S = 3000.
 
   
 

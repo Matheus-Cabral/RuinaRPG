@@ -32,19 +32,19 @@
 
 **1.a Identidade** — diferenças de "[[Requisitos - Ficha de Personagem]]":
 
-- *Linhagem*, *Variante*, *Vocação*, *Sub-vocação*, *Trabalho* e *Propriedade* não existem na Ficha de Criatura. Em vez delas:
+- *Linhagem*, *Variante*, *Vocação*, *Classe*, *Trabalho* e *Propriedade* não existem na Ficha de Criatura. Em vez delas:
   - *Raça*: text input livre (não há uma tabela fixa de raças de criatura).
   - *Arquétipo*: dropdown com os 2 valores da "[[Tabela de Arquetipos]]": **Físico** ou **Arcano**. Substitui o papel da Vocação — determina as colunas de Vida e Arcana usadas na progressão (ver Recursos abaixo).
   - *Sub Arquétipo*: text input livre (não há uma tabela equivalente à Tabela de Classes para criaturas).
 - *Afinidade*: mesmo campo do Personagem (dropdown de Elementos/Sub-Elementos).
-- *Rank*: dropdown com os valores **F**, **E**, **D**, **C**, **B**, **A**, **S**. Substitui inteiramente o sistema de Círculo/Grau/EAP/Âmbares Absorvidos do Personagem (ver 1.b abaixo) — a Criatura tem uma classificação de poder fixa, não uma progressão calculada. É o mesmo Rank referenciado em "Âmbares Absorvidos" (Personagem, 1.b) e em "Contrato Mágico" ("[[GRAUS & CÍRCULOS]]" §1).
+- *Rank*: dropdown com os valores **F**, **E**, **D**, **C**, **B**, **A**, **S**. Substitui inteiramente o sistema de Círculo/Grau/VIS/Âmbares Absorvidos do Personagem (ver 1.b abaixo) — a Criatura tem uma classificação de poder fixa, não uma progressão calculada. É o mesmo Rank referenciado em "Âmbares Absorvidos" (Personagem, 1.b) e em "Contrato Mágico" ("[[GRAUS & CÍRCULOS]]" §1).
 - *Efeito de Batalha*: mesmo campo pendente do Personagem (3.d).
 
 **1.b Nível e Progressão** — diferenças:
 
 - *Nível* e *Experiência atual*: mesmos campos do Personagem.
 - *Experiência dada*: dois campos calculados, não editáveis, nesta ordem — **Kill** e **Assistência** — quanto de XP a Criatura concede aos jogadores ao ser derrotada, conforme o papel de cada jogador na derrota. `Kill = piso(Experiência atual × 0,15)`; `Assistência = piso(Experiência atual × 0,12)` (arredondados para baixo; *Experiência atual* é o campo da própria Criatura, acima). Campo novo, sem equivalente no Personagem.
-- *Graduação* (Círculo/Grau), *EAP atual*, *Para o próximo* e *Âmbares Absorvidos* não existem na Ficha de Criatura — substituídos pelo campo único *Rank* (1.a).
+- *Graduação* (Círculo/Grau), *VIS atual*, *Para o próximo* e *Âmbares Absorvidos* não existem na Ficha de Criatura — substituídos pelo campo único *Rank* (1.a).
 - *Pontos de Ignição*: campo numérico inteiro simples (não é um par atual/total como no Personagem) — o total de PI disponível para montar as Magias/Habilidades da Criatura (ver R0007).
 
 **1.c Recursos** — diferenças:

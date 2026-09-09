@@ -10,7 +10,7 @@
 
   
 
-> **Status**: a entrada de menu do Compêndio foi ocultada em favor do "[[Requisitos - Livro de Regras]]" — a página, o endpoint e o índice de busca abaixo continuam existindo no código (nada foi removido), só deixaram de ser alcançáveis pelo menu. `IRulesDataProvider`, que também alimenta cálculos de nível/EAP/graduação em outras partes do sistema, não foi afetado.
+> **Status**: a entrada de menu do Compêndio foi ocultada em favor do "[[Requisitos - Livro de Regras]]" — a página, o endpoint e o índice de busca abaixo continuam existindo no código (nada foi removido), só deixaram de ser alcançáveis pelo menu. `IRulesDataProvider`, que também alimenta cálculos de nível/VIS/graduação em outras partes do sistema, não foi afetado.
 
   
 

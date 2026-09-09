@@ -492,8 +492,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     /// <summary>
     /// Shared by ToResponseAsync (display) and Update (clamping "Atual não pode exceder o
     /// máximo", 1.c) — "Status de classe Vida/Foco" comes from Tabela de Vocação (Vocação ×
-    /// Nível); that table's rows are keyed by the 5 base Vocação names, not by Sub-Vocação/Classe,
-    /// so vocacao (not SubVocacao) is the lookup key — an accepted approximation (see plan's
+    /// Nível); that table's rows are keyed by the 5 base Vocação names, not by SubVocacao (displayed
+    /// as "Classe"), so vocacao (not SubVocacao) is the lookup key — an accepted approximation (see plan's
     /// Explicitly out of scope).
     /// </summary>
     private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(Guid sheetId, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)

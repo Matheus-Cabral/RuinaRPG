@@ -64,7 +64,7 @@ public class CompendioSearchServiceTests
         // never reached CompendioSearchService.
         var results = CompendioSearchService.Search(query: null, categorias: [CompendioCategoria.Tabela], Traits, Rules);
 
-        results.Should().Contain(r => r.Origem.StartsWith("Tabela de Círculo e Grau por EAP"));
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de Círculo e Grau por VIS"));
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class CompendioSearchServiceTests
         var results = CompendioSearchService.Search(query: null, categorias: [CompendioCategoria.Tabela], Traits, Rules);
 
         results.Should().Contain(r => r.Origem.StartsWith("Tabela de XP — Nível"));
-        results.Should().Contain(r => r.Origem.StartsWith("Tabela de EAP por Nível — Nível"));
+        results.Should().Contain(r => r.Origem.StartsWith("Tabela de VIS por Nível — Nível"));
     }
 
     [Fact]

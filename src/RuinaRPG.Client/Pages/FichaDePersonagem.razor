@@ -105,7 +105,7 @@
                     <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:14rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
                 </div>
-                <MudText>EAP Atual: @_form.EAPAtual</MudText>
+                <MudText>VIS Atual: @_form.EAPAtual</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudText>Pontos de Ignição Total: @_form.PontosDeIgnicaoTotal</MudText>
                 <div class="d-flex align-center mt-2" style="gap:8px">

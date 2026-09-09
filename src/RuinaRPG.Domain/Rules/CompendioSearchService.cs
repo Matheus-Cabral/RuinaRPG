@@ -33,13 +33,13 @@ public static class CompendioSearchService
             results.AddRange(rules.Arquetipos.Select(a =>
                 new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Arquétipos — {a.Arquetipo}, Nível {a.Nivel}", a.Arquetipo, $"Vida {a.Vida}, Arcana {a.Arcana}")));
             results.AddRange(rules.CirculoGrauPorEap.Select(c =>
-                new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Círculo e Grau por EAP — {c.CirculoOuGrau}", $"Círculo/Grau {c.CirculoOuGrau}",
-                    $"EAP absoluto {c.EapAbsoluto}, EAP relativo {c.EapRelativo}, Afinidade {c.AfinidadeAbsoluta} (+{c.AfinidadeGanhoPorNivel}/nível)")));
+                new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de Círculo e Grau por VIS — {c.CirculoOuGrau}", $"Círculo/Grau {c.CirculoOuGrau}",
+                    $"VIS absoluto {c.EapAbsoluto}, VIS relativo {c.EapRelativo}, Afinidade {c.AfinidadeAbsoluta} (+{c.AfinidadeGanhoPorNivel}/nível)")));
             results.AddRange(rules.XpPorNivel.Select(x =>
                 new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de XP — Nível {x.Nivel}", $"Nível {x.Nivel}",
                     $"XP absoluto {x.XpAbsoluto}, XP relativo {x.XpRelativo}")));
             results.AddRange(rules.EapPorNivel.Select(e =>
-                new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de EAP por Nível — Nível {e.Nivel}", $"Nível {e.Nivel}", $"EAP {e.ValorAbsoluto}")));
+                new CompendioSearchResult(CompendioCategoria.Tabela, $"Tabela de VIS por Nível — Nível {e.Nivel}", $"Nível {e.Nivel}", $"VIS {e.ValorAbsoluto}")));
         }
 
         if (categorias is null || categorias.Contains(CompendioCategoria.Regra))

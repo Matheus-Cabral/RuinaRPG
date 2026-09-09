@@ -23,7 +23,7 @@
             <MudTextField T="string" @bind-Value="_vocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Vocação" />
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudTextField T="string" @bind-Value="_subVocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Sub-Vocação" />
+            <MudTextField T="string" @bind-Value="_subVocacaoFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Classe" />
         </MudItem>
         <MudItem xs="12" md="4">
             <MudNumericField T="int?" @bind-Value="_nivelFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nível" />
@@ -45,7 +45,7 @@
                 <th>Nome</th>
                 <th>Linhagem</th>
                 <th>Vocação</th>
-                <th>Sub-Vocação</th>
+                <th>Classe</th>
                 <th>Nível</th>
                 <th>Dono</th>
                 <th></th>

@@ -9,11 +9,11 @@
 
 @if (string.IsNullOrEmpty(Vocacao))
 {
-    <MudText Typo="Typo.body2" Color="Color.Secondary">Escolha uma Vocação antes da Sub-vocação.</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Escolha uma Vocação antes da Classe.</MudText>
 }
 else
 {
-    <MudSelect T="string" Label="Sub-vocação" Value="SubVocacao" ValueChanged="OnSubVocacaoChangedAsync" Placeholder="Escolha uma Sub-vocação">
+    <MudSelect T="string" Label="Classe" Value="SubVocacao" ValueChanged="OnSubVocacaoChangedAsync" Placeholder="Escolha uma Classe">
         @foreach (var subVocacao in SubVocacaoOptions())
         {
             <MudSelectItem Value="@subVocacao">@subVocacao</MudSelectItem>
@@ -34,8 +34,8 @@ else
         ("Campeao", "Campeão"), ("Cacador", "Caçador"), ("Feiticeiro", "Feiticeiro"), ("Adepto", "Adepto"), ("Bruxo", "Bruxo"),
     ];
 
-    // From "Relação de Vocacão e Classes.md" — Sub-vocação is free text server-side (no enum), so
-    // value == label.
+    // From "Relação de Vocacão e Classes.md" — Classe (displayed label; SubVocacao is the internal
+    // property/DB column name, kept as-is) is free text server-side (no enum), so value == label.
     public static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
     {
         ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],

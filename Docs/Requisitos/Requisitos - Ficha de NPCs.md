@@ -25,7 +25,7 @@
 **Descrição**: A página "NPCs do GM" exibe uma lista de todas as fichas de NPC criadas pelo GM, com filtros combináveis por:
 
 - **Nome**.
-- **Linhagem / Vocação**: Linhagem, Variante, Vocação ou Sub-Vocação (ver 1.a de "[[Requisitos - Ficha de Personagem]]").
+- **Linhagem / Vocação**: Linhagem, Variante, Vocação ou Classe (ver 1.a de "[[Requisitos - Ficha de Personagem]]").
 - **Nível** (ver 1.b de "[[Requisitos - Ficha de Personagem]]").
 - **Campanha vinculada**: em quais campanhas esse NPC foi anexado (ver "[[Requisitos - Campanha]]", R0006).
 
