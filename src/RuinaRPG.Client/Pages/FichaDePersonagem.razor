@@ -464,6 +464,18 @@
         <Section Title="Habilidade Racial">
             <MudText>@(_racialAbility?.Nome ?? "—")</MudText>
             <MudText>@(_racialAbility?.Descricao ?? "—")</MudText>
+            @if (_form.Linhagem == "Humano")
+            {
+                <MudNumericField T="int?" Value="@_form.ArcaRolada" ValueChanged="@(v => UpdateArcaRoladaAsync(v))" Label="Número rolado (1d18)" Min="1" Max="18" Style="width:12em;" Class="mt-2" />
+                @if (_racialAbility?.ArcaRolada is not null)
+                {
+                    <MudText Class="mt-1">@(_racialAbility.ArcaNome ?? "Arca não cadastrada.")</MudText>
+                    @if (_racialAbility.ArcaDescricao is not null)
+                    {
+                        <MudText>@_racialAbility.ArcaDescricao</MudText>
+                    }
+                }
+            }
         </Section>
 
         <Section Title="Magias e Habilidades">
@@ -959,6 +971,7 @@
         _form.EstresseAtual = sheet.EstresseAtual;
         _form.Cobertura = sheet.Cobertura;
         _form.Ciclos = sheet.Ciclos;
+        _form.ArcaRolada = sheet.ArcaRolada;
         _form.VitalidadeMaximo = sheet.VitalidadeMaximo;
         _form.FocoMaximo = sheet.FocoMaximo;
         _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
@@ -996,7 +1009,7 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, null);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1255,6 +1268,13 @@
     private async Task LoadRacialAbilityAsync()
     {
         _racialAbility = await Http.GetFromJsonAsync<RacialAbilityResponse>($"character-sheets/{SheetId}/racial-ability");
+    }
+
+    private async Task UpdateArcaRoladaAsync(int? value)
+    {
+        _form.ArcaRolada = value;
+        await SaveIgnoringResultAsync();
+        await LoadRacialAbilityAsync();
     }
 
     private async Task LoadSpellAbilitiesAsync()
@@ -1602,6 +1622,7 @@
         public int? EstresseAtual { get; set; }
         public string Cobertura { get; set; } = "Nenhuma";
         public int Ciclos { get; set; }
+        public int? ArcaRolada { get; set; }
         public int VitalidadeMaximo { get; set; }
         public int FocoMaximo { get; set; }
         public int AdrenalinaMaximo { get; set; }
