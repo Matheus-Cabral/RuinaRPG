@@ -41,23 +41,34 @@
                 <MudText Color="Color.Secondary" Class="mt-3">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</MudText>
             }
 
-            <MudList T="string" Class="mt-3">
+            <MudGrid Class="mt-3">
                 @foreach (var sheet in _myCharacters)
                 {
-                    <MudListItem T="string" Href="@($"fichas/{sheet.Id}")">
-                        <ChildContent>
-                            @if (sheet.ImageUrl is not null)
-                            {
-                                <ClickableAvatarImage Src="@sheet.ImageUrl" Class="mr-3" />
-                            }
-                            <div>
-                                <MudText Typo="Typo.subtitle1">@(sheet.Nome ?? "(sem nome)")</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Nível @sheet.Nivel — @sheet.CampanhaNome</MudText>
-                            </div>
-                        </ChildContent>
-                    </MudListItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    @if (sheet.ImageUrl is not null)
+                                    {
+                                        <ClickableAvatarImage Src="@sheet.ImageUrl" Size="Size.Large" />
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Size="Size.Large" />
+                                    }
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@(sheet.Nome ?? "(sem nome)")</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nível @sheet.Nivel — @sheet.CampanhaNome</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"fichas/{sheet.Id}")">Abrir</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
                 }
-            </MudList>
+            </MudGrid>
         }
     }
 
