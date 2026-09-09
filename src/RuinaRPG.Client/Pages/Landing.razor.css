@@ -12,10 +12,11 @@
 
    The hero's background/border/text colors below are hardcoded to Tema Sol's own values (copied
    from theme.css's bare :root block) rather than the --rr-* custom properties, deliberately — the
-   logo artwork itself has a baked-in parchment background, and the hero is meant to read as one
-   physical piece of parchment regardless of which theme the rest of the app is in, not repaint
-   itself when Tema Lua is active. The CTA buttons are left alone (still theme-reactive Color.Primary)
-   since they're interactive controls, not part of the "parchment" surface.
+   logo artwork is transparent (no baked-in background of its own), so the hero itself supplies a
+   permanent parchment backdrop for it to sit on, and is meant to read as one physical piece of
+   parchment regardless of which theme the rest of the app is in, not repaint itself when Tema Lua
+   is active. The CTA buttons are left alone (still theme-reactive Color.Primary) since they're
+   interactive controls, not part of the "parchment" surface.
 
    .rr-hero itself is full-bleed (no max-width, edge-to-edge like the Section bands below it) —
    only its top/bottom border, not all four sides, since a full side border would sit flush against
