@@ -1,3 +1,3 @@
 namespace RuinaRPG.Contracts.NpcSheets;
 
-public record NpcArtifactResponse(string Id, string ArtifactItemId, string Nome, string TipoDeAlvo, string Alvo, int Valor);
+public record NpcArtifactResponse(string Id, string ArtifactItemId, string Nome, string TipoDeAlvo, string Alvo, int Valor, string? ImageUrl, string? Descricao);

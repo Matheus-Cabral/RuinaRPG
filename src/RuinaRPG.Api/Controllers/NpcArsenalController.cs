@@ -275,22 +275,34 @@ public class NpcArsenalController(RuinaRpgDbContext db) : ControllerBase
     private async Task<NpcWeaponResponse> ToWeaponResponseAsync(NpcWeapon weapon)
     {
         var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
-        return new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Tier?.ToString(), item.Peso, weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Tier?.ToString(), item.Peso, weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0, imageUrl, item.Descricao);
     }
 
     private async Task<NpcArmorSlotResponse> ToArmorSlotResponseAsync(NpcArmorSlot slot)
     {
         if (slot.ItemId is null)
-            return new NpcArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null);
+            return new NpcArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         var item = await db.Set<Armadura>().SingleAsync(a => a.Id == slot.ItemId);
-        return new NpcArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Penalidade, item.RequisitoVigor, item.Peso, slot.DurabilidadeAtual, item.DurabilidadeMaxima);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new NpcArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Penalidade, item.RequisitoVigor, item.Peso, slot.DurabilidadeAtual, item.DurabilidadeMaxima, imageUrl, item.Descricao);
     }
 
     private async Task<NpcShieldResponse> ToShieldResponseAsync(NpcShield shield)
     {
         var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
-        return new NpcShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Penalidade, item.RequisitoVigor, item.Peso, shield.IsEquipped, shield.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new NpcShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Penalidade, item.RequisitoVigor, item.Peso, shield.IsEquipped, shield.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0, imageUrl, item.Descricao);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

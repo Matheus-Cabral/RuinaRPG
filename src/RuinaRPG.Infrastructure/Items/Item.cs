@@ -8,4 +8,5 @@ public abstract class Item
     public decimal Peso { get; set; }
     public int Preco { get; set; }
     public Guid? ImageId { get; set; }
+    public string? Descricao { get; set; }
 }

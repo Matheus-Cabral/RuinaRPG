@@ -201,7 +201,7 @@
                     @foreach (var weapon in _weapons)
                     {
                         <tr>
-                            <td>@weapon.Nome</td>
+                            <td><ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" /></td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
                             <td>@(weapon.Dados ?? "—")</td>
@@ -251,7 +251,16 @@
                     {
                         <tr>
                             <td>@slot.Slot</td>
-                            <td>@(slot.Nome ?? "—")</td>
+                            <td>
+                                @if (slot.Nome is not null)
+                                {
+                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" />
+                                }
+                                else
+                                {
+                                    @:—
+                                }
+                            </td>
                             <td>@(slot.Categoria ?? "—")</td>
                             <td>@(slot.Defesa?.ToString() ?? "—")</td>
                             <td>@(slot.RF?.ToString() ?? "—")</td>
@@ -308,7 +317,7 @@
                     @foreach (var shield in _shields)
                     {
                         <tr>
-                            <td>@shield.Nome</td>
+                            <td><ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" /></td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
                             <td>@(shield.Penalidade ?? "—")</td>
@@ -457,7 +466,7 @@
                     @foreach (var spoil in _spoils)
                     {
                         <tr>
-                            <td>@spoil.Nome — Custo @spoil.Custo — Qtd @spoil.Qtd — Total @spoil.CustoTotal — DT @spoil.DT</td>
+                            <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /> — Custo @spoil.Custo — Qtd @spoil.Qtd — Total @spoil.CustoTotal — DT @spoil.DT</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpoilAsync(spoil.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -478,7 +487,7 @@
                         @foreach (var artifact in group)
                         {
                             <tr>
-                                <td>@artifact.Nome — Alvo @artifact.Alvo — Valor @artifact.Valor</td>
+                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" /> — Alvo @artifact.Alvo — Valor @artifact.Valor</td>
                                 <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
                             </tr>
                         }

@@ -370,3 +370,7 @@ A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece �
 > Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 6. Diário só listam Itens, entradas do Banco de Magias e Habilidades e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
 >
 > Um **GM** editando qualquer ficha (a própria, ou a de um jogador) continua com acesso irrestrito ao catálogo/banco/imagens, como hoje.
+
+# **R0004** - O nome de um Item nas tabelas de 3.a)-3.c) e 5.a)-5.b) abre um popup com sua Imagem e Descrição.
+
+**Descrição**: Nas tabelas de Armas, Armaduras (por slot), Escudos, Inventário e Artefatos (3.a)-3.c) e 5.a)-5.b), clicar no nome de um Item abre um popup exibindo a **Imagem** e a **Descrição** daquele Item, conforme cadastradas no catálogo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 a R0006 e R0009 — todos os 5 tipos de item têm um campo Descrição). Quando o Item não tem Imagem e/ou Descrição cadastradas, o popup mostra só o que existir (e "Sem descrição." no lugar da Descrição ausente).

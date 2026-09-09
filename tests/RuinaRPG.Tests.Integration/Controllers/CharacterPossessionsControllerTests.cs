@@ -66,18 +66,36 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
-    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco)
+    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco, string? imageId = null, string descricao = "Um item qualquer")
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("ItemGeral", nome, peso, preco, null, "Diversos", "Um item qualquer", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private static MultipartFormDataContent BuildImageUpload()
+    {
+        var content = new MultipartFormDataContent();
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        return content;
+    }
+
+    private async Task<string> UploadImageAsync(string token)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
     }
 
     private async Task<string> CreateArmaItemAsync(string gmToken, string nome)
@@ -160,6 +178,27 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
         artifact.TipoDeAlvo.Should().Be("Atributo");
         artifact.Alvo.Should().Be("Vigor");
         artifact.Valor.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Inventory_and_artifact_responses_include_the_catalog_items_ImageUrl_and_Descricao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("PossGmImg1", "possimg1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayerImg1", "possplayerimg1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var imageId = await UploadImageAsync(gmToken);
+        var itemGeralId = await CreateItemGeralAsync(gmToken, "Corda Encantada", 1.5m, 5, imageId, "Brilha levemente no escuro.");
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2, imageId, "Um anel de ouro maciço.");
+
+        var inventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemGeralId, 1)));
+        var inventoryBody = await inventoryResponse.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>();
+        inventoryBody!.ImageUrl.Should().StartWith("/images/");
+        inventoryBody.Descricao.Should().Be("Brilha levemente no escuro.");
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+        var artifactBody = await artifactResponse.Content.ReadFromJsonAsync<CharacterArtifactResponse>();
+        artifactBody!.ImageUrl.Should().StartWith("/images/");
+        artifactBody.Descricao.Should().Be("Um anel de ouro maciço.");
     }
 
     [Fact]

@@ -264,13 +264,24 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
     private async Task<CreatureSpoilResponse> ToSpoilResponseAsync(CreatureSpoil spoil)
     {
         var item = await db.Items.SingleAsync(i => i.Id == spoil.ItemId);
-        return new CreatureSpoilResponse(spoil.Id.ToString(), item.Id.ToString(), item.Nome, item.Preco, spoil.Qtd, item.Preco * spoil.Qtd, spoil.DT);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new CreatureSpoilResponse(spoil.Id.ToString(), item.Id.ToString(), item.Nome, item.Preco, spoil.Qtd, item.Preco * spoil.Qtd, spoil.DT, imageUrl, item.Descricao);
     }
 
     private async Task<CreatureArtifactResponse> ToArtifactResponseAsync(CreatureArtifact artifact)
     {
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
-        return new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     private static CreatureAffectionResponse ToAffectionResponse(CreatureAffection affection) =>

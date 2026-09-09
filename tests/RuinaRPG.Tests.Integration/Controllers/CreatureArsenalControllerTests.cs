@@ -50,25 +50,43 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaItemAsync(string gmToken, int durabilidadeMaxima)
+    private async Task<string> CreateArmaItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Arma", "Espada", 1.5m, 50, null, "Espadas", null, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("Arma", "Espada", 1.5m, 50, imageId, "Espadas", descricao, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaduraItemAsync(string gmToken, int durabilidadeMaxima)
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
+            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateEscudoItemAsync(string gmToken, int durabilidadeMaxima)
+    private async Task<string> CreateEscudoItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Escudo", "Broquel", 2m, 25, null, null, null, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
+            new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private static MultipartFormDataContent BuildImageUpload()
+    {
+        var content = new MultipartFormDataContent();
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        return content;
+    }
+
+    private async Task<string> UploadImageAsync(string token)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
     }
 
     [Fact]
@@ -215,6 +233,47 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         shield.BonusDefesa.Should().Be(2);
         shield.DurabilidadeAtual.Should().Be(10);
         shield.DurabilidadeMaxima.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Weapon_armor_slot_and_shield_responses_include_the_catalog_items_ImageUrl_and_Descricao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGmImg1", "creaturearsenalimg1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var imageId = await UploadImageAsync(gmToken);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, 20, imageId, "Uma lâmina antiga.");
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12, imageId, "Placas enferrujadas.");
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10, imageId, "Um broquel rachado.");
+
+        var weaponResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
+        var weaponBody = await weaponResponse.Content.ReadFromJsonAsync<CreatureWeaponResponse>();
+        weaponBody!.ImageUrl.Should().StartWith("/images/");
+        weaponBody.Descricao.Should().Be("Uma lâmina antiga.");
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateCreatureArmorSlotRequest(armorItemId)));
+        var armorSlotsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/armor-slots", gmToken));
+        var armorSlot = (await armorSlotsResponse.Content.ReadFromJsonAsync<List<CreatureArmorSlotResponse>>())!.Single(s => s.Slot == "Capacete");
+        armorSlot.ImageUrl.Should().StartWith("/images/");
+        armorSlot.Descricao.Should().Be("Placas enferrujadas.");
+
+        var shieldResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId)));
+        var shieldBody = await shieldResponse.Content.ReadFromJsonAsync<CreatureShieldResponse>();
+        shieldBody!.ImageUrl.Should().StartWith("/images/");
+        shieldBody.Descricao.Should().Be("Um broquel rachado.");
+    }
+
+    [Fact]
+    public async Task A_manual_natural_attack_weapon_has_no_ImageUrl_or_Descricao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGmImg2", "creaturearsenalimg2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken,
+            new AddCreatureWeaponRequest(null, "Garras", "Cortante", "1D6", 2)));
+
+        var body = await response.Content.ReadFromJsonAsync<CreatureWeaponResponse>();
+        body!.ImageUrl.Should().BeNull();
+        body.Descricao.Should().BeNull();
     }
 
     [Fact]

@@ -312,25 +312,38 @@ public class CreatureArsenalController(RuinaRpgDbContext db) : ControllerBase
         if (weapon.ItemId is not null)
         {
             var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
-            return new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Tier?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima);
+            var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+            return new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Tier?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima, imageUrl, item.Descricao);
         }
 
-        return new CreatureWeaponResponse(weapon.Id.ToString(), null, weapon.ManualNome!, weapon.ManualTipoDeDano?.ToString(), weapon.ManualDados, weapon.ManualDano, null, null, null, weapon.IsEquipped, null, null);
+        // A manual (natural attack) weapon has no catalog Item to read an ImageUrl/Descricao from.
+        return new CreatureWeaponResponse(weapon.Id.ToString(), null, weapon.ManualNome!, weapon.ManualTipoDeDano?.ToString(), weapon.ManualDados, weapon.ManualDano, null, null, null, weapon.IsEquipped, null, null, null, null);
     }
 
     private async Task<CreatureArmorSlotResponse> ToArmorSlotResponseAsync(CreatureArmorSlot slot)
     {
         if (slot.ItemId is null)
-            return new CreatureArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null);
+            return new CreatureArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         var item = await db.Set<Armadura>().SingleAsync(a => a.Id == slot.ItemId);
-        return new CreatureArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Penalidade, item.RequisitoVigor, item.Peso, slot.DurabilidadeAtual, item.DurabilidadeMaxima);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new CreatureArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Penalidade, item.RequisitoVigor, item.Peso, slot.DurabilidadeAtual, item.DurabilidadeMaxima, imageUrl, item.Descricao);
     }
 
     private async Task<CreatureShieldResponse> ToShieldResponseAsync(CreatureShield shield)
     {
         var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
-        return new CreatureShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Penalidade, item.RequisitoVigor, item.Peso, shield.IsEquipped, shield.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new CreatureShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Penalidade, item.RequisitoVigor, item.Peso, shield.IsEquipped, shield.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0, imageUrl, item.Descricao);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

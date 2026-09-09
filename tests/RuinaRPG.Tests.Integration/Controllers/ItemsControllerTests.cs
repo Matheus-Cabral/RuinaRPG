@@ -56,25 +56,25 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArma(string nome) =>
-        new("Arma", nome, 1.5m, 50, null, "Espadas", null,
+        new("Arma", nome, 1.5m, 50, null, "Espadas", "Uma lâmina curta e leve.",
             "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
             null, null, null, null, null, null,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArmadura(string nome) =>
-        new("Armadura", nome, 8m, 100, null, null, null,
+        new("Armadura", nome, 8m, 100, null, null, "Placas forjadas em aço temperado.",
             null, null, null, null, null, null, null, null, 15,
             "Pesada", 5, 2, 1, null, 12,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalEscudo(string nome) =>
-        new("Escudo", nome, 4m, 60, null, null, null,
+        new("Escudo", nome, 4m, 60, null, null, "Um pequeno broquel de madeira.",
             null, null, null, null, null, null, null, null, 20,
             "Leve", null, null, null, "Desvantagem em Furtividade", 8,
             3, null, null, null, null);
 
     private static CreateItemRequest MinimalArtefato(string nome) =>
-        new("Artefato", nome, 0.2m, 200, null, null, null,
+        new("Artefato", nome, 0.2m, 200, null, null, "Um anel gravado com runas antigas.",
             null, null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
             null, "Atributo", "Força", 2, null);
@@ -131,6 +131,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body.Tier.Should().Be("F");
         body.Dano.Should().Be(3);
         body.Subcategoria.Should().Be("Espadas");
+        body.Descricao.Should().Be("Uma lâmina curta e leve.");
     }
 
     [Fact]
@@ -146,6 +147,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
         body!.Tipo.Should().Be("Armadura");
         body.DurabilidadeMaxima.Should().Be(15);
+        body.Descricao.Should().Be("Placas forjadas em aço temperado.");
     }
 
     [Fact]
@@ -168,6 +170,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body.Penalidade.Should().Be("Desvantagem em Furtividade");
         body.RequisitoVigor.Should().Be(8);
         body.DurabilidadeMaxima.Should().Be(20);
+        body.Descricao.Should().Be("Um pequeno broquel de madeira.");
     }
 
     [Fact]
@@ -185,6 +188,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body.TipoDeAlvo.Should().Be("Atributo");
         body.Alvo.Should().Be("Força");
         body.Valor.Should().Be(2);
+        body.Descricao.Should().Be("Um anel gravado com runas antigas.");
     }
 
     [Fact]
@@ -368,6 +372,32 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var listResponse = await _client.SendAsync(listMessage);
         var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Single(i => i.Id == itemId).CapacidadeExtra.Should().Be(8m);
+    }
+
+    [Fact]
+    public async Task Update_an_Arma_changes_its_Descricao()
+    {
+        // Descricao lives on the shared Item base now, not just ItemGeral — this guards the other
+        // 4 Tipos (Arma here as the representative) against a regression back to ItemGeral-only.
+        var token = await RegisterGmAndGetTokenAsync("ItemGmDescricao1", "itemdescricao1@teste.com");
+        var createResponse = await PostItemAsync(token, MinimalArma("Espada Curta"));
+        var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+
+        var update = new UpdateItemRequest("Espada Curta", 1.5m, 50, null, "Espadas", "Agora com o fio recém-afiado.",
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+            null, null, null, null, null, null,
+            null, null, null, null, null);
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var listResponse = await _client.SendAsync(listMessage);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
+        body!.Single(i => i.Id == itemId).Descricao.Should().Be("Agora com o fio recém-afiado.");
     }
 
     [Fact]

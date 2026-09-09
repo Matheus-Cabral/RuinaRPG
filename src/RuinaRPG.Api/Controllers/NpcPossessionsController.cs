@@ -259,13 +259,24 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
     private async Task<NpcInventoryItemResponse> ToInventoryItemResponseAsync(NpcInventoryItem inventoryItem)
     {
         var item = await db.Items.SingleAsync(i => i.Id == inventoryItem.ItemId);
-        return new NpcInventoryItemResponse(inventoryItem.Id.ToString(), item.Id.ToString(), item.Nome, item.Peso, inventoryItem.Qtd, item.Peso * inventoryItem.Qtd);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new NpcInventoryItemResponse(inventoryItem.Id.ToString(), item.Id.ToString(), item.Nome, item.Peso, inventoryItem.Qtd, item.Peso * inventoryItem.Qtd, imageUrl, item.Descricao);
     }
 
     private async Task<NpcArtifactResponse> ToArtifactResponseAsync(NpcArtifact artifact)
     {
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
-        return new NpcArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0);
+        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        return new NpcArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     private static NpcAffectionResponse ToAffectionResponse(NpcAffection affection) =>

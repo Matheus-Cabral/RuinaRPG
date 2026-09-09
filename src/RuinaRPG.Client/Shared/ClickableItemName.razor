@@ -1,0 +1,31 @@
+@using MudBlazor
+
+@* Renders an item's Nome as clickable text; clicking opens a popup with its catalog image (if any)
+   and Descrição (if any) — same "click to reveal detail" idiom as ClickableImage, but keyed off the
+   item's name instead of an image thumbnail, for the many item tables (Armas/Armaduras/Escudos/
+   Artefatos/Inventário/Espólios) that show a name but never had anywhere to show art/flavor text. *@
+<span style="cursor:pointer;text-decoration:underline dotted" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
+    @Nome
+</span>
+
+<MudDialog @bind-Visible="_open">
+    <TitleContent>@Nome</TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrWhiteSpace(ImageUrl))
+        {
+            <MudImage Src="@ImageUrl" Alt="@Nome" Class="mb-3" />
+        }
+        <MudText>@(string.IsNullOrWhiteSpace(Descricao) ? "Sem descrição." : Descricao)</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public string Nome { get; set; } = "";
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public string? Descricao { get; set; }
+
+    private bool _open;
+}

@@ -63,6 +63,7 @@
 - **Alcance**: valor numérico em Hex (grid tático, ver "[[Ruína RPG - Sistema Básico]]" §4).
 - **Tipo de Dano**: dropdown com os valores Cortante, Perfurante, Contundente ou Mágico.
 - **Requisito de Atributo**: campo opcional (ex: `10 Dex`), presente em armas como arcos. Exibe travessão quando a arma não exige atributo mínimo.
+- **Descrição**: texto livre, mesmo comportamento de R0003.
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003.
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008).
 - **Imagem**: opcional, mesmo comportamento de R0003.
@@ -81,6 +82,7 @@
 - **RM (Redução Mágica)**: valor numérico por peça equipada (ver "Redução Mágica" em "[[Formulas]]").
 - **Penalidade**: text input (ex: `-3 Reflexo`). Exibe travessão quando a armadura não tem penalidade.
 - **Requisito de Vigor**: valor numérico mínimo de Vigor exigido para equipar sem penalidade adicional. Exibe travessão quando não houver requisito.
+- **Descrição**: texto livre, mesmo comportamento de R0003.
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003 (referente a uma peça).
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008), referente a uma peça.
 - **Imagem**: opcional, mesmo comportamento de R0003.
@@ -97,6 +99,7 @@
 - **Bônus de Defesa**: valor numérico (ex: `+10`).
 - **Penalidade**: text input, mesmo comportamento de R0005.
 - **Requisito de Vigor**: valor numérico mínimo exigido para equipar sem penalidade adicional. Exibe travessão quando não houver requisito.
+- **Descrição**: texto livre, mesmo comportamento de R0003.
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003.
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008).
 - **Imagem**: opcional, mesmo comportamento de R0003.
@@ -124,6 +127,7 @@
 - **Tipo de alvo**: dropdown fixo — **Atributo**, **Perícia**, **Sub-Atributo** ou **Dano** (ver "[[Requisitos - Ficha de Personagem]]" 5.b).
 - **Alvo**: dropdown cujas opções dependem do Tipo de alvo, mesmo comportamento de "[[Requisitos - Ficha de Personagem]]" 5.b.
 - **Valor**: campo numérico, o bônus concedido.
+- **Descrição**: texto livre, mesmo comportamento de R0003.
 - **Peso** e **Preço**: mesmo comportamento de R0003.
 - **Imagem**: opcional, mesmo comportamento de R0003.
 

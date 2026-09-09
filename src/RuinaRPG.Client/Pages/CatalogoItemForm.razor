@@ -39,6 +39,7 @@
         <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
         <MudNumericField T="decimal" @bind-Value="_form.Peso" For="@(() => _form.Peso)" Label="Peso" @bind-Value:after="NotifySavedAsync" />
         <MudNumericField T="int" @bind-Value="_form.Preco" For="@(() => _form.Preco)" Label="Preço (Ciclos)" @bind-Value:after="NotifySavedAsync" />
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
 
         <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
                               SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); if (ItemId is not null) NotifySavedAsync(); })"
@@ -49,7 +50,6 @@
     {
         <Section Title="Item Geral">
             <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="decimal?" @bind-Value="_form.CapacidadeExtra" For="@(() => _form.CapacidadeExtra)" Label="Capacidade Extra" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
