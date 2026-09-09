@@ -7,13 +7,24 @@
    that actually carries the Blazor CSS-isolation scope attribute. Every other rule here targets a
    class passed via Class="..." into a *child component* (MudText, MudStack) — those never receive
    the scope attribute themselves (same class of bug this app's NavMenu/Section files already ran
-   into), so each such rule hangs off ".rr-hero ::deep" instead of standing alone. */
+   into), so each such rule hangs off ".rr-hero ::deep" instead of standing alone.
+
+   The hero's background/border/text colors below are hardcoded to Tema Sol's own values (copied
+   from theme.css's bare :root block) rather than the --rr-* custom properties, deliberately — the
+   logo artwork itself has a baked-in parchment background, and the hero is meant to read as one
+   physical piece of parchment regardless of which theme the rest of the app is in, not repaint
+   itself when Tema Lua is active. The CTA buttons are left alone (still theme-reactive Color.Primary)
+   since they're interactive controls, not part of the "parchment" surface. */
 
 .rr-hero {
     text-align: center;
     max-width: 720px;
     margin: 0 auto var(--rr-space-5) auto;
-    padding-top: var(--rr-space-3);
+    padding: var(--rr-space-4) var(--rr-space-3);
+    border-radius: var(--rr-radius-lg);
+    background-color: #f6ecd9;
+    border: 1px solid #d9c39a;
+    box-shadow: 0 4px 24px rgba(59, 42, 26, 0.18);
 }
 
 .rr-hero-logo {
@@ -27,7 +38,7 @@
     font-family: var(--rr-font-heading);
     font-size: 1.15rem;
     line-height: 1.65;
-    color: var(--rr-text);
+    color: #3b2a1a;
 }
 
 .rr-hero ::deep .rr-hero-cta {
