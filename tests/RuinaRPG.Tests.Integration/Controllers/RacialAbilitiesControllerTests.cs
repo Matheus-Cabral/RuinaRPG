@@ -151,16 +151,25 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
-    public async Task ListRacialAbilities_by_a_linked_jogador_returns_that_GMs_overrides()
+    public async Task ListRacialAbilities_by_a_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RacialGm8", "racial8@teste.com");
         var playerToken = await RegisterJogadorTokenAsync(gmToken, "RacialPlayer8", "racialplayer8@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-abilities/Alora", gmToken, new UpdateRacialAbilityRequest("Custom", "Custom desc")));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/racial-abilities", playerToken));
 
-        var body = await response.Content.ReadFromJsonAsync<List<RacialAbilityEntryResponse>>();
-        body!.Single(e => e.Variante == "Alora").Nome.Should().Be("Custom");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListArcas_by_a_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialGm12", "racial12@teste.com");
+        var playerToken = await RegisterJogadorTokenAsync(gmToken, "RacialPlayer12", "racialplayer12@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

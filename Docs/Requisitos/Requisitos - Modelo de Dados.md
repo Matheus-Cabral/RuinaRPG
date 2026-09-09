@@ -213,6 +213,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
 | Cobertura | enum Nenhuma \| Parcial \| Completa | 2.b |
 | Ciclos | int | 5.a |
+| ArcaRolada | int, nullable | 4.a — só relevante quando `Linhagem` = Humano; resolvida contra `ArcaEntries` (seção 10). Mesma coluna existe em NpcSheets (6.2), sem diferença. |
 | LastDismissedLevelUpLevel | int, nullable | R0002 — até qual Nível a caixa de aviso já foi fechada |
 
 **CharacterAttributes** — 1 linha por atributo (8 por ficha).
@@ -474,3 +475,29 @@ A regra de PV/PF/PA não depende só de qual `Source*SheetId` está setada, mas 
 *(ver "[[Requisitos - Compêndio de Regras]]")*
 
 Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema RPG/`. A indexação para busca (R0001–R0003 daquele documento) é construída em memória/build-time a partir dos arquivos-fonte, não persistida como dado de aplicação. Exceção: **Traits** (seção 6.1) já existe como tabela porque é referenciada por FK de `CharacterTraits` — o Compêndio busca nela em vez de duplicar.
+
+  
+
+# 10. Habilidades Raciais
+
+*(ver "[[Requisitos - Habilidades Raciais]]")*
+
+**RacialAbilityOverrides** — sobrescrita do GM pro Nome/Descrição hardcoded de uma Variante (R0001); o padrão vale quando a linha não existe. Uma linha por (GM, Variante).
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| GmId | FK → Users |
+| Variante | enum (mesmo enum de 6.1, 7 valores) |
+| Nome | string |
+| Descricao | text |
+
+**ArcaEntries** — a "tabela de Arcas" (1d18) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 a 18) já preenchido; ausência de linha para um Roll = "não cadastrada".
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| GmId | FK → Users |
+| Roll | int, 1 a 18 |
+| Nome | string |
+| Descricao | text |

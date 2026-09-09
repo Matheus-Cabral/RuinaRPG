@@ -14,21 +14,19 @@ namespace RuinaRPG.Api.Controllers;
 /// GM-editable overrides for RacialAbilityLookup's hardcoded defaults (Ruína RPG - Sistema
 /// Básico.md §7), plus the "tabela de Arcas" that Sinir/Laonir's (Humano) racial ability
 /// references by name ("Role 1d18 na tabela de Arcas") but that no doc actually defines — it's
-/// free-form GM content, not a fixed system rule. Curating either is GM-only; reading both is
-/// open to a linked Jogador too, since CharacterSheetsController/NpcSheetsController's
-/// racial-ability endpoint reads from here.
+/// free-form GM content, not a fixed system rule. Both curating and browsing this page are
+/// GM-only — a Jogador never reaches these endpoints directly; they only see the already-resolved
+/// Nome/Descrição/Arca on their own sheet, which CharacterSheetsController/NpcSheetsController
+/// compute by querying RacialAbilityOverrides/ArcaEntries themselves, not through this controller.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Roles = "GM")]
 public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
 {
     [HttpGet("api/racial-abilities")]
     public async Task<ActionResult<List<RacialAbilityEntryResponse>>> ListRacialAbilities()
     {
-        var gmId = await ResolveEffectiveGmIdAsync();
-        if (gmId is null)
-            return Forbid();
-
+        var gmId = CurrentUserId();
         var overrides = await db.RacialAbilityOverrides.Where(o => o.GmId == gmId).ToListAsync();
 
         var responses = new List<RacialAbilityEntryResponse>();
@@ -49,10 +47,9 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpPut("api/racial-abilities/{variante}")]
-    [Authorize(Roles = "GM")]
     public async Task<IActionResult> UpdateRacialAbility(string variante, UpdateRacialAbilityRequest request)
     {
-        if (!Enum.TryParse<Variante>(variante, out var parsedVariante))
+        if (!Enum.TryParse<Variante>(variante, out var parsedVariante) || !Enum.IsDefined(parsedVariante))
             return BadRequest("Variante desconhecida.");
 
         var gmId = CurrentUserId();
@@ -72,10 +69,9 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpDelete("api/racial-abilities/{variante}")]
-    [Authorize(Roles = "GM")]
     public async Task<IActionResult> DeleteRacialAbilityOverride(string variante)
     {
-        if (!Enum.TryParse<Variante>(variante, out var parsedVariante))
+        if (!Enum.TryParse<Variante>(variante, out var parsedVariante) || !Enum.IsDefined(parsedVariante))
             return BadRequest("Variante desconhecida.");
 
         var gmId = CurrentUserId();
@@ -92,10 +88,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet("api/arcas")]
     public async Task<ActionResult<List<ArcaEntryResponse>>> ListArcas()
     {
-        var gmId = await ResolveEffectiveGmIdAsync();
-        if (gmId is null)
-            return Forbid();
-
+        var gmId = CurrentUserId();
         var entries = await db.ArcaEntries.Where(a => a.GmId == gmId).ToListAsync();
 
         var responses = new List<ArcaEntryResponse>();
@@ -108,7 +101,6 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpPut("api/arcas/{roll:int}")]
-    [Authorize(Roles = "GM")]
     public async Task<IActionResult> UpdateArca(int roll, UpdateArcaEntryRequest request)
     {
         if (roll is < 1 or > 18)
@@ -131,19 +123,4 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
-
-    /// <summary>
-    /// Same "whose library" resolution already used by ItemsController/SpellAbilityBankController:
-    /// a GM's own id, or their linked GM's id for a Jogador (a Jogador always belongs to exactly
-    /// one GM via InvitedByGmId). Null means the caller has no library to see.
-    /// </summary>
-    private async Task<Guid?> ResolveEffectiveGmIdAsync()
-    {
-        var callerId = CurrentUserId();
-        if (User.IsInRole("GM"))
-            return callerId;
-
-        var caller = await db.Users.FindAsync(callerId);
-        return caller?.InvitedByGmId;
-    }
 }

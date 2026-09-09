@@ -216,12 +216,13 @@ Exibe o valor do sub-atributo *Iniciativa* já calculado em 2.b (`Agilidade + Br
 
 Uma entrada fixa, não removível, pré-preenchida a partir da Linhagem/Variante escolhida em 1.a (ver §7 de "[[Ruína RPG - Sistema Básico]]" — ex: "Racial (Arca)" do Sinir/Laonir, "Racial (Lei da Selva)" do Phylac'tai/Es'Phylauc, "Racial (Sobre Voo)" do Yavos/Koroanos, "Racial (Amplificador Místico)" do Alóra). Campos:
 
-- *Nome*: preenchido automaticamente com o nome do Racial da Variante escolhida. Exibe travessão se nenhuma Variante foi escolhida.
+- *Nome*: preenchido a partir do Racial da Variante escolhida — o valor descrito em §7 de "[[Ruína RPG - Sistema Básico]]" por padrão, ou a sobrescrita definida pelo GM (ver "[[Requisitos - Habilidades Raciais]]" R0001). Exibe travessão se nenhuma Variante foi escolhida.
 - *Tipo*: fixo em **Racial**, não editável.
 - *Grau*: fixo em **9**, não editável.
 - *Gasto em PI*: fixo em **N/A** — a Habilidade Racial não é comprada com Pontos de Ignição.
 - *Custo*: valor em Foco para conjurar. O valor numérico específico de cada Habilidade Racial ainda não está definido nas regras — campo previsto porém não implementado até a regra existir.
-- *Descrição*: preenchida automaticamente com o texto do Racial correspondente (ver §7 de "[[Ruína RPG - Sistema Básico]]").
+- *Descrição*: preenchida a partir do texto do Racial correspondente (ver §7 de "[[Ruína RPG - Sistema Básico]]"), mesma sobrescrita do GM que *Nome* acima.
+- *Número rolado (1d18)*: campo numérico, exclusivo de personagens de Linhagem **Humano** (Sinir ou Laonir) — o jogador registra o resultado do 1d18 exigido pelo Racial "Role 1d18 na tabela de Arcas". A ficha então exibe a Arca correspondente (Nome/Descrição) definida pelo GM (ver "[[Requisitos - Habilidades Raciais]]" R0002); exibe "Arca não cadastrada." se o GM ainda não preencheu aquele número.
 
   
 
