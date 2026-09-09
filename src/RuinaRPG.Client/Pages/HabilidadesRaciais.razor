@@ -1,0 +1,127 @@
+@page "/habilidades-raciais"
+@attribute [Authorize(Roles = "GM")]
+@inject HttpClient Http
+@using Microsoft.AspNetCore.Authorization
+@using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Client.Shared.Fields
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Habilidades Raciais</MudText>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+}
+
+@foreach (var variante in new[] { "PhylacTai", "EsPhylauc", "Yavos", "Koroanos", "Alora" })
+{
+    var entry = _entries.SingleOrDefault(e => e.Variante == variante);
+    if (entry is not null)
+    {
+        <Section Title="@VarianteLabel(variante)">
+            <MudTextField T="string" Value="@entry.Nome" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Nome", v))" Label="Nome" />
+            <MudTextField T="string" Value="@entry.Descricao" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Descricao", v))" Label="Descrição" Lines="3" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@entry.IsDefault" OnClick="@(() => RestoreDefaultAsync(variante))">Restaurar padrão</MudButton>
+        </Section>
+    }
+}
+
+<Section Title="Sinir / Laonir (Humano)">
+    @foreach (var variante in new[] { "Sinir", "Laonir" })
+    {
+        var entry = _entries.SingleOrDefault(e => e.Variante == variante);
+        if (entry is not null)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-2">@VarianteLabel(variante)</MudText>
+            <MudTextField T="string" Value="@entry.Nome" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Nome", v))" Label="Nome" />
+            <MudTextField T="string" Value="@entry.Descricao" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Descricao", v))" Label="Descrição" Lines="3" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@entry.IsDefault" OnClick="@(() => RestoreDefaultAsync(variante))">Restaurar padrão</MudButton>
+        }
+    }
+
+    <MudText Typo="Typo.h6" Class="mt-4">Tabela de Arcas</MudText>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
+        <thead>
+            <tr>
+                <th>Roll</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var arca in _arcas)
+            {
+                <tr>
+                    <td>@arca.Roll</td>
+                    <td><MudTextField T="string" Value="@arca.Nome" ValueChanged="@(v => UpdateArcaAsync(arca.Roll, "Nome", v))" /></td>
+                    <td><MudTextField T="string" Value="@arca.Descricao" ValueChanged="@(v => UpdateArcaAsync(arca.Roll, "Descricao", v))" /></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Habilidades Raciais"),
+    };
+
+    private List<RacialAbilityEntryResponse> _entries = new();
+    private List<ArcaEntryResponse> _arcas = new();
+    private string? _errorMessage;
+
+    private static readonly Dictionary<string, string> Labels = LinhagemVarianteFields.VariantesPorLinhagem
+        .SelectMany(kv => kv.Value)
+        .ToDictionary(o => o.Valor, o => o.Rotulo);
+
+    private static string VarianteLabel(string variante) => Labels.GetValueOrDefault(variante, variante);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRacialAbilitiesAsync();
+        await LoadArcasAsync();
+    }
+
+    private async Task LoadRacialAbilitiesAsync()
+    {
+        _entries = await Http.GetFromJsonAsync<List<RacialAbilityEntryResponse>>("racial-abilities") ?? new();
+    }
+
+    private async Task LoadArcasAsync()
+    {
+        _arcas = await Http.GetFromJsonAsync<List<ArcaEntryResponse>>("arcas") ?? new();
+    }
+
+    private async Task UpdateRacialAbilityAsync(string variante, string field, object? value)
+    {
+        var current = _entries.Single(e => e.Variante == variante);
+        var nome = field == "Nome" ? value?.ToString() ?? current.Nome : current.Nome;
+        var descricao = field == "Descricao" ? value?.ToString() ?? current.Descricao : current.Descricao;
+
+        var response = await Http.PutAsJsonAsync($"racial-abilities/{variante}", new UpdateRacialAbilityRequest(nome, descricao));
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível salvar a habilidade racial.";
+        await LoadRacialAbilitiesAsync();
+    }
+
+    private async Task RestoreDefaultAsync(string variante)
+    {
+        await Http.DeleteAsync($"racial-abilities/{variante}");
+        await LoadRacialAbilitiesAsync();
+    }
+
+    private async Task UpdateArcaAsync(int roll, string field, object? value)
+    {
+        var current = _arcas.Single(a => a.Roll == roll);
+        var nome = field == "Nome" ? value?.ToString() ?? current.Nome ?? "" : current.Nome ?? "";
+        var descricao = field == "Descricao" ? value?.ToString() ?? current.Descricao ?? "" : current.Descricao ?? "";
+
+        var response = await Http.PutAsJsonAsync($"arcas/{roll}", new UpdateArcaEntryRequest(nome, descricao));
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível salvar a Arca.";
+        await LoadArcasAsync();
+    }
+}
