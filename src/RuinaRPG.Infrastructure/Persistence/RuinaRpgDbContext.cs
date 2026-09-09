@@ -45,6 +45,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
     public DbSet<Trait> Traits => Set<Trait>();
+    public DbSet<RacialAbilityOverride> RacialAbilityOverrides => Set<RacialAbilityOverride>();
+    public DbSet<ArcaEntry> ArcaEntries => Set<ArcaEntry>();
     public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
     public DbSet<CharacterTrait> CharacterTraits => Set<CharacterTrait>();
     public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
@@ -138,6 +140,24 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(i => i.ImageId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<RacialAbilityOverride>(entity =>
+        {
+            entity.HasIndex(o => new { o.GmId, o.Variante }).IsUnique();
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(o => o.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ArcaEntry>(entity =>
+        {
+            entity.HasIndex(a => new { a.GmId, a.Roll }).IsUnique();
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(a => a.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<SpellAbilityBankEntry>(entity =>
