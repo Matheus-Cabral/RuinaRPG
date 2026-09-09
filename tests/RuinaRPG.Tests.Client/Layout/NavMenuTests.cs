@@ -33,4 +33,25 @@ public class NavMenuTests : MudBunitContext
         cut.FindAll("a").Count.Should().Be(3);
         cut.FindAll("div[tabindex]").Count.Should().Be(0);
     }
+
+    [Fact]
+    public void Authenticated_NavLinks_show_Painel_instead_of_Inicio()
+    {
+        // A logged-in user (GM or Jogador — this fake authorization double doesn't discriminate
+        // by role, only by overall Authorized/Unauthorized state) should see "Painel" as their
+        // home link in the sidebar, not the anonymous "Início" landing-page link.
+        Services.AddAuthorizationCore();
+        Services.AddSingleton<IAuthorizationService>(new BunitAuthorizationService(AuthorizationState.Authorized));
+        Services.AddBlazoredLocalStorage();
+        Services.AddScoped<AuthStateService>();
+        Services.AddScoped<TokenAuthenticationStateProvider>();
+        Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<TokenAuthenticationStateProvider>());
+        Services.AddScoped(_ => new HttpClient());
+
+        var cut = Render<CascadingAuthenticationState>(p => p
+            .AddChildContent<NavMenu>());
+
+        cut.FindAll("a").Should().NotContain(a => a.TextContent.Trim() == "Início");
+        cut.FindAll("a").Should().Contain(a => a.TextContent.Trim() == "Painel");
+    }
 }

@@ -12,14 +12,14 @@
     navigation (including browser back/forward). Only "Sair", which has no Href, keeps an OnClick.
 *@
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All">Início</MudNavLink>
-
     <AuthorizeView>
         <NotAuthorized>
+            <MudNavLink Href="" Match="NavLinkMatch.All">Início</MudNavLink>
             <MudNavLink Href="login">Entrar</MudNavLink>
             <MudNavLink Href="cadastro">Cadastrar</MudNavLink>
         </NotAuthorized>
         <Authorized>
+            <MudNavLink Href="painel">Painel</MudNavLink>
             <AuthorizeView Roles="GM" Context="gmContext">
                 <Authorized>
                     <MudNavLink Href="painel/convites">Convidar Jogador</MudNavLink>
