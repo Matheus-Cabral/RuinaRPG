@@ -1,6 +1,7 @@
 @page "/campanhas/{CampaignId}/jogador"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.Diary
 @using MudBlazor
 
 <MudText Typo="Typo.h3">Minha Campanha</MudText>
@@ -104,6 +105,33 @@
         </Section>
     </MudTabPanel>
 
+    <MudTabPanel Text="Notas Secretas">
+        <MudTimeline TimelinePosition="TimelinePosition.Left">
+            @foreach (var note in _secretNotes)
+            {
+                <MudTimelineItem Color="Color.Primary">
+                    <ItemContent>
+                        <MudCard>
+                            <MudCardContent>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@note.CreatedAt.ToString("g")</MudText>
+                                <MudText>@note.Texto</MudText>
+                                @if (note.ImageUrls.Count > 0)
+                                {
+                                    <div class="mt-1">
+                                        @foreach (var url in note.ImageUrls)
+                                        {
+                                            <ClickableImage Src="@url" Width="100" Class="mr-1" />
+                                        }
+                                    </div>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </ItemContent>
+                </MudTimelineItem>
+            }
+        </MudTimeline>
+    </MudTabPanel>
+
     <MudTabPanel Text="Anexos Públicos">
         <MudSimpleTable Dense="true" Hover="true">
             <tbody>
@@ -128,9 +156,10 @@
     [Parameter] public string CampaignId { get; set; } = "";
 
     private PlayerCampaignViewResponse _view = new(new(), new(), new());
+    private List<SecretNoteResponse> _secretNotes = new();
     private string? _errorMessage;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync() => Task.WhenAll(LoadAsync(), LoadSecretNotesAsync());
 
     private async Task LoadAsync()
     {
@@ -143,5 +172,10 @@
 
         _view = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>() ?? _view;
         _errorMessage = null;
+    }
+
+    private async Task LoadSecretNotesAsync()
+    {
+        _secretNotes = await Http.GetFromJsonAsync<List<SecretNoteResponse>>($"campaigns/{CampaignId}/secret-notes") ?? new();
     }
 }
