@@ -11,6 +11,7 @@ using RuinaRPG.Domain.Enums;
 using RuinaRPG.Domain.Invites;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Identity;
+using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -55,6 +56,13 @@ public class AuthController(
             var result = await userManager.CreateAsync(user, request.Senha);
             if (!result.Succeeded)
                 return BadRequest(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+            // Catálogo "Exemplo de dados" convention: every GM starts with the transcribed
+            // ruina-itens.docx catalog (DefaultCatalogItems), editable/deletable like any other
+            // item from the moment it's created (Catálogo R0007). GMs that existed before this
+            // feature are backfilled separately — see DefaultCatalogSeeder.SeedMissingAsync in
+            // Program.cs.
+            await DefaultCatalogSeeder.SeedForNewGmAsync(db, user.Id);
 
             return Created(string.Empty, await IssueTokensAsync(user));
         }

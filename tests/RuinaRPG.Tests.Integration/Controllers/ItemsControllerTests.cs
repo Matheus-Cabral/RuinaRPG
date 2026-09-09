@@ -278,16 +278,19 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
     [Fact]
     public async Task List_can_filter_by_partial_Nome_case_insensitively()
     {
+        // "Cerimonial" doesn't appear in any DefaultCatalogItems name (unlike "Espada", which the
+        // new GM's seeded catalog already has plenty of — see DefaultCatalogSeeder), so filtering
+        // by it stays a clean single-match test regardless of the GM's starting catalog.
         var token = await RegisterGmAndGetTokenAsync("ItemGmFilter3", "itemfilter3@teste.com");
         await PostItemAsync(token, MinimalItemGeral("Corda Resistente"));
-        await PostItemAsync(token, MinimalArma("Espada Longa"));
+        await PostItemAsync(token, MinimalArma("Espada Cerimonial"));
 
-        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?nome=espada");
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?nome=cerimonial");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var response = await _client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
-        body!.Should().ContainSingle(i => i.Nome == "Espada Longa");
+        body!.Should().ContainSingle(i => i.Nome == "Espada Cerimonial");
     }
 
     [Fact]

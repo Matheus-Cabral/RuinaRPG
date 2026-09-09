@@ -2,6 +2,7 @@ using RuinaRPG.Api.Hubs;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
+using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Domain.Rules;
@@ -200,6 +201,9 @@ if (args.Contains("--migrate"))
     var migrateCaracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
     var migrateSeedResult = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", migrateSeedResult.Inserted, migrateSeedResult.Updated);
+
+    var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
+    app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
     return;
 }
 
@@ -212,6 +216,9 @@ if (app.Environment.IsDevelopment())
     var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
     var seedResult = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", seedResult.Inserted, seedResult.Updated);
+
+    var catalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(db);
+    app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", catalogSeedCount);
 }
 
 app.Run();

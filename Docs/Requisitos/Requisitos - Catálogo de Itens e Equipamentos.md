@@ -10,6 +10,10 @@
 
   
 
+> **Catálogo inicial**: todo GM começa com esse mesmo levantamento (`ruina-itens.docx`) já cadastrado como itens de catálogo — nenhum tipo Artefato, já que o documento-fonte não descreve nenhum. Peso e Preço nascem em **0** e Durabilidade/RF/RM ficam **vazios** em todos eles, pois o documento não traz esses valores; um Escudo cujo "Req. Fortitude" a fonte descreve é gravado no campo Requisito de Vigor (R0006) — não existe um requisito de Fortitude separado no app. A partir daí esses itens são cadastros comuns: o GM edita ou exclui qualquer um deles como faria com um item criado do zero (R0007).
+
+  
+
 > **Visibilidade a jogadores**: o catálogo aqui descrito é a biblioteca central do GM. Tornar um item visível a jogadores é uma decisão tomada por Campanha, não por este catálogo — ver "[[Requisitos - Campanha]]".
 
   
