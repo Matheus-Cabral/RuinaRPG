@@ -43,12 +43,65 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Meus Companheiros">
-        <MudList T="string">
-            @foreach (var companheiro in _view.MeusCompanheiros)
-            {
-                <MudListItem T="string" Text="@($"{(companheiro.Nome ?? "(sem nome)")} ({(companheiro.Tipo == "Npc" ? "NPC" : "Criatura")})")" Href="@((companheiro.Tipo == "Npc" ? "npcs/" : "criaturas/") + companheiro.Id)" />
-            }
-        </MudList>
+        <Section Title="NPCs">
+            <MudGrid>
+                @foreach (var npc in _view.MeusCompanheiros.Where(c => c.Tipo == "Npc"))
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    @if (npc.ImageUrl is not null)
+                                    {
+                                        <ClickableAvatarImage Src="@npc.ImageUrl" Size="Size.Large" />
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Size="Size.Large" />
+                                    }
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@(npc.Nome ?? "(sem nome)")</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"npcs/{npc.Id}")">Abrir</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        </Section>
+
+        <Section Title="Criaturas">
+            <MudGrid>
+                @foreach (var criatura in _view.MeusCompanheiros.Where(c => c.Tipo == "Creature"))
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    @if (criatura.ImageUrl is not null)
+                                    {
+                                        <ClickableAvatarImage Src="@criatura.ImageUrl" Size="Size.Large" />
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Size="Size.Large" />
+                                    }
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@(criatura.Nome ?? "(sem nome)")</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"criaturas/{criatura.Id}")">Abrir</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Anexos Públicos">

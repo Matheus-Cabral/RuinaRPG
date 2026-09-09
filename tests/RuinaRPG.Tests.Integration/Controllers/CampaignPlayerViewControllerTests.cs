@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -215,6 +216,40 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
         npcEntry.Tipo.Should().Be("NpcSheet");
         npcEntry.Nome.Should().Be("Fido Npc");
         npcEntry.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PlayerView_MeusCompanheiros_includes_ImageUrl_and_Tipo_for_granted_Npc_and_Creature()
+    {
+        var setup = await BuildSetupAsync("Companion");
+        var (npcImageId, npcImageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
+        var (creatureImageId, creatureImageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
+
+        var grantNpcResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/grants", setup.GmToken,
+            new GrantSheetRequest(setup.PlayerId, "Npc", null)));
+        var npcId = (await grantNpcResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", setup.GmToken,
+            NpcUpdateWithNome("Fido Concedido") with { ImageId = npcImageId }));
+
+        var grantCreatureResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/grants", setup.GmToken,
+            new GrantSheetRequest(setup.PlayerId, "Creature", null)));
+        var creatureId = (await grantCreatureResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+        var creatureUpdate = new UpdateCreatureSheetRequest(creatureImageId, "Lobo Concedido", "Lobo", "Fisico", "Predador", "Terra",
+            "F", 3, 200, 5, 12, 8, 10, "Parcial");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", setup.GmToken, creatureUpdate));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        var npcCompanion = body!.MeusCompanheiros.Should().ContainSingle(c => c.Id == npcId).Subject;
+        npcCompanion.Tipo.Should().Be("Npc");
+        npcCompanion.Nome.Should().Be("Fido Concedido");
+        npcCompanion.ImageUrl.Should().Be(npcImageUrl);
+
+        var creatureCompanion = body.MeusCompanheiros.Should().ContainSingle(c => c.Id == creatureId).Subject;
+        creatureCompanion.Tipo.Should().Be("Creature");
+        creatureCompanion.Nome.Should().Be("Lobo Concedido");
+        creatureCompanion.ImageUrl.Should().Be(creatureImageUrl);
     }
 
     [Fact]

@@ -53,30 +53,27 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
             .ToListAsync();
         var minhasFichas = new List<CharacterSheetSummary>();
         foreach (var s in minhasFichasEntities)
-        {
-            string? imageUrl = null;
-            if (s.ImageId is not null)
-            {
-                var image = await db.Images.FindAsync(s.ImageId.Value);
-                imageUrl = image is not null ? $"/images/{image.Path}" : null;
-            }
-            minhasFichas.Add(new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel, imageUrl));
-        }
+            minhasFichas.Add(new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel, await ResolveImageUrlAsync(s.ImageId)));
 
-        var meusNpcs = await db.CampaignAttachments
+        var meusNpcsEntities = await db.CampaignAttachments
             .Where(a => a.CampaignId == campaignId && a.NpcSheetId != null)
             .Join(db.NpcSheets, a => a.NpcSheetId!.Value, s => s.Id, (a, s) => s)
             .Where(s => s.OwnerId == callerId)
-            .Select(s => new GrantedSheetSummary(s.Id.ToString(), "Npc", s.Nome))
             .Distinct()
             .ToListAsync();
-        var meusCriaturas = await db.CampaignAttachments
+        var meusCriaturasEntities = await db.CampaignAttachments
             .Where(a => a.CampaignId == campaignId && a.CreatureSheetId != null)
             .Join(db.CreatureSheets, a => a.CreatureSheetId!.Value, s => s.Id, (a, s) => s)
             .Where(s => s.OwnerId == callerId)
-            .Select(s => new GrantedSheetSummary(s.Id.ToString(), "Creature", s.Nome))
             .Distinct()
             .ToListAsync();
+
+        var meusNpcs = new List<GrantedSheetSummary>();
+        foreach (var s in meusNpcsEntities)
+            meusNpcs.Add(new GrantedSheetSummary(s.Id.ToString(), "Npc", s.Nome, await ResolveImageUrlAsync(s.ImageId)));
+        var meusCriaturas = new List<GrantedSheetSummary>();
+        foreach (var s in meusCriaturasEntities)
+            meusCriaturas.Add(new GrantedSheetSummary(s.Id.ToString(), "Creature", s.Nome, await ResolveImageUrlAsync(s.ImageId)));
 
         var attachments = await db.CampaignAttachments.Where(a => a.CampaignId == campaignId).ToListAsync();
         var anexosPublicos = new List<PublicAttachmentSummary>();
@@ -152,6 +149,15 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         }
 
         return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl);
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
