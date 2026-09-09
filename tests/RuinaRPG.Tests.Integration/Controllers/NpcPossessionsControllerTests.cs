@@ -132,6 +132,25 @@ public class NpcPossessionsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task UpdateInventoryItemQtd_sets_Qtd_and_recomputes_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGmQtd1", "npcpossqtd1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 1)));
+        var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<NpcInventoryItemResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmToken, 4));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
+        var updatedBody = await listResponse.Content.ReadFromJsonAsync<List<NpcInventoryItemResponse>>();
+        var item = updatedBody!.Single(i => i.Id == inventoryItemId);
+        item.Qtd.Should().Be(4);
+        item.Total.Should().Be(6m); // Peso (1.5) * Qtd (4)
+    }
+
+    [Fact]
     public async Task AddArtifact_links_the_item_and_list_returns_it_with_live_catalog_fields()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm4", "npcposs4@teste.com");
@@ -226,6 +245,9 @@ public class NpcPossessionsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var listInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOther));
         listInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var updateInventoryQtdResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmTokenOther, 3));
+        updateInventoryQtdResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var deleteInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}", gmTokenOther));
         deleteInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);

@@ -53,6 +53,22 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
         return responses;
     }
 
+    [HttpPut("inventory/{id}/qtd")]
+    public async Task<IActionResult> UpdateInventoryItemQtd(Guid sheetId, Guid id, [FromBody] int qtd)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var item = await db.NpcInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.NpcSheetId == sheetId);
+        if (item is null)
+            return NotFound();
+
+        item.Qtd = qtd;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("inventory/{id}")]
     public async Task<IActionResult> DeleteInventoryItem(Guid sheetId, Guid id)
     {

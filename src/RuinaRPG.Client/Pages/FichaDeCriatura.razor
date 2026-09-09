@@ -462,11 +462,25 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Espólio</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Custo</th>
+                        <th>Qtd</th>
+                        <th>Total</th>
+                        <th>DT</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var spoil in _spoils)
                     {
                         <tr>
-                            <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /> — Custo @spoil.Custo — Qtd @spoil.Qtd — Total @spoil.CustoTotal — DT @spoil.DT</td>
+                            <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /></td>
+                            <td>@spoil.Custo</td>
+                            <td><MudNumericField T="int?" Value="@spoil.Qtd" ValueChanged="@(v => UpdateSpoilQtdAsync(spoil.Id, v))" Style="width:5em; display:inline-flex;" /></td>
+                            <td>@spoil.CustoTotal</td>
+                            <td>@spoil.DT</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpoilAsync(spoil.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -995,6 +1009,13 @@
         _spoilForm.ItemId = "";
         _spoilForm.Qtd = 1;
         _spoilForm.DT = 0;
+        await LoadSpoilsAsync();
+    }
+
+    private async Task UpdateSpoilQtdAsync(string id, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var qtd))
+            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/spoils/{id}/qtd", qtd);
         await LoadSpoilsAsync();
     }
 

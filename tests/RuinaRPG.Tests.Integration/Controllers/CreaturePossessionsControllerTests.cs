@@ -134,6 +134,25 @@ public class CreaturePossessionsControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task UpdateSpoilQtd_sets_Qtd_and_recomputes_CustoTotal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreaturePossGmQtd1", "creaturepossqtd1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1m, 5);
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spoils", gmToken, new AddCreatureSpoilRequest(itemId, 1, 10)));
+        var spoilId = (await addResponse.Content.ReadFromJsonAsync<CreatureSpoilResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/spoils/{spoilId}/qtd", gmToken, 4));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/spoils", gmToken));
+        var updatedBody = await listResponse.Content.ReadFromJsonAsync<List<CreatureSpoilResponse>>();
+        var spoil = updatedBody!.Single(i => i.Id == spoilId);
+        spoil.Qtd.Should().Be(4);
+        spoil.CustoTotal.Should().Be(20); // Preco (5) * Qtd (4)
+    }
+
+    [Fact]
     public async Task AddArtifact_links_the_item_and_list_returns_it_with_live_catalog_fields()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreaturePossGm4", "creatureposs4@teste.com");
@@ -228,6 +247,9 @@ public class CreaturePossessionsControllerTests : IClassFixture<PostgresFixture>
 
         var listSpoilsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/spoils", gmTokenOther));
         listSpoilsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var updateSpoilQtdResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/spoils/{spoilId}/qtd", gmTokenOther, 3));
+        updateSpoilQtdResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var deleteSpoilResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/spoils/{spoilId}", gmTokenOther));
         deleteSpoilResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);

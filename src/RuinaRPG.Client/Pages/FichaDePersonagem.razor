@@ -621,11 +621,23 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Item</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Peso</th>
+                        <th>Qtd</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (var item in _inventory)
                     {
                         <tr>
-                            <td><ClickableItemName Nome="@item.Nome" ImageUrl="@item.ImageUrl" Descricao="@item.Descricao" /> — Peso @item.Peso — Qtd @item.Qtd — Total @item.Total</td>
+                            <td><ClickableItemName Nome="@item.Nome" ImageUrl="@item.ImageUrl" Descricao="@item.Descricao" /></td>
+                            <td>@item.Peso</td>
+                            <td><MudNumericField T="int?" Value="@item.Qtd" ValueChanged="@(v => UpdateInventoryItemQtdAsync(item.Id, v))" Style="width:5em; display:inline-flex;" /></td>
+                            <td>@item.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteInventoryItemAsync(item.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -1375,6 +1387,14 @@
 
         _inventoryForm.ItemId = "";
         _inventoryForm.Qtd = 1;
+        await LoadInventoryAsync();
+        await LoadTabs2And3Async();
+    }
+
+    private async Task UpdateInventoryItemQtdAsync(string id, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var qtd))
+            await Http.PutAsJsonAsync($"character-sheets/{SheetId}/inventory/{id}/qtd", qtd);
         await LoadInventoryAsync();
         await LoadTabs2And3Async();
     }

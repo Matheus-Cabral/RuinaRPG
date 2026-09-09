@@ -58,6 +58,22 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         return responses;
     }
 
+    [HttpPut("spoils/{id}/qtd")]
+    public async Task<IActionResult> UpdateSpoilQtd(Guid sheetId, Guid id, [FromBody] int qtd)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var spoil = await db.CreatureSpoils.FirstOrDefaultAsync(i => i.Id == id && i.CreatureSheetId == sheetId);
+        if (spoil is null)
+            return NotFound();
+
+        spoil.Qtd = qtd;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("spoils/{id}")]
     public async Task<IActionResult> DeleteSpoil(Guid sheetId, Guid id)
     {

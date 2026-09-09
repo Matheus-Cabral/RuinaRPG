@@ -56,6 +56,22 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         return responses;
     }
 
+    [HttpPut("inventory/{id}/qtd")]
+    public async Task<IActionResult> UpdateInventoryItemQtd(Guid sheetId, Guid id, [FromBody] int qtd)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var item = await db.CharacterInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.CharacterSheetId == sheetId);
+        if (item is null)
+            return NotFound();
+
+        item.Qtd = qtd;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpDelete("inventory/{id}")]
     public async Task<IActionResult> DeleteInventoryItem(Guid sheetId, Guid id)
     {

@@ -158,6 +158,26 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
     }
 
     [Fact]
+    public async Task UpdateInventoryItemQtd_sets_Qtd_and_recomputes_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("PossGmQtd1", "possqtd1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayerQtd1", "possplayerqtd1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", playerToken, 4));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
+        var item = body!.Single(i => i.Id == inventoryItemId);
+        item.Qtd.Should().Be(4);
+        item.Total.Should().Be(6m); // Peso (1.5) * Qtd (4)
+    }
+
+    [Fact]
     public async Task AddArtifact_links_the_item_and_list_returns_it_with_live_catalog_fields()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("PossGm4", "poss4@teste.com");
@@ -257,6 +277,9 @@ public class CharacterPossessionsControllerTests : IClassFixture<PostgresFixture
 
         var listInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", otherToken));
         listInventoryResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var updateInventoryQtdResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", otherToken, 3));
+        updateInventoryQtdResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var deleteInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}", otherToken));
         deleteInventoryResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
