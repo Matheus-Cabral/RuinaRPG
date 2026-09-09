@@ -146,10 +146,23 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null);
+            return new RacialAbilityResponse(null, null, null, null, null);
 
-        var ability = RacialAbilityLookup.For(sheet.Variante.Value);
-        return new RacialAbilityResponse(ability.Nome, ability.Descricao);
+        var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == sheet.Variante.Value);
+        var (nome, descricao) = over is not null
+            ? (over.Nome, over.Descricao)
+            : (RacialAbilityLookup.For(sheet.Variante.Value).Nome, RacialAbilityLookup.For(sheet.Variante.Value).Descricao);
+
+        string? arcaNome = null;
+        string? arcaDescricao = null;
+        if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null)
+        {
+            var arca = await db.ArcaEntries.FirstOrDefaultAsync(a => a.GmId == campaignGmId && a.Roll == sheet.ArcaRolada.Value);
+            arcaNome = arca?.Nome;
+            arcaDescricao = arca?.Descricao;
+        }
+
+        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao);
     }
 
     [HttpPut("api/character-sheets/{id}")]
@@ -218,9 +231,13 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.FocoAtual = Math.Min(request.FocoAtual, maximos.Foco);
         sheet.AdrenalinaAtual = Math.Min(request.AdrenalinaAtual, maximos.Adrenalina);
         sheet.EstresseAtual = Math.Min(request.EstresseAtual, maximos.Estresse);
+        if (request.ArcaRolada is < 1 or > 18)
+            return BadRequest("ArcaRolada deve estar entre 1 e 18.");
+
         sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
         sheet.PontosDePericiaBonusCritico = request.PontosDePericiaBonusCritico;
+        sheet.ArcaRolada = request.ArcaRolada;
 
         await db.SaveChangesAsync();
 
@@ -469,7 +486,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
-            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString());
+            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada);
     }
 
     /// <summary>

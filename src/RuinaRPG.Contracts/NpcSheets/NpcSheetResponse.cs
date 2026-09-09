@@ -39,4 +39,5 @@ public record NpcSheetResponse(
     int AdrenalinaMaximo,
     int EstresseMaximo,
     string? CampaignId,
-    string? ImageId);
+    string? ImageId,
+    int? ArcaRolada);

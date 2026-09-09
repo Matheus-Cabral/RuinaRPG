@@ -187,7 +187,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
-        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0);
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null);
 
     [Fact]
     public async Task Get_returns_the_sheet()
@@ -868,6 +868,61 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
         (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
+    }
+
+    [Fact]
+    public async Task RacialAbility_uses_the_GMs_override_instead_of_the_default_when_one_exists()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial2", "sheetracial2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerRacial2", "sheetplayerracial2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Racial 2");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos" }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-abilities/Yavos", gmToken, new RuinaRPG.Contracts.CharacterSheets.UpdateRacialAbilityRequest("Racial (Override)", "Texto do GM.")));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.Nome.Should().Be("Racial (Override)");
+        body.Descricao.Should().Be("Texto do GM.");
+    }
+
+    [Fact]
+    public async Task RacialAbility_resolves_the_Arca_for_a_Humano_sheet_that_has_rolled()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial3", "sheetracial3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerRacial3", "sheetplayerracial3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Racial 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/7", gmToken, new RuinaRPG.Contracts.CharacterSheets.UpdateArcaEntryRequest("A Chama Eterna", "Resistência ao fogo por 1 cena.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Sinir", ArcaRolada = 7 }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.ArcaRolada.Should().Be(7);
+        body.ArcaNome.Should().Be("A Chama Eterna");
+        body.ArcaDescricao.Should().Be("Resistência ao fogo por 1 cena.");
+    }
+
+    [Fact]
+    public async Task RacialAbility_reports_a_null_Arca_when_the_GM_hasnt_registered_that_roll()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial4", "sheetracial4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerRacial4", "sheetplayerracial4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Racial 4");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 12 }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.ArcaRolada.Should().Be(12);
+        body.ArcaNome.Should().BeNull();
+        body.ArcaDescricao.Should().BeNull();
     }
 
     [Fact]

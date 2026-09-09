@@ -27,4 +27,5 @@ public record UpdateNpcSheetRequest(
     int AdrenalinaAtual,
     int EstresseAtual,
     string Cobertura,
-    int Ciclos);
+    int Ciclos,
+    int? ArcaRolada);

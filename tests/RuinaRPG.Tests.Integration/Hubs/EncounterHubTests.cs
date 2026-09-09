@@ -84,7 +84,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
     private static UpdateNpcSheetRequest ValidNpcUpdate(string nome, int vitalidadeAtual) => new(
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100, null);
 
     private async Task<string> CreateCharacterSheetAsync(string gmToken, string campaignId, string playerId)
     {
@@ -96,7 +96,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Descrição de Teste",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
-        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100, 0);
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, vitalidadeAtual, 15, 8, 3, "Parcial", 100, 0, null);
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {

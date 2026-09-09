@@ -100,7 +100,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
     private static RuinaRPG.Contracts.NpcSheets.UpdateNpcSheetRequest NpcUpdateWithImage(string? imageId) => new(
         imageId, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
 
     private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest CreatureUpdateWithImage(string? imageId) => new(
         imageId, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra",

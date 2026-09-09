@@ -84,7 +84,7 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
 
     private static UpdateNpcSheetRequest NpcUpdateWithNome(string nome) => new(
         null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
 
     private async Task<string> CreateNpcSheetAsync(string gmToken, string nome)
     {

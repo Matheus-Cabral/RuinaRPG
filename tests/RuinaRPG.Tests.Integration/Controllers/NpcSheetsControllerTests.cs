@@ -97,7 +97,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private static UpdateNpcSheetRequest ValidUpdate() => new(
         null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
 
     [Fact]
     public async Task Create_without_a_token_returns_401()
@@ -401,6 +401,26 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
         (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
+    }
+
+    [Fact]
+    public async Task RacialAbility_resolves_the_Arca_for_a_Humano_sheet_that_has_rolled()
+    {
+        // NOTE: the plan brief's literal test text reused "NpcGmRacial1"/"npcracial1@teste.com" —
+        // the exact same credentials as the RacialAbility_is_null_before_a_Variante... test above,
+        // which shares this class's Postgres container/fixture. That would collide (duplicate
+        // email) and fail registration for an unrelated reason. Renumbered to Racial2 here,
+        // matching this file's own established naming convention.
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmRacial2", "npcracial2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/3", gmToken, new RuinaRPG.Contracts.CharacterSheets.UpdateArcaEntryRequest("Sombra Fugaz", "Some por 1 turno.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 3 }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.ArcaRolada.Should().Be(3);
+        body.ArcaNome.Should().Be("Sombra Fugaz");
     }
 
     [Fact]
