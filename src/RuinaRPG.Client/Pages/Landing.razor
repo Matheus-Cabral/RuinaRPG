@@ -1,10 +1,76 @@
 @page "/"
 @using MudBlazor
 
-<MudText Typo="Typo.h3">Ruína RPG</MudText>
-<MudText Class="mt-3">Um sistema de RPG de mesa de fantasia sombria, ambientado em Trevo — um mundo moldado por dois archaios rivais, Helônios (o Sol) e Nyxara (a Lua), cuja influência define até os corpos e poderes de seus povos. Humanos versáteis, Phylauc felinos e orgulhosos de sua honra, Nephrytes alados nascidos de uma ilha que voa, e os Ecônos — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua: todos convivem à sombra da Ruína. Crie seu personagem, junte-se a uma campanha, e escreva sua própria lenda nas cinzas do que restou.</MudText>
+<div class="rr-hero">
+    <img src="images/logo-grande.png" alt="Ruína RPG" class="rr-hero-logo" />
+    <MudText Class="rr-hero-synopsis">
+        Um sistema de RPG de mesa de fantasia sombria, ambientado em Trevo — um mundo moldado por dois archaios rivais, Helônios (o Sol) e Nyxara (a Lua), cuja influência define até os corpos e poderes de seus povos. Humanos versáteis, Phylauc felinos e orgulhosos de sua honra, Nephrytes alados nascidos de uma ilha que voa, e os Ecônos — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua: todos convivem à sombra da Ruína. Crie seu personagem, junte-se a uma campanha, e escreva sua própria lenda nas cinzas do que restou.
+    </MudText>
+    <MudStack Row="true" Spacing="3" Class="rr-hero-cta" Justify="Justify.Center">
+        <MudButton Href="/cadastro" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">Criar minha conta</MudButton>
+        <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">Entrar</MudButton>
+    </MudStack>
+</div>
 
-<MudStack Row="true" Spacing="2" Class="mt-4">
-    <MudButton Href="/cadastro" Variant="Variant.Filled" Color="Color.Primary">Cadastrar</MudButton>
-    <MudButton Href="/login" Variant="Variant.Outlined" Color="Color.Primary">Entrar</MudButton>
-</MudStack>
+<Section Title="As Quatro Linhagens">
+    <MudGrid>
+        @foreach (var lineage in Lineages)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">@lineage.Nome</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@lineage.Flavor</MudText>
+                        <MudStack Row="true" Spacing="1" Class="mt-3" Wrap="Wrap.Wrap">
+                            @foreach (var variant in lineage.Variantes)
+                            {
+                                <MudChip T="string" Size="Size.Small">@variant</MudChip>
+                            }
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</Section>
+
+<Section Title="O que você encontra no app">
+    <MudGrid>
+        @foreach (var feature in Features)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudIcon Icon="@feature.Icon" Color="Color.Primary" Size="Size.Large" />
+                        <MudText Typo="Typo.h6" Class="mt-2">@feature.Titulo</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@feature.Descricao</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</Section>
+
+@code {
+    private record Lineage(string Nome, string Flavor, string[] Variantes);
+    private record Feature(string Icon, string Titulo, string Descricao);
+
+    // Frases e nomes de variante extraídos de "Ruína RPG - Sistema Básico.md" §7 — não inventados.
+    private static readonly Lineage[] Lineages =
+    [
+        new("Humano", "Versáteis e numerosos, adaptam-se a qualquer caminho.", ["☀️ Sinir", "🌙 Laonir"]),
+        new("Phylauc", "Felinos humanoides que prezam pela honra, força e instinto selvagem.", ["☀️ Phylac'tai", "🌙 Es'Phylauc"]),
+        new("Nephrytes", "Pássaros humanoides nativos da ilha voadora, valorizam a liberdade acima de tudo.", ["☀️ Koroanos", "🌙 Yavos"]),
+        new("Ecônos", "Os \"Repatriados\" — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua.", ["🌙 Alóra"]),
+    ];
+
+    private static readonly Feature[] Features =
+    [
+        new(Icons.Material.Filled.Badge, "Fichas de Personagem", "Atributos, perícias, combate, magias e posses num só lugar, sempre salvo automaticamente."),
+        new(Icons.Material.Filled.Groups, "Campanhas", "Reúna seu grupo, conceda fichas de NPCs e criaturas, e mantenha o diário da sua história."),
+        new(Icons.Material.Filled.AutoStories, "Catálogo & Banco de Magias", "O acervo de itens, armas, armaduras, feitiços e habilidades que o GM monta para o seu mundo."),
+        new(Icons.Material.Filled.Bolt, "Gerenciador de Encontros", "Acompanhe iniciativa, turnos e condições de combate em tempo real."),
+        new(Icons.Material.Filled.MenuBook, "Compêndio de Regras", "Todas as regras do sistema, organizadas e pesquisáveis a qualquer momento."),
+        new(Icons.Material.Filled.Pets, "Bestiário & NPCs", "Um repositório de criaturas e personagens não-jogáveis prontos para suas sessões."),
+    ];
+}
