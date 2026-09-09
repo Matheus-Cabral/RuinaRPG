@@ -95,7 +95,7 @@
             <Section Title="Nível e Progressão">
                 <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
-                <MudText>Kill: @_form.Kill</MudText>
+                <MudText>Abate: @_form.Kill</MudText>
                 <MudText>Assistência: @_form.Assistencia</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifySavedAsync" />
             </Section>
