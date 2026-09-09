@@ -3,28 +3,39 @@
    app's existing Section/MudCard idiom untouched — MudChip/MudIcon already pick up --rr-primary
    etc. through the existing MudBlazor color bridge in theme.css, no extra CSS needed for them.
 
-   .rr-hero is a bare <div> Landing.razor authors directly, so it's the one element in this file
-   that actually carries the Blazor CSS-isolation scope attribute. Every other rule here targets a
-   class passed via Class="..." into a *child component* (MudText, MudStack) — those never receive
-   the scope attribute themselves (same class of bug this app's NavMenu/Section files already ran
-   into), so each such rule hangs off ".rr-hero ::deep" instead of standing alone.
+   .rr-hero and .rr-hero-inner are bare <div>s Landing.razor authors directly, so they're the
+   elements in this file that actually carry the Blazor CSS-isolation scope attribute. Every other
+   rule here targets a class passed via Class="..." into a *child component* (MudText, MudStack) —
+   those never receive the scope attribute themselves (same class of bug this app's NavMenu/Section
+   files already ran into), so each such rule hangs off ".rr-hero-inner ::deep" instead of standing
+   alone (::deep only needs a scoped ancestor somewhere above the target, not an immediate parent).
 
    The hero's background/border/text colors below are hardcoded to Tema Sol's own values (copied
    from theme.css's bare :root block) rather than the --rr-* custom properties, deliberately — the
    logo artwork itself has a baked-in parchment background, and the hero is meant to read as one
    physical piece of parchment regardless of which theme the rest of the app is in, not repaint
    itself when Tema Lua is active. The CTA buttons are left alone (still theme-reactive Color.Primary)
-   since they're interactive controls, not part of the "parchment" surface. */
+   since they're interactive controls, not part of the "parchment" surface.
+
+   .rr-hero itself is full-bleed (no max-width, edge-to-edge like the Section bands below it) —
+   only its top/bottom border, not all four sides, since a full side border would sit flush against
+   the viewport edge and read as a stray line rather than a frame. .rr-hero-inner is the readable
+   column: logo/synopsis/buttons stay capped at 720px and centered so the paragraph keeps a sane
+   line length regardless of how wide the outer band is. */
 
 .rr-hero {
     text-align: center;
-    max-width: 720px;
-    margin: 0 auto var(--rr-space-5) auto;
-    padding: var(--rr-space-4) var(--rr-space-3);
-    border-radius: var(--rr-radius-lg);
+    margin: 0 0 var(--rr-space-5) 0;
+    padding: var(--rr-space-5) var(--rr-space-3);
     background-color: #f6ecd9;
-    border: 1px solid #d9c39a;
+    border-top: 1px solid #d9c39a;
+    border-bottom: 1px solid #d9c39a;
     box-shadow: 0 4px 24px rgba(59, 42, 26, 0.18);
+}
+
+.rr-hero-inner {
+    max-width: 720px;
+    margin: 0 auto;
 }
 
 .rr-hero-logo {
@@ -34,13 +45,13 @@
     margin: 0 auto var(--rr-space-4) auto;
 }
 
-.rr-hero ::deep .rr-hero-synopsis {
+.rr-hero-inner ::deep .rr-hero-synopsis {
     font-family: var(--rr-font-heading);
     font-size: 1.15rem;
     line-height: 1.65;
     color: #3b2a1a;
 }
 
-.rr-hero ::deep .rr-hero-cta {
+.rr-hero-inner ::deep .rr-hero-cta {
     margin-top: var(--rr-space-4);
 }

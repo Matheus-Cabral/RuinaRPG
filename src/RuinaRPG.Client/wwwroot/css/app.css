@@ -2,8 +2,14 @@ h1:focus {
     outline: none;
 }
 
+/* MudBlazor's own .mud-main-content rule compensates for the fixed MudAppBar via
+   padding-top: var(--mud-appbar-height) — this stylesheet loads AFTER MudBlazor.min.css
+   (see index.html), so a bare "padding-top: 1.1rem" here has equal selector specificity
+   and wins the cascade, silently discarding that compensation and letting every page's
+   content start underneath the fixed app bar. Add to the framework's own value instead
+   of replacing it. */
 .content {
-    padding-top: 1.1rem;
+    padding-top: calc(var(--mud-appbar-height) + 1.1rem);
 }
 
 .valid.modified:not([type=checkbox]) {
