@@ -16,12 +16,23 @@ else if (_campaigns.Count == 0)
     <MudText Color="Color.Secondary" Class="mt-3">Você ainda não faz parte de nenhuma campanha.</MudText>
 }
 
-<MudList T="string" Class="mt-3">
+<MudGrid Class="mt-3">
     @foreach (var campaign in _campaigns)
     {
-        <MudListItem T="string" Text="@campaign.Nome" SecondaryText="@campaign.Descricao" Href="@($"campanhas/{campaign.Id}/jogador")" />
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard>
+                <MudCardMedia Image="@(campaign.ImageUrl ?? "")" Height="160" Style="@(campaign.ImageUrl is null ? "display:none" : null)" />
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">@campaign.Nome</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@campaign.Descricao</MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"campanhas/{campaign.Id}/jogador")">Abrir</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
     }
-</MudList>
+</MudGrid>
 
 @code {
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
