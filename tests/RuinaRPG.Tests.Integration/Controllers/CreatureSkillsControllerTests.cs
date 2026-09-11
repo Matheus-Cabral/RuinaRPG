@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -47,6 +48,14 @@ public class CreatureSkillsControllerTests : IClassFixture<PostgresFixture>, IAs
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
+    }
+
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     [Fact]
@@ -103,6 +112,25 @@ public class CreatureSkillsControllerTests : IClassFixture<PostgresFixture>, IAs
         var acrobacia = body!.Single(s => s.Pericia == "Acrobacia");
         acrobacia.AtributoEscolhido.Should().BeNull();
         acrobacia.Total.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task An_equipped_Pericia_Artefato_is_summed_into_that_Pericias_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureSkillGmArt1", "creatureskillart1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Forca", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Atletismo", gmToken,
+            new UpdateCreatureSkillRequest(9, "Forca")));
+
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Pericia", "Atletismo", 3);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/skills", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureSkillResponse>>();
+        body!.Single(s => s.Pericia == "Atletismo").Total.Should().Be(10); // modificador 3 + atributo 4 + artefato 3
     }
 
     [Fact]

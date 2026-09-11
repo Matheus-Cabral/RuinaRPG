@@ -375,6 +375,30 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     }
 
     /// <summary>
+    /// Ficha de Personagem 3.f: one read-only value per Tipo de Dano, each the sum of equipped
+    /// Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano — mirrors
+    /// "Modificador de dano [tipo] = Artefato" in Formulas.md.
+    /// </summary>
+    [HttpGet("api/character-sheets/{id}/modificador-de-dano")]
+    public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var artefatos = await GetArtifactBonusInputsAsync(id);
+        return new ModificadorDeDanoResponse(
+            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
+            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
+            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
+            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+    }
+
+    /// <summary>
     /// Every CharacterArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b
     /// has no separate equip/unequip toggle for Artefatos, so being on the sheet is being "equipped".
     /// Loaded once per top-level action and threaded through, rather than re-querying per formula term.

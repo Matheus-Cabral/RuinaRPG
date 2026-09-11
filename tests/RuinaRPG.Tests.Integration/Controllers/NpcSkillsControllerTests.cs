@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -47,6 +48,14 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
+    }
+
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     [Fact]
@@ -103,6 +112,25 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var acrobacia = body!.Single(s => s.Pericia == "Acrobacia");
         acrobacia.AtributoEscolhido.Should().BeNull();
         acrobacia.Total.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task An_equipped_Pericia_Artefato_is_summed_into_that_Pericias_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSkillGmArt1", "npcskillart1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gmToken,
+            new UpdateNpcSkillRequest(9, "Forca")));
+
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Pericia", "Atletismo", 3);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/skills", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcSkillResponse>>();
+        body!.Single(s => s.Pericia == "Atletismo").Total.Should().Be(10); // modificador 3 + atributo 4 + artefato 3
     }
 
     [Fact]

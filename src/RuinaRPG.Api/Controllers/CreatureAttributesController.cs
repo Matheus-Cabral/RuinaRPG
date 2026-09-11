@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -26,9 +27,11 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
             return NotFound();
 
         var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
+        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
         return attributes
             .Select(a => new CreatureAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0)))
+                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
             .ToList();
     }
 
@@ -50,6 +53,19 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses
+    /// 5.b has no equip/unequip toggle for Artefatos, so simply being on the sheet counts as
+    /// equipped. Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
+    /// </summary>
+    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+        await db.CreatureArtifacts
+            .Where(a => a.CreatureSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

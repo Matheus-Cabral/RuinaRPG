@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -70,6 +71,17 @@ public class NpcAttributesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Npc", null)));
         return (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
     }
+
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private Task<HttpResponseMessage> AddArtifactAsync(string gmToken, string sheetId, string artifactItemId) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
 
     [Fact]
     public async Task List_returns_8_attributes_all_zeroed()
@@ -159,5 +171,23 @@ public class NpcAttributesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcAttributeResponse>>();
         body!.Single(a => a.Atributo == "Forca").Total.Should().Be(6); // 5 + floor(3/2)
+    }
+
+    [Fact]
+    public async Task An_equipped_Atributo_Artefato_is_summed_into_that_Atributos_Total()
+    {
+        // Requisitos - Ficha de NPCs R0005: equipping an Artefato targeting an Atributo now feeds
+        // AttributeTotalCalculator.Total's Artefatos term for NPCs too (previously hardcoded 0).
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAttrGmArt1", "npcattrart1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken,
+            new UpdateNpcAttributeRequest(5, 3, false)));
+
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Atributo", "Forca", 2);
+        await AddArtifactAsync(gmToken, sheetId, artifactItemId);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<NpcAttributeResponse>>();
+        body!.Single(a => a.Atributo == "Forca").Total.Should().Be(8); // 5 + floor(3/2) + 2
     }
 }

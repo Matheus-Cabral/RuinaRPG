@@ -144,7 +144,7 @@ A ficha exibe uma lista fixa das Perícias do sistema: Acrobacia, Alquimia, Arca
 Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da tabela de níveis, então a soma acima eventualmente fica acima do máximo por um motivo legítimo), um campo dedicado permite adicionar ou subtrair a quantidade de pontos ganhos dessa forma (mesmo padrão do campo de XP em "Experiência atual", 1.b); esse valor é subtraído da soma de Gasto antes de compará-la ao total da tabela.
 - *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]".
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
-- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido` (ver 2.a), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
+- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
 
 3. **Combate**: armas e condutores, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo.
 
@@ -205,6 +205,16 @@ Campo previsto na ficha porém sem regra definida ainda no sistema. Não impleme
   
 
 Exibe o valor do sub-atributo *Iniciativa* já calculado em 2.b (`Agilidade + Bruto Prontidão + Artefato ou item`), somente leitura. O cálculo final de Iniciativa em jogo soma esse valor ao máximo do Dado da Cena atual (ver §5 de "[[Ruína RPG - Sistema Básico]]"), resolvido manualmente pelo jogador no momento da cena, fora da ficha.
+
+  
+
+### 3.f) Modificador de Dano
+
+  
+
+Quatro campos calculados, não editáveis, um por Tipo de Dano — **Cortante**, **Perfurante**, **Contundente** e **Arcano** (mesmos 4 valores do campo Tipo de Dano de uma Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]") — refletindo as fórmulas homônimas de "[[Formulas]]" (`Modificador de dano [tipo] = Artefato`). Cada um é a soma dos Valores de Artefatos equipados (5.b) cujo Tipo de alvo é Dano e cujo Alvo é aquele Tipo de Dano. Sem Artefatos equipados desse Tipo de alvo, o valor é **0**.
+
+  
 
 4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas e maestrias. Composta pelos subgrupos abaixo.
 

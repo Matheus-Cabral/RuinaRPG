@@ -8,6 +8,7 @@ using RuinaRPG.Api.Hubs;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -246,9 +247,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade);
-        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor);
-        var forca = await GetAttributeTotalAsync(id, Atributo.Forca);
+        var artefatos = await GetArtifactBonusInputsAsync(id);
+        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
+        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
+        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
 
         var brutoSkills = await db.NpcSkills
             .Where(s => s.NpcSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
@@ -293,15 +295,15 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: 0),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, pesoAtual, pesoMaximo),
+            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
             // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
             // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
             // numeric formula term today. Unlike Bruto above, this is a real, still-open gap.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: 0, penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm),
+            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
+            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
+            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo);
     }
@@ -311,11 +313,48 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// lookup + AttributeTotalCalculator.Total, rather than duplicating that logic a third time.
     /// Mirrors CharacterSheetsController.GetAttributeTotalAsync, scoped to NpcAttributes.
     /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
+        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
     }
+
+    /// <summary>
+    /// Ficha de Personagem 3.f (inherited by NPC): one read-only value per Tipo de Dano, each the
+    /// sum of equipped Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano.
+    /// Mirrors CharacterSheetsController.ModificadorDeDano.
+    /// </summary>
+    [HttpGet("{id}/modificador-de-dano")]
+    public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        var artefatos = await GetArtifactBonusInputsAsync(id);
+        return new ModificadorDeDanoResponse(
+            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
+            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
+            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
+            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+    }
+
+    /// <summary>
+    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
+    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
+    /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
+    /// </summary>
+    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+        await db.NpcArtifacts
+            .Where(a => a.NpcSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
 
     // The GM's whole NPC roster/library, not scoped to any one player — GM-only, same reasoning as Create.
     [HttpGet]
@@ -429,11 +468,12 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia);
+        var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos);
         var statusVida = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
         var statusFoco = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
-        var artefatoBonusParaAdrenalina = 0; // Artefatos com TipoDeAlvo=SubAtributo/Alvo="Adrenalina" — não modelado ainda
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
         var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);

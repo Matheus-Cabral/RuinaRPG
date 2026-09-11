@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -530,6 +531,26 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
     }
 
+    [Fact]
+    public async Task SubAttributes_sums_an_equipped_SubAtributo_Artefato_into_the_matching_term()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub9", "npcsub9@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "SubAtributo", "Esquiva Natural", 3, null)));
+        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos 0 + artefato 3 - 0 penalidade
+    }
+
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
@@ -698,8 +719,53 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(18);
         body.FocoMaximo.Should().Be(10);
-        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
+        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (nenhum equipado aqui → 0; ver o teste dedicado abaixo)
         body.EstresseMaximo.Should().Be(10); // flat
+    }
+
+    [Fact]
+    public async Task Get_computes_AdrenalinaMaximo_with_an_equipped_SubAtributo_Artefato()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmMax2", "npcmax2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
+        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
+    }
+
+    [Fact]
+    public async Task ModificadorDeDano_sums_equipped_Dano_Artefatos_per_TipoDeDano()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmDano1", "npcdano1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var cortanteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "Dano", "Cortante", 3, null)));
+        var cortanteItemId = (await cortanteResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        var arcanoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "Dano", "Arcano", 2, null)));
+        var arcanoItemId = (await arcanoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(cortanteItemId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(arcanoItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/modificador-de-dano", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body2 = await response.Content.ReadFromJsonAsync<ModificadorDeDanoResponse>();
+        body2!.Cortante.Should().Be(3);
+        body2.Arcano.Should().Be(2);
+        body2.Perfurante.Should().Be(0);
+        body2.Contundente.Should().Be(0);
     }
 
     [Fact]

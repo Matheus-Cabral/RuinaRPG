@@ -17,7 +17,14 @@ public class SkillFormulasTests
     [Fact]
     public void Total_adds_modificador_and_the_chosen_atributo_total()
     {
-        // "Total = Modificador + Total do Atributo escolhido" — Ficha de Personagem 2.d.
-        SkillFormulas.Total(modificador: 3, atributoTotal: 6).Should().Be(9);
+        // "Total = Modificador + Total do Atributo escolhido + Artefato(s)" — Ficha de Personagem
+        // 2.d, corrected to include the Artefato term R0009/5.b's Tipo de Alvo = Perícia feeds.
+        SkillFormulas.Total(modificador: 3, atributoTotal: 6, artefatos: 0).Should().Be(9);
+    }
+
+    [Fact]
+    public void Total_adds_the_artefato_bonus_targeting_this_pericia()
+    {
+        SkillFormulas.Total(modificador: 3, atributoTotal: 6, artefatos: 2).Should().Be(11);
     }
 }

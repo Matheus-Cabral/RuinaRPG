@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -70,6 +71,17 @@ public class CreatureAttributesControllerTests : IClassFixture<PostgresFixture>,
         var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Creature", null)));
         return (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
     }
+
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    private Task<HttpResponseMessage> AddArtifactAsync(string gmToken, string sheetId, string artifactItemId) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
 
     [Fact]
     public async Task List_returns_6_attributes_all_zeroed()
@@ -158,5 +170,24 @@ public class CreatureAttributesControllerTests : IClassFixture<PostgresFixture>,
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>();
         body!.Single(a => a.Atributo == "Forca").Total.Should().Be(6); // 5 + floor(3/2)
+    }
+
+    [Fact]
+    public async Task An_equipped_Atributo_Artefato_is_summed_into_that_Atributos_Total()
+    {
+        // Requisitos - Ficha de Criaturas R0005: equipping an Artefato targeting an Atributo now
+        // feeds AttributeTotalCalculator.Total's Artefatos term for Criaturas too (previously
+        // hardcoded 0).
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrGmArt1", "creatureattrart1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Forca", gmToken,
+            new UpdateCreatureAttributeRequest(5, 3, false)));
+
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Atributo", "Forca", 2);
+        await AddArtifactAsync(gmToken, sheetId, artifactItemId);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>();
+        body!.Single(a => a.Atributo == "Forca").Total.Should().Be(8); // 5 + floor(3/2) + 2
     }
 }
