@@ -1,3 +1,4 @@
+using RuinaRPG.Api;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
@@ -204,6 +205,28 @@ if (args.Contains("--migrate"))
 
     var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
+    return;
+}
+
+if (args.Contains("--grant-rules-auditor") || args.Contains("--revoke-rules-auditor"))
+{
+    var grant = args.Contains("--grant-rules-auditor");
+    var flagIndex = Array.IndexOf(args, grant ? "--grant-rules-auditor" : "--revoke-rules-auditor");
+    var email = flagIndex >= 0 && flagIndex + 1 < args.Length ? args[flagIndex + 1] : null;
+
+    if (string.IsNullOrWhiteSpace(email))
+    {
+        app.Logger.LogError("Uso: dotnet RuinaRPG.Api.dll --{Flag} <email>", grant ? "grant-rules-auditor" : "revoke-rules-auditor");
+        return;
+    }
+
+    using var rulesAuditorScope = app.Services.CreateScope();
+    var rulesAuditorDb = rulesAuditorScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+    var error = await RulesAuditorCli.SetRulesAuditorAsync(rulesAuditorDb, email, grant);
+    if (error is not null)
+        app.Logger.LogError("{Error}", error);
+    else
+        app.Logger.LogInformation("{Action} Auditor de Regras: {Email}", grant ? "Concedido" : "Revogado", email);
     return;
 }
 
