@@ -26,6 +26,7 @@
 | Nickname | string | |
 | Role | enum GM \| Jogador | |
 | InvitedByGmId | FK → Users, nullable | só em usuários Jogador; setado ao resgatar um InviteCode |
+| IsRulesAuditor | bool — concedido/revogado via `make grant-rules-auditor`/`revoke-rules-auditor` (ver "[[Requisitos - Auditoria de Regras]]" R0001) |
 
 **InviteCodes**
 
@@ -362,6 +363,10 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Custo | int |
 | Polaridade | enum Positiva \| Negativa |
+| IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Características.md |
+| IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
+| UpdatedByUserId | FK → Users, nullable |
+| UpdatedAt | DateTime, nullable |
 
 ## 6.2 NpcSheets — diferenças de CharacterSheets
 
@@ -513,3 +518,19 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Roll | int, 1 a 18 |
 | Nome | string |
 | Descricao | text |
+
+  
+
+# 11. Auditoria de Regras
+
+*(ver "[[Requisitos - Auditoria de Regras]]")*
+
+**RulebookDocumentOverrides** — sobrescrita do texto Markdown de um dos 3 documentos do Livro de Regras que não são a aba de Características (R0002); o padrão embutido no build vale quando a linha não existe. Uma linha por Slug (não por GM — vale pro servidor inteiro).
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Slug | string, único — "sistema-basico" \| "graus-e-circulos" \| "tabela-de-niveis" |
+| MarkdownText | text |
+| UpdatedByUserId | FK → Users |
+| UpdatedAt | DateTime |

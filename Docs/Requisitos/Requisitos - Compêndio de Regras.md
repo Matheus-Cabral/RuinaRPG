@@ -14,6 +14,10 @@
 
   
 
+> **Edição**: o conteúdo deixou de ser 100% fixo — ver "[[Requisitos - Auditoria de Regras]]" para como um GM designado Auditor de Regras pode editá-lo.
+
+  
+
 # **R0001** - O Compêndio deve indexar as regras do sistema para busca textual.
 
 **Descrição**: O conteúdo pesquisável cobre:

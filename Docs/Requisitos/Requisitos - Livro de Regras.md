@@ -6,6 +6,10 @@
 
   
 
+> **Edição**: o conteúdo deixou de ser 100% fixo — ver "[[Requisitos - Auditoria de Regras]]" para como um GM designado Auditor de Regras pode editá-lo (a aba de Características, em particular, passa a refletir o catálogo de "[[Características]]" em vez de uma cópia própria do texto).
+
+  
+
 > **Modelo de acesso**: GM e jogadores têm acesso de leitura.
 
   
