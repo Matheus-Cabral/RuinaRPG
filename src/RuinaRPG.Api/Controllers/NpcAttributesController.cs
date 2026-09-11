@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -29,9 +30,13 @@ public class NpcAttributesController(RuinaRpgDbContext db) : ControllerBase
         var attributes = (await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).ToListAsync())
             .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
             .ToList();
+
+        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+
         return attributes
             .Select(a => new NpcAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0)))
+                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
             .ToList();
     }
 
@@ -53,6 +58,19 @@ public class NpcAttributesController(RuinaRpgDbContext db) : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
+    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
+    /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
+    /// </summary>
+    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+        await db.NpcArtifacts
+            .Where(a => a.NpcSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

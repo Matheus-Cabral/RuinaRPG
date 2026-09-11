@@ -144,7 +144,7 @@ A ficha exibe uma lista fixa das Perícias do sistema: Acrobacia, Alquimia, Arca
 Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da tabela de níveis, então a soma acima eventualmente fica acima do máximo por um motivo legítimo), um campo dedicado permite adicionar ou subtrair a quantidade de pontos ganhos dessa forma (mesmo padrão do campo de XP em "Experiência atual", 1.b); esse valor é subtraído da soma de Gasto antes de compará-la ao total da tabela.
 - *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]".
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
-- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido` (ver 2.a), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
+- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
 
 3. **Combate**: armas e condutores, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo.
 

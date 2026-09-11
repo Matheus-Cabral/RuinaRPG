@@ -9,6 +9,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -180,11 +181,25 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// AttributeTotalCalculator.Total, rather than duplicating that logic. Mirrors
     /// NpcSheetsController.GetAttributeTotalAsync, scoped to CreatureAttributes/AtributoCriatura.
     /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
+        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
     }
+
+    /// <summary>
+    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses
+    /// 5.b has no equip/unequip toggle for Artefatos, so simply being on the sheet counts as
+    /// equipped. Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
+    /// </summary>
+    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+        await db.CreatureArtifacts
+            .Where(a => a.CreatureSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
 
     /// <summary>
     /// R0005 §2.b: "Sub-Atributos — mesmos campos e fórmulas do Personagem" for 6 of its 9 listed
@@ -204,9 +219,10 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade);
-        var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor);
-        var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca);
+        var artefatos = await GetArtifactBonusInputsAsync(id);
+        var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade, artefatos);
+        var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor, artefatos);
+        var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca, artefatos);
 
         var brutoSkills = await db.CreatureSkills
             .Where(s => s.CreatureSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
@@ -241,15 +257,15 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: 0),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: 0, pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m)),
+            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m)),
             // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
             // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
             // numeric formula term today. Same real, still-open gap as the Ficha de NPCs version.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: 0, penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: 0, cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: 0, armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: 0, armaduraMagica: armaduraRm),
+            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
+            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
+            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
+            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
             // Espólios (5.a) is loot dropped when defeated, not a carried inventory — out of scope
             // for this feature. See docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md.
             PesoAtual: null,
@@ -316,11 +332,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var kill = XpAwardCalculator.Kill(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia);
+        var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos);
         var statusVida = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
         var statusFoco = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
-        var artefatoBonusParaAdrenalina = 0; // Artefatos com TipoDeAlvo=SubAtributo/Alvo="Adrenalina" — não modelado ainda
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
         var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);

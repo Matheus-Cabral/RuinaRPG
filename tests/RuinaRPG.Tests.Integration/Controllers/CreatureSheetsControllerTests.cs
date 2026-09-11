@@ -316,7 +316,25 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(8);
         body.FocoMaximo.Should().Be(4);
-        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
+        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (nenhum equipado aqui → 0; ver o teste dedicado abaixo)
+    }
+
+    [Fact]
+    public async Task Get_computes_AdrenalinaMaximo_with_an_equipped_SubAtributo_Artefato()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmMaxArt1", "criaturamaxart1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
+        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
     }
 
     [Fact]
@@ -416,6 +434,26 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         body!.Iniciativa.Should().Be(7); // agilidade 4 + brutoProntidao 3 + 0 artefato
         body.EsquivaNatural.Should().Be(6); // agilidade 4 + brutoReflexos 2 + 0 artefatos - 0 penalidade
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
+    }
+
+    [Fact]
+    public async Task SubAttributes_sums_an_equipped_SubAtributo_Artefato_into_the_matching_term()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub9", "creaturesub9@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+            new UpdateCreatureAttributeRequest(4, 0, false)));
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "SubAtributo", "Esquiva Natural", 3, null)));
+        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos 0 + artefato 3 - 0 penalidade
     }
 
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)

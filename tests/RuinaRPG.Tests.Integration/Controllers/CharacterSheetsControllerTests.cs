@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -432,8 +433,29 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(18);
         body.FocoMaximo.Should().Be(10);
-        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (não modelado ainda → 0)
+        body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (nenhum equipado aqui → 0; ver o teste dedicado abaixo)
         body.EstresseMaximo.Should().Be(10); // flat
+    }
+
+    [Fact]
+    public async Task Get_computes_AdrenalinaMaximo_with_an_equipped_SubAtributo_Artefato()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmMax2", "sheetmax2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerMax2", "sheetplayermax2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Maximo Adrenalina");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
+        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
     }
 
     [Fact]

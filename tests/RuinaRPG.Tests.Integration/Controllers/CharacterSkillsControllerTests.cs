@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -65,6 +66,14 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
     [Fact]
     public async Task List_returns_39_skills_all_zeroed()
     {
@@ -123,6 +132,27 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
         var acrobacia = body!.Single(s => s.Pericia == "Acrobacia");
         acrobacia.AtributoEscolhido.Should().BeNull();
         acrobacia.Total.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task An_equipped_Pericia_Artefato_is_summed_into_that_Pericias_Total()
+    {
+        // Ficha de Personagem 2.d, corrected: Total = Modificador + Atributo + Artefato(s).
+        var gmToken = await RegisterGmAndGetTokenAsync("SkillGmArt1", "skillart1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayerArt1", "skillplayerart1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
+            new UpdateCharacterSkillRequest(9, "Forca")));
+
+        var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Pericia", "Atletismo", 3);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
+        body!.Single(s => s.Pericia == "Atletismo").Total.Should().Be(10); // modificador 3 + atributo 4 + artefato 3
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -27,16 +28,19 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
 
         var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
 
+        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+
         var attributeTotals = await db.CreatureAttributes
             .Where(a => a.CreatureSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: 0));
+            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
         return skills
             .Select(s =>
             {
                 var modificador = SkillFormulas.Modificador(s.Gasto);
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal)
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
                     : (int?)null;
                 return new CreatureSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
             })
@@ -66,6 +70,19 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses
+    /// 5.b has no equip/unequip toggle for Artefatos, so simply being on the sheet counts as
+    /// equipped. Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
+    /// </summary>
+    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+        await db.CreatureArtifacts
+            .Where(a => a.CreatureSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
+            .Where(i => i.TipoDeAlvo != null)
+            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .ToListAsync();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

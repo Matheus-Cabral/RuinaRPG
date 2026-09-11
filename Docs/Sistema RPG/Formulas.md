@@ -31,4 +31,4 @@ Status de Classe = Tabela
 Maestria = Gasto Maestria + Bruto perícia + Atributo
 
 Perícia Bruta = farmado / 3
-Modificador da perícia = Bruto + Atributo
+Modificador da perícia = Bruto + Atributo + Artefato
