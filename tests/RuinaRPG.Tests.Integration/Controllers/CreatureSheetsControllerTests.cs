@@ -212,6 +212,53 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task UpdateNivel_pulls_ExperienciaAtual_to_that_levels_minimum_XP()
+    {
+        // Real thresholds from "Tabelas de XP, Atributos, Características e EAP": Nível 4's is
+        // 500 — the XP that first reaches Nível 5.
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmNivel1", "criaturanivel1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmToken, 5));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        body!.Nivel.Should().Be(5);
+        body.ExperienciaAtual.Should().Be(500);
+    }
+
+    [Fact]
+    public async Task UpdateExperienciaAtual_pulls_Nivel_via_the_same_rule_as_Ficha_de_Personagem()
+    {
+        // 750 is Nível 5's own threshold — reaching it exactly already counts as Nível 6 (same
+        // "reaching it exactly already counts" rule NivelCalculator applies for Ficha de
+        // Personagem).
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmNivel2", "criaturanivel2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 750));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<CreatureSheetResponse>();
+        body!.ExperienciaAtual.Should().Be(750);
+        body.Nivel.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task UpdateNivel_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureGmNivelOwner3", "criaturanivelowner3@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmNivelOther3", "criaturanivelother3@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmTokenOther, 5));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Update_by_a_different_gm_returns_404()
     {
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureGmOwner6", "criaturaowner6@teste.com");

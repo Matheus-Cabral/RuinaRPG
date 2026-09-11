@@ -96,9 +96,60 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Cobertura = cobertura;
 
         await db.SaveChangesAsync();
+        await NotifyAffectedEncountersAsync(id);
 
+        return NoContent();
+    }
+
+    // Criaturas (unlike Ficha de Personagem, where Nível is calculated-only from Experiência
+    // Atual) keep Nível directly GM-editable — but the two fields still need to land on the same
+    // pair the XP-threshold table would derive from either alone (Requisitos - Ficha de
+    // Criaturas). The generic Update above can't apply that rule itself: it always receives both
+    // fields in one full-form submission, with no reliable way to tell "the GM just edited Nível"
+    // apart from "Nível simply wasn't touched and still reads its old value" (a resend that
+    // happens to equal the old value either way). These two endpoints exist so the client can say
+    // which field it actually means, by calling one or the other — see FichaDeCriatura.razor's
+    // Nível/Experiência Atual fields.
+    [HttpPut("{id}/nivel")]
+    public async Task<IActionResult> UpdateNivel(Guid id, [FromBody] int nivel)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        sheet.Nivel = nivel;
+        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, rules.XpPorNivel);
+        await db.SaveChangesAsync();
+        await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    [HttpPut("{id}/experiencia-atual")]
+    public async Task<IActionResult> UpdateExperienciaAtual(Guid id, [FromBody] int experienciaAtual)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        sheet.ExperienciaAtual = experienciaAtual;
+        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, rules.XpPorNivel);
+        await db.SaveChangesAsync();
+        await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    private async Task NotifyAffectedEncountersAsync(Guid creatureSheetId)
+    {
         var affectedEncounterIds = await db.EncounterParticipants
-            .Where(p => p.SourceCreatureSheetId == id)
+            .Where(p => p.SourceCreatureSheetId == creatureSheetId)
             .Select(p => p.EncounterId)
             .Distinct()
             .ToListAsync();
@@ -115,8 +166,6 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
                 logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
             }
         }
-
-        return NoContent();
     }
 
     [HttpDelete("{id}")]
