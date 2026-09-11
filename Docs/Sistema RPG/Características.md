@@ -8,6 +8,10 @@ Aqui estarão listadas as características presentes no universo do rpg, cada ca
 
 1 ponto: Saber ler e escrever é um conhecimento destinado a um número um tanto limitado de pessoas. Essa característica permite ao jogador ser parte desse número. (Caso não a possua seu personagem é automaticamente um analfabeto. Oque não o impede de pagar por um escriba para ensiná-lo)
 
+### Amado por feras
+
+2 pontos: animais e criaturas selvagens não-inteligentes reagem ao Personagem com curiosidade e simpatia em vez de agressividade — não o atacam a menos que provocados ou famintos, e podem ser calmados com um Teste de Empatia c/ Animais em vantagem. (Por ora, exclusiva da Característica Gratuita do Alóra — ver "[[Ruína RPG - Sistema Básico]]" §7 — sujeita a revisão.)
+
 ### Ambidestria
 
 2 pontos: o Personagem pode manusear armas e instrumentos tanto com a mão direita quanto com a esquerda, com igual eficiência. Também pode usar duas armas brancas ao mesmo tempo, se forem pequenas o bastante para o uso com uma única mão. Estão fora dessa categoria arcos, bestas, lanças, a maioria dos machados e martelos e as grandes espadas. A ambidestria afeta apenas Perícias baseadas em Destreza ou Força, não em Agilidade.

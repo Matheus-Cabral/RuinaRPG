@@ -99,17 +99,19 @@ public class TraitSeedParserTests
     }
 
     [Fact]
-    public void Parse_extracts_exactly_69_traits_from_the_real_source_document()
+    public void Parse_extracts_exactly_70_traits_from_the_real_source_document()
     {
-        // 30 Positivas (24 traits, 5 of them multi-tier: Aparência Inofensiva x2, Arma ou Artefato
-        // Mágico x2, Dívida de Gratidão x3, Imunidade de Venenos x2, Sono Leve x2) +
+        // 31 Positivas (25 traits, 5 of them multi-tier: Aparência Inofensiva x2, Arma ou Artefato
+        // Mágico x2, Dívida de Gratidão x3, Imunidade de Venenos x2, Sono Leve x2 — "Amado por
+        // feras", added for the racial-characteristics feature, is single-tier) +
         // 39 Negativas (34 traits, 4 of them multi-tier: Deficiente Físico x3, Fetiche Material x2,
-        // Fobia x2, Mania de Perseguição x2) = 69. Counted by hand against the doc when this task was
+        // Fobia x2, Mania de Perseguição x2) = 70. Counted by hand against the doc when this task was
         // planned — a real change to Características.md (a trait added/removed/re-tiered) is expected
         // to move this number, and this test's failure is exactly the signal that should happen.
         var result = TraitSeedParser.Parse(RulesDataProvider.ReadResource("Caracteristicas.md"));
 
-        result.Should().HaveCount(69);
+        result.Should().HaveCount(70);
+        result.Should().Contain(t => t.Nome == "Amado por feras");
         result.Should().Contain(t => t.Nome == "Imunidade de Venenos (2 pontos)"); // proves Step 1's doc fix took effect
         result.Should().Contain(t => t.Nome == "Código de Honra"); // proves the "ponto cada:" qualifier is handled
     }
