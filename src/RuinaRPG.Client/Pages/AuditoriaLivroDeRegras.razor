@@ -1,0 +1,87 @@
+@page "/auditoria/livro-de-regras"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Services
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Livro de Regras</MudText>
+
+<MudAlert Severity="Severity.Info" Class="mt-3">
+    Editar aqui só muda o texto exibido nesta página do Livro de Regras — não afeta nenhum cálculo
+    usado nas fichas (Vitalidade, Foco, Graduação, XP por nível, etc.). Essas fórmulas continuam
+    fixas no sistema.
+</MudAlert>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+}
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    @foreach (var doc in _documents)
+    {
+        <Section Title="@Label(doc.Slug)">
+            <MudTextField T="string" Value="@doc.MarkdownText" ValueChanged="@(v => UpdateAsync(doc.Slug, v))" Label="Markdown" Lines="20" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@doc.IsDefault" OnClick="@(() => RestoreDefaultAsync(doc.Slug))">Restaurar padrão</MudButton>
+        </Section>
+    }
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Livro de Regras"),
+    };
+
+    private List<RulebookDocumentOverrideResponse> _documents = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+
+    private static string Label(string slug) => slug switch
+    {
+        "sistema-basico" => "Sistema Básico",
+        "graus-e-circulos" => "Graus & Círculos",
+        "tabela-de-niveis" => "Tabela de Níveis",
+        _ => slug,
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("rulebook-documents");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os documentos.";
+            return;
+        }
+
+        _documents = await response.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>() ?? new();
+    }
+
+    private async Task UpdateAsync(string slug, string? markdownText)
+    {
+        var response = await Http.PutAsJsonAsync($"rulebook-documents/{slug}", new UpdateRulebookDocumentOverrideRequest(markdownText ?? ""));
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível salvar o documento.";
+        await LoadAsync();
+    }
+
+    private async Task RestoreDefaultAsync(string slug)
+    {
+        await Http.DeleteAsync($"rulebook-documents/{slug}");
+        await LoadAsync();
+    }
+}
