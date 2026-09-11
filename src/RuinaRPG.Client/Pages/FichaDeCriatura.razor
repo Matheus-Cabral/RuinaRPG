@@ -93,8 +93,8 @@
             </Section>
 
             <Section Title="Nível e Progressão">
-                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifyNivelChangedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
                 <MudText>Abate: @_form.Kill</MudText>
                 <MudText>Assistência: @_form.Assistencia</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifySavedAsync" />
@@ -779,6 +779,56 @@
     {
         _autoSave.NotifyChanged(SaveIfValidAsync);
         return Task.CompletedTask;
+    }
+
+    // Nível and Experiência Atual go through their own dedicated endpoints, not the generic
+    // SaveIfValidAsync PUT above — that one submits every field at once, with no way to tell
+    // "the GM just edited Nível" apart from "Nível wasn't touched and still reads its old value".
+    // These two calls each say which field they mean, so the server can pull the other one to
+    // match via the same XP-threshold rule Ficha de Personagem uses (Requisitos - Ficha de
+    // Criaturas).
+    private Task NotifyNivelChangedAsync()
+    {
+        _autoSave.NotifyChanged(SaveNivelAsync);
+        return Task.CompletedTask;
+    }
+
+    private Task NotifyExperienciaAtualChangedAsync()
+    {
+        _autoSave.NotifyChanged(SaveExperienciaAtualAsync);
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SaveNivelAsync()
+    {
+        if (_form.Nivel is null)
+        {
+            _errorMessage = "Informe o Nível.";
+            return false;
+        }
+
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/nivel", _form.Nivel.Value);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+
+        await LoadSheetAsync();
+        return true;
+    }
+
+    private async Task<bool> SaveExperienciaAtualAsync()
+    {
+        if (_form.ExperienciaAtual is null)
+        {
+            _errorMessage = "Informe a Experiência Atual.";
+            return false;
+        }
+
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/experiencia-atual", _form.ExperienciaAtual.Value);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+
+        await LoadSheetAsync();
+        return true;
     }
 
     /// <summary>

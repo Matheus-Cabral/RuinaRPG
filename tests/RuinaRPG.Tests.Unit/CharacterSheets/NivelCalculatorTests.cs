@@ -68,4 +68,30 @@ public class NivelCalculatorTests
     {
         NivelCalculator.XpParaProximoNivel(1_000_000, Tabela).Should().BeNull();
     }
+
+    [Fact]
+    public void MinXpParaNivel_at_Nivel_1_is_zero()
+    {
+        NivelCalculator.MinXpParaNivel(1, Tabela).Should().Be(0);
+    }
+
+    [Fact]
+    public void MinXpParaNivel_returns_the_previous_levels_threshold()
+    {
+        // Nível 1's threshold (50) is the XP that first reaches Nível 2.
+        NivelCalculator.MinXpParaNivel(2, Tabela).Should().Be(50);
+        NivelCalculator.MinXpParaNivel(3, Tabela).Should().Be(150);
+    }
+
+    [Fact]
+    public void MinXpParaNivel_round_trips_with_Compute()
+    {
+        // Setting Nível to N and then re-deriving Nível from the XP that landed on should give
+        // back the same N — the invariant this whole feature relies on.
+        foreach (var nivel in new[] { 1, 2, 3 })
+        {
+            var xp = NivelCalculator.MinXpParaNivel(nivel, Tabela);
+            NivelCalculator.Compute(xp, Tabela).Should().Be(nivel);
+        }
+    }
 }

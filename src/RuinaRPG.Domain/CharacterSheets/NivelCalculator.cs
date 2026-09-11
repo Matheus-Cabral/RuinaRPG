@@ -36,4 +36,25 @@ public static class NivelCalculator
 
         return threshold - experienciaAtual;
     }
+
+    /// <summary>
+    /// Inverse of Compute: the minimum Experiência Atual that computes back to the given Nível.
+    /// Used where Nível (not XP) is the field being edited directly — NPCs and Criaturas keep
+    /// Nível directly editable (unlike Ficha de Personagem), so editing it needs a value to push
+    /// into Experiência Atual to keep the two fields consistent with each other.
+    /// </summary>
+    public static int MinXpParaNivel(int nivel, IReadOnlyList<XpPorNivel> tabela)
+    {
+        if (nivel <= 1)
+            return 0;
+
+        // Nível N's own row holds the threshold to reach N+1, not the threshold to reach N — that
+        // one is on the previous row (N-1), same "reaching it exactly already counts" rule as
+        // Compute above.
+        var previousRow = tabela.FirstOrDefault(r => r.Nivel == nivel - 1);
+        if (previousRow is null || !int.TryParse(previousRow.XpAbsoluto, out var threshold))
+            return 0; // no numeric previous threshold (shouldn't happen for a valid 1-50 Nível)
+
+        return threshold;
+    }
 }

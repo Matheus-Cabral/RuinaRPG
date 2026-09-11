@@ -38,3 +38,9 @@
 No máximo, dois campos podem ser liberados: **Nome** e **Imagem do Personagem** (ver 1.a de "[[Requisitos - Ficha de Personagem]]"). Ao anexar (ou depois, a qualquer momento), o GM liga ou desliga cada um dos dois independentemente — pode liberar só o Nome, só a Imagem, os dois, ou nenhum (equivalente a totalmente privado). Isso substitui, para anexos do tipo Ficha de NPC, o toggle único público/privado de R0008 da "[[Requisitos - Campanha]]".
 
 Quando a Imagem está liberada, ela também pode ser **referenciada** por um jogador em outros campos de imagem do sistema, em vez de reenviada (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0010).
+
+  
+
+# **R0005** - Editar Nível ou Experiência atual recalcula automaticamente o outro campo.
+
+**Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si.
