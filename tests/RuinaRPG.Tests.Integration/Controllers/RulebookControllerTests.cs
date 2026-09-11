@@ -44,11 +44,11 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_without_a_token_returns_401()
+    public async Task Get_without_a_token_returns_200()
     {
         var response = await _client.GetAsync("/api/rulebook");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]

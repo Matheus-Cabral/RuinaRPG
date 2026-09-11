@@ -18,7 +18,8 @@ public class NavMenuTests : MudBunitContext
     {
         // No token is ever stored in the fake local storage backing this test, so the real
         // AuthStateService/TokenAuthenticationStateProvider pipeline naturally resolves to the
-        // anonymous/unauthenticated state — only Início, Entrar and Cadastrar should render.
+        // anonymous/unauthenticated state — Início, Entrar, Cadastrar and Livro de Regras (the
+        // rulebook is readable without authentication, per "Requisitos - Livro de Regras") render.
         Services.AddAuthorizationCore();
         Services.AddSingleton<IAuthorizationService>(new BunitAuthorizationService(AuthorizationState.Unauthorized));
         Services.AddBlazoredLocalStorage();
@@ -30,8 +31,9 @@ public class NavMenuTests : MudBunitContext
         var cut = Render<CascadingAuthenticationState>(p => p
             .AddChildContent<NavMenu>());
 
-        cut.FindAll("a").Count.Should().Be(3);
+        cut.FindAll("a").Count.Should().Be(4);
         cut.FindAll("div[tabindex]").Count.Should().Be(0);
+        cut.FindAll("a").Should().Contain(a => a.TextContent.Trim() == "Livro de Regras");
     }
 
     [Fact]

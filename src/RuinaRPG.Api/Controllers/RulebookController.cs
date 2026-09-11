@@ -7,7 +7,7 @@ namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/rulebook")]
-[Authorize]
+[AllowAnonymous]
 public class RulebookController(IRulebookRenderer renderer) : ControllerBase
 {
     [HttpGet]

@@ -53,6 +53,29 @@
     color: #3b2a1a;
 }
 
+.rr-hero-cta-wrap {
+    /* Bare <div> authored directly in Landing.razor (same as .rr-hero/.rr-hero-inner above), so it
+       carries the scope attribute itself — no ::deep needed here, only on its children below.
+
+       width: fit-content shrink-wraps the column to its widest child's own (max-content) size —
+       under flex sizing that's measured before align-items: stretch resolves, so it lands on the
+       two-button row's natural width, not the rulebook button's. Stretch then applies second,
+       widening the rulebook button (width: auto via MudButton's FullWidth) to match that same
+       width — exactly "occupying the full width of these buttons" at any viewport size. */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: fit-content;
+    max-width: 100%;
+    margin: var(--rr-space-4) auto 0 auto;
+    gap: var(--rr-space-3);
+}
+
+.rr-hero-inner ::deep .rr-hero-rulebook-cta {
+    font-size: 1.1rem;
+    padding: 0.85rem 1.5rem;
+}
+
 .rr-hero-inner ::deep .rr-hero-cta {
-    margin-top: var(--rr-space-4);
+    margin-top: 0;
 }

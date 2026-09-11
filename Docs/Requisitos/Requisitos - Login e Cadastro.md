@@ -2,13 +2,13 @@
 
   
 
-> **Modelo de acesso**: Landing Page, Login e Cadastro são as únicas telas do sistema acessíveis **sem autenticação**. Toda outra tela exige um JWT válido (ver "[[Requisitos - Técnico]]" R0004).
+> **Modelo de acesso**: Landing Page, Login, Cadastro e o "[[Requisitos - Livro de Regras]]" são as únicas telas do sistema acessíveis **sem autenticação**. Toda outra tela exige um JWT válido (ver "[[Requisitos - Técnico]]" R0004).
 
   
 
 # **R0001** - A Landing Page apresenta o sistema e leva a Login ou Cadastro.
 
-**Descrição**: Uma página com uma explicação breve do sistema, uma sinopse da lore do RPG, e dois botões: **Cadastrar** e **Entrar**, levando respectivamente às páginas de Cadastro (R0003) e Login (R0002).
+**Descrição**: Uma página com uma explicação breve do sistema, uma sinopse da lore do RPG, e dois botões: **Cadastrar** e **Entrar**, levando respectivamente às páginas de Cadastro (R0003) e Login (R0002). Acima desses dois botões, em destaque, um terceiro botão leva ao "[[Requisitos - Livro de Regras]]" — a única das três ações que não exige cadastro ou login para ser usada.
 
   
 

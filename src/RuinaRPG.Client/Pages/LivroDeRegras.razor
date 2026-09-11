@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -90,7 +91,13 @@
 }
 
 @code {
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    // The page itself has no route guard (accessible to anonymous visitors, per "Requisitos -
+    // Livro de Regras" access model), but its first breadcrumb would otherwise always point at
+    // "painel" — a dead end for anyone not logged in. Route it to the Landing Page instead when
+    // the visitor is anonymous.
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs { get; set; } = new()
     {
         new("Painel", "painel"),
         new("Livro de Regras"),
@@ -102,6 +109,16 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = AuthState is null ? null : await AuthState;
+        if (authState?.User.Identity?.IsAuthenticated != true)
+        {
+            Crumbs = new()
+            {
+                new("Início", ""),
+                new("Livro de Regras"),
+            };
+        }
+
         var response = await Http.GetAsync("rulebook");
         if (!response.IsSuccessStatusCode)
         {

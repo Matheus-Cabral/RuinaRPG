@@ -6,7 +6,7 @@
 
   
 
-> **Modelo de acesso**: GM e jogadores têm acesso de leitura.
+> **Modelo de acesso**: GM e jogadores têm acesso de leitura — e, ao contrário do Compêndio, também visitantes não autenticados (ver "[[Requisitos - Login e Cadastro]]"), pelo menu lateral ou por um botão em destaque na Landing Page.
 
   
 
