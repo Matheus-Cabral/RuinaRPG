@@ -754,7 +754,13 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Especificacao")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsRacial")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Polaridade")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RacialVariante")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("TraitId")
@@ -822,6 +828,34 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("RacialAbilityOverrides");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.RacialTraitOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GratuitaOptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ObrigatoriaOptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Variante")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GmId", "Variante")
+                        .IsUnique();
+
+                    b.ToTable("RacialTraitOverrides");
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
@@ -1418,6 +1452,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("InvitedByGmId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRulesAuditor")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -2076,10 +2113,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Especificacao")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsRacial")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("NpcSheetId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Polaridade")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RacialVariante")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("TraitId")
@@ -2121,6 +2164,36 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("NpcWeapons");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.RulebookDocumentOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MarkdownText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("RulebookDocumentOverrides");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.Trait", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2134,6 +2207,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsCustomized")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2143,6 +2222,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("RequerEspecificacao")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -2667,6 +2752,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.RacialTraitOverride", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("GmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
@@ -3147,6 +3241,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("NpcSheetId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.RulebookDocumentOverride", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

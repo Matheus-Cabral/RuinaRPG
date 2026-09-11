@@ -76,4 +76,30 @@ public class AuthControllerMeTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Me_reports_IsRulesAuditor_false_by_default()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RulesAuditorGm1", "rulesauditorgm1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<MeResponse>();
+        body!.IsRulesAuditor.Should().BeFalse();
+    }
+
+    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
+    {
+        var message = new HttpRequestMessage(method, url);
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (body is not null)
+            message.Content = JsonContent.Create(body);
+        return message;
+    }
+
+    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+    }
 }

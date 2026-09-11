@@ -134,7 +134,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@skill.Pericia</td>
+                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>@skill.Modificador</td>
                             <td>
@@ -436,7 +436,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@skill.Pericia</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -454,7 +454,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @mastery.Pericia / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }

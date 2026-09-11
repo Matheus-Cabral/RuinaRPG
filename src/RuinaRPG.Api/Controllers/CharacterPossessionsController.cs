@@ -216,7 +216,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId);
+        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
@@ -228,8 +228,10 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         // either. Mirrors CharacterAttributesController's Atributos enforcement (2.a).
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        // Racial grants (IsRacial) are excluded — they cost 0 and never count toward this budget,
+        // no matter what the underlying Trait's own Custo is (Requisitos - Ficha de Personagem 5.d).
         var existingTotal = await db.CharacterTraits
-            .Where(t => t.CharacterSheetId == sheetId && t.Polaridade == trait.Polaridade)
+            .Where(t => t.CharacterSheetId == sheetId && t.Polaridade == trait.Polaridade && !t.IsRacial)
             .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
             .SumAsync();
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
@@ -256,10 +258,12 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         if (authError is not null)
             return authError;
 
-        var rows = await db.CharacterTraits
+        var rows = (await db.CharacterTraits
             .Where(t => t.CharacterSheetId == sheetId)
-            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CharacterTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
-            .ToListAsync();
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new { ct, t })
+            .ToListAsync())
+            .Select(x => ToTraitResponse(x.ct, x.t))
+            .ToList();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
@@ -283,6 +287,75 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    /// <summary>
+    /// Whether the sheet's current Variante still has an unresolved racial-characteristic choice
+    /// (Ruína RPG - Sistema Básico.md §7's "Característica Gratuita"/"Obrigatória") — Variante null
+    /// (not yet chosen) is never pending, there's simply nothing to resolve yet.
+    /// </summary>
+    [HttpGet("racial-traits/pending")]
+    public async Task<ActionResult<PendingRacialTraitChoiceResponse>> PendingRacialTraitChoice(Guid sheetId)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet!.Variante is null)
+            return new PendingRacialTraitChoiceResponse(false, [], []);
+
+        var variante = sheet.Variante.Value;
+        var campaignGmId = await CampaignGmIdAsync(sheet.CampaignId);
+        var over = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == variante);
+        var slots = RacialTraitOverrideResolver.Resolve(over, variante);
+
+        var existingCount = await db.CharacterTraits.CountAsync(t => t.CharacterSheetId == sheetId && t.IsRacial && t.RacialVariante == variante);
+        var resolved = RacialTraitChoiceResolver.IsResolved(slots, existingCount);
+
+        return new PendingRacialTraitChoiceResponse(!resolved,
+            slots.Gratuita.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList(),
+            slots.Obrigatoria.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList());
+    }
+
+    [HttpPost("racial-traits/resolve")]
+    public async Task<IActionResult> ResolveRacialTraitChoice(Guid sheetId, ResolveRacialTraitChoiceRequest request)
+    {
+        var authError = await CheckEditAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet!.Variante is null)
+            return BadRequest("A ficha ainda não tem uma Variante escolhida.");
+
+        var variante = sheet.Variante.Value;
+        var campaignGmId = await CampaignGmIdAsync(sheet.CampaignId);
+        var over = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == variante);
+        var slots = RacialTraitOverrideResolver.Resolve(over, variante);
+
+        var resolution = RacialTraitChoiceResolver.Resolve(slots, request.GratuitaTraitNome, request.ObrigatoriaTraitNome);
+        if (resolution.Error is not null)
+            return BadRequest(resolution.Error);
+
+        foreach (var grant in resolution.Grants!)
+        {
+            var trait = await db.Traits.FirstOrDefaultAsync(t => t.Nome == grant.TraitNome && !t.IsDeleted);
+            if (trait is null)
+                return BadRequest($"Característica \"{grant.TraitNome}\" não encontrada no catálogo.");
+
+            db.CharacterTraits.Add(new CharacterTrait
+            {
+                Id = Guid.NewGuid(), CharacterSheetId = sheetId, TraitId = trait.Id, Polaridade = trait.Polaridade,
+                Especificacao = grant.Especificacao, IsRacial = true, RacialVariante = variante,
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private async Task<Guid> CampaignGmIdAsync(Guid campaignId) =>
+        await db.Campaigns.Where(c => c.Id == campaignId).Select(c => c.GmId).SingleAsync();
 
     private async Task<ActionResult?> CheckEditAuthorizationAsync(Guid sheetId)
     {
@@ -324,7 +397,9 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
     private static CharacterTraitResponse ToTraitResponse(CharacterTrait characterTrait, Trait trait) =>
-        new(characterTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), characterTrait.Especificacao, trait.RequerEspecificacao);
+        new(characterTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao,
+            characterTrait.IsRacial ? 0 : trait.Custo, trait.Polaridade.ToString(), characterTrait.Especificacao,
+            trait.RequerEspecificacao, characterTrait.IsRacial);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

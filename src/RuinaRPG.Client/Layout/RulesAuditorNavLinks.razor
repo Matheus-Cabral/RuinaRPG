@@ -1,0 +1,23 @@
+@using MudBlazor
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Auth
+
+@if (_isRulesAuditor)
+{
+    <MudNavLink Href="auditoria/livro-de-regras">Auditoria: Livro de Regras</MudNavLink>
+    <MudNavLink Href="auditoria/caracteristicas">Auditoria: Características</MudNavLink>
+}
+
+@code {
+    private bool _isRulesAuditor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.GetAsync("auth/me");
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        var me = await response.Content.ReadFromJsonAsync<MeResponse>();
+        _isRulesAuditor = me?.IsRulesAuditor ?? false;
+    }
+}

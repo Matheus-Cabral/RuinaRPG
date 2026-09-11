@@ -44,3 +44,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0005** - Editar Nível ou Experiência atual recalcula automaticamente o outro campo.
 
 **Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si.
+
+# **R0006** - O popup de Característica Racial (5.d) é resolvido pelo GM, não pelo NPC.
+
+**Descrição**: O mecanismo é idêntico ao da Ficha de Personagem (ver "[[Requisitos - Ficha de Personagem]]" 5.d) — a Variante do NPC concede uma Característica Gratuita (e, para algumas Variantes, também uma Obrigatória) a custo 0, fora do orçamento de pontos. A única diferença é quem resolve a escolha: como a Ficha de NPC não tem jogador dono (R0001), é o **GM** quem vê e resolve o popup, não um jogador — mesma exceção de R0001 se aplica quando a ficha foi concedida a um jogador (aí é ele quem resolve, como na própria Ficha de Personagem).

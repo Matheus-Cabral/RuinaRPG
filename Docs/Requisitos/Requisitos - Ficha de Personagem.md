@@ -356,6 +356,14 @@ O orçamento de pontos de Característica é **5 de base na criação** (concedi
 
   
 
+**Características raciais**: além das linhas que o jogador escolhe manualmente, a Linhagem/Variante (1.a) concede automaticamente uma "Característica Gratuita" e, para algumas Variantes, também uma "Característica Obrigatória" (§7 de "[[Ruína RPG - Sistema Básico]]" — ex.: Phylac'tai/Es'Phylauc escolhem entre Código de Honra ou Crédulo; Alóra recebe Desvantagem Elemental especificada em Fogo, sem escolha). As opções de cada Variante são as definidas em "[[Requisitos - Habilidades Raciais]]" R0004 (padrão de §7, ou a sobrescrita do GM).
+
+- Assim que a Variante é definida (ou trocada) e ainda há uma escolha pendente para ela, um popup apresenta as opções de Característica Gratuita (sempre) e Obrigatória (quando a Variante tiver mais de uma opção — quando tiver só uma, ela é concedida direto, sem escolha) antes de consolidá-las na lista. O jogador pode fechar o popup sem escolher; ele reaparece na próxima vez que a ficha carregar, até ser resolvido.
+- Uma característica racial aparece na lista (Positivas ou Negativas, conforme sua Polaridade) como qualquer outra, mas com **Custo 0** — o Custo real da característica em "[[Características]]" não se aplica a ela, e ela não entra na soma do Total nem no orçamento de nenhuma das duas listas.
+- Trocar a Variante depois de já resolvida remove as características raciais da Variante anterior (elas não pertencem mais ao personagem) e reabre o popup para a nova Variante.
+
+  
+
 ## 6. Diário
 
   

@@ -25,3 +25,9 @@
 # **R0003** - O app nunca rola dados automaticamente.
 
 **Descrição**: Esta página e o campo "Número rolado" da Ficha (4.a) são só cadastro/referência — o app não simula a rolagem do 1d18 em nenhum momento. O jogador rola fisicamente (ou por qualquer outro meio fora do app) e digita o resultado na própria ficha.
+
+  
+
+# **R0004** - O GM pode sobrescrever as opções de Característica Gratuita/Obrigatória de qualquer uma das 7 Variantes.
+
+**Descrição**: Além do Racial (R0001), a página lista, para cada Variante, as duas listas de opções descritas em §7 de "[[Ruína RPG - Sistema Básico]]": **Característica Gratuita** (sempre 2 ou mais opções, escolhidas dentre "[[Características]]") e **Característica Obrigatória** (vazia para Sinir/Laonir — essa Variante não tem essa exigência; uma única opção fixa para Alóra; duas opções para as demais). Cada lista é editável — adicionar, remover ou trocar uma opção (Nome da característica + Especificação, quando a característica exigir uma) — com um botão "Restaurar padrão" que apaga a sobrescrita e volta às opções de §7. O valor de cada opção é o Nome exato de uma característica de "[[Características]]" — a página não valida a existência do nome ao salvar, só na ficha do jogador/NPC, ao tentar consolidar a escolha (ver "[[Requisitos - Ficha de Personagem]]" 5.d).

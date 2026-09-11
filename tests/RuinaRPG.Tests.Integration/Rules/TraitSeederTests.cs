@@ -130,4 +130,49 @@ public class TraitSeederTests : IClassFixture<PostgresFixture>
         alergia.Id.Should().Be(legacyId); // updated in place, not replaced
         alergia.RequerEspecificacao.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task SeedAsync_never_touches_a_row_flagged_IsCustomized_even_if_RequerEspecificacao_would_otherwise_change()
+    {
+        await using var db = await NewDbAsync();
+
+        // A GM edit of "Alergia": Descricao and RequerEspecificacao both diverge from what a
+        // fresh parse of Markdown would produce, and IsCustomized is set — the seeder must leave
+        // every field alone, including RequerEspecificacao (which it otherwise always syncs).
+        var customId = Guid.NewGuid();
+        db.Traits.Add(new Trait
+        {
+            Id = customId,
+            Nome = "Alergia",
+            Descricao = "Texto totalmente reescrito pelo Auditor de Regras.",
+            Custo = -1,
+            Polaridade = RuinaRPG.Domain.Enums.Polaridade.Negativa,
+            RequerEspecificacao = false,
+            IsCustomized = true,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await TraitSeeder.SeedAsync(db, Markdown);
+
+        result.Inserted.Should().Be(1); // only "Alfabetizado" is new
+        result.Updated.Should().Be(0); // "Alergia" is skipped entirely, not corrected
+        var alergia = await db.Traits.SingleAsync(t => t.Id == customId);
+        alergia.Descricao.Should().Be("Texto totalmente reescrito pelo Auditor de Regras.");
+        alergia.RequerEspecificacao.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_never_reinserts_a_row_that_was_soft_deleted()
+    {
+        await using var db = await NewDbAsync();
+        await TraitSeeder.SeedAsync(db, Markdown);
+        var alfabetizado = await db.Traits.SingleAsync(t => t.Nome == "Alfabetizado");
+        alfabetizado.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        var result = await TraitSeeder.SeedAsync(db, Markdown);
+
+        result.Inserted.Should().Be(0); // "Alfabetizado" still matches by key, even soft-deleted
+        (await db.Traits.CountAsync(t => t.Nome == "Alfabetizado")).Should().Be(1);
+    }
 }

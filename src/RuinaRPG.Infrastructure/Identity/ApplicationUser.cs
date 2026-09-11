@@ -32,6 +32,12 @@ public class ApplicationUser : IdentityUser<Guid>
     public UserRole Role { get; set; }
     public Guid? InvitedByGmId { get; set; }
 
+    // Granted via `make grant-rules-auditor EMAIL=...` (Program.cs's --grant-rules-auditor arg) —
+    // checked directly against this column on every request (AuthController.Me, and the new
+    // Traits/RulebookDocuments admin endpoints), never baked into the JWT, so a grant/revoke takes
+    // effect on the very next request instead of waiting for the holder to log in again.
+    public bool IsRulesAuditor { get; set; }
+
     // Null-tolerant: a request body that omits the nickname binds null here, and that must
     // surface as a 400 from the not-null/unique constraints, not as an NRE in this setter.
     public static string Normalize(string? nickname) => nickname?.ToUpperInvariant() ?? string.Empty;

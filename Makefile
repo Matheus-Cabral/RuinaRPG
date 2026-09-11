@@ -1,4 +1,4 @@
-.PHONY: deploy up down clean clean-data logs migrate
+.PHONY: deploy up down clean clean-data logs migrate grant-rules-auditor revoke-rules-auditor
 
 deploy up:
 	docker compose --env-file .env up --build -d
@@ -21,3 +21,9 @@ logs:
 
 migrate:
 	docker compose exec api dotnet RuinaRPG.Api.dll --migrate
+
+grant-rules-auditor:
+	docker compose exec api dotnet RuinaRPG.Api.dll --grant-rules-auditor $(EMAIL)
+
+revoke-rules-auditor:
+	docker compose exec api dotnet RuinaRPG.Api.dll --revoke-rules-auditor $(EMAIL)

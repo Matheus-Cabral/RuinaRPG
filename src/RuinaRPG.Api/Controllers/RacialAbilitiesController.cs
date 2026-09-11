@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -121,6 +122,89 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    /// <summary>
+    /// GM-editable overrides for RacialTraitLookup's hardcoded Característica Gratuita/Obrigatória
+    /// defaults (Ruína RPG - Sistema Básico.md §7). Same shape as ListRacialAbilities above.
+    /// </summary>
+    [HttpGet("api/racial-traits")]
+    public async Task<ActionResult<List<RacialTraitSlotsEntryResponse>>> ListRacialTraits()
+    {
+        var gmId = CurrentUserId();
+        var overrides = await db.RacialTraitOverrides.Where(o => o.GmId == gmId).ToListAsync();
+
+        var responses = new List<RacialTraitSlotsEntryResponse>();
+        foreach (var variante in Enum.GetValues<Variante>())
+        {
+            var over = overrides.FirstOrDefault(o => o.Variante == variante);
+            if (over is not null)
+            {
+                responses.Add(new RacialTraitSlotsEntryResponse(variante.ToString(),
+                    DeserializeOptions(over.GratuitaOptionsJson), DeserializeOptions(over.ObrigatoriaOptionsJson), false));
+            }
+            else
+            {
+                var def = RacialTraitLookup.For(variante);
+                responses.Add(new RacialTraitSlotsEntryResponse(variante.ToString(), ToResponseOptions(def.Gratuita), ToResponseOptions(def.Obrigatoria), true));
+            }
+        }
+        return responses;
+    }
+
+    [HttpPut("api/racial-traits/{variante}")]
+    public async Task<IActionResult> UpdateRacialTraitSlots(string variante, UpdateRacialTraitSlotsRequest request)
+    {
+        if (!Enum.TryParse<Variante>(variante, out var parsedVariante) || !Enum.IsDefined(parsedVariante))
+            return BadRequest("Variante desconhecida.");
+
+        if (request.Gratuita.Count == 0)
+            return BadRequest("A Característica Gratuita precisa de ao menos uma opção.");
+
+        var gmId = CurrentUserId();
+        var gratuitaJson = JsonSerializer.Serialize(request.Gratuita.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)));
+        var obrigatoriaJson = JsonSerializer.Serialize(request.Obrigatoria.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)));
+
+        var existing = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == gmId && o.Variante == parsedVariante);
+        if (existing is null)
+        {
+            db.RacialTraitOverrides.Add(new RacialTraitOverride
+            {
+                Id = Guid.NewGuid(), GmId = gmId, Variante = parsedVariante,
+                GratuitaOptionsJson = gratuitaJson, ObrigatoriaOptionsJson = obrigatoriaJson,
+            });
+        }
+        else
+        {
+            existing.GratuitaOptionsJson = gratuitaJson;
+            existing.ObrigatoriaOptionsJson = obrigatoriaJson;
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("api/racial-traits/{variante}")]
+    public async Task<IActionResult> DeleteRacialTraitOverride(string variante)
+    {
+        if (!Enum.TryParse<Variante>(variante, out var parsedVariante) || !Enum.IsDefined(parsedVariante))
+            return BadRequest("Variante desconhecida.");
+
+        var gmId = CurrentUserId();
+        var existing = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == gmId && o.Variante == parsedVariante);
+        if (existing is not null)
+        {
+            db.RacialTraitOverrides.Remove(existing);
+            await db.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
+    private static List<RacialTraitOptionResponse> DeserializeOptions(string json) =>
+        JsonSerializer.Deserialize<List<RacialTraitOptionResponse>>(json) ?? [];
+
+    private static List<RacialTraitOptionResponse> ToResponseOptions(List<RacialTraitOption> options) =>
+        options.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

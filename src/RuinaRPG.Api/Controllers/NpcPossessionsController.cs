@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules;
@@ -195,7 +196,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId);
+        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
@@ -204,8 +205,11 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         var sheet = await db.NpcSheets.FindAsync(sheetId);
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        // Racial grants (IsRacial) are excluded — they cost 0 and never count toward this budget,
+        // no matter what the underlying Trait's own Custo is (Requisitos - Ficha de NPCs / Ficha
+        // de Personagem 5.d).
         var existingTotal = await db.NpcTraits
-            .Where(t => t.NpcSheetId == sheetId && t.Polaridade == trait.Polaridade)
+            .Where(t => t.NpcSheetId == sheetId && t.Polaridade == trait.Polaridade && !t.IsRacial)
             .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => t.Custo)
             .SumAsync();
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
@@ -232,10 +236,12 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (authError is not null)
             return authError;
 
-        var rows = await db.NpcTraits
+        var rows = (await db.NpcTraits
             .Where(t => t.NpcSheetId == sheetId)
-            .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new NpcTraitResponse(nt.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), nt.Especificacao, t.RequerEspecificacao))
-            .ToListAsync();
+            .Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new { nt, t })
+            .ToListAsync())
+            .Select(x => ToTraitResponse(x.nt, x.t))
+            .ToList();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
@@ -256,6 +262,69 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
             return NotFound();
 
         db.NpcTraits.Remove(npcTrait);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Whether the sheet's current Variante still has an unresolved racial-characteristic choice.
+    /// Mirrors CharacterPossessionsController.PendingRacialTraitChoice.
+    /// </summary>
+    [HttpGet("racial-traits/pending")]
+    public async Task<ActionResult<PendingRacialTraitChoiceResponse>> PendingRacialTraitChoice(Guid sheetId)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var sheet = await db.NpcSheets.FindAsync(sheetId);
+        if (sheet!.Variante is null)
+            return new PendingRacialTraitChoiceResponse(false, [], []);
+
+        var variante = sheet.Variante.Value;
+        var over = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == sheet.GmId && o.Variante == variante);
+        var slots = RacialTraitOverrideResolver.Resolve(over, variante);
+
+        var existingCount = await db.NpcTraits.CountAsync(t => t.NpcSheetId == sheetId && t.IsRacial && t.RacialVariante == variante);
+        var resolved = RacialTraitChoiceResolver.IsResolved(slots, existingCount);
+
+        return new PendingRacialTraitChoiceResponse(!resolved,
+            slots.Gratuita.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList(),
+            slots.Obrigatoria.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList());
+    }
+
+    [HttpPost("racial-traits/resolve")]
+    public async Task<IActionResult> ResolveRacialTraitChoice(Guid sheetId, ResolveRacialTraitChoiceRequest request)
+    {
+        var authError = await CheckAuthorizationAsync(sheetId);
+        if (authError is not null)
+            return authError;
+
+        var sheet = await db.NpcSheets.FindAsync(sheetId);
+        if (sheet!.Variante is null)
+            return BadRequest("A ficha ainda não tem uma Variante escolhida.");
+
+        var variante = sheet.Variante.Value;
+        var over = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == sheet.GmId && o.Variante == variante);
+        var slots = RacialTraitOverrideResolver.Resolve(over, variante);
+
+        var resolution = RacialTraitChoiceResolver.Resolve(slots, request.GratuitaTraitNome, request.ObrigatoriaTraitNome);
+        if (resolution.Error is not null)
+            return BadRequest(resolution.Error);
+
+        foreach (var grant in resolution.Grants!)
+        {
+            var trait = await db.Traits.FirstOrDefaultAsync(t => t.Nome == grant.TraitNome && !t.IsDeleted);
+            if (trait is null)
+                return BadRequest($"Característica \"{grant.TraitNome}\" não encontrada no catálogo.");
+
+            db.NpcTraits.Add(new NpcTrait
+            {
+                Id = Guid.NewGuid(), NpcSheetId = sheetId, TraitId = trait.Id, Polaridade = trait.Polaridade,
+                Especificacao = grant.Especificacao, IsRacial = true, RacialVariante = variante,
+            });
+        }
+
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -299,7 +368,9 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
     private static NpcTraitResponse ToTraitResponse(NpcTrait npcTrait, Trait trait) =>
-        new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), npcTrait.Especificacao, trait.RequerEspecificacao);
+        new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao,
+            npcTrait.IsRacial ? 0 : trait.Custo, trait.Polaridade.ToString(), npcTrait.Especificacao,
+            trait.RequerEspecificacao, npcTrait.IsRacial);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

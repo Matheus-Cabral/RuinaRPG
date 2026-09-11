@@ -18,6 +18,7 @@ public class CompendioController(RuinaRpgDbContext db, IRulesDataProvider rules)
         [FromQuery] List<CompendioCategoria>? categorias)
     {
         var traits = await db.Traits
+            .Where(t => !t.IsDeleted)
             .Select(t => new TraitSeed(t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), t.RequerEspecificacao))
             .ToListAsync();
 

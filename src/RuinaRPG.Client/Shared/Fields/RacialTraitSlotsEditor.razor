@@ -1,0 +1,85 @@
+@*
+    GM editor for one Variante's racial-characteristic choices (Ruína RPG - Sistema Básico.md §7's
+    "Característica Gratuita"/"Obrigatória") — used on the Habilidades Raciais page. Each option is
+    a free-text TraitNome (matched against "Características" by name at resolve time, same
+    looseness as RacialAbilityOverride's own Nome/Descricao fields) plus an optional Especificação,
+    edited as a small table with add/remove, mirroring the page's existing Tabela de Arcas pattern.
+*@
+@using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Característica Gratuita</MudText>
+<MudSimpleTable Dense="true" Hover="true">
+    <tbody>
+        @for (var i = 0; i < Entry.Gratuita.Count; i++)
+        {
+            var index = i;
+            var option = Entry.Gratuita[index];
+            <tr>
+                <td><MudTextField T="string" Value="@option.TraitNome" ValueChanged="@(v => UpdateOptionAsync(gratuita: true, index, v, option.Especificacao))" Label="Característica" /></td>
+                <td><MudTextField T="string" Value="@option.Especificacao" ValueChanged="@(v => UpdateOptionAsync(gratuita: true, index, option.TraitNome, v))" Label="Especificação" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveOptionAsync(gratuita: true, index))" /></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+<MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="mt-1" OnClick="@(() => AddOptionAsync(gratuita: true))">+ Opção</MudButton>
+
+<MudText Typo="Typo.subtitle2" Class="mt-4">Característica Obrigatória</MudText>
+<MudText Typo="Typo.caption" Color="Color.Secondary">Vazia = não existe essa exigência para esta Variante. Uma única opção = concedida direto, sem escolha real.</MudText>
+<MudSimpleTable Dense="true" Hover="true" Class="mt-1">
+    <tbody>
+        @for (var i = 0; i < Entry.Obrigatoria.Count; i++)
+        {
+            var index = i;
+            var option = Entry.Obrigatoria[index];
+            <tr>
+                <td><MudTextField T="string" Value="@option.TraitNome" ValueChanged="@(v => UpdateOptionAsync(gratuita: false, index, v, option.Especificacao))" Label="Característica" /></td>
+                <td><MudTextField T="string" Value="@option.Especificacao" ValueChanged="@(v => UpdateOptionAsync(gratuita: false, index, option.TraitNome, v))" Label="Especificação" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveOptionAsync(gratuita: false, index))" /></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+<MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="mt-1" OnClick="@(() => AddOptionAsync(gratuita: false))">+ Opção</MudButton>
+
+<MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-3" Disabled="@Entry.IsDefault" OnClick="@(() => OnRestoreDefault.InvokeAsync())">Restaurar padrão (Características Raciais)</MudButton>
+
+@code {
+    [Parameter, EditorRequired] public RacialTraitSlotsEntryResponse Entry { get; set; } = null!;
+    [Parameter] public EventCallback<UpdateRacialTraitSlotsRequest> OnChanged { get; set; }
+    [Parameter] public EventCallback OnRestoreDefault { get; set; }
+
+    private Task UpdateOptionAsync(bool gratuita, int index, string? traitNome, string? especificacao)
+    {
+        var gratuitaList = new List<RacialTraitOptionResponse>(Entry.Gratuita);
+        var obrigatoriaList = new List<RacialTraitOptionResponse>(Entry.Obrigatoria);
+        var target = gratuita ? gratuitaList : obrigatoriaList;
+        target[index] = new RacialTraitOptionResponse(traitNome ?? "", string.IsNullOrWhiteSpace(especificacao) ? null : especificacao);
+
+        return NotifyChangedAsync(gratuitaList, obrigatoriaList);
+    }
+
+    private Task AddOptionAsync(bool gratuita)
+    {
+        var gratuitaList = new List<RacialTraitOptionResponse>(Entry.Gratuita);
+        var obrigatoriaList = new List<RacialTraitOptionResponse>(Entry.Obrigatoria);
+        (gratuita ? gratuitaList : obrigatoriaList).Add(new RacialTraitOptionResponse("", null));
+
+        return NotifyChangedAsync(gratuitaList, obrigatoriaList);
+    }
+
+    private Task RemoveOptionAsync(bool gratuita, int index)
+    {
+        var gratuitaList = new List<RacialTraitOptionResponse>(Entry.Gratuita);
+        var obrigatoriaList = new List<RacialTraitOptionResponse>(Entry.Obrigatoria);
+        (gratuita ? gratuitaList : obrigatoriaList).RemoveAt(index);
+
+        return NotifyChangedAsync(gratuitaList, obrigatoriaList);
+    }
+
+    private Task NotifyChangedAsync(List<RacialTraitOptionResponse> gratuita, List<RacialTraitOptionResponse> obrigatoria) =>
+        OnChanged.InvokeAsync(new UpdateRacialTraitSlotsRequest(
+            gratuita.Select(o => new RacialTraitOptionRequest(o.TraitNome, o.Especificacao)).ToList(),
+            obrigatoria.Select(o => new RacialTraitOptionRequest(o.TraitNome, o.Especificacao)).ToList()));
+}

@@ -200,7 +200,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId);
+        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 

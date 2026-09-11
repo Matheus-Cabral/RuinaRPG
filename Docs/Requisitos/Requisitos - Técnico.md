@@ -97,6 +97,7 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 - `make down`: para os containers.
 - `make clean`: remove containers, imagens e volumes não utilizados (sem apagar os volumes nomeados de dados/imagens, salvo um alvo separado e explícito para isso).
 - `make migrate`: aplica migrations pendentes em produção (ver "Aplicação de migrations do EF Core" abaixo).
+- `make grant-rules-auditor EMAIL=...` / `make revoke-rules-auditor EMAIL=...`: designa (ou revoga) uma conta de GM, localizada pelo e-mail (case-insensitive), como Auditor de Regras. Tem efeito imediato — checado a cada requisição direto no banco, sem precisar relogar. Conceder é recusado se a conta indicada não for de GM; revogar é sempre aceito.
 - `make logs`: acompanha os logs dos containers.
 
   
