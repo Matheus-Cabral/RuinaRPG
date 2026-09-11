@@ -110,6 +110,20 @@ public class RulebookRenderer : IRulebookRenderer
     }
 
     /// <summary>
+    /// Maps a document Slug to the exact embedded-resource filename RulesDataProvider.ReadResource
+    /// expects, and returns its raw text. Exposed publicly (unlike the private Build* methods)
+    /// specifically so RulebookDocumentsController can show the Rules Auditor the current default
+    /// text for a document that has no override yet, without duplicating this mapping.
+    /// </summary>
+    public static string ReadEmbeddedMarkdown(string slug) => slug switch
+    {
+        "sistema-basico" => RulesDataProvider.ReadResource("Sistema Basico.md"),
+        "graus-e-circulos" => RulesDataProvider.ReadResource("GRAUS e CIRCULOS.md"),
+        "tabela-de-niveis" => RulesDataProvider.ReadResource("Tabela de Níveis.md"),
+        _ => throw new ArgumentOutOfRangeException(nameof(slug), slug, "Slug de documento desconhecido."),
+    };
+
+    /// <summary>
     /// Walks the document's top-level blocks, starting a new section every time a heading at
     /// <paramref name="splitLevel"/> is reached (that heading's text becomes the section's Titulo,
     /// its Markdig auto-generated id becomes the section's Id — deeper headings stay nested inside
