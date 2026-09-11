@@ -48,6 +48,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<RacialAbilityOverride> RacialAbilityOverrides => Set<RacialAbilityOverride>();
     public DbSet<ArcaEntry> ArcaEntries => Set<ArcaEntry>();
     public DbSet<RacialTraitOverride> RacialTraitOverrides => Set<RacialTraitOverride>();
+    public DbSet<RulebookDocumentOverride> RulebookDocumentOverrides => Set<RulebookDocumentOverride>();
     public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
     public DbSet<CharacterTrait> CharacterTraits => Set<CharacterTrait>();
     public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
@@ -168,6 +169,15 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(o => o.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RulebookDocumentOverride>(entity =>
+        {
+            entity.HasIndex(o => o.Slug).IsUnique();
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(o => o.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<SpellAbilityBankEntry>(entity =>
