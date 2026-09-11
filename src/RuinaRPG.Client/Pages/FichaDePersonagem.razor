@@ -250,7 +250,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@skill.Pericia</td>
+                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>@skill.Modificador</td>
                             <td>
@@ -606,7 +606,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@skill.Pericia</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -630,7 +630,7 @@
                                 <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
                                     @foreach (var skill in _skills)
                                     {
-                                        <MudSelectItem Value="@skill.Pericia">@skill.Pericia</MudSelectItem>
+                                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
                                     }
                                 </MudSelect>
                             </td>
