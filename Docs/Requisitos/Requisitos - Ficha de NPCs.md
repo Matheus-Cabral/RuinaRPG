@@ -38,3 +38,9 @@
 No máximo, dois campos podem ser liberados: **Nome** e **Imagem do Personagem** (ver 1.a de "[[Requisitos - Ficha de Personagem]]"). Ao anexar (ou depois, a qualquer momento), o GM liga ou desliga cada um dos dois independentemente — pode liberar só o Nome, só a Imagem, os dois, ou nenhum (equivalente a totalmente privado). Isso substitui, para anexos do tipo Ficha de NPC, o toggle único público/privado de R0008 da "[[Requisitos - Campanha]]".
 
 Quando a Imagem está liberada, ela também pode ser **referenciada** por um jogador em outros campos de imagem do sistema, em vez de reenviada (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0010).
+
+  
+
+# **R0005** - O popup de Característica Racial (5.d) é resolvido pelo GM, não pelo NPC.
+
+**Descrição**: O mecanismo é idêntico ao da Ficha de Personagem (ver "[[Requisitos - Ficha de Personagem]]" 5.d) — a Variante do NPC concede uma Característica Gratuita (e, para algumas Variantes, também uma Obrigatória) a custo 0, fora do orçamento de pontos. A única diferença é quem resolve a escolha: como a Ficha de NPC não tem jogador dono (R0001), é o **GM** quem vê e resolve o popup, não um jogador — mesma exceção de R0001 se aplica quando a ficha foi concedida a um jogador (aí é ele quem resolve, como na própria Ficha de Personagem).

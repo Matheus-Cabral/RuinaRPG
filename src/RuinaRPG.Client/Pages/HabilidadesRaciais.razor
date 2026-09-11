@@ -21,6 +21,12 @@
             <MudTextField T="string" Value="@entry.Nome" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Nome", v))" Label="Nome" />
             <MudTextField T="string" Value="@entry.Descricao" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Descricao", v))" Label="Descrição" Lines="3" />
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@entry.IsDefault" OnClick="@(() => RestoreDefaultAsync(variante))">Restaurar padrão</MudButton>
+            @if (_traitEntries.SingleOrDefault(e => e.Variante == variante) is { } traitEntry)
+            {
+                <RacialTraitSlotsEditor Entry="@traitEntry"
+                                        OnChanged="@(req => UpdateRacialTraitSlotsAsync(variante, req))"
+                                        OnRestoreDefault="@(() => RestoreTraitDefaultAsync(variante))" />
+            }
         </Section>
     }
 }
@@ -35,6 +41,12 @@
             <MudTextField T="string" Value="@entry.Nome" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Nome", v))" Label="Nome" />
             <MudTextField T="string" Value="@entry.Descricao" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Descricao", v))" Label="Descrição" Lines="3" />
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@entry.IsDefault" OnClick="@(() => RestoreDefaultAsync(variante))">Restaurar padrão</MudButton>
+            @if (_traitEntries.SingleOrDefault(e => e.Variante == variante) is { } traitEntry)
+            {
+                <RacialTraitSlotsEditor Entry="@traitEntry"
+                                        OnChanged="@(req => UpdateRacialTraitSlotsAsync(variante, req))"
+                                        OnRestoreDefault="@(() => RestoreTraitDefaultAsync(variante))" />
+            }
         }
     }
 
@@ -68,6 +80,7 @@
     };
 
     private List<RacialAbilityEntryResponse> _entries = new();
+    private List<RacialTraitSlotsEntryResponse> _traitEntries = new();
     private List<ArcaEntryResponse> _arcas = new();
     private string? _errorMessage;
 
@@ -80,12 +93,32 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRacialAbilitiesAsync();
+        await LoadRacialTraitsAsync();
         await LoadArcasAsync();
     }
 
     private async Task LoadRacialAbilitiesAsync()
     {
         _entries = await Http.GetFromJsonAsync<List<RacialAbilityEntryResponse>>("racial-abilities") ?? new();
+    }
+
+    private async Task LoadRacialTraitsAsync()
+    {
+        _traitEntries = await Http.GetFromJsonAsync<List<RacialTraitSlotsEntryResponse>>("racial-traits") ?? new();
+    }
+
+    private async Task UpdateRacialTraitSlotsAsync(string variante, UpdateRacialTraitSlotsRequest request)
+    {
+        var response = await Http.PutAsJsonAsync($"racial-traits/{variante}", request);
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível salvar a Característica Racial.";
+        await LoadRacialTraitsAsync();
+    }
+
+    private async Task RestoreTraitDefaultAsync(string variante)
+    {
+        await Http.DeleteAsync($"racial-traits/{variante}");
+        await LoadRacialTraitsAsync();
     }
 
     private async Task LoadArcasAsync()

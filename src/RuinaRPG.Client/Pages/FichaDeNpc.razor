@@ -20,6 +20,42 @@
     <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
 }
 
+<MudDialog @bind-Visible="_racialChoiceDialogOpen" Options="@(new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false })">
+    <DialogContent>
+        <MudText Typo="Typo.h6">Escolha a Característica Racial do NPC</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Toda Variante concede uma Característica Gratuita, a escolher entre as opções abaixo — algumas Variantes também exigem uma Característica Obrigatória.
+        </MudText>
+
+        <MudText Typo="Typo.subtitle1">Característica Gratuita</MudText>
+        <MudRadioGroup T="string" @bind-Value="_racialGratuitaChoice">
+            @foreach (var option in _pendingRacialChoice?.Gratuita ?? new())
+            {
+                <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
+            }
+        </MudRadioGroup>
+
+        @if (_pendingRacialChoice?.Obrigatoria.Count > 1)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-4">Característica Obrigatória</MudText>
+            <MudRadioGroup T="string" @bind-Value="_racialObrigatoriaChoice">
+                @foreach (var option in _pendingRacialChoice.Obrigatoria)
+                {
+                    <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
+                }
+            </MudRadioGroup>
+        }
+        else if (_pendingRacialChoice?.Obrigatoria.Count == 1)
+        {
+            <MudText Typo="Typo.body2" Class="mt-3">O NPC também recebe automaticamente: <b>@_pendingRacialChoice.Obrigatoria[0].TraitNome</b>.</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _racialChoiceDialogOpen = false)">Decidir depois</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_racialGratuitaChoice is null)" OnClick="ConfirmRacialChoiceAsync">Confirmar</MudButton>
+    </DialogActions>
+</MudDialog>
+
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form">
@@ -694,6 +730,10 @@
     private List<NpcAffectionResponse> _affections = new();
     private readonly AffectionFormModel _affectionForm = new();
     private NpcTraitsListResponse? _traits;
+    private PendingRacialTraitChoiceResponse? _pendingRacialChoice;
+    private bool _racialChoiceDialogOpen;
+    private string? _racialGratuitaChoice;
+    private string? _racialObrigatoriaChoice;
     private readonly TraitFormModel _traitForm = new();
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
@@ -740,7 +780,8 @@
         await Task.WhenAll(
             LoadTabs2And3Async(),
             LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
-            LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync());
+            LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(),
+            LoadPendingRacialChoiceAsync());
     }
 
     private async Task LoadImagesAsync()
@@ -859,6 +900,9 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        // A Variante change may have just cleared stale racial grants server-side (or made a fresh
+        // one pending for the first time) — re-check so the dialog reflects that immediately.
+        await LoadPendingRacialChoiceAsync();
         return true;
     }
 
@@ -1246,6 +1290,35 @@
     private async Task LoadTraitsAsync()
     {
         _traits = await Http.GetFromJsonAsync<NpcTraitsListResponse>($"npc-sheets/{SheetId}/traits");
+    }
+
+    // Ruína RPG - Sistema Básico §7: every Variante grants a Característica Gratuita (a real
+    // choice) and, for some, a Característica Obrigatória (0, 1 fixed, or a real choice too) — see
+    // RacialTraitLookup/RacialTraitChoiceResolver. Mirrors FichaDePersonagem.razor's dialog.
+    private async Task LoadPendingRacialChoiceAsync()
+    {
+        _pendingRacialChoice = await Http.GetFromJsonAsync<PendingRacialTraitChoiceResponse>($"npc-sheets/{SheetId}/racial-traits/pending");
+        _racialChoiceDialogOpen = _pendingRacialChoice?.Pending == true;
+        _racialGratuitaChoice = null;
+        _racialObrigatoriaChoice = null;
+    }
+
+    private async Task ConfirmRacialChoiceAsync()
+    {
+        if (_racialGratuitaChoice is null)
+            return;
+
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/racial-traits/resolve",
+            new ResolveRacialTraitChoiceRequest(_racialGratuitaChoice, _racialObrigatoriaChoice));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível registrar a Característica Racial escolhida.";
+            return;
+        }
+
+        _racialChoiceDialogOpen = false;
+        await LoadPendingRacialChoiceAsync();
+        await LoadTraitsAsync();
     }
 
     private async Task AddTraitAsync()
