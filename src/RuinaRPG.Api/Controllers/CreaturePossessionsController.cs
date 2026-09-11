@@ -211,7 +211,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
         var existingTotal = await db.CreatureTraits
             .Where(t => t.CreatureSheetId == sheetId && t.Polaridade == trait.Polaridade)
-            .Join(db.Traits.Where(t => !t.IsDeleted), ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
             .SumAsync();
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
@@ -239,7 +239,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
 
         var rows = await db.CreatureTraits
             .Where(t => t.CreatureSheetId == sheetId)
-            .Join(db.Traits.Where(t => !t.IsDeleted), ct => ct.TraitId, t => t.Id, (ct, t) => new CreatureTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
+            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CreatureTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
             .ToListAsync();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();

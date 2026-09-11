@@ -47,7 +47,7 @@ public class TraitsController(RuinaRpgDbContext db) : ControllerBase
             return BadRequest("Polaridade inválida.");
         if (!IsCustoSignConsistent(request.Custo, polaridade))
             return BadRequest("O sinal do Custo não é consistente com a Polaridade (Positiva >= 0, Negativa <= 0).");
-        if (await db.Traits.AnyAsync(t => !t.IsDeleted && t.Nome == request.Nome && t.Custo == request.Custo && t.Polaridade == polaridade))
+        if (await db.Traits.AnyAsync(t => t.Nome == request.Nome && t.Custo == request.Custo && t.Polaridade == polaridade))
             return BadRequest("Já existe uma característica com esse Nome, Custo e Polaridade.");
 
         var trait = new Trait
@@ -83,6 +83,8 @@ public class TraitsController(RuinaRpgDbContext db) : ControllerBase
             return BadRequest("Polaridade inválida.");
         if (!IsCustoSignConsistent(request.Custo, polaridade))
             return BadRequest("O sinal do Custo não é consistente com a Polaridade (Positiva >= 0, Negativa <= 0).");
+        if (await db.Traits.AnyAsync(t => t.Id != id && t.Nome == request.Nome && t.Custo == request.Custo && t.Polaridade == polaridade))
+            return BadRequest("Já existe uma característica com esse Nome, Custo e Polaridade.");
 
         trait.Nome = request.Nome;
         trait.Descricao = request.Descricao;
@@ -108,7 +110,9 @@ public class TraitsController(RuinaRpgDbContext db) : ControllerBase
         if (trait is null)
             return NotFound();
 
-        var inUse = await db.CharacterTraits.AnyAsync(t => t.TraitId == id) || await db.NpcTraits.AnyAsync(t => t.TraitId == id);
+        var inUse = await db.CharacterTraits.AnyAsync(t => t.TraitId == id)
+            || await db.NpcTraits.AnyAsync(t => t.TraitId == id)
+            || await db.CreatureTraits.AnyAsync(t => t.TraitId == id);
         if (inUse)
             return Conflict("Esta característica está em uso em pelo menos uma ficha e não pode ser excluída.");
 

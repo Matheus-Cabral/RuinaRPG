@@ -7,7 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -64,11 +67,95 @@ public class TraitsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
     private async Task<string> GrantRulesAuditorAsync(string email)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
         user.IsRulesAuditor = true;
         await db.SaveChangesAsync();
         return email;
+    }
+
+    private async Task<string> CreateCreatureSheetAsync(string gmToken)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
+    }
+
+    // Trivial, valid-but-empty markdown: TraitSeedParser.Parse("") produces zero TraitSeeds, so
+    // SeedAsync becomes a pure "does the existingByKey lookup throw" probe against whatever the
+    // table already holds — exactly what the two regression tests below need, with no dependency
+    // on TraitSeederTests' own Markdown constant (private to that class).
+    private const string TrivialMarkdown = "";
+
+    // Mirrors DeleteTrait_that_is_already_in_use_on_a_sheet_returns_409, but the reference lives on
+    // a Creature sheet instead of a Character sheet — the regression this guards against (Critical
+    // #2) is specifically that CreatureTraits was omitted from the Delete in-use check.
+    [Fact]
+    public async Task DeleteTrait_that_is_already_in_use_on_a_creature_sheet_returns_409()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("TraitCrudGm8", "traitcrudgm8@teste.com");
+        await GrantRulesAuditorAsync("traitcrudgm8@teste.com");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/traits", gmToken,
+            new CreateTraitRequest("Em Uso Criatura", "Teste.", 1, "Positiva", false)));
+        var created = await createResponse.Content.ReadFromJsonAsync<TraitResponse>();
+
+        var sheetId = await CreateCreatureSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+            new AddCreatureTraitRequest(created!.Id, null)));
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/traits/{created.Id}", gmToken));
+
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    // Regression test for Critical #1, path 1: soft-delete then recreate under the exact same
+    // (Nome, Custo, Polaridade) key used to slip past Create's duplicate check (which only excluded
+    // !IsDeleted rows), leaving two rows sharing that key — which then crashed TraitSeeder.SeedAsync
+    // on the very next seed (ToDictionary throws on a duplicate key).
+    [Fact]
+    public async Task CreateTrait_duplicating_a_soft_deleted_trait_s_key_returns_400_and_does_not_break_the_seeder()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("TraitCrudGm9", "traitcrudgm9@teste.com");
+        await GrantRulesAuditorAsync("traitcrudgm9@teste.com");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/traits", gmToken,
+            new CreateTraitRequest("Recriada", "Original.", 4, "Positiva", false)));
+        var created = await createResponse.Content.ReadFromJsonAsync<TraitResponse>();
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/traits/{created!.Id}", gmToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var recreateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/traits", gmToken,
+            new CreateTraitRequest("Recriada", "Outra descrição.", 4, "Positiva", false)));
+        recreateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var act = async () => await TraitSeeder.SeedAsync(db, TrivialMarkdown);
+        await act.Should().NotThrowAsync();
+    }
+
+    // Regression test for Critical #1, path 2: Update had NO uniqueness check at all, so renaming
+    // trait B onto trait A's exact (Nome, Custo, Polaridade) collided two live rows onto the same
+    // key — same TraitSeeder.SeedAsync crash on the next seed.
+    [Fact]
+    public async Task UpdateTrait_colliding_onto_another_trait_s_key_returns_400_and_does_not_break_the_seeder()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("TraitCrudGm10", "traitcrudgm10@teste.com");
+        await GrantRulesAuditorAsync("traitcrudgm10@teste.com");
+        var createAResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/traits", gmToken,
+            new CreateTraitRequest("Trait A", "Original A.", 2, "Positiva", false)));
+        var createdA = await createAResponse.Content.ReadFromJsonAsync<TraitResponse>();
+        var createBResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/traits", gmToken,
+            new CreateTraitRequest("Trait B", "Original B.", 3, "Positiva", false)));
+        var createdB = await createBResponse.Content.ReadFromJsonAsync<TraitResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/traits/{createdB!.Id}", gmToken,
+            new UpdateTraitRequest(createdA!.Nome, "Renomeada para colidir.", createdA.Custo, createdA.Polaridade, false)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var act = async () => await TraitSeeder.SeedAsync(db, TrivialMarkdown);
+        await act.Should().NotThrowAsync();
     }
 
     [Fact]

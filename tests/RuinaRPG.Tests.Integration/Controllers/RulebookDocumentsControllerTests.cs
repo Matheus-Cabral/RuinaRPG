@@ -59,6 +59,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
     public async Task List_returns_the_3_documents_all_default_when_no_override_exists()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm1", "rulebookdocgm1@teste.com");
+        await GrantRulesAuditorAsync("rulebookdocgm1@teste.com");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
 
@@ -76,6 +77,16 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# Novo texto")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task List_by_a_GM_who_is_not_a_Rules_Auditor_returns_403_too()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm6", "rulebookdocgm6@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

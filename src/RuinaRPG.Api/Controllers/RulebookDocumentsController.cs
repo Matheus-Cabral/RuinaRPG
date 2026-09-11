@@ -14,10 +14,11 @@ namespace RuinaRPG.Api.Controllers;
 /// DB-driven (Sistema Básico, Graus & Círculos, Tabela de Níveis — "caracteristicas" is excluded
 /// on purpose, it's rebuilt from the live Traits table by RulebookRenderer instead, see
 /// TraitsController). Display-only: nothing here feeds IRulesDataProvider or any gameplay
-/// calculator — see Requisitos - Auditoria de Regras. List (GET) stays open to any authenticated
-/// caller, like TraitsController.List; Update/Delete are gated to the Rules Auditor, same inline
-/// DB check as TraitsController's write endpoints (not a JWT claim, so a grant/revoke via
-/// `make grant-rules-auditor` takes effect on the very next request).
+/// calculator — see Requisitos - Auditoria de Regras. Unlike TraitsController.List, List (GET)
+/// here is gated to the Rules Auditor too — this endpoint's only consumer in the whole app is
+/// the AuditoriaLivroDeRegras.razor page itself, so it doesn't need the same open-to-everyone
+/// precedent as GET /api/traits. Same inline DB check as Update/Delete (not a JWT claim, so a
+/// grant/revoke via `make grant-rules-auditor` takes effect on the very next request).
 /// </summary>
 [ApiController]
 [Authorize]
@@ -28,6 +29,10 @@ public class RulebookDocumentsController(RuinaRpgDbContext db) : ControllerBase
     [HttpGet("api/rulebook-documents")]
     public async Task<ActionResult<List<RulebookDocumentOverrideResponse>>> List()
     {
+        var authError = await RequireRulesAuditorAsync();
+        if (authError is not null)
+            return authError;
+
         var overrides = await db.RulebookDocumentOverrides.ToListAsync();
 
         return ValidSlugs.Select(slug =>

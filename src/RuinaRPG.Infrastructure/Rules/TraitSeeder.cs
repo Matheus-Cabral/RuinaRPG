@@ -27,7 +27,9 @@ public static class TraitSeeder
     {
         var parsed = TraitSeedParser.Parse(caracteristicasMarkdown);
         var existing = await db.Traits.ToListAsync();
-        var existingByKey = existing.ToDictionary(t => (t.Nome, t.Custo, Polaridade: t.Polaridade.ToString()));
+        var existingByKey = existing
+            .GroupBy(t => (t.Nome, t.Custo, Polaridade: t.Polaridade.ToString()))
+            .ToDictionary(g => g.Key, g => g.First());
 
         var toInsert = new List<Trait>();
         var updated = 0;

@@ -32,7 +32,7 @@ else
     <Section Title="Positivas">
         <MudSimpleTable Dense="true" Hover="true">
             <thead>
-                <tr><th>Nome</th><th>Custo</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
+                <tr><th>Nome</th><th>Custo</th><th>Polaridade</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
             </thead>
             <tbody>
                 @foreach (var trait in _traits.Where(t => t.Polaridade == "Positiva"))
@@ -40,6 +40,12 @@ else
                     <tr>
                         <td><MudTextField T="string" Value="@trait.Nome" ValueChanged="@(v => UpdateAsync(trait, nome: v))" /></td>
                         <td><MudNumericField T="int" Value="@trait.Custo" ValueChanged="@(v => UpdateAsync(trait, custo: v))" /></td>
+                        <td>
+                            <MudSelect T="string" Value="@trait.Polaridade" ValueChanged="@(v => UpdateAsync(trait, polaridade: v))">
+                                <MudSelectItem Value="@("Positiva")">Positiva</MudSelectItem>
+                                <MudSelectItem Value="@("Negativa")">Negativa</MudSelectItem>
+                            </MudSelect>
+                        </td>
                         <td><MudCheckBox T="bool" Value="@trait.RequerEspecificacao" ValueChanged="@(v => UpdateAsync(trait, requerEspecificacao: v))" /></td>
                         <td><MudTextField T="string" Value="@trait.Descricao" ValueChanged="@(v => UpdateAsync(trait, descricao: v))" /></td>
                         <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(trait.Id))" /></td>
@@ -52,7 +58,7 @@ else
     <Section Title="Negativas">
         <MudSimpleTable Dense="true" Hover="true">
             <thead>
-                <tr><th>Nome</th><th>Custo</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
+                <tr><th>Nome</th><th>Custo</th><th>Polaridade</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
             </thead>
             <tbody>
                 @foreach (var trait in _traits.Where(t => t.Polaridade == "Negativa"))
@@ -60,6 +66,12 @@ else
                     <tr>
                         <td><MudTextField T="string" Value="@trait.Nome" ValueChanged="@(v => UpdateAsync(trait, nome: v))" /></td>
                         <td><MudNumericField T="int" Value="@trait.Custo" ValueChanged="@(v => UpdateAsync(trait, custo: v))" /></td>
+                        <td>
+                            <MudSelect T="string" Value="@trait.Polaridade" ValueChanged="@(v => UpdateAsync(trait, polaridade: v))">
+                                <MudSelectItem Value="@("Positiva")">Positiva</MudSelectItem>
+                                <MudSelectItem Value="@("Negativa")">Negativa</MudSelectItem>
+                            </MudSelect>
+                        </td>
                         <td><MudCheckBox T="bool" Value="@trait.RequerEspecificacao" ValueChanged="@(v => UpdateAsync(trait, requerEspecificacao: v))" /></td>
                         <td><MudTextField T="string" Value="@trait.Descricao" ValueChanged="@(v => UpdateAsync(trait, descricao: v))" /></td>
                         <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(trait.Id))" /></td>
@@ -124,13 +136,13 @@ else
         await LoadAsync();
     }
 
-    private async Task UpdateAsync(TraitResponse current, string? nome = null, int? custo = null, bool? requerEspecificacao = null, string? descricao = null)
+    private async Task UpdateAsync(TraitResponse current, string? nome = null, int? custo = null, bool? requerEspecificacao = null, string? descricao = null, string? polaridade = null)
     {
         var response = await Http.PutAsJsonAsync($"traits/{current.Id}", new UpdateTraitRequest(
             nome ?? current.Nome,
             descricao ?? current.Descricao,
             custo ?? current.Custo,
-            current.Polaridade,
+            polaridade ?? current.Polaridade,
             requerEspecificacao ?? current.RequerEspecificacao));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
