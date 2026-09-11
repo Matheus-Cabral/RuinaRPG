@@ -458,6 +458,39 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
     }
 
+    private async Task<string> CreateDanoArtefatoItemAsync(string gmToken, string tipoDeDano, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel de Dano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "Dano", tipoDeDano, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task ModificadorDeDano_sums_equipped_Dano_Artefatos_per_TipoDeDano()
+    {
+        // Ficha de Personagem 3.f / Formulas.md ("Modificador de dano [tipo] = Artefato").
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmDano1", "sheetdano1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerDano1", "sheetplayerdano1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Dano");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var cortanteItemId = await CreateDanoArtefatoItemAsync(gmToken, "Cortante", 3);
+        var arcanoItemId = await CreateDanoArtefatoItemAsync(gmToken, "Arcano", 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(cortanteItemId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(arcanoItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/modificador-de-dano", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<ModificadorDeDanoResponse>();
+        body!.Cortante.Should().Be(3);
+        body.Arcano.Should().Be(2);
+        body.Perfurante.Should().Be(0);
+        body.Contundente.Should().Be(0);
+    }
+
     [Fact]
     public async Task Update_clamps_every_Atual_resource_to_its_own_Maximo_instead_of_rejecting()
     {

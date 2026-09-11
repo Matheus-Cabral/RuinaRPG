@@ -273,6 +273,29 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>
+    /// Ficha de Personagem 3.f (inherited by NPC): one read-only value per Tipo de Dano, each the
+    /// sum of equipped Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano.
+    /// Mirrors CharacterSheetsController.ModificadorDeDano.
+    /// </summary>
+    [HttpGet("{id}/modificador-de-dano")]
+    public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        var artefatos = await GetArtifactBonusInputsAsync(id);
+        return new ModificadorDeDanoResponse(
+            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
+            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
+            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
+            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+    }
+
+    /// <summary>
     /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
     /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
     /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.

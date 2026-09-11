@@ -338,6 +338,33 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task ModificadorDeDano_sums_equipped_Dano_Artefatos_per_TipoDeDano()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmDano1", "criaturadano1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var cortanteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "Dano", "Cortante", 3, null)));
+        var cortanteItemId = (await cortanteResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        var arcanoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, "Dano", "Arcano", 2, null)));
+        var arcanoItemId = (await arcanoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(cortanteItemId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(arcanoItemId)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/modificador-de-dano", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body2 = await response.Content.ReadFromJsonAsync<ModificadorDeDanoResponse>();
+        body2!.Cortante.Should().Be(3);
+        body2.Arcano.Should().Be(2);
+        body2.Perfurante.Should().Be(0);
+        body2.Contundente.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Get_computes_Vitalidade_and_Foco_Maximo_for_Arcano_Arquetipo()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmMax2", "criaturamax2@teste.com");

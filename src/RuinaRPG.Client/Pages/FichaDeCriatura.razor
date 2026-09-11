@@ -354,6 +354,16 @@
                 </MudSelect>
             </Section>
         }
+
+        @if (_modificadorDeDano is not null)
+        {
+            <Section Title="Modificador de Dano">
+                <MudText>Cortante: @_modificadorDeDano.Cortante</MudText>
+                <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
+                <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
+                <MudText>Arcano: @_modificadorDeDano.Arcano</MudText>
+            </Section>
+        }
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
@@ -601,6 +611,7 @@
     // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private SubAttributesResponse? _subAttributes;
+    private ModificadorDeDanoResponse? _modificadorDeDano;
     private List<CreatureSpellAbilityResponse> _spellAbilities = new();
     private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
@@ -814,6 +825,7 @@
         _armorSlots = await Http.GetFromJsonAsync<List<CreatureArmorSlotResponse>>($"creature-sheets/{SheetId}/armor-slots") ?? new();
         _shields = await Http.GetFromJsonAsync<List<CreatureShieldResponse>>($"creature-sheets/{SheetId}/shields") ?? new();
         _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"creature-sheets/{SheetId}/sub-attributes");
+        _modificadorDeDano = await Http.GetFromJsonAsync<ModificadorDeDanoResponse>($"creature-sheets/{SheetId}/modificador-de-dano");
     }
 
     private async Task UpdateAttributeAsync(string atributo, string field, object? value)

@@ -206,6 +206,16 @@ Campo previsto na ficha porém sem regra definida ainda no sistema. Não impleme
 
 Exibe o valor do sub-atributo *Iniciativa* já calculado em 2.b (`Agilidade + Bruto Prontidão + Artefato ou item`), somente leitura. O cálculo final de Iniciativa em jogo soma esse valor ao máximo do Dado da Cena atual (ver §5 de "[[Ruína RPG - Sistema Básico]]"), resolvido manualmente pelo jogador no momento da cena, fora da ficha.
 
+  
+
+### 3.f) Modificador de Dano
+
+  
+
+Quatro campos calculados, não editáveis, um por Tipo de Dano — **Cortante**, **Perfurante**, **Contundente** e **Arcano** (mesmos 4 valores do campo Tipo de Dano de uma Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]") — refletindo as fórmulas homônimas de "[[Formulas]]" (`Modificador de dano [tipo] = Artefato`). Cada um é a soma dos Valores de Artefatos equipados (5.b) cujo Tipo de alvo é Dano e cujo Alvo é aquele Tipo de Dano. Sem Artefatos equipados desse Tipo de alvo, o valor é **0**.
+
+  
+
 4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas e maestrias. Composta pelos subgrupos abaixo.
 
   
