@@ -69,7 +69,7 @@ builder.Services.AddOptions<JwtOptions>()
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddSingleton<IRulesDataProvider, RulesDataProvider>();
-builder.Services.AddSingleton<IRulebookRenderer, RulebookRenderer>();
+builder.Services.AddScoped<IRulebookRenderer, RulebookRenderer>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
 {

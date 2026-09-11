@@ -4,6 +4,9 @@ using Markdig;
 using Markdig.Renderers;
 using Markdig.Renderers.Html;
 using Markdig.Syntax;
+using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Enums;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Infrastructure.Rules;
 
@@ -18,34 +21,30 @@ public record RulebookDocument(string Slug, string Titulo, string? IntroHtml, IR
 
 public interface IRulebookRenderer
 {
-    IReadOnlyList<RulebookDocument> GetDocuments();
+    Task<IReadOnlyList<RulebookDocument>> GetDocuments();
 }
 
 /// <summary>
-/// Renders a fixed set of the same Docs/Sistema RPG embedded resources RulesDataProvider already
-/// reads (see its own ReadResource) as displayable HTML, for the client's "Livro de Regras" page.
-/// RulesDataProvider only ever exposes these as parsed structured records (LevelBonus,
-/// GraduacaoEfeito, ...) for gameplay calculations — this is the one place the raw prose gets
-/// rendered for a human to read end to end.
+/// Renders the Livro de Regras' 4 documents as displayable HTML. 3 of them (Sistema Básico, Graus
+/// & Círculos, Tabela de Níveis) render a RulebookDocumentOverride's Markdown when the Rules
+/// Auditor has saved one for that Slug (see RulebookDocumentsController), the embedded
+/// Docs/Sistema RPG resource otherwise — display-only, this never affects IRulesDataProvider or
+/// any gameplay calculator. The 4th (Características) is rebuilt straight from the live Traits
+/// table instead of any Markdown at all (see BuildCaracteristicasAsync) — editing a Trait via
+/// TraitsController is what changes that one.
 ///
-/// Each document is split into RulebookSections at a chosen heading level (see SplitIntoSections)
-/// so the client can render a table of contents and one card per section instead of one giant
-/// undifferentiated block — the original flat-Html rendering made a long document (up to 60
-/// headings) unreadable and unsearchable.
+/// Scoped (not Singleton — Program.cs registers it as such): it takes a RuinaRpgDbContext, and an
+/// override can change between requests, so nothing here is cached across requests the way it used
+/// to be with the old Lazy&lt;&gt; field.
 /// </summary>
-public class RulebookRenderer : IRulebookRenderer
+public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
 {
-    // Lazy — same reasoning as RulesDataProvider: read+render once, reuse for every request.
-    private readonly Lazy<IReadOnlyList<RulebookDocument>> _documents = new(BuildDocuments);
-
-    public IReadOnlyList<RulebookDocument> GetDocuments() => _documents.Value;
-
-    private static IReadOnlyList<RulebookDocument> BuildDocuments() =>
+    public async Task<IReadOnlyList<RulebookDocument>> GetDocuments() =>
     [
-        BuildCaracteristicas(),
-        BuildSistemaBasico(),
-        BuildGrausECirculos(),
-        BuildTabelaDeNiveis(),
+        await BuildCaracteristicasAsync(),
+        await BuildSistemaBasicoAsync(),
+        await BuildGrausECirculosAsync(),
+        await BuildTabelaDeNiveisAsync(),
     ];
 
     // UseAdvancedExtensions (not the bare default pipeline) is what turns GFM-style pipe tables
@@ -56,20 +55,36 @@ public class RulebookRenderer : IRulebookRenderer
 
     // "## 1. Atributos" / "## 2. Perícias e Progressão" / ... — 7 numbered top-level sections,
     // no content before the first one.
-    private static RulebookDocument BuildSistemaBasico()
+    private async Task<RulebookDocument> BuildSistemaBasicoAsync()
     {
-        var (intro, sections) = SplitIntoSections(RulesDataProvider.ReadResource("Sistema Basico.md"), splitLevel: 2);
+        var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("sistema-basico"), splitLevel: 2);
         return new RulebookDocument("sistema-basico", "Sistema Básico", intro, sections);
     }
 
-    // "# Positivas" / "# Negativas" group two flat lists of "### <Trait Name>" entries — grouping
-    // by the level-1 heading and splitting at level 3 turns each trait into its own section, tagged
-    // with which group it belongs to, so the client can render this as a filterable list instead of
-    // scrolling prose (58 traits is too many for a plain table of contents to be useful).
-    private static RulebookDocument BuildCaracteristicas()
+    /// <summary>
+    /// Unlike the other 3 documents, this one has no Markdown override at all — it is rebuilt
+    /// directly from the live Traits table (Requisitos - Auditoria de Regras' unification: editing
+    /// a Característica via TraitsController is immediately visible here too, instead of this tab
+    /// being a second, disconnected copy of the same prose Características.md used to be). Grouped
+    /// by Polaridade (Positivas/Negativas) — same Grupo shape the client's existing filterable-list
+    /// UI (LivroDeRegras.razor's "caracteristicas" branch) already expects, unchanged by this.
+    /// </summary>
+    private async Task<RulebookDocument> BuildCaracteristicasAsync()
     {
-        var (intro, sections) = SplitIntoSections(RulesDataProvider.ReadResource("Caracteristicas.md"), splitLevel: 3, groupLevel: 1);
-        return new RulebookDocument("caracteristicas", "Características", intro, sections);
+        var traits = await db.Traits
+            .Where(t => !t.IsDeleted)
+            .OrderBy(t => t.Polaridade)
+            .ThenBy(t => t.Nome)
+            .ToListAsync();
+
+        var sections = traits.Select(t => new RulebookSection(
+            Id: Slugify(t.Nome),
+            Titulo: t.Nome,
+            Html: WebUtility.HtmlEncode(t.Descricao).Replace("\n", "<br />") + $"<p><em>Custo: {t.Custo} ponto(s)</em></p>",
+            Grupo: t.Polaridade == Polaridade.Positiva ? "Positivas" : "Negativas"
+        )).ToList();
+
+        return new RulebookDocument("caracteristicas", "Características", null, sections);
     }
 
     /// <summary>
@@ -82,9 +97,9 @@ public class RulebookRenderer : IRulebookRenderer
     /// static wwwroot assets (src/RuinaRPG.Client/wwwroot/rulebook/) rather than embedded in the
     /// source .md, so Docs/ stays untouched as the single source of truth.
     /// </summary>
-    private static RulebookDocument BuildGrausECirculos()
+    private async Task<RulebookDocument> BuildGrausECirculosAsync()
     {
-        var (intro, sections) = SplitIntoSections(RulesDataProvider.ReadResource("GRAUS e CIRCULOS.md"), splitLevel: 1);
+        var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("graus-e-circulos"), splitLevel: 1);
         return new RulebookDocument("graus-e-circulos", "Graus & Círculos", (intro ?? "") + ReferenceImagesHtml, sections);
     }
 
@@ -103,9 +118,9 @@ public class RulebookRenderer : IRulebookRenderer
 
     // No Markdown headings at all — one big GFM pipe table. Splitting finds nothing to split on, so
     // Sections stays empty and the whole rendered table lands in IntroHtml.
-    private static RulebookDocument BuildTabelaDeNiveis()
+    private async Task<RulebookDocument> BuildTabelaDeNiveisAsync()
     {
-        var (intro, sections) = SplitIntoSections(RulesDataProvider.ReadResource("Tabela de Níveis.md"), splitLevel: 2);
+        var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("tabela-de-niveis"), splitLevel: 2);
         return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", intro, sections);
     }
 
@@ -122,6 +137,13 @@ public class RulebookRenderer : IRulebookRenderer
         "tabela-de-niveis" => RulesDataProvider.ReadResource("Tabela de Níveis.md"),
         _ => throw new ArgumentOutOfRangeException(nameof(slug), slug, "Slug de documento desconhecido."),
     };
+
+    /// <summary>The RulebookDocumentOverride for this Slug, if the Rules Auditor saved one — the embedded default otherwise.</summary>
+    private async Task<string> ReadMarkdownAsync(string slug)
+    {
+        var over = await db.RulebookDocumentOverrides.FirstOrDefaultAsync(o => o.Slug == slug);
+        return over?.MarkdownText ?? ReadEmbeddedMarkdown(slug);
+    }
 
     /// <summary>
     /// Walks the document's top-level blocks, starting a new section every time a heading at
