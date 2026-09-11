@@ -223,4 +223,83 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task ListRacialTraits_returns_all_7_Variantes_with_the_Sistema_Basico_defaults()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialTraitGm1", "racialtrait1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/racial-traits", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<RacialTraitSlotsEntryResponse>>();
+        body!.Should().HaveCount(7);
+        body!.Should().OnlyContain(e => e.IsDefault);
+
+        var sinir = body!.Single(e => e.Variante == "Sinir");
+        sinir.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Alfabetizado", "Sedutor", "Aparência Inofensiva (2 pontos)");
+        sinir.Obrigatoria.Should().BeEmpty();
+
+        var alora = body!.Single(e => e.Variante == "Alora");
+        alora.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Detectar Magia", "Amado por feras");
+        alora.Obrigatoria.Should().ContainSingle(o => o.TraitNome == "Desvantagem Elemental" && o.Especificacao == "Fogo");
+    }
+
+    [Fact]
+    public async Task UpdateRacialTraitSlots_persists_the_override_and_List_reflects_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialTraitGm2", "racialtrait2@teste.com");
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-traits/Sinir", gmToken,
+            new UpdateRacialTraitSlotsRequest(
+                [new RacialTraitOptionRequest("Alfabetizado", null)],
+                [])));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/racial-traits", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<RacialTraitSlotsEntryResponse>>();
+        var sinir = body!.Single(e => e.Variante == "Sinir");
+        sinir.IsDefault.Should().BeFalse();
+        sinir.Gratuita.Should().ContainSingle(o => o.TraitNome == "Alfabetizado");
+    }
+
+    [Fact]
+    public async Task UpdateRacialTraitSlots_with_an_empty_Gratuita_list_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialTraitGm3", "racialtrait3@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-traits/Yavos", gmToken,
+            new UpdateRacialTraitSlotsRequest([], [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task DeleteRacialTraitOverride_reverts_to_the_default()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialTraitGm4", "racialtrait4@teste.com");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-traits/Koroanos", gmToken,
+            new UpdateRacialTraitSlotsRequest([new RacialTraitOptionRequest("Alfabetizado", null)], [])));
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/racial-traits/Koroanos", gmToken));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/racial-traits", gmToken));
+        var body = await listResponse.Content.ReadFromJsonAsync<List<RacialTraitSlotsEntryResponse>>();
+        var koroanos = body!.Single(e => e.Variante == "Koroanos");
+        koroanos.IsDefault.Should().BeTrue();
+        koroanos.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Saque Rápido", "Visão Noturna");
+    }
+
+    [Fact]
+    public async Task UpdateRacialTraitSlots_by_a_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RacialTraitGm5", "racialtrait5@teste.com");
+        var playerToken = await RegisterJogadorTokenAsync(gmToken, "RacialTraitPlayer5", "racialtraitplayer5@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-traits/Alora", playerToken,
+            new UpdateRacialTraitSlotsRequest([new RacialTraitOptionRequest("Detectar Magia", null)], [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

@@ -13,7 +13,7 @@ public class RacialTraitLookupTests
         {
             var result = RacialTraitLookup.For(variante);
 
-            result.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Alfabetizado", "Sedutor", "Aparência Inofensiva");
+            result.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Alfabetizado", "Sedutor", "Aparência Inofensiva (2 pontos)");
             result.Obrigatoria.Should().BeEmpty();
         }
     }
@@ -25,7 +25,7 @@ public class RacialTraitLookupTests
         {
             var result = RacialTraitLookup.For(variante);
 
-            result.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Coragem", "Imunidade de Venenos", "Sentidos Aguçados");
+            result.Gratuita.Select(o => o.TraitNome).Should().BeEquivalentTo("Coragem", "Imunidade de Venenos (2 pontos)", "Sentidos Aguçados");
             result.Obrigatoria.Select(o => o.TraitNome).Should().BeEquivalentTo("Código de Honra", "Crédulo");
         }
     }

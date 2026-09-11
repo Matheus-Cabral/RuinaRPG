@@ -192,6 +192,12 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
 
+        // A Variante change makes any racial characteristics already granted for the old one stale
+        // (Ruína RPG - Sistema Básico.md §7 grants are per-Variante) — remove them so 5.d never
+        // shows a grant that no longer matches the character's race, and PendingRacialTraitChoice
+        // correctly reports the new Variante as unresolved again.
+        var varianteChanged = sheet.Variante != variante;
+
         sheet.ImageId = imageId;
         sheet.Nome = request.Nome;
         sheet.Linhagem = linhagem;
@@ -238,6 +244,12 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.Ciclos = request.Ciclos;
         sheet.PontosDePericiaBonusCritico = request.PontosDePericiaBonusCritico;
         sheet.ArcaRolada = request.ArcaRolada;
+
+        if (varianteChanged)
+        {
+            var staleRacialTraits = await db.CharacterTraits.Where(t => t.CharacterSheetId == id && t.IsRacial).ToListAsync();
+            db.CharacterTraits.RemoveRange(staleRacialTraits);
+        }
 
         await db.SaveChangesAsync();
 
