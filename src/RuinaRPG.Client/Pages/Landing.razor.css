@@ -79,3 +79,27 @@
 .rr-hero-inner ::deep .rr-hero-cta {
     margin-top: 0;
 }
+
+.rr-landing-footer {
+    /* Bare <footer> authored directly in Landing.razor, so — like .rr-hero above — it carries the
+       scope attribute itself; its <a> child is plain HTML too (not a component), so it's reachable
+       without ::deep. Kept deliberately quiet: the muted body color, no background/border of its
+       own, small type — a signature at the bottom of the page, not another call-to-action. */
+    text-align: center;
+    margin-top: var(--rr-space-5);
+    padding: var(--rr-space-3);
+    border-top: 1px solid var(--rr-border);
+    color: var(--rr-text-muted);
+    font-size: 0.8rem;
+}
+
+.rr-landing-footer a {
+    color: var(--rr-text-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--rr-border);
+}
+
+.rr-landing-footer a:hover {
+    color: var(--rr-primary);
+    text-decoration-color: var(--rr-primary);
+}

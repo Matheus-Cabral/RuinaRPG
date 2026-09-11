@@ -19,4 +19,18 @@ public class LandingTests : MudBunitContext
 
         hrefs.Should().ContainInOrder("/livro-de-regras", "/cadastro", "/login");
     }
+
+    [Fact]
+    public void Footer_credits_the_site_and_links_to_the_developers_GitHub()
+    {
+        // Credits the site's own development only — not the RPG system/rulebook, which isn't
+        // the developer's work.
+        var cut = Render<Landing>();
+
+        var footer = cut.Find("footer.rr-landing-footer");
+        footer.TextContent.Should().Contain("Site desenvolvido por Matheus Cabral");
+
+        var link = footer.QuerySelector("a");
+        link!.GetAttribute("href").Should().Be("https://github.com/Matheus-Cabral");
+    }
 }
