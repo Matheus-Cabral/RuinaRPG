@@ -180,6 +180,90 @@ public class CatalogoItemFormTests : MudBunitContext
         cut.Markup.Should().Contain("Poção");
     }
 
+    private CatalogoItemForm RenderNewItemForm()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        return Render<CatalogoItemForm>().Instance;
+    }
+
+    [Fact]
+    public async Task SearchTipoDeAlvo_returns_the_4_fixed_options()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchTipoDeAlvoForTestsAsync("");
+
+        results.Should().BeEquivalentTo(new[] { "Atributo", "Pericia", "SubAtributo", "Dano" });
+    }
+
+    [Fact]
+    public async Task SearchTipoDeAlvo_filters_by_the_accented_label_not_just_the_raw_value()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchTipoDeAlvoForTestsAsync("Perí");
+
+        results.Should().BeEquivalentTo(new[] { "Pericia" });
+    }
+
+    [Fact]
+    public async Task SearchAlvo_for_Atributo_lists_the_8_Atributo_names()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchAlvoForTestsAsync("Atributo", "");
+
+        results.Should().BeEquivalentTo(new[] { "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca" });
+    }
+
+    [Fact]
+    public async Task SearchAlvo_for_Pericia_lists_all_39_Pericia_names()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchAlvoForTestsAsync("Pericia", "");
+
+        results.Should().HaveCount(39);
+        results.Should().Contain("ArmasBrancas");
+    }
+
+    [Fact]
+    public async Task SearchAlvo_for_SubAtributo_lists_the_7_canonical_names()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchAlvoForTestsAsync("SubAtributo", "");
+
+        results.Should().BeEquivalentTo(new[]
+        {
+            "Iniciativa", "Movimentação", "Esquiva Natural", "Defesa Natural",
+            "Redução Física", "Redução Mágica", "Adrenalina",
+        });
+    }
+
+    [Fact]
+    public async Task SearchAlvo_for_Dano_lists_the_4_damage_types_including_Arcano()
+    {
+        var form = RenderNewItemForm();
+
+        var results = await form.SearchAlvoForTestsAsync("Dano", "");
+
+        results.Should().BeEquivalentTo(new[] { "Cortante", "Perfurante", "Contundente", "Arcano" });
+    }
+
+    [Fact]
+    public async Task Changing_TipoDeAlvo_clears_the_previously_chosen_Alvo()
+    {
+        var form = RenderNewItemForm();
+
+        await form.OnTipoDeAlvoChangedForTestsAsync("Forca");
+
+        form.AlvoForTests.Should().BeNull();
+    }
+
     /// <summary>
     /// Unlike <see cref="FakeHttpMessageHandler"/>, actually yields before responding, so awaits
     /// on it do not resolve synchronously — reproducing the timing of a real HTTP round trip.

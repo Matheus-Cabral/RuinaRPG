@@ -8,6 +8,8 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
+@using RuinaRPG.Domain.CharacterSheets
+@using RuinaRPG.Domain.Items
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -90,8 +92,12 @@
     else if (_form.Tipo == "Artefato")
     {
         <Section Title="Artefato">
-            <MudTextField T="string" @bind-Value="_form.TipoDeAlvo" Label="Tipo de Alvo" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Alvo" Label="Alvo" @bind-Value:after="NotifySavedAsync" />
+            <MudAutocomplete T="string" @bind-Value="_form.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync"
+                              SearchFunc="SearchTipoDeAlvoAsync" ToStringFunc="@TipoDeAlvoLabel"
+                              Label="Tipo de Alvo" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null" />
+            <MudAutocomplete T="string" @bind-Value="_form.Alvo" @bind-Value:after="NotifySavedAsync"
+                              SearchFunc="SearchAlvoAsync" Label="Alvo" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null"
+                              Disabled="@string.IsNullOrEmpty(_form.TipoDeAlvo)" />
             <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
@@ -226,6 +232,77 @@
 
         return true;
     }
+
+    // The 4 fixed Tipo de Alvo values, keyed by the raw enum member name the server expects
+    // (ItemsController parses this with Enum.TryParse<TipoDeAlvo>) — the label is only for display.
+    private static readonly (string Value, string Label)[] TipoDeAlvoOptions =
+    [
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Atributo.ToString(), "Atributo"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Pericia.ToString(), "Perícia"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.SubAtributo.ToString(), "Sub-Atributo"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Dano.ToString(), "Dano"),
+    ];
+
+    // Canonical Alvo strings for Tipo de Alvo = Sub-Atributo (ver SubAtributoAlvo) — the only one
+    // of the 4 groups with no backing enum of its own.
+    private static readonly string[] SubAtributoAlvoOptions =
+    [
+        SubAtributoAlvo.Iniciativa, SubAtributoAlvo.Movimentacao, SubAtributoAlvo.EsquivaNatural,
+        SubAtributoAlvo.DefesaNatural, SubAtributoAlvo.ReducaoFisica, SubAtributoAlvo.ReducaoMagica,
+        SubAtributoAlvo.Adrenalina,
+    ];
+
+    private static string TipoDeAlvoLabel(string? value) =>
+        TipoDeAlvoOptions.FirstOrDefault(o => o.Value == value).Label ?? value ?? "";
+
+    private Task<IEnumerable<string>> SearchTipoDeAlvoAsync(string value, CancellationToken token) =>
+        Task.FromResult(TipoDeAlvoOptions
+            .Where(o => string.IsNullOrEmpty(value) || o.Label.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Select(o => o.Value));
+
+    // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — same "Atributo",
+    // "Pericia" and "Dano" enum-member spelling every other Alvo dropdown in the app already shows
+    // raw (no accented relabeling), so a value picked here round-trips identically through
+    // ArtifactBonusCalculator's string comparison elsewhere.
+    private Task<IEnumerable<string>> SearchAlvoAsync(string value, CancellationToken token)
+    {
+        IEnumerable<string> options = _form.TipoDeAlvo switch
+        {
+            "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
+            "Pericia" => Enum.GetValues<Pericia>().Select(p => p.ToString()),
+            "SubAtributo" => SubAtributoAlvoOptions,
+            "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
+            _ => Enumerable.Empty<string>(),
+        };
+
+        return Task.FromResult(options.Where(o => string.IsNullOrEmpty(value) || o.Contains(value, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private Task OnTipoDeAlvoChangedAsync()
+    {
+        // Alvo's options are tied to Tipo de Alvo — a value from the old group makes no sense
+        // under the new one (and might not even be a valid Alvo for it), so it's cleared rather
+        // than left stale.
+        _form.Alvo = null;
+        return NotifySavedAsync();
+    }
+
+    // Test-only seams (see EntityPicker's identical rationale): MudAutocomplete owns its own
+    // debounce/open-state internally, which bUnit's synchronous TestContext can't drive through
+    // real elapsed time — these let CatalogoItemFormTests exercise the search/reset logic
+    // deterministically, without needing _form.TipoDeAlvo set through the rendered component.
+    internal Task<IEnumerable<string>> SearchTipoDeAlvoForTestsAsync(string value) => SearchTipoDeAlvoAsync(value, CancellationToken.None);
+    internal Task<IEnumerable<string>> SearchAlvoForTestsAsync(string tipoDeAlvo, string value)
+    {
+        _form.TipoDeAlvo = tipoDeAlvo;
+        return SearchAlvoAsync(value, CancellationToken.None);
+    }
+    internal Task OnTipoDeAlvoChangedForTestsAsync(string? previousAlvo)
+    {
+        _form.Alvo = previousAlvo;
+        return OnTipoDeAlvoChangedAsync();
+    }
+    internal string? AlvoForTests => _form.Alvo;
 
     private Task NotifySavedAsync()
     {
