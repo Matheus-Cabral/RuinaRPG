@@ -1,0 +1,179 @@
+@page "/auditoria/caracteristicas"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Características</MudText>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+}
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Adicionar característica">
+        <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
+        <MudSelect T="string" @bind-Value="_newForm.Polaridade" Label="Polaridade">
+            <MudSelectItem Value="@("Positiva")">Positiva</MudSelectItem>
+            <MudSelectItem Value="@("Negativa")">Negativa</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_newForm.Custo" Label="Custo" />
+        <MudCheckBox T="bool" @bind-Value="_newForm.RequerEspecificacao" Label="Exige Especificação?" />
+        <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
+    </Section>
+
+    <Section Title="Positivas">
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Nome</th><th>Custo</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var trait in _traits.Where(t => t.Polaridade == "Positiva"))
+                {
+                    <tr>
+                        <td><MudTextField T="string" Value="@trait.Nome" ValueChanged="@(v => UpdateAsync(trait, nome: v))" /></td>
+                        <td><MudNumericField T="int" Value="@trait.Custo" ValueChanged="@(v => UpdateAsync(trait, custo: v))" /></td>
+                        <td><MudCheckBox T="bool" Value="@trait.RequerEspecificacao" ValueChanged="@(v => UpdateAsync(trait, requerEspecificacao: v))" /></td>
+                        <td><MudTextField T="string" Value="@trait.Descricao" ValueChanged="@(v => UpdateAsync(trait, descricao: v))" /></td>
+                        <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(trait.Id))" /></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </Section>
+
+    <Section Title="Negativas">
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Nome</th><th>Custo</th><th>Especificação?</th><th>Descrição</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var trait in _traits.Where(t => t.Polaridade == "Negativa"))
+                {
+                    <tr>
+                        <td><MudTextField T="string" Value="@trait.Nome" ValueChanged="@(v => UpdateAsync(trait, nome: v))" /></td>
+                        <td><MudNumericField T="int" Value="@trait.Custo" ValueChanged="@(v => UpdateAsync(trait, custo: v))" /></td>
+                        <td><MudCheckBox T="bool" Value="@trait.RequerEspecificacao" ValueChanged="@(v => UpdateAsync(trait, requerEspecificacao: v))" /></td>
+                        <td><MudTextField T="string" Value="@trait.Descricao" ValueChanged="@(v => UpdateAsync(trait, descricao: v))" /></td>
+                        <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(trait.Id))" /></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </Section>
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Características"),
+    };
+
+    private List<TraitResponse> _traits = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    private readonly NewTraitFormModel _newForm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("traits");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar as características.";
+            return;
+        }
+
+        _traits = await response.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
+
+        // List (GET) has no auth restriction — this page can only tell "not the auditor" apart
+        // from "no characteristics yet" by trying a write and reading its status. A cheap way to
+        // surface that without a spurious write: attempt the Add button's own POST later, and let
+        // its own 403 flip _forbidden — so nothing extra is needed here. (Left intentionally simple:
+        // AddAsync/UpdateAsync/DeleteAsync below already set _forbidden on a 403 response.)
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("traits",
+            new CreateTraitRequest(_newForm.Nome, _newForm.Descricao, _newForm.Custo, _newForm.Polaridade, _newForm.RequerEspecificacao));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar a característica — verifique Nome/Custo/Polaridade (podem já existir combinados, ou o sinal do Custo não bater com a Polaridade).";
+            return;
+        }
+
+        _newForm.Nome = "";
+        _newForm.Descricao = "";
+        _newForm.Custo = 0;
+        _newForm.RequerEspecificacao = false;
+        await LoadAsync();
+    }
+
+    private async Task UpdateAsync(TraitResponse current, string? nome = null, int? custo = null, bool? requerEspecificacao = null, string? descricao = null)
+    {
+        var response = await Http.PutAsJsonAsync($"traits/{current.Id}", new UpdateTraitRequest(
+            nome ?? current.Nome,
+            descricao ?? current.Descricao,
+            custo ?? current.Custo,
+            current.Polaridade,
+            requerEspecificacao ?? current.RequerEspecificacao));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a alteração.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"traits/{id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            _errorMessage = "Esta característica está em uso em pelo menos uma ficha e não pode ser excluída.";
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a característica.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private class NewTraitFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public int Custo { get; set; }
+        public string Polaridade { get; set; } = "Positiva";
+        public bool RequerEspecificacao { get; set; }
+    }
+}
