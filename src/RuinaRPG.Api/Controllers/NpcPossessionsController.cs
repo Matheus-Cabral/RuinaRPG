@@ -196,7 +196,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId);
+        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
         if (trait is null)
             return BadRequest("Trait não encontrado.");
 
@@ -314,7 +314,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         foreach (var grant in resolution.Grants!)
         {
-            var trait = await db.Traits.FirstOrDefaultAsync(t => t.Nome == grant.TraitNome);
+            var trait = await db.Traits.FirstOrDefaultAsync(t => t.Nome == grant.TraitNome && !t.IsDeleted);
             if (trait is null)
                 return BadRequest($"Característica \"{grant.TraitNome}\" não encontrada no catálogo.");
 
