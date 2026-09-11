@@ -192,10 +192,18 @@ public class AuthController(
     /// </summary>
     [Authorize]
     [HttpGet("me")]
-    public ActionResult<MeResponse> Me() => Ok(new MeResponse(
-        User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? string.Empty,
-        User.FindFirstValue("nickname") ?? string.Empty,
-        User.FindFirstValue("role") ?? string.Empty));
+    public async Task<ActionResult<MeResponse>> Me()
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var isRulesAuditor = userId is not null
+            && await db.Users.Where(u => u.Id == Guid.Parse(userId)).Select(u => u.IsRulesAuditor).SingleOrDefaultAsync();
+
+        return Ok(new MeResponse(
+            userId ?? string.Empty,
+            User.FindFirstValue("nickname") ?? string.Empty,
+            User.FindFirstValue("role") ?? string.Empty,
+            isRulesAuditor));
+    }
 
     // Matches the normalized column that carries the unique index, so the lookup is
     // case-insensitive and can never find more than one row.
