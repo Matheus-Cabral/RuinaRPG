@@ -151,7 +151,7 @@
                     @foreach (var attr in _attributes)
                     {
                         <tr>
-                            <td>@attr.Atributo</td>
+                            <td>@AtributoDisplay.Label(attr.Atributo)</td>
                             <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
                             <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
                             <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
@@ -177,7 +177,7 @@
                                     <MudSelectItem Value="@("")">—</MudSelectItem>
                                     @foreach (var attr in _attributes)
                                     {
-                                        <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
+                                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
                                     }
                                 </MudSelect>
                             </td>
@@ -528,7 +528,7 @@
                     <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
                     @foreach (var attr in _attributes)
                     {
-                        <MudSelectItem Value="@attr.Atributo">@attr.Atributo</MudSelectItem>
+                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
@@ -539,7 +539,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @mastery.Atributo — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
