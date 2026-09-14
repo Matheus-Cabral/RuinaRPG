@@ -117,4 +117,9 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 
 **5.b Artefatos**: mesma estrutura do Personagem; quando o Tipo é Atributo, o Alvo oferece apenas os 6 atributos de Criatura (2.a).
 
-**5.c Afeições** e **5.d Características**: sem alteração em relação ao Personagem.
+**5.c Afeições**: sem alteração em relação ao Personagem.
+
+**5.d Características**: mesmo comportamento do Personagem, mais uma diferença — o seletor de
+característica também lista o catálogo exclusivo de criatura de "[[Requisitos - Auditoria de
+Regras]]" R0005, junto com o catálogo normal. Uma característica concedida desse catálogo conta
+no mesmo orçamento de pontos (Positivas/Negativas) que uma característica normal.

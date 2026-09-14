@@ -649,10 +649,26 @@
 
     private async Task<List<PickerOption>> SearchTraitsAsync(string query)
     {
-        var response = await Http.GetAsync($"traits?nome={Uri.EscapeDataString(query)}");
-        if (!response.IsSuccessStatusCode) return new();
-        var traits = await response.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
-        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
+        var encodedQuery = Uri.EscapeDataString(query);
+        var normalTask = Http.GetAsync($"traits?nome={encodedQuery}");
+        var exclusiveTask = Http.GetAsync($"creature-exclusive-traits?nome={encodedQuery}");
+        await Task.WhenAll(normalTask, exclusiveTask);
+
+        var options = new List<PickerOption>();
+        if (normalTask.Result.IsSuccessStatusCode)
+        {
+            var normalTraits = await normalTask.Result.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
+            options.AddRange(normalTraits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")));
+        }
+        if (exclusiveTask.Result.IsSuccessStatusCode)
+        {
+            var exclusiveTraits = await exclusiveTask.Result.Content.ReadFromJsonAsync<List<RuinaRPG.Contracts.Rules.CreatureExclusiveTraitResponse>>() ?? new();
+            options.AddRange(exclusiveTraits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")));
+        }
+
+        // Both catalogs appear together, sorted by name — a stable, predictable order regardless
+        // of which of the two requests happened to come back first.
+        return options.OrderBy(o => o.Label, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     protected override void OnInitialized()
