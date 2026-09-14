@@ -565,17 +565,17 @@
                     <MudTextField T="string" @bind-Value="_spellAbilityForm.Descricao" Label="Descrição" Lines="3" />
 
                     <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddSpellAbilityEffect">Adicionar Efeito</MudButton>
+                    <AddEfeitoForm Grau="_spellAbilityForm.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionado" />
                     <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
                         <thead><tr><th>Nome do Efeito</th><th>Quantidade</th><th>Custo em PI</th><th></th></tr></thead>
                         <tbody>
                             @for (var i = 0; i < _spellAbilityForm.Efeitos.Count; i++)
                             {
-                                var index = i; // capture for the closures below
+                                var index = i; // capture for the closure below
                                 <tr>
-                                    <td><MudTextField T="string" @bind-Value="_spellAbilityForm.Efeitos[index].EfeitoNome" /></td>
-                                    <td><MudNumericField T="int?" @bind-Value="_spellAbilityForm.Efeitos[index].Quantidade" /></td>
-                                    <td><MudNumericField T="int" @bind-Value="_spellAbilityForm.Efeitos[index].CustoPI" /></td>
+                                    <td>@_spellAbilityForm.Efeitos[index].EfeitoNome</td>
+                                    <td>@_spellAbilityForm.Efeitos[index].Quantidade</td>
+                                    <td>@_spellAbilityForm.Efeitos[index].CustoPI</td>
                                     <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</MudButton></td>
                                 </tr>
                             }
@@ -1353,7 +1353,11 @@
         _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
     }
 
-    private void AddSpellAbilityEffect() => _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel());
+    private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
+        _spellAbilityForm.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
+
+    private void OnEfeitoAdicionado(RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult resultado) =>
+        _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel { EfeitoNome = resultado.EfeitoNome, Quantidade = resultado.Quantidade, CustoPI = resultado.CustoPI });
 
     private async Task AddSpellAbilityAsync()
     {
