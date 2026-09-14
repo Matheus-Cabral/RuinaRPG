@@ -1,3 +1,5 @@
+using RuinaRPG.Domain.Enums;
+
 namespace RuinaRPG.Domain.SpellsAndAbilities;
 
 /// <summary>
@@ -37,13 +39,13 @@ public static class EfeitoValidator
             }
 
             var maxPermitido = EfeitoCustoCalculator.MaxPermitido(regra.MaxUnidades, regra.MaxEscalaPorGrau, regra.MaxContandoAPartirDoGrau, grauDaMagia);
-            if (maxPermitido is { } max && (submetido.Quantidade ?? 1) > max)
+            if (maxPermitido is { } max && (quantidadeDerivada ?? submetido.Quantidade ?? 1) > max)
                 return $"Efeito \"{submetido.EfeitoNome}\" excede o teto de {max} para Grau/Círculo {grauDaMagia}.";
 
             // Manual/ManualPorUnidade: the GM's own typed value IS the input, not a value to
             // recompute — accept whatever CustoPI was submitted for those two types without
             // recalculating (there is nothing to check it against).
-            if (regra.TipoDeCusto is Enums.TipoDeCusto.Manual or Enums.TipoDeCusto.ManualPorUnidade)
+            if (regra.TipoDeCusto is TipoDeCusto.Manual or TipoDeCusto.ManualPorUnidade)
                 continue;
 
             var custoEsperado = EfeitoCustoCalculator.Calcular(
