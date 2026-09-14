@@ -20,8 +20,11 @@ hand-authored, com os dados já extraídos e estruturados manualmente (mesmo mé
 `RacialTraitLookup`/`RacialAbilityLookup`: fatos extraídos à mão da prosa do sistema, não um
 parser genérico).
 
-**Levantamento completo do documento** (45 efeitos nomeados em 9 graus, mais os 3 efeitos
-básicos) encontrou problemas reais nele, resolvidos em conversa com o usuário:
+**Levantamento completo do documento** (47 efeitos nomeados em 9 graus, mais os 3 efeitos
+básicos — o levantamento original contou 45 e só na Tarefa 2 de implementação se percebeu que
+"Aumentar Max. Arcana" tinha o mesmo bug de cabeçalho `##` faltando já conhecido em "Congelar",
+subcontando o catálogo real em 2) encontrou problemas reais nele, resolvidos em conversa com o
+usuário:
 - "Selar" é citado como pré-requisito alternativo do Detrito mas não existe como efeito definido
   em lugar nenhum — **decisão: o catálogo nasce sem ele; o Auditor de Regras cria quando/se for
   definido**, mesmo mecanismo que já resolve esse tipo de lacuna pra Características (R0003 dessa
@@ -95,7 +98,7 @@ Efeito
   UpdatedAt                     DateTime?
 ```
 
-`EfeitoSeeder` (mesmo padrão de `TraitSeeder`, chamado no startup): faz upsert de ~49 linhas
+`EfeitoSeeder` (mesmo padrão de `TraitSeeder`, chamado no startup): faz upsert de ~51 linhas
 hand-authored (a tabela completa abaixo) por `Nome`, pulando qualquer linha já `IsCustomized`.
 
 ## O catálogo completo (seed data)

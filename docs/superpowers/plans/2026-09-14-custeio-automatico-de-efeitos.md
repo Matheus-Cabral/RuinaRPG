@@ -592,7 +592,7 @@ public class EfeitoMigrationAndSeedTests : IClassFixture<PostgresFixture>
         await EfeitoSeeder.SeedAsync(db);
 
         var todos = await db.Efeitos.Where(e => !e.IsDeleted).ToListAsync();
-        todos.Should().HaveCount(49); // 45 named + 3 básicos + Libra split em 2
+        todos.Should().HaveCount(51); // 47 named (incl. "Aumentar Max. Arcana", missing-heading bug found during Task 2) + 3 básicos + Libra split em 2
 
         var dano = todos.Single(e => e.Nome == "Dano");
         dano.TipoDeCusto.Should().Be(TipoDeCusto.PorUnidade);
@@ -720,7 +720,7 @@ Run: `dotnet ef migrations add AddEfeitos --project src/RuinaRPG.Infrastructure 
 Confirm the generated file contains one `CreateTable(name: "Efeitos", ...)` with all 16 columns
 from Step 3. If missing, Step 3/4 weren't saved before running this command — fix and regenerate.
 
-- [ ] **Step 6: Create `EfeitoSeeder` with the full 49-row seed table**
+- [ ] **Step 6: Create `EfeitoSeeder` with the full 51-row seed table**
 
 Create `src/RuinaRPG.Infrastructure/Rules/EfeitoSeeder.cs`:
 
@@ -913,7 +913,7 @@ Expected: `Build succeeded. 0 Warning(s) 0 Error(s)`
 
 ```bash
 git add src/RuinaRPG.Infrastructure src/RuinaRPG.Api/Program.cs "Docs/Sistema RPG/GRAUS & CÍRCULOS.md" tests/RuinaRPG.Tests.Integration/Persistence/EfeitoMigrationAndSeedTests.cs
-git commit -m "feat: Efeito catalog table + EfeitoSeeder (49-row hand-authored seed)"
+git commit -m "feat: Efeito catalog table + EfeitoSeeder (51-row hand-authored seed)"
 ```
 
 ---
@@ -1005,7 +1005,7 @@ public class EfeitosControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
     }
 
     [Fact]
-    public async Task List_is_seeded_with_49_effects_and_is_open_to_any_authenticated_GM()
+    public async Task List_is_seeded_with_51_effects_and_is_open_to_any_authenticated_GM()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EfeitoGm1", "efeito1@teste.com");
 
@@ -1013,7 +1013,7 @@ public class EfeitosControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var efeitos = await response.Content.ReadFromJsonAsync<List<EfeitoResponse>>();
-        efeitos!.Should().HaveCount(49);
+        efeitos!.Should().HaveCount(51);
         efeitos.Should().ContainSingle(e => e.Nome == "Detrito" && e.PreRequisitos.Any(g => g.Contains("Congelar")));
     }
 
