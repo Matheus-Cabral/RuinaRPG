@@ -252,8 +252,8 @@
                 </MudText>
             }
             <MudText Typo="Typo.body2" Color="Color.Secondary">Pontos ganhos por Acerto Crítico: @_form.PontosDePericiaBonusCritico</MudText>
-            <div class="d-flex align-center mt-2" style="gap:8px">
-                <MudNumericField T="int?" @bind-Value="_periciaCriticoDelta" Label="Adicionar/subtrair pontos de Acerto Crítico" Style="max-width:18rem" />
+            <div class="d-flex align-center flex-wrap mt-2" style="gap:8px">
+                <MudNumericField T="int?" @bind-Value="_periciaCriticoDelta" Label="Adicionar/subtrair pontos de Acerto Crítico" Style="max-width:28rem" />
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPericiaCriticoDeltaAsync">Aplicar</MudButton>
             </div>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
