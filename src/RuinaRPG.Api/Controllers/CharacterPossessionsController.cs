@@ -311,10 +311,11 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
 
         var existingCount = await db.CharacterTraits.CountAsync(t => t.CharacterSheetId == sheetId && t.IsRacial && t.RacialVariante == variante);
         var resolved = RacialTraitChoiceResolver.IsResolved(slots, existingCount);
+        var requerEspecificacaoByNome = await RequerEspecificacaoByNomeAsync(slots);
 
         return new PendingRacialTraitChoiceResponse(!resolved,
-            slots.Gratuita.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList(),
-            slots.Obrigatoria.Select(o => new RacialTraitOptionResponse(o.TraitNome, o.Especificacao)).ToList());
+            slots.Gratuita.Select(o => new RacialTraitChoiceOptionResponse(o.TraitNome, o.Especificacao, requerEspecificacaoByNome.GetValueOrDefault(o.TraitNome))).ToList(),
+            slots.Obrigatoria.Select(o => new RacialTraitChoiceOptionResponse(o.TraitNome, o.Especificacao, requerEspecificacaoByNome.GetValueOrDefault(o.TraitNome))).ToList());
     }
 
     [HttpPost("racial-traits/resolve")]
@@ -337,21 +338,38 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         if (resolution.Error is not null)
             return BadRequest(resolution.Error);
 
-        foreach (var grant in resolution.Grants!)
+        for (var i = 0; i < resolution.Grants!.Count; i++)
         {
+            var grant = resolution.Grants[i];
             var trait = await db.Traits.FirstOrDefaultAsync(t => t.Nome == grant.TraitNome && !t.IsDeleted);
             if (trait is null)
                 return BadRequest($"Característica \"{grant.TraitNome}\" não encontrada no catálogo.");
 
+            // grant.Especificacao is whatever RacialTraitLookup (or a GM override) pins for this
+            // option (e.g. Alóra's Desvantagem Elemental -> "Fogo") — a lore-fixed value always
+            // wins. Only when nothing is pinned does the player's own free-text input (i == 0 is
+            // always the Gratuita slot, i == 1 the Obrigatória — see RacialTraitChoiceResolver.Resolve)
+            // get used, mirroring AddTrait's own RequerEspecificacao validation below.
+            var userEspecificacao = i == 0 ? request.GratuitaEspecificacao : request.ObrigatoriaEspecificacao;
+            var especificacao = grant.Especificacao ?? userEspecificacao;
+            if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(especificacao))
+                return BadRequest($"A característica \"{grant.TraitNome}\" exige uma especificação.");
+
             db.CharacterTraits.Add(new CharacterTrait
             {
                 Id = Guid.NewGuid(), CharacterSheetId = sheetId, TraitId = trait.Id, Polaridade = trait.Polaridade,
-                Especificacao = grant.Especificacao, IsRacial = true, RacialVariante = variante,
+                Especificacao = trait.RequerEspecificacao ? especificacao : null, IsRacial = true, RacialVariante = variante,
             });
         }
 
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    private async Task<Dictionary<string, bool>> RequerEspecificacaoByNomeAsync(RacialTraitSlots slots)
+    {
+        var nomes = slots.Gratuita.Select(o => o.TraitNome).Concat(slots.Obrigatoria.Select(o => o.TraitNome)).Distinct().ToList();
+        return await db.Traits.Where(t => nomes.Contains(t.Nome) && !t.IsDeleted).ToDictionaryAsync(t => t.Nome, t => t.RequerEspecificacao);
     }
 
     private async Task<Guid> CampaignGmIdAsync(Guid campaignId) =>

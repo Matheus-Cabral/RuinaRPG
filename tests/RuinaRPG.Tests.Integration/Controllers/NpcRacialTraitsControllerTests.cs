@@ -95,6 +95,50 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task PendingRacialTraitChoice_flags_RequerEspecificacao_only_for_the_options_that_need_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm5", "npcracialtrait5@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>();
+        body!.Gratuita.Should().ContainSingle(o => o.TraitNome == "Sentidos Aguçados" && o.RequerEspecificacao);
+        body.Obrigatoria.Should().ContainSingle(o => o.TraitNome == "Código de Honra" && o.RequerEspecificacao);
+    }
+
+    [Fact]
+    public async Task ResolveRacialTraitChoice_rejects_a_pick_that_requires_Especificacao_without_one()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm6", "npcracialtrait6@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+            new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Crédulo")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ResolveRacialTraitChoice_persists_user_supplied_Especificacao_for_both_slots()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm7", "npcracialtrait7@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
+
+        var resolveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+            new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Código de Honra", "Olfato", "Fiel ao seu clã")));
+        resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var traitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        traits!.Positivas.Should().ContainSingle(t => t.Nome == "Sentidos Aguçados" && t.Especificacao == "Olfato" && t.IsRacial);
+        traits.Negativas.Should().ContainSingle(t => t.Nome == "Código de Honra" && t.Especificacao == "Fiel ao seu clã" && t.IsRacial);
+    }
+
+    [Fact]
     public async Task ResolveRacialTraitChoice_with_an_Obrigatoria_pick_outside_the_allowed_options_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm3", "npcracialtrait3@teste.com");

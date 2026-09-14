@@ -31,6 +31,11 @@
                 <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
             }
         </MudRadioGroup>
+        @{ var gratuitaSelected = _pendingRacialChoice?.Gratuita.FirstOrDefault(o => o.TraitNome == _racialGratuitaChoice); }
+        @if (gratuitaSelected is { RequerEspecificacao: true, Especificacao: null })
+        {
+            <MudTextField @bind-Value="_racialGratuitaEspecificacao" Label="Especificação" Class="mt-2" />
+        }
 
         @if (_pendingRacialChoice?.Obrigatoria.Count > 1)
         {
@@ -41,10 +46,20 @@
                     <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
                 }
             </MudRadioGroup>
+            var obrigatoriaSelected = _pendingRacialChoice.Obrigatoria.FirstOrDefault(o => o.TraitNome == _racialObrigatoriaChoice);
+            @if (obrigatoriaSelected is { RequerEspecificacao: true, Especificacao: null })
+            {
+                <MudTextField @bind-Value="_racialObrigatoriaEspecificacao" Label="Especificação" Class="mt-2" />
+            }
         }
         else if (_pendingRacialChoice?.Obrigatoria.Count == 1)
         {
-            <MudText Typo="Typo.body2" Class="mt-3">O NPC também recebe automaticamente: <b>@_pendingRacialChoice.Obrigatoria[0].TraitNome</b>.</MudText>
+            var fixedOption = _pendingRacialChoice.Obrigatoria[0];
+            <MudText Typo="Typo.body2" Class="mt-3">O NPC também recebe automaticamente: <b>@fixedOption.TraitNome</b>.</MudText>
+            @if (fixedOption is { RequerEspecificacao: true, Especificacao: null })
+            {
+                <MudTextField @bind-Value="_racialObrigatoriaEspecificacao" Label="Especificação" Class="mt-2" />
+            }
         }
     </DialogContent>
     <DialogActions>
@@ -742,6 +757,8 @@
     private bool _racialChoiceDialogOpen;
     private string? _racialGratuitaChoice;
     private string? _racialObrigatoriaChoice;
+    private string? _racialGratuitaEspecificacao;
+    private string? _racialObrigatoriaEspecificacao;
     private readonly TraitFormModel _traitForm = new();
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
@@ -1359,6 +1376,8 @@
         _racialChoiceDialogOpen = _pendingRacialChoice?.Pending == true;
         _racialGratuitaChoice = null;
         _racialObrigatoriaChoice = null;
+        _racialGratuitaEspecificacao = null;
+        _racialObrigatoriaEspecificacao = null;
     }
 
     private async Task ConfirmRacialChoiceAsync()
@@ -1367,10 +1386,10 @@
             return;
 
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/racial-traits/resolve",
-            new ResolveRacialTraitChoiceRequest(_racialGratuitaChoice, _racialObrigatoriaChoice));
+            new ResolveRacialTraitChoiceRequest(_racialGratuitaChoice, _racialObrigatoriaChoice, _racialGratuitaEspecificacao, _racialObrigatoriaEspecificacao));
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível registrar a Característica Racial escolhida.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível registrar a Característica Racial escolhida.";
             return;
         }
 

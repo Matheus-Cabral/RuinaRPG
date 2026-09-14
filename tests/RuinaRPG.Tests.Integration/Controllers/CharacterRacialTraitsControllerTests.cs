@@ -167,6 +167,55 @@ public class CharacterRacialTraitsControllerTests : IClassFixture<PostgresFixtur
     }
 
     [Fact]
+    public async Task PendingRacialTraitChoice_flags_RequerEspecificacao_only_for_the_options_that_need_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CharRacialGm8", "charracial8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CharRacialPlayer8", "charracialplayer8@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVarianteAsync(gmToken, playerToken, sheetId, "Phylauc", "PhylacTai");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-traits/pending", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>();
+        body!.Gratuita.Should().ContainSingle(o => o.TraitNome == "Sentidos Aguçados" && o.RequerEspecificacao);
+        body.Gratuita.Where(o => o.TraitNome != "Sentidos Aguçados").Should().OnlyContain(o => !o.RequerEspecificacao);
+        body.Obrigatoria.Should().ContainSingle(o => o.TraitNome == "Código de Honra" && o.RequerEspecificacao);
+        body.Obrigatoria.Should().ContainSingle(o => o.TraitNome == "Crédulo" && !o.RequerEspecificacao);
+    }
+
+    [Fact]
+    public async Task ResolveRacialTraitChoice_rejects_a_pick_that_requires_Especificacao_without_one()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CharRacialGm9", "charracial9@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CharRacialPlayer9", "charracialplayer9@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVarianteAsync(gmToken, playerToken, sheetId, "Phylauc", "PhylacTai");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/racial-traits/resolve", playerToken,
+            new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Crédulo")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ResolveRacialTraitChoice_persists_user_supplied_Especificacao_for_both_slots()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CharRacialGm10", "charracial10@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CharRacialPlayer10", "charracialplayer10@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVarianteAsync(gmToken, playerToken, sheetId, "Phylauc", "PhylacTai");
+
+        var resolveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/racial-traits/resolve", playerToken,
+            new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Código de Honra", "Audição", "Nunca mente para um Lorde")));
+        resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var traitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        traits!.Positivas.Should().ContainSingle(t => t.Nome == "Sentidos Aguçados" && t.Especificacao == "Audição" && t.IsRacial);
+        traits.Negativas.Should().ContainSingle(t => t.Nome == "Código de Honra" && t.Especificacao == "Nunca mente para um Lorde" && t.IsRacial);
+    }
+
+    [Fact]
     public async Task ResolveRacialTraitChoice_with_a_Gratuita_pick_outside_the_allowed_options_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CharRacialGm6", "charracial6@teste.com");
