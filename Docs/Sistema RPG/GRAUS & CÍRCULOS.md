@@ -199,7 +199,7 @@ O personagem é capaz de, temporariamente, aumentar sua vitalidade máxima.
 
 Obrigatória a compra de Duração
 
-Congelar
+## Congelar
 
 Gasto: 4 PI
 
@@ -262,7 +262,7 @@ Um efeito exclusivo ao Caminho da Bênção dos Adeptos. Quando sob este efeito,
 
 É obrigatória a compra de Duração.
 
-Aumentar Max. Arcana
+## Aumentar Max. Arcana
 
 Gasto: 3 PI por Dado
 

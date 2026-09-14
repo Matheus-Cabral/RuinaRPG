@@ -203,6 +203,9 @@ if (args.Contains("--migrate"))
     var migrateSeedResult = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", migrateSeedResult.Inserted, migrateSeedResult.Updated);
 
+    await EfeitoSeeder.SeedAsync(migrateDb);
+    app.Logger.LogInformation("Efeito seed: catalog synced");
+
     var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
     return;
@@ -239,6 +242,9 @@ if (app.Environment.IsDevelopment())
     var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
     var seedResult = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", seedResult.Inserted, seedResult.Updated);
+
+    await EfeitoSeeder.SeedAsync(db);
+    app.Logger.LogInformation("Efeito seed: catalog synced");
 
     var catalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(db);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", catalogSeedCount);

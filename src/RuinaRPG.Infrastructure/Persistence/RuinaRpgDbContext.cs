@@ -45,6 +45,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
     public DbSet<Trait> Traits => Set<Trait>();
+    public DbSet<Efeito> Efeitos => Set<Efeito>();
     public DbSet<RacialAbilityOverride> RacialAbilityOverrides => Set<RacialAbilityOverride>();
     public DbSet<ArcaEntry> ArcaEntries => Set<ArcaEntry>();
     public DbSet<RacialTraitOverride> RacialTraitOverrides => Set<RacialTraitOverride>();
