@@ -56,14 +56,30 @@ Sem `IsCustomized` — essa flag em `Trait` existe só para o `TraitSeeder` sabe
 uma edição manual; `CreatureExclusiveTrait` não tem seeder nenhum (toda linha nasce manual, via
 Auditor), então a flag não tem propósito aqui.
 
-`CreatureTrait` ganha uma coluna:
+**Correção encontrada só ao ler o schema real** (`RuinaRpgDbContext.cs:497`): `CreatureTrait.TraitId`
+hoje é `Guid` não-nulo com uma FK de verdade para `Traits` (`HasOne<Trait>().WithMany()
+.HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict)`), não uma referência solta —
+diferente do que a primeira versão deste documento assumiu (um `bool` discriminador sozinho não
+funcionaria: o Postgres rejeitaria o INSERT sempre que o Id gravado não existisse em `Traits`).
+Uma coluna não pode ter FK para duas tabelas diferentes ao mesmo tempo, então `CreatureTrait`
+passa a ter **duas colunas nulláveis**, exatamente o padrão já usado em
+`EncounterParticipant.SourceCharacterSheetId`/`SourceNpcSheetId`/`SourceCreatureSheetId`
+(`RuinaRpgDbContext.cs:509-511`, três FKs nulláveis, uma por origem possível):
 
 ```
-IsCriaturaExclusiva  bool  // false = TraitId aponta para Traits (padrão); true = aponta para
-                           // CreatureExclusiveTraits. Decidido uma vez, no momento do Add.
+CreatureTrait (mudança)
+  TraitId                Guid?  // era Guid não-nulo — populado quando a origem é Traits
+  CreatureExclusiveTraitId Guid?  // novo — populado quando a origem é CreatureExclusiveTraits
+  // exatamente um dos dois é não-nulo em cada linha
 ```
 
-Migração: `AddCreatureExclusiveTraits` (tabela nova + a coluna em `CreatureTraits`).
+`RuinaRpgDbContext`: `entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId)
+.OnDelete(DeleteBehavior.Restrict)` (já existe, só relaxa a não-nulidade) mais
+`entity.HasOne<CreatureExclusiveTrait>().WithMany().HasForeignKey(t => t.CreatureExclusiveTraitId)
+.OnDelete(DeleteBehavior.Restrict)` (novo, mesmo `OnDelete`).
+
+Migração: `AddCreatureExclusiveTraits` (tabela nova + `CreatureTraits.TraitId` vira nulável +
+`CreatureTraits.CreatureExclusiveTraitId` nova, com sua FK).
 
 ## API
 
@@ -75,24 +91,25 @@ Novo `CreatureExclusiveTraitsController` (`api/creature-exclusive-traits`) — e
 - `POST`/`PUT {id}`/`DELETE {id}` — `RequireRulesAuditorAsync()` (mesma checagem direta contra
   `ApplicationUser.IsRulesAuditor`, não claim de JWT). Mesma validação de sinal do Custo vs.
   Polaridade, mesmo bloqueio de duplicata (Nome+Custo+Polaridade). `DELETE` retorna 409 se
-  `db.CreatureTraits.AnyAsync(t => t.TraitId == id && t.IsCriaturaExclusiva)` — só fichas de
-  criatura podem referenciar essa tabela, então o filtro `IsCriaturaExclusiva` já é suficiente
-  (sem precisar checar `CharacterTraits`/`NpcTraits`, que nunca gravam essa flag como true).
+  `db.CreatureTraits.AnyAsync(t => t.CreatureExclusiveTraitId == id)` — só `CreatureTrait` pode
+  referenciar essa tabela (a FK garante isso), então não precisa checar `CharacterTraits`/
+  `NpcTraits`, que nem têm essa coluna.
 
 `CreaturePossessionsController` (as únicas mudanças de comportamento deste design):
 
 - **`AddTrait`**: tenta resolver `request.TraitId` primeiro em `db.Traits`; se não achar, tenta
   em `db.CreatureExclusiveTraits`; se não achar em nenhuma, 400 (mesma mensagem de hoje). A
   validação de `RequerEspecificacao` e o cálculo de orçamento (abaixo) usam os campos
-  resolvidos, não importa a origem. `CreatureTrait.IsCriaturaExclusiva` é gravado conforme onde
-  o Id foi encontrado.
+  resolvidos, não importa a origem. O novo `CreatureTrait` grava o Id encontrado na coluna certa
+  (`TraitId` ou `CreatureExclusiveTraitId`) e deixa a outra nula.
 - **`ListTraits`/o `SumAsync` de orçamento em `AddTrait`**: como `CreatureTrait` agora pode
   apontar para duas tabelas diferentes, o `.Join(db.Traits, ...)` único de hoje vira uma
-  resolução em duas etapas — carrega as linhas de `CreatureTrait` da ficha, separa por
-  `IsCriaturaExclusiva`, busca cada grupo na tabela certa (`db.Traits`/`db.CreatureExclusiveTraits`,
-  cada uma uma única query `Where(id => idsDoGrupo.Contains(...))`, sem N+1) e junta os
-  resultados em memória antes de somar/montar `CreatureTraitResponse`. `TraitPointBudgetCalculator`
-  em si não muda — ele só depende do total já calculado.
+  resolução em duas etapas — carrega as linhas de `CreatureTrait` da ficha, separa pela coluna
+  que está preenchida (`TraitId != null` vs. `CreatureExclusiveTraitId != null`), busca cada
+  grupo na tabela certa (`db.Traits`/`db.CreatureExclusiveTraits`, cada uma uma única query
+  `Where(id => idsDoGrupo.Contains(...))`, sem N+1) e junta os resultados em memória antes de
+  somar/montar `CreatureTraitResponse`. `TraitPointBudgetCalculator` em si não muda — ele só
+  depende do total já calculado.
 
 Nada muda em `TraitsController`, `CompendioController`, `CharacterPossessionsController` ou
 `NpcPossessionsController` — a garantia do requisito 5 (nunca aparece no Livro de Regras nem
@@ -137,7 +154,8 @@ TDD em toda a parte de backend:
   403 para não-Auditor, 200/204 para Auditor; validação de sinal do Custo; bloqueio de
   duplicata; Delete 409 quando em uso por uma `CreatureTrait`.
 - **`CreaturePossessionsControllerTests`** (extensão dos testes de `traits` já existentes):
-  adicionar uma característica exclusiva de criatura grava `IsCriaturaExclusiva=true` e resolve
+  adicionar uma característica exclusiva de criatura grava `CreatureExclusiveTraitId` (com
+  `TraitId` nulo) e resolve
   Nome/Descrição/Custo corretamente na resposta; orçamento de pontos soma característica normal
   + exclusiva juntas no mesmo teto (Positivas e Negativas); `RequerEspecificacao` rejeita sem
   Especificação também para a origem exclusiva.
