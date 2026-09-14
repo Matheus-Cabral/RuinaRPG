@@ -251,6 +251,55 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     }
 
     [Fact]
+    public async Task Create_with_a_correctly_costed_known_effect_succeeds()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm1", "spellbankefeito1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest("Bola de Fogo", "Magia", 1, "Uma bola de fogo.",
+                new List<SpellAbilityEffectRequest> { new("Dano", 2, 4) })));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Create_with_a_wrong_CustoPI_for_a_known_effect_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm2", "spellbankefeito2@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest("Bola de Fogo Errada", "Magia", 1, "Descrição.",
+                new List<SpellAbilityEffectRequest> { new("Dano", 2, 999) })));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_an_effect_missing_a_prerequisite_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm3", "spellbankefeito3@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest("Cura Sem Dano", "Magia", 1, "Descrição.",
+                new List<SpellAbilityEffectRequest> { new("Cura", null, 2) })));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_Dano_exceeding_the_Grau_teto_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm4", "spellbankefeito4@teste.com");
+
+        // Grau 1's teto for Dano is 3 dados (EfeitoCustoCalculator.DanoAlcanceMaxPorGrau[1]).
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest("Dano Demais", "Magia", 1, "Descrição.",
+                new List<SpellAbilityEffectRequest> { new("Dano", 4, 8) })));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Update_changes_the_persisted_Tipo()
     {
         var token = await RegisterGmAndGetTokenAsync("BankGmUpdateTipo", "bankupdatetipo@teste.com");

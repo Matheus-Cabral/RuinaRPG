@@ -55,6 +55,10 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
             if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out tipo))
                 return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
             nome = request.Nome!; grau = request.Grau!.Value; descricao = request.Descricao!; efeitos = request.Efeitos!;
+
+            var validationError = await EfeitoValidationHelper.ValidarAsync(db, grau, efeitos);
+            if (validationError is not null)
+                return BadRequest(validationError);
         }
 
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(efeitos.Select(e => e.CustoPI));

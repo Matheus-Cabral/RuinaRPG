@@ -95,7 +95,7 @@ public class CreatureSpellAbilitiesControllerTests : IClassFixture<PostgresFixtu
 
         var bankCreateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Cura Leve", "Habilidade", 1, "Restaura um pouco de vida.",
-                [new SpellAbilityEffectRequest("Cura", 2, 4)])));
+                [new SpellAbilityEffectRequest("Dano", 2, 4), new SpellAbilityEffectRequest("Cura", null, 2)])));
         var bankEntry = await bankCreateResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>();
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken,
@@ -200,6 +200,19 @@ public class CreatureSpellAbilitiesControllerTests : IClassFixture<PostgresFixtu
         var availableResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-spell-abilities", playerToken));
         var available = await availableResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         available!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
+    }
+
+    [Fact]
+    public async Task Add_from_scratch_with_an_effect_missing_a_prerequisite_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureSpellEfeitoGm", "creaturespellefeito@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCreatureSpellAbilityRequest(null, "Cura Sem Dano", "Magia", 1, "Descrição.",
+                new List<SpellAbilityEffectRequest> { new("Cura", null, 2) })));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

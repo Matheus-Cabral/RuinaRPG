@@ -24,6 +24,10 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
             return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
 
+        var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
+        if (validationError is not null)
+            return BadRequest(validationError);
+
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
 
         var entry = new SpellAbilityBankEntry
@@ -86,6 +90,10 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
         if (entry is null)
             return NotFound();
+
+        var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
+        if (validationError is not null)
+            return BadRequest(validationError);
 
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
 
