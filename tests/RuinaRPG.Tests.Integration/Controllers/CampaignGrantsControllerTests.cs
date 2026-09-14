@@ -2,10 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -119,6 +122,46 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/{atributo}", gmToken,
             new UpdateCreatureAttributeRequest(gasto, 0, false)));
 
+    // Traits are seeded at app startup by TraitSeeder from Características.md — pull a real one
+    // straight out of the running app's database rather than inserting a synthetic one, same
+    // approach as CreatureAffectionsAndTraitsControllerTests.GetSeededTraitIdsAsync.
+    private async Task<string> GetSeededPositiveTraitIdAsync()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var trait = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
+        return trait.Id.ToString();
+    }
+
+    // Same pattern as CreatureAffectionsAndTraitsControllerTests.CreateExclusiveTraitDirectlyAsync
+    // — bypasses the CRUD controller to seed the second, genuinely separate catalog directly.
+    private async Task<string> CreateExclusiveTraitDirectlyAsync(string nome, string descricao, int custo, RuinaRPG.Domain.Enums.Polaridade polaridade, bool requerEspecificacao)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
+        {
+            Id = Guid.NewGuid(),
+            Nome = nome,
+            Descricao = descricao,
+            Custo = custo,
+            Polaridade = polaridade,
+            RequerEspecificacao = requerEspecificacao,
+        };
+        db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(trait);
+        await db.SaveChangesAsync();
+        return trait.Id.ToString();
+    }
+
+    private async Task<HttpResponseMessage> AddCreatureTraitAsync(string gmToken, string sheetId, string traitId) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(traitId, null)));
+
+    private async Task<CreatureTraitsListResponse> GetCreatureTraitsAsync(string gmToken, string sheetId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        return (await response.Content.ReadFromJsonAsync<CreatureTraitsListResponse>())!;
+    }
+
     [Fact]
     public async Task Grant_blank_creates_a_new_owned_Npc_sheet()
     {
@@ -219,6 +262,36 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var copiedAttributesAfter = await GetCreatureAttributesAsync(gmToken, body.SheetId);
         copiedAttributesAfter.Single(a => a.Atributo == "Forca").Gasto.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Grant_from_an_existing_Creature_deep_copies_traits_from_both_catalogs()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGm5b", "grant5b@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayer5b", "grantplayer5b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Criatura Traits");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+
+        var sourceId = await CreateCreatureSheetAsync(gmToken);
+        var normalTraitId = await GetSeededPositiveTraitIdAsync();
+        var exclusiveTraitId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
+        await AddCreatureTraitAsync(gmToken, sourceId, normalTraitId);
+        await AddCreatureTraitAsync(gmToken, sourceId, exclusiveTraitId);
+
+        var sourceTraits = await GetCreatureTraitsAsync(gmToken, sourceId);
+        sourceTraits.Positivas.Should().HaveCount(2);
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Creature", sourceId));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        // Before the fix, the exclusive-sourced row's CreatureExclusiveTraitId was silently
+        // dropped on copy, leaving both FKs null and ListTraits throwing (HTTP 500) on this call.
+        var copiedTraits = await GetCreatureTraitsAsync(gmToken, body!.SheetId);
+        copiedTraits.Positivas.Should().HaveCount(2);
+        copiedTraits.Positivas.Should().Contain(t => t.Nome == "Regeneração Bestial");
+        copiedTraits.TotalPositivas.Should().Be(sourceTraits.TotalPositivas);
     }
 
     [Fact]

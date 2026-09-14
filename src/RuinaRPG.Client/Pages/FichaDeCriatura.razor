@@ -662,7 +662,7 @@
         }
         if (exclusiveTask.Result.IsSuccessStatusCode)
         {
-            var exclusiveTraits = await exclusiveTask.Result.Content.ReadFromJsonAsync<List<RuinaRPG.Contracts.Rules.CreatureExclusiveTraitResponse>>() ?? new();
+            var exclusiveTraits = await exclusiveTask.Result.Content.ReadFromJsonAsync<List<CreatureExclusiveTraitResponse>>() ?? new();
             options.AddRange(exclusiveTraits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")));
         }
 

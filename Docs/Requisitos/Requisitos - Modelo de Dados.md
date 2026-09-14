@@ -397,6 +397,21 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 - Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
 - `CreatureInventoryItems` → renomeada `CreatureSpoils` (Espólios), ganha coluna `DT` (int) e **perde** `Ciclos` na ficha raiz.
 - Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Kill** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
+- `CreatureTraits` diverge de `CharacterTraits`/`NpcTraits`: `TraitId` também **nullable**, e ganha `CreatureExclusiveTraitId` (FK → CreatureExclusiveTraits, nullable) — exatamente uma das duas é setada por linha, mesmo padrão de `EncounterParticipant.SourceCharacterSheetId`/`SourceNpcSheetId`/`SourceCreatureSheetId` (seção 8): dois FKs nullable em vez de um só, porque uma coluna não carrega FK real pra duas tabelas diferentes ao mesmo tempo.
+
+**CreatureExclusiveTraits** — catálogo global e independente de `Traits` (6.1), com as mesmas colunas exceto `IsCustomized`: sem documento-fonte equivalente a `Características.md` pra essa tabela, então não há re-seed do qual proteger uma linha editada manualmente. Só o picker de característica da Ficha de Criatura (`CreatureTraits`) referencia esta tabela — Personagem, NPC e o Compêndio de Regras nunca a leem.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string |
+| Descricao | text |
+| Custo | int |
+| Polaridade | enum Positiva \| Negativa |
+| RequerEspecificacao | bool |
+| IsDeleted | bool — soft delete pelo Auditor de Regras, mesma lógica de `Traits.IsDeleted` |
+| UpdatedByUserId | FK → Users, nullable |
+| UpdatedAt | DateTime, nullable |
 
   
 

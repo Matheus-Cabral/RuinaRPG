@@ -497,6 +497,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CreatureExclusiveTrait>().WithMany().HasForeignKey(t => t.CreatureExclusiveTraitId).OnDelete(DeleteBehavior.Restrict);
+            // Exactly one of TraitId/CreatureExclusiveTraitId is set per row (see CreatureTrait's
+            // own doc comment) — formalized as a DB-level invariant, not just an application one.
+            entity.ToTable(t => t.HasCheckConstraint("CK_CreatureTraits_ExactlyOneTraitSource", "num_nonnulls(\"TraitId\", \"CreatureExclusiveTraitId\") = 1"));
         });
 
         builder.Entity<Encounter>(entity =>

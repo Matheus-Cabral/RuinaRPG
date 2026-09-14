@@ -268,9 +268,15 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         var normalById = await db.Traits.Where(t => normalIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
         var exclusiveById = await db.Set<CreatureExclusiveTrait>().Where(t => exclusiveIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
 
-        var rows = creatureTraits
-            .Select(ct => ToTraitResponse(ct, ct.TraitId is not null ? ToResolved(normalById[ct.TraitId!.Value]) : ToResolved(exclusiveById[ct.CreatureExclusiveTraitId!.Value])))
-            .ToList();
+        var rows = new List<CreatureTraitResponse>();
+        foreach (var ct in creatureTraits)
+        {
+            if (ct.TraitId is not null && normalById.TryGetValue(ct.TraitId.Value, out var normalTrait))
+                rows.Add(ToTraitResponse(ct, ToResolved(normalTrait)));
+            else if (ct.CreatureExclusiveTraitId is not null && exclusiveById.TryGetValue(ct.CreatureExclusiveTraitId.Value, out var exclusiveTrait))
+                rows.Add(ToTraitResponse(ct, ToResolved(exclusiveTrait)));
+            // else: referenced catalog entry is missing (shouldn't happen given the FK constraints) — skip rather than 500.
+        }
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();

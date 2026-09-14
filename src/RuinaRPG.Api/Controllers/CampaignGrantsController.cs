@@ -267,7 +267,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         foreach (var aff in await db.CreatureAffections.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
             db.CreatureAffections.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Nome = aff.Nome, Favorabilidade = aff.Favorabilidade });
         foreach (var t in await db.CreatureTraits.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureTraits.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, TraitId = t.TraitId, Polaridade = t.Polaridade });
+            db.CreatureTraits.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, TraitId = t.TraitId, CreatureExclusiveTraitId = t.CreatureExclusiveTraitId, Polaridade = t.Polaridade });
 
         return copy;
     }
