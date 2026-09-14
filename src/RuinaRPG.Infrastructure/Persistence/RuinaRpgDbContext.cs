@@ -79,6 +79,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureSpellAbilityEffect> CreatureSpellAbilityEffects => Set<CreatureSpellAbilityEffect>();
     public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
+    public DbSet<CreatureExclusiveTrait> CreatureExclusiveTraits => Set<CreatureExclusiveTrait>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
     public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
@@ -495,6 +496,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<CreatureExclusiveTrait>().WithMany().HasForeignKey(t => t.CreatureExclusiveTraitId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Encounter>(entity =>
