@@ -17,6 +17,10 @@ public class BancoDeMagiasFormTests : MudBunitContext
         var putCalled = false;
         var http = FakeHttpMessageHandler.CreateClient(request =>
         {
+            // AddEfeitoForm (nested under this page) fetches the Efeito catalog on its own — answer
+            // it separately from the spell-ability-bank entries GET below.
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
@@ -78,6 +82,10 @@ public class BancoDeMagiasFormTests : MudBunitContext
         // still pending, which is what a real HTTP call over the network would also do.
         var http = AsyncFakeHttpMessageHandler.CreateClient(request =>
         {
+            // AddEfeitoForm (nested under this page) fetches the Efeito catalog on its own — answer
+            // it separately from the spell-ability-bank entries GET below.
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
