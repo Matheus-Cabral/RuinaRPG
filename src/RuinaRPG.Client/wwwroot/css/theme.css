@@ -156,6 +156,20 @@
   background-image: var(--rr-sidebar-bg);
 }
 
+/* The global `h1..h6 { color: var(--rr-text) }` rule below directly matches the <h6> MudText
+   renders for the "Ruína RPG" app-bar title — a direct element match always wins over an
+   inherited value, no matter the ancestor's specificity — so it silently overrode the light
+   --rr-sidebar-text the dark gradient bar actually needs. Illegible in Tema Sol (--rr-text is
+   dark there); merely coincidentally legible in Tema Lua (--rr-text happens to be light too). */
+.mud-appbar h1,
+.mud-appbar h2,
+.mud-appbar h3,
+.mud-appbar h4,
+.mud-appbar h5,
+.mud-appbar h6 {
+  color: var(--rr-sidebar-text);
+}
+
 :root[data-theme='dark'] {
   color-scheme: dark;
 
