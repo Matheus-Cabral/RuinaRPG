@@ -31,8 +31,16 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery] public bool SessaoExpirada { get; set; }
+
     private readonly LoginFormModel _request = new();
     private string? _errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (SessaoExpirada)
+            _errorMessage = "Sua sessão expirou. Faça login novamente.";
+    }
 
     private async Task SubmitAsync()
     {
