@@ -76,6 +76,24 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
         return await db.Traits.SingleAsync(t => t.Nome == nome);
     }
 
+    private async Task<string> CreateExclusiveTraitDirectlyAsync(string nome, string descricao, int custo, RuinaRPG.Domain.Enums.Polaridade polaridade, bool requerEspecificacao)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
+        {
+            Id = Guid.NewGuid(),
+            Nome = nome,
+            Descricao = descricao,
+            Custo = custo,
+            Polaridade = polaridade,
+            RequerEspecificacao = requerEspecificacao,
+        };
+        db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(trait);
+        await db.SaveChangesAsync();
+        return trait.Id.ToString();
+    }
+
     // The two highest-cost traits on a side (excluding ones needing a specification, to isolate the
     // budget check from the specification check) — real Características.md data, at least 5 points
     // apart when combined, safely exceeding the level-1 budget of 5.
@@ -193,6 +211,62 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CreatureTraitResponse>();
         added!.Especificacao.Should().Be("Poeira");
+    }
+
+    [Fact]
+    public async Task AddTrait_resolves_a_creature_exclusive_characteristic_and_it_lands_in_ListTraits()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureTraitExclusiveGm1", "creaturetraitexclusive1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+            new AddCreatureTraitRequest(exclusiveId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<CreatureTraitResponse>();
+        created!.Nome.Should().Be("Regeneração Bestial");
+        created.Custo.Should().Be(3);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
+        list!.Positivas.Should().ContainSingle(t => t.Nome == "Regeneração Bestial");
+        list.TotalPositivas.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task AddTrait_sums_a_normal_and_a_creature_exclusive_characteristic_into_the_same_Positivas_budget()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureTraitExclusiveGm2", "creaturetraitexclusive2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // "Alfabetizado" (Características.md: "1 ponto") — same by-name reference style this file
+        // already uses for "Alergia" in GetTraitAsync. Asserted below rather than trusted blindly, so
+        // this test fails loudly (not silently under-tests) if that game-data value ever changes.
+        var alfabetizado = await GetTraitAsync("Alfabetizado");
+        alfabetizado.Custo.Should().Be(1);
+        var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(alfabetizado.Id.ToString(), null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(exclusiveId, null)));
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
+        list!.Positivas.Should().HaveCount(2);
+        list.TotalPositivas.Should().Be(4); // 1 (Alfabetizado) + 3 (Regeneração Bestial)
+    }
+
+    [Fact]
+    public async Task AddTrait_rejects_a_creature_exclusive_pick_that_requires_Especificacao_without_one()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureTraitExclusiveGm3", "creaturetraitexclusive3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Fúria Sazonal", "Muda de comportamento numa estação.", 1, RuinaRPG.Domain.Enums.Polaridade.Positiva, true);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+            new AddCreatureTraitRequest(exclusiveId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

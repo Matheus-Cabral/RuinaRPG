@@ -226,4 +226,30 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<PostgresFixtu
         var deleteTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/traits/{traitId}", gmTokenOther));
         deleteTraitResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task AddTrait_with_a_creature_exclusive_characteristic_Id_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcTraitCreatureExclusiveGm", "npctraitcreatureexclusive@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        string exclusiveId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
+            {
+                Id = Guid.NewGuid(), Nome = "Só de Criatura Teste NPC", Descricao = "Descrição.", Custo = 1,
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            };
+            db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(trait);
+            await db.SaveChangesAsync();
+            exclusiveId = trait.Id.ToString();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+            new AddNpcTraitRequest(exclusiveId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

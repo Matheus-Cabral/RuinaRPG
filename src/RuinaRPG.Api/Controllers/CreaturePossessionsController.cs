@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Enums;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Items;
@@ -200,19 +201,23 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        var trait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
-        if (trait is null)
+        // Try the shared catalog first, then the creature-exclusive one — an Id can only ever
+        // exist in one of the two tables (separate Guid spaces), so this is unambiguous.
+        var normalTrait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
+        var exclusiveTrait = normalTrait is null
+            ? await db.Set<CreatureExclusiveTrait>().FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted)
+            : null;
+        if (normalTrait is null && exclusiveTrait is null)
             return BadRequest("Trait não encontrado.");
+
+        var trait = normalTrait is not null ? ToResolved(normalTrait) : ToResolved(exclusiveTrait!);
 
         if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
             return BadRequest("Esta característica exige uma especificação.");
 
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
-        var existingTotal = await db.CreatureTraits
-            .Where(t => t.CreatureSheetId == sheetId && t.Polaridade == trait.Polaridade)
-            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
-            .SumAsync();
+        var existingTotal = await SumExistingCustoAsync(sheetId, trait.Polaridade);
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
 
@@ -220,7 +225,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         {
             Id = Guid.NewGuid(),
             CreatureSheetId = sheetId,
-            TraitId = traitId,
+            TraitId = normalTrait?.Id,
+            CreatureExclusiveTraitId = exclusiveTrait?.Id,
             Polaridade = trait.Polaridade,
             Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
         };
@@ -230,6 +236,24 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         return Created(string.Empty, ToTraitResponse(creatureTrait, trait));
     }
 
+    /// <summary>
+    /// Sums Custo across every CreatureTrait of the given Polaridade on this sheet, resolving each
+    /// row against whichever catalog it points to (TraitId vs. CreatureExclusiveTraitId) — two
+    /// batched lookups instead of one LINQ .Join(), since a single SQL join can't span two
+    /// different tables through one nullable-either-way FK pair. N stays small (a sheet's own
+    /// characteristic count), so this is two extra queries total, not one per row.
+    /// </summary>
+    private async Task<int> SumExistingCustoAsync(Guid sheetId, Polaridade polaridade)
+    {
+        var rows = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheetId && t.Polaridade == polaridade).ToListAsync();
+        var normalIds = rows.Where(r => r.TraitId is not null).Select(r => r.TraitId!.Value).ToList();
+        var exclusiveIds = rows.Where(r => r.CreatureExclusiveTraitId is not null).Select(r => r.CreatureExclusiveTraitId!.Value).ToList();
+
+        var normalTotal = await db.Traits.Where(t => normalIds.Contains(t.Id)).SumAsync(t => t.Custo);
+        var exclusiveTotal = await db.Set<CreatureExclusiveTrait>().Where(t => exclusiveIds.Contains(t.Id)).SumAsync(t => t.Custo);
+        return normalTotal + exclusiveTotal;
+    }
+
     [HttpGet("traits")]
     public async Task<ActionResult<CreatureTraitsListResponse>> ListTraits(Guid sheetId)
     {
@@ -237,10 +261,16 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         if (authError is not null)
             return authError;
 
-        var rows = await db.CreatureTraits
-            .Where(t => t.CreatureSheetId == sheetId)
-            .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new CreatureTraitResponse(ct.Id.ToString(), t.Id.ToString(), t.Nome, t.Descricao, t.Custo, t.Polaridade.ToString(), ct.Especificacao, t.RequerEspecificacao))
-            .ToListAsync();
+        var creatureTraits = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheetId).ToListAsync();
+        var normalIds = creatureTraits.Where(t => t.TraitId is not null).Select(t => t.TraitId!.Value).ToList();
+        var exclusiveIds = creatureTraits.Where(t => t.CreatureExclusiveTraitId is not null).Select(t => t.CreatureExclusiveTraitId!.Value).ToList();
+
+        var normalById = await db.Traits.Where(t => normalIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
+        var exclusiveById = await db.Set<CreatureExclusiveTrait>().Where(t => exclusiveIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
+
+        var rows = creatureTraits
+            .Select(ct => ToTraitResponse(ct, ct.TraitId is not null ? ToResolved(normalById[ct.TraitId!.Value]) : ToResolved(exclusiveById[ct.CreatureExclusiveTraitId!.Value])))
+            .ToList();
 
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
@@ -303,7 +333,18 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
     private static CreatureAffectionResponse ToAffectionResponse(CreatureAffection affection) =>
         new(affection.Id.ToString(), affection.Nome, affection.Favorabilidade);
 
-    private static CreatureTraitResponse ToTraitResponse(CreatureTrait creatureTrait, Trait trait) =>
+    /// <summary>
+    /// Trait and CreatureExclusiveTrait have the same relevant shape but are unrelated C# types
+    /// (two separate tables, see the design spec) — this is the common shape AddTrait/ListTraits
+    /// resolve either one into before building a response, so the rest of this controller doesn't
+    /// need to branch on which catalog a characteristic came from.
+    /// </summary>
+    private sealed record ResolvedCatalogTrait(Guid Id, string Nome, string Descricao, int Custo, Polaridade Polaridade, bool RequerEspecificacao);
+
+    private static ResolvedCatalogTrait ToResolved(Trait t) => new(t.Id, t.Nome, t.Descricao, t.Custo, t.Polaridade, t.RequerEspecificacao);
+    private static ResolvedCatalogTrait ToResolved(CreatureExclusiveTrait t) => new(t.Id, t.Nome, t.Descricao, t.Custo, t.Polaridade, t.RequerEspecificacao);
+
+    private static CreatureTraitResponse ToTraitResponse(CreatureTrait creatureTrait, ResolvedCatalogTrait trait) =>
         new(creatureTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), creatureTrait.Especificacao, trait.RequerEspecificacao);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

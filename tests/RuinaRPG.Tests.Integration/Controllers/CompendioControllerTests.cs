@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -94,5 +97,31 @@ public class CompendioControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         var body = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
         body!.Select(r => r.Categoria).Distinct().Should().HaveCountGreaterThan(1);
+    }
+
+    [Fact]
+    public async Task Search_never_returns_a_creature_exclusive_characteristic_even_by_its_exact_Nome()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CompendioCreatureExclusiveGm", "compendiocreatureexclusive@teste.com");
+        const string nome = "Casco Reforcado De Teste Unico";
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
+            {
+                Id = Guid.NewGuid(),
+                Nome = nome,
+                Descricao = "Descrição de teste.",
+                Custo = 2,
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/compendio/search?q={Uri.EscapeDataString(nome)}", gmToken));
+
+        var results = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
+        results!.Should().NotContain(r => r.Titulo == nome);
     }
 }

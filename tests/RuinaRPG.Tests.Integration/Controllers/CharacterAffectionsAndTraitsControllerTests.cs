@@ -335,4 +335,31 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
         var deleteTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/traits/{traitId}", otherToken));
         deleteTraitResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task AddTrait_with_a_creature_exclusive_characteristic_Id_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CharTraitCreatureExclusiveGm", "chartraitcreatureexclusive@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CharTraitCreatureExclusivePlayer", "chartraitcreatureexclusiveplayer@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        string exclusiveId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
+            {
+                Id = Guid.NewGuid(), Nome = "Só de Criatura Teste Personagem", Descricao = "Descrição.", Custo = 1,
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            };
+            db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(trait);
+            await db.SaveChangesAsync();
+            exclusiveId = trait.Id.ToString();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            new AddCharacterTraitRequest(exclusiveId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
