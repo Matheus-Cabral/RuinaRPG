@@ -1,0 +1,134 @@
+@inject HttpClient Http
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Enums
+@using RuinaRPG.Domain.SpellsAndAbilities
+
+<MudSelect T="string" Value="@_efeitoNomeSelecionado" ValueChanged="OnEfeitoSelecionado" Label="Efeito">
+    @foreach (var efeito in _disponiveis)
+    {
+        <MudSelectItem Value="@efeito.Nome">@efeito.Nome</MudSelectItem>
+    }
+</MudSelect>
+
+@if (_selecionado is not null)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@_selecionado.Descricao</MudText>
+
+    @if (_selecionado.TipoDeCusto is nameof(TipoDeCusto.PorUnidade) or nameof(TipoDeCusto.ManualPorUnidade))
+    {
+        <MudNumericField T="int?" @bind-Value="_quantidade" @bind-Value:after="RecalcularCusto" Label="@($"Quantidade ({_selecionado.UnidadeLabel})")" Class="mt-2" />
+    }
+
+    @if (_selecionado.TipoDeCusto is nameof(TipoDeCusto.Manual))
+    {
+        <MudNumericField T="int?" @bind-Value="_custoManual" @bind-Value:after="RecalcularCusto" Label="Custo em PI (definido pelo Mestre)" Class="mt-2" />
+    }
+    @if (_selecionado.TipoDeCusto is nameof(TipoDeCusto.ManualPorUnidade))
+    {
+        <MudNumericField T="int?" @bind-Value="_custoManual" @bind-Value:after="RecalcularCusto" Label="@($"Custo por {_selecionado.UnidadeLabel} (definido pelo Mestre)")" Class="mt-2" />
+    }
+
+    @if (_erroDrenoOrigemAusente is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-2">@_erroDrenoOrigemAusente</MudAlert>
+    }
+    else if (_custoCalculado is not null)
+    {
+        <MudText Class="mt-2">Custo em PI: @_custoCalculado</MudText>
+    }
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2"
+               Disabled="@(_custoCalculado is null)" OnClick="ConfirmarAsync">
+        Adicionar Efeito
+    </MudButton>
+}
+
+@code {
+    [Parameter, EditorRequired] public int Grau { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentes { get; set; } = [];
+    [Parameter] public EventCallback<EfeitoAdicionadoResult> OnAdicionar { get; set; }
+
+    private List<EfeitoResponse> _todos = [];
+    private List<EfeitoResponse> _disponiveis = [];
+    private string? _efeitoNomeSelecionado;
+    private EfeitoResponse? _selecionado;
+    private int? _quantidade;
+    private int? _custoManual;
+    private string? _erroDrenoOrigemAusente;
+    // Recomputed explicitly on every input change (RecalcularCusto), never as a side effect of
+    // reading it — a computed property that mutates state on every getter call is fragile and
+    // gets read multiple times per render (the @if check, the display, the button's Disabled).
+    private int? _custoCalculado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_todos.Count == 0)
+            _todos = await Http.GetFromJsonAsync<List<EfeitoResponse>>("efeitos") ?? [];
+
+        var nomesPresentes = EfeitosExistentes.Select(e => e.Nome).ToHashSet();
+        _disponiveis = _todos
+            .Where(e => e.Grau <= Grau)
+            .Where(e => e.PreRequisitos.All(grupo => grupo.Any(nomesPresentes.Contains)))
+            .OrderBy(e => e.Grau).ThenBy(e => e.Nome)
+            .ToList();
+    }
+
+    private void OnEfeitoSelecionado(string nome)
+    {
+        _efeitoNomeSelecionado = nome;
+        _selecionado = _disponiveis.FirstOrDefault(e => e.Nome == nome);
+        _quantidade = null;
+        _custoManual = null;
+        RecalcularCusto();
+    }
+
+    private void RecalcularCusto()
+    {
+        _erroDrenoOrigemAusente = null;
+        _custoCalculado = null;
+
+        if (_selecionado is null)
+            return;
+
+        if (!Enum.TryParse<TipoDeCusto>(_selecionado.TipoDeCusto, out var tipo))
+            return;
+
+        int? quantidadeDerivada = null;
+        if (_selecionado.QuantidadeDerivadaDeEfeito is { } origemNome)
+        {
+            var origem = EfeitosExistentes.FirstOrDefault(e => e.Nome == origemNome);
+            if (origem.Nome is null)
+            {
+                _erroDrenoOrigemAusente = $"\"{_selecionado.Nome}\" exige que \"{origemNome}\" já tenha uma Quantidade definida nesta Magia/Habilidade.";
+                return;
+            }
+            quantidadeDerivada = origem.Quantidade ?? 0;
+        }
+
+        if (tipo is TipoDeCusto.Manual or TipoDeCusto.ManualPorUnidade && _custoManual is null)
+            return;
+        if (tipo is TipoDeCusto.PorUnidade or TipoDeCusto.ManualPorUnidade && _quantidade is null)
+            return; // quantidade opcional só quando o tipo não a exige; aqui exige e ainda não foi preenchida
+
+        _custoCalculado = EfeitoCustoCalculator.Calcular(
+            tipo, _selecionado.CustoFixo, _selecionado.CustoPorUnidade,
+            _selecionado.CustoAlternativo, _selecionado.CustoAlternativoAPartirDoGrau,
+            Grau, _quantidade, _custoManual, quantidadeDerivada);
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (_selecionado is null || _custoCalculado is not { } custo)
+            return;
+
+        await OnAdicionar.InvokeAsync(new EfeitoAdicionadoResult(_selecionado.Nome, _quantidade, custo));
+
+        _efeitoNomeSelecionado = null;
+        _selecionado = null;
+        _quantidade = null;
+        _custoManual = null;
+        _erroDrenoOrigemAusente = null;
+        _custoCalculado = null;
+    }
+}
