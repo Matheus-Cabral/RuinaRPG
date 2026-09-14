@@ -13,10 +13,7 @@
 
 <MudText Typo="Typo.h3">@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 <EditForm EditContext="_editContext">
     <DataAnnotationsValidator />

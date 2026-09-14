@@ -289,7 +289,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return Forbid();
 
         var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
-        return new LevelUpNoticeResponse(pending.Select(b => b.BonusText).ToList());
+        return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
     }
 
     [HttpPost("api/character-sheets/{id}/dismiss-level-up-notice")]

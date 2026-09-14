@@ -537,7 +537,14 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().HaveCount(2); // Nível 1 and 2's bonus text, nothing dismissed yet
+        // Tabela de Níveis.md packs each level's several bonuses into one markdown-table cell
+        // separated by literal "<br>" (Nível 1 has 7, Nível 2 has 3) — BonusTexts flattens that
+        // into one entry per individual bonus, not one blob per level, so the client can render
+        // each on its own line instead of a raw "<br>" showing up as literal text.
+        body!.BonusTexts.Should().HaveCount(10);
+        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
+        body.BonusTexts.Should().Contain("+1 Ponto de Atributo");
     }
 
     [Fact]

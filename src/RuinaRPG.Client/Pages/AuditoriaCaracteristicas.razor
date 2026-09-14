@@ -6,14 +6,11 @@
 <Breadcrumbs Items="@Crumbs" />
 <MudText Typo="Typo.h3">Auditoria: Características</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 @if (_forbidden)
 {
-    <MudAlert Severity="Severity.Warning" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
 }
 else
 {

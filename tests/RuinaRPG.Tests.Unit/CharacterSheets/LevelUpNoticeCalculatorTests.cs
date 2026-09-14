@@ -44,4 +44,38 @@ public class LevelUpNoticeCalculatorTests
 
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public void FlattenBonusLines_splits_a_multi_bonus_cell_on_br_into_separate_trimmed_lines()
+    {
+        var bonuses = new List<LevelBonus> { new(1, "+9 Pontos de Atributo  <br>+Status de Vida Aprimorado  <br>+1 Espaço de Maestria") };
+
+        var result = LevelUpNoticeCalculator.FlattenBonusLines(bonuses);
+
+        result.Should().Equal("+9 Pontos de Atributo", "+Status de Vida Aprimorado", "+1 Espaço de Maestria");
+    }
+
+    [Fact]
+    public void FlattenBonusLines_leaves_a_single_bonus_cell_with_no_br_untouched()
+    {
+        var bonuses = new List<LevelBonus> { new(3, "+Status de Vocação de Vida/Foco") };
+
+        var result = LevelUpNoticeCalculator.FlattenBonusLines(bonuses);
+
+        result.Should().Equal("+Status de Vocação de Vida/Foco");
+    }
+
+    [Fact]
+    public void FlattenBonusLines_concatenates_lines_across_multiple_levels_in_order()
+    {
+        var bonuses = new List<LevelBonus>
+        {
+            new(1, "+9 Pontos de Atributo  <br>+4 Pontos de Perícia"),
+            new(2, "+4 Pontos de Ignição")
+        };
+
+        var result = LevelUpNoticeCalculator.FlattenBonusLines(bonuses);
+
+        result.Should().Equal("+9 Pontos de Atributo", "+4 Pontos de Perícia", "+4 Pontos de Ignição");
+    }
 }

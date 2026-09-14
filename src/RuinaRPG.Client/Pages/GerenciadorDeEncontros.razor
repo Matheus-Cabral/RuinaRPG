@@ -27,10 +27,7 @@ else
     </MudText>
 }
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 <Section Title="Adicionar Participante">
     <EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">

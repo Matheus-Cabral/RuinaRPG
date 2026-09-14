@@ -15,10 +15,7 @@
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de NPC</h1>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
 <MudDialog @bind-Visible="_racialChoiceDialogOpen" Options="@(new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false })">
     <DialogContent>
@@ -555,7 +552,7 @@
                 <MudText>Peso: @_subAttributes.PesoAtual?.ToString("0.##") / @_subAttributes.PesoMaximo?.ToString("0.##")</MudText>
                 @if (_subAttributes.PesoAtual > _subAttributes.PesoMaximo)
                 {
-                    <MudAlert Severity="Severity.Warning" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
                 }
             }
             <MudNumericField T="int?" Value="@_form.Ciclos" ValueChanged="@(v => UpdateCiclosAsync(v))" Label="Ciclos" Style="width:8em;" />

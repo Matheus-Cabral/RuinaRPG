@@ -20,10 +20,7 @@
 <Breadcrumbs Items="@Crumbs" />
 <MudText Typo="Typo.h3">@(_campaignName ?? "Campanha")</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 <MudTabs Class="mt-3">
     <MudTabPanel Text="Membros">
@@ -337,7 +334,7 @@
         </Section>
 
         <Section Title="Excluir Campanha">
-            <MudAlert Severity="Severity.Warning" Class="mb-3">
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-3">
                 Excluir esta campanha apaga permanentemente todas as fichas de personagem, entradas de diário e notas secretas associadas a ela. Esta ação não pode ser desfeita.
             </MudAlert>
             <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => _deleteDialogOpen = true)">Excluir Campanha</MudButton>
@@ -348,13 +345,10 @@
 <MudDialog @bind-Visible="_deleteDialogOpen">
     <TitleContent>Excluir Campanha</TitleContent>
     <DialogContent>
-        <MudAlert Severity="Severity.Warning" Class="mb-3">
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-3">
             Esta ação é permanente: todas as fichas de personagem, entradas de diário e notas secretas da campanha "@_campaignName" serão apagadas.
         </MudAlert>
-        @if (_deleteErrorMessage is not null)
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-3">@_deleteErrorMessage</MudAlert>
-        }
+        <DismissibleAlert @bind-Message="_deleteErrorMessage" Class="mb-3" />
         <MudTextField T="string" @bind-Value="_deletePassword" Label="Senha" InputType="InputType.Password" />
     </DialogContent>
     <DialogActions>

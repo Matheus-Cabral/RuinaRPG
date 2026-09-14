@@ -19,10 +19,7 @@
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4">Entrar</MudButton>
         </EditForm>
 
-        @if (_errorMessage is not null)
-        {
-            <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-        }
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
         <MudText Typo="Typo.body2" Class="rr-auth-switch">
             Não tem conta? <MudLink Href="/cadastro">Cadastre-se</MudLink>

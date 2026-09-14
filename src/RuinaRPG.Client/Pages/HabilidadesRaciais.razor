@@ -7,10 +7,7 @@
 <Breadcrumbs Items="@Crumbs" />
 <MudText Typo="Typo.h3">Habilidades Raciais</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 @foreach (var variante in new[] { "PhylacTai", "EsPhylauc", "Yavos", "Koroanos", "Alora" })
 {

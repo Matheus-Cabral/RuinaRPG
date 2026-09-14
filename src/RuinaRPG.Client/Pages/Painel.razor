@@ -32,11 +32,8 @@
         }
         else
         {
-            @if (_errorMessage is not null)
-            {
-                <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-            }
-            else if (_myCharacters.Count == 0)
+            <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+            @if (_errorMessage is null && _myCharacters.Count == 0)
             {
                 <MudText Color="Color.Secondary" Class="mt-3">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</MudText>
             }

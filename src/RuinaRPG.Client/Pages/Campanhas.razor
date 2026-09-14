@@ -16,10 +16,7 @@
 </Section>
 
 <Section>
-    @if (_errorMessage is not null)
-    {
-        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-    }
+    <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
     <MudGrid Class="mt-3">
         @foreach (var campaign in _campaigns)

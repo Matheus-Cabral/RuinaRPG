@@ -41,10 +41,7 @@
 <Section Title="Criaturas">
     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Nova Criatura</MudButton>
 
-    @if (_errorMessage is not null)
-    {
-        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-    }
+    <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
     <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
         <thead>

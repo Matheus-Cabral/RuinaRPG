@@ -7,11 +7,8 @@
 
 <MudText Typo="Typo.h3">Minhas Campanhas</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
-else if (_campaigns.Count == 0)
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+@if (_errorMessage is null && _campaigns.Count == 0)
 {
     <MudText Color="Color.Secondary" Class="mt-3">Você ainda não faz parte de nenhuma campanha.</MudText>
 }

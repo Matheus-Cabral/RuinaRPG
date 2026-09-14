@@ -1,0 +1,22 @@
+@using MudBlazor
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <MudAlert Severity="@Severity" Variant="Variant.Filled" Class="@Class" ShowCloseIcon="true"
+              CloseIconClicked="@(() => MessageChanged.InvokeAsync(null))">
+        @Message
+    </MudAlert>
+}
+
+@code {
+    /// <summary>
+    /// A themed, dismissible <see cref="MudAlert"/>: forces Variant.Filled (MudAlert's own
+    /// default is Variant.Text, a thin colored-text style with poor contrast in both this app's
+    /// themes) and clears itself via a close icon instead of staying on screen until the page
+    /// reloads. Renders nothing when Message is null/empty — callers don't need their own @if.
+    /// </summary>
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public EventCallback<string?> MessageChanged { get; set; }
+    [Parameter] public Severity Severity { get; set; } = Severity.Error;
+    [Parameter] public string? Class { get; set; }
+}

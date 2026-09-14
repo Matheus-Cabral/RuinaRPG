@@ -6,10 +6,7 @@
 
 <MudText Typo="Typo.h3">Minha Campanha</MudText>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 <MudTabs Class="mt-3">
     <MudTabPanel Text="Minhas Fichas">

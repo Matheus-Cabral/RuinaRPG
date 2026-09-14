@@ -12,10 +12,7 @@
 </Section>
 
 <Section Title="Jogadores">
-    @if (_errorMessage is not null)
-    {
-        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-    }
+    <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
     <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
         <thead>
@@ -43,10 +40,7 @@
 <MudDialog @bind-Visible="_resetDialogOpen">
     <TitleContent>Redefinir senha de @_resettingPlayerNickname</TitleContent>
     <DialogContent>
-        @if (_resetErrorMessage is not null)
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-3">@_resetErrorMessage</MudAlert>
-        }
+        <DismissibleAlert @bind-Message="_resetErrorMessage" Class="mb-3" />
         <MudTextField T="string" @bind-Value="_resetRequest.NovaSenha" InputType="InputType.Password" Label="Nova senha" />
         <MudTextField T="string" @bind-Value="_resetRequest.ConfirmacaoNovaSenha" InputType="InputType.Password" Label="Confirmação da nova senha" />
     </DialogContent>

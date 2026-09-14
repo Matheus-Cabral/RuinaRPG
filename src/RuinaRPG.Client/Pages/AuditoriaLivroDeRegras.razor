@@ -7,20 +7,17 @@
 <Breadcrumbs Items="@Crumbs" />
 <MudText Typo="Typo.h3">Auditoria: Livro de Regras</MudText>
 
-<MudAlert Severity="Severity.Info" Class="mt-3">
+<MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mt-3">
     Editar aqui só muda o texto exibido nesta página do Livro de Regras — não afeta nenhum cálculo
     usado nas fichas (Vitalidade, Foco, Graduação, XP por nível, etc.). Essas fórmulas continuam
     fixas no sistema.
 </MudAlert>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
 @if (_forbidden)
 {
-    <MudAlert Severity="Severity.Warning" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
 }
 else
 {

@@ -15,10 +15,7 @@
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Criatura</h1>
 
-@if (_errorMessage is not null)
-{
-    <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
-}
+<DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">

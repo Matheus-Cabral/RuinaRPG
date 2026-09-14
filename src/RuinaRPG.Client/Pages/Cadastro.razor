@@ -12,10 +12,7 @@
         <img src="branding/logo-pequena.png" alt="Ruína RPG" class="rr-auth-logo" />
         <MudText Typo="Typo.h4" Class="rr-auth-title">Cadastro</MudText>
 
-        @if (_errorMessage is not null)
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
-        }
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
         <MudTabs>
             <MudTabPanel Text="Gamemaster">
