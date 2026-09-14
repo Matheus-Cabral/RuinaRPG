@@ -190,52 +190,33 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
-    public async Task SearchTipoDeAlvo_returns_the_4_fixed_options()
+    public void TipoDeAlvo_offers_the_4_fixed_options()
     {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchTipoDeAlvoForTestsAsync("");
-
-        results.Should().BeEquivalentTo(new[] { "Atributo", "Pericia", "SubAtributo", "Dano" });
+        CatalogoItemForm.TipoDeAlvoOptions.Select(o => o.Value).Should().BeEquivalentTo(new[] { "Atributo", "Pericia", "SubAtributo", "Dano" });
+        CatalogoItemForm.TipoDeAlvoOptions.Should().Contain(o => o.Value == "Pericia" && o.Label == "Perícia");
     }
 
     [Fact]
-    public async Task SearchTipoDeAlvo_filters_by_the_accented_label_not_just_the_raw_value()
+    public void AlvoOptionsFor_Atributo_lists_the_8_Atributo_names()
     {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchTipoDeAlvoForTestsAsync("Perí");
-
-        results.Should().BeEquivalentTo(new[] { "Pericia" });
-    }
-
-    [Fact]
-    public async Task SearchAlvo_for_Atributo_lists_the_8_Atributo_names()
-    {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchAlvoForTestsAsync("Atributo", "");
+        var results = CatalogoItemForm.AlvoOptionsFor("Atributo");
 
         results.Should().BeEquivalentTo(new[] { "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca" });
     }
 
     [Fact]
-    public async Task SearchAlvo_for_Pericia_lists_all_39_Pericia_names()
+    public void AlvoOptionsFor_Pericia_lists_all_39_Pericia_names()
     {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchAlvoForTestsAsync("Pericia", "");
+        var results = CatalogoItemForm.AlvoOptionsFor("Pericia");
 
         results.Should().HaveCount(39);
         results.Should().Contain("ArmasBrancas");
     }
 
     [Fact]
-    public async Task SearchAlvo_for_SubAtributo_lists_the_7_canonical_names()
+    public void AlvoOptionsFor_SubAtributo_lists_the_7_canonical_names()
     {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchAlvoForTestsAsync("SubAtributo", "");
+        var results = CatalogoItemForm.AlvoOptionsFor("SubAtributo");
 
         results.Should().BeEquivalentTo(new[]
         {
@@ -245,11 +226,9 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
-    public async Task SearchAlvo_for_Dano_lists_the_4_damage_types_including_Arcano()
+    public void AlvoOptionsFor_Dano_lists_the_4_damage_types_including_Arcano()
     {
-        var form = RenderNewItemForm();
-
-        var results = await form.SearchAlvoForTestsAsync("Dano", "");
+        var results = CatalogoItemForm.AlvoOptionsFor("Dano");
 
         results.Should().BeEquivalentTo(new[] { "Cortante", "Perfurante", "Contundente", "Arcano" });
     }

@@ -89,12 +89,19 @@
     else if (_form.Tipo == "Artefato")
     {
         <Section Title="Artefato">
-            <MudAutocomplete T="string" @bind-Value="_form.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync"
-                              SearchFunc="SearchTipoDeAlvoAsync" ToStringFunc="@TipoDeAlvoLabel"
-                              Label="Tipo de Alvo" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null" />
-            <MudAutocomplete T="string" @bind-Value="_form.Alvo" @bind-Value:after="NotifySavedAsync"
-                              SearchFunc="SearchAlvoAsync" Label="Alvo" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null"
-                              Disabled="@string.IsNullOrEmpty(_form.TipoDeAlvo)" />
+            <MudSelect T="string" @bind-Value="_form.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync" Label="Tipo de Alvo">
+                @foreach (var option in TipoDeAlvoOptions)
+                {
+                    <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="_form.Alvo" @bind-Value:after="NotifySavedAsync" Label="Alvo"
+                       Disabled="@string.IsNullOrEmpty(_form.TipoDeAlvo)">
+                @foreach (var option in AlvoOptionsFor(_form.TipoDeAlvo))
+                {
+                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                }
+            </MudSelect>
             <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
@@ -232,7 +239,8 @@
 
     // The 4 fixed Tipo de Alvo values, keyed by the raw enum member name the server expects
     // (ItemsController parses this with Enum.TryParse<TipoDeAlvo>) — the label is only for display.
-    private static readonly (string Value, string Label)[] TipoDeAlvoOptions =
+    // Fixed, closed set (no search) — a plain MudSelect, not an autocomplete.
+    internal static readonly (string Value, string Label)[] TipoDeAlvoOptions =
     [
         (RuinaRPG.Domain.Items.TipoDeAlvo.Atributo.ToString(), "Atributo"),
         (RuinaRPG.Domain.Items.TipoDeAlvo.Pericia.ToString(), "Perícia"),
@@ -249,31 +257,19 @@
         SubAtributoAlvo.Adrenalina,
     ];
 
-    private static string TipoDeAlvoLabel(string? value) =>
-        TipoDeAlvoOptions.FirstOrDefault(o => o.Value == value).Label ?? value ?? "";
-
-    private Task<IEnumerable<string>> SearchTipoDeAlvoAsync(string value, CancellationToken token) =>
-        Task.FromResult(TipoDeAlvoOptions
-            .Where(o => string.IsNullOrEmpty(value) || o.Label.Contains(value, StringComparison.OrdinalIgnoreCase))
-            .Select(o => o.Value));
-
     // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — same "Atributo",
     // "Pericia" and "Dano" enum-member spelling every other Alvo dropdown in the app already shows
     // raw (no accented relabeling), so a value picked here round-trips identically through
-    // ArtifactBonusCalculator's string comparison elsewhere.
-    private Task<IEnumerable<string>> SearchAlvoAsync(string value, CancellationToken token)
+    // ArtifactBonusCalculator's string comparison elsewhere. Fixed, closed sets — a plain MudSelect,
+    // not an autocomplete: with at most 39 options (Perícia) there's nothing to search.
+    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo) => tipoDeAlvo switch
     {
-        IEnumerable<string> options = _form.TipoDeAlvo switch
-        {
-            "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
-            "Pericia" => Enum.GetValues<Pericia>().Select(p => p.ToString()),
-            "SubAtributo" => SubAtributoAlvoOptions,
-            "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
-            _ => Enumerable.Empty<string>(),
-        };
-
-        return Task.FromResult(options.Where(o => string.IsNullOrEmpty(value) || o.Contains(value, StringComparison.OrdinalIgnoreCase)));
-    }
+        "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
+        "Pericia" => Enum.GetValues<Pericia>().Select(p => p.ToString()),
+        "SubAtributo" => SubAtributoAlvoOptions,
+        "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
+        _ => Enumerable.Empty<string>(),
+    };
 
     private Task OnTipoDeAlvoChangedAsync()
     {
@@ -284,16 +280,8 @@
         return NotifySavedAsync();
     }
 
-    // Test-only seams (see EntityPicker's identical rationale): MudAutocomplete owns its own
-    // debounce/open-state internally, which bUnit's synchronous TestContext can't drive through
-    // real elapsed time — these let CatalogoItemFormTests exercise the search/reset logic
-    // deterministically, without needing _form.TipoDeAlvo set through the rendered component.
-    internal Task<IEnumerable<string>> SearchTipoDeAlvoForTestsAsync(string value) => SearchTipoDeAlvoAsync(value, CancellationToken.None);
-    internal Task<IEnumerable<string>> SearchAlvoForTestsAsync(string tipoDeAlvo, string value)
-    {
-        _form.TipoDeAlvo = tipoDeAlvo;
-        return SearchAlvoAsync(value, CancellationToken.None);
-    }
+    // Test-only seam: exercises the clear-on-change behavior without needing a real MudSelect
+    // interaction driven through bUnit.
     internal Task OnTipoDeAlvoChangedForTestsAsync(string? previousAlvo)
     {
         _form.Alvo = previousAlvo;
