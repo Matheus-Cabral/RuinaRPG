@@ -36,7 +36,7 @@
 
 # **R0005** - Campos de uma entrada do banco.
 
-**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**.
+**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**. O Nome de cada Efeito e seu Custo em PI seguem o catálogo e o cálculo automático descritos em "[[Requisitos - Auditoria de Regras]]" R0006/R0007 — não são mais campos de texto/número livres.
 
   
 
