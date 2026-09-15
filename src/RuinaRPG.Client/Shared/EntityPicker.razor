@@ -62,6 +62,12 @@ else
         await ValueChanged.InvokeAsync(Value);
     }
 
+    /// <summary>
+    /// Aplica uma seleção vinda de fora do próprio fluxo de busca — por exemplo, um item que
+    /// acabou de ser criado num diálogo. Mesmo efeito de o usuário escolher no dropdown.
+    /// </summary>
+    public Task SelectExternallyAsync(PickerOption option) => SelectAsync(option);
+
     private async Task ClearAsync()
     {
         _selectedLabel = null;

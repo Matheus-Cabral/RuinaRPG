@@ -91,4 +91,20 @@ public class EntityPickerTests : MudBunitContext
 
         cut.Markup.Should().NotContain("Espada Longa"); // proves _selectedLabel was actually cleared, not just that Value=="" alone hid it
     }
+
+    [Fact]
+    public async Task SelectExternallyAsync_applies_a_selection_from_outside_the_search_flow()
+    {
+        string? boundValue = null;
+        var cut = Render<EntityPicker>(p => p
+            .Add(x => x.Value, "")
+            .Add(x => x.ValueChanged, v => boundValue = v)
+            .Add(x => x.SearchItems, _ => Task.FromResult(new List<PickerOption>())));
+
+        await cut.InvokeAsync(() => cut.Instance.SelectExternallyAsync(new PickerOption("id-9", "Item Novo")));
+
+        boundValue.Should().Be("id-9");
+        cut.Markup.Should().Contain("Item Novo");
+        cut.Markup.Should().NotContain("<input");
+    }
 }
