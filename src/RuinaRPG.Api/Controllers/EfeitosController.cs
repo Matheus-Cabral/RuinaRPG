@@ -36,10 +36,15 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
         if (authError is not null)
             return authError;
 
-        if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto))
+        if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto) || !Enum.IsDefined(tipoDeCusto))
             return BadRequest("TipoDeCusto inválido.");
         if (await db.Efeitos.AnyAsync(e => e.Nome == request.Nome && !e.IsDeleted))
             return BadRequest("Já existe um Efeito com esse Nome.");
+        var camposError = ValidarCamposDoTipoDeCusto(
+            tipoDeCusto, request.CustoFixo, request.CustoPorUnidade, request.QuantidadeDerivadaDeEfeito,
+            request.CustoAlternativo, request.CustoAlternativoAPartirDoGrau);
+        if (camposError is not null)
+            return BadRequest(camposError);
 
         var efeito = new Efeito
         {
@@ -69,10 +74,15 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
         if (efeito is null)
             return NotFound();
 
-        if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto))
+        if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto) || !Enum.IsDefined(tipoDeCusto))
             return BadRequest("TipoDeCusto inválido.");
         if (await db.Efeitos.AnyAsync(e => e.Id != id && e.Nome == request.Nome && !e.IsDeleted))
             return BadRequest("Já existe um Efeito com esse Nome.");
+        var camposError = ValidarCamposDoTipoDeCusto(
+            tipoDeCusto, request.CustoFixo, request.CustoPorUnidade, request.QuantidadeDerivadaDeEfeito,
+            request.CustoAlternativo, request.CustoAlternativoAPartirDoGrau);
+        if (camposError is not null)
+            return BadRequest(camposError);
 
         efeito.Nome = request.Nome; efeito.Grau = request.Grau; efeito.Descricao = request.Descricao;
         efeito.TipoDeCusto = tipoDeCusto; efeito.CustoFixo = request.CustoFixo; efeito.CustoPorUnidade = request.CustoPorUnidade;
@@ -103,6 +113,36 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Rejects a catalog row missing the cost field its own TipoDeCusto requires — a gap here lets
+    /// EfeitoCustoCalculator.Calcular's <c>!.Value</c> throw at Magia/Habilidade-validation time
+    /// instead of at catalog-write time (Manual/ManualPorUnidade require neither field, since the
+    /// GM types the value later — see EfeitoValidator's own skip-recompute handling of those two
+    /// types). Also rejects an inconsistent CustoAlternativo/CustoAlternativoAPartirDoGrau pair,
+    /// the same class of poison row (see Calcular's own use of that pair).
+    /// </summary>
+    private static string? ValidarCamposDoTipoDeCusto(
+        TipoDeCusto tipoDeCusto, int? custoFixo, int? custoPorUnidade, string? quantidadeDerivadaDeEfeito,
+        int? custoAlternativo, int? custoAlternativoAPartirDoGrau)
+    {
+        switch (tipoDeCusto)
+        {
+            case TipoDeCusto.Fixo when custoFixo is null:
+                return "CustoFixo é obrigatório para TipoDeCusto Fixo.";
+            case TipoDeCusto.PorUnidade when custoPorUnidade is null:
+                return "CustoPorUnidade é obrigatório para TipoDeCusto PorUnidade.";
+            case TipoDeCusto.DerivadoDeOutroEfeito when custoPorUnidade is null:
+                return "CustoPorUnidade é obrigatório para TipoDeCusto DerivadoDeOutroEfeito.";
+            case TipoDeCusto.DerivadoDeOutroEfeito when string.IsNullOrWhiteSpace(quantidadeDerivadaDeEfeito):
+                return "QuantidadeDerivadaDeEfeito é obrigatório para TipoDeCusto DerivadoDeOutroEfeito.";
+        }
+
+        if ((custoAlternativo is null) != (custoAlternativoAPartirDoGrau is null))
+            return "CustoAlternativo e CustoAlternativoAPartirDoGrau devem ser preenchidos juntos, ou ambos deixados em branco.";
+
+        return null;
     }
 
     private static EfeitoResponse ToResponse(Efeito e) => new(
