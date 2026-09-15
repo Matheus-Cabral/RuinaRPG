@@ -1,5 +1,6 @@
 using Bunit;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Tests.Client.Shared;
@@ -241,6 +242,57 @@ public class CatalogoItemFormTests : MudBunitContext
         await form.OnTipoDeAlvoChangedForTestsAsync("Forca");
 
         form.AlvoForTests.Should().BeNull();
+    }
+
+    [Fact]
+    public void FixedTipo_hides_the_Tipo_selector_and_preselects_it()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+
+        cut.FindComponents<MudBlazor.MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Tipo");
+        cut.Markup.Should().Contain("Empunhadura"); // só a seção de campos de Arma renderiza isso — prova que _form.Tipo já veio "Arma"
+    }
+
+    [Fact]
+    public async Task OnCreated_callback_fires_with_the_created_item_instead_of_navigating()
+    {
+        RuinaRPG.Contracts.Items.ItemResponse? created = null;
+        var getCount = 0;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get)
+            {
+                getCount++;
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            }
+            return new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new
+            {
+                Id = "item-new", Tipo = "ItemGeral", Nome = "Poção Nova", Peso = 1m, Preco = 5,
+                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null,
+                Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
+                Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
+                DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,
+                RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null, CapacidadeExtra = (decimal?)null,
+            }) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p
+            .Add(x => x.FixedTipo, "ItemGeral")
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<RuinaRPG.Contracts.Items.ItemResponse>(this, r => created = r)));
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Poção Nova"));
+
+        await cut.InvokeAsync(() => cut.Instance.CreateForTestsAsync());
+
+        created.Should().NotBeNull();
+        created!.Nome.Should().Be("Poção Nova");
+        getCount.Should().Be(1, "OnCreated deve substituir a navegação, não disparar uma nova busca");
     }
 
     /// <summary>

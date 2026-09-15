@@ -11,7 +11,10 @@
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.Items
 
-<Breadcrumbs Items="@Crumbs" />
+@if (FixedTipo is null)
+{
+    <Breadcrumbs Items="@Crumbs" />
+}
 
 <MudText Typo="Typo.h3">@(ItemId is null ? "Novo Item" : "Editar Item")</MudText>
 
@@ -24,7 +27,7 @@
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
     }
     <Section Title="Geral">
-        @if (ItemId is null)
+        @if (ItemId is null && FixedTipo is null)
         {
             <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo">
                 <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
@@ -114,6 +117,8 @@
 
 @code {
     [Parameter] public string? ItemId { get; set; }
+    [Parameter] public string? FixedTipo { get; set; }
+    [Parameter] public EventCallback<ItemResponse> OnCreated { get; set; }
 
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
@@ -141,6 +146,8 @@
     protected override void OnInitialized()
     {
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
+        if (FixedTipo is not null)
+            _form.Tipo = FixedTipo;
     }
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
@@ -216,6 +223,18 @@
             return;
         }
 
+        if (OnCreated.HasDelegate)
+        {
+            var created = await response.Content.ReadFromJsonAsync<ItemResponse>();
+            if (created is null)
+            {
+                _errorMessage = "Não foi possível salvar o item.";
+                return;
+            }
+            await OnCreated.InvokeAsync(created);
+            return;
+        }
+
         Navigation.NavigateTo("/catalogo");
     }
 
@@ -288,6 +307,8 @@
         return OnTipoDeAlvoChangedAsync();
     }
     internal string? AlvoForTests => _form.Alvo;
+
+    internal Task CreateForTestsAsync() => CreateAsync();
 
     private Task NotifySavedAsync()
     {
