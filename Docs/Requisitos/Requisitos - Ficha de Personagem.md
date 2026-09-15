@@ -112,7 +112,7 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 - *Cobertura*: duas opções mutuamente exclusivas, **Parcial** (+5) e **Completa** (+10), ou nenhuma selecionada (+0). Alimenta a fórmula de Defesa Natural acima.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
-- *Eficiência Elemental* e *Dano Elemental*: "[[Formulas]]" indica que ambos vêm de uma tabela, que ainda não foi escrita em nenhum documento do sistema. Campos previstos porém não implementados até a tabela existir.
+- *Eficiência Elemental* e *Dano Elemental*: campos calculados, iguais entre si — ambos assumem o *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida em 1.a. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
 - *Dano de Briga*: campo previsto porém sem fórmula definida ainda. Não implementar até a regra existir.
 
   
@@ -130,6 +130,24 @@ Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental*
 - *Caminho e Experiência*: um nome livre, customizável pelo jogador (o "Caminho" trilhado dentro daquele Sub-Elemento) acompanhado de um valor numérico ≥ 0 (a "Experiência" naquele Caminho).
 
 Qualquer campo de uma linha de Afinidade já existente pode ser editado pelo jogador a qualquer momento (não só no momento de adicionar a linha), e a linha pode ser removida a qualquer momento.
+
+O *Elemento* e o *Sub-Elemento* de cada linha (e, por extensão, o dropdown único de *Afinidade* em 1.a) são restritos pela *Vocação* atual do personagem, via 4 Escolas de Magia (ver "Escolas_de_Magia.png" em `Docs/Sistema RPG`, sem uma seção correspondente no documento fonte — mesmo tratamento de material de referência que "Matriz_Elemental.png" já recebe):
+
+| Escola | Elementos/Sub-Elementos |
+|---|---|
+| Dobra | Ar, Água, Fogo, Terra |
+| Transmutação | Flora, Ferro, Raio, Gelo |
+| Maculação | Necromancia, Invocação, Ecomancia, Hemomancia |
+| Consagração | Curar, Aprimorar, Prever, Purificar, Alma, Vida |
+
+Cada Vocação libera um subconjunto fixo de Escolas: Feiticeiro → Dobra e Maculação; Adepto →
+Dobra e Consagração; Bruxo → Dobra e Transmutação; Campeão, Caçador, ou nenhuma Vocação
+escolhida → nenhuma Escola (não é possível escolher Elemento/Sub-Elemento algum). Uma troca de
+Vocação nunca invalida uma escolha já salva — só uma escolha *nova* (ou uma mudança pra um valor
+diferente) é bloqueada quando cai fora da Vocação atual.
+
+Duas linhas de Afinidade não podem ter o mesmo Elemento não-nulo entre si, nem o mesmo
+Sub-Elemento não-nulo entre si — o servidor rejeita a segunda.
 
   
 
