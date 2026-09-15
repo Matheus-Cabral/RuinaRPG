@@ -84,7 +84,7 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     }
 
     private static UpdateNpcSheetRequest NpcUpdateWithNome(string nome) => new(
-        null, nome, "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
+        null, nome, "Humano", "Sinir", "Campeao", "Duelista", null, "Guardiã do Portal",
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
 
     private async Task<string> CreateNpcSheetAsync(string gmToken, string nome)
@@ -145,7 +145,7 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     {
         var setup = await BuildSetupAsync("SheetImg");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
-        var update = new UpdateCharacterSheetRequest(imageId, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
+        var update = new UpdateCharacterSheetRequest(imageId, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, "Marcado pela Ruína",
             true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{setup.CharacterSheetId}", setup.PlayerToken, update));
 

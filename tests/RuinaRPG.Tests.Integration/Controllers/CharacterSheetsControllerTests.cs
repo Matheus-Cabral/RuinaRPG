@@ -185,7 +185,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     private static UpdateCharacterSheetRequest ValidUpdate() => new(
-        null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Marcado pela Ruína",
+        null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, "Marcado pela Ruína",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
         true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null);
@@ -638,6 +638,61 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin1", "sheetafin1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerAfin1", "sheetplayerafin1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Afinidade 1");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Vocacao=Campeao não libera Escola nenhuma — Fogo (Dobra) deve ser rejeitado.
+        var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_allows_an_Afinidade_liberada_pela_Vocacao_atual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin2", "sheetafin2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerAfin2", "sheetplayerafin2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Afinidade 2");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Feiticeiro libera Dobra+Maculação — Necromancia é de Maculação.
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Necromancia" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Update_keeps_an_old_Afinidade_that_no_longer_fits_a_new_Vocacao_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin3", "sheetafin3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerAfin3", "sheetplayerafin3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Afinidade 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Feiticeiro libera Necromancia (Maculação).
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Necromancia" }));
+
+        // Troca pra Adepto (não libera Maculação) reenviando a MESMA Afinidade — não deve ser bloqueado.
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Necromancia" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.Afinidade.Should().Be("Necromancia");
     }
 
     [Fact]

@@ -97,7 +97,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     private static UpdateNpcSheetRequest ValidUpdate() => new(
-        null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", "Fogo", "Guardiã do Portal",
+        null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", null, "Guardiã do Portal",
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
 
     [Fact]
@@ -311,6 +311,48 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin1", "npcafin1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_allows_an_Afinidade_liberada_pela_Vocacao_atual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin2", "npcafin2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var update = ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Gelo" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Update_keeps_an_old_Afinidade_that_no_longer_fits_a_new_Vocacao_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin3", "npcafin3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+            ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Gelo" }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Gelo" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.Afinidade.Should().Be("Gelo");
     }
 
     [Fact]
