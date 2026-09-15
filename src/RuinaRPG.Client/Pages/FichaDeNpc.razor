@@ -4,6 +4,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Items
@@ -122,7 +123,7 @@
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" />
+                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
@@ -208,12 +209,12 @@
                     {
                         <tr>
                             <td>
-                                <AfinidadeEssenciaField Label="Elemento" Opcoes="AfinidadeEssenciaField.Elementos"
+                                <AfinidadeEssenciaField Label="Elemento" Opcoes="ElementosPermitidosPelaVocacao()"
                                                          Nome="@affinity.Elemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "Elemento", v))"
                                                          Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" />
                             </td>
                             <td>
-                                <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="AfinidadeEssenciaField.SubElementos"
+                                <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosPermitidosPelaVocacao()"
                                                          Nome="@affinity.SubElemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElemento", v))"
                                                          Valor="@affinity.SubElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElementoValor", v))" />
                             </td>
@@ -224,11 +225,11 @@
                     }
                     <tr>
                         <td>
-                            <AfinidadeEssenciaField Label="Elemento" Opcoes="AfinidadeEssenciaField.Elementos"
+                            <AfinidadeEssenciaField Label="Elemento" Opcoes="ElementosPermitidosPelaVocacao()"
                                                      @bind-Nome="_affinityForm.Elemento" @bind-Valor="_affinityForm.ElementoValor" />
                         </td>
                         <td>
-                            <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="AfinidadeEssenciaField.SubElementos"
+                            <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosPermitidosPelaVocacao()"
                                                      @bind-Nome="_affinityForm.SubElemento" @bind-Valor="_affinityForm.SubElementoValor" />
                         </td>
                         <td><MudTextField T="string" @bind-Value="_affinityForm.CaminhoNome" /></td>
@@ -1057,6 +1058,21 @@
         await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
     }
+
+    private (string Valor, string Rotulo)[] AfinidadesPermitidasPelaVocacao() =>
+        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
+            ? AfinidadeSelect.Afinidades.Where(a => Enum.TryParse<AfinidadeElemental>(a.Valor, out var af) && VocacaoEscolaMap.PodeEscolherAfinidade(vocacao, af)).ToArray()
+            : [];
+
+    private (string Valor, string Rotulo)[] ElementosPermitidosPelaVocacao() =>
+        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
+            ? AfinidadeEssenciaField.Elementos.Where(e => Enum.TryParse<Elemento>(e.Valor, out var el) && VocacaoEscolaMap.PodeEscolherElemento(vocacao, el)).ToArray()
+            : [];
+
+    private (string Valor, string Rotulo)[] SubElementosPermitidosPelaVocacao() =>
+        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
+            ? AfinidadeEssenciaField.SubElementos.Where(s => Enum.TryParse<SubElemento>(s.Valor, out var se) && VocacaoEscolaMap.PodeEscolherSubElemento(vocacao, se)).ToArray()
+            : [];
 
     private async Task AddAffinityAsync()
     {
