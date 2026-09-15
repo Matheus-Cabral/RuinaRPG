@@ -1,0 +1,58 @@
+@using MudBlazor
+@using RuinaRPG.Client.Pages
+@using RuinaRPG.Contracts.Items
+@*
+    Envolve o EntityPicker com um botão opcional "+" que abre um diálogo pra cadastrar um item
+    novo no Catálogo sem sair da tela atual — ver docs/superpowers/specs/2026-09-15-cadastro-inline-de-itens-design.md.
+    PodeCriar controla se o botão/diálogo aparecem (gate de GM, decidido pelo chamador); Tipo trava
+    o Tipo do item criado (null pra Espólios, que aceita qualquer Tipo — o CatalogoItemForm então
+    mostra o seletor de Tipo normalmente dentro do diálogo).
+*@
+<div style="display:flex; align-items:center; gap:0.5em;">
+    <div style="flex:1;">
+        <EntityPicker @ref="_picker" Value="Value" ValueChanged="ValueChanged" SearchItems="SearchItems" Placeholder="Placeholder" />
+    </div>
+    @if (PodeCriar)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="@(() => _dialogOpen = true)" title="Cadastrar novo item" />
+    }
+</div>
+
+@if (PodeCriar)
+{
+    <MudDialog @bind-Visible="_dialogOpen">
+        <DialogContent>
+            <CatalogoItemForm FixedTipo="@Tipo" OnCreated="HandleCreatedAsync" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Cancel">Cancelar</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter, EditorRequired] public Func<string, Task<List<PickerOption>>> SearchItems { get; set; } = null!;
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+    [Parameter] public string? Tipo { get; set; }
+    [Parameter] public bool PodeCriar { get; set; }
+
+    private EntityPicker _picker = null!;
+    private bool _dialogOpen;
+
+    private void Cancel() => _dialogOpen = false;
+
+    private async Task HandleCreatedAsync(ItemResponse created)
+    {
+        _dialogOpen = false;
+        await _picker.SelectExternallyAsync(new PickerOption(created.Id, created.Nome));
+    }
+
+    // Test-only seams: bUnit não consegue clicar de forma confiável no botão MudIconButton nem no
+    // diálogo do MudDialog — mesma justificativa dos seams já existentes em EntityPicker/CatalogoItemForm.
+    internal void OpenDialogForTests() => _dialogOpen = true;
+    internal bool DialogOpenForTests => _dialogOpen;
+    internal void CancelForTests() => Cancel();
+    internal Task HandleCreatedForTestsAsync(ItemResponse created) => HandleCreatedAsync(created);
+}
