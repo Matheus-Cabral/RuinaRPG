@@ -970,6 +970,46 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task SubAttributes_computes_EficienciaElemental_and_DanoElemental_from_the_matching_Afinidade_row()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub7", "sheetsub7@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub7", "sheetplayersub7@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Elemental");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Adepto libera Dobra (Fogo) — Afinidade principal = Fogo.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo" }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.EficienciaElemental.Should().Be(7);
+        body.DanoElemental.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task SubAttributes_EficienciaElemental_and_DanoElemental_are_0_when_no_row_matches_Afinidade()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub8", "sheetsub8@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub8", "sheetplayersub8@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Elemental Zero");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.EficienciaElemental.Should().Be(0);
+        body.DanoElemental.Should().Be(0);
+    }
+
+    [Fact]
     public async Task RacialAbility_is_null_before_a_Variante_is_chosen_and_populated_after()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial1", "sheetracial1@teste.com");

@@ -341,7 +341,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             // Espólios (5.a) is loot dropped when defeated, not a carried inventory — out of scope
             // for this feature. See docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md.
             PesoAtual: null,
-            PesoMaximo: null);
+            PesoMaximo: null,
+            // Eficiência Elemental/Dano Elemental não existem na Ficha de Criatura — ela não tem
+            // Vocação nem a lista incremental de Afinidades (2.c). Ver
+            // docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md.
+            EficienciaElemental: null,
+            DanoElemental: null);
     }
 
     // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.

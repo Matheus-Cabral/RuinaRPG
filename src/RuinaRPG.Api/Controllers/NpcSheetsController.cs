@@ -308,6 +308,11 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
+        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == id)
+            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor))
+            .ToListAsync();
+        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
+
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
             Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
@@ -319,7 +324,9 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
             PesoAtual: pesoAtual,
-            PesoMaximo: pesoMaximo);
+            PesoMaximo: pesoMaximo,
+            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade),
+            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade));
     }
 
     /// <summary>

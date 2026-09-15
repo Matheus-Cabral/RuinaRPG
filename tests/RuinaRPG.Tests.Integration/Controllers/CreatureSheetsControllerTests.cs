@@ -567,6 +567,20 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task SubAttributes_EficienciaElemental_and_DanoElemental_are_null_for_Criatura()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSubElemental", "creaturesubelemental@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.EficienciaElemental.Should().BeNull();
+        body.DanoElemental.Should().BeNull();
+    }
+
+    [Fact]
     public async Task List_returns_only_the_callers_own_creatures()
     {
         var gmTokenA = await RegisterGmAndGetTokenAsync("CreatureGmList1", "creaturelist1@teste.com");
