@@ -161,7 +161,7 @@
 
                 @if (_weaponForm.Origem == "Catalogo")
                 {
-                    <EntityPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." />
+                    <CatalogoItemPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." Tipo="Arma" PodeCriar="@_isGmCaller" />
                 }
                 else
                 {
@@ -280,7 +280,7 @@
                                 else
                                 {
                                     <span style="display: inline-block; width: 16em; vertical-align: middle;">
-                                        <EntityPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." />
+                                        <CatalogoItemPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." Tipo="Armadura" PodeCriar="@_isGmCaller" />
                                     </span>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</MudButton>
                                 }
@@ -293,7 +293,7 @@
 
         <Section Title="Escudos">
             <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
-                <EntityPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." />
+                <CatalogoItemPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." Tipo="Escudo" PodeCriar="@_isGmCaller" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
@@ -463,7 +463,7 @@
     <MudTabPanel Text="Posses">
         <Section Title="Espólios">
             <EditForm Model="_spoilForm" OnValidSubmit="AddSpoilAsync">
-                <EntityPicker @bind-Value="_spoilForm.ItemId" SearchItems="SearchAllItemsAsync" Placeholder="Buscar item..." />
+                <CatalogoItemPicker @bind-Value="_spoilForm.ItemId" SearchItems="SearchAllItemsAsync" Placeholder="Buscar item..." PodeCriar="@_isGmCaller" />
                 <MudNumericField T="int" @bind-Value="_spoilForm.Qtd" Label="Quantidade" />
                 <MudNumericField T="int" @bind-Value="_spoilForm.DT" Label="DT" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Espólio</MudButton>
@@ -497,7 +497,7 @@
 
         <Section Title="Artefatos">
             <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
-                <EntityPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." />
+                <CatalogoItemPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." Tipo="Artefato" PodeCriar="@_isGmCaller" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Artefato</MudButton>
             </EditForm>
             @foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
