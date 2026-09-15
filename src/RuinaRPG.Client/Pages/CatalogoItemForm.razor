@@ -11,7 +11,7 @@
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.Items
 
-@if (FixedTipo is null)
+@if (!OnCreated.HasDelegate)
 {
     <Breadcrumbs Items="@Crumbs" />
 }

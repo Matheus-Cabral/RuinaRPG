@@ -258,6 +258,40 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
+    public void Standalone_page_with_no_FixedTipo_and_no_OnCreated_shows_the_breadcrumb()
+    {
+        // Locks down the non-embedded (/catalogo/novo) case: it must keep its live navigation
+        // trail. Guards against a fix for the Espólios bug (below) accidentally hiding the
+        // breadcrumb everywhere.
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>();
+
+        cut.FindComponents<RuinaRPG.Client.Shared.Breadcrumbs>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Embedded_with_OnCreated_but_no_FixedTipo_hides_the_breadcrumb()
+    {
+        // Regression test for the final-review finding: Espólios' CatalogoItemPicker call site
+        // embeds this form with OnCreated set but FixedTipo left null (any Tipo is allowed there).
+        // Gating the breadcrumb on "FixedTipo is null" wrongly showed it in this embedded dialog,
+        // exposing the GM to the same accidental full-page-navigation risk the guard exists to
+        // prevent. The guard must key off whether the form is embedded at all (OnCreated.HasDelegate),
+        // not off FixedTipo's value.
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<RuinaRPG.Contracts.Items.ItemResponse>(this, _ => { })));
+
+        cut.FindComponents<RuinaRPG.Client.Shared.Breadcrumbs>().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task OnCreated_callback_fires_with_the_created_item_instead_of_navigating()
     {
         RuinaRPG.Contracts.Items.ItemResponse? created = null;
