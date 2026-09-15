@@ -62,7 +62,15 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
-        return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+        var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+
+        // Adepto libera Dobra+Consagração — cobre todas as combinações que os testes já existentes
+        // usam: Fogo/Terra são Dobra, Vida/Aprimorar são Consagração.
+        var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
+
+        return sheetId;
     }
 
     [Fact]
@@ -251,5 +259,76 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
             new UpdateCharacterAffinityRequest("Terra", 1, "Vida", 1, "Outro", 1)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Add_rejects_an_Elemento_not_liberado_pela_Vocacao_atual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm12", "aff12@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer12", "affplayer12@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto (Dobra+Consagração)
+
+        // Necromancia é de Maculação — Adepto não libera.
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest(null, null, "Necromancia", 1, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_keeps_an_old_SubElemento_that_no_longer_fits_a_new_Vocacao_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm13", "aff13@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer13", "affplayer13@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        // Troca a Vocação pra Feiticeiro (não libera mais Vida, que é de Consagração).
+        var updateSheet = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, updateSheet));
+
+        // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Add_rejects_a_duplicate_Elemento_already_used_by_another_row()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm14", "aff14@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer14", "affplayer14@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_does_not_flag_a_duplicate_against_its_own_row()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm15", "aff15@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer15", "affplayer15@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
+        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        // Reenviar a mesma linha com o mesmo Elemento não deve se auto-rejeitar como duplicata.
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

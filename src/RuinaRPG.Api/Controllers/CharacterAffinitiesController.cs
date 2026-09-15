@@ -26,8 +26,11 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, out var elemento, out var subElemento, out var error))
+        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, sheet.Vocacao, elementoAntigo: null, subElementoAntigo: null, out var elemento, out var subElemento, out var error))
             return BadRequest(error);
+
+        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: null))
+            return BadRequest("Já existe uma linha de Afinidade com esse Elemento ou Sub-Elemento.");
 
         var affinity = new CharacterAffinity
         {
@@ -66,12 +69,15 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, out var elemento, out var subElemento, out var error))
-            return BadRequest(error);
-
         var affinity = await db.CharacterAffinities.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
         if (affinity is null)
             return NotFound();
+
+        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, sheet.Vocacao, affinity.Elemento, affinity.SubElemento, out var elemento, out var subElemento, out var error))
+            return BadRequest(error);
+
+        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: id))
+            return BadRequest("Já existe uma linha de Afinidade com esse Elemento ou Sub-Elemento.");
 
         affinity.Elemento = elemento;
         affinity.ElementoValor = request.ElementoValor;
@@ -107,7 +113,8 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
     // Elemento and Sub-Elemento are both optional — an Afinidade row can be added or left as a
     // blank placeholder, matching the PDF sheet's pre-printed empty rows (R0001 2.c). Only when
     // both are actually given does the Matriz Elemental combination get checked.
-    private static bool TryParseElementoSubElemento(string? elementoRaw, string? subElementoRaw,
+    private static bool TryParseElementoSubElemento(string? elementoRaw, string? subElementoRaw, Vocacao? vocacao,
+        Elemento? elementoAntigo, SubElemento? subElementoAntigo,
         out Elemento? elemento, out SubElemento? subElemento, out string? error)
     {
         elemento = null;
@@ -140,7 +147,32 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
             return false;
         }
 
+        // Só valida contra a Vocação quando o valor realmente muda — uma linha antiga preservada
+        // nunca é invalidada por uma troca de Vocação posterior (ver
+        // docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md).
+        if (elemento is not null && elemento != elementoAntigo && !VocacaoEscolaMap.PodeEscolherElemento(vocacao, elemento.Value))
+        {
+            error = "Esse Elemento não é liberado pela Vocação atual.";
+            return false;
+        }
+        if (subElemento is not null && subElemento != subElementoAntigo && !VocacaoEscolaMap.PodeEscolherSubElemento(vocacao, subElemento.Value))
+        {
+            error = "Esse Sub-Elemento não é liberado pela Vocação atual.";
+            return false;
+        }
+
         return true;
+    }
+
+    private async Task<bool> HasDuplicateAsync(Guid sheetId, Elemento? elemento, SubElemento? subElemento, Guid? excludingId)
+    {
+        var query = db.CharacterAffinities.Where(a => a.CharacterSheetId == sheetId);
+        if (excludingId is not null)
+            query = query.Where(a => a.Id != excludingId);
+
+        return await query.AnyAsync(a =>
+            (elemento != null && a.Elemento == elemento) ||
+            (subElemento != null && a.SubElemento == subElemento));
     }
 
     private static CharacterAffinityResponse ToResponse(CharacterAffinity a) =>
