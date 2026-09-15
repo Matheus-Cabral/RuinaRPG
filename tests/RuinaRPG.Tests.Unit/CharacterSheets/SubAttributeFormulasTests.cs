@@ -71,4 +71,51 @@ public class SubAttributeFormulasTests
         SubAttributeFormulas.ReducaoFisica(artefato: 2, armadura: 3).Should().Be(5);
         SubAttributeFormulas.ReducaoMagica(artefato: 1, armaduraMagica: 4).Should().Be(5);
     }
+
+    [Fact]
+    public void EficienciaElemental_and_DanoElemental_pass_the_value_through_1_to_1()
+    {
+        // 1:1 por ora — cada um é sua própria função porque a proporção pode divergir no futuro
+        // (ver docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md).
+        SubAttributeFormulas.EficienciaElemental(valorDaAfinidadeCorrespondente: 5).Should().Be(5);
+        SubAttributeFormulas.DanoElemental(valorDaAfinidadeCorrespondente: 5).Should().Be(5);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_is_0_when_Afinidade_is_null()
+    {
+        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, null, null) };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(null, linhas).Should().Be(0);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_finds_the_matching_Elemento_row()
+    {
+        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, SubElemento.Vida, 2) };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, linhas).Should().Be(7);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_finds_the_matching_SubElemento_row()
+    {
+        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, SubElemento.Vida, 2) };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Vida, linhas).Should().Be(2);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_is_0_when_no_row_matches()
+    {
+        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, null, null) };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Terra, linhas).Should().Be(0);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_is_0_with_an_empty_list_of_linhas()
+    {
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, []).Should().Be(0);
+    }
 }
