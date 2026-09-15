@@ -1,0 +1,157 @@
+@page "/auditoria/efeitos"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Enums
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Efeitos</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Adicionar Efeito">
+        <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
+        <MudNumericField T="int" @bind-Value="_newForm.Grau" Label="Grau/Círculo" />
+        <MudSelect T="string" @bind-Value="_newForm.TipoDeCusto" Label="Tipo de Custo">
+            <MudSelectItem Value="@(nameof(TipoDeCusto.Fixo))">Fixo</MudSelectItem>
+            <MudSelectItem Value="@(nameof(TipoDeCusto.PorUnidade))">Por Unidade</MudSelectItem>
+            <MudSelectItem Value="@(nameof(TipoDeCusto.Manual))">Manual (o Mestre digita o total)</MudSelectItem>
+            <MudSelectItem Value="@(nameof(TipoDeCusto.ManualPorUnidade))">Manual por Unidade (o Mestre digita a taxa)</MudSelectItem>
+            <MudSelectItem Value="@(nameof(TipoDeCusto.DerivadoDeOutroEfeito))">Derivado de outro Efeito</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int?" @bind-Value="_newForm.CustoFixo" Label="Custo Fixo (PI)" />
+        <MudNumericField T="int?" @bind-Value="_newForm.CustoPorUnidade" Label="Custo por Unidade (PI)" />
+        <MudTextField T="string" @bind-Value="_newForm.UnidadeLabel" Label="Rótulo da Unidade (ex.: Dado)" />
+        <MudTextField T="string" @bind-Value="_newForm.QuantidadeDerivadaDeEfeito" Label="Nome do Efeito de origem (se Derivado)" />
+        <MudNumericField T="int?" @bind-Value="_newForm.MaxUnidades" Label="Teto de Unidades" />
+        <MudCheckBox T="bool" @bind-Value="_newForm.MaxEscalaPorGrau" Label="Teto escala por Grau/Círculo?" />
+        <MudNumericField T="int?" @bind-Value="_newForm.MaxContandoAPartirDoGrau" Label="Teto conta a partir do Grau (opcional)" />
+        <MudNumericField T="int?" @bind-Value="_newForm.CustoAlternativo" Label="Custo Alternativo (PI, exceção)" />
+        <MudNumericField T="int?" @bind-Value="_newForm.CustoAlternativoAPartirDoGrau" Label="Custo Alternativo vale a partir do Grau" />
+        <MudTextField T="string" @bind-Value="_newForm.PreRequisitosTexto" Label="Pré-requisitos (grupos separados por ; nomes alternativos separados por ,)" HelperText="Ex.: Duração;Atordoamento,Congelar,Enraizar" />
+        <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
+    </Section>
+
+    @foreach (var grauGroup in _efeitos.GroupBy(e => e.Grau).OrderBy(g => g.Key))
+    {
+        <Section Title="@($"Grau/Círculo {grauGroup.Key}")">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead><tr><th>Nome</th><th>Tipo de Custo</th><th>Custo</th><th>Unidade</th><th>Teto</th><th>Pré-requisitos</th><th>Descrição</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var efeito in grauGroup)
+                    {
+                        <tr>
+                            <td>@efeito.Nome</td>
+                            <td>@efeito.TipoDeCusto</td>
+                            <td>@(efeito.CustoFixo?.ToString() ?? efeito.CustoPorUnidade?.ToString() ?? "—")</td>
+                            <td>@(efeito.UnidadeLabel ?? "—")</td>
+                            <td>@(efeito.MaxUnidades is null ? "—" : $"{efeito.MaxUnidades}{(efeito.MaxEscalaPorGrau ? " × Grau" : "")}")</td>
+                            <td>@string.Join(" E ", efeito.PreRequisitos.Select(g => string.Join(" ou ", g)))</td>
+                            <td>@efeito.Descricao</td>
+                            <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(efeito.Id))" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+    }
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Efeitos"),
+    };
+
+    private List<EfeitoResponse> _efeitos = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    private readonly NewEfeitoFormModel _newForm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("efeitos");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os efeitos.";
+            return;
+        }
+
+        _efeitos = await response.Content.ReadFromJsonAsync<List<EfeitoResponse>>() ?? new();
+    }
+
+    private static List<List<string>> ParsePreRequisitos(string texto) =>
+        string.IsNullOrWhiteSpace(texto)
+            ? new()
+            : texto.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(grupo => grupo.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList())
+                .ToList();
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("efeitos", new CreateEfeitoRequest(
+            _newForm.Nome, _newForm.Grau, _newForm.Descricao, _newForm.TipoDeCusto,
+            _newForm.CustoFixo, _newForm.CustoPorUnidade, _newForm.UnidadeLabel, _newForm.QuantidadeDerivadaDeEfeito,
+            _newForm.MaxUnidades, _newForm.MaxEscalaPorGrau, _newForm.MaxContandoAPartirDoGrau,
+            _newForm.CustoAlternativo, _newForm.CustoAlternativoAPartirDoGrau,
+            ParsePreRequisitos(_newForm.PreRequisitosTexto)));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o Efeito — verifique se o Nome já existe.";
+            return;
+        }
+
+        _newForm.Nome = ""; _newForm.Descricao = ""; _newForm.PreRequisitosTexto = "";
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"efeitos/{id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir o Efeito.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private class NewEfeitoFormModel
+    {
+        public string Nome { get; set; } = "";
+        public int Grau { get; set; } = 1;
+        public string TipoDeCusto { get; set; } = nameof(RuinaRPG.Domain.Enums.TipoDeCusto.Fixo);
+        public int? CustoFixo { get; set; }
+        public int? CustoPorUnidade { get; set; }
+        public string? UnidadeLabel { get; set; }
+        public string? QuantidadeDerivadaDeEfeito { get; set; }
+        public int? MaxUnidades { get; set; }
+        public bool MaxEscalaPorGrau { get; set; }
+        public int? MaxContandoAPartirDoGrau { get; set; }
+        public int? CustoAlternativo { get; set; }
+        public int? CustoAlternativoAPartirDoGrau { get; set; }
+        public string PreRequisitosTexto { get; set; } = "";
+        public string Descricao { get; set; } = "";
+    }
+}
