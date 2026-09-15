@@ -82,4 +82,21 @@ public class EfeitoMigrationAndSeedTests : IClassFixture<PostgresFixture>
 
         (await db.Efeitos.SingleAsync(e => e.Nome == "Cura")).CustoFixo.Should().Be(99);
     }
+
+    [Fact]
+    public async Task SeedAsync_never_resurrects_a_row_the_Auditor_has_deleted()
+    {
+        var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var db = new RuinaRpgDbContext(options);
+        await db.Database.MigrateAsync();
+        await EfeitoSeeder.SeedAsync(db);
+
+        var cura = await db.Efeitos.SingleAsync(e => e.Nome == "Cura");
+        cura.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        await EfeitoSeeder.SeedAsync(db);
+
+        (await db.Efeitos.SingleAsync(e => e.Nome == "Cura")).IsDeleted.Should().BeTrue();
+    }
 }

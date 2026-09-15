@@ -109,7 +109,10 @@ public static class EfeitoSeeder
 
             if (existentes.TryGetValue(seed.Nome, out var existente))
             {
-                if (existente.IsCustomized)
+                // IsDeleted is checked here (not just IsCustomized) so a deliberately deleted seeded
+                // row is never resurrected on reseed, even if some future Delete caller forgets to
+                // also set IsCustomized — mirrors TraitSeeder's reasoning for the same guarantee.
+                if (existente.IsCustomized || existente.IsDeleted)
                     continue;
 
                 existente.Grau = seed.Grau;
