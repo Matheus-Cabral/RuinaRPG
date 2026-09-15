@@ -1211,7 +1211,7 @@
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/spell-abilities", request);
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar a magia/habilidade.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a magia/habilidade.";
             return;
         }
 

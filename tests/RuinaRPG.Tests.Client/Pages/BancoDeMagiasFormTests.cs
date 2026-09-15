@@ -48,6 +48,34 @@ public class BancoDeMagiasFormTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Create_with_a_400_from_the_server_shows_its_specific_message()
+    {
+        // R0007: "a tela guia, o servidor garante" — a server-side validation rejection (e.g.
+        // EfeitoValidator) must reach the screen verbatim instead of a generic fallback.
+        const string serverMessage = "Efeito \"Dano\" excede o teto de 3 para Grau/Círculo 1.";
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            if (request.Method == HttpMethod.Post)
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(serverMessage) };
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeMagiasForm>();
+        await Task.Delay(50); // let OnInitializedAsync finish (no EntryId, so it's a no-op)
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Bola de Fogo"));
+
+        var salvar = cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar"));
+        await cut.InvokeAsync(() => salvar.Click());
+
+        cut.Markup.Should().Contain(serverMessage);
+    }
+
+    [Fact]
     public async Task Editing_a_missing_entry_shows_an_error_instead_of_crashing()
     {
         var http = FakeHttpMessageHandler.CreateClient(request =>

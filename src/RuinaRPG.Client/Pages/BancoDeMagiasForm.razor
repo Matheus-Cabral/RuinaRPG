@@ -147,7 +147,7 @@
 
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível salvar a entrada.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.";
             return;
         }
 
@@ -163,7 +163,7 @@
         var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
 
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a entrada.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
 
         return true;
     }
