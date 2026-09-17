@@ -1,0 +1,115 @@
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Enums
+@using RuinaRPG.Domain.SpellsAndAbilities
+@using MudBlazor
+
+<MudSimpleTable Dense="true" Hover="true" Class="mt-2">
+    <thead><tr><th>Nome do Efeito</th><th>Quantidade</th><th>Custo em PI</th><th></th></tr></thead>
+    <tbody>
+        @for (var i = 0; i < Efeitos.Count; i++)
+        {
+            var linha = Efeitos[i];
+            var index = i; // capture for the closure below
+            var tipo = TipoDe(linha.EfeitoNome);
+            <tr>
+                <td>@linha.EfeitoNome</td>
+                <td>
+                    @if (tipo is TipoDeCusto.PorUnidade or TipoDeCusto.ManualPorUnidade)
+                    {
+                        <MudNumericField T="int?" Value="linha.Quantidade" ValueChanged="@(v => OnQuantidadeChangedAsync(linha, v))" Margin="Margin.Dense" />
+                    }
+                    else
+                    {
+                        @("—")
+                    }
+                </td>
+                <td>
+                    @if (tipo is TipoDeCusto.Manual or TipoDeCusto.ManualPorUnidade)
+                    {
+                        <MudNumericField T="int" Value="linha.CustoPI" ValueChanged="@(v => OnCustoManualChangedAsync(linha, v))" Margin="Margin.Dense" />
+                    }
+                    else
+                    {
+                        @linha.CustoPI
+                    }
+                </td>
+                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAsync(index))">Remover</MudButton></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+@code {
+    [Parameter, EditorRequired] public List<EfeitoLinha> Efeitos { get; set; } = null!;
+    [Parameter, EditorRequired] public int Grau { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // Fetch próprio, cacheado — mesmo padrão de AddEfeitoForm. O catálogo tem 51 linhas; buscar
+    // duas vezes (uma por componente) é irrelevante, e evita elevar isso a estado compartilhado.
+    private List<EfeitoResponse> _todos = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_todos.Count == 0)
+            _todos = await Http.GetFromJsonAsync<List<EfeitoResponse>>("efeitos") ?? [];
+    }
+
+    private TipoDeCusto? TipoDe(string efeitoNome)
+    {
+        var regra = _todos.FirstOrDefault(e => e.Nome == efeitoNome);
+        return regra is not null && Enum.TryParse<TipoDeCusto>(regra.TipoDeCusto, out var tipo) ? tipo : null;
+    }
+
+    private async Task OnQuantidadeChangedAsync(EfeitoLinha linha, int? novaQuantidade)
+    {
+        linha.Quantidade = novaQuantidade;
+        Recalcular(linha);
+        RecalcularDependentes(linha.EfeitoNome);
+        await NotifyChangedAsync();
+    }
+
+    private void Recalcular(EfeitoLinha linha)
+    {
+        var regra = _todos.FirstOrDefault(e => e.Nome == linha.EfeitoNome);
+        if (regra is null || !Enum.TryParse<TipoDeCusto>(regra.TipoDeCusto, out var tipo) || tipo != TipoDeCusto.PorUnidade)
+            return;
+
+        linha.CustoPI = EfeitoCustoCalculator.Calcular(
+            tipo, regra.CustoFixo, regra.CustoPorUnidade, regra.CustoAlternativo, regra.CustoAlternativoAPartirDoGrau,
+            Grau, linha.Quantidade, null, null);
+    }
+
+    /// <summary>Recalcula qualquer linha cujo Custo derive (QuantidadeDerivadaDeEfeito) do Nome recém-editado.</summary>
+    private void RecalcularDependentes(string nomeOrigem)
+    {
+        var origem = Efeitos.FirstOrDefault(e => e.EfeitoNome == nomeOrigem);
+        foreach (var dependente in Efeitos)
+        {
+            var regraDependente = _todos.FirstOrDefault(e => e.Nome == dependente.EfeitoNome);
+            if (regraDependente is null || regraDependente.QuantidadeDerivadaDeEfeito != nomeOrigem)
+                continue;
+            if (!Enum.TryParse<TipoDeCusto>(regraDependente.TipoDeCusto, out var tipo))
+                continue;
+
+            dependente.CustoPI = EfeitoCustoCalculator.Calcular(
+                tipo, regraDependente.CustoFixo, regraDependente.CustoPorUnidade,
+                regraDependente.CustoAlternativo, regraDependente.CustoAlternativoAPartirDoGrau,
+                Grau, null, null, origem?.Quantidade ?? 0);
+        }
+    }
+
+    private async Task OnCustoManualChangedAsync(EfeitoLinha linha, int novoCusto)
+    {
+        linha.CustoPI = novoCusto;
+        await NotifyChangedAsync();
+    }
+
+    private async Task RemoveAsync(int index)
+    {
+        Efeitos.RemoveAt(index);
+        await NotifyChangedAsync();
+    }
+
+    private Task NotifyChangedAsync() => OnChanged.HasDelegate ? OnChanged.InvokeAsync() : Task.CompletedTask;
+}
