@@ -116,7 +116,7 @@ public class AddEfeitoFormTests : MudBunitContext
     {
         var http = FakeCatalogClient(new[]
         {
-            FixoEfeito("Duração", 1, 0),
+            PorUnidadeEfeito("Duração", 1, 4),
             PorUnidadeEfeito("Aumentar Armadura", 1, 2, ["Duração"]),
         });
         Services.AddScoped(_ => http);
@@ -161,7 +161,7 @@ public class AddEfeitoFormTests : MudBunitContext
     {
         var http = FakeCatalogClient(new[]
         {
-            FixoEfeito("Duração", 1, 0),
+            PorUnidadeEfeito("Duração", 1, 4),
             FixoEfeito("Congelar", 1, 4, ["Duração"]),
             FixoEfeito("Enraizar", 1, 2, ["Duração"]),
             FixoEfeito("Detrito", 1, 2, ["Duração"], ["Congelar", "Enraizar"]),

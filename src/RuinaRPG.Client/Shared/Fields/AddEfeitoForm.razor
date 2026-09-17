@@ -152,11 +152,9 @@ else if (_selecionado is not null)
         var lote = new List<EfeitoAdicionadoResult>();
         foreach (var regra in resultado.ParaAutoAdicionar)
         {
-            // Um Fixo com CustoFixo > 0 já está totalmente resolvido — não há Quantidade a editar
-            // (null). Qualquer outro caso (PorUnidade/ManualPorUnidade/DerivadoDeOutroEfeito, ou um
-            // Fixo "grátis" de CustoFixo == 0) começa do zero, editável depois via EfeitosTable.
-            var custoInicial = regra.TipoDeCusto == TipoDeCusto.Fixo ? regra.CustoFixo!.Value : 0;
-            int? quantidadeInicial = custoInicial == 0 ? 0 : null;
+            var (quantidadeInicial, custoInicial) = regra.TipoDeCusto == TipoDeCusto.Fixo
+                ? ((int?)null, regra.CustoFixo!.Value)
+                : ((int?)0, 0);
             lote.Add(new EfeitoAdicionadoResult(regra.Nome, quantidadeInicial, custoInicial));
         }
         lote.Add(new EfeitoAdicionadoResult(_selecionado.Nome, _quantidade, custo));
