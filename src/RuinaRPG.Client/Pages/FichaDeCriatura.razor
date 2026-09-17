@@ -4,6 +4,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.SpellsAndAbilities
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Items
@@ -404,7 +405,7 @@
                     @foreach (var spellAbility in _spellAbilities)
                     {
                         <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao</td>
+                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -782,6 +783,8 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadTabs2And3Async();
+        await LoadTraitsAsync();
         return true;
     }
 
@@ -822,6 +825,8 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadTabs2And3Async();
+        await LoadTraitsAsync();
         return true;
     }
 
@@ -838,6 +843,8 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadTabs2And3Async();
+        await LoadTraitsAsync();
         return true;
     }
 

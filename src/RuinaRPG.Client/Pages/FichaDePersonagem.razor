@@ -10,6 +10,7 @@
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.CharacterSheets
+@using RuinaRPG.Domain.SpellsAndAbilities
 @using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
@@ -579,7 +580,7 @@
                     @foreach (var spellAbility in _spellAbilities)
                     {
                         <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao</td>
+                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -1073,6 +1074,12 @@
         // A Variante change may have just cleared stale racial grants server-side (or made a fresh
         // one pending for the first time) — re-check so the dialog reflects that immediately.
         await LoadPendingRacialChoiceAsync();
+        // Experiência Atual (and anything else this PUT touches) may have just changed Nível —
+        // refresh everything derived from it: the level-up message, the Atributo/Perícia budgets,
+        // and the Características budget. LoadSheetAsync alone only refreshes _form.Nivel itself.
+        await LoadLevelUpNoticeAsync();
+        await LoadTabs2And3Async();
+        await LoadTraitsAsync();
         return true;
     }
 
