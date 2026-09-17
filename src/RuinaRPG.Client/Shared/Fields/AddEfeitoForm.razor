@@ -153,7 +153,8 @@ else if (_selecionado is not null)
         foreach (var regra in resultado.ParaAutoAdicionar)
         {
             var (quantidadeInicial, custoInicial) = regra.TipoDeCusto == TipoDeCusto.Fixo
-                ? ((int?)null, regra.CustoFixo!.Value)
+                ? ((int?)null, EfeitoCustoCalculator.Calcular(regra.TipoDeCusto, regra.CustoFixo, regra.CustoPorUnidade,
+                    regra.CustoAlternativo, regra.CustoAlternativoAPartirDoGrau, Grau, null, null, null))
                 : ((int?)0, 0);
             lote.Add(new EfeitoAdicionadoResult(regra.Nome, quantidadeInicial, custoInicial));
         }

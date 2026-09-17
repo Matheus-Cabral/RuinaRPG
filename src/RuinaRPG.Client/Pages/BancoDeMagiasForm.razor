@@ -151,7 +151,7 @@
     private Task NotifySavedAsync()
     {
         // Guard, not the brief's literal sketch: the plain-field @bind-Value:after callbacks (and
-        // RemoveEffect) have no per-field EntryId check, so without this single choke-point guard
+        // EfeitosTable's OnChanged) have no per-field EntryId check, so without this single choke-point guard
         // every field blur during create mode would fire a PUT to "spell-ability-bank/" (null/empty
         // id) and flip _autoSave to Error — silently, since AutoSaveIndicator isn't rendered there.
         // Create mode keeps its explicit "Salvar" -> CreateAsync path untouched.

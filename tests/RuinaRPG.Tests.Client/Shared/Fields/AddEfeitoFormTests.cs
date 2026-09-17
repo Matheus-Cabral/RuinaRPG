@@ -100,7 +100,7 @@ public class AddEfeitoFormTests : MudBunitContext
     {
         var http = FakeCatalogClient(new[]
         {
-            FixoEfeito("Duração", 1, 0),
+            PorUnidadeEfeito("Duração", 1, 4),
             FixoEfeito("Cura", 1, 2, ["Dano"]),
         });
         Services.AddScoped(_ => http);
@@ -184,6 +184,37 @@ public class AddEfeitoFormTests : MudBunitContext
         lote[0].Should().Be(new EfeitoAdicionadoResult("Duração", 0, 0));
         lote[1].Should().Be(new EfeitoAdicionadoResult("Congelar", null, 4));
         lote[2].Should().Be(new EfeitoAdicionadoResult("Detrito", null, 2));
+    }
+
+    [Fact]
+    public async Task Auto_adding_a_Fixo_prerequisite_routes_through_the_cost_calculator_using_CustoAlternativo()
+    {
+        var http = FakeCatalogClient(new object[]
+        {
+            new
+            {
+                Id = Guid.NewGuid().ToString(), Nome = "Encantamento Elemental", Grau = 1, Descricao = "Descrição.", TipoDeCusto = "Fixo",
+                CustoFixo = (int?)2, CustoPorUnidade = (int?)null, UnidadeLabel = (string?)null, QuantidadeDerivadaDeEfeito = (string?)null,
+                MaxUnidades = (int?)null, MaxEscalaPorGrau = false, MaxContandoAPartirDoGrau = (int?)null,
+                CustoAlternativo = (int?)4, CustoAlternativoAPartirDoGrau = (int?)4,
+                PreRequisitos = Array.Empty<string[]>(),
+            },
+            FixoEfeito("Ativo", 1, 5, ["Encantamento Elemental"]),
+        });
+        Services.AddScoped(_ => http);
+        var lote = new List<EfeitoAdicionadoResult>();
+
+        // Grau 5 >= CustoAlternativoAPartirDoGrau (4), so the auto-added prerequisite should cost
+        // CustoAlternativo (4), not the base CustoFixo (2) — regression for reading CustoFixo
+        // directly instead of routing through EfeitoCustoCalculator.
+        var cut = await RenderOpenAsync(5, Array.Empty<(string, int?)>(), lote);
+        Selecionar(cut, "Ativo");
+
+        cut.Find("button:contains('Adicionar Efeito')").Click();
+
+        lote.Should().HaveCount(2);
+        lote[0].Should().Be(new EfeitoAdicionadoResult("Encantamento Elemental", null, 4));
+        lote[1].Should().Be(new EfeitoAdicionadoResult("Ativo", null, 5));
     }
 
     [Fact]
