@@ -569,21 +569,7 @@
 
                     <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
                     <AddEfeitoForm Grau="_spellAbilityForm.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionado" />
-                    <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
-                        <thead><tr><th>Nome do Efeito</th><th>Quantidade</th><th>Custo em PI</th><th></th></tr></thead>
-                        <tbody>
-                            @for (var i = 0; i < _spellAbilityForm.Efeitos.Count; i++)
-                            {
-                                var index = i; // capture for the closure below
-                                <tr>
-                                    <td>@_spellAbilityForm.Efeitos[index].EfeitoNome</td>
-                                    <td>@_spellAbilityForm.Efeitos[index].Quantidade</td>
-                                    <td>@_spellAbilityForm.Efeitos[index].CustoPI</td>
-                                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => _spellAbilityForm.Efeitos.RemoveAt(index))">Remover</MudButton></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
+                    <EfeitosTable Efeitos="_spellAbilityForm.Efeitos" Grau="_spellAbilityForm.Grau" />
                 }
 
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Magia/Habilidade</MudButton>
@@ -1375,7 +1361,7 @@
         _spellAbilityForm.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
 
     private void OnEfeitoAdicionado(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados) =>
-        _spellAbilityForm.Efeitos.AddRange(resultados.Select(r => new SpellAbilityEffectFormModel { EfeitoNome = r.EfeitoNome, Quantidade = r.Quantidade, CustoPI = r.CustoPI }));
+        _spellAbilityForm.Efeitos.AddRange(resultados.Select(r => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(r.EfeitoNome, r.Quantidade, r.CustoPI)));
 
     private async Task AddSpellAbilityAsync()
     {
@@ -1760,14 +1746,7 @@
         public string Tipo { get; set; } = "Magia";
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
-        public List<SpellAbilityEffectFormModel> Efeitos { get; set; } = new();
-    }
-
-    private class SpellAbilityEffectFormModel
-    {
-        public string EfeitoNome { get; set; } = "";
-        public int? Quantidade { get; set; }
-        public int CustoPI { get; set; }
+        public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
     }
 
     private class RuneFormModel
