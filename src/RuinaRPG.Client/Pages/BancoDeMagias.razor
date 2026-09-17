@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.SpellsAndAbilities
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -40,6 +41,7 @@
                 <th>Grau</th>
                 <th>Gasto em PI</th>
                 <th>Custo</th>
+                <th>Efeitos</th>
                 <th></th>
             </tr>
         </thead>
@@ -52,6 +54,7 @@
                     <td>@entry.Grau</td>
                     <td>@entry.GastoEmPI</td>
                     <td>@entry.Custo</td>
+                    <td>@SpellAbilityEffectSummaryFormatter.Formatar(entry.Grau, entry.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
                     <td>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</MudButton>
                         <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(entry.Id))">Excluir</MudButton>
