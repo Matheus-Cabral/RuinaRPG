@@ -26,8 +26,9 @@
 
 **Descrição**: A página exibe uma lista de todos os itens cadastrados pelo GM, com filtros combináveis por:
 
+- **Nome**: busca por texto livre (substring, sem diferenciar maiúsculas/minúsculas).
 - **Tipo**: Item Geral, Arma, Armadura, Escudo ou Artefato (ver R0002).
-- **Subcategoria**: depende do Tipo selecionado (ver R0003 e R0004).
+- **Subcategoria**: depende do Tipo selecionado (ver R0003 e R0004). Como o número de subcategorias cadastradas cresce livremente (dropdown extensível, ver R0003/R0004), o filtro é uma lista pesquisável (o GM digita para filtrar as subcategorias já em uso, em vez de rolar uma lista longa).
 - **Tier / Categoria**: Tier (F a S) para Armas; Categoria (Leve/Médio/Pesada) para Armaduras e Escudos.
 - **Tipo de Dano**: Cortante, Perfurante, Contundente ou Mágico (específico de Armas).
 

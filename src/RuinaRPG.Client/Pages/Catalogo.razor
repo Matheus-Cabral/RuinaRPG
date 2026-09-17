@@ -21,7 +21,11 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudTextField T="string" @bind-Value="_subcategoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Subcategoria" />
+            <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Nome" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudAutocomplete T="string" @bind-Value="_subcategoriaFiltro" @bind-Value:after="LoadAsync" SearchFunc="SearchSubcategoriasAsync"
+                              Label="Subcategoria" Clearable="true" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null" />
         </MudItem>
         <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_tierFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tier" />
@@ -77,31 +81,52 @@
         new("Catálogo de Itens"),
     };
 
+    private string _nomeFiltro = "";
     private string _tipoFiltro = "";
-    private string _subcategoriaFiltro = "";
+    private string? _subcategoriaFiltro;
     private string _tierFiltro = "";
     private string _categoriaFiltro = "";
     private string _tipoDeDanoFiltro = "";
     private List<ItemResponse> _items = new();
+    private List<string> _subcategoriasDisponiveis = new();
     private string? _errorMessage;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSubcategoriasDisponiveisAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadSubcategoriasDisponiveisAsync()
+    {
+        // Fetched once, unfiltered — the source list for the Subcategoria searchable select
+        // below. Independent of the table's own filtered LoadAsync so picking a Subcategoria
+        // doesn't shrink the list of Subcategorias offered for the *next* pick.
+        var response = await Http.GetAsync("items");
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        _subcategoriasDisponiveis = items
+            .Select(i => i.Subcategoria)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToList();
+    }
+
+    internal Task<IEnumerable<string>> SearchSubcategoriasAsync(string query, CancellationToken token) =>
+        Task.FromResult(FiltrarSubcategorias(_subcategoriasDisponiveis, query));
+
+    internal static IEnumerable<string> FiltrarSubcategorias(IReadOnlyList<string> disponiveis, string query) =>
+        string.IsNullOrWhiteSpace(query)
+            ? disponiveis
+            : disponiveis.Where(s => s.Contains(query, StringComparison.OrdinalIgnoreCase));
 
     private async Task LoadAsync()
     {
-        var query = new List<string>();
-        if (!string.IsNullOrEmpty(_tipoFiltro))
-            query.Add($"tipo={_tipoFiltro}");
-        if (!string.IsNullOrWhiteSpace(_subcategoriaFiltro))
-            query.Add($"subcategoria={Uri.EscapeDataString(_subcategoriaFiltro)}");
-        if (!string.IsNullOrWhiteSpace(_tierFiltro))
-            query.Add($"tier={Uri.EscapeDataString(_tierFiltro)}");
-        if (!string.IsNullOrWhiteSpace(_categoriaFiltro))
-            query.Add($"categoria={Uri.EscapeDataString(_categoriaFiltro)}");
-        if (!string.IsNullOrWhiteSpace(_tipoDeDanoFiltro))
-            query.Add($"tipoDeDano={Uri.EscapeDataString(_tipoDeDanoFiltro)}");
-
-        var queryString = query.Count > 0 ? $"?{string.Join("&", query)}" : "";
+        var queryString = BuildQueryString(_nomeFiltro, _tipoFiltro, _subcategoriaFiltro, _tierFiltro, _categoriaFiltro, _tipoDeDanoFiltro);
         var response = await Http.GetAsync($"items{queryString}");
         if (!response.IsSuccessStatusCode)
         {
@@ -111,6 +136,25 @@
 
         _items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
         _errorMessage = null;
+    }
+
+    internal static string BuildQueryString(string? nome, string? tipo, string? subcategoria, string? tier, string? categoria, string? tipoDeDano)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(nome))
+            query.Add($"nome={Uri.EscapeDataString(nome)}");
+        if (!string.IsNullOrEmpty(tipo))
+            query.Add($"tipo={tipo}");
+        if (!string.IsNullOrWhiteSpace(subcategoria))
+            query.Add($"subcategoria={Uri.EscapeDataString(subcategoria)}");
+        if (!string.IsNullOrWhiteSpace(tier))
+            query.Add($"tier={Uri.EscapeDataString(tier)}");
+        if (!string.IsNullOrWhiteSpace(categoria))
+            query.Add($"categoria={Uri.EscapeDataString(categoria)}");
+        if (!string.IsNullOrWhiteSpace(tipoDeDano))
+            query.Add($"tipoDeDano={Uri.EscapeDataString(tipoDeDano)}");
+
+        return query.Count > 0 ? $"?{string.Join("&", query)}" : "";
     }
 
     private async Task DeleteAsync(string id)
