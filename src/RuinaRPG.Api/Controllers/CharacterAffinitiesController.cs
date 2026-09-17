@@ -76,7 +76,8 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
         if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, sheet.Vocacao, affinity.Elemento, affinity.SubElemento, out var elemento, out var subElemento, out var error))
             return BadRequest(error);
 
-        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: id))
+        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: id,
+                checkElemento: elemento != affinity.Elemento, checkSubElemento: subElemento != affinity.SubElemento))
             return BadRequest("Já existe uma linha de Afinidade com esse Elemento ou Sub-Elemento.");
 
         affinity.Elemento = elemento;
@@ -164,15 +165,16 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
         return true;
     }
 
-    private async Task<bool> HasDuplicateAsync(Guid sheetId, Elemento? elemento, SubElemento? subElemento, Guid? excludingId)
+    private async Task<bool> HasDuplicateAsync(Guid sheetId, Elemento? elemento, SubElemento? subElemento,
+        Guid? excludingId, bool checkElemento = true, bool checkSubElemento = true)
     {
         var query = db.CharacterAffinities.Where(a => a.CharacterSheetId == sheetId);
         if (excludingId is not null)
             query = query.Where(a => a.Id != excludingId);
 
         return await query.AnyAsync(a =>
-            (elemento != null && a.Elemento == elemento) ||
-            (subElemento != null && a.SubElemento == subElemento));
+            (checkElemento && elemento != null && a.Elemento == elemento) ||
+            (checkSubElemento && subElemento != null && a.SubElemento == subElemento));
     }
 
     private static CharacterAffinityResponse ToResponse(CharacterAffinity a) =>

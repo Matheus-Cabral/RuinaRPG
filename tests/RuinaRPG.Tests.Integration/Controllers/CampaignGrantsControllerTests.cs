@@ -97,6 +97,21 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/{atributo}", gmToken,
             new UpdateNpcAttributeRequest(gasto, 0, false)));
 
+    private async Task SetNpcVocacaoAsync(string gmToken, string sheetId, string vocacao) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+            new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
+                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null)));
+
+    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? subElemento, int? subElementoValor, string? caminhoNome, int? experiencia) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia)));
+
+    private async Task<List<NpcAffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
+        return (await response.Content.ReadFromJsonAsync<List<NpcAffinityResponse>>())!;
+    }
+
     private async Task<HttpResponseMessage> GrantAsync(string gmToken, string campaignId, GrantSheetRequest request) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, request));
 
@@ -206,6 +221,29 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var copiedAttributesAfter = await GetNpcAttributesAsync(gmToken, body.SheetId);
         copiedAttributesAfter.Single(a => a.Atributo == "Forca").Gasto.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Grant_from_an_existing_Npc_deep_copies_Affinity_ElementoValor_and_SubElementoValor()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGm2b", "grant2b@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayer2b", "grantplayer2b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Afinidade");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // libera Dobra (Fogo) + Consagração (Vida)
+        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Vida", 2, "Caminho da Fênix", 10);
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        var copiedAffinities = await GetNpcAffinitiesAsync(gmToken, body!.SheetId);
+        var copied = copiedAffinities.Single(a => a.Elemento == "Fogo");
+        copied.ElementoValor.Should().Be(3);
+        copied.SubElemento.Should().Be("Vida");
+        copied.SubElementoValor.Should().Be(2);
     }
 
     [Fact]

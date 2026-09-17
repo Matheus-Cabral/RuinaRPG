@@ -2,9 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -328,6 +332,39 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         // Reenviar a mesma linha com o mesmo Elemento não deve se auto-rejeitar como duplicata.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Update_does_not_reject_a_pre_existing_duplicate_left_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffGm16", "aff16@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer16", "affplayer16@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+
+        var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
+        var row1 = await addResponse1.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        var addResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Terra", 1, null, null, null, null)));
+        var row2 = await addResponse2.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        // Simulate legacy pre-branch data: force row2's Elemento to collide with row1's directly
+        // in the DB, bypassing the controller's own duplicate check entirely.
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var row2Entity = await db.CharacterAffinities.SingleAsync(a => a.Id == Guid.Parse(row2!.Id));
+            row2Entity.Elemento = Elemento.Fogo;
+            await db.SaveChangesAsync();
+        }
+
+        // Re-send row2 with the same (now-colliding) Elemento, changing only Experiencia — the
+        // pre-existing collision is not newly introduced, so it must be grandfathered through.
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2!.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 1, null, null, null, 7)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }

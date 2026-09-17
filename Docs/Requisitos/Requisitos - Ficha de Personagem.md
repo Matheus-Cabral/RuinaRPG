@@ -38,7 +38,7 @@
 
 - *Trabalho*: campo previsto porém ainda não implementado. Vamos apenas não implementa-lo.
 
-- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 14 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Alma**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Vida**, **Aprimorar**, **Necromancia** e **Invocação**.
+- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 14 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Alma**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Vida**, **Aprimorar**, **Necromancia** e **Invocação**. Restrita pela Vocação atual via Escola de Magia — ver 2.c, Afinidades, para a tabela de Escolas e a regra de não invalidar uma escolha já salva.
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 

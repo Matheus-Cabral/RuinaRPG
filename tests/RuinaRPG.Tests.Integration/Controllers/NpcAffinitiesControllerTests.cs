@@ -2,8 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -243,6 +247,38 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
             new UpdateNpcAffinityRequest("Fogo", 5, null, null, null, null)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Update_does_not_reject_a_pre_existing_duplicate_left_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm16", "npcaff16@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
+
+        var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null)));
+        var row1 = await addResponse1.Content.ReadFromJsonAsync<NpcAffinityResponse>();
+
+        var addResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Terra", 1, null, null, null, null)));
+        var row2 = await addResponse2.Content.ReadFromJsonAsync<NpcAffinityResponse>();
+
+        // Simulate legacy pre-branch data: force row2's Elemento to collide with row1's directly
+        // in the DB, bypassing the controller's own duplicate check entirely.
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var row2Entity = await db.NpcAffinities.SingleAsync(a => a.Id == Guid.Parse(row2!.Id));
+            row2Entity.Elemento = Elemento.Fogo;
+            await db.SaveChangesAsync();
+        }
+
+        // Re-send row2 with the same (now-colliding) Elemento, changing only Experiencia — the
+        // pre-existing collision is not newly introduced, so it must be grandfathered through.
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{row2!.Id}", gmToken,
+            new UpdateNpcAffinityRequest("Fogo", 1, null, null, null, 7)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }

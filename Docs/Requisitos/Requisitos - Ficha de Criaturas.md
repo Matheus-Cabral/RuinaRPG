@@ -67,7 +67,7 @@
 
 - *Resistência Física* e *Resistência Arcana* existem na Ficha de Criatura (diferente do Personagem, que não os tem). Por ora, nenhuma fórmula do sistema depende deles — campos previstos porém não implementados até existir regra.
 - *Dano Cortante* aparece na ficha real como um sub-atributo próprio da Criatura. Mesmo tratamento de *Dano de Briga* no Personagem: campo previsto porém sem fórmula definida ainda.
-- *Eficiência Elemental* e *Dano Elemental* não aparecem na Ficha de Criatura (já eram pendentes no Personagem).
+- *Eficiência Elemental* e *Dano Elemental* não aparecem na Ficha de Criatura — ambos dependem da lista de Afinidades (2.c) do Personagem/NPC, que a Criatura não tem (ver 2.c abaixo).
 
 **2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
 

@@ -183,7 +183,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         foreach (var s in await db.NpcSkills.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcSkills.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Pericia = s.Pericia, Gasto = s.Gasto });
         foreach (var a in await db.NpcAffinities.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Elemento = a.Elemento, SubElemento = a.SubElemento, CaminhoNome = a.CaminhoNome, Experiencia = a.Experiencia });
+            db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Elemento = a.Elemento, ElementoValor = a.ElementoValor, SubElemento = a.SubElemento, SubElementoValor = a.SubElementoValor, CaminhoNome = a.CaminhoNome, Experiencia = a.Experiencia });
         foreach (var r in await db.NpcRunes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcRunes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau });
         foreach (var m in await db.NpcMasteries.Where(x => x.NpcSheetId == sourceId).ToListAsync())
