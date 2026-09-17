@@ -9,9 +9,9 @@ public static class VocacaoEscolaMap
 {
     private static readonly Dictionary<Vocacao, EscolaDeMagia[]> Escolas = new()
     {
-        [Vocacao.Feiticeiro] = [EscolaDeMagia.Dobra, EscolaDeMagia.Maculacao],
+        [Vocacao.Feiticeiro] = [EscolaDeMagia.Dobra, EscolaDeMagia.Transmutacao],
         [Vocacao.Adepto] = [EscolaDeMagia.Dobra, EscolaDeMagia.Consagracao],
-        [Vocacao.Bruxo] = [EscolaDeMagia.Dobra, EscolaDeMagia.Transmutacao],
+        [Vocacao.Bruxo] = [EscolaDeMagia.Dobra, EscolaDeMagia.Maculacao],
     };
 
     public static bool PodeEscolherElemento(Vocacao? vocacao, Elemento elemento) =>

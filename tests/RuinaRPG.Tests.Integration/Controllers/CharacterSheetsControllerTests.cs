@@ -665,8 +665,8 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        // Feiticeiro libera Dobra+Maculação — Necromancia é de Maculação.
-        var update = ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Necromancia" };
+        // Feiticeiro libera Dobra+Transmutação — Gelo é de Transmutação.
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Gelo" };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -681,18 +681,18 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        // Feiticeiro libera Necromancia (Maculação).
+        // Feiticeiro libera Gelo (Transmutação).
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Necromancia" }));
+            ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Gelo" }));
 
-        // Troca pra Adepto (não libera Maculação) reenviando a MESMA Afinidade — não deve ser bloqueado.
+        // Troca pra Adepto (não libera Transmutação) reenviando a MESMA Afinidade — não deve ser bloqueado.
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Necromancia" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Gelo" }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
         var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        body!.Afinidade.Should().Be("Necromancia");
+        body!.Afinidade.Should().Be("Gelo");
     }
 
     [Fact]

@@ -140,8 +140,8 @@ O *Elemento* e o *Sub-Elemento* de cada linha (e, por extensão, o dropdown úni
 | Maculação | Necromancia, Invocação, Ecomancia, Hemomancia |
 | Consagração | Curar, Aprimorar, Prever, Purificar, Alma, Vida |
 
-Cada Vocação libera um subconjunto fixo de Escolas: Feiticeiro → Dobra e Maculação; Adepto →
-Dobra e Consagração; Bruxo → Dobra e Transmutação; Campeão, Caçador, ou nenhuma Vocação
+Cada Vocação libera um subconjunto fixo de Escolas: Feiticeiro → Dobra e Transmutação; Adepto →
+Dobra e Consagração; Bruxo → Dobra e Maculação; Campeão, Caçador, ou nenhuma Vocação
 escolhida → nenhuma Escola (não é possível escolher Elemento/Sub-Elemento algum). Uma troca de
 Vocação nunca invalida uma escolha já salva — só uma escolha *nova* (ou uma mudança pra um valor
 diferente) é bloqueada quando cai fora da Vocação atual.

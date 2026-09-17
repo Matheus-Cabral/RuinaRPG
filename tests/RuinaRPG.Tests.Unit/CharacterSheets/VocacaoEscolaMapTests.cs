@@ -7,12 +7,12 @@ namespace RuinaRPG.Tests.Unit.CharacterSheets;
 public class VocacaoEscolaMapTests
 {
     [Fact]
-    public void Feiticeiro_can_pick_Dobra_and_Maculacao_but_not_the_other_schools()
+    public void Feiticeiro_can_pick_Dobra_and_Transmutacao_but_not_the_other_schools()
     {
         VocacaoEscolaMap.PodeEscolherElemento(Vocacao.Feiticeiro, Elemento.Fogo).Should().BeTrue();
-        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Feiticeiro, SubElemento.Necromancia).Should().BeTrue();
+        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Feiticeiro, SubElemento.Gelo).Should().BeTrue();
         VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Feiticeiro, SubElemento.Curar).Should().BeFalse();
-        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Feiticeiro, SubElemento.Flora).Should().BeFalse();
+        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Feiticeiro, SubElemento.Necromancia).Should().BeFalse();
     }
 
     [Fact]
@@ -25,11 +25,12 @@ public class VocacaoEscolaMapTests
     }
 
     [Fact]
-    public void Bruxo_can_pick_Dobra_and_Transmutacao_but_not_the_other_schools()
+    public void Bruxo_can_pick_Dobra_and_Maculacao_but_not_the_other_schools()
     {
         VocacaoEscolaMap.PodeEscolherElemento(Vocacao.Bruxo, Elemento.Ar).Should().BeTrue();
-        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Bruxo, SubElemento.Gelo).Should().BeTrue();
+        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Bruxo, SubElemento.Necromancia).Should().BeTrue();
         VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Bruxo, SubElemento.Purificar).Should().BeFalse();
+        VocacaoEscolaMap.PodeEscolherSubElemento(Vocacao.Bruxo, SubElemento.Flora).Should().BeFalse();
     }
 
     [Theory]
@@ -60,7 +61,7 @@ public class VocacaoEscolaMapTests
     public void PodeEscolherAfinidade_resolves_a_SubElemento_shaped_value_correctly()
     {
         // AfinidadeElemental.Necromancia compartilha o nome de membro com SubElemento.Necromancia.
-        VocacaoEscolaMap.PodeEscolherAfinidade(Vocacao.Feiticeiro, AfinidadeElemental.Necromancia).Should().BeTrue();
+        VocacaoEscolaMap.PodeEscolherAfinidade(Vocacao.Bruxo, AfinidadeElemental.Necromancia).Should().BeTrue();
         VocacaoEscolaMap.PodeEscolherAfinidade(Vocacao.Adepto, AfinidadeElemental.Necromancia).Should().BeFalse();
     }
 }

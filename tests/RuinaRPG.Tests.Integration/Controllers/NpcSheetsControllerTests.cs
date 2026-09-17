@@ -331,7 +331,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin2", "npcafin2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var update = ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Gelo" };
+        var update = ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Necromancia" };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -344,15 +344,15 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var sheetId = await CreateSheetAsync(gmToken);
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Gelo" }));
+            ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Necromancia" }));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Gelo" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Necromancia" }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
         var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.Afinidade.Should().Be("Gelo");
+        body!.Afinidade.Should().Be("Necromancia");
     }
 
     [Fact]
