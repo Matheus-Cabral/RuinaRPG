@@ -1374,8 +1374,8 @@
     private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
         _spellAbilityForm.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
 
-    private void OnEfeitoAdicionado(RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult resultado) =>
-        _spellAbilityForm.Efeitos.Add(new SpellAbilityEffectFormModel { EfeitoNome = resultado.EfeitoNome, Quantidade = resultado.Quantidade, CustoPI = resultado.CustoPI });
+    private void OnEfeitoAdicionado(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados) =>
+        _spellAbilityForm.Efeitos.AddRange(resultados.Select(r => new SpellAbilityEffectFormModel { EfeitoNome = r.EfeitoNome, Quantidade = r.Quantidade, CustoPI = r.CustoPI }));
 
     private async Task AddSpellAbilityAsync()
     {

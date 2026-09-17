@@ -125,9 +125,9 @@
     private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
         _form.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
 
-    private Task OnEfeitoAdicionadoAsync(RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult resultado)
+    private Task OnEfeitoAdicionadoAsync(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados)
     {
-        _form.Efeitos.Add(new EffectFormModel { EfeitoNome = resultado.EfeitoNome, Quantidade = resultado.Quantidade, CustoPI = resultado.CustoPI });
+        _form.Efeitos.AddRange(resultados.Select(r => new EffectFormModel { EfeitoNome = r.EfeitoNome, Quantidade = r.Quantidade, CustoPI = r.CustoPI }));
         return NotifySavedAsync();
     }
 

@@ -11,7 +11,17 @@
     }
 </MudSelect>
 
-@if (_selecionado is not null)
+@if (_grupoAmbiguo is not null)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+        "@_selecionado?.Nome" exige um destes já presente na mesma Magia/Habilidade — escolha um:
+    </MudText>
+    @foreach (var nome in _grupoAmbiguo)
+    {
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-1 mr-2" OnClick="@(() => EscolherAmbiguoAsync(nome))">@nome</MudButton>
+    }
+}
+else if (_selecionado is not null)
 {
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@_selecionado.Descricao</MudText>
 
@@ -29,11 +39,7 @@
         <MudNumericField T="int?" @bind-Value="_custoManual" @bind-Value:after="RecalcularCusto" Label="@($"Custo por {_selecionado.UnidadeLabel} (definido pelo Mestre)")" Class="mt-2" />
     }
 
-    @if (_erroDrenoOrigemAusente is not null)
-    {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-2">@_erroDrenoOrigemAusente</MudAlert>
-    }
-    else if (_custoCalculado is not null)
+    @if (_custoCalculado is not null)
     {
         <MudText Class="mt-2">Custo em PI: @_custoCalculado</MudText>
     }
@@ -47,7 +53,7 @@
 @code {
     [Parameter, EditorRequired] public int Grau { get; set; }
     [Parameter, EditorRequired] public IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentes { get; set; } = [];
-    [Parameter] public EventCallback<EfeitoAdicionadoResult> OnAdicionar { get; set; }
+    [Parameter] public EventCallback<List<EfeitoAdicionadoResult>> OnAdicionar { get; set; }
 
     private List<EfeitoResponse> _todos = [];
     private List<EfeitoResponse> _disponiveis = [];
@@ -55,21 +61,24 @@
     private EfeitoResponse? _selecionado;
     private int? _quantidade;
     private int? _custoManual;
-    private string? _erroDrenoOrigemAusente;
     // Recomputed explicitly on every input change (RecalcularCusto), never as a side effect of
     // reading it — a computed property that mutates state on every getter call is fragile and
     // gets read multiple times per render (the @if check, the display, the button's Disabled).
     private int? _custoCalculado;
+    private IReadOnlyList<string>? _grupoAmbiguo;
+    private readonly Dictionary<string, string> _escolhasForcadas = new();
 
     protected override async Task OnParametersSetAsync()
     {
         if (_todos.Count == 0)
             _todos = await Http.GetFromJsonAsync<List<EfeitoResponse>>("efeitos") ?? [];
 
-        var nomesPresentes = EfeitosExistentes.Select(e => e.Nome).ToHashSet();
+        // Não filtra mais por pré-requisito satisfeito — ver
+        // docs/superpowers/specs/2026-09-17-pre-requisitos-automaticos-de-efeitos-design.md: um
+        // Efeito cujo pré-requisito falta é auto-resolvido ao confirmar (ResolverEAdicionarAsync),
+        // não escondido do dropdown.
         _disponiveis = _todos
             .Where(e => e.Grau <= Grau)
-            .Where(e => e.PreRequisitos.All(grupo => grupo.Any(nomesPresentes.Contains)))
             .OrderBy(e => e.Grau).ThenBy(e => e.Nome)
             .ToList();
     }
@@ -80,12 +89,13 @@
         _selecionado = _disponiveis.FirstOrDefault(e => e.Nome == nome);
         _quantidade = null;
         _custoManual = null;
+        _grupoAmbiguo = null;
+        _escolhasForcadas.Clear();
         RecalcularCusto();
     }
 
     private void RecalcularCusto()
     {
-        _erroDrenoOrigemAusente = null;
         _custoCalculado = null;
 
         if (_selecionado is null)
@@ -97,12 +107,10 @@
         int? quantidadeDerivada = null;
         if (_selecionado.QuantidadeDerivadaDeEfeito is { } origemNome)
         {
+            // A origem pode ainda não estar presente — o resolver de pré-requisitos garante que
+            // ela será auto-adicionada ao confirmar (ver ResolverEAdicionarAsync), então uma
+            // origem ausente aqui vale Quantidade 0, não é mais um erro bloqueante.
             var origem = EfeitosExistentes.FirstOrDefault(e => e.Nome == origemNome);
-            if (origem.Nome is null)
-            {
-                _erroDrenoOrigemAusente = $"\"{_selecionado.Nome}\" exige que \"{origemNome}\" já tenha uma Quantidade definida nesta Magia/Habilidade.";
-                return;
-            }
             quantidadeDerivada = origem.Quantidade ?? 0;
         }
 
@@ -117,18 +125,55 @@
             Grau, _quantidade, _custoManual, quantidadeDerivada);
     }
 
-    private async Task ConfirmarAsync()
+    private Task ConfirmarAsync() => ResolverEAdicionarAsync();
+
+    private Task EscolherAmbiguoAsync(string nome)
+    {
+        _escolhasForcadas[EfeitoPrerequisiteResolver.ChaveDoGrupo(_grupoAmbiguo!)] = nome;
+        return ResolverEAdicionarAsync();
+    }
+
+    private async Task ResolverEAdicionarAsync()
     {
         if (_selecionado is null || _custoCalculado is not { } custo)
             return;
 
-        await OnAdicionar.InvokeAsync(new EfeitoAdicionadoResult(_selecionado.Nome, _quantidade, custo));
+        var catalogoRegras = _todos.Select(ToRegra).ToList();
+        var alvoRegra = ToRegra(_selecionado);
+        var nomesPresentes = EfeitosExistentes.Select(e => e.Nome).ToHashSet();
+
+        var resultado = EfeitoPrerequisiteResolver.Resolver(alvoRegra, catalogoRegras, nomesPresentes, Grau, _escolhasForcadas);
+        if (resultado.GrupoAmbiguo is not null)
+        {
+            _grupoAmbiguo = resultado.GrupoAmbiguo;
+            return;
+        }
+
+        var lote = new List<EfeitoAdicionadoResult>();
+        foreach (var regra in resultado.ParaAutoAdicionar)
+        {
+            // Um Fixo com CustoFixo > 0 já está totalmente resolvido — não há Quantidade a editar
+            // (null). Qualquer outro caso (PorUnidade/ManualPorUnidade/DerivadoDeOutroEfeito, ou um
+            // Fixo "grátis" de CustoFixo == 0) começa do zero, editável depois via EfeitosTable.
+            var custoInicial = regra.TipoDeCusto == TipoDeCusto.Fixo ? regra.CustoFixo!.Value : 0;
+            int? quantidadeInicial = custoInicial == 0 ? 0 : null;
+            lote.Add(new EfeitoAdicionadoResult(regra.Nome, quantidadeInicial, custoInicial));
+        }
+        lote.Add(new EfeitoAdicionadoResult(_selecionado.Nome, _quantidade, custo));
+
+        await OnAdicionar.InvokeAsync(lote);
 
         _efeitoNomeSelecionado = null;
         _selecionado = null;
         _quantidade = null;
         _custoManual = null;
-        _erroDrenoOrigemAusente = null;
         _custoCalculado = null;
+        _grupoAmbiguo = null;
+        _escolhasForcadas.Clear();
     }
+
+    private static EfeitoRegra ToRegra(EfeitoResponse e) => new(
+        e.Nome, e.Grau, Enum.Parse<TipoDeCusto>(e.TipoDeCusto), e.CustoFixo, e.CustoPorUnidade,
+        e.QuantidadeDerivadaDeEfeito, e.MaxUnidades, e.MaxEscalaPorGrau, e.MaxContandoAPartirDoGrau,
+        e.CustoAlternativo, e.CustoAlternativoAPartirDoGrau, e.PreRequisitos);
 }
