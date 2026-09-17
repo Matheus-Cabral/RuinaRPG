@@ -35,21 +35,7 @@
 
     <Section Title="Efeitos">
         <AddEfeitoForm Grau="_form.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionadoAsync" />
-        <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
-            <thead><tr><th>Nome do Efeito</th><th>Quantidade</th><th>Custo em PI</th><th></th></tr></thead>
-            <tbody>
-                @for (var i = 0; i < _form.Efeitos.Count; i++)
-                {
-                    var index = i; // capture for the closure below
-                    <tr>
-                        <td>@_form.Efeitos[index].EfeitoNome</td>
-                        <td>@_form.Efeitos[index].Quantidade</td>
-                        <td>@_form.Efeitos[index].CustoPI</td>
-                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveEffect(index))">Remover</MudButton></td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <EfeitosTable Efeitos="_form.Efeitos" Grau="_form.Grau" OnChanged="NotifySavedAsync" />
 
         <MudText Class="mt-3">Gasto em PI (calculado ao salvar): @GastoEmPI</MudText>
         <MudText>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</MudText>
@@ -118,7 +104,7 @@
         _form.Grau = existing.Grau;
         _form.Descricao = existing.Descricao;
         _form.Efeitos = existing.Efeitos
-            .Select(e => new EffectFormModel { EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
+            .Select(e => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(e.EfeitoNome, e.Quantidade, e.CustoPI))
             .ToList();
     }
 
@@ -127,14 +113,8 @@
 
     private Task OnEfeitoAdicionadoAsync(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados)
     {
-        _form.Efeitos.AddRange(resultados.Select(r => new EffectFormModel { EfeitoNome = r.EfeitoNome, Quantidade = r.Quantidade, CustoPI = r.CustoPI }));
+        _form.Efeitos.AddRange(resultados.Select(r => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(r.EfeitoNome, r.Quantidade, r.CustoPI)));
         return NotifySavedAsync();
-    }
-
-    private void RemoveEffect(int index)
-    {
-        _form.Efeitos.RemoveAt(index);
-        NotifySavedAsync();
     }
 
     private async Task CreateAsync()
@@ -190,14 +170,6 @@
         [Range(0, int.MaxValue)]
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
-        public List<EffectFormModel> Efeitos { get; set; } = new();
-    }
-
-    private class EffectFormModel
-    {
-        public string EfeitoNome { get; set; } = "";
-        public int? Quantidade { get; set; }
-        [Range(0, int.MaxValue)]
-        public int CustoPI { get; set; }
+        public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
     }
 }
