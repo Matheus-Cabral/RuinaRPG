@@ -18,6 +18,20 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
+@if (_levelUpBonuses.Count > 0)
+{
+    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-3">
+        <MudText Typo="Typo.h6">Novo Nível!</MudText>
+        <ul>
+            @foreach (var bonus in _levelUpBonuses)
+            {
+                <li>@bonus</li>
+            }
+        </ul>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="DismissLevelUpAsync">Fechar</MudButton>
+    </MudAlert>
+}
+
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form">
@@ -161,6 +175,7 @@
         </Section>
 
         <Section Title="Perícias">
+            <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
                 <tbody>
@@ -609,6 +624,7 @@
     private List<CreatureAffectionResponse> _affections = new();
     private readonly AffectionFormModel _affectionForm = new();
     private CreatureTraitsListResponse? _traits;
+    private List<string> _levelUpBonuses = new();
     private readonly TraitFormModel _traitForm = new();
 
     private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
@@ -683,9 +699,22 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(
-            LoadTabs2And3Async(),
+            LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             LoadSpellAbilitiesAsync(), LoadMasteriesAsync(),
             LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync());
+    }
+
+    private async Task LoadLevelUpNoticeAsync()
+    {
+        var response = await Http.GetAsync($"creature-sheets/{SheetId}/level-up-notice");
+        if (response.IsSuccessStatusCode)
+            _levelUpBonuses = (await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>())!.BonusTexts;
+    }
+
+    private async Task DismissLevelUpAsync()
+    {
+        await Http.PostAsync($"creature-sheets/{SheetId}/dismiss-level-up-notice", null);
+        _levelUpBonuses.Clear();
     }
 
     private async Task LoadImagesAsync()
@@ -784,6 +813,7 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;
@@ -826,6 +856,7 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;
@@ -844,6 +875,7 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;

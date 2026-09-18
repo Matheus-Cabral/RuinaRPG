@@ -19,6 +19,20 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
+@if (_levelUpBonuses.Count > 0)
+{
+    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-3">
+        <MudText Typo="Typo.h6">Novo Nível!</MudText>
+        <ul>
+            @foreach (var bonus in _levelUpBonuses)
+            {
+                <li>@bonus</li>
+            }
+        </ul>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="DismissLevelUpAsync">Fechar</MudButton>
+    </MudAlert>
+}
+
 <MudDialog @bind-Visible="_racialChoiceDialogOpen" Options="@(new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false })">
     <DialogContent>
         <MudText Typo="Typo.h6">Escolha a Característica Racial do NPC</MudText>
@@ -211,6 +225,7 @@
         </Section>
 
         <Section Title="Perícias">
+            <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
                 <tbody>
@@ -744,6 +759,7 @@
     private List<NpcAffectionResponse> _affections = new();
     private readonly AffectionFormModel _affectionForm = new();
     private NpcTraitsListResponse? _traits;
+    private List<string> _levelUpBonuses = new();
     private PendingRacialTraitChoiceResponse? _pendingRacialChoice;
     private bool _racialChoiceDialogOpen;
     private string? _racialGratuitaChoice;
@@ -794,10 +810,23 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(
-            LoadTabs2And3Async(),
+            LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
             LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(),
             LoadPendingRacialChoiceAsync());
+    }
+
+    private async Task LoadLevelUpNoticeAsync()
+    {
+        var response = await Http.GetAsync($"npc-sheets/{SheetId}/level-up-notice");
+        if (response.IsSuccessStatusCode)
+            _levelUpBonuses = (await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>())!.BonusTexts;
+    }
+
+    private async Task DismissLevelUpAsync()
+    {
+        await Http.PostAsync($"npc-sheets/{SheetId}/dismiss-level-up-notice", null);
+        _levelUpBonuses.Clear();
     }
 
     private async Task LoadImagesAsync()
@@ -919,6 +948,7 @@
         // A Variante change may have just cleared stale racial grants server-side (or made a fresh
         // one pending for the first time) — re-check so the dialog reflects that immediately.
         await LoadPendingRacialChoiceAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;
@@ -960,6 +990,7 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;
@@ -978,6 +1009,7 @@
             throw new InvalidOperationException("Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
+        await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
         return true;

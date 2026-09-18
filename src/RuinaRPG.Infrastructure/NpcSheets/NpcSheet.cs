@@ -64,10 +64,10 @@ public class NpcSheet
     public int? ArcaRolada { get; set; }
 
     /// <summary>
-    /// Currently unused — nothing writes this column for NPCs, so it is always null. The
-    /// level-up-notice feature is deliberately Personagem-only per spec R0002; nothing on
-    /// the NPC code path ever reads or writes this property.
-    /// Do not read this property expecting a live value.
+    /// Tracks the last Nível the GM dismissed the level-up notice for — see
+    /// NpcSheetsController.LevelUpNotice/.DismissLevelUpNotice, same mechanism as
+    /// CharacterSheet's own property, per Requisitos - Ficha de NPCs R0002 ("estrutura idêntica
+    /// à Ficha de Personagem").
     /// </summary>
     public int? LastDismissedLevelUpLevel { get; set; }
 }

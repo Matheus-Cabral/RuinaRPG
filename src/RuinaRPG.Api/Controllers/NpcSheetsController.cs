@@ -178,6 +178,35 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         return NoContent();
     }
 
+    [HttpGet("{id}/level-up-notice")]
+    public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
+    }
+
+    [HttpPost("{id}/dismiss-level-up-notice")]
+    public async Task<IActionResult> DismissLevelUpNotice(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        sheet.LastDismissedLevelUpLevel = sheet.Nivel;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task NotifyAffectedEncountersAsync(Guid npcSheetId)
     {
         var affectedEncounterIds = await db.EncounterParticipants

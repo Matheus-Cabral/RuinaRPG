@@ -257,6 +257,51 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task LevelUpNotice_lists_bonus_text_for_every_level_gained_since_the_last_dismissal()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp1", "npclevelup1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        // 149 XP is one below Nível 3's threshold (150), keeping this at Nível 2 — same fixture
+        // value Ficha de Personagem's own equivalent test uses.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 149));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        body!.BonusTexts.Should().HaveCount(10);
+        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
+        body.BonusTexts.Should().Contain("+1 Ponto de Atributo");
+    }
+
+    [Fact]
+    public async Task Dismiss_stops_the_dismissed_levels_from_reappearing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp2", "npclevelup2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 149));
+
+        var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
+        dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var noticeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
+        var body = await noticeResponse.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        body!.BonusTexts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Dismiss_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmLevelUpOwner3", "npclevelupowner3@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmLevelUpOther3", "npclevelupother3@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Update_by_a_different_gm_returns_404()
     {
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwner6", "npcowner6@teste.com");
