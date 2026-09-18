@@ -3,7 +3,10 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Routing
 @using RuinaRPG.Client.Theme
+@using RuinaRPG.Client.Shared
+@using RuinaRPG.Contracts.Auth
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <MudThemeProvider Theme="RrMudTheme.Instance" />
 <MudPopoverProvider />
@@ -25,28 +28,50 @@
     </MudDrawer>
 
     <MudMainContent Class="content">
-        @Body
+        @if (_mustChangePassword)
+        {
+            <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
+        }
+        else
+        {
+            @Body
+        }
     </MudMainContent>
 </MudLayout>
 
 @code {
     private bool _drawerOpen = true;
+    private bool _mustChangePassword;
 
     private void CloseDrawer() => _drawerOpen = false;
 
     // MudNavLink ignores OnClick whenever Href is set, so nav clicks can't tell the layout to close
     // the drawer. Close it on every navigation instead — the same unconditional behaviour the
     // pre-MudBlazor NavMenu had. Above Breakpoint.Md MudDrawer stays visible regardless of Open.
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        await RefreshMustChangePasswordAsync();
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _drawerOpen = false;
-        InvokeAsync(StateHasChanged);
+        await RefreshMustChangePasswordAsync();
+        await InvokeAsync(StateHasChanged);
     }
+
+    // Same "hit auth/me, treat a failed response as false" pattern as Painel/RulesAuditorNavLinks
+    // — an anonymous caller (Login/Cadastro/Landing, all routed through this same layout) gets a
+    // 401 here and is simply never gated.
+    private async Task RefreshMustChangePasswordAsync()
+    {
+        var response = await Http.GetAsync("auth/me");
+        _mustChangePassword = response.IsSuccessStatusCode
+            && (await response.Content.ReadFromJsonAsync<MeResponse>())?.MustChangePassword == true;
+    }
+
+    private void HandleSenhaTrocada() => _mustChangePassword = false;
 
     public void Dispose()
     {

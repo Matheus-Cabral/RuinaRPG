@@ -43,3 +43,14 @@ Sucesso: o usuário é autenticado automaticamente (sem precisar logar de novo) 
 # **R0004** - Logout.
 
 **Descrição**: Um controle de logout, acessível de qualquer tela autenticada, revoga o refresh token atual (ver "[[Requisitos - Técnico]]" e a tabela `RefreshTokens` em "[[Requisitos - Modelo de Dados]]") e redireciona à Landing Page (R0001).
+
+  
+
+# **R0005** - Recuperação de senha de GM via console.
+
+**Descrição**: Não há serviço de e-mail configurado, então a recuperação de senha de uma conta de GM não é self-service — é feita por um operador com acesso ao servidor, via o comando de console descrito em "[[Requisitos - Técnico]]" R0008.
+
+- O comando recebe o e-mail da conta e devolve o **Nickname** e uma **senha temporária** gerada na hora, que o operador comunica ao GM por fora do sistema.
+- Rodar o comando também revoga todos os refresh tokens ativos daquele GM (Requisitos - Técnico e a tabela `RefreshTokens` em "[[Requisitos - Modelo de Dados]]") — toda sessão já aberta é encerrada, já que a senha anterior é considerada perdida/comprometida.
+- O GM loga normalmente (R0002) com a senha temporária. Enquanto não trocar a senha, o painel (GM ou Jogador, ver `01 - Visão Geral.canvas`) mostra só um formulário obrigatório de nova senha (**Nova senha** e **Confirmação da nova senha**) — nenhuma outra ação do painel é liberada até a troca ser concluída.
+- Não há prazo de expiração para a senha temporária: ela vale até ser trocada pelo GM, ou até o comando ser rodado de novo (o que gera outra e substitui a anterior).

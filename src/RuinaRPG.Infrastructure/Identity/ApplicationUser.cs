@@ -45,6 +45,12 @@ public class ApplicationUser : IdentityUser<Guid>
     /// </summary>
     public string? LastSeenAppVersion { get; set; }
 
+    // Set by `make reset-gm-password EMAIL=...` (Program.cs's --reset-gm-password arg, backed by
+    // GmPasswordResetCli) after issuing a temporary password. Checked live on every Me() call,
+    // same pattern as IsRulesAuditor above, and cleared by AuthController.ChangePassword once the
+    // GM sets their own new password.
+    public bool MustChangePassword { get; set; }
+
     // Null-tolerant: a request body that omits the nickname binds null here, and that must
     // surface as a 400 from the not-null/unique constraints, not as an NRE in this setter.
     public static string Normalize(string? nickname) => nickname?.ToUpperInvariant() ?? string.Empty;

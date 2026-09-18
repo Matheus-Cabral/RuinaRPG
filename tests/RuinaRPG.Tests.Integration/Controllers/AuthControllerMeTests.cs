@@ -91,6 +91,17 @@ public class AuthControllerMeTests : IClassFixture<PostgresFixture>, IAsyncLifet
     }
 
     [Fact]
+    public async Task Me_reports_MustChangePassword_false_by_default()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MustChangePwGm1", "mustchangepwgm1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<MeResponse>();
+        body!.MustChangePassword.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Me_reports_PendingChangelogVersion_for_a_GM_who_never_dismissed_anything()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("ChangelogGm1", "changeloggm1@teste.com");

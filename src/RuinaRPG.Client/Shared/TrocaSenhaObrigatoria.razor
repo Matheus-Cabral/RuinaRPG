@@ -1,0 +1,43 @@
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Auth
+@using MudBlazor
+
+<MudText Typo="Typo.h5">Defina uma nova senha</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+    Sua senha foi redefinida pelo administrador. Escolha uma nova senha para continuar usando o sistema.
+</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+<MudTextField T="string" @bind-Value="_request.NovaSenha" InputType="InputType.Password" Label="Nova senha" FullWidth="true" Class="mt-3" />
+<MudTextField T="string" @bind-Value="_request.ConfirmacaoNovaSenha" InputType="InputType.Password" Label="Confirmação da nova senha" FullWidth="true" Class="mt-3" />
+<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="SubmitAsync">Salvar nova senha</MudButton>
+
+@code {
+    [Parameter] public EventCallback OnSenhaTrocada { get; set; }
+
+    private readonly FormModel _request = new();
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        var response = await Http.PostAsJsonAsync("auth/change-password",
+            new ChangePasswordRequest(_request.NovaSenha, _request.ConfirmacaoNovaSenha));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(_errorMessage))
+                _errorMessage = "Não foi possível trocar a senha.";
+            return;
+        }
+
+        await OnSenhaTrocada.InvokeAsync();
+    }
+
+    private class FormModel
+    {
+        public string NovaSenha { get; set; } = "";
+        public string ConfirmacaoNovaSenha { get; set; } = "";
+    }
+}

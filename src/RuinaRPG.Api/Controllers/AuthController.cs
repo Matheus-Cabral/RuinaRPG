@@ -199,14 +199,16 @@ public class AuthController(
         var role = User.FindFirstValue("role") ?? string.Empty;
 
         bool isRulesAuditor = false;
+        bool mustChangePassword = false;
         string? lastSeenAppVersion = null;
         if (userId is not null)
         {
             var flags = await db.Users.Where(u => u.Id == Guid.Parse(userId))
-                .Select(u => new { u.IsRulesAuditor, u.LastSeenAppVersion })
+                .Select(u => new { u.IsRulesAuditor, u.LastSeenAppVersion, u.MustChangePassword })
                 .SingleOrDefaultAsync();
             isRulesAuditor = flags?.IsRulesAuditor ?? false;
             lastSeenAppVersion = flags?.LastSeenAppVersion;
+            mustChangePassword = flags?.MustChangePassword ?? false;
         }
 
         // Only a GM who hasn't dismissed the current version sees the popup — see Requisitos/spec
@@ -220,7 +222,36 @@ public class AuthController(
             User.FindFirstValue("nickname") ?? string.Empty,
             role,
             isRulesAuditor,
-            pendingChangelogVersion));
+            pendingChangelogVersion,
+            mustChangePassword));
+    }
+
+    /// <summary>
+    /// Self-service password change for the caller's own account — the only path a GM has to
+    /// clear MustChangePassword after a console-issued temporary password (see
+    /// GmPasswordResetCli), but usable any time, not just while that flag is set.
+    /// </summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        if (request.NovaSenha != request.ConfirmacaoNovaSenha)
+            return BadRequest("A confirmação de senha não confere com a nova senha.");
+
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var user = await userManager.FindByIdAsync(userId!);
+        if (user is null)
+            return Unauthorized();
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await userManager.ResetPasswordAsync(user, resetToken, request.NovaSenha);
+        if (!result.Succeeded)
+            return BadRequest(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+        user.MustChangePassword = false;
+        await db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     [HttpPost("dismiss-changelog")]

@@ -28,6 +28,7 @@
 | InvitedByGmId | FK → Users, nullable | só em usuários Jogador; setado ao resgatar um InviteCode |
 | IsRulesAuditor | bool — concedido/revogado via `make grant-rules-auditor`/`revoke-rules-auditor` (ver "[[Requisitos - Auditoria de Regras]]" R0001) |
 | LastSeenAppVersion | string, nullable | última versão do app (ver `AppVersionInfo.Current` no código) cujo popup de changelog este usuário já fechou; null = nunca fechou nenhuma |
+| MustChangePassword | bool — setado por `make reset-gm-password` (ver "[[Requisitos - Login e Cadastro]]" R0005); limpo quando o próprio usuário troca a senha |
 
 **InviteCodes**
 

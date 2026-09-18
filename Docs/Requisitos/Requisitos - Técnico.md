@@ -98,6 +98,7 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 - `make clean`: remove containers, imagens e volumes não utilizados (sem apagar os volumes nomeados de dados/imagens, salvo um alvo separado e explícito para isso).
 - `make migrate`: aplica migrations pendentes em produção (ver "Aplicação de migrations do EF Core" abaixo).
 - `make grant-rules-auditor EMAIL=...` / `make revoke-rules-auditor EMAIL=...`: designa (ou revoga) uma conta de GM, localizada pelo e-mail (case-insensitive), como Auditor de Regras. Tem efeito imediato — checado a cada requisição direto no banco, sem precisar relogar. Conceder é recusado se a conta indicada não for de GM; revogar é sempre aceito.
+- `make reset-gm-password EMAIL=...`: recuperação de senha de GM (ver "[[Requisitos - Login e Cadastro]]" R0005) — localiza a conta de GM pelo e-mail, gera uma senha temporária e imprime o Nickname e a senha no console. Também revoga todos os refresh tokens ativos daquela conta e marca a conta para exigir troca de senha no próximo login.
 - `make logs`: acompanha os logs dos containers.
 
   

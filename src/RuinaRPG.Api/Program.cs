@@ -233,6 +233,28 @@ if (args.Contains("--grant-rules-auditor") || args.Contains("--revoke-rules-audi
     return;
 }
 
+if (args.Contains("--reset-gm-password"))
+{
+    var flagIndex = Array.IndexOf(args, "--reset-gm-password");
+    var email = flagIndex >= 0 && flagIndex + 1 < args.Length ? args[flagIndex + 1] : null;
+
+    if (string.IsNullOrWhiteSpace(email))
+    {
+        app.Logger.LogError("Uso: dotnet RuinaRPG.Api.dll --reset-gm-password <email>");
+        return;
+    }
+
+    using var resetScope = app.Services.CreateScope();
+    var resetDb = resetScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+    var resetUserManager = resetScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var resetResult = await GmPasswordResetCli.ResetGmPasswordAsync(resetDb, resetUserManager, email);
+    if (resetResult.Error is not null)
+        app.Logger.LogError("{Error}", resetResult.Error);
+    else
+        app.Logger.LogInformation("Nickname: {Nickname} | Senha temporária: {TemporaryPassword}", resetResult.Nickname, resetResult.TemporaryPassword);
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
