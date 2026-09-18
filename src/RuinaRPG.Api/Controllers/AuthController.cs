@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Domain;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Domain.Invites;
 using RuinaRPG.Infrastructure.Auth;
@@ -195,14 +196,48 @@ public class AuthController(
     public async Task<ActionResult<MeResponse>> Me()
     {
         var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-        var isRulesAuditor = userId is not null
-            && await db.Users.Where(u => u.Id == Guid.Parse(userId)).Select(u => u.IsRulesAuditor).SingleOrDefaultAsync();
+        var role = User.FindFirstValue("role") ?? string.Empty;
+
+        bool isRulesAuditor = false;
+        string? lastSeenAppVersion = null;
+        if (userId is not null)
+        {
+            var flags = await db.Users.Where(u => u.Id == Guid.Parse(userId))
+                .Select(u => new { u.IsRulesAuditor, u.LastSeenAppVersion })
+                .SingleOrDefaultAsync();
+            isRulesAuditor = flags?.IsRulesAuditor ?? false;
+            lastSeenAppVersion = flags?.LastSeenAppVersion;
+        }
+
+        // Only a GM who hasn't dismissed the current version sees the popup — see Requisitos/spec
+        // for why Jogador never does.
+        var pendingChangelogVersion = role == "GM" && lastSeenAppVersion != AppVersionInfo.Current
+            ? AppVersionInfo.Current
+            : null;
 
         return Ok(new MeResponse(
             userId ?? string.Empty,
             User.FindFirstValue("nickname") ?? string.Empty,
-            User.FindFirstValue("role") ?? string.Empty,
-            isRulesAuditor));
+            role,
+            isRulesAuditor,
+            pendingChangelogVersion));
+    }
+
+    [HttpPost("dismiss-changelog")]
+    [Authorize]
+    public async Task<IActionResult> DismissChangelog()
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (userId is null)
+            return Unauthorized();
+
+        var user = await db.Users.FindAsync(Guid.Parse(userId));
+        if (user is null)
+            return Unauthorized();
+
+        user.LastSeenAppVersion = AppVersionInfo.Current;
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     // Matches the normalized column that carries the unique index, so the lookup is

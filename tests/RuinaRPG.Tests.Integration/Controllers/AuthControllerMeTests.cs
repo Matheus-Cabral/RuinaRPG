@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Invites;
+using RuinaRPG.Domain;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -86,6 +88,57 @@ public class AuthControllerMeTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         var body = await response.Content.ReadFromJsonAsync<MeResponse>();
         body!.IsRulesAuditor.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Me_reports_PendingChangelogVersion_for_a_GM_who_never_dismissed_anything()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ChangelogGm1", "changeloggm1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<MeResponse>();
+        body!.PendingChangelogVersion.Should().Be(AppVersionInfo.Current);
+    }
+
+    [Fact]
+    public async Task Me_reports_no_PendingChangelogVersion_for_a_Jogador()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ChangelogGm2", "changeloggm2@teste.com");
+        var (_, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ChangelogPlayer2", "changelogplayer2@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<MeResponse>();
+        body!.PendingChangelogVersion.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DismissChangelog_makes_PendingChangelogVersion_null_for_that_user_only()
+    {
+        var gmToken1 = await RegisterGmAndGetTokenAsync("ChangelogGm3", "changeloggm3@teste.com");
+        var gmToken2 = await RegisterGmAndGetTokenAsync("ChangelogGm4", "changeloggm4@teste.com");
+
+        var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/auth/dismiss-changelog", gmToken1));
+        dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var meAfterDismiss = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken1));
+        (await meAfterDismiss.Content.ReadFromJsonAsync<MeResponse>())!.PendingChangelogVersion.Should().BeNull();
+
+        // The second GM never called dismiss — still pending. Confirms the dismissal is per-user,
+        // not a global flag.
+        var meOther = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken2));
+        (await meOther.Content.ReadFromJsonAsync<MeResponse>())!.PendingChangelogVersion.Should().Be(AppVersionInfo.Current);
+    }
+
+    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
+    {
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
+        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
+        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens!.AccessToken));
+        return ((await me.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
     private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
