@@ -38,6 +38,13 @@ public class ApplicationUser : IdentityUser<Guid>
     // effect on the very next request instead of waiting for the holder to log in again.
     public bool IsRulesAuditor { get; set; }
 
+    /// <summary>
+    /// The last AppVersionInfo.Current value this user has dismissed the changelog popup for —
+    /// null means never dismissed any version. Compared fresh on every Me() call, same pattern as
+    /// IsRulesAuditor above. See AuthController.Me/.DismissChangelog.
+    /// </summary>
+    public string? LastSeenAppVersion { get; set; }
+
     // Null-tolerant: a request body that omits the nickname binds null here, and that must
     // surface as a 400 from the not-null/unique constraints, not as an NRE in this setter.
     public static string Normalize(string? nickname) => nickname?.ToUpperInvariant() ?? string.Empty;
