@@ -1,0 +1,34 @@
+@using MudBlazor
+
+<MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
+    <DialogContent>
+        <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
+        <ul class="mt-2">
+            <li>Efeitos de Magias/Habilidades: catálogo com cálculo automático de Custo em PI; ao comprar um Efeito sem o pré-requisito, ele é adicionado automaticamente em vez de bloquear; resumo dos Efeitos ("Dano: 3d6", etc.) agora aparece em toda lista de Magia/Habilidade.</li>
+            <li>Afinidades elementais: Elemento/Sub-Elemento agora restritos pela Vocação (Escola de Magia); Eficiência e Dano Elemental calculados automaticamente.</li>
+            <li>Cadastro de item direto na ficha: crie um item novo no catálogo sem sair da Ficha de NPC/Criatura.</li>
+            <li>Características exclusivas de Criatura: novo catálogo só pra Criaturas.</li>
+            <li>Fichas de NPC e Criatura reorganizadas para seguir a mesma ordem de abas/seções da Ficha de Personagem.</li>
+            <li>Aviso de "Novo Nível" e contador de Pontos de Perícia gastos agora também em NPC/Criatura.</li>
+            <li>Várias correções: mensagens de erro/nível mais legíveis, cor do título no tema claro, sessão expirada redireciona pro login, busca por nome e subcategoria no catálogo de itens, bug em que subir de nível não atualizava os limites de atributos/características.</li>
+        </ul>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _visible = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public string Version { get; set; } = "";
+    [Parameter] public EventCallback OnDismissed { get; set; }
+
+    private bool _visible = true;
+
+    // Fires for every way the dialog can close — the "Fechar" button, Escape, or a backdrop click
+    // — not just the button, since any of them means the GM has seen it.
+    private async Task OnVisibilityChangedAsync()
+    {
+        if (!_visible)
+            await OnDismissed.InvokeAsync();
+    }
+}

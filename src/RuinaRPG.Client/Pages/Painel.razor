@@ -20,6 +20,11 @@
     {
         <MudText Class="mt-3">Bem-vindo(a), @_me.Nickname.</MudText>
 
+        @if (_me.PendingChangelogVersion is not null)
+        {
+            <ChangelogDialog Version="@_me.PendingChangelogVersion" OnDismissed="DismissChangelogAsync" />
+        }
+
         @if (_me.Role == "GM")
         {
             <MudList T="string" Class="mt-3">
@@ -112,5 +117,11 @@
         await AuthState.ClearAsync();
         AuthProvider.NotifyUserChanged();
         Navigation.NavigateTo("/");
+    }
+
+    private async Task DismissChangelogAsync()
+    {
+        await Http.PostAsync("auth/dismiss-changelog", null);
+        _me = _me! with { PendingChangelogVersion = null };
     }
 }
