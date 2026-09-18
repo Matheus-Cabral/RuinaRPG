@@ -3,6 +3,7 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
+        @* Texto da versão 1.2.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
             <li>Efeitos de Magias/Habilidades: catálogo com cálculo automático de Custo em PI; ao comprar um Efeito sem o pré-requisito, ele é adicionado automaticamente em vez de bloquear; resumo dos Efeitos ("Dano: 3d6", etc.) agora aparece em toda lista de Magia/Habilidade.</li>
             <li>Afinidades elementais: Elemento/Sub-Elemento agora restritos pela Vocação (Escola de Magia); Eficiência e Dano Elemental calculados automaticamente.</li>
@@ -14,7 +15,7 @@
         </ul>
     </DialogContent>
     <DialogActions>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _visible = false)">Fechar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CloseAsync">Fechar</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -24,11 +25,22 @@
 
     private bool _visible = true;
 
-    // Fires for every way the dialog can close — the "Fechar" button, Escape, or a backdrop click
-    // — not just the button, since any of them means the GM has seen it.
+    // Escape / backdrop click close the dialog through MudDialog's own Visible round-trip, which
+    // raises this callback via @bind-Visible:after. A direct "_visible = false" assignment from our
+    // own code (as the "Fechar" button used to do) does NOT trigger it: MudBlazor's internal
+    // ParameterState already observes Visible=false via the normal parameter channel by the time its
+    // own close logic tries to echo the change back, so the echo is a no-op and VisibleChanged never
+    // fires — silently dropping the dismissal. CloseAsync below invokes OnDismissed explicitly so the
+    // button path is not dependent on that echo.
     private async Task OnVisibilityChangedAsync()
     {
         if (!_visible)
             await OnDismissed.InvokeAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        _visible = false;
+        await OnDismissed.InvokeAsync();
     }
 }

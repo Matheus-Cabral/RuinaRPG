@@ -121,7 +121,8 @@
 
     private async Task DismissChangelogAsync()
     {
-        await Http.PostAsync("auth/dismiss-changelog", null);
-        _me = _me! with { PendingChangelogVersion = null };
+        var response = await Http.PostAsync("auth/dismiss-changelog", null);
+        if (response.IsSuccessStatusCode)
+            _me = _me! with { PendingChangelogVersion = null };
     }
 }
