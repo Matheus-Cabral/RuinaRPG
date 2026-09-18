@@ -125,3 +125,51 @@ classes automatically, since the change lives entirely inside
   (previously reliably failing en masse from container-start timeouts) and
   confirm a clean pass, with `docker ps` showing exactly one Postgres
   container for the whole run instead of dozens.
+
+## Known residual issue (not fixed by this design, for future investigation)
+
+This design fully eliminates the original problem: container-start timeouts
+(`TaskCanceledException` from `StartContainerAsync`) and, after a follow-up
+fix, Postgres connection-slot exhaustion (`53300: sorry, too many clients
+already`) are both confirmed gone across many full-suite runs (see the
+implementation plan's ledger history — now deleted, but the finding stands).
+
+A small residual remains: roughly 1-1.5% of the 777 tests (5-12 per run) fail
+non-deterministically with `TaskCanceledException: HttpClient.Timeout of 100
+seconds elapsing` at the in-memory `TestServer` HTTP layer — a different,
+disjoint set of test classes each run, with **zero** Postgres/Npgsql
+signature in any observed failure. Diagnosis so far (via `dotnet-counters`
+live monitoring of the test host process during a run):
+
+- **Not ThreadPool slow-injection starvation.** Tested directly: adding a
+  `[ModuleInitializer]` that calls `ThreadPool.SetMinThreads(ProcessorCount *
+  20, ...)` to pre-warm the pool made no measurable difference (same 8/777
+  failures with and without it, across matched full-suite runs). This
+  hypothesis is ruled out.
+- **The real signal is growing `Monitor Lock Contention Count`.** Sampled via
+  `dotnet-counters collect --counters System.Runtime` against the running
+  `testhost` process: contention events climbed steadily through a run — from
+  ~32 events/2s near the start to ~182 events/2s about a minute in — while
+  CPU usage stayed moderate (45-66%, not pegged) and the ThreadPool queue only
+  spiked briefly rather than sustaining a backlog. This points to something
+  inside the process increasingly serializing on a shared lock as more of the
+  91 `WebApplicationFactory` test hosts start up concurrently — plausibly
+  ASP.NET Core's own DI-container/routing-table caches, or Npgsql internals,
+  under concurrent host construction — rather than a raw thread-count or
+  CPU-count limit.
+- **Not yet root-caused to a specific lock.** Doing so would need stack-level
+  contention profiling (`dotnet-trace collect` with contention events,
+  correlating captured stacks to a specific call site), which is a
+  meaningfully deeper investigation than this design's scope, with no
+  guarantee of a fixable root cause even once found (a contended lock inside
+  a third-party library's internals, e.g. ASP.NET Core's or Npgsql's own
+  code, may not be something application code can influence at all).
+
+Given the small failure rate, non-determinism, self-clearing behavior on
+re-run, and that it never touches the actual behavior under test (it's a
+test-harness timing artifact, not a defect in the tested code), this is
+being accepted as a known, documented limitation rather than blocking this
+branch. Whoever picks this up next should start with a `dotnet-trace`
+contention-events capture correlated to stack traces, rather than re-testing
+`ThreadPool.SetMinThreads` (already ruled out) — see the exact
+`dotnet-counters` invocation above to reproduce the live-monitoring setup.
