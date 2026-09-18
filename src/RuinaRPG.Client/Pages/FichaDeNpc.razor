@@ -147,14 +147,48 @@
                 <MudNumericField T="int?" @bind-Value="_form.NucleosRankA" For="@(() => _form.NucleosRankA)" Label="Rank A" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" @bind-Value:after="NotifySavedAsync" />
             </Section>
-
-            <Section Title="Recursos">
-                <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            </Section>
         </EditForm>
+
+        <Section Title="Características">
+            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
+                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
+            </EditForm>
+            @{
+                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
+            }
+            <MudText Color="@((_traits?.TotalPositivas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
+                Positivas: @(_traits?.TotalPositivas ?? 0) / @pontosDisponiveis
+            </MudText>
+            <MudText Color="@(Math.Abs(_traits?.TotalNegativas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)">
+                Negativas: @Math.Abs(_traits?.TotalNegativas ?? 0) / @pontosDisponiveis
+            </MudText>
+            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Positivas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    @foreach (var trait in _traits?.Negativas ?? new())
+                    {
+                        <tr>
+                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
@@ -243,6 +277,43 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
+        <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+        <Section>
+            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
+        </Section>
+
+        @if (_subAttributes is not null)
+        {
+            <Section Title="Sub-Atributos">
+                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
+                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
+                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
+                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
+                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
+                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
+                <MudText>Eficiência Elemental: @_subAttributes.EficienciaElemental</MudText>
+                <MudText>Dano Elemental: @_subAttributes.DanoElemental</MudText>
+                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
+                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
+                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
+                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
+                </MudSelect>
+            </Section>
+        }
+
+        @if (_modificadorDeDano is not null)
+        {
+            <Section Title="Modificador de Dano">
+                <MudText>Cortante: @_modificadorDeDano.Cortante</MudText>
+                <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
+                <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
+                <MudText>Mágico: @_modificadorDeDano.Arcano</MudText>
+            </Section>
+        }
+
         <Section Title="Armas">
             <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
                 <CatalogoItemPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." Tipo="Arma" PodeCriar="@_isGmCaller" />
@@ -399,35 +470,6 @@
                 </tbody>
             </MudSimpleTable>
         </Section>
-
-        @if (_subAttributes is not null)
-        {
-            <Section Title="Sub-Atributos">
-                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
-                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
-                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
-                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
-                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
-                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
-                <MudText>Eficiência Elemental: @_subAttributes.EficienciaElemental</MudText>
-                <MudText>Dano Elemental: @_subAttributes.DanoElemental</MudText>
-                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
-                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
-                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
-                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
-                </MudSelect>
-            </Section>
-        }
-
-        @if (_modificadorDeDano is not null)
-        {
-            <Section Title="Modificador de Dano">
-                <MudText>Cortante: @_modificadorDeDano.Cortante</MudText>
-                <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
-                <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
-                <MudText>Mágico: @_modificadorDeDano.Arcano</MudText>
-            </Section>
-        }
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
@@ -626,47 +668,6 @@
                         <tr>
                             <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffectionAsync(affection.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            @{
-                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
-            }
-            <MudText Color="@((_traits?.TotalPositivas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
-                Positivas: @(_traits?.TotalPositivas ?? 0) / @pontosDisponiveis
-            </MudText>
-            <MudText Color="@(Math.Abs(_traits?.TotalNegativas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)">
-                Negativas: @Math.Abs(_traits?.TotalNegativas ?? 0) / @pontosDisponiveis
-            </MudText>
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
                         </tr>
                     }
                 </tbody>
