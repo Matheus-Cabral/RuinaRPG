@@ -1,0 +1,33 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Runes
+
+@* Campos do formulário de adicionar Runa em 4.d, compartilhados por FichaDePersonagem e FichaDeNpc:
+   Origem (do zero / do Banco de Runas) e, conforme ela, os 3 campos da Runa ou o seletor de entrada
+   do banco. O GM passa o banco inteiro dele; o jogador, só as entradas públicas da campanha. *@
+
+<MudSelect T="string" @bind-Value="Model.Origem" Label="Origem">
+    <MudSelectItem Value="@("Zero")">Montar do zero</MudSelectItem>
+    <MudSelectItem Value="@("Banco")">Escolher do Banco de Runas</MudSelectItem>
+</MudSelect>
+
+@if (Model.DoBanco)
+{
+    <MudSelect T="string" @bind-Value="Model.SourceBankEntryId" Label="Entrada do Banco">
+        <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
+        @foreach (var entry in BankEntries)
+        {
+            <MudSelectItem Value="@entry.Id">@entry.Nome (Grau @entry.Grau)</MudSelectItem>
+        }
+    </MudSelect>
+}
+else
+{
+    <MudTextField T="string" @bind-Value="Model.Nome" Label="Nome" />
+    <MudTextField T="string" @bind-Value="Model.Descricao" Label="Descrição" Lines="3" />
+    <MudNumericField T="int" @bind-Value="Model.Grau" Label="Grau" />
+}
+
+@code {
+    [Parameter, EditorRequired] public RuneOrigemModel Model { get; set; } = new();
+    [Parameter] public IReadOnlyList<RuneBankEntryResponse> BankEntries { get; set; } = [];
+}

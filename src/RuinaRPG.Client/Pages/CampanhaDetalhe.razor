@@ -12,6 +12,7 @@
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.Players
+@using RuinaRPG.Contracts.Runes
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
@@ -149,6 +150,12 @@
                 <Section Title="Entrada do Banco de Magias">
                     <EntityPicker @bind-Value="_attachBankEntryId" SearchItems="SearchBankEntriesAsync" Placeholder="Buscar magia/habilidade..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachBankEntryAsync">Anexar Magia/Habilidade</MudButton>
+                </Section>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <Section Title="Entrada do Banco de Runas">
+                    <EntityPicker @bind-Value="_attachRuneEntryId" SearchItems="SearchRuneEntriesAsync" Placeholder="Buscar runa..." />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachRuneEntryAsync">Anexar Runa</MudButton>
                 </Section>
             </MudItem>
             <MudItem xs="12" md="6">
@@ -405,6 +412,7 @@
 
     private string _attachItemId = "";
     private string _attachBankEntryId = "";
+    private string _attachRuneEntryId = "";
     private List<string> _attachImageIds = new();
     private string _attachNpcSheetId = "";
     private string _attachCreatureSheetId = "";
@@ -474,6 +482,14 @@
         if (!response.IsSuccessStatusCode) return new();
         var entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
         return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} ({e.Tipo}, Grau {e.Grau})")).ToList();
+    }
+
+    private async Task<List<PickerOption>> SearchRuneEntriesAsync(string query)
+    {
+        var response = await Http.GetAsync($"rune-bank?nome={Uri.EscapeDataString(query)}");
+        if (!response.IsSuccessStatusCode) return new();
+        var entries = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>() ?? new();
+        return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} (Grau {e.Grau})")).ToList();
     }
 
     private async Task<List<PickerOption>> SearchNpcSheetsAsync(string query)
@@ -739,6 +755,13 @@
         var id = _attachBankEntryId;
         _attachBankEntryId = "";
         return AttachAsync(new AttachToCampaignRequest(null, null, null, id, null));
+    }
+
+    private Task AttachRuneEntryAsync()
+    {
+        var id = _attachRuneEntryId;
+        _attachRuneEntryId = "";
+        return AttachAsync(new AttachToCampaignRequest(null, null, null, null, null, id));
     }
 
     private Task AttachImageAsync()

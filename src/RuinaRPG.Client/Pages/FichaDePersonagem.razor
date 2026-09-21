@@ -8,6 +8,7 @@
 @using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Contracts.Runes
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.SpellsAndAbilities
@@ -590,9 +591,7 @@
 
         <Section Title="Runas">
             <EditForm Model="_runeForm" OnValidSubmit="AddRuneAsync">
-                <MudTextField T="string" @bind-Value="_runeForm.Nome" Label="Nome" />
-                <MudTextField T="string" @bind-Value="_runeForm.Descricao" Label="Descrição" Lines="3" />
-                <MudNumericField T="int" @bind-Value="_runeForm.Grau" Label="Grau" />
+                <RuneOrigemFields Model="_runeForm" BankEntries="_runeBankEntries" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
@@ -857,7 +856,8 @@
     private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
     private List<CharacterRuneResponse> _runes = new();
-    private readonly RuneFormModel _runeForm = new();
+    private List<RuneBankEntryResponse> _runeBankEntries = new();
+    private readonly RuneOrigemModel _runeForm = new();
     private List<CharacterMasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
     private List<CharacterInventoryItemResponse> _inventory = new();
@@ -1407,20 +1407,24 @@
     private async Task LoadRunesAsync()
     {
         _runes = await Http.GetFromJsonAsync<List<CharacterRuneResponse>>($"character-sheets/{SheetId}/runes") ?? new();
+        var bankUrl = _isGmCaller ? "rune-bank" : $"campaigns/{_campaignId}/available-runes";
+        _runeBankEntries = await Http.GetFromJsonAsync<List<RuneBankEntryResponse>>(bankUrl) ?? new();
     }
 
     private async Task AddRuneAsync()
     {
-        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/runes", new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau));
+        var request = _runeForm.DoBanco
+            ? new AddCharacterRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
+            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau);
+
+        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar a runa.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a runa.";
             return;
         }
 
-        _runeForm.Nome = "";
-        _runeForm.Descricao = "";
-        _runeForm.Grau = 0;
+        _runeForm.Limpar();
         await LoadRunesAsync();
     }
 
@@ -1759,13 +1763,6 @@
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
         public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
-    }
-
-    private class RuneFormModel
-    {
-        public string Nome { get; set; } = "";
-        public string Descricao { get; set; } = "";
-        public int Grau { get; set; }
     }
 
     private class MasteryFormModel
