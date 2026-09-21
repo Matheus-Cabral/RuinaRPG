@@ -57,13 +57,16 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
-    private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
+    private async Task<string> SetUpSheetAsync(string gmToken, string playerId) =>
+        (await SetUpSheetInCampaignAsync(gmToken, playerId)).SheetId;
+
+    private async Task<(string SheetId, string CampaignId)> SetUpSheetInCampaignAsync(string gmToken, string playerId)
     {
         var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
-        return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+        return ((await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, campaignId);
     }
 
     private static AddCharacterSpellAbilityRequest BolaDeFogoFromScratch() => new(
@@ -111,12 +114,15 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
     {
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasGm2", "magias2@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayer2", "magiasplayer2@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
         var bankCreateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Cura Leve", "Habilidade", 1, "Restaura um pouco de vida.",
                 [new SpellAbilityEffectRequest("Dano", 2, 4), new SpellAbilityEffectRequest("Cura", null, 2)])));
         var bankEntry = await bankCreateResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>();
+
+        // O jogador só alcança entradas que o GM liberou como públicas na campanha da ficha.
+        await PublishBankEntryAsync(gmToken, campaignId, bankEntry!.Id);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken,
             new AddCharacterSpellAbilityRequest(bankEntry!.Id, null, null, null, null, null)));
@@ -235,5 +241,56 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var availableResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-spell-abilities", gmToken));
         var available = await availableResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         available!.Should().NotContain(e => e.Nome == "Bola de Fogo");
+    }
+
+    private async Task<string> CreateBankEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
+        return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+    }
+
+    private async Task PublishBankEntryAsync(string gmToken, string campaignId, string entryId)
+    {
+        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new RuinaRPG.Contracts.Campaigns.AttachToCampaignRequest(null, null, null, entryId, null)));
+        var attachmentId = (await attach.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignAttachmentResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+    }
+
+    // Segurança: uma entrada do Banco de Magias é copiada para a ficha só se for do GM da ficha e, para um
+    // jogador, só se o GM a anexou como pública à campanha da ficha (Requisitos - Ficha de Personagem R0003).
+    [Fact]
+    public async Task AddFromBankEntry_by_a_player_requires_the_entry_to_be_public_in_the_campaign()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecMagCharPGm", "SecMagCharPgm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SecMagCharPPl", "SecMagCharPpl@teste.com");
+        var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
+        var entryId = await CreateBankEntryAsync(gmToken, "Magia Reservada");
+
+        var antes = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken,
+            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null)));
+        antes.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await PublishBankEntryAsync(gmToken, campaignId, entryId);
+
+        var depois = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken,
+            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null)));
+        depois.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task AddFromBankEntry_never_accepts_another_gms_entry_not_even_for_the_gm()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecMagCharGGm", "SecMagCharGgm@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SecMagCharGPl", "SecMagCharGpl@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var otherGmToken = await RegisterGmAndGetTokenAsync("SecMagCharOtherGm", "secmagcharothergm@teste.com");
+        var foreignEntryId = await CreateBankEntryAsync(otherGmToken, "Magia do Outro GM");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCharacterSpellAbilityRequest(foreignEntryId, null, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

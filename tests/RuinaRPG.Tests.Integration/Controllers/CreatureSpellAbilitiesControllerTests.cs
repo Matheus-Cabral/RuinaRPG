@@ -227,4 +227,56 @@ public class CreatureSpellAbilitiesControllerTests : IClassFixture<PostgresFixtu
         var bank = await GetBankAsync(gmToken);
         bank.Should().ContainSingle(e => e.Nome == "Bola de Fogo"); // the bank copy still happens (R0001) — just no CampaignAttachment
     }
+
+    private async Task<string> CreateBankEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
+        return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+    }
+
+    private async Task PublishBankEntryAsync(string gmToken, string campaignId, string entryId)
+    {
+        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new RuinaRPG.Contracts.Campaigns.AttachToCampaignRequest(null, null, null, entryId, null)));
+        var attachmentId = (await attach.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignAttachmentResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+    }
+
+    // Segurança: uma entrada do Banco de Magias é copiada para a ficha só se for do GM da ficha e, para um
+    // jogador, só se o GM a anexou como pública à campanha da ficha (Requisitos - Ficha de Personagem R0003).
+    [Fact]
+    public async Task AddFromBankEntry_by_a_player_requires_the_entry_to_be_public_in_the_campaign()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecMagCrePGm", "SecMagCrePgm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SecMagCrePPl", "SecMagCrePpl@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Seg Magia Criatura");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new RuinaRPG.Contracts.Campaigns.AddCampaignMemberRequest(playerId)));
+        var sheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
+        var entryId = await CreateBankEntryAsync(gmToken, "Magia Reservada");
+
+        var antes = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", playerToken,
+            new AddCreatureSpellAbilityRequest(entryId, null, null, null, null, null)));
+        antes.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await PublishBankEntryAsync(gmToken, campaignId, entryId);
+
+        var depois = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", playerToken,
+            new AddCreatureSpellAbilityRequest(entryId, null, null, null, null, null)));
+        depois.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task AddFromBankEntry_never_accepts_another_gms_entry_not_even_for_the_gm()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SecMagCreGGm", "SecMagCreGgm@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var otherGmToken = await RegisterGmAndGetTokenAsync("SecMagCreOtherGm", "secmagcreothergm@teste.com");
+        var foreignEntryId = await CreateBankEntryAsync(otherGmToken, "Magia do Outro GM");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCreatureSpellAbilityRequest(foreignEntryId, null, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

@@ -43,8 +43,15 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
             if (!Guid.TryParse(request.SourceBankEntryId, out var bankEntryId))
                 return BadRequest("Entrada do banco não encontrada.");
 
-            var bankEntry = await db.SpellAbilityBankEntries.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == bankEntryId);
+            // Só entradas do banco do GM desta ficha; um jogador ainda precisa que o GM a tenha anexado
+            // como pública à campanha da ficha (Requisitos - Ficha de Personagem R0003) — antes, qualquer
+            // Guid de qualquer GM era aceito.
+            var bankEntry = await db.SpellAbilityBankEntries.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == bankEntryId && e.GmId == campaignGmId);
             if (bankEntry is null)
+                return BadRequest("Entrada do banco não encontrada.");
+
+            if (CurrentUserId() != campaignGmId
+                && !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == sheet.CampaignId && a.IsPublic && a.SpellAbilityBankEntryId == bankEntryId))
                 return BadRequest("Entrada do banco não encontrada.");
 
             nome = bankEntry.Nome; tipo = bankEntry.Tipo; grau = bankEntry.Grau; descricao = bankEntry.Descricao;

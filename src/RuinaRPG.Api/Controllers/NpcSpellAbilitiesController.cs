@@ -34,6 +34,18 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         if (fromScratch == fromBank) // both or neither set
             return BadRequest("Informe exatamente um: os campos para montar do zero, ou SourceBankEntryId.");
 
+        // A NPC sheet has no CampaignId column: a granted sheet's campaign is resolved through the
+        // grant-link CampaignAttachment. Only a Jogador (caller != GM) needs it — both to pick from the bank
+        // (public entries of that campaign only) and to publish the bank copy afterwards.
+        Guid? campaignId = null;
+        if (CurrentUserId() != sheet.GmId)
+        {
+            campaignId = await db.CampaignAttachments
+                .Where(a => a.NpcSheetId == sheetId && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
+                .Select(a => (Guid?)a.CampaignId)
+                .FirstOrDefaultAsync();
+        }
+
         string nome; SpellAbilityTipo tipo; int grau; string descricao; List<SpellAbilityEffectRequest> efeitos;
         Guid? sourceBankEntryId = null;
 
@@ -42,8 +54,15 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
             if (!Guid.TryParse(request.SourceBankEntryId, out var bankEntryId))
                 return BadRequest("Entrada do banco não encontrada.");
 
-            var bankEntry = await db.SpellAbilityBankEntries.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == bankEntryId);
+            // Só entradas do banco do GM desta ficha; um jogador ainda precisa que o GM a tenha anexado
+            // como pública à campanha da concessão — antes, qualquer Guid de qualquer GM era aceito.
+            var bankEntry = await db.SpellAbilityBankEntries.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == bankEntryId && e.GmId == sheet.GmId);
             if (bankEntry is null)
+                return BadRequest("Entrada do banco não encontrada.");
+
+            if (CurrentUserId() != sheet.GmId
+                && (campaignId is null
+                    || !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == campaignId && a.IsPublic && a.SpellAbilityBankEntryId == bankEntryId)))
                 return BadRequest("Entrada do banco não encontrada.");
 
             nome = bankEntry.Nome; tipo = bankEntry.Tipo; grau = bankEntry.Grau; descricao = bankEntry.Descricao;
@@ -83,22 +102,15 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
 
         // Same rule as CharacterSpellAbilitiesController (see its comment) — the granted-sheet
         // "campaign" isn't a stored column, it's resolved through the grant-link CampaignAttachment.
-        if (CurrentUserId() != sheet.GmId)
+        if (CurrentUserId() != sheet.GmId && campaignId is not null)
         {
-            var campaignId = await db.CampaignAttachments
-                .Where(a => a.NpcSheetId == sheetId && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
-                .Select(a => (Guid?)a.CampaignId)
-                .FirstOrDefaultAsync();
-            if (campaignId is not null)
+            db.CampaignAttachments.Add(new CampaignAttachment
             {
-                db.CampaignAttachments.Add(new CampaignAttachment
-                {
-                    Id = Guid.NewGuid(),
-                    CampaignId = campaignId.Value,
-                    SpellAbilityBankEntryId = bankCopy.Id,
-                    IsPublic = true
-                });
-            }
+                Id = Guid.NewGuid(),
+                CampaignId = campaignId.Value,
+                SpellAbilityBankEntryId = bankCopy.Id,
+                IsPublic = true
+            });
         }
 
         await db.SaveChangesAsync();

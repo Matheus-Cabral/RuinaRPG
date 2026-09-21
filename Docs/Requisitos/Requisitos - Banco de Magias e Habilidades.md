@@ -26,6 +26,8 @@
 
 **Descrição**: Ao criar uma nova entrada em 4.b de uma Ficha de Personagem, de NPC ou de Criatura, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.b) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. A partir da escolha, a entrada na ficha é uma cópia independente (mesmo comportamento de R0001) — editá-la depois não afeta a entrada original do banco.
 
+**Escopo da escolha**: o GM escolhe qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** (ver "[[Requisitos - Campanha]]" R0008 e "[[Requisitos - Ficha de Personagem]]" R0003). O servidor recusa (400) uma entrada de outro GM, ou uma que o jogador não alcança — não basta o cliente só listar as públicas. No NPC/Criatura concedido a um jogador, a campanha é a da concessão.
+
   
 
 # **R0004** - O banco deve ser listado com filtros avançados.
