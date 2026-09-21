@@ -23,10 +23,10 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         if (!campaignExists)
             return NotFound();
 
-        if (!CampaignAttachmentTargetValidator.ExactlyOneSet(request.ItemId, request.NpcSheetId, request.CreatureSheetId, request.SpellAbilityBankEntryId, request.ImageId))
+        if (!CampaignAttachmentTargetValidator.ExactlyOneSet(request.ItemId, request.NpcSheetId, request.CreatureSheetId, request.SpellAbilityBankEntryId, request.ImageId, request.RuneBankEntryId))
             return BadRequest("Informe exatamente um alvo para o anexo.");
 
-        Guid? itemId = null, npcSheetId = null, creatureSheetId = null, bankEntryId = null, imageId = null;
+        Guid? itemId = null, npcSheetId = null, creatureSheetId = null, bankEntryId = null, imageId = null, runeEntryId = null;
 
         if (request.ItemId is not null)
         {
@@ -60,6 +60,14 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
                 return BadRequest("Entrada do Banco de Magias não encontrada.");
             bankEntryId = parsed;
         }
+        else if (request.RuneBankEntryId is not null)
+        {
+            if (!Guid.TryParse(request.RuneBankEntryId, out var parsed))
+                return BadRequest("RuneBankEntryId inválido.");
+            if (!await db.RuneBankEntries.AnyAsync(e => e.Id == parsed && e.GmId == gmId))
+                return BadRequest("Entrada do Banco de Runas não encontrada.");
+            runeEntryId = parsed;
+        }
         else
         {
             if (!Guid.TryParse(request.ImageId, out var parsed))
@@ -77,6 +85,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
             NpcSheetId = npcSheetId,
             CreatureSheetId = creatureSheetId,
             SpellAbilityBankEntryId = bankEntryId,
+            RuneBankEntryId = runeEntryId,
             ImageId = imageId,
             IsPublic = false, NpcNomePublico = false, NpcImagemPublica = false, CreatureNomePublico = false, CreatureImagemPublica = false
         };
@@ -206,6 +215,11 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         {
             var entry = await db.SpellAbilityBankEntries.FindAsync(a.SpellAbilityBankEntryId.Value);
             return new CampaignAttachmentResponse(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, a.IsPublic, null, null, null, null, null);
+        }
+        if (a.RuneBankEntryId is not null)
+        {
+            var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId.Value);
+            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, null);
         }
         if (a.ImageId is not null)
         {

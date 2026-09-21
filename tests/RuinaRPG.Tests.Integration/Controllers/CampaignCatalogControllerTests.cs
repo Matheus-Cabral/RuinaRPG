@@ -6,6 +6,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Images;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -204,5 +205,58 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{Guid.NewGuid()}/available-images", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+        return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task AvailableRunes_returns_only_publicly_attached_entries()
+    {
+        var setup = await BuildMemberSetupAsync("Runes1");
+        var publicRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, publicRuneId));
+        var privateRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Secreta");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, privateRuneId)));
+        await CreateRuneEntryAsync(setup.GmToken, "Runa Solta no Banco"); // nunca anexada
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Id == publicRuneId && e.Nome == "Runa Pública");
+        body.Should().NotContain(e => e.Id == privateRuneId);
+        body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AvailableRunes_filters_by_nome()
+    {
+        var setup = await BuildMemberSetupAsync("Runes2");
+        var fogo = await CreateRuneEntryAsync(setup.GmToken, "Runa do Fogo");
+        var gelo = await CreateRuneEntryAsync(setup.GmToken, "Runa do Gelo");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, fogo));
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, gelo));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes?nome=gelo", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
+        body!.Select(e => e.Id).Should().Equal(gelo);
+    }
+
+    [Fact]
+    public async Task AvailableRunes_by_a_non_member_returns_403()
+    {
+        var setup = await BuildMemberSetupAsync("Runes3");
+        var (_, outsiderToken) = await RegisterJogadorLinkedToAsync(setup.GmToken, "CatOutsiderRunes3", "catoutsiderrunes3@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", outsiderToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

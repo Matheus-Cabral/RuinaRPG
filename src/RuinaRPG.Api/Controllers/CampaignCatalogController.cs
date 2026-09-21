@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Images;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Items;
@@ -69,6 +70,25 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
 
         var entries = await query.ToListAsync();
         return entries.Select(ToSpellAbilityResponse).ToList();
+    }
+
+    [HttpGet("available-runes")]
+    public async Task<ActionResult<List<RuneBankEntryResponse>>> AvailableRunes(Guid campaignId, [FromQuery] string? nome)
+    {
+        if (await MembershipErrorAsync(campaignId) is { } error)
+            return error;
+
+        var publicEntryIds = await db.CampaignAttachments
+            .Where(a => a.CampaignId == campaignId && a.IsPublic && a.RuneBankEntryId != null)
+            .Select(a => a.RuneBankEntryId!.Value)
+            .ToListAsync();
+
+        var query = db.RuneBankEntries.Where(e => publicEntryIds.Contains(e.Id));
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(e => EF.Functions.ILike(e.Nome, $"%{nome}%"));
+
+        var entries = await query.OrderBy(e => e.Nome).ToListAsync();
+        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau)).ToList();
     }
 
     [HttpGet("available-images")]

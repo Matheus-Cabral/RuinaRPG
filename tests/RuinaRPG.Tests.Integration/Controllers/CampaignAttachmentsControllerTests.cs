@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -73,6 +74,13 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+    }
+
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+        return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
     private async Task<string> UploadImageAsync(string gmToken) => (await UploadImageWithUrlAsync(gmToken)).Id;
@@ -562,5 +570,82 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
         var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
         body!.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Attach_a_rune_bank_entry_defaults_to_private_and_reports_the_RuneBankEntry_type()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttRuneGm1", "attrune1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Runa");
+        var runeId = await CreateRuneEntryAsync(gmToken, "Runa do Fogo");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, runeId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+        body!.Tipo.Should().Be("RuneBankEntry");
+        body.Nome.Should().Be("Runa do Fogo");
+        body.IsPublic.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_rune_attachment_can_be_toggled_public_and_listed()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttRuneGm2", "attrune2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Runa Pública");
+        var runeId = await CreateRuneEntryAsync(gmToken, "Runa da Terra");
+        var attachResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, runeId)));
+        var attachment = await attachResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+
+        var toggle = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachment!.Id}/visibility", gmToken, true));
+
+        toggle.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await list.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        body!.Should().ContainSingle(a => a.Id == attachment.Id && a.Tipo == "RuneBankEntry" && a.IsPublic == true);
+    }
+
+    [Fact]
+    public async Task Attaching_a_rune_entry_of_another_gm_returns_400()
+    {
+        var gmA = await RegisterGmAndGetTokenAsync("AttRuneGm3a", "attrune3a@teste.com");
+        var gmB = await RegisterGmAndGetTokenAsync("AttRuneGm3b", "attrune3b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmA, "Campanha A");
+        var runaDoB = await CreateRuneEntryAsync(gmB, "Runa do B");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmA,
+            new AttachToCampaignRequest(null, null, null, null, null, runaDoB)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("00000000-0000-0000-0000-000000000001")]
+    public async Task Attaching_a_malformed_or_unknown_rune_entry_returns_400(string runeId)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"AttRuneGm4{runeId.Length}", $"attrune4{runeId.Length}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Runa Inválida");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, runeId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Attaching_a_rune_entry_together_with_another_target_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttRuneGm5", "attrune5@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Dois Alvos");
+        var runeId = await CreateRuneEntryAsync(gmToken, "Runa");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(itemId, null, null, null, null, runeId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

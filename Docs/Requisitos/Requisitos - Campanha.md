@@ -44,9 +44,9 @@
 
   
 
-# **R0006** - O GM deve poder anexar itens, fichas de criatura, fichas de NPC e entradas do Banco de Magias e Habilidades à campanha.
+# **R0006** - O GM deve poder anexar itens, fichas de criatura, fichas de NPC e entradas do Banco de Magias e Habilidades e do Banco de Runas à campanha.
 
-**Descrição**: De dentro da campanha, o GM anexa conteúdo já existente: itens do Catálogo de Itens e Equipamentos, fichas do Bestiário (Fichas de Criaturas), Fichas de NPCs e entradas do "[[Requisitos - Banco de Magias e Habilidades]]". Anexar não duplica o registro original — a campanha guarda uma referência a ele.
+**Descrição**: De dentro da campanha, o GM anexa conteúdo já existente: itens do Catálogo de Itens e Equipamentos, fichas do Bestiário (Fichas de Criaturas), Fichas de NPCs e entradas do "[[Requisitos - Banco de Magias e Habilidades]]" e do "[[Requisitos - Banco de Runas]]". Anexar não duplica o registro original — a campanha guarda uma referência a ele.
 
   
 
@@ -58,7 +58,7 @@
 
 # **R0008** - Cada anexo da campanha deve ter um toggle público/privado individual.
 
-**Descrição**: Todo anexo (item, entrada do Banco de Magias e Habilidades ou imagem, ver R0006 e R0007) tem um controle público/privado, definido pelo GM item a item. O valor padrão ao anexar é **privado**.
+**Descrição**: Todo anexo (item, entrada do Banco de Magias e Habilidades, entrada do Banco de Runas ou imagem, ver R0006 e R0007) tem um controle público/privado, definido pelo GM item a item. O valor padrão ao anexar é **privado**.
 
 **Exceção**: anexos do tipo Ficha de NPC ou Ficha de Criatura não usam esse toggle único — em vez disso, o GM liga/desliga Nome e Imagem independentemente (ver "[[Requisitos - Ficha de NPCs]]" R0004 e "[[Requisitos - Ficha de Criaturas]]" R0003). O restante dessas fichas nunca é visível a jogadores, nem com o anexo "público".
 
@@ -91,6 +91,6 @@ Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos
 
 # **R0012** - Conteúdo criado por um jogador é anexado à campanha automaticamente como público.
 
-> Uma Magia/Habilidade que um jogador cria em sua ficha (Requisitos - Ficha de Personagem R0003, Requisitos - Banco de Magias e Habilidades R0001), e uma Imagem que um jogador envia a partir de sua ficha, são anexadas à campanha correspondente automaticamente como **públicas** — sem etapa de aprovação do GM. Isso não se aplica a Itens: um jogador nunca cria um Item, então este anexo automático não existe para eles.
+> Uma Magia/Habilidade ou uma Runa que um jogador cria em sua ficha (Requisitos - Ficha de Personagem R0003, Requisitos - Banco de Magias e Habilidades R0001, Requisitos - Banco de Runas R0007), e uma Imagem que um jogador envia a partir de sua ficha, são anexadas à campanha correspondente automaticamente como **públicas** — sem etapa de aprovação do GM. Isso não se aplica a Itens: um jogador nunca cria um Item, então este anexo automático não existe para eles.
 >
 > A tela de gerenciamento da campanha (Membros, Anexos, Diário, Notas Secretas, Conceder Ficha, Detalhes) nunca é alcançável por um jogador — a tela dele é a descrita em R0009.

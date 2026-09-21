@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.Runes;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -331,5 +332,30 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>();
         body!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PlayerView_lists_a_public_rune_attachment_and_hides_a_private_one()
+    {
+        var setup = await BuildSetupAsync("Rune");
+        var publicRune = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública Rune");
+        var publicAttachmentId = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, publicRune));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{setup.CampaignId}/attachments/{publicAttachmentId}/visibility", setup.GmToken, true));
+        var privateRune = await CreateRuneEntryAsync(setup.GmToken, "Runa Privada Rune");
+        await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, privateRune));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        body!.AnexosPublicos.Should().ContainSingle(a => a.Tipo == "RuneBankEntry" && a.Nome == "Runa Pública Rune");
+        body.AnexosPublicos.Should().NotContain(a => a.Nome == "Runa Privada Rune");
+    }
+
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+        return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 }
