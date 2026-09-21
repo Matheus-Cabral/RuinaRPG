@@ -207,6 +207,12 @@
 
     <MudTabPanel Text="Atributos & Perícias">
         <Section Title="Atributos">
+            @if (_attributeBudget is not null)
+            {
+                <MudText Color="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? Color.Error : Color.Default)">
+                    Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
+                </MudText>
+            }
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Proeficiência</th><th>Total</th></tr></thead>
                 <tbody>
@@ -732,6 +738,7 @@
     private bool _imageEditing;
     private bool _imageGalleryOpen;
     private List<NpcAttributeResponse> _attributes = new();
+    private AttributePointBudgetResponse? _attributeBudget;
     private List<NpcSkillResponse> _skills = new();
     private List<NpcAffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
@@ -1051,6 +1058,7 @@
     private async Task LoadTabs2And3Async()
     {
         _attributes = await Http.GetFromJsonAsync<List<NpcAttributeResponse>>($"npc-sheets/{SheetId}/attributes") ?? new();
+        _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"npc-sheets/{SheetId}/attributes/budget");
         _skills = await Http.GetFromJsonAsync<List<NpcSkillResponse>>($"npc-sheets/{SheetId}/skills") ?? new();
         _affinities = await Http.GetFromJsonAsync<List<NpcAffinityResponse>>($"npc-sheets/{SheetId}/affinities") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<NpcWeaponResponse>>($"npc-sheets/{SheetId}/weapons") ?? new();

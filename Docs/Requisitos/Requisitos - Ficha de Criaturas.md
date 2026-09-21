@@ -63,6 +63,8 @@
 
 **2.a Atributos** — a Criatura tem **6 atributos**, não 8: **Força**, **Vigor**, **Agilidade**, **Destreza**, **Astúcia** e **Ego**. *Instinto*, *Influência* e *Vontade* não existem — *Ego* é a fusão dos três num único atributo. Por ora, nenhuma fórmula do sistema depende de Ego especificamente (nem dos três que ele substitui, no contexto de Criatura); campo tratado como os demais atributos (mesma estrutura Gasto/Bônus/Maestria/Total e mesmas fórmulas de Total do Personagem), mas sem uso definido nas fórmulas ainda.
 
+A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesma regra de "[[Requisitos - Ficha de NPCs]]" R0007: soma do *Gasto* dos 6 atributos contra os "Pontos de Atributo" que o *Nível* da Criatura concede na "[[Tabela de Níveis]]" (a "[[Tabela de Arquetipos]]" só define Vida e Arcana, não pontos de atributo), sem bloquear o GM ao passar do total.
+
 **2.b Sub-Atributos** — mesmos campos e fórmulas do Personagem (Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Cobertura, Redução Física, Redução Mágica), com as seguintes diferenças:
 
 - *Resistência Física* e *Resistência Arcana* existem na Ficha de Criatura (diferente do Personagem, que não os tem). Por ora, nenhuma fórmula do sistema depende deles — campos previstos porém não implementados até existir regra.
