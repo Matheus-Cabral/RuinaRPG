@@ -21,4 +21,11 @@ public class LinhagemVarianteValidatorTests
 
         result.Should().Be(expected);
     }
+
+    [Fact]
+    public void Econos_accepts_the_solar_Alora_variant_too()
+    {
+        LinhagemVarianteValidator.IsValidCombination(Linhagem.Econos, Variante.AloraSolar).Should().BeTrue();
+        LinhagemVarianteValidator.IsValidCombination(Linhagem.Humano, Variante.AloraSolar).Should().BeFalse();
+    }
 }

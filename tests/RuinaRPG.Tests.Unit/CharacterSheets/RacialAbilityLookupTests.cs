@@ -28,4 +28,13 @@ public class RacialAbilityLookupTests
 
         result.Descricao.Should().Contain("aumentar a escala do dado da rolagem em +1 degrau");
     }
+
+    [Fact]
+    public void For_AloraSolar_has_no_default_because_the_rulebook_does_not_define_it()
+    {
+        var result = RacialAbilityLookup.For(Variante.AloraSolar);
+
+        result.Nome.Should().BeEmpty();
+        result.Descricao.Should().BeEmpty();
+    }
 }

@@ -90,4 +90,26 @@ public class RacialTraitChoiceResolverTests
         result.Error.Should().BeNull();
         result.Grants.Should().BeEquivalentTo(new[] { new RacialTraitOption("Amado por feras"), new RacialTraitOption("Desvantagem Elemental", "Fogo") });
     }
+
+    [Fact]
+    public void A_Variante_with_no_Gratuita_options_expects_no_grant_for_it()
+    {
+        var semNada = new RacialTraitSlots(Gratuita: [], Obrigatoria: []);
+        var soObrigatoria = new RacialTraitSlots(Gratuita: [], Obrigatoria: [new("Covarde")]);
+
+        RacialTraitChoiceResolver.ExpectedGrantCount(semNada).Should().Be(0);
+        RacialTraitChoiceResolver.IsResolved(semNada, existingCount: 0).Should().BeTrue();
+        RacialTraitChoiceResolver.ExpectedGrantCount(soObrigatoria).Should().Be(1);
+    }
+
+    [Fact]
+    public void Resolve_with_no_Gratuita_options_grants_only_the_Obrigatoria()
+    {
+        var soObrigatoria = new RacialTraitSlots(Gratuita: [], Obrigatoria: [new("Covarde")]);
+
+        var result = RacialTraitChoiceResolver.Resolve(soObrigatoria, "qualquer", null);
+
+        result.Error.Should().BeNull();
+        result.Grants!.Select(g => g.TraitNome).Should().Equal("Covarde");
+    }
 }

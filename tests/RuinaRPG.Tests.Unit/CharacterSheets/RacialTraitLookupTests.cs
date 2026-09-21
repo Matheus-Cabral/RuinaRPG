@@ -58,4 +58,13 @@ public class RacialTraitLookupTests
         result.Obrigatoria[0].TraitNome.Should().Be("Desvantagem Elemental");
         result.Obrigatoria[0].Especificacao.Should().Be("Fogo");
     }
+
+    [Fact]
+    public void AloraSolar_has_no_default_options_because_the_rulebook_does_not_define_it()
+    {
+        var result = RacialTraitLookup.For(Variante.AloraSolar);
+
+        result.Gratuita.Should().BeEmpty();
+        result.Obrigatoria.Should().BeEmpty();
+    }
 }

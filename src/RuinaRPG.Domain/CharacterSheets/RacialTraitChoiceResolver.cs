@@ -13,18 +13,28 @@ public sealed record RacialTraitResolutionResult(List<RacialTraitOption>? Grants
 /// </summary>
 public static class RacialTraitChoiceResolver
 {
-    /// <summary>How many racial CharacterTrait/NpcTrait rows a fully-resolved Variante should have.</summary>
-    public static int ExpectedGrantCount(RacialTraitSlots slots) => 1 + (slots.Obrigatoria.Count > 0 ? 1 : 0);
+    /// <summary>
+    /// How many racial CharacterTrait/NpcTrait rows a fully-resolved Variante should have. A slot
+    /// with no options grants nothing (Sinir/Laonir have no Obrigatória; a Variante the GM hasn't
+    /// configured yet, like AloraSolar, may have no Gratuita either) — otherwise the sheet would
+    /// wait forever on a choice that has nothing to pick from.
+    /// </summary>
+    public static int ExpectedGrantCount(RacialTraitSlots slots) =>
+        (slots.Gratuita.Count > 0 ? 1 : 0) + (slots.Obrigatoria.Count > 0 ? 1 : 0);
 
     public static bool IsResolved(RacialTraitSlots slots, int existingCount) => existingCount >= ExpectedGrantCount(slots);
 
     public static RacialTraitResolutionResult Resolve(RacialTraitSlots slots, string gratuitaTraitNome, string? obrigatoriaTraitNome)
     {
-        var gratuita = slots.Gratuita.FirstOrDefault(o => o.TraitNome == gratuitaTraitNome);
-        if (gratuita is null)
-            return RacialTraitResolutionResult.Fail("A Característica Gratuita escolhida não é uma opção válida para esta Variante.");
+        var grants = new List<RacialTraitOption>();
 
-        var grants = new List<RacialTraitOption> { gratuita };
+        if (slots.Gratuita.Count > 0)
+        {
+            var gratuita = slots.Gratuita.FirstOrDefault(o => o.TraitNome == gratuitaTraitNome);
+            if (gratuita is null)
+                return RacialTraitResolutionResult.Fail("A Característica Gratuita escolhida não é uma opção válida para esta Variante.");
+            grants.Add(gratuita);
+        }
 
         switch (slots.Obrigatoria.Count)
         {

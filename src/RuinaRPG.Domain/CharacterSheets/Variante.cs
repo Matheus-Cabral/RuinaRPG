@@ -8,5 +8,8 @@ public enum Variante
     EsPhylauc,   // Phylauc
     Yavos,       // Nephrytes
     Koroanos,    // Nephrytes
-    Alora        // Econos
+    Alora,       // Econos (Lua)
+    // Econos (Sol). O livro não a define: só fica disponível nas fichas quando o GM dá um nome a ela
+    // (RacialAbilityOverride.NomeDaVariante) — ver Requisitos - Habilidades Raciais R0005.
+    AloraSolar
 }

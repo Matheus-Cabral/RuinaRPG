@@ -10,7 +10,9 @@ public static class RacialAbilityLookup
         [Variante.EsPhylauc] = new("Racial (Lei da Selva)", "Recupera uma quantidade de PV igual ao Foco (PF) gasto em habilidades e magias."),
         [Variante.Yavos] = new("Racial (Sobre Voo)", "Passiva. Capacidade de voo livre."),
         [Variante.Koroanos] = new("Racial (Sobre Voo)", "Passiva. Capacidade de voo livre."),
-        [Variante.Alora] = new("Racial (Amplificador Místico)", "Ao usar qualquer item ou artefato de origem holística, o Alóra pode aumentar a escala do dado da rolagem em +1 degrau (ex: de d6 para d8, de d10 para d12).")
+        [Variante.Alora] = new("Racial (Amplificador Místico)", "Ao usar qualquer item ou artefato de origem holística, o Alóra pode aumentar a escala do dado da rolagem em +1 degrau (ex: de d6 para d8, de d10 para d12)."),
+        // O livro só conhece a variante da Lua; o GM cadastra a solar na página de Habilidades Raciais.
+        [Variante.AloraSolar] = new("", "")
     };
 
     public static RacialAbility For(Variante variante) => Abilities[variante];

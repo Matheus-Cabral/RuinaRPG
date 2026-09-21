@@ -36,6 +36,8 @@ public static class RacialTraitLookup
         [Variante.Alora] = new(
             Gratuita: [new("Detectar Magia"), new("Amado por feras")],
             Obrigatoria: [new("Desvantagem Elemental", Especificacao: "Fogo")]),
+        // Sem padrão no livro — o GM cadastra as opções, se quiser.
+        [Variante.AloraSolar] = new(Gratuita: [], Obrigatoria: []),
     };
 
     public static RacialTraitSlots For(Variante variante) => Slots[variante];

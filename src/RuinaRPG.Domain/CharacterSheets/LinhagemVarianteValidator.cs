@@ -7,7 +7,7 @@ public static class LinhagemVarianteValidator
         [Linhagem.Humano] = [Variante.Sinir, Variante.Laonir],
         [Linhagem.Phylauc] = [Variante.PhylacTai, Variante.EsPhylauc],
         [Linhagem.Nephrytes] = [Variante.Yavos, Variante.Koroanos],
-        [Linhagem.Econos] = [Variante.Alora]
+        [Linhagem.Econos] = [Variante.Alora, Variante.AloraSolar]
     };
 
     public static bool IsValidCombination(Linhagem linhagem, Variante variante) =>
