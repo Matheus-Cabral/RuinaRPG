@@ -2,6 +2,8 @@ namespace RuinaRPG.Domain.Campaigns;
 
 public static class CampaignAttachmentTargetValidator
 {
-    public static bool ExactlyOneSet(string? itemId, string? npcSheetId, string? creatureSheetId, string? bankEntryId, string? imageId) =>
-        new[] { itemId, npcSheetId, creatureSheetId, bankEntryId, imageId }.Count(id => id is not null) == 1;
+    // "params" so every target FK a CampaignAttachment can carry (item, NPC, criatura, banco de
+    // magias, imagem, banco de runas) is counted the same way — exactly one must be set.
+    public static bool ExactlyOneSet(params string?[] targetIds) =>
+        targetIds.Count(id => id is not null) == 1;
 }

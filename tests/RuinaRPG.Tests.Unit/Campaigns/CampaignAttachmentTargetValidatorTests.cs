@@ -23,4 +23,12 @@ public class CampaignAttachmentTargetValidatorTests
     {
         CampaignAttachmentTargetValidator.ExactlyOneSet("item-1", "npc-1", null, null, null).Should().BeFalse();
     }
+
+    [Fact]
+    public void ExactlyOneSet_counts_the_rune_bank_target_as_a_sixth_alternative()
+    {
+        CampaignAttachmentTargetValidator.ExactlyOneSet(null, null, null, null, null, "rune-1").Should().BeTrue();
+        CampaignAttachmentTargetValidator.ExactlyOneSet("item-1", null, null, null, null, "rune-1").Should().BeFalse();
+        CampaignAttachmentTargetValidator.ExactlyOneSet(null, null, null, null, null, null).Should().BeFalse();
+    }
 }

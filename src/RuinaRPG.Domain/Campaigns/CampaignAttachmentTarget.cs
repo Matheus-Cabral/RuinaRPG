@@ -6,5 +6,6 @@ public enum CampaignAttachmentTarget
     NpcSheet,
     CreatureSheet,
     SpellAbilityBankEntry,
-    Image
+    Image,
+    RuneBankEntry
 }

@@ -142,6 +142,16 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 
 O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente**, em `CharacterSpellAbilities`/`NpcSpellAbilities`/`CreatureSpellAbilities` (seção 6) — modelar como um tipo owned/complexo do EF Core reaproveitado nas 4 tabelas é razoável, já que o formato é idêntico.
 
+**RuneBankEntries** *(ver "[[Requisitos - Banco de Runas]]")* — biblioteca de Runas do GM; cada Runa criada numa ficha (Personagem ou NPC) tem uma cópia independente aqui.
+
+| Coluna | Tipo | Nota |
+|---|---|---|
+| Id | PK | |
+| GmId | FK → Users | |
+| Nome | string | |
+| Descricao | text | |
+| Grau | int | |
+
   
 
 # 5. Campanhas
@@ -165,7 +175,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | CampaignId | FK → Campaigns |
 | UserId | FK → Users |
 
-**CampaignAttachments** — polimórfico via 5 FKs anuláveis (exatamente uma preenchida por linha).
+**CampaignAttachments** — polimórfico via 6 FKs anuláveis (exatamente uma preenchida por linha).
 
 | Coluna | Tipo | Nota |
 |---|---|---|
@@ -176,7 +186,8 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | CreatureSheetId | FK → CreatureSheets, nullable | |
 | SpellAbilityBankEntryId | FK → SpellAbilityBankEntries, nullable | |
 | ImageId | FK → Images, nullable | imagem avulsa (R0007 da Campanha) |
-| IsPublic | bool | usado quando ItemId/SpellAbilityBankEntryId/ImageId está setado |
+| RuneBankEntryId | FK → RuneBankEntries, nullable | |
+| IsPublic | bool | usado quando ItemId/SpellAbilityBankEntryId/RuneBankEntryId/ImageId está setado |
 | NpcNomePublico | bool | usado quando NpcSheetId está setado (R0004 do NPC) |
 | NpcImagemPublica | bool | idem |
 | CreatureNomePublico | bool | usado quando CreatureSheetId está setado (R0003 da Criatura) |
@@ -307,6 +318,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nome | string |
 | Descricao | text |
 | Grau | int |
+| SourceBankEntryId | FK → RuneBankEntries, nullable (só rastreabilidade — R0003 do Banco de Runas) |
 
 **CharacterMasteries** (4.e)
 
@@ -379,6 +391,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable), como `CharacterRunes`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 

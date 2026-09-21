@@ -12,6 +12,7 @@ using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Runes;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Persistence;
@@ -25,6 +26,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Item> Items => Set<Item>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
+    public DbSet<RuneBankEntry> RuneBankEntries => Set<RuneBankEntry>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignMember> CampaignMembers => Set<CampaignMember>();
     public DbSet<CampaignAttachment> CampaignAttachments => Set<CampaignAttachment>();
@@ -194,6 +196,14 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder.Entity<RuneBankEntry>(entity =>
+        {
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(e => e.GmId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<Campaign>(entity =>
         {
             entity.HasOne<ApplicationUser>()
@@ -308,6 +318,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<SpellAbilityBankEntry>().WithMany().HasForeignKey(a => a.SpellAbilityBankEntryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<RuneBankEntry>().WithMany().HasForeignKey(a => a.RuneBankEntryId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(a => a.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
 

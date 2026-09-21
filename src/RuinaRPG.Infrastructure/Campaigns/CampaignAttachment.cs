@@ -9,6 +9,7 @@ public class CampaignAttachment
     public Guid? CreatureSheetId { get; set; }
     public Guid? SpellAbilityBankEntryId { get; set; }
     public Guid? ImageId { get; set; }
+    public Guid? RuneBankEntryId { get; set; }
     public bool IsPublic { get; set; }
     public bool NpcNomePublico { get; set; }
     public bool NpcImagemPublica { get; set; }
