@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 
@@ -189,5 +190,74 @@ public class CreatureAttributesControllerTests : IClassFixture<PostgresFixture>,
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>();
         body!.Single(a => a.Atributo == "Forca").Total.Should().Be(8); // 5 + floor(3/2) + 2
+    }
+
+    [Fact]
+    public async Task Budget_at_level_1_offers_9_points_and_reports_zero_spent()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBud1", "creatureattrbud1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.PontosDisponiveis.Should().Be(9);
+        body.GastoTotal.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Budget_adds_the_Pontos_de_Atributo_of_every_level_up_to_the_sheets_Nivel()
+    {
+        // Tabela de Níveis: 9 (nível 1) + 1 (nível 2) + 1 (nível 6) + 2 (nível 10) = 13.
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBud2", "creatureattrbud2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmToken, 10));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.PontosDisponiveis.Should().Be(13);
+    }
+
+    [Fact]
+    public async Task Budget_GastoTotal_is_the_sum_of_Gasto_across_attributes()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBud3", "creatureattrbud3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateCreatureAttributeRequest(3, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateCreatureAttributeRequest(4, 5, true)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.GastoTotal.Should().Be(7); // Bônus não entra no orçamento
+    }
+
+    [Fact]
+    public async Task Update_above_the_budget_is_still_accepted_and_the_budget_reports_the_overspend()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBud4", "creatureattrbud4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken); // nível 1 = 9 pontos
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateCreatureAttributeRequest(50, 0, false)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmToken));
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.GastoTotal.Should().Be(50);
+        body.PontosDisponiveis.Should().Be(9);
+    }
+
+    [Fact]
+    public async Task Budget_by_a_different_gm_returns_404()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureAttrBudOwner5", "creatureattrbudowner5@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureAttrBudOther5", "creatureattrbudother5@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmTokenOther));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
