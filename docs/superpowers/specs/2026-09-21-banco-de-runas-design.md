@@ -25,7 +25,7 @@ campo extra é necessário e nenhum é adicionado.
 
 Fora de escopo, deliberadamente:
 
-- **Ficha de Criatura** — continua sem Runas (`Requisitos - Ficha de Criaturas.md`, R0004).
+- **Ficha de Criatura** — continua sem Runas (`Requisitos - Ficha de Criaturas.md`, R0007).
 - **Runas que já existem nas fichas** — o banco **começa vazio**; não há migração de dados (decisão do
   usuário; igual ao que o Banco de Magias fez ao nascer).
 - **Limite de Grau** — o doc de 4.d diz que o Grau é "limitado ao Grau atual do personagem", mas o código
@@ -84,8 +84,9 @@ nulos; sem checagem de Grau).
 ### Fichas — `POST .../runes` (Personagem e NPC)
 
 `AddCharacterRuneRequest` e `AddNpcRuneRequest` passam a ser
-`(string? SourceBankEntryId, string? Nome, string? Descricao, int? Grau)`, mesmo formato dos requests de
-Magia/Habilidade. Exatamente um caminho é aceito, senão 400:
+`(string? Nome, string? Descricao, int? Grau, string? SourceBankEntryId = null)` — `SourceBankEntryId` no
+**fim** e opcional, para os chamadores que já montam do zero continuarem compilando. Exatamente um caminho é
+aceito, senão 400:
 
 - **do zero:** `Nome`, `Descricao` e `Grau` preenchidos;
 - **do banco:** `SourceBankEntryId` preenchido — copia `Nome`/`Descricao`/`Grau` da entrada. Entrada

@@ -298,13 +298,13 @@ Contratos dependem da criatura invocada (ver "Contrato Mágico" em "[[GRAUS & C�
 
   
 
-Runas são um encantamento das vocações não mágicas (Campeão e Caçador). Lista incremental: o jogador adiciona uma Runa por vez, com os campos:
+Runas são um encantamento das vocações não mágicas (Campeão e Caçador). Lista incremental: o jogador adiciona uma Runa por vez — montando do zero ou partindo de uma entrada do "[[Requisitos - Banco de Runas]]" (R0003; o jogador só escolhe entre as entradas que o GM liberou como públicas na campanha) —, com os campos:
 
 - *Nome da Runa*: text input.
 - *Descrição*: texto livre.
 - *Grau*: campo numérico, limitado ao Grau atual do personagem (ver 1.b).
 
-Uma Runa pode ser removida pelo jogador a qualquer momento.
+Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Editar a Runa na ficha depois não altera a cópia do banco, e vice-versa.
 
   
 
@@ -417,9 +417,9 @@ O jogador dono pode editar ou excluir qualquer entrada já publicada. Diferente 
 
 A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece — o estado "fechada" persiste (sobrevive a recarregar a página ou sair e voltar a entrar na ficha).
 
-# **R0003** - Os campos de Item, Magia/Habilidade e Imagem só oferecem o que a campanha liberou.
+# **R0003** - Os campos de Item, Magia/Habilidade, Runa e Imagem só oferecem o que a campanha liberou.
 
-> Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 6. Diário só listam Itens, entradas do Banco de Magias e Habilidades e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
+> Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades e 4.d) Runas (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 6. Diário só listam Itens, entradas do Banco de Magias e Habilidades, entradas do Banco de Runas e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
 >
 > Um **GM** editando qualquer ficha (a própria, ou a de um jogador) continua com acesso irrestrito ao catálogo/banco/imagens, como hoje.
 

@@ -53,3 +53,6 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
 **Descrição**: Como no Personagem (ver 2.a de "[[Requisitos - Ficha de Personagem]]"), a seção *Atributos* exibe **Pontos de Atributo: gasto / disponíveis** — a soma do *Gasto* dos 8 atributos contra os "Pontos de Atributo" que o *Nível* da ficha já concedeu na "[[Tabela de Níveis]]" (criação + níveis). Diferente do Personagem, o valor **não é um limite**: o GM pode salvar um *Gasto* acima do total, e o contador apenas fica destacado em vermelho como aviso. O contador é recalculado ao salvar um atributo e ao mudar o *Nível* ou a *Experiência atual* (R0005).
 
+# **R0008** - As Runas do NPC usam o Banco de Runas.
+
+**Descrição**: A aba 4.d do NPC segue "[[Requisitos - Ficha de Personagem]]" 4.d sem alteração, inclusive a origem da Runa (do zero ou do "[[Requisitos - Banco de Runas]]") e a cópia automática para o banco do GM (R0001 do banco). O GM que gerencia o NPC escolhe qualquer entrada do próprio banco; quando o NPC foi concedido a um jogador (R0001, exceção), o jogador só escolhe entre as entradas públicas da campanha da concessão, e a Runa que ele cria também vira anexo público dessa campanha (R0007 do banco).

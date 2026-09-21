@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo, complementar a "[[Requisitos - Ficha de Personagem]]" (4.d) e "[[Requisitos - Ficha de NPCs]]". A Ficha de Criatura não tem Runas (ver "[[Requisitos - Ficha de Criaturas]]" R0004) e, portanto, não usa este banco.
+> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo, complementar a "[[Requisitos - Ficha de Personagem]]" (4.d) e "[[Requisitos - Ficha de NPCs]]". A Ficha de Criatura não tem Runas (ver "[[Requisitos - Ficha de Criaturas]]" R0007) e, portanto, não usa este banco.
 
   
 

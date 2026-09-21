@@ -1,3 +1,4 @@
 namespace RuinaRPG.Contracts.NpcSheets;
 
-public record AddNpcRuneRequest(string Nome, string Descricao, int Grau);
+// Mesmo formato de AddCharacterRuneRequest.
+public record AddNpcRuneRequest(string? Nome, string? Descricao, int? Grau, string? SourceBankEntryId = null);
