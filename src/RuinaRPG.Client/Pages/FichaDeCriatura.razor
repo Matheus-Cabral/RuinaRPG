@@ -157,6 +157,12 @@
 
     <MudTabPanel Text="Atributos & Perícias">
         <Section Title="Atributos">
+            @if (_attributeBudget is not null)
+            {
+                <MudText Color="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? Color.Error : Color.Default)">
+                    Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
+                </MudText>
+            }
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Proeficiência</th><th>Total</th></tr></thead>
                 <tbody>
@@ -602,6 +608,7 @@
     private bool _imageEditing;
     private bool _imageGalleryOpen;
     private List<CreatureAttributeResponse> _attributes = new();
+    private AttributePointBudgetResponse? _attributeBudget;
     private List<CreatureSkillResponse> _skills = new();
     private List<CreatureWeaponResponse> _weapons = new();
     private readonly WeaponFormModel _weaponForm = new();
@@ -909,6 +916,7 @@
     private async Task LoadTabs2And3Async()
     {
         _attributes = await Http.GetFromJsonAsync<List<CreatureAttributeResponse>>($"creature-sheets/{SheetId}/attributes") ?? new();
+        _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"creature-sheets/{SheetId}/attributes/budget");
         _skills = await Http.GetFromJsonAsync<List<CreatureSkillResponse>>($"creature-sheets/{SheetId}/skills") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<CreatureWeaponResponse>>($"creature-sheets/{SheetId}/weapons") ?? new();
         _armorSlots = await Http.GetFromJsonAsync<List<CreatureArmorSlotResponse>>($"creature-sheets/{SheetId}/armor-slots") ?? new();

@@ -48,3 +48,8 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0006** - O popup de Característica Racial (5.d) é resolvido pelo GM, não pelo NPC.
 
 **Descrição**: O mecanismo é idêntico ao da Ficha de Personagem (ver "[[Requisitos - Ficha de Personagem]]" 5.d) — a Variante do NPC concede uma Característica Gratuita (e, para algumas Variantes, também uma Obrigatória) a custo 0, fora do orçamento de pontos. A única diferença é quem resolve a escolha: como a Ficha de NPC não tem jogador dono (R0001), é o **GM** quem vê e resolve o popup, não um jogador — mesma exceção de R0001 se aplica quando a ficha foi concedida a um jogador (aí é ele quem resolve, como na própria Ficha de Personagem).
+
+# **R0007** - O total de Pontos de Atributo por Nível é exibido, mas não bloqueia o GM.
+
+**Descrição**: Como no Personagem (ver 2.a de "[[Requisitos - Ficha de Personagem]]"), a seção *Atributos* exibe **Pontos de Atributo: gasto / disponíveis** — a soma do *Gasto* dos 8 atributos contra os "Pontos de Atributo" que o *Nível* da ficha já concedeu na "[[Tabela de Níveis]]" (criação + níveis). Diferente do Personagem, o valor **não é um limite**: o GM pode salvar um *Gasto* acima do total, e o contador apenas fica destacado em vermelho como aviso. O contador é recalculado ao salvar um atributo e ao mudar o *Nível* ou a *Experiência atual* (R0005).
+

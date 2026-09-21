@@ -3,10 +3,12 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers;
@@ -14,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/attributes")]
-public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
+public class CreatureAttributesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureAttributeResponse>>> List(Guid sheetId)
@@ -33,6 +35,25 @@ public class CreatureAttributesController(RuinaRpgDbContext db) : ControllerBase
                 AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                     artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
             .ToList();
+    }
+
+    /// <summary>
+    /// Pontos de Atributo que o Nível da ficha já deu (mesma Tabela de Níveis do Personagem) contra
+    /// o Gasto somado. Só informa — ao contrário do Personagem, o GM pode passar do total, então
+    /// o Update nunca rejeita (ver Requisitos - Ficha de NPCs R0007).
+    /// </summary>
+    [HttpGet("budget")]
+    public async Task<ActionResult<AttributePointBudgetResponse>> Budget(Guid sheetId)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound();
+
+        var gastoTotal = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).SumAsync(a => a.Gasto);
+        return new AttributePointBudgetResponse(gastoTotal, AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis));
     }
 
     [HttpPut("{atributo}")]
