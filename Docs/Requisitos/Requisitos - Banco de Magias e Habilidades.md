@@ -2,7 +2,7 @@
 
   
 
-> **Modelo de edição**: o banco pertence à conta do GM (não a uma Campanha específica — ver "[[Requisitos - Campanha]]" para como uma entrada dele é opcionalmente anexada e liberada numa Campanha). O GM tem acesso total a qualquer entrada, a qualquer momento. Jogadores não têm uma tela própria para o banco — eles só o alcançam a partir de 5.b/4.b nas fichas que controlam, e apenas para reutilizar entradas (ver R0003).
+> **Modelo de edição**: o banco pertence à conta do GM (não a uma Campanha específica — ver "[[Requisitos - Campanha]]" para como uma entrada dele é opcionalmente anexada e liberada numa Campanha). O GM tem acesso total a qualquer entrada, a qualquer momento. Jogadores não têm uma tela própria para o banco nem leitura direta dele (a listagem é GM-only) — eles só o alcançam a partir de 4.b nas fichas que controlam, e apenas para reutilizar as entradas que o GM anexou como públicas à campanha (ver R0003).
 
   
 

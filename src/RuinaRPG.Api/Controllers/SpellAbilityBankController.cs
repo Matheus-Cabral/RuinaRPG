@@ -12,13 +12,14 @@ namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/spell-ability-bank")]
-[Authorize]
+[Authorize(Roles = "GM")]
 public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
 {
-    // Curating the Banco (create/edit/delete) stays GM-only; browsing it (List, below) doesn't —
-    // a player needs to see their own GM's bank to pick a Magia/Habilidade for their own sheet.
+    // The whole Banco is GM-only — curating and browsing. A Jogador never reads the GM's private bank:
+    // to pick a Magia/Habilidade for their sheet they use CampaignCatalogController's
+    // "available-spell-abilities" (only entries the GM attached as public), and the sheet controllers
+    // re-check that on the server. Same model as the Banco de Runas.
     [HttpPost]
-    [Authorize(Roles = "GM")]
     public async Task<ActionResult<SpellAbilityEntryResponse>> Create(CreateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
@@ -57,9 +58,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         [FromQuery] string? tipo,
         [FromQuery] int? grau)
     {
-        var gmId = await ResolveEffectiveGmIdAsync();
-        if (gmId is null)
-            return Forbid();
+        var gmId = CurrentUserId();
 
         var query = db.SpellAbilityBankEntries
             .Include(e => e.Efeitos)
@@ -79,7 +78,6 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Update(Guid id, UpdateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
@@ -121,7 +119,6 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "GM")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var gmId = CurrentUserId();
@@ -139,15 +136,4 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
-
-    /// <summary>Same reasoning as ItemsController.ResolveEffectiveGmIdAsync — see there.</summary>
-    private async Task<Guid?> ResolveEffectiveGmIdAsync()
-    {
-        var callerId = CurrentUserId();
-        if (User.IsInRole("GM"))
-            return callerId;
-
-        var caller = await db.Users.FindAsync(callerId);
-        return caller?.InvitedByGmId;
-    }
 }

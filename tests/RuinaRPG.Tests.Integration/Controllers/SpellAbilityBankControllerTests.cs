@@ -113,21 +113,17 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     }
 
     [Fact]
-    public async Task List_as_a_jogador_returns_their_own_gms_bank_only()
+    public async Task List_as_a_jogador_returns_403_because_the_bank_is_gm_only()
     {
-        // A player needs to browse the Banco to pick a Magia/Habilidade for their own sheet —
-        // Create/Update/Delete stay GM-only, but List doesn't.
-        var gmTokenA = await RegisterGmAndGetTokenAsync("BankGmJogadorA", "bankgmjogadora@teste.com");
-        var gmTokenB = await RegisterGmAndGetTokenAsync("BankGmJogadorB", "bankgmjogadorb@teste.com");
-        var jogadorTokenA = await RegisterJogadorTokenAsync(gmTokenA, "BankJogadorScopeA", "bankjogadorscopea@teste.com");
-        await CreateAsync(gmTokenA, BolaDeFogo());
-        await CreateAsync(gmTokenB, BolaDeFogo());
+        // O banco privado do GM nunca é lido por um jogador: ele só enxerga o que o GM anexou como
+        // público à campanha (GET campaigns/{id}/available-spell-abilities), como no Banco de Runas.
+        var gmToken = await RegisterGmAndGetTokenAsync("BankGmJogadorA", "bankgmjogadora@teste.com");
+        var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "BankJogadorScopeA", "bankjogadorscopea@teste.com");
+        await CreateAsync(gmToken, BolaDeFogo());
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", jogadorTokenA));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", jogadorToken));
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
-        body!.Should().ContainSingle();
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
