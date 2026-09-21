@@ -1413,6 +1413,13 @@
 
     private async Task AddRuneAsync()
     {
+        var erro = _runeForm.Validar();
+        if (erro is not null)
+        {
+            _errorMessage = erro;
+            return;
+        }
+
         var request = _runeForm.DoBanco
             ? new AddCharacterRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
             : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau);

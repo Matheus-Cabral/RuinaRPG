@@ -24,7 +24,7 @@
 
 # **R0003** - Ao adicionar uma Runa numa ficha, é possível partir de uma entrada existente do banco.
 
-**Descrição**: Ao adicionar uma Runa em 4.d de uma Ficha de Personagem ou de NPC, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.d) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. O GM pode escolher qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** (R0007). A partir da escolha, a Runa na ficha é uma cópia independente (mesmo comportamento de R0001) — editá-la depois não afeta a entrada original do banco.
+**Descrição**: Ao adicionar uma Runa em 4.d de uma Ficha de Personagem ou de NPC, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.d) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. O GM pode escolher qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** ("[[Requisitos - Campanha]]" R0008). A partir da escolha, a Runa na ficha é uma cópia independente (mesmo comportamento de R0001) — editá-la depois não afeta a entrada original do banco.
 
   
 
@@ -36,7 +36,7 @@
 
 # **R0005** - Campos de uma entrada do banco.
 
-**Descrição**: Os mesmos campos de uma Runa em "[[Requisitos - Ficha de Personagem]]" 4.d: **Nome** (texto), **Descrição** (texto livre) e **Grau** (número inteiro). Nenhum campo é calculado. Como na ficha, o Grau não é limitado ao Grau do personagem.
+**Descrição**: Os mesmos campos de uma Runa em "[[Requisitos - Ficha de Personagem]]" 4.d: **Nome** (texto), **Descrição** (texto livre) e **Grau** (número inteiro). Nenhum campo é calculado. Uma entrada do banco não pertence a nenhuma ficha, então o limite de Grau de "[[Requisitos - Ficha de Personagem]]" 4.d não se aplica a ela.
 
   
 

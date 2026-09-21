@@ -1296,6 +1296,13 @@
 
     private async Task AddRuneAsync()
     {
+        var erro = _runeForm.Validar();
+        if (erro is not null)
+        {
+            _errorMessage = erro;
+            return;
+        }
+
         var request = _runeForm.DoBanco
             ? new AddNpcRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
             : new AddNpcRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau);

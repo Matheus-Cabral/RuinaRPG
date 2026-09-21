@@ -14,6 +14,15 @@ public class RuneOrigemModel
 
     public bool DoBanco => Origem == "Banco";
 
+    /// <summary>Mensagem de erro em português se o formulário não pode ser enviado; null se está válido.</summary>
+    public string? Validar()
+    {
+        if (DoBanco)
+            return string.IsNullOrWhiteSpace(SourceBankEntryId) ? "Escolha uma entrada do Banco de Runas." : null;
+
+        return string.IsNullOrWhiteSpace(Nome) ? "Informe o nome da runa." : null;
+    }
+
     public void Limpar()
     {
         Origem = "Zero";

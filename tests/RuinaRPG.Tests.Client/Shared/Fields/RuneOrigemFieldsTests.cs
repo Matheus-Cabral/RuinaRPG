@@ -64,4 +64,40 @@ public class RuneOrigemFieldsTests : MudBunitContext
         cut.FindComponents<MudTextField<string>>().Should().BeEmpty();
         cut.FindComponents<MudNumericField<int>>().Should().BeEmpty();
     }
+
+    [Fact]
+    public void Validar_from_scratch_rejects_a_blank_Nome()
+    {
+        new RuneOrigemModel { Origem = "Zero", Nome = "" }.Validar().Should().Be("Informe o nome da runa.");
+    }
+
+    [Fact]
+    public void Validar_from_scratch_rejects_a_whitespace_Nome()
+    {
+        new RuneOrigemModel { Origem = "Zero", Nome = "   " }.Validar().Should().Be("Informe o nome da runa.");
+    }
+
+    [Fact]
+    public void Validar_from_scratch_accepts_a_Nome()
+    {
+        new RuneOrigemModel { Origem = "Zero", Nome = "Runa do Fogo" }.Validar().Should().BeNull();
+    }
+
+    [Fact]
+    public void Validar_from_the_bank_rejects_an_empty_bank_entry_id()
+    {
+        new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "" }.Validar().Should().Be("Escolha uma entrada do Banco de Runas.");
+    }
+
+    [Fact]
+    public void Validar_from_the_bank_accepts_a_bank_entry_id()
+    {
+        new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1" }.Validar().Should().BeNull();
+    }
+
+    [Fact]
+    public void Validar_from_the_bank_ignores_a_blank_Nome()
+    {
+        new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1", Nome = "" }.Validar().Should().BeNull();
+    }
 }
