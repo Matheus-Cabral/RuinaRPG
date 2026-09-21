@@ -591,15 +591,17 @@
 
         <Section Title="Runas">
             <EditForm Model="_runeForm" OnValidSubmit="AddRuneAsync">
-                <RuneOrigemFields Model="_runeForm" BankEntries="_runeBankEntries" />
+                <RuneOrigemFields Model="_runeForm" BankEntries="_runeBankEntries" AvailableImages="_myImages"
+                                  CampaignId="@(_isGmCaller ? null : _campaignId)" OnError="@(e => _errorMessage = e)" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead><tr><th>Nome</th><th>Descrição</th><th>Grau</th><th></th></tr></thead>
+                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var rune in _runes)
                     {
                         <tr>
+                            <td>@if (rune.ImageUrl is not null) { <ClickableImage Src="@rune.ImageUrl" Width="60" /> }</td>
                             <td>@rune.Nome</td>
                             <td>@rune.Descricao</td>
                             <td>@rune.Grau</td>
@@ -1422,7 +1424,7 @@
 
         var request = _runeForm.DoBanco
             ? new AddCharacterRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
-            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau);
+            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId);
 
         var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)

@@ -1,7 +1,9 @@
 using Bunit;
 using FluentAssertions;
 using MudBlazor;
+using RuinaRPG.Client.Shared;
 using RuinaRPG.Client.Shared.Fields;
+using RuinaRPG.Contracts.Images;
 using RuinaRPG.Contracts.Runes;
 using Xunit;
 
@@ -30,7 +32,7 @@ public class RuneOrigemFieldsTests : MudBunitContext
     [Fact]
     public void Limpar_resets_every_field_to_the_starting_state()
     {
-        var model = new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1", Nome = "X", Descricao = "Y", Grau = 4 };
+        var model = new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1", Nome = "X", Descricao = "Y", Grau = 4, ImageId = "img-1" };
 
         model.Limpar();
 
@@ -39,6 +41,7 @@ public class RuneOrigemFieldsTests : MudBunitContext
         model.Nome.Should().BeEmpty();
         model.Descricao.Should().BeEmpty();
         model.Grau.Should().Be(0);
+        model.ImageId.Should().BeEmpty();
     }
 
     [Fact]
@@ -63,6 +66,70 @@ public class RuneOrigemFieldsTests : MudBunitContext
         cut.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Contain(["e1", "e2"]);
         cut.FindComponents<MudTextField<string>>().Should().BeEmpty();
         cut.FindComponents<MudNumericField<int>>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void From_scratch_shows_the_image_picker()
+    {
+        var cut = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Zero" })
+            .Add(x => x.BankEntries, Entradas));
+
+        cut.FindComponents<ImageAttachmentField>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void From_scratch_preselects_the_model_image_in_the_picker()
+    {
+        var imagens = new List<ImageSummaryResponse> { new("img-1", "/img/1.png", DateTime.UtcNow) };
+        var cut = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Zero", ImageId = "img-1" })
+            .Add(x => x.AvailableImages, imagens));
+
+        cut.FindComponent<ImageAttachmentField>().Instance.SelectedIds.Should().Equal("img-1");
+    }
+
+    [Fact]
+    public async Task Changing_the_picker_selection_updates_Model_ImageId()
+    {
+        var model = new RuneOrigemModel { Origem = "Zero" };
+        var cut = Render<RuneOrigemFields>(p => p.Add(x => x.Model, model));
+
+        await cut.InvokeAsync(() => cut.FindComponent<ImageAttachmentField>().Instance.SelectedIdsChanged.InvokeAsync(new List<string> { "img-9" }));
+        model.ImageId.Should().Be("img-9");
+
+        await cut.InvokeAsync(() => cut.FindComponent<ImageAttachmentField>().Instance.SelectedIdsChanged.InvokeAsync(new List<string>()));
+        model.ImageId.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void From_the_bank_has_no_image_picker()
+    {
+        var cut = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Banco" })
+            .Add(x => x.BankEntries, Entradas));
+
+        cut.FindComponents<ImageAttachmentField>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void From_the_bank_shows_the_thumbnail_of_the_picked_entry_when_it_has_an_image()
+    {
+        RuneBankEntryResponse[] entradas =
+        [
+            new("e1", "Runa do Fogo", "Queima.", 1, "img-1", "/img/fogo.png"),
+            new("e2", "Runa do Gelo", "Congela.", 2),
+        ];
+
+        var comImagem = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1" })
+            .Add(x => x.BankEntries, entradas));
+        comImagem.FindComponents<ClickableImage>().Should().ContainSingle(c => c.Instance.Src == "/img/fogo.png");
+
+        var semImagem = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e2" })
+            .Add(x => x.BankEntries, entradas));
+        semImagem.FindComponents<ClickableImage>().Should().BeEmpty();
     }
 
     [Fact]

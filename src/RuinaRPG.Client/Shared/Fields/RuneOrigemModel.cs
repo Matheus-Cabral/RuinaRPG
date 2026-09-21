@@ -11,6 +11,8 @@ public class RuneOrigemModel
     public string Nome { get; set; } = "";
     public string Descricao { get; set; } = "";
     public int Grau { get; set; }
+    /// <summary>Imagem opcional (só na origem "do zero"); vazio = sem imagem.</summary>
+    public string ImageId { get; set; } = "";
 
     public bool DoBanco => Origem == "Banco";
 
@@ -30,5 +32,6 @@ public class RuneOrigemModel
         Nome = "";
         Descricao = "";
         Grau = 0;
+        ImageId = "";
     }
 }

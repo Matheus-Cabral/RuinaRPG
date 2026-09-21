@@ -2,6 +2,7 @@ using Bunit;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
+using RuinaRPG.Client.Shared;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -74,6 +75,69 @@ public class BancoDeRunasFormTests : MudBunitContext
 
         putPath.Should().EndWith("rune-bank/entry-1");
         putBody.Should().Contain("Runa do Fogo Maior");
+    }
+
+    [Fact]
+    public async Task Editing_an_entry_that_has_an_image_keeps_its_imageId_in_the_PUT_body()
+    {
+        string? putBody = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("images/mine"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, ImageId = "img-7", ImageUrl = "/img/7.png" }
+                }) };
+            if (request.Method == HttpMethod.Put)
+            {
+                putBody = request.Content!.ReadAsStringAsync().Result;
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeRunasForm>(p => p.Add(x => x.EntryId, "entry-1"));
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo Maior"));
+
+        await Task.Delay(700);
+
+        putBody.Should().Contain("\"imageId\":\"img-7\"");
+    }
+
+    [Fact]
+    public async Task Picking_an_image_in_create_mode_is_sent_in_the_POST_body()
+    {
+        string? postBody = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { Id = "img-3", Url = "/img/3.png", CreatedAt = DateTime.UtcNow } }) };
+            if (request.Method == HttpMethod.Post)
+            {
+                postBody = request.Content!.ReadAsStringAsync().Result;
+                return new HttpResponseMessage(HttpStatusCode.Created);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeRunasForm>();
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo"));
+        await cut.InvokeAsync(() => cut.FindComponent<ImageAttachmentField>().Instance.SelectedIdsChanged.InvokeAsync(new List<string> { "img-3" }));
+
+        var salvar = cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar"));
+        await cut.InvokeAsync(() => salvar.Click());
+
+        postBody.Should().Contain("\"imageId\":\"img-3\"");
     }
 
     [Fact]

@@ -27,6 +27,7 @@
     <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
         <thead>
             <tr>
+                <th></th>
                 <th>Nome</th>
                 <th>Grau</th>
                 <th>Descrição</th>
@@ -37,6 +38,7 @@
             @foreach (var entry in _entries)
             {
                 <tr>
+                    <td>@if (entry.ImageUrl is not null) { <ClickableImage Src="@entry.ImageUrl" Width="40" /> }</td>
                     <td>@entry.Nome</td>
                     <td>@entry.Grau</td>
                     <td>@entry.Descricao</td>

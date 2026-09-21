@@ -1,4 +1,5 @@
 @using MudBlazor
+@using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Runes
 
 @* Campos do formulário de adicionar Runa em 4.d, compartilhados por FichaDePersonagem e FichaDeNpc:
@@ -19,15 +20,28 @@
             <MudSelectItem Value="@entry.Id">@entry.Nome (Grau @entry.Grau)</MudSelectItem>
         }
     </MudSelect>
+    var picked = BankEntries.FirstOrDefault(e => e.Id == Model.SourceBankEntryId);
+    if (picked?.ImageUrl is not null)
+    {
+        <div class="mt-2"><ClickableImage Src="@picked.ImageUrl" Width="60" /></div>
+    }
 }
 else
 {
     <MudTextField T="string" @bind-Value="Model.Nome" Label="Nome" />
     <MudTextField T="string" @bind-Value="Model.Descricao" Label="Descrição" Lines="3" />
     <MudNumericField T="int" @bind-Value="Model.Grau" Label="Grau" />
+    <ImageAttachmentField AvailableImages="AvailableImages" SelectedIds="SelectedImageIds"
+                          SelectedIdsChanged="@(ids => Model.ImageId = ids.FirstOrDefault() ?? "")"
+                          OnError="OnError" CampaignId="CampaignId" Multiple="false" />
 }
 
 @code {
     [Parameter, EditorRequired] public RuneOrigemModel Model { get; set; } = new();
     [Parameter] public IReadOnlyList<RuneBankEntryResponse> BankEntries { get; set; } = [];
+    [Parameter] public List<ImageSummaryResponse> AvailableImages { get; set; } = new();
+    [Parameter] public string? CampaignId { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private List<string> SelectedImageIds => string.IsNullOrEmpty(Model.ImageId) ? new() : new() { Model.ImageId };
 }

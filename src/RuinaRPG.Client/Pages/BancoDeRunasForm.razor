@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Images
 @using RuinaRPG.Contracts.Runes
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
@@ -24,6 +25,9 @@
         <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
         <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
         <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+        <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
+                              SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); return NotifySavedAsync(); })"
+                              OnError="@(e => _errorMessage = e)" Multiple="false" />
     </Section>
 
     @if (EntryId is null)
@@ -47,6 +51,8 @@
     // same reasoning as BancoDeMagiasForm: EditContext reads _form lazily at validation time.
     private readonly EditContext _editContext;
     private readonly AutoSaveCoordinator _autoSave = new();
+    private List<ImageSummaryResponse> _myImages = new();
+    private List<string> _imageIds = new();
     private string? _errorMessage;
 
     public BancoDeRunasForm()
@@ -68,6 +74,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var imagesResponse = await Http.GetAsync("images/mine");
+        if (imagesResponse.IsSuccessStatusCode)
+            _myImages = await imagesResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
+
         if (EntryId is null)
             return;
 
@@ -83,6 +93,11 @@
         _form.Nome = existing.Nome;
         _form.Grau = existing.Grau;
         _form.Descricao = existing.Descricao;
+        _form.ImageId = existing.ImageId;
+        _imageIds = existing.ImageId is null ? new() : new() { existing.ImageId };
+        // The response carries the image itself, so the thumbnail shows even when it isn't in "images/mine".
+        if (existing.ImageId is not null && existing.ImageUrl is not null && _myImages.All(i => i.Id != existing.ImageId))
+            _myImages.Add(new ImageSummaryResponse(existing.ImageId, existing.ImageUrl, DateTime.UtcNow));
     }
 
     private async Task CreateAsync()
@@ -90,7 +105,7 @@
         if (!_editContext.Validate())
             return;
 
-        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau));
+        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.";
@@ -105,7 +120,7 @@
         if (!_editContext.Validate())
             return false;
 
-        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau));
+        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId));
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
 
@@ -130,5 +145,6 @@
         [Range(0, int.MaxValue)]
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
+        public string? ImageId { get; set; }
     }
 }
