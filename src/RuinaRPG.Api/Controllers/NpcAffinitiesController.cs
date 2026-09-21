@@ -25,7 +25,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, sheet.Vocacao, elementoAntigo: null, subElementoAntigo: null, out var elemento, out var subElemento, out var error))
+        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, request.CaminhoNome, sheet.Vocacao, elementoAntigo: null, subElementoAntigo: null, caminhoNomeAntigo: null, out var elemento, out var subElemento, out var error))
             return BadRequest(error);
 
         if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: null))
@@ -70,7 +70,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (affinity is null)
             return NotFound();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, sheet.Vocacao, affinity.Elemento, affinity.SubElemento, out var elemento, out var subElemento, out var error))
+        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, request.CaminhoNome, sheet.Vocacao, affinity.Elemento, affinity.SubElemento, affinity.CaminhoNome, out var elemento, out var subElemento, out var error))
             return BadRequest(error);
 
         if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: id,
@@ -110,8 +110,8 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
     // Elemento and Sub-Elemento are both optional — an Afinidade row can be added or left as a
     // blank placeholder, matching the PDF sheet's pre-printed empty rows (R0001 2.c). Only when
     // both are actually given does the Matriz Elemental combination get checked.
-    private static bool TryParseElementoSubElemento(string? elementoRaw, string? subElementoRaw, Vocacao? vocacao,
-        Elemento? elementoAntigo, SubElemento? subElementoAntigo,
+    private static bool TryParseElementoSubElemento(string? elementoRaw, string? subElementoRaw, string? caminhoNome, Vocacao? vocacao,
+        Elemento? elementoAntigo, SubElemento? subElementoAntigo, string? caminhoNomeAntigo,
         out Elemento? elemento, out SubElemento? subElemento, out string? error)
     {
         elemento = null;
@@ -154,6 +154,10 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
             error = "Esse Sub-Elemento não é liberado pela Vocação atual.";
             return false;
         }
+
+        error = CaminhoSubElementoRules.Validar(elemento, subElemento, caminhoNome, elementoAntigo, subElementoAntigo, caminhoNomeAntigo);
+        if (error is not null)
+            return false;
 
         return true;
     }

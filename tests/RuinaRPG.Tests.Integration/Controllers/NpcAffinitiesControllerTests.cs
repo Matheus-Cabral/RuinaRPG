@@ -66,14 +66,14 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Vida", 10)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcAffinityResponse>>();
         body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SubElemento == "Vida" && a.SubElementoValor == 2
-            && a.CaminhoNome == "Caminho da Fênix" && a.Experiencia == 10);
+            && a.CaminhoNome == "Vida" && a.Experiencia == 10);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Ar", 0, "Ferro", 0, "Caminho Inválido", 0)));
+            new AddNpcAffinityRequest("Ar", 0, "Ferro", 0, null, 0)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -95,7 +95,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Terra", 1, "Vida", 1, "Caminho da Terra", 5)));
+            new AddNpcAffinityRequest("Terra", 1, "Vida", 1, "Mundano", 5)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken));
@@ -114,7 +114,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmTokenOther,
-            new AddNpcAffinityRequest("Terra", 1, "Vida", 1, "Caminho da Terra", 5)));
+            new AddNpcAffinityRequest("Terra", 1, "Vida", 1, "Mundano", 5)));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -153,11 +153,11 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Vida", 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Terra", 5, "Aprimorar", 1, "Caminho da Terra", 8)));
+            new UpdateNpcAffinityRequest("Terra", 5, "Aprimorar", 1, "Vida", 8)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
         updated!.Elemento.Should().Be("Terra");
@@ -176,7 +176,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmTokenOwner,
-            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Vida", 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmTokenOther,
@@ -205,7 +205,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, "Vida", 2, "Vida", 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         // Troca a Vocação pra Feiticeiro (não libera mais Vida, que é de Consagração).
@@ -215,7 +215,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
 
         // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 3, "Vida", 2, "Caminho da Fênix", 10)));
+            new UpdateNpcAffinityRequest("Fogo", 3, "Vida", 2, "Vida", 10)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -279,6 +279,88 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         // pre-existing collision is not newly introduced, so it must be grandfathered through.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{row2!.Id}", gmToken,
             new UpdateNpcAffinityRequest("Fogo", 1, null, null, null, 7)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Add_a_Curar_row_with_Fogo_and_the_Vida_Caminho_returns_201()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm17", "npcaff17@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Theory]
+    [InlineData("Fogo", "Mundano")]
+    [InlineData("Fogo", "Alma")]
+    [InlineData("Fogo", null)]
+    [InlineData(null, "Vida")]
+    [InlineData("Ar", "Vida")]
+    public async Task Add_a_Curar_row_without_both_Fogo_and_the_Vida_Caminho_returns_400(string? elemento, string? caminho)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"NpcAffGm18{elemento}{caminho}", $"npcaff18{elemento}{caminho}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest(elemento, 1, "Curar", 1, caminho, 0)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Add_rejects_a_free_text_Caminho()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm19", "npcaff19@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Fogo", 1, null, null, "Caminho da Fênix", 0)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_rejects_changing_the_Caminho_out_from_under_a_Curar_row()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm20", "npcaff20@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
+        var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
+            new UpdateNpcAffinityRequest("Fogo", 1, "Curar", 1, "Mundano", 0)));
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_keeps_a_legacy_free_text_Caminho_row_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm21", "npcaff21@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        Guid rowId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            rowId = Guid.NewGuid();
+            db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
+            {
+                Id = rowId, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SubElemento = SubElemento.Curar,
+                CaminhoNome = "Caminho da Fênix", Experiencia = 3
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{rowId}", gmToken,
+            new UpdateNpcAffinityRequest("Fogo", null, "Curar", null, "Caminho da Fênix", 9)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }

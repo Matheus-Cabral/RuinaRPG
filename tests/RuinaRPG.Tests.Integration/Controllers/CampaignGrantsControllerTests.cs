@@ -233,7 +233,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var sourceId = await CreateNpcSheetAsync(gmToken);
         await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // libera Dobra (Fogo) + Consagração (Vida)
-        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Vida", 2, "Caminho da Fênix", 10);
+        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Vida", 2, "Vida", 10);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
