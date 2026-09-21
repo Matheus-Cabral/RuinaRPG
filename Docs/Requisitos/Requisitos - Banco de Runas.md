@@ -12,7 +12,7 @@
 
 # **R0001** - Toda Runa criada em qualquer ficha é adicionada automaticamente ao banco.
 
-**Descrição**: Sempre que uma Runa é criada em 4.d de uma Ficha de Personagem ou de uma Ficha de NPC, uma cópia dela é automaticamente salva neste banco geral do GM — tanto quando criada por um jogador quanto quando criada pelo GM, sem etapa de aprovação, e tanto quando montada do zero quanto quando partiu de uma entrada existente do banco (R0003). A cópia no banco é **independente**: editar a Runa na ficha de origem depois de criada não altera a cópia no banco, e vice-versa. Uma Runa que já existia numa ficha antes deste banco existir **não** é copiada retroativamente — o banco começa vazio.
+**Descrição**: Sempre que uma Runa é criada em 4.d de uma Ficha de Personagem ou de uma Ficha de NPC, uma cópia dela é automaticamente salva neste banco geral do GM — tanto quando criada por um jogador quanto quando criada pelo GM, sem etapa de aprovação, e tanto quando montada do zero quanto quando partiu de uma entrada existente do banco (R0003). A cópia no banco é **independente**: editar depois a entrada do banco (R0006) não altera nenhuma Runa já adicionada a fichas. A Runa na ficha, por sua vez, não pode ser editada (só adicionada e removida — ver "[[Requisitos - Ficha de Personagem]]" 4.d), então nada na ficha muda a cópia do banco. Uma Runa que já existia numa ficha antes deste banco existir **não** é copiada retroativamente — o banco começa vazio.
 
   
 
@@ -24,7 +24,7 @@
 
 # **R0003** - Ao adicionar uma Runa numa ficha, é possível partir de uma entrada existente do banco.
 
-**Descrição**: Ao adicionar uma Runa em 4.d de uma Ficha de Personagem ou de NPC, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.d) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. O GM pode escolher qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** ("[[Requisitos - Campanha]]" R0008). A partir da escolha, a Runa na ficha é uma cópia independente (mesmo comportamento de R0001) — editá-la depois não afeta a entrada original do banco.
+**Descrição**: Ao adicionar uma Runa em 4.d de uma Ficha de Personagem ou de NPC, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.d) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. O GM pode escolher qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** ("[[Requisitos - Campanha]]" R0008). A partir da escolha, a Runa na ficha é uma cópia independente (mesmo comportamento de R0001) — editar a entrada do banco depois não afeta a Runa já adicionada à ficha. A Runa na ficha não pode ser editada; para mudá-la, remove-se e adiciona-se de novo.
 
   
 

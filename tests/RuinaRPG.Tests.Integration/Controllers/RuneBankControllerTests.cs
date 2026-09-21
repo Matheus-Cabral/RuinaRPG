@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Runes;
 
@@ -294,5 +296,125 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         foreign.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         malformed.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ---- Imagem de um jogador que chega à cópia automática do banco ----
+
+    private async Task<(string Id, string Url)> UploadImageAsync(string token, string campaignId)
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        content.Add(new StringContent(campaignId), "campaignId");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
+        return (body!.Id, body.Url);
+    }
+
+    private sealed record PlayerRuneSetup(string GmToken, string PlayerToken, string CampaignId, string ImageId, string ImageUrl, RuneBankEntryResponse BankCopy);
+
+    /// <summary>
+    /// Um jogador sobe uma imagem (auto-anexada como pública à campanha) e adiciona uma Runa do zero com ela;
+    /// a cópia automática no banco do GM passa a guardar a imagem do jogador, que o GM não subiu.
+    /// </summary>
+    private async Task<PlayerRuneSetup> BuildPlayerRuneSetupAsync(string suffix)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"RuneBankPvGm{suffix}", $"runebankpvgm{suffix}@teste.com");
+
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
+        var register = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"RuneBankPvPl{suffix}", $"runebankpvpl{suffix}@teste.com", "Senha!123", "Senha!123", code));
+        var playerToken = (await register.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", playerToken));
+        var playerId = (await me.Content.ReadFromJsonAsync<MeResponse>())!.Id;
+
+        var campaign = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheet = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        var sheetId = (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
+
+        var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
+        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId)));
+        add.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bankCopy = (await ListAsync(gmToken)).Single(e => e.Nome == "Runa do Jogador");
+        return new PlayerRuneSetup(gmToken, playerToken, campaignId, imageId, imageUrl, bankCopy);
+    }
+
+    [Fact]
+    public async Task A_jogadors_image_reaches_the_bank_copy_and_the_public_attachment()
+    {
+        var setup = await BuildPlayerRuneSetupAsync("1");
+
+        setup.BankCopy.ImageId.Should().Be(setup.ImageId);
+        setup.BankCopy.ImageUrl.Should().Be(setup.ImageUrl);
+        var available = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
+        (await available.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>())!
+            .Should().ContainSingle(e => e.Id == setup.BankCopy.Id && e.ImageId == setup.ImageId && e.ImageUrl == setup.ImageUrl);
+    }
+
+    [Fact]
+    public async Task The_gm_can_resend_the_entrys_current_image_even_though_a_jogador_uploaded_it()
+    {
+        var setup = await BuildPlayerRuneSetupAsync("2");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
+            new UpdateRuneBankEntryRequest("Runa Renomeada", "Nova.", 2, setup.ImageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
+        entry.Nome.Should().Be("Runa Renomeada");
+        entry.ImageId.Should().Be(setup.ImageId);
+        entry.ImageUrl.Should().Be(setup.ImageUrl);
+    }
+
+    [Fact]
+    public async Task The_gm_cannot_switch_to_a_different_image_they_did_not_upload()
+    {
+        var setup = await BuildPlayerRuneSetupAsync("3");
+        var otherGmToken = await RegisterGmAndGetTokenAsync("RuneBankPvGm3b", "runebankpvgm3b@teste.com");
+        var (foreignImage, _) = await UploadImageAsync(otherGmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, foreignImage)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Imagem não encontrada.");
+        (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id).ImageId.Should().Be(setup.ImageId);
+    }
+
+    [Fact]
+    public async Task The_gm_can_replace_the_jogadors_image_with_one_they_uploaded()
+    {
+        var setup = await BuildPlayerRuneSetupAsync("4");
+        var (ownImage, ownUrl) = await UploadImageAsync(setup.GmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, ownImage)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
+        entry.ImageId.Should().Be(ownImage);
+        entry.ImageUrl.Should().Be(ownUrl);
+    }
+
+    [Fact]
+    public async Task The_gm_can_clear_the_jogadors_image()
+    {
+        var setup = await BuildPlayerRuneSetupAsync("5");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, "")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
+        entry.ImageId.Should().BeNull();
+        entry.ImageUrl.Should().BeNull();
     }
 }
