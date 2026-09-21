@@ -76,6 +76,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             return BadRequest("Arquetipo inválido.");
         if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
             return BadRequest("Afinidade inválida.");
+        if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
+            return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
         if (!TryParseEnum<Rank>(request.Rank, out var rank))
             return BadRequest("Rank inválido.");
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))

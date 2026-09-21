@@ -14,10 +14,10 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     }
 
     [Fact]
-    public void SubElementos_has_the_14_sub_elements_of_the_Matriz_Elemental()
+    public void SubElementos_has_the_12_sub_elements_of_the_Matriz_Elemental_without_the_Caminhos()
     {
-        AfinidadeEssenciaField.SubElementos.Should().HaveCount(14);
-        AfinidadeEssenciaField.SubElementos.Select(o => o.Valor).Should().Contain("Invocacao");
+        AfinidadeEssenciaField.SubElementos.Should().HaveCount(12);
+        AfinidadeEssenciaField.SubElementos.Select(o => o.Valor).Should().Contain("Invocacao").And.NotContain(["Alma", "Vida"]);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
         var cut = Render<AfinidadeEssenciaField>(p => p
             .Add(x => x.Label, "Sub-Elemento")
             .Add(x => x.Opcoes, AfinidadeEssenciaField.SubElementos)
-            .Add(x => x.Nome, "Vida")
+            .Add(x => x.Nome, "Curar")
             .Add(x => x.Valor, (int?)null)
             .Add(x => x.ValorChanged, v => newValor = v));
 
@@ -90,7 +90,7 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     [Fact]
     public void SubElementosDisponiveis_keeps_the_ungated_SubElementos_the_Vocacao_allows_regardless_of_Elemento_and_Caminho()
     {
-        Disponiveis("Adepto", null, null).Should().BeEquivalentTo(["Alma", "Vida"]);
+        Disponiveis("Adepto", null, null).Should().BeEmpty(); // só sobram os 4 que dependem de Caminho
         Disponiveis("Feiticeiro", null, null).Should().BeEquivalentTo(["Gelo", "Flora", "Ferro", "Raio"]);
     }
 
@@ -108,5 +108,19 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     public void SubElementosDisponiveis_keeps_the_currently_saved_value_so_the_select_never_shows_blank()
     {
         Disponiveis("Adepto", "Fogo", "Mundano", atual: "Curar").Should().Contain("Curar");
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_never_offers_Alma_or_Vida_as_a_new_choice()
+    {
+        Disponiveis("Adepto", "Fogo", "Vida").Should().NotContain(["Alma", "Vida"]);
+        Disponiveis("Feiticeiro", "Fogo", "Vida").Should().NotContain(["Alma", "Vida"]);
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_still_lists_a_legacy_Alma_or_Vida_already_saved_on_the_row()
+    {
+        Disponiveis("Adepto", "Fogo", null, atual: "Vida").Should().Contain("Vida");
+        Disponiveis(null, null, null, atual: "Alma").Should().Equal("Alma");
     }
 }

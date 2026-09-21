@@ -130,4 +130,25 @@ public class CaminhoSubElementoRulesTests
         CaminhoSubElementoRules.Validar(Elemento.Ar, SubElemento.Curar, "Vida",
             Elemento.Fogo, SubElemento.Curar, "Vida").Should().NotBeNull();
     }
+
+    [Theory]
+    [InlineData(SubElemento.Alma, true)]
+    [InlineData(SubElemento.Vida, true)]
+    [InlineData(SubElemento.Gelo, false)]
+    [InlineData(SubElemento.Curar, false)]
+    [InlineData(SubElemento.Invocacao, false)]
+    public void EhCaminho_is_true_only_for_Alma_and_Vida_as_SubElemento(SubElemento subElemento, bool esperado)
+    {
+        CaminhoSubElementoRules.EhCaminho(subElemento).Should().Be(esperado);
+    }
+
+    [Theory]
+    [InlineData(AfinidadeElemental.Alma, true)]
+    [InlineData(AfinidadeElemental.Vida, true)]
+    [InlineData(AfinidadeElemental.Fogo, false)]
+    [InlineData(AfinidadeElemental.Curar, false)]
+    public void EhCaminho_is_true_only_for_Alma_and_Vida_as_Afinidade(AfinidadeElemental afinidade, bool esperado)
+    {
+        CaminhoSubElementoRules.EhCaminho(afinidade).Should().Be(esperado);
+    }
 }

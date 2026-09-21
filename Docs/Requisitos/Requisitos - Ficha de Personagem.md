@@ -38,7 +38,7 @@
 
 - *Trabalho*: campo previsto porém ainda não implementado. Vamos apenas não implementa-lo.
 
-- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 14 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Alma**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Vida**, **Aprimorar**, **Necromancia** e **Invocação**. Restrita pela Vocação atual via Escola de Magia — ver 2.c, Afinidades, para a tabela de Escolas e a regra de não invalidar uma escolha já salva.
+- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 12 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Aprimorar**, **Necromancia** e **Invocação**. *Alma* e *Vida* não estão aqui: na Matriz Elemental elas são **Caminhos** (ver 2.c), não Afinidades. Uma ficha que já tinha Alma ou Vida salvas continua exibindo o valor, mas não é possível escolhê-los de novo. Restrita pela Vocação atual via Escola de Magia — ver 2.c, Afinidades, para a tabela de Escolas e a regra de não invalidar uma escolha já salva.
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 
@@ -126,7 +126,7 @@ Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental*
 - *Elemento*: dropdown fixo com os 4 elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`). "Mundano", que na matriz é o centro de onde partem os Caminhos, não é um Elemento — aparece aqui só como opção de *Caminho* (abaixo).
 - *Valor do Elemento*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
 - *Caminho*: dropdown fixo com os 3 Caminhos da Matriz Elemental: **Alma**, **Vida** e **Mundano** (substitui o antigo nome livre). Pode ficar vazio. Um valor em texto livre já salvo de antes continua sendo exibido e aceito enquanto não for alterado.
-- *Sub-Elemento*: dropdown fixo com os 14 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Alma, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Vida, Aprimorar, Invocação. Oito deles dependem do *Caminho* e do *Elemento* da própria linha — só são oferecidos quando os dois batem, e o servidor rejeita o resto:
+- *Sub-Elemento*: dropdown fixo com os 12 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Aprimorar, Invocação. *Alma* e *Vida* não são Sub-Elementos — são os Caminhos (campo anterior); o servidor rejeita uma escolha nova de qualquer um dos dois aqui, e uma linha antiga que já os tinha como Sub-Elemento continua válida e é exibida normalmente enquanto não for alterada. Oito deles dependem do *Caminho* e do *Elemento* da própria linha — só são oferecidos quando os dois batem, e o servidor rejeita o resto:
 
   | Caminho | Sub-Elemento | Elemento exigido |
   |---|---|---|
@@ -139,7 +139,7 @@ Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental*
   | Mundano | Necromancia | Fogo |
   | Mundano | Invocação | Terra |
 
-  Ex.: para ter *Curar*, a linha precisa de Elemento **Fogo** e Caminho **Vida**. Gelo, Raio, Flora, Ferro, Alma e Vida não dependem de Caminho. Além dessa regra, o Sub-Elemento continua restrito pela Vocação (abaixo). Sem Elemento ou sem Caminho preenchido, esses oito não são oferecidos. Como nos demais campos, o servidor só valida o que *mudou* em relação ao já salvo: uma linha antiga reenviada sem alteração nunca é rejeitada.
+  Ex.: para ter *Curar*, a linha precisa de Elemento **Fogo** e Caminho **Vida**. Gelo, Raio, Flora e Ferro não dependem de Caminho. Além dessa regra, o Sub-Elemento continua restrito pela Vocação (abaixo). Sem Elemento ou sem Caminho preenchido, esses oito não são oferecidos. Como nos demais campos, o servidor só valida o que *mudou* em relação ao já salvo: uma linha antiga reenviada sem alteração nunca é rejeitada.
 - *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor do Elemento.
 - *Experiência*: valor numérico ≥ 0, a "Experiência" no Caminho da linha.
 
@@ -152,7 +152,7 @@ O *Elemento* e o *Sub-Elemento* de cada linha (e, por extensão, o dropdown úni
 | Dobra | Ar, Água, Fogo, Terra |
 | Transmutação | Flora, Ferro, Raio, Gelo |
 | Maculação | Necromancia, Invocação, Ecomancia, Hemomancia |
-| Consagração | Curar, Aprimorar, Prever, Purificar, Alma, Vida |
+| Consagração | Curar, Aprimorar, Prever, Purificar |
 
 Cada Vocação libera um subconjunto fixo de Escolas: Feiticeiro → Dobra e Transmutação; Adepto →
 Dobra e Consagração; Bruxo → Dobra e Maculação; Campeão, Caçador, ou nenhuma Vocação

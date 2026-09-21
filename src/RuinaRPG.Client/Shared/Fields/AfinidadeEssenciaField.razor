@@ -32,13 +32,17 @@
         ("Ar", "Ar"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Terra", "Terra"),
     ];
 
-    // Os 14 Sub-Elementos da Matriz Elemental, mesmos rótulos usados em AfinidadeSelect.
+    // Os 12 Sub-Elementos que se escolhem de fato, mesmos rótulos usados em AfinidadeSelect. Alma e Vida
+    // são Caminhos (CaminhoSelect), não Sub-Elementos — ver Requisitos - Ficha de Personagem 2.c.
     public static readonly (string Valor, string Rotulo)[] SubElementos =
     [
-        ("Gelo", "Gelo"), ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"), ("Alma", "Alma"),
+        ("Gelo", "Gelo"), ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"),
         ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
-        ("Vida", "Vida"), ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
+        ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
     ];
+
+    // Só pra uma linha antiga que ainda tem Alma/Vida salvos como Sub-Elemento continuar exibindo o valor.
+    private static readonly (string Valor, string Rotulo)[] SubElementosLegados = [("Alma", "Alma"), ("Vida", "Vida")];
 
     // Sub-Elementos oferecidos numa linha de Afinidade: o filtro por Vocação (Escola de Magia) e,
     // pros 8 que dependem de Caminho (Prever, Purificar, Curar, Aprimorar, Ecomancia, Hemomancia,
@@ -50,13 +54,15 @@
         Elemento? el = Enum.TryParse<Elemento>(elemento, out var e) ? e : null;
         Caminho? cam = CaminhoSubElementoRules.TryParseCaminho(caminho, out var c) ? c : null;
 
-        return SubElementos.Where(s =>
-                s.Valor == atual ||
-                (vocacaoValida
-                    && Enum.TryParse<SubElemento>(s.Valor, out var se)
-                    && VocacaoEscolaMap.PodeEscolherSubElemento(voc, se)
-                    && CaminhoSubElementoRules.Permite(el, cam, se)))
-            .ToArray();
+        var oferecidos = SubElementos.Where(s =>
+            s.Valor == atual ||
+            (vocacaoValida
+                && Enum.TryParse<SubElemento>(s.Valor, out var se)
+                && VocacaoEscolaMap.PodeEscolherSubElemento(voc, se)
+                && CaminhoSubElementoRules.Permite(el, cam, se)));
+
+        // Um Alma/Vida antigo já salvo na linha continua listado, mas nunca é oferecido como escolha nova.
+        return oferecidos.Concat(SubElementosLegados.Where(s => s.Valor == atual)).ToArray();
     }
 
     internal Task SetNomeForTests(string? nome) => OnNomeChangedAsync(nome);

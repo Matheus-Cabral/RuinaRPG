@@ -20,6 +20,13 @@ public static class CaminhoSubElementoRules
         [SubElemento.Invocacao] = Caminho.Mundano,
     };
 
+    // Alma e Vida continuam nos enums SubElemento/AfinidadeElemental (gravados como inteiro — remover
+    // um membro deslocaria os valores já salvos), mas são Caminhos: não se escolhe mais um deles como
+    // Sub-Elemento (2.c) nem como Afinidade (1.a). Só valores antigos já salvos sobrevivem.
+    public static bool EhCaminho(SubElemento subElemento) => subElemento is SubElemento.Alma or SubElemento.Vida;
+
+    public static bool EhCaminho(AfinidadeElemental afinidade) => afinidade is AfinidadeElemental.Alma or AfinidadeElemental.Vida;
+
     public static Caminho? CaminhoExigido(SubElemento subElemento) =>
         Exigidos.TryGetValue(subElemento, out var caminho) ? caminho : null;
 

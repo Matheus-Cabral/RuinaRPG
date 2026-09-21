@@ -712,4 +712,39 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var ungranted = await ungrantedResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         ungranted!.CampaignId.Should().BeNull();
     }
+
+    // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
+    [Theory]
+    [InlineData("Alma")]
+    [InlineData("Vida")]
+    public async Task Update_rejects_a_new_Afinidade_of_Alma_or_Vida(string afinidade)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmACreatureSheets{afinidade}", $"caminhoafinACreatureSheets{afinidade}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
+            ValidUpdate() with { Afinidade = afinidade }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_keeps_a_legacy_Afinidade_of_Vida_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CaminhoAfinGmBCreatureSheets", "caminhoafinBCreatureSheets@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var entity = await db.CreatureSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
+            entity.Afinidade = RuinaRPG.Domain.CharacterSheets.AfinidadeElemental.Vida;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
+            ValidUpdate() with { Afinidade = "Vida" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }

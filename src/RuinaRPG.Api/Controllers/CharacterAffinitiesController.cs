@@ -162,6 +162,12 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db) : ControllerBas
             return false;
         }
 
+        if (subElemento is { } se && subElemento != subElementoAntigo && CaminhoSubElementoRules.EhCaminho(se))
+        {
+            error = "Alma e Vida são Caminhos, não Sub-Elementos.";
+            return false;
+        }
+
         error = CaminhoSubElementoRules.Validar(elemento, subElemento, caminhoNome, elementoAntigo, subElementoAntigo, caminhoNomeAntigo);
         if (error is not null)
             return false;

@@ -1132,4 +1132,45 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
+    [Theory]
+    [InlineData("Alma")]
+    [InlineData("Vida")]
+    public async Task Update_rejects_a_new_Afinidade_of_Alma_or_Vida(string afinidade)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmACharacterSheets{afinidade}", $"caminhoafinACharacterSheets{afinidade}@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"CaminhoAfinPACharacterSheets{afinidade}", $"caminhoafinpACharacterSheets{afinidade}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Caminho ACharacterSheets{afinidade}");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = afinidade }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_keeps_a_legacy_Afinidade_of_Vida_when_resubmitted_unchanged()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CaminhoAfinGmBCharacterSheets", "caminhoafinBCharacterSheets@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CaminhoAfinPBCharacterSheets", "caminhoafinpBCharacterSheets@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Caminho BCharacterSheets");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var entity = await db.CharacterSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
+            entity.Afinidade = RuinaRPG.Domain.CharacterSheets.AfinidadeElemental.Vida;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Vida" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }

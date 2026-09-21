@@ -25,4 +25,27 @@ public class AfinidadeSelectTests : MudBunitContext
 
         cut.FindComponents<MudSelectItem<string>>().Should().HaveCount(2);
     }
+
+    [Fact]
+    public void Afinidades_has_16_values_without_Alma_and_Vida_which_are_Caminhos()
+    {
+        AfinidadeSelect.Afinidades.Should().HaveCount(16);
+        AfinidadeSelect.Afinidades.Select(a => a.Valor).Should().NotContain(["Alma", "Vida"]);
+    }
+
+    [Fact]
+    public void A_legacy_saved_Alma_or_Vida_is_still_listed_so_the_select_is_not_blank()
+    {
+        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.Value, "Vida"));
+
+        cut.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Contain("Vida");
+    }
+
+    [Fact]
+    public void Without_a_legacy_value_no_Caminho_appears()
+    {
+        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.Value, "Fogo"));
+
+        cut.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().NotContain(["Alma", "Vida"]);
+    }
 }

@@ -1,7 +1,7 @@
 @using MudBlazor
 
 <MudSelect T="string" Label="Afinidade" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Afinidade">
-    @foreach (var (valor, rotulo) in OpcoesPermitidas ?? Afinidades)
+    @foreach (var (valor, rotulo) in Opcoes)
     {
         <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
     }
@@ -10,19 +10,30 @@
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
-    // null (padrão) mostra todos os 18 valores — usado hoje por FichaDeCriatura, que não filtra
+    // null (padrão) mostra todos os 16 valores — usado hoje por FichaDeCriatura, que não filtra
     // por Vocação (Criatura não tem esse conceito). Personagem/NPC passam o subconjunto liberado
     // pela Vocação atual (ver VocacaoEscolaMap).
     [Parameter] public (string Valor, string Rotulo)[]? OpcoesPermitidas { get; set; }
 
-    // R0001 1.a — 4 Elementos + 14 Sub-Elementos da Matriz Elemental.
+    // R0001 1.a — 4 Elementos + 12 Sub-Elementos da Matriz Elemental (Alma e Vida são Caminhos).
     public static readonly (string Valor, string Rotulo)[] Afinidades =
     [
         ("Terra", "Terra"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Ar", "Ar"), ("Gelo", "Gelo"),
-        ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"), ("Alma", "Alma"),
+        ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"),
         ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
-        ("Vida", "Vida"), ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
+        ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
     ];
+
+    // Alma e Vida são Caminhos, não Afinidades — só aparecem se a ficha já os tem salvos, pra o select
+    // não ficar em branco.
+    private (string Valor, string Rotulo)[] Opcoes
+    {
+        get
+        {
+            var lista = OpcoesPermitidas ?? Afinidades;
+            return Value is "Alma" or "Vida" && lista.All(o => o.Valor != Value) ? [.. lista, (Value, Value)] : lista;
+        }
+    }
 
     private async Task OnValueChangedAsync(string? novoValor)
     {
