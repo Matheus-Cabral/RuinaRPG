@@ -235,6 +235,32 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task AvailableRunes_returns_ImageId_and_ImageUrl_of_the_entry()
+    {
+        var setup = await BuildMemberSetupAsync("Runes4");
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var upload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", setup.GmToken);
+        var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<ImageUploadResponse>())!;
+        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken,
+            new CreateRuneBankEntryRequest("Runa Ilustrada", "Descrição.", 1, image.Id)));
+        var comImagemId = (await created.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
+        var semImagemId = await CreateRuneEntryAsync(setup.GmToken, "Runa Nua");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, comImagemId));
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, semImagemId));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
+        body!.Should().ContainSingle(e => e.Id == comImagemId && e.ImageId == image.Id && e.ImageUrl == image.Url);
+        body.Should().ContainSingle(e => e.Id == semImagemId && e.ImageId == null && e.ImageUrl == null);
+    }
+
+    [Fact]
     public async Task AvailableRunes_filters_by_nome()
     {
         var setup = await BuildMemberSetupAsync("Runes2");

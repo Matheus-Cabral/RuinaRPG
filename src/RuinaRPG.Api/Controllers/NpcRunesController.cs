@@ -48,6 +48,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         string nome, descricao;
         int grau;
         Guid? sourceBankEntryId = null;
+        Guid? imageId = null;
 
         if (fromBank)
         {
@@ -64,18 +65,29 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
                     || !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == campaignId && a.IsPublic && a.RuneBankEntryId == bankEntryId)))
                 return BadRequest("Entrada do banco não encontrada.");
 
+            // Ao partir do banco a imagem vem da entrada (Requisitos - Banco de Runas R0005).
+            if (!string.IsNullOrWhiteSpace(request.ImageId))
+                return BadRequest("Ao escolher do banco, a imagem vem da entrada.");
+
             nome = bankEntry.Nome; descricao = bankEntry.Descricao; grau = bankEntry.Grau;
             sourceBankEntryId = bankEntryId;
+            imageId = bankEntry.ImageId;
         }
         else
         {
+            if (!RuneImageAccess.TryParseImageId(request.ImageId, out imageId))
+                return BadRequest("ImageId inválido.");
+
+            if (imageId is not null && !await RuneImageAccess.CanUseAsync(db, imageId.Value, callerId, sheet.GmId, campaignId))
+                return BadRequest("Imagem não encontrada.");
+
             nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
         }
 
-        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId };
+        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.NpcRunes.Add(rune);
 
-        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau };
+        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
         db.RuneBankEntries.Add(bankCopy);
 
         if (callerId != sheet.GmId && campaignId is not null)
@@ -90,7 +102,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
-        return Created(string.Empty, ToResponse(rune));
+        return Created(string.Empty, ToResponse(rune, await RuneImageAccess.UrlsAsync(db, [rune.ImageId])));
     }
 
     [HttpGet]
@@ -104,7 +116,8 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
             return NotFound();
 
         var runes = await db.NpcRunes.Where(r => r.NpcSheetId == sheetId).ToListAsync();
-        return runes.Select(ToResponse).ToList();
+        var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
+        return runes.Select(r => ToResponse(r, urls)).ToList();
     }
 
     [HttpDelete("{id}")]
@@ -126,8 +139,8 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static NpcRuneResponse ToResponse(NpcRune r) =>
-        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau);
+    private static NpcRuneResponse ToResponse(NpcRune r, Dictionary<Guid, string> imageUrls) =>
+        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -303,8 +303,9 @@ Runas são um encantamento das vocações não mágicas (Campeão e Caçador). L
 - *Nome da Runa*: text input.
 - *Descrição*: texto livre.
 - *Grau*: campo numérico, limitado ao Grau atual do personagem (ver 1.b).
+- *Imagem*: opcional — upload do próprio jogador ou uma imagem que o GM liberou como pública na campanha (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 para o comportamento da imagem). Ao partir de uma entrada do banco, a imagem vem da entrada e não pode ser trocada.
 
-Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Editar a Runa na ficha depois não altera a cópia do banco, e vice-versa.
+A Runa na lista é somente leitura: o jogador só pode adicionar e remover — para mudar uma Runa, remove e adiciona de novo. Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Como a Runa da ficha não é editável, o que pode mudar depois é só a cópia do banco (editada pelo GM), que não altera a Runa da ficha.
 
   
 

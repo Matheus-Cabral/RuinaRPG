@@ -91,7 +91,7 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in attachments.Where(a => a.IsPublic && a.RuneBankEntryId is not null))
         {
             var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "RuneBankEntry", rune!.Nome, null));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "RuneBankEntry", rune!.Nome, await ResolveImageUrlAsync(rune.ImageId)));
         }
         foreach (var a in attachments.Where(a => a.IsPublic && a.ImageId is not null))
         {

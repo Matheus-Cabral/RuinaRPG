@@ -600,9 +600,9 @@
                     @foreach (var rune in _runes)
                     {
                         <tr>
-                            <td><MudTextField T="string" Value="@rune.Nome" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Nome", v))" /></td>
-                            <td><MudTextField T="string" Value="@rune.Descricao" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Descricao", v))" /></td>
-                            <td><MudNumericField T="int" Value="@rune.Grau" ValueChanged="@(v => UpdateRuneAsync(rune.Id, "Grau", v))" /></td>
+                            <td>@rune.Nome</td>
+                            <td>@rune.Descricao</td>
+                            <td>@rune.Grau</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -1438,17 +1438,6 @@
     private async Task DeleteRuneAsync(string id)
     {
         await Http.DeleteAsync($"character-sheets/{SheetId}/runes/{id}");
-        await LoadRunesAsync();
-    }
-
-    private async Task UpdateRuneAsync(string id, string field, object? value)
-    {
-        var current = _runes.Single(r => r.Id == id);
-        var nome = field == "Nome" ? value?.ToString() ?? current.Nome : current.Nome;
-        var descricao = field == "Descricao" ? value?.ToString() ?? current.Descricao : current.Descricao;
-        var grau = field == "Grau" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Grau) : current.Grau;
-
-        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/runes/{id}", new UpdateCharacterRuneRequest(nome, descricao, grau));
         await LoadRunesAsync();
     }
 

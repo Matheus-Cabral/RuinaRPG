@@ -202,6 +202,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(e => e.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(e => e.ImageId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<Campaign>(entity =>
@@ -258,7 +259,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<CharacterRune>(entity => entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<CharacterRune>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
         builder.Entity<CharacterMastery>(entity => entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.CharacterSheetId).OnDelete(DeleteBehavior.Cascade));
 
         builder.Entity<CharacterWeapon>(entity =>
@@ -403,7 +408,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcAffinity>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
 
-        builder.Entity<NpcRune>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<NpcRune>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
         builder.Entity<NpcMastery>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
 
         builder.Entity<NpcWeapon>(entity =>

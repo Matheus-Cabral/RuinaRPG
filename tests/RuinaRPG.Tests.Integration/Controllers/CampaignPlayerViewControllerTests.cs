@@ -206,6 +206,27 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     }
 
     [Fact]
+    public async Task PlayerView_a_public_rune_attachment_carries_the_runes_ImageUrl()
+    {
+        var setup = await BuildSetupAsync("RuneImg");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
+        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId)));
+        var comImagemId = (await comImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
+        var semImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Nua", "D.", 1)));
+        var semImagemId = (await semImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
+        var attachmentComImagem = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, comImagemId));
+        var attachmentSemImagem = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, semImagemId));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{setup.CampaignId}/attachments/{attachmentComImagem}/visibility", setup.GmToken, true));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{setup.CampaignId}/attachments/{attachmentSemImagem}/visibility", setup.GmToken, true));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+        body!.AnexosPublicos.Should().ContainSingle(a => a.Id == attachmentComImagem && a.Tipo == "RuneBankEntry" && a.ImageUrl == imageUrl);
+        body.AnexosPublicos.Should().ContainSingle(a => a.Id == attachmentSemImagem && a.ImageUrl == null);
+    }
+
+    [Fact]
     public async Task PlayerView_for_an_npc_attachment_shows_only_the_toggled_public_fields()
     {
         var setup = await BuildSetupAsync("Npc");

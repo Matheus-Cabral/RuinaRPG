@@ -1,3 +1,4 @@
 namespace RuinaRPG.Contracts.Runes;
 
-public record UpdateRuneBankEntryRequest(string Nome, string Descricao, int Grau);
+// ImageId opcional: null ou "" remove a imagem da entrada.
+public record UpdateRuneBankEntryRequest(string Nome, string Descricao, int Grau, string? ImageId = null);

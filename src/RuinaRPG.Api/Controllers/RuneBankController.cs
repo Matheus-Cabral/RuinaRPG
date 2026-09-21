@@ -23,18 +23,28 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<RuneBankEntryResponse>> Create(CreateRuneBankEntryRequest request)
     {
+        var gmId = CurrentUserId();
+
+        if (!RuneImageAccess.TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        if (imageId is not null && !await RuneImageAccess.CanUseAsync(db, imageId.Value, gmId, gmId, null))
+            return BadRequest("Imagem não encontrada.");
+
         var entry = new RuneBankEntry
         {
             Id = Guid.NewGuid(),
-            GmId = CurrentUserId(),
+            GmId = gmId,
             Nome = request.Nome,
             Descricao = request.Descricao,
-            Grau = request.Grau
+            Grau = request.Grau,
+            ImageId = imageId
         };
         db.RuneBankEntries.Add(entry);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(entry));
+        var urls = await RuneImageAccess.UrlsAsync(db, [entry.ImageId]);
+        return Created(string.Empty, ToResponse(entry, urls));
     }
 
     [HttpGet]
@@ -50,7 +60,8 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
             query = query.Where(e => e.Grau == grau);
 
         var entries = await query.OrderBy(e => e.Nome).ToListAsync();
-        return entries.Select(ToResponse).ToList();
+        var urls = await RuneImageAccess.UrlsAsync(db, entries.Select(e => e.ImageId));
+        return entries.Select(e => ToResponse(e, urls)).ToList();
     }
 
     [HttpPut("{id}")]
@@ -61,9 +72,18 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
         if (entry is null)
             return NotFound();
 
+        if (!RuneImageAccess.TryParseImageId(request.ImageId, out var imageId))
+            return BadRequest("ImageId inválido.");
+
+        // Reenviar a imagem que a entrada já tem é sempre válido (a cópia automática de uma Runa criada por
+        // um jogador guarda a imagem dele, que o GM não subiu); trocar exige uma imagem que o GM possa usar.
+        if (imageId is not null && imageId != entry.ImageId && !await RuneImageAccess.CanUseAsync(db, imageId.Value, gmId, gmId, null))
+            return BadRequest("Imagem não encontrada.");
+
         entry.Nome = request.Nome;
         entry.Descricao = request.Descricao;
         entry.Grau = request.Grau;
+        entry.ImageId = imageId;
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -82,8 +102,8 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static RuneBankEntryResponse ToResponse(RuneBankEntry entry) =>
-        new(entry.Id.ToString(), entry.Nome, entry.Descricao, entry.Grau);
+    private static RuneBankEntryResponse ToResponse(RuneBankEntry entry, Dictionary<Guid, string> imageUrls) =>
+        new(entry.Id.ToString(), entry.Nome, entry.Descricao, entry.Grau, entry.ImageId?.ToString(), RuneImageAccess.UrlOf(imageUrls, entry.ImageId));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

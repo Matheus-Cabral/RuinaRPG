@@ -219,7 +219,7 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         if (a.RuneBankEntryId is not null)
         {
             var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, null);
+            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(rune.ImageId));
         }
         if (a.ImageId is not null)
         {

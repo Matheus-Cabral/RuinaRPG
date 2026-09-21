@@ -88,7 +88,8 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
             query = query.Where(e => EF.Functions.ILike(e.Nome, $"%{nome}%"));
 
         var entries = await query.OrderBy(e => e.Nome).ToListAsync();
-        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau)).ToList();
+        var urls = await RuneImageAccess.UrlsAsync(db, entries.Select(e => e.ImageId));
+        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau, e.ImageId?.ToString(), RuneImageAccess.UrlOf(urls, e.ImageId))).ToList();
     }
 
     [HttpGet("available-images")]

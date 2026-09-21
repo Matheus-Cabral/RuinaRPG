@@ -38,6 +38,8 @@
 
 **Descrição**: Os mesmos campos de uma Runa em "[[Requisitos - Ficha de Personagem]]" 4.d: **Nome** (texto), **Descrição** (texto livre) e **Grau** (número inteiro). Nenhum campo é calculado. Uma entrada do banco não pertence a nenhuma ficha, então o limite de Grau de "[[Requisitos - Ficha de Personagem]]" 4.d não se aplica a ela.
 
+Cada entrada tem ainda uma **Imagem**: opcional, uma só por entrada, com o mesmo comportamento da Imagem de "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 (formatos e tamanho máximo iguais); no banco, o GM só usa imagens que ele mesmo enviou. Ao partir de uma entrada do banco, a Runa da ficha herda a imagem da entrada (não é possível escolher outra) e a cópia automática (R0001) a leva junto. Ao montar uma Runa do zero numa ficha, a imagem opcional pode ser um upload do próprio usuário ou, para o jogador, uma imagem que o GM liberou como pública na campanha.
+
   
 
 # **R0006** - O GM pode editar e excluir qualquer entrada do banco.

@@ -224,6 +224,35 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task Grant_from_an_existing_Npc_deep_copies_the_rune_and_its_image()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGmRune", "grantrune@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerRune", "grantplayerrune@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Runa");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var upload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!;
+        var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id)));
+        addRune.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        var runes = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
+            .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
+        runes!.Should().ContainSingle(r => r.Nome == "Runa Ilustrada" && r.ImageUrl == image.Url);
+    }
+
+    [Fact]
     public async Task Grant_from_an_existing_Npc_deep_copies_Affinity_ElementoValor_and_SubElementoValor()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("GrantGm2b", "grant2b@teste.com");

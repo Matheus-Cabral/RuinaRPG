@@ -11,4 +11,7 @@ public class RuneBankEntry
     public required string Nome { get; set; }
     public required string Descricao { get; set; }
     public int Grau { get; set; }
+
+    /// <summary>Imagem opcional (uma por Runa). FK para Images com SetNull.</summary>
+    public Guid? ImageId { get; set; }
 }

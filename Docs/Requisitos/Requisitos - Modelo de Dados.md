@@ -151,6 +151,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Nome | string | |
 | Descricao | text | |
 | Grau | int | |
+| ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
 
   
 
@@ -319,6 +320,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Grau | int |
 | SourceBankEntryId | FK → RuneBankEntries, nullable (só rastreabilidade — R0003 do Banco de Runas) |
+| ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
 **CharacterMasteries** (4.e)
 
@@ -391,7 +393,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable), como `CharacterRunes`.
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 

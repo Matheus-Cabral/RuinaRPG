@@ -37,6 +37,7 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         string nome, descricao;
         int grau;
         Guid? sourceBankEntryId = null;
+        Guid? imageId = null;
 
         if (fromBank)
         {
@@ -53,20 +54,31 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
                 && !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == sheet.CampaignId && a.IsPublic && a.RuneBankEntryId == bankEntryId))
                 return BadRequest("Entrada do banco não encontrada.");
 
+            // Ao partir do banco a imagem vem da entrada (Requisitos - Banco de Runas R0005).
+            if (!string.IsNullOrWhiteSpace(request.ImageId))
+                return BadRequest("Ao escolher do banco, a imagem vem da entrada.");
+
             nome = bankEntry.Nome; descricao = bankEntry.Descricao; grau = bankEntry.Grau;
             sourceBankEntryId = bankEntryId;
+            imageId = bankEntry.ImageId;
         }
         else
         {
+            if (!RuneImageAccess.TryParseImageId(request.ImageId, out imageId))
+                return BadRequest("ImageId inválido.");
+
+            if (imageId is not null && !await RuneImageAccess.CanUseAsync(db, imageId.Value, callerId, campaignGmId, sheet.CampaignId))
+                return BadRequest("Imagem não encontrada.");
+
             nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
         }
 
-        var rune = new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId };
+        var rune = new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.CharacterRunes.Add(rune);
 
         // Requisitos - Banco de Runas R0001: toda criação — do zero ou a partir do banco — grava também
         // uma cópia independente no banco do GM, seja o GM ou o jogador quem criou.
-        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Descricao = descricao, Grau = grau };
+        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
         db.RuneBankEntries.Add(bankCopy);
 
         // R0007: quando quem cria é o jogador dono (não o GM), a cópia vira anexo público da campanha
@@ -83,7 +95,7 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
-        return Created(string.Empty, ToResponse(rune));
+        return Created(string.Empty, ToResponse(rune, await RuneImageAccess.UrlsAsync(db, [rune.ImageId])));
     }
 
     [HttpGet]
@@ -98,30 +110,8 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
             return Forbid();
 
         var runes = await db.CharacterRunes.Where(r => r.CharacterSheetId == sheetId).ToListAsync();
-        return runes.Select(ToResponse).ToList();
-    }
-
-    [HttpPut("{id}")]
-    public async Task<ActionResult<CharacterRuneResponse>> Update(Guid sheetId, Guid id, UpdateCharacterRuneRequest request)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var rune = await db.CharacterRunes.FirstOrDefaultAsync(r => r.Id == id && r.CharacterSheetId == sheetId);
-        if (rune is null)
-            return NotFound();
-
-        rune.Nome = request.Nome;
-        rune.Descricao = request.Descricao;
-        rune.Grau = request.Grau;
-        await db.SaveChangesAsync();
-
-        return Ok(ToResponse(rune));
+        var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
+        return runes.Select(r => ToResponse(r, urls)).ToList();
     }
 
     [HttpDelete("{id}")]
@@ -144,8 +134,8 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static CharacterRuneResponse ToResponse(CharacterRune r) =>
-        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau);
+    private static CharacterRuneResponse ToResponse(CharacterRune r, Dictionary<Guid, string> imageUrls) =>
+        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

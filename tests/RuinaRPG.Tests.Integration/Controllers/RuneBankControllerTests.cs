@@ -193,4 +193,106 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         put.StatusCode.Should().Be(HttpStatusCode.NotFound);
         delete.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // ---- Imagem opcional ----
+
+    private async Task<(string Id, string Url)> UploadImageAsync(string token)
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
+        return (body!.Id, body.Url);
+    }
+
+    [Fact]
+    public async Task Create_with_the_gms_own_image_returns_201_with_ImageId_and_ImageUrl()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm1", "runebankimg1@teste.com");
+        var (imageId, imageUrl) = await UploadImageAsync(token);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
+        created.ImageId.Should().Be(imageId);
+        created.ImageUrl.Should().Be(imageUrl);
+    }
+
+    [Fact]
+    public async Task Create_with_another_users_image_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm2", "runebankimg2@teste.com");
+        var otherToken = await RegisterGmAndGetTokenAsync("RuneBankImgGm2b", "runebankimg2b@teste.com");
+        var (foreignImage, _) = await UploadImageAsync(otherToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("00000000-0000-0000-0000-000000000001")]
+    public async Task Create_with_a_malformed_or_unknown_image_id_returns_400(string imageId)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"RuneBankImgGm3{imageId.Length}", $"runebankimg3{imageId.Length}@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_with_a_blank_image_id_means_no_image()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm4", "runebankimg4@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, "")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
+        created.ImageId.Should().BeNull();
+        created.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Update_sets_and_then_clears_the_image_and_the_list_carries_the_ImageUrl()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm5", "runebankimg5@teste.com");
+        var (imageId, imageUrl) = await UploadImageAsync(token);
+        var entry = await CreateAsync(token, "Runa", "Desc.", 1);
+
+        var set = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+        set.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var comImagem = (await ListAsync(token)).Single(e => e.Id == entry.Id);
+        comImagem.ImageId.Should().Be(imageId);
+        comImagem.ImageUrl.Should().Be(imageUrl);
+
+        var clear = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "")));
+        clear.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var semImagem = (await ListAsync(token)).Single(e => e.Id == entry.Id);
+        semImagem.ImageId.Should().BeNull();
+        semImagem.ImageUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Update_with_another_users_or_malformed_image_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm6", "runebankimg6@teste.com");
+        var otherToken = await RegisterGmAndGetTokenAsync("RuneBankImgGm6b", "runebankimg6b@teste.com");
+        var (foreignImage, _) = await UploadImageAsync(otherToken);
+        var entry = await CreateAsync(token, "Runa", "Desc.", 1);
+
+        var foreign = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage)));
+        var malformed = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "xx")));
+
+        foreign.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        malformed.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

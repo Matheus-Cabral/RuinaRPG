@@ -254,4 +254,149 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    // ---- Imagem opcional da Runa ----
+
+    private async Task<(string Id, string Url)> UploadImageAsync(string token, string? campaignId = null)
+    {
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        if (campaignId is not null)
+            content.Add(new StringContent(campaignId), "campaignId");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
+        return (body!.Id, body.Url);
+    }
+
+    private async Task PublishImageToCampaignAsync(string gmToken, string campaignId, string imageId)
+    {
+        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, imageId, null)));
+        var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+    }
+
+    private async Task<List<NpcRuneResponse>> RunesOfAsync(string sheetId, string token)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/runes", token));
+        return (await response.Content.ReadFromJsonAsync<List<NpcRuneResponse>>())!;
+    }
+
+    [Fact]
+    public async Task A_rune_from_scratch_with_the_callers_own_image_returns_201_and_the_list_has_the_ImageUrl()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm1", "npcruneimg1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcRuneImgPlayer1", "npcruneimgplayer1@teste.com");
+        var (sheetId, campaignId) = await GrantBlankNpcAsync(gmToken, playerId);
+        var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
+            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.ImageUrl.Should().Be(imageUrl);
+        (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.Nome == "Runa Ilustrada" && r.ImageUrl == imageUrl);
+    }
+
+    [Fact]
+    public async Task The_automatic_bank_copy_carries_the_image()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm2", "npcruneimg2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var (imageId, imageUrl) = await UploadImageAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa do GM", "Com imagem.", 2, null, imageId)));
+
+        (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa do GM" && e.ImageId == imageId && e.ImageUrl == imageUrl);
+    }
+
+    [Fact]
+    public async Task A_jogador_can_use_an_image_the_gm_published_in_the_campaign()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm3", "npcruneimg3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcRuneImgPlayer3", "npcruneimgplayer3@teste.com");
+        var (sheetId, campaignId) = await GrantBlankNpcAsync(gmToken, playerId);
+        var (imageId, imageUrl) = await UploadImageAsync(gmToken);
+        await PublishImageToCampaignAsync(gmToken, campaignId, imageId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
+            new AddNpcRuneRequest("Runa Liberada", "Imagem do GM.", 1, null, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.ImageUrl == imageUrl);
+    }
+
+    [Fact]
+    public async Task A_jogador_cannot_use_a_non_public_image_of_the_gm()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm4", "npcruneimg4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcRuneImgPlayer4", "npcruneimgplayer4@teste.com");
+        var (sheetId, campaignId) = await GrantBlankNpcAsync(gmToken, playerId);
+        var (naoAnexada, _) = await UploadImageAsync(gmToken);
+        var (privada, _) = await UploadImageAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, privada, null))); // anexada, mas privada
+
+        var semAnexo = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
+            new AddNpcRuneRequest("Runa", "X.", 1, null, naoAnexada)));
+        var comAnexoPrivado = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
+            new AddNpcRuneRequest("Runa", "X.", 1, null, privada)));
+
+        semAnexo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        comAnexoPrivado.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await RunesOfAsync(sheetId, playerToken)).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("00000000-0000-0000-0000-000000000001")]
+    public async Task A_malformed_or_unknown_image_id_returns_400(string imageId)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"NpcRuneImgGm5{imageId.Length}", $"npcruneimg5{imageId.Length}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa", "X.", 1, null, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task A_rune_picked_from_the_bank_inherits_the_entrys_image_on_the_rune_and_on_the_new_bank_copy()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm6", "npcruneimg6@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var (imageId, imageUrl) = await UploadImageAsync(gmToken);
+        var entryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+            new CreateRuneBankEntryRequest("Runa Herdeira", "Herda a imagem.", 1, imageId)));
+        var entry = (await entryResponse.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest(null, null, null, entry.Id)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.ImageUrl.Should().Be(imageUrl);
+        (await RunesOfAsync(sheetId, gmToken)).Should().ContainSingle(r => r.Nome == "Runa Herdeira" && r.ImageUrl == imageUrl);
+        (await BankOfAsync(gmToken)).Where(e => e.Nome == "Runa Herdeira").Should().HaveCount(2).And.OnlyContain(e => e.ImageId == imageId);
+    }
+
+    [Fact]
+    public async Task Picking_from_the_bank_together_with_an_image_id_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneImgGm7", "npcruneimg7@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var (imageId, _) = await UploadImageAsync(gmToken);
+        var entryId = await CreateRuneEntryAsync(gmToken, "Runa", "Desc.", 1);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest(null, null, null, entryId, imageId)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

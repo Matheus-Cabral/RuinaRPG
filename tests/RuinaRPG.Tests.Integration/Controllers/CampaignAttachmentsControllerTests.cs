@@ -608,6 +608,28 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task A_rune_attachment_carries_the_runes_ImageUrl_or_null()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttRuneImgGm1", "attruneimg1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Runa Imagem");
+        var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
+        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId)));
+        var comImagemId = (await comImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
+        var semImagemId = await CreateRuneEntryAsync(gmToken, "Runa Nua");
+
+        var attachComImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, comImagemId)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, null, null, semImagemId)));
+
+        (await attachComImagem.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.ImageUrl.Should().Be(imageUrl);
+        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var body = await list.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+        body!.Should().ContainSingle(a => a.Nome == "Runa Ilustrada" && a.ImageUrl == imageUrl);
+        body.Should().ContainSingle(a => a.Nome == "Runa Nua" && a.ImageUrl == null);
+    }
+
+    [Fact]
     public async Task Attaching_a_rune_entry_of_another_gm_returns_400()
     {
         var gmA = await RegisterGmAndGetTokenAsync("AttRuneGm3a", "attrune3a@teste.com");

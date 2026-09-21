@@ -42,6 +42,19 @@ public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
         await db.SaveChangesAsync();
     }
 
+    [Fact]
+    public async Task Migrate_adds_the_optional_ImageId_column_to_every_rune_table()
+    {
+        var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var db = new RuinaRpgDbContext(options);
+        await db.Database.MigrateAsync();
+
+        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddRuneImage"));
+        (await ColumnsOfAsync(db, "RuneBankEntries")).Should().Contain("ImageId");
+        (await ColumnsOfAsync(db, "CharacterRunes")).Should().Contain("ImageId");
+        (await ColumnsOfAsync(db, "NpcRunes")).Should().Contain("ImageId");
+    }
+
     private static Task<List<string>> ColumnsOfAsync(RuinaRpgDbContext db, string table) =>
         db.Database
             .SqlQuery<string>($"SELECT CAST(column_name AS text) AS \"Value\" FROM information_schema.columns WHERE table_name = {table}")
