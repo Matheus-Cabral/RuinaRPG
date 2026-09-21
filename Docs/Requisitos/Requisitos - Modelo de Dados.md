@@ -512,9 +512,10 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 |---|---|
 | Id | PK |
 | GmId | FK → Users |
-| Variante | enum (mesmo enum de 6.1, 7 valores) |
+| Variante | enum (mesmo enum de 6.1, 8 valores, incluindo a variante solar de Alóra) |
 | Nome | string |
 | Descricao | text |
+| NomeDaVariante | string, nullable — só usado pela variante solar de Alóra: o nome dado pelo GM, que a libera nas fichas quando preenchido (R0005) |
 
 **RacialTraitOverrides** — sobrescrita do GM pras opções de Característica Gratuita/Obrigatória de uma Variante (R0004); o padrão de "[[Ruína RPG - Sistema Básico]]" §7 vale quando a linha não existe. Uma linha por (GM, Variante); cada lista de opções é um JSON (array de {TraitNome, Especificacao}), não linhas filhas — tamanho pequeno e fixo, nunca consultado pelo conteúdo.
 
@@ -522,7 +523,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 |---|---|
 | Id | PK |
 | GmId | FK → Users |
-| Variante | enum (mesmo enum de 6.1, 7 valores) |
+| Variante | enum (mesmo enum de 6.1, 8 valores) |
 | GratuitaOptionsJson | text (JSON) |
 | ObrigatoriaOptionsJson | text (JSON) |
 

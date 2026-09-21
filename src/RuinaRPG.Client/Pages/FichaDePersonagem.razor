@@ -137,7 +137,7 @@
                 </MudDialog>
 
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-                <LinhagemVarianteFields @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
+                <LinhagemVarianteFields VariantesLiberadas="_variantesLiberadas" @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
                 <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
@@ -924,7 +924,7 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
-            LoadRacialAbilityAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
+            LoadRacialAbilityAsync(), LoadVariantesLiberadasAsync(), LoadSpellAbilitiesAsync(), LoadRunesAsync(), LoadMasteriesAsync(),
             LoadInventoryAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadDiaryAsync(),
             LoadCampaignNameAsync(), LoadPendingRacialChoiceAsync());
     }
@@ -1341,6 +1341,13 @@
         if (int.TryParse(value?.ToString(), out var durabilidade))
             await Http.PutAsJsonAsync($"character-sheets/{SheetId}/shields/{shieldId}/durabilidade", durabilidade);
         await LoadTabs2And3Async();
+    }
+
+    private List<VarianteLiberadaResponse> _variantesLiberadas = new();
+
+    private async Task LoadVariantesLiberadasAsync()
+    {
+        _variantesLiberadas = await Http.GetFromJsonAsync<List<VarianteLiberadaResponse>>($"character-sheets/{SheetId}/variantes-liberadas") ?? new();
     }
 
     private async Task LoadRacialAbilityAsync()

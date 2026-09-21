@@ -9,12 +9,17 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
-@foreach (var variante in new[] { "PhylacTai", "EsPhylauc", "Yavos", "Koroanos", "Alora" })
+@foreach (var variante in new[] { "PhylacTai", "EsPhylauc", "Yavos", "Koroanos", "Alora", LinhagemVarianteFields.VarianteSolarDeAlora })
 {
     var entry = _entries.SingleOrDefault(e => e.Variante == variante);
     if (entry is not null)
     {
         <Section Title="@VarianteLabel(variante)">
+            @if (variante == LinhagemVarianteFields.VarianteSolarDeAlora)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Esta variante só aparece nas fichas depois que você dá um nome a ela. Apague o nome para escondê-la de novo em escolhas futuras.</MudText>
+                <MudTextField T="string" Value="@entry.NomeDaVariante" ValueChanged="UpdateNomeDaVarianteAsync" Label="Nome da variante" MaxLength="60" Class="mb-2" />
+            }
             <MudTextField T="string" Value="@entry.Nome" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Nome", v))" Label="Nome" />
             <MudTextField T="string" Value="@entry.Descricao" ValueChanged="@(v => UpdateRacialAbilityAsync(variante, "Descricao", v))" Label="Descrição" Lines="3" />
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="mt-2" Disabled="@entry.IsDefault" OnClick="@(() => RestoreDefaultAsync(variante))">Restaurar padrão</MudButton>
@@ -132,6 +137,14 @@
         var response = await Http.PutAsJsonAsync($"racial-abilities/{variante}", new UpdateRacialAbilityRequest(nome, descricao));
         if (!response.IsSuccessStatusCode)
             _errorMessage = "Não foi possível salvar a habilidade racial.";
+        await LoadRacialAbilitiesAsync();
+    }
+
+    private async Task UpdateNomeDaVarianteAsync(string? nome)
+    {
+        var response = await Http.PutAsJsonAsync($"racial-abilities/{LinhagemVarianteFields.VarianteSolarDeAlora}/nome-da-variante", new UpdateNomeDaVarianteRequest(nome));
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível salvar o nome da variante.";
         await LoadRacialAbilitiesAsync();
     }
 

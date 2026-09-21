@@ -30,7 +30,7 @@
 
 - *Linhagem*: Um dropdown exibindo o nome das 4 linhagens definidas no §7º do "[[Ruína RPG - Sistema Básico]]", sendo elas, **Humano**, **Phylauc**, **Nephrytes** e **Ecônos**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso o valor for NULL, exibe o placeholder *Escolha uma Linhagem*.
 
-- *Variante*: Um dropdown exibindo os nomes das variantes correspondentes a Linhagem escolhida, sendo as variantes, de Humanos: Sinir e Laonir, de Phylauc: Phylac'tai e Es'Phylauc, de Nephrytes: Yavos e Koroanos, de Ecônos: Alóra. Caso for NULL exibe o placeholder *Escolha uma Variante* e se a linhagem estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma linhagem antes da variante.
+- *Variante*: Um dropdown exibindo os nomes das variantes correspondentes a Linhagem escolhida, sendo as variantes, de Humanos: Sinir e Laonir, de Phylauc: Phylac'tai e Es'Phylauc, de Nephrytes: Yavos e Koroanos, de Ecônos: Alóra e a variante solar de Alóra (esta só aparece depois que o GM lhe dá um nome — ver "[[Requisitos - Habilidades Raciais]]" R0005, e o dropdown usa o nome que ele digitou). Caso for NULL exibe o placeholder *Escolha uma Variante* e se a linhagem estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma linhagem antes da variante.
 
 - *Vocação*: Um dropdown exibindo as 5 vocações (classes) definidas na "[[Tabela de Vocação]]", sendo elas, **Campeão**, **Caçador**, **Feiticeiro**, **Adepto** e **Bruxo**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso o valor for NULL, exibe o placeholder *Escolha uma Vocação*. A vocação escolhida determina as colunas de Vida e Arcana usadas na progressão de nível (ver *Vida* e *Arcana* no subgrupo Recursos).
 

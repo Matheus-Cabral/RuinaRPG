@@ -1,6 +1,7 @@
 using Bunit;
 using FluentAssertions;
 using RuinaRPG.Client.Shared.Fields;
+using RuinaRPG.Contracts.CharacterSheets;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
@@ -46,4 +47,49 @@ public class LinhagemVarianteFieldsTests : MudBunitContext
 
         cut.Instance.VarianteOptions().Should().BeEmpty();
     }
+
+    private static readonly VarianteLiberadaResponse[] SolarLiberada = [new("AloraSolar", "Alóra Solar")];
+
+    [Fact]
+    public void The_solar_Alora_is_not_offered_until_the_GM_names_it()
+    {
+        var cut = Render<LinhagemVarianteFields>(p => p
+            .Add(x => x.Linhagem, "Econos")
+            .Add(x => x.Variante, (string?)null));
+
+        cut.Instance.VarianteOptions().Select(o => o.Valor).Should().Equal("Alora");
+    }
+
+    [Fact]
+    public void Once_named_the_solar_Alora_is_offered_under_the_GMs_name()
+    {
+        var cut = Render<LinhagemVarianteFields>(p => p
+            .Add(x => x.Linhagem, "Econos")
+            .Add(x => x.Variante, (string?)null)
+            .Add(x => x.VariantesLiberadas, SolarLiberada));
+
+        cut.Instance.VarianteOptions().Should().Contain(o => o.Valor == "AloraSolar" && o.Rotulo == "Alóra Solar" && o.Polaridade == "Sol");
+    }
+
+    [Fact]
+    public void A_sheet_already_on_the_solar_Alora_keeps_seeing_it_even_if_the_GM_removed_the_name()
+    {
+        var cut = Render<LinhagemVarianteFields>(p => p
+            .Add(x => x.Linhagem, "Econos")
+            .Add(x => x.Variante, "AloraSolar"));
+
+        cut.Instance.VarianteOptions().Should().Contain(o => o.Valor == "AloraSolar" && o.Rotulo == "Alóra (Sol)");
+    }
+
+    [Fact]
+    public void A_named_variant_never_leaks_into_another_Linhagem()
+    {
+        var cut = Render<LinhagemVarianteFields>(p => p
+            .Add(x => x.Linhagem, "Humano")
+            .Add(x => x.Variante, (string?)null)
+            .Add(x => x.VariantesLiberadas, SolarLiberada));
+
+        cut.Instance.VarianteOptions().Select(o => o.Valor).Should().BeEquivalentTo("Sinir", "Laonir");
+    }
 }
+

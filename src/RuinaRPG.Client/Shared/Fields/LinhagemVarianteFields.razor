@@ -1,4 +1,5 @@
 @using MudBlazor
+@using RuinaRPG.Contracts.CharacterSheets
 
 <MudSelect T="string" Label="Linhagem" Value="Linhagem" ValueChanged="OnLinhagemChangedAsync" Placeholder="Escolha uma Linhagem">
     @foreach (var linhagem in Linhagens)
@@ -26,6 +27,12 @@ else
     [Parameter] public EventCallback<string?> LinhagemChanged { get; set; }
     [Parameter] public string? Variante { get; set; }
     [Parameter] public EventCallback<string?> VarianteChanged { get; set; }
+    // Variantes que o GM nomeou (hoje só a solar de Alóra) — só estas aparecem entre as opções; ver
+    // Requisitos - Habilidades Raciais R0005. null/vazio = nenhuma liberada ainda.
+    [Parameter] public IReadOnlyList<VarianteLiberadaResponse>? VariantesLiberadas { get; set; }
+
+    // Variante que só existe nas fichas depois que o GM lhe dá um nome.
+    public const string VarianteSolarDeAlora = "AloraSolar";
 
     public static readonly string[] Linhagens = ["Humano", "Phylauc", "Nephrytes", "Econos"];
 
@@ -36,11 +43,22 @@ else
         ["Humano"] = [("Sinir", "Sinir (Sol)", "Sol"), ("Laonir", "Laonir (Lua)", "Lua")],
         ["Phylauc"] = [("PhylacTai", "Phylac'tai (Sol)", "Sol"), ("EsPhylauc", "Es'Phylauc (Lua)", "Lua")],
         ["Nephrytes"] = [("Koroanos", "Koroanos (Sol)", "Sol"), ("Yavos", "Yavos (Lua)", "Lua")],
-        ["Econos"] = [("Alora", "Alóra (Lua)", "Lua")],
+        ["Econos"] = [("Alora", "Alóra (Lua)", "Lua"), (VarianteSolarDeAlora, "Alóra (Sol)", "Sol")],
     };
 
-    internal (string Valor, string Rotulo, string Polaridade)[] VarianteOptions() =>
-        !string.IsNullOrEmpty(Linhagem) && VariantesPorLinhagem.TryGetValue(Linhagem, out var options) ? options : [];
+    // A variante solar de Alóra aparece se o GM a nomeou (rótulo = o nome dele) ou se a ficha já a usa
+    // (rótulo padrão, pra não esconder uma escolha antiga quando o nome some).
+    internal (string Valor, string Rotulo, string Polaridade)[] VarianteOptions()
+    {
+        if (string.IsNullOrEmpty(Linhagem) || !VariantesPorLinhagem.TryGetValue(Linhagem, out var options))
+            return [];
+
+        var liberada = VariantesLiberadas?.FirstOrDefault(v => v.Variante == VarianteSolarDeAlora);
+        return options
+            .Where(o => o.Valor != VarianteSolarDeAlora || liberada is not null || Variante == VarianteSolarDeAlora)
+            .Select(o => o.Valor == VarianteSolarDeAlora && liberada is not null ? (o.Valor, liberada.Rotulo, o.Polaridade) : o)
+            .ToArray();
+    }
 
     internal Task SetLinhagemForTests(string? linhagem) => OnLinhagemChangedAsync(linhagem);
 
