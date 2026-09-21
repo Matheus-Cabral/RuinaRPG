@@ -121,13 +121,27 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
   
 
-Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): 3 blocos de campos por linha — Essência Básica, Sub-Elemento, Caminho e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
+Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): campos por linha, na ordem — Essência Básica (Elemento), Caminho, Sub-Elemento e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
 
-- *Elemento*: dropdown fixo com os 4 elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`; "Mundano", presente na matriz apenas como referência, não é uma opção válida aqui).
+- *Elemento*: dropdown fixo com os 4 elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`). "Mundano", que na matriz é o centro de onde partem os Caminhos, não é um Elemento — aparece aqui só como opção de *Caminho* (abaixo).
 - *Valor do Elemento*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
-- *Sub-Elemento*: dropdown fixo com os 14 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Alma, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Vida, Aprimorar, Invocação. O cliente não filtra as opções pelo Elemento escolhido na mesma linha (evita esconder o campo até o Elemento ser preenchido); quando os dois já foram escolhidos, o servidor valida que o par Elemento/Sub-Elemento é um dos combináveis pela Matriz Elemental, rejeitando o resto.
+- *Caminho*: dropdown fixo com os 3 Caminhos da Matriz Elemental: **Alma**, **Vida** e **Mundano** (substitui o antigo nome livre). Pode ficar vazio. Um valor em texto livre já salvo de antes continua sendo exibido e aceito enquanto não for alterado.
+- *Sub-Elemento*: dropdown fixo com os 14 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Alma, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Vida, Aprimorar, Invocação. Oito deles dependem do *Caminho* e do *Elemento* da própria linha — só são oferecidos quando os dois batem, e o servidor rejeita o resto:
+
+  | Caminho | Sub-Elemento | Elemento exigido |
+  |---|---|---|
+  | Alma | Prever | Ar |
+  | Alma | Purificar | Água |
+  | Vida | Curar | Fogo |
+  | Vida | Aprimorar | Terra |
+  | Mundano | Ecomancia | Ar |
+  | Mundano | Hemomancia | Água |
+  | Mundano | Necromancia | Fogo |
+  | Mundano | Invocação | Terra |
+
+  Ex.: para ter *Curar*, a linha precisa de Elemento **Fogo** e Caminho **Vida**. Gelo, Raio, Flora, Ferro, Alma e Vida não dependem de Caminho. Além dessa regra, o Sub-Elemento continua restrito pela Vocação (abaixo). Sem Elemento ou sem Caminho preenchido, esses oito não são oferecidos. Como nos demais campos, o servidor só valida o que *mudou* em relação ao já salvo: uma linha antiga reenviada sem alteração nunca é rejeitada.
 - *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor do Elemento.
-- *Caminho e Experiência*: um nome livre, customizável pelo jogador (o "Caminho" trilhado dentro daquele Sub-Elemento) acompanhado de um valor numérico ≥ 0 (a "Experiência" naquele Caminho).
+- *Experiência*: valor numérico ≥ 0, a "Experiência" no Caminho da linha.
 
 Qualquer campo de uma linha de Afinidade já existente pode ser editado pelo jogador a qualquer momento (não só no momento de adicionar a linha), e a linha pode ser removida a qualquer momento.
 

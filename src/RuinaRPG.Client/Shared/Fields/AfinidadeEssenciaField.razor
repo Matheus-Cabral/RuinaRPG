@@ -1,4 +1,5 @@
 @using MudBlazor
+@using RuinaRPG.Domain.CharacterSheets
 
 @* One "Essência" cell of the Afinidades table: a name dropdown (Elemento or Sub-Elemento,
    depending on which static option list the caller passes) paired with its own numeric value,
@@ -38,6 +39,25 @@
         ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
         ("Vida", "Vida"), ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
     ];
+
+    // Sub-Elementos oferecidos numa linha de Afinidade: o filtro por Vocação (Escola de Magia) e,
+    // pros 8 que dependem de Caminho (Prever, Purificar, Curar, Aprimorar, Ecomancia, Hemomancia,
+    // Necromancia, Invocação), o Elemento + Caminho da própria linha. O valor já salvo (atual) fica
+    // sempre na lista, pro select não aparecer em branco quando algo mudou ao redor dele.
+    public static (string Valor, string Rotulo)[] SubElementosDisponiveis(string? vocacao, string? elemento, string? caminho, string? atual)
+    {
+        var vocacaoValida = Enum.TryParse<Vocacao>(vocacao, out var voc);
+        Elemento? el = Enum.TryParse<Elemento>(elemento, out var e) ? e : null;
+        Caminho? cam = CaminhoSubElementoRules.TryParseCaminho(caminho, out var c) ? c : null;
+
+        return SubElementos.Where(s =>
+                s.Valor == atual ||
+                (vocacaoValida
+                    && Enum.TryParse<SubElemento>(s.Valor, out var se)
+                    && VocacaoEscolaMap.PodeEscolherSubElemento(voc, se)
+                    && CaminhoSubElementoRules.Permite(el, cam, se)))
+            .ToArray();
+    }
 
     internal Task SetNomeForTests(string? nome) => OnNomeChangedAsync(nome);
     internal Task SetValorForTests(int? valor) => OnValorChangedAsync(valor);

@@ -253,7 +253,7 @@
 
         <Section Title="Afinidades">
             <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Essência Básica</th><th>Sub-Elemento</th><th>Caminho</th><th>Experiência</th><th></th></tr></thead>
+                <thead><tr><th>Essência Básica</th><th>Caminho</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var affinity in _affinities)
                     {
@@ -263,12 +263,12 @@
                                                          Nome="@affinity.Elemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "Elemento", v))"
                                                          Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" />
                             </td>
+                            <td><CaminhoSelect Value="@affinity.CaminhoNome" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "CaminhoNome", v))" /></td>
                             <td>
-                                <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosPermitidosPelaVocacao()"
+                                <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosDisponiveis(affinity.Elemento, affinity.CaminhoNome, affinity.SubElemento)"
                                                          Nome="@affinity.SubElemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElemento", v))"
                                                          Valor="@affinity.SubElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElementoValor", v))" />
                             </td>
-                            <td><MudTextField T="string" Value="@affinity.CaminhoNome" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "CaminhoNome", v))" /></td>
                             <td><MudNumericField T="int?" Value="@affinity.Experiencia" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "Experiencia", v))" /></td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</MudButton></td>
                         </tr>
@@ -278,11 +278,11 @@
                             <AfinidadeEssenciaField Label="Elemento" Opcoes="ElementosPermitidosPelaVocacao()"
                                                      @bind-Nome="_affinityForm.Elemento" @bind-Valor="_affinityForm.ElementoValor" />
                         </td>
+                        <td><CaminhoSelect @bind-Value="_affinityForm.CaminhoNome" /></td>
                         <td>
-                            <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosPermitidosPelaVocacao()"
+                            <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosDisponiveis(_affinityForm.Elemento, _affinityForm.CaminhoNome, _affinityForm.SubElemento)"
                                                      @bind-Nome="_affinityForm.SubElemento" @bind-Valor="_affinityForm.SubElementoValor" />
                         </td>
-                        <td><MudTextField T="string" @bind-Value="_affinityForm.CaminhoNome" /></td>
                         <td><MudNumericField T="int?" @bind-Value="_affinityForm.Experiencia" /></td>
                         <td><MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="AddAffinityAsync">Adicionar</MudButton></td>
                     </tr>
@@ -1097,10 +1097,8 @@
             ? AfinidadeEssenciaField.Elementos.Where(e => Enum.TryParse<Elemento>(e.Valor, out var el) && VocacaoEscolaMap.PodeEscolherElemento(vocacao, el)).ToArray()
             : [];
 
-    private (string Valor, string Rotulo)[] SubElementosPermitidosPelaVocacao() =>
-        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
-            ? AfinidadeEssenciaField.SubElementos.Where(s => Enum.TryParse<SubElemento>(s.Valor, out var se) && VocacaoEscolaMap.PodeEscolherSubElemento(vocacao, se)).ToArray()
-            : [];
+    private (string Valor, string Rotulo)[] SubElementosDisponiveis(string? elemento, string? caminho, string? atual) =>
+        AfinidadeEssenciaField.SubElementosDisponiveis(_form.Vocacao, elemento, caminho, atual);
 
     private async Task AddAffinityAsync()
     {

@@ -65,4 +65,48 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
 
         newValor.Should().BeNull();
     }
+
+    private static string[] Disponiveis(string? vocacao, string? elemento, string? caminho, string? atual = null) =>
+        AfinidadeEssenciaField.SubElementosDisponiveis(vocacao, elemento, caminho, atual).Select(o => o.Valor).ToArray();
+
+    [Fact]
+    public void SubElementosDisponiveis_offers_Curar_only_with_Fogo_and_the_Vida_Caminho()
+    {
+        Disponiveis("Adepto", "Fogo", "Vida").Should().Contain("Curar");
+        Disponiveis("Adepto", "Fogo", "Mundano").Should().NotContain("Curar");
+        Disponiveis("Adepto", "Fogo", null).Should().NotContain("Curar");
+        Disponiveis("Adepto", null, "Vida").Should().NotContain("Curar");
+        Disponiveis("Adepto", "Ar", "Vida").Should().NotContain("Curar");
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_offers_only_the_gated_SubElementos_that_match_the_Elemento_and_Caminho()
+    {
+        Disponiveis("Adepto", "Ar", "Alma").Should().Contain("Prever").And.NotContain("Purificar");
+        Disponiveis("Adepto", "Agua", "Alma").Should().Contain("Purificar").And.NotContain("Prever");
+        Disponiveis("Adepto", "Terra", "Vida").Should().Contain("Aprimorar").And.NotContain("Curar");
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_keeps_the_ungated_SubElementos_the_Vocacao_allows_regardless_of_Elemento_and_Caminho()
+    {
+        Disponiveis("Adepto", null, null).Should().BeEquivalentTo(["Alma", "Vida"]);
+        Disponiveis("Feiticeiro", null, null).Should().BeEquivalentTo(["Gelo", "Flora", "Ferro", "Raio"]);
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_still_filters_by_Vocacao()
+    {
+        // Necromancia é de Maculação: Bruxo libera, Adepto não — mesmo com Fogo + Mundano.
+        Disponiveis("Bruxo", "Fogo", "Mundano").Should().Contain("Necromancia");
+        Disponiveis("Adepto", "Fogo", "Mundano").Should().NotContain("Necromancia");
+        Disponiveis("Campeao", "Fogo", "Vida").Should().BeEmpty();
+        Disponiveis(null, "Fogo", "Vida").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SubElementosDisponiveis_keeps_the_currently_saved_value_so_the_select_never_shows_blank()
+    {
+        Disponiveis("Adepto", "Fogo", "Mundano", atual: "Curar").Should().Contain("Curar");
+    }
 }

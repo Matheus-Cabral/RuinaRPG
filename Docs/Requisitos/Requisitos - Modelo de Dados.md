@@ -241,7 +241,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
 
-**CharacterAffinities** — lista incremental (2.c).
+**CharacterAffinities** — lista incremental (2.c). `CaminhoNome` guarda `Alma`, `Vida` ou `Mundano` (validado pela API; linhas antigas podem ter texto livre).
 
 | Coluna | Tipo |
 |---|---|
