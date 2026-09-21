@@ -57,7 +57,7 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
-    public async Task ListRacialAbilities_returns_all_7_Variantes_with_defaults_when_no_overrides_exist()
+    public async Task ListRacialAbilities_returns_all_8_Variantes_with_defaults_when_no_overrides_exist()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RacialGm1", "racial1@teste.com");
 
@@ -65,7 +65,7 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RacialAbilityEntryResponse>>();
-        body!.Should().HaveCount(7);
+        body!.Should().HaveCount(8);
         body!.Should().OnlyContain(e => e.IsDefault);
         body!.Single(e => e.Variante == "Sinir").Nome.Should().Be("Racial (Arca)");
         body!.Single(e => e.Variante == "Sinir").Descricao.Should().Be("Role 1d18 na tabela de Arcas.");
@@ -233,7 +233,7 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RacialTraitSlotsEntryResponse>>();
-        body!.Should().HaveCount(7);
+        body!.Should().HaveCount(8);
         body!.Should().OnlyContain(e => e.IsDefault);
 
         var sinir = body!.Single(e => e.Variante == "Sinir");

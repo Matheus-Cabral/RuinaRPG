@@ -75,6 +75,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             return BadRequest("Variante inválida.");
         if (linhagem is not null && variante is not null && !LinhagemVarianteValidator.IsValidCombination(linhagem.Value, variante.Value))
             return BadRequest("A Variante escolhida não pertence à Linhagem escolhida.");
+        if (await VarianteLiberadaResolver.EscolhaBloqueadaAsync(db, sheet.GmId, variante, sheet.Variante))
+            return BadRequest("Essa Variante ainda não foi liberada pelo GM.");
         if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
             return BadRequest("Vocação inválida.");
         if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
@@ -242,6 +244,19 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         db.NpcSheets.Remove(sheet);
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpGet("{id}/variantes-liberadas")]
+    public async Task<ActionResult<List<VarianteLiberadaResponse>>> VariantesLiberadas(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        return await VarianteLiberadaResolver.ListAsync(db, sheet.GmId);
     }
 
     [HttpGet("{id}/racial-ability")]

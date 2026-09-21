@@ -36,7 +36,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
             var over = overrides.FirstOrDefault(o => o.Variante == variante);
             if (over is not null)
             {
-                responses.Add(new RacialAbilityEntryResponse(variante.ToString(), over.Nome, over.Descricao, false));
+                responses.Add(new RacialAbilityEntryResponse(variante.ToString(), over.Nome, over.Descricao, false, over.NomeDaVariante));
             }
             else
             {
@@ -63,6 +63,36 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         {
             existing.Nome = request.Nome;
             existing.Descricao = request.Descricao;
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Dá (ou tira) o nome da variante solar de Alóra. Preencher libera a variante nas fichas do GM;
+    /// vazio a bloqueia de novo. Só vale para Variante.AloraSolar — as demais têm nome fixo.
+    /// </summary>
+    [HttpPut("api/racial-abilities/{variante}/nome-da-variante")]
+    public async Task<IActionResult> UpdateNomeDaVariante(string variante, UpdateNomeDaVarianteRequest request)
+    {
+        if (!Enum.TryParse<Variante>(variante, out var parsedVariante) || parsedVariante != VarianteLiberadaResolver.Personalizada)
+            return BadRequest("Só a variante solar de Alóra tem nome editável.");
+
+        var nome = string.IsNullOrWhiteSpace(request.Nome) ? null : request.Nome.Trim();
+        if (nome is { Length: > 60 })
+            return BadRequest("O nome da variante pode ter no máximo 60 caracteres.");
+
+        var gmId = CurrentUserId();
+        var existing = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == gmId && o.Variante == parsedVariante);
+        if (existing is null)
+        {
+            if (nome is not null)
+                db.RacialAbilityOverrides.Add(new RacialAbilityOverride { Id = Guid.NewGuid(), GmId = gmId, Variante = parsedVariante, Nome = "", Descricao = "", NomeDaVariante = nome });
+        }
+        else
+        {
+            existing.NomeDaVariante = nome;
         }
 
         await db.SaveChangesAsync();
