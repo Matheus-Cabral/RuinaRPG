@@ -1,7 +1,7 @@
 @using MudBlazor
 
 @* A "[Tipo]" bracket-string dressed up as a real tag. Covers both value domains that show up as
-   "Tipo" across the app: campaign-attachment Tipo (Item/SpellAbilityBankEntry/Image/NpcSheet/
+   "Tipo" across the app: campaign-attachment Tipo (Item/SpellAbilityBankEntry/RuneBankEntry/Image/NpcSheet/
    CreatureSheet — CampaignAttachmentResponse, PublicAttachmentSummary) and grant Tipo
    (Npc/Creature — GrantSummaryResponse). An unrecognized value falls back to itself rather than
    disappearing, so a future Tipo doesn't render as a blank chip. *@
@@ -15,6 +15,7 @@
         "Item" => "Item",
         "Image" => "Imagem",
         "SpellAbilityBankEntry" => "Magia/Habilidade",
+        "RuneBankEntry" => "Runa",
         "NpcSheet" or "Npc" => "NPC",
         "CreatureSheet" or "Creature" => "Criatura",
         _ => Tipo,

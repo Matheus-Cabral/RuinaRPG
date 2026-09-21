@@ -1,0 +1,117 @@
+@page "/banco-de-runas"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Runes
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+
+<MudText Typo="Typo.h3">Banco de Runas</MudText>
+
+<Section Title="Filtros">
+    <MudGrid Class="mt-3">
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudNumericField T="int?" @bind-Value="_grauFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Grau" />
+        </MudItem>
+    </MudGrid>
+</Section>
+
+<Section Title="Runas">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@(() => Navigation.NavigateTo("/banco-de-runas/novo"))">Nova Entrada</MudButton>
+
+    <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Grau</th>
+                <th>Descrição</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in _entries)
+            {
+                <tr>
+                    <td>@entry.Nome</td>
+                    <td>@entry.Grau</td>
+                    <td>@entry.Descricao</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-runas/{entry.Id}/editar"))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(entry.Id))">Excluir</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Banco de Runas"),
+    };
+
+    private string _nomeFiltro = "";
+    private int? _grauFiltro;
+    private List<RuneBankEntryResponse> _entries = new();
+    private string? _errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task DebouncedLoadAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var parametros = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_nomeFiltro))
+            parametros.Add($"nome={Uri.EscapeDataString(_nomeFiltro)}");
+        if (_grauFiltro is not null)
+            parametros.Add($"grau={_grauFiltro}");
+        var query = parametros.Count == 0 ? "" : "?" + string.Join("&", parametros);
+
+        var response = await Http.GetAsync($"rune-bank{query}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar o banco de runas.";
+            return;
+        }
+
+        _entries = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>() ?? new();
+        _errorMessage = null;
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"rune-bank/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir a entrada.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+}

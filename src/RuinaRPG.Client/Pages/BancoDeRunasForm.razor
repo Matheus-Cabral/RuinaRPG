@@ -1,0 +1,134 @@
+@page "/banco-de-runas/novo"
+@page "/banco-de-runas/{EntryId}/editar"
+@implements IDisposable
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using RuinaRPG.Contracts.Runes
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+
+<MudText Typo="Typo.h3">@(EntryId is null ? "Nova Entrada" : "Editar Entrada")</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+<EditForm EditContext="_editContext">
+    <DataAnnotationsValidator />
+    @if (EntryId is not null)
+    {
+        <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+    }
+    <Section Title="Runa">
+        <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+        <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+    </Section>
+
+    @if (EntryId is null)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Salvar</MudButton>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public string? EntryId { get; set; }
+
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Banco de Runas", "banco-de-runas"),
+        new(EntryId is null ? "Nova Entrada" : (string.IsNullOrWhiteSpace(_form.Nome) ? "Editar Entrada" : _form.Nome)),
+    };
+
+    private readonly EntryFormModel _form = new();
+    // Constructed synchronously (not inside OnInitializedAsync) so it is never null on first render —
+    // same reasoning as BancoDeMagiasForm: EditContext reads _form lazily at validation time.
+    private readonly EditContext _editContext;
+    private readonly AutoSaveCoordinator _autoSave = new();
+    private string? _errorMessage;
+
+    public BancoDeRunasForm()
+    {
+        _editContext = new EditContext(_form);
+    }
+
+    protected override void OnInitialized()
+    {
+        _autoSave.StateChanged += StateHasChangedFromAutoSave;
+    }
+
+    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EntryId is null)
+            return;
+
+        var response = await Http.GetAsync("rune-bank");
+        var entries = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>() ?? new();
+        var existing = entries.SingleOrDefault(e => e.Id == EntryId);
+        if (existing is null)
+        {
+            _errorMessage = "Entrada não encontrada.";
+            return;
+        }
+
+        _form.Nome = existing.Nome;
+        _form.Grau = existing.Grau;
+        _form.Descricao = existing.Descricao;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (!_editContext.Validate())
+            return;
+
+        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.";
+            return;
+        }
+
+        Navigation.NavigateTo("/banco-de-runas");
+    }
+
+    private async Task<bool> SaveIfValidAsync()
+    {
+        if (!_editContext.Validate())
+            return false;
+
+        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau));
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
+
+        return true;
+    }
+
+    private Task NotifySavedAsync()
+    {
+        // Single choke-point guard, same as BancoDeMagiasForm: in create mode the plain-field callbacks
+        // must not fire a PUT to "rune-bank/" (null id). Create mode keeps its explicit "Salvar" button.
+        if (EntryId is null)
+            return Task.CompletedTask;
+
+        _autoSave.NotifyChanged(SaveIfValidAsync);
+        return Task.CompletedTask;
+    }
+
+    private class EntryFormModel
+    {
+        [Required(AllowEmptyStrings = false)]
+        public string Nome { get; set; } = "";
+        [Range(0, int.MaxValue)]
+        public int Grau { get; set; }
+        public string Descricao { get; set; } = "";
+    }
+}

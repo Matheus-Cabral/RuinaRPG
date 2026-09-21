@@ -14,6 +14,7 @@ public class TipoChipTests : MudBunitContext
     [InlineData("Item", "Item")]
     [InlineData("Image", "Imagem")]
     [InlineData("SpellAbilityBankEntry", "Magia/Habilidade")]
+    [InlineData("RuneBankEntry", "Runa")]
     [InlineData("NpcSheet", "NPC")]
     [InlineData("CreatureSheet", "Criatura")]
     [InlineData("Npc", "NPC")]
