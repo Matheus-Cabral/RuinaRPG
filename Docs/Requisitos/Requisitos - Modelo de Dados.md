@@ -217,6 +217,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | SubVocacao | string, nullable | 1.a |
 | Afinidade | enum (Elemento \| Sub-Elemento), nullable | 1.a |
 | Propriedade | string, nullable | 1.a |
+| HistoricoId | FK → Historicos, nullable | referência ao vivo (ver legenda) — nenhum campo é copiado para a ficha |
 | Nivel | int | 1.b |
 | Circulo | int | 1.b — colunas vestigiais: mantidas no schema mas não mais atualizadas pela aplicação; a Graduação exibida (`GraduacaoLabel`/`Graduacao` na response) é hoje **computada em tempo de leitura** a partir de `EAPAtual`/`Vocacao`, não lida daqui. Mesma situação em NpcSheets (6.2), que herda esta tabela sem diferença nesses dois campos. |
 | Grau | int | 1.b — ver nota de `Circulo` acima. |
@@ -384,6 +385,22 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | UpdatedByUserId | FK → Users, nullable |
 | UpdatedAt | DateTime, nullable |
 
+  
+
+**Historicos** — `Historico.md` convertido em tabela (dado estático, seedado a partir do documento).
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string |
+| Descricao | text |
+| PericiaMaisSeis | enum Pericia |
+| PericiaMaisTres | enum Pericia |
+| IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Historico.md |
+| IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
+| UpdatedByUserId | FK → Users, nullable |
+| UpdatedAt | DateTime, nullable |
+
 ## 6.2 NpcSheets — diferenças de CharacterSheets
 
 *(ver "[[Requisitos - Ficha de NPCs]]")*
@@ -394,6 +411,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
 - `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`.
+- `HistoricoId` | FK → Historicos, nullable | referência ao vivo (ver legenda) — nenhum campo é copiado para a ficha
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 

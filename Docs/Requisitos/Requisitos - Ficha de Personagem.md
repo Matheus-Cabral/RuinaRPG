@@ -44,6 +44,8 @@
 
 - *Estrela*: Um dropdown com as 10 Estrelas Alkerianas definidas em "[[As estrelas alkerianas]]", na ordem das Coroas — **Aeurer**, **Liora**, **Vaelen**, **Theron**, **Maetus**, **Almora**, **Elvani**, **Sareli**, **Gaelion** e **Sadir**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha uma Estrela*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição da Estrela selecionada (tendência de comportamento, mesmo texto de "[[As estrelas alkerianas]]"), para não poluir a ficha com o texto completo.
 
+- *Histórico*: Um dropdown com os Históricos cadastrados no catálogo (ver "[[Requisitos - Auditoria de Regras]]" — CRUD completo pelo Auditor de Regras), cada um concedendo +6 numa Perícia e +3 em outra (ver "[[Historico]]"). O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha um Histórico*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição do Histórico selecionado e as duas Perícias bonificadas, para não poluir a ficha com o texto completo. O bônus entra direto no *Modificador* das duas Perícias bonificadas (2.d) — e, por extensão, em tudo que já deriva de Modificador (Sub-Atributos via "Bruto [Perícia]", Maestrias).
+
   
 
 ### 1.b) Nível e Progressão

@@ -14,7 +14,7 @@
 
   
 
-# **R0001** - O Livro de Regras deve exibir, em abas, o conteúdo completo de cinco documentos do sistema.
+# **R0001** - O Livro de Regras deve exibir, em abas, o conteúdo completo de seis documentos do sistema.
 
 **Descrição**: Cada aba renderiza o Markdown de um documento inteiro (não um trecho, ao contrário do Compêndio) como HTML formatado:
 
@@ -23,6 +23,7 @@
 - "[[GRAUS & CÍRCULOS]]"
 - "[[Tabela de Níveis]]"
 - "[[As estrelas alkerianas]]"
+- "[[Historico]]"
 
   
 
@@ -49,6 +50,7 @@
 | Tabela de Níveis | — | nenhuma (o documento não tem títulos — é uma única tabela) |
 | Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
 | As Estrelas Alkerianas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
+| Históricos | — | uma por Histórico (ver R0007 abaixo; vem do catálogo de Históricos — não do Markdown, mesmo tratamento de R0004 para Características) |
 
 Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas Alkerianas), um sumário fixo ao lado do conteúdo lista o título de cada seção; clicar em uma entrada rola a página até aquela seção. Conteúdo anterior ao primeiro título de divisão (ex: a tabela de custo de Grau, em Graus & Círculos) continua sendo exibido no topo da aba, antes do sumário e das seções.
 
@@ -63,3 +65,9 @@ Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas Alke
 # **R0006** - A aba de As Estrelas Alkerianas deve incluir a imagem do calendário Alkeriano.
 
 **Descrição**: A imagem `Calendario alkeriano.jpeg` (`Docs/`) aparece no topo dessa aba, antes do cartão de Sina e dos cartões de Estrela — mesmo tratamento de R0002: não tem seção correspondente no documento fonte, funciona como material de referência para o documento inteiro.
+
+  
+
+# **R0007** - A aba de Históricos reflete o catálogo de Históricos em tempo real.
+
+**Descrição**: Ao contrário dos documentos com sobrescrita de Markdown (R0002/R0006), a aba de Históricos não tem uma sobrescrita de texto própria — ela é montada diretamente a partir do catálogo de Históricos (ver "[[Requisitos - Auditoria de Regras]]"). Uma edição salva ali aparece nessa aba imediatamente, sem precisar de nenhuma ação adicional do Auditor. O parágrafo introdutório de "[[Historico]]" (o texto explicando o que são Históricos e a regra do +6/+3) continua vindo do documento fonte, exibido no topo da aba antes dos cartões de cada Histórico.
