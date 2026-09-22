@@ -143,6 +143,7 @@
                 <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
                 <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
+                <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
             <Section Title="Nível e Progressão">
@@ -1011,6 +1012,7 @@
         _form.Propriedade = sheet.Propriedade;
         _form.Estrela = sheet.Estrela;
         _form.SinaAtual = sheet.SinaAtual;
+        _form.HistoricoId = sheet.HistoricoId;
         _form.Nivel = sheet.Nivel;
         _form.Graduacao = sheet.Graduacao;
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
@@ -1073,7 +1075,7 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, null);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1719,6 +1721,7 @@
         public string? Propriedade { get; set; }
         public string? Estrela { get; set; }
         public int SinaAtual { get; set; }
+        public string? HistoricoId { get; set; }
         // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
         // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
         public int Nivel { get; set; } = 1;
