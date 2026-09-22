@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -49,6 +52,19 @@ public class NpcMasteriesControllerTests : IClassFixture<PostgresFixture>, IAsyn
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    private static UpdateNpcSheetRequest UpdateWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+
     [Fact]
     public async Task Add_a_valid_mastery_returns_201()
     {
@@ -63,6 +79,32 @@ public class NpcMasteriesControllerTests : IClassFixture<PostgresFixture>, IAsyn
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Nome == "Maestria em Pontaria" && m.Pericia == "Pontaria" && m.Atributo == "Destreza" && m.GastoMaestria == 3);
+    }
+
+    [Fact]
+    public async Task Add_a_mastery_includes_the_Historico_bonus_in_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcMasteryHistGm1", "npcmasteryhistgm1@teste.com");
+        await GrantRulesAuditorAsync("npcmasteryhistgm1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Teste de Bônus Maestria NPC", "Descrição de teste.", "Pontaria", "Furtividade")));
+        var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+            UpdateWithHistorico(historico!.Id)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Pontaria", gmToken,
+            new UpdateNpcSkillRequest(9, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Destreza", gmToken,
+            new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+            new AddNpcMasteryRequest("Teste Maestria Bônus NPC", "Pontaria", "Destreza", 2)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<NpcMasteryResponse>();
+        body!.Total.Should().Be(15); // gastoMaestria 2 + bruto (9/3=3 + 6 Histórico = 9) + atributoTotal 4
     }
 
     [Fact]

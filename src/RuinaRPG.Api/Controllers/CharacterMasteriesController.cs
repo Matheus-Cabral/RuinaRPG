@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -116,7 +117,9 @@ public class CharacterMasteriesController(RuinaRpgDbContext db) : ControllerBase
     {
         var skill = await db.CharacterSkills.SingleAsync(s => s.CharacterSheetId == sheetId && s.Pericia == pericia);
         var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
-        var bruto = SkillFormulas.Modificador(skill.Gasto, 0);
+        var historicoId = await db.CharacterSheets.Where(s => s.Id == sheetId).Select(s => s.HistoricoId).SingleAsync();
+        var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
+        var bruto = SkillFormulas.Modificador(skill.Gasto, HistoricoBonusCalculator.For(pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
         var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
         return gastoMaestria + bruto + atributoTotal;
     }

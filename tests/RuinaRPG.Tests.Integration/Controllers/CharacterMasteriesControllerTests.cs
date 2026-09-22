@@ -2,9 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -65,6 +68,19 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId);
+
     [Fact]
     public async Task Add_a_valid_mastery_returns_201()
     {
@@ -80,6 +96,35 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/masteries", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Nome == "Maestria em Pontaria" && m.Pericia == "Pontaria" && m.Atributo == "Destreza" && m.GastoMaestria == 3);
+    }
+
+    [Fact]
+    public async Task Add_a_mastery_includes_the_Historico_bonus_in_Total()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MasteryHistGm1", "masteryhistgm1@teste.com");
+        await GrantRulesAuditorAsync("masteryhistgm1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MasteryHistPlayer1", "masteryhistplayer1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Teste de Bônus Maestria", "Descrição de teste.", "Pontaria", "Furtividade")));
+        var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            UpdateWithHistorico(historico!.Id)));
+        // Pontaria Gasto 9 -> Modificador 3 + 6 (Histórico) = 9.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Pontaria", playerToken,
+            new UpdateCharacterSkillRequest(9, null)));
+        // Destreza Gasto 4, no bônus/maestria/artefato -> Total 4.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Destreza", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", playerToken,
+            new AddCharacterMasteryRequest("Teste Maestria Bônus", "Pontaria", "Destreza", 2)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+        body!.Total.Should().Be(15); // gastoMaestria 2 + bruto (9/3=3 + 6 Histórico = 9) + atributoTotal 4
     }
 
     [Fact]
