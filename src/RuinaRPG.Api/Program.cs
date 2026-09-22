@@ -203,6 +203,10 @@ if (args.Contains("--migrate"))
     var migrateSeedResult = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", migrateSeedResult.Inserted, migrateSeedResult.Updated);
 
+    var migrateHistoricoMarkdown = RulesDataProvider.ReadResource("Historico.md");
+    var migrateHistoricoSeedResult = await HistoricoSeeder.SeedAsync(migrateDb, migrateHistoricoMarkdown);
+    app.Logger.LogInformation("Historico seed: {InsertedCount} new row(s) inserted", migrateHistoricoSeedResult.Inserted);
+
     await EfeitoSeeder.SeedAsync(migrateDb);
     app.Logger.LogInformation("Efeito seed: catalog synced");
 
@@ -264,6 +268,10 @@ if (app.Environment.IsDevelopment())
     var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
     var seedResult = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
     app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", seedResult.Inserted, seedResult.Updated);
+
+    var historicoMarkdown = RulesDataProvider.ReadResource("Historico.md");
+    var historicoSeedResult = await HistoricoSeeder.SeedAsync(db, historicoMarkdown);
+    app.Logger.LogInformation("Historico seed: {InsertedCount} new row(s) inserted", historicoSeedResult.Inserted);
 
     await EfeitoSeeder.SeedAsync(db);
     app.Logger.LogInformation("Efeito seed: catalog synced");

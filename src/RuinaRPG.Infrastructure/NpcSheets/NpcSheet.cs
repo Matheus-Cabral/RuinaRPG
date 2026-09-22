@@ -17,6 +17,7 @@ public class NpcSheet
     public AfinidadeElemental? Afinidade { get; set; }
     public string? Propriedade { get; set; }
     public Estrela? Estrela { get; set; }
+    public Guid? HistoricoId { get; set; }
 
     // 1.b Nível e Progressão
     public int Nivel { get; set; } = 1;
