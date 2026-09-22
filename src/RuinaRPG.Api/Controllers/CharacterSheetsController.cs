@@ -559,7 +559,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual);
+            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString());
     }
 
     /// <summary>

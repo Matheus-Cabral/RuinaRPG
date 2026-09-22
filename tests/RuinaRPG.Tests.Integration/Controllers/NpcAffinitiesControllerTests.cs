@@ -53,7 +53,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
 
         var setVocacao = new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
-            1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0);
+            1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, setVocacao));
 
         return sheetId;
@@ -210,7 +210,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
 
         // Troca a Vocação pra Feiticeiro (não libera mais Vida, que é de Consagração).
         var updateSheet = new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
-            1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0);
+            1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, updateSheet));
 
         // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.

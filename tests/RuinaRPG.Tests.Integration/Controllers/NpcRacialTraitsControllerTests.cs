@@ -52,7 +52,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
 
     private static UpdateNpcSheetRequest ValidUpdate(string linhagem, string variante) => new(
         null, "Teste", linhagem, variante, "Campeao", "Duelista", null, null,
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null);
 
     private async Task SetVarianteAsync(string gmToken, string sheetId, string linhagem, string variante)
     {

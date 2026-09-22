@@ -100,7 +100,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     private async Task SetNpcVocacaoAsync(string gmToken, string sheetId, string vocacao) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
-                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0)));
+                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null)));
 
     private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? subElemento, int? subElementoValor, string? caminhoNome, int? experiencia) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,

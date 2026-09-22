@@ -30,4 +30,5 @@ public record UpdateNpcSheetRequest(
     int Ciclos,
     int? ArcaRolada,
     string? Estrela,
-    int SinaAtual);
+    int SinaAtual,
+    string? HistoricoId);

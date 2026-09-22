@@ -98,7 +98,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private static UpdateNpcSheetRequest ValidUpdate() => new(
         null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", null, "Guardiã do Portal",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null);
 
     [Fact]
     public async Task Create_without_a_token_returns_401()

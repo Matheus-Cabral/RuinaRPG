@@ -67,7 +67,7 @@ public class CharacterRacialTraitsControllerTests : IClassFixture<PostgresFixtur
 
     private static UpdateCharacterSheetRequest ValidUpdate(string linhagem, string variante) => new(
         null, "Teste", linhagem, variante, "Campeao", "Duelista", null, null,
-        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0);
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null);
 
     private async Task<string> SetVarianteAsync(string gmToken, string playerToken, string sheetId, string linhagem, string variante)
     {

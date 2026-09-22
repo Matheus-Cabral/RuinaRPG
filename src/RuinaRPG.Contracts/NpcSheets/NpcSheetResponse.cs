@@ -42,4 +42,5 @@ public record NpcSheetResponse(
     string? ImageId,
     int? ArcaRolada,
     string? Estrela,
-    int SinaAtual);
+    int SinaAtual,
+    string? HistoricoId);

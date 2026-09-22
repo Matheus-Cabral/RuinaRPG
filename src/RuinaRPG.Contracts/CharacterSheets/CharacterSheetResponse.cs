@@ -45,4 +45,5 @@ public record CharacterSheetResponse(
     string? ImageId,
     int? ArcaRolada,
     string? Estrela,
-    int SinaAtual);
+    int SinaAtual,
+    string? HistoricoId);

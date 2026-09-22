@@ -30,4 +30,5 @@ public record UpdateCharacterSheetRequest(
     int PontosDePericiaBonusCritico,
     int? ArcaRolada,
     string? Estrela,
-    int SinaAtual);
+    int SinaAtual,
+    string? HistoricoId);
