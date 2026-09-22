@@ -46,6 +46,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         await BuildGrausECirculosAsync(),
         await BuildTabelaDeNiveisAsync(),
         await BuildEstrelasAlkerianasAsync(),
+        await BuildHistoricosAsync(),
     ];
 
     // UseAdvancedExtensions (not the bare default pipeline) is what turns GFM-style pipe tables
@@ -136,6 +137,33 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
             <figcaption>Calendário Alkeriano</figcaption>
         </figure>
         """;
+
+    /// <summary>
+    /// Unlike every other document, this one has two different sources: IntroHtml comes from
+    /// Historico.md's own lead-in paragraph (reused the same way BuildGrausECirculosAsync/
+    /// BuildEstrelasAlkerianasAsync extract IntroHtml — via SplitIntoSections, discarding its
+    /// Sections), but the per-entry Sections come from the live Historicos table instead of the
+    /// Markdown — same "catalog is the source of truth" treatment BuildCaracteristicasAsync already
+    /// gives Traits. Editing a Histórico via HistoricosController is what changes those.
+    /// </summary>
+    private async Task<RulebookDocument> BuildHistoricosAsync()
+    {
+        var (intro, _) = SplitIntoSections(RulesDataProvider.ReadResource("Historico.md"), splitLevel: 1);
+
+        var historicos = await db.Historicos
+            .Where(h => !h.IsDeleted)
+            .OrderBy(h => h.Nome)
+            .ToListAsync();
+
+        var sections = historicos.Select(h => new RulebookSection(
+            Id: Slugify(h.Nome),
+            Titulo: h.Nome,
+            Html: WebUtility.HtmlEncode(h.Descricao).Replace("\n", "<br />")
+                + $"<p><em>+6 {WebUtility.HtmlEncode(h.PericiaMaisSeis.ToString())} / +3 {WebUtility.HtmlEncode(h.PericiaMaisTres.ToString())}</em></p>"
+        )).ToList();
+
+        return new RulebookDocument("historicos", "Históricos", intro, sections);
+    }
 
     // No Markdown headings at all — one big GFM pipe table. Splitting finds nothing to split on, so
     // Sections stays empty and the whole rendered table lands in IntroHtml.

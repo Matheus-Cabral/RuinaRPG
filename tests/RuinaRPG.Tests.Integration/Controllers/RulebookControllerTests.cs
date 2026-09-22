@@ -38,10 +38,12 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         return tokens!.AccessToken;
     }
 
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token)
+    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
     {
         var message = new HttpRequestMessage(method, url);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (body is not null)
+            message.Content = JsonContent.Create(body);
         return message;
     }
 
@@ -54,7 +56,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_returns_the_five_documents_split_into_sections()
+    public async Task Get_returns_the_six_documents_split_into_sections()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm1", "rulebook1@teste.com");
 
@@ -63,7 +65,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         body!.Select(d => d.Slug).Should().Equal(
-            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas");
+            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas", "historicos");
 
         var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
         sistemaBasico.Sections.Should().HaveCount(7);
@@ -115,6 +117,44 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("Sina"));
         estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("AEURER"));
         estrelas.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
+    }
+
+    [Fact]
+    public async Task Historicos_has_26_sections_and_the_intro_paragraph()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RulebookGm5", "rulebook5@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        var historicos = body!.Single(d => d.Slug == "historicos");
+        (historicos.IntroHtml ?? "").Should().Contain("marcaram a vida do personagem");
+        historicos.Sections.Should().HaveCount(26);
+        historicos.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
+        historicos.Sections.Select(s => s.Titulo).Should().Contain("Estudo Acadêmico");
+    }
+
+    [Fact]
+    public async Task Historicos_reflects_a_catalog_edit_immediately()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RulebookGm6", "rulebook6@teste.com");
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOK6@TESTE.COM");
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new RuinaRPG.Contracts.Rules.CreateHistoricoRequest("Recém Cadastrado", "Aparece na aba na hora.", "Atletismo", "Acrobacia")));
+        var created = await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Rules.HistoricoResponse>();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
+        var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        var historicos = body!.Single(d => d.Slug == "historicos");
+        historicos.Sections.Should().Contain(s => s.Titulo == "Recém Cadastrado");
+
+        // Cleanup so this created row can't affect other tests' section counts in this class.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
     }
 
     [Fact]
