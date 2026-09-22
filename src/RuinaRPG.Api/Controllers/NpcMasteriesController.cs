@@ -83,7 +83,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db) : ControllerBase
     {
         var skill = await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheetId && s.Pericia == pericia);
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
-        var bruto = SkillFormulas.Modificador(skill.Gasto);
+        var bruto = SkillFormulas.Modificador(skill.Gasto, 0);
         var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
         return gastoMaestria + bruto + atributoTotal;
     }

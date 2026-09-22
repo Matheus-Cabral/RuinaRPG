@@ -9,9 +9,15 @@ public class SkillFormulasTests
     public void Modificador_divides_gasto_by_3_rounded_down()
     {
         // "Modificador = Gasto ÷ 3 (arredondado para baixo)" — Sistema Básico §2.
-        SkillFormulas.Modificador(gasto: 8).Should().Be(2);
-        SkillFormulas.Modificador(gasto: 9).Should().Be(3);
-        SkillFormulas.Modificador(gasto: 0).Should().Be(0);
+        SkillFormulas.Modificador(gasto: 8, historicoBonus: 0).Should().Be(2);
+        SkillFormulas.Modificador(gasto: 9, historicoBonus: 0).Should().Be(3);
+        SkillFormulas.Modificador(gasto: 0, historicoBonus: 0).Should().Be(0);
+    }
+
+    [Fact]
+    public void Modificador_adds_the_Historico_bonus_on_top_of_gasto_divided_by_3()
+    {
+        SkillFormulas.Modificador(gasto: 9, historicoBonus: 6).Should().Be(9); // 3 + 6
     }
 
     [Fact]

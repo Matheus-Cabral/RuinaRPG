@@ -362,7 +362,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var brutoSkills = await db.CharacterSkills
             .Where(s => s.CharacterSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
             .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(brutoSkills.Single(s => s.Pericia == pericia).Gasto);
+        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(brutoSkills.Single(s => s.Pericia == pericia).Gasto, 0);
 
         var brutoProntidao = BrutoOf(Pericia.Prontidao);
         var brutoReflexos = BrutoOf(Pericia.Reflexos);
