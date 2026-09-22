@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -873,6 +874,54 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body!.Iniciativa.Should().Be(7); // agilidade 4 + brutoProntidao 3 + 0 artefato
         body.EsquivaNatural.Should().Be(6); // agilidade 4 + brutoReflexos 2 + 0 artefatos - 0 penalidade
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
+    }
+
+    [Fact]
+    public async Task SubAttributes_includes_the_Historico_bonus_on_Prontidao_and_Reflexos()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSubHist1", "sheetsubhist1@teste.com");
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "SHEETSUBHIST1@TESTE.COM");
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+
+        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Teste de Bônus Sub-Atributo", "Descrição de teste.", "Prontidao", "Reflexos")));
+        var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSubHist1", "sheetplayersubhist1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Historico");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        // Cobertura is pinned to "Nenhuma" (ValidUpdate()'s default is "Parcial", which would add
+        // +5 to DefesaNatural via SubAttributes' cobertura term and break the "0 cobertura" assertion below).
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { HistoricoId = historico!.Id, Cobertura = "Nenhuma" }));
+
+        // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken,
+            new UpdateCharacterAttributeRequest(4, 0, false)));
+
+        // Prontidao Gasto 9 -> Modificador 3 + 6 (Histórico) = 9. Reflexos Gasto 6 -> Modificador 2 + 3 = 5.
+        // Fortitude Gasto 3 -> Modificador 1, untouched by this Histórico.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Prontidao", playerToken,
+            new UpdateCharacterSkillRequest(9, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Reflexos", playerToken,
+            new UpdateCharacterSkillRequest(6, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Fortitude", playerToken,
+            new UpdateCharacterSkillRequest(3, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.Iniciativa.Should().Be(13); // agilidade 4 + brutoProntidao (3+6=9) + 0 artefato
+        body.EsquivaNatural.Should().Be(9); // agilidade 4 + brutoReflexos (2+3=5) + 0 artefatos - 0 penalidade
+        body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 (no bonus) + 0 escudo + 0 artefatos + 0 cobertura
     }
 
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)

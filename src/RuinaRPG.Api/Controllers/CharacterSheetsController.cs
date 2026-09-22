@@ -370,10 +370,14 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
         var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
 
+        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
+
         var brutoSkills = await db.CharacterSkills
             .Where(s => s.CharacterSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
             .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(brutoSkills.Single(s => s.Pericia == pericia).Gasto, 0);
+        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(
+            brutoSkills.Single(s => s.Pericia == pericia).Gasto,
+            HistoricoBonusCalculator.For(pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
 
         var brutoProntidao = BrutoOf(Pericia.Prontidao);
         var brutoReflexos = BrutoOf(Pericia.Reflexos);
