@@ -28,4 +28,6 @@ public record UpdateCharacterSheetRequest(
     string Cobertura,
     int Ciclos,
     int PontosDePericiaBonusCritico,
-    int? ArcaRolada);
+    int? ArcaRolada,
+    string? Estrela,
+    int SinaAtual);

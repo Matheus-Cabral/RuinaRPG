@@ -54,7 +54,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_returns_the_four_documents_split_into_sections()
+    public async Task Get_returns_the_five_documents_split_into_sections()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm1", "rulebook1@teste.com");
 
@@ -63,7 +63,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         body!.Select(d => d.Slug).Should().Equal(
-            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis");
+            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas");
 
         var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
         sistemaBasico.Sections.Should().HaveCount(7);
@@ -99,6 +99,22 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         grausECirculos.IntroHtml.Should().Contain("/rulebook/Escolas_de_Magia.png");
         grausECirculos.IntroHtml.Should().Contain("/rulebook/Matriz_Elemental.png");
         grausECirculos.Sections.Should().HaveCount(9);
+    }
+
+    [Fact]
+    public async Task EstrelasAlkerianas_IntroHtml_includes_the_calendar_image_and_has_11_sections()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RulebookGm4", "rulebook4@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        var estrelas = body!.Single(d => d.Slug == "estrelas-alkerianas");
+        estrelas.IntroHtml.Should().Contain("/rulebook/Calendario alkeriano.jpeg");
+        estrelas.Sections.Should().HaveCount(11);
+        estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("Sina"));
+        estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("AEURER"));
+        estrelas.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
     }
 
     [Fact]

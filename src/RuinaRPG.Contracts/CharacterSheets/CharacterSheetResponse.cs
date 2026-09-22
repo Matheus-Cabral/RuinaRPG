@@ -43,4 +43,6 @@ public record CharacterSheetResponse(
     int PontosDeIgnicaoBonusManual,
     int PontosDePericiaBonusCritico,
     string? ImageId,
-    int? ArcaRolada);
+    int? ArcaRolada,
+    string? Estrela,
+    int SinaAtual);

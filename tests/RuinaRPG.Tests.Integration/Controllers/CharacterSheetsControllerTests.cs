@@ -188,7 +188,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, "Marcado pela Ruína",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
-        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null);
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0);
 
     [Fact]
     public async Task Get_returns_the_sheet()
@@ -638,6 +638,58 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdEst", "sheetupdest@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdEst", "sheetplayerupdest@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Estrela Invalida");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var invalid = ValidUpdate() with { Estrela = "Xyz" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    public async Task Update_with_SinaAtual_outside_0_to_3_returns_400(int sinaAtual)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"SheetGmUpdSina{sinaAtual}", $"sheetupdsina{sinaAtual}@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"SheetPlayerUpdSina{sinaAtual}", $"sheetplayerupdsina{sinaAtual}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Update Sina Invalida {sinaAtual}");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var invalid = ValidUpdate() with { SinaAtual = sinaAtual };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_persists_Estrela_and_SinaAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdEst2", "sheetupdest2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdEst2", "sheetplayerupdest2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Estrela Valida");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Estrela = "Vaelen", SinaAtual = 2 };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.Estrela.Should().Be("Vaelen");
+        body.SinaAtual.Should().Be(2);
     }
 
     [Fact]

@@ -214,6 +214,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return BadRequest("Essa Afinidade não é liberada pela Vocação atual.");
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
+        if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
+            return BadRequest("Estrela inválida.");
+        if (request.SinaAtual is < 0 or > 3)
+            return BadRequest("SinaAtual deve estar entre 0 e 3.");
 
         // A Variante change makes any racial characteristics already granted for the old one stale
         // (Ruína RPG - Sistema Básico.md §7 grants are per-Variante) — remove them so 5.d never
@@ -229,6 +233,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.SubVocacao = request.SubVocacao;
         sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
+        sheet.Estrela = estrela;
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
         var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);
@@ -267,6 +272,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.Ciclos = request.Ciclos;
         sheet.PontosDePericiaBonusCritico = request.PontosDePericiaBonusCritico;
         sheet.ArcaRolada = request.ArcaRolada;
+        sheet.SinaAtual = request.SinaAtual;
 
         if (varianteChanged)
         {
@@ -552,7 +558,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
-            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada);
+            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
+            s.Estrela?.ToString(), s.SinaAtual);
     }
 
     /// <summary>

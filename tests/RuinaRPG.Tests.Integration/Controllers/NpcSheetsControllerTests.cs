@@ -98,7 +98,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private static UpdateNpcSheetRequest ValidUpdate() => new(
         null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", null, "Guardiã do Portal",
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0);
 
     [Fact]
     public async Task Create_without_a_token_returns_401()
@@ -207,6 +207,49 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body.Variante.Should().Be("Sinir");
         body.Nivel.Should().Be(5);
         body.VitalidadeAtual.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task Update_persists_Estrela_and_SinaAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEst1", "npcest1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var update = ValidUpdate() with { Estrela = "Sadir", SinaAtual = 3 };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.Estrela.Should().Be("Sadir");
+        body.SinaAtual.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEst2", "npcest2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var invalid = ValidUpdate() with { Estrela = "Xyz" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    public async Task Update_with_SinaAtual_outside_0_to_3_returns_400(int sinaAtual)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"NpcGmSina{sinaAtual}", $"npcsina{sinaAtual}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var invalid = ValidUpdate() with { SinaAtual = sinaAtual };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

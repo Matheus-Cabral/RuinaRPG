@@ -16,6 +16,7 @@ public class NpcSheet
     public string? SubVocacao { get; set; }
     public AfinidadeElemental? Afinidade { get; set; }
     public string? Propriedade { get; set; }
+    public Estrela? Estrela { get; set; }
 
     // 1.b Nível e Progressão
     public int Nivel { get; set; } = 1;
@@ -53,6 +54,9 @@ public class NpcSheet
     public int FocoAtual { get; set; }
     public int AdrenalinaAtual { get; set; }
     public int EstresseAtual { get; set; }
+
+    /// <summary>0-3, no derived máximo (the cap of 3 is fixed — see "As estrelas alkerianas".md, "Sina").</summary>
+    public int SinaAtual { get; set; }
 
     // Referenced by later tabs (2.b Cobertura; 5.a Ciclos) but stored on the root per Modelo de Dados
     public Cobertura Cobertura { get; set; }

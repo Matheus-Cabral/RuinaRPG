@@ -28,4 +28,6 @@ public record UpdateNpcSheetRequest(
     int EstresseAtual,
     string Cobertura,
     int Ciclos,
-    int? ArcaRolada);
+    int? ArcaRolada,
+    string? Estrela,
+    int SinaAtual);

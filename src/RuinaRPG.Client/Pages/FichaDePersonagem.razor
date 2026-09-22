@@ -142,6 +142,7 @@
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
                 <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
+                <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
             <Section Title="Nível e Progressão">
@@ -333,6 +334,10 @@
                 <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
+                <div class="mt-2">
+                    <MudText Typo="Typo.body2">Pontos de Sina</MudText>
+                    <MudRating SelectedValue="_form.SinaAtual" SelectedValueChanged="OnSinaChangedAsync" MaxValue="3" />
+                </div>
         </Section>
 
         @if (_subAttributes is not null)
@@ -1004,6 +1009,8 @@
         _form.SubVocacao = sheet.SubVocacao;
         _form.Afinidade = sheet.Afinidade;
         _form.Propriedade = sheet.Propriedade;
+        _form.Estrela = sheet.Estrela;
+        _form.SinaAtual = sheet.SinaAtual;
         _form.Nivel = sheet.Nivel;
         _form.Graduacao = sheet.Graduacao;
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
@@ -1066,7 +1073,7 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1362,6 +1369,12 @@
         _form.ArcaRolada = value;
         await SaveIgnoringResultAsync();
         await LoadRacialAbilityAsync();
+    }
+
+    private async Task OnSinaChangedAsync(int value)
+    {
+        _form.SinaAtual = value;
+        await SaveIgnoringResultAsync();
     }
 
     private async Task LoadSpellAbilitiesAsync()
@@ -1704,6 +1717,8 @@
         public string? SubVocacao { get; set; }
         public string? Afinidade { get; set; }
         public string? Propriedade { get; set; }
+        public string? Estrela { get; set; }
+        public int SinaAtual { get; set; }
         // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
         // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
         public int Nivel { get; set; } = 1;

@@ -87,6 +87,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             return BadRequest("Essa Afinidade não é liberada pela Vocação atual.");
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
+        if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
+            return BadRequest("Estrela inválida.");
+        if (request.SinaAtual is < 0 or > 3)
+            return BadRequest("SinaAtual deve estar entre 0 e 3.");
 
         // A Variante change makes any racial characteristics already granted for the old one stale
         // (Ruína RPG - Sistema Básico.md §7 grants are per-Variante) — remove them so 5.d never
@@ -102,6 +106,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.SubVocacao = request.SubVocacao;
         sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
+        sheet.Estrela = estrela;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
@@ -125,6 +130,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
         sheet.ArcaRolada = request.ArcaRolada;
+        sheet.SinaAtual = request.SinaAtual;
 
         if (varianteChanged)
         {
@@ -561,7 +567,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
-            campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada);
+            campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
+            s.Estrela?.ToString(), s.SinaAtual);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

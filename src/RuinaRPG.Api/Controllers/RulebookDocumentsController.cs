@@ -10,21 +10,22 @@ using RuinaRPG.Infrastructure.Rules;
 namespace RuinaRPG.Api.Controllers;
 
 /// <summary>
-/// GM-editable overrides of the Livro de Regras' raw Markdown, for the 3 documents that aren't
-/// DB-driven (Sistema Básico, Graus & Círculos, Tabela de Níveis — "caracteristicas" is excluded
-/// on purpose, it's rebuilt from the live Traits table by RulebookRenderer instead, see
-/// TraitsController). Display-only: nothing here feeds IRulesDataProvider or any gameplay
-/// calculator — see Requisitos - Auditoria de Regras. Unlike TraitsController.List, List (GET)
-/// here is gated to the Rules Auditor too — this endpoint's only consumer in the whole app is
-/// the AuditoriaLivroDeRegras.razor page itself, so it doesn't need the same open-to-everyone
-/// precedent as GET /api/traits. Same inline DB check as Update/Delete (not a JWT claim, so a
-/// grant/revoke via `make grant-rules-auditor` takes effect on the very next request).
+/// GM-editable overrides of the Livro de Regras' raw Markdown, for the 4 documents that aren't
+/// DB-driven (Sistema Básico, Graus & Círculos, Tabela de Níveis, As Estrelas Alkerianas —
+/// "caracteristicas" is excluded on purpose, it's rebuilt from the live Traits table by
+/// RulebookRenderer instead, see TraitsController). Display-only: nothing here feeds
+/// IRulesDataProvider or any gameplay calculator — see Requisitos - Auditoria de Regras. Unlike
+/// TraitsController.List, List (GET) here is gated to the Rules Auditor too — this endpoint's only
+/// consumer in the whole app is the AuditoriaLivroDeRegras.razor page itself, so it doesn't need
+/// the same open-to-everyone precedent as GET /api/traits. Same inline DB check as Update/Delete
+/// (not a JWT claim, so a grant/revoke via `make grant-rules-auditor` takes effect on the very
+/// next request).
 /// </summary>
 [ApiController]
 [Authorize]
 public class RulebookDocumentsController(RuinaRpgDbContext db) : ControllerBase
 {
-    private static readonly string[] ValidSlugs = ["sistema-basico", "graus-e-circulos", "tabela-de-niveis"];
+    private static readonly string[] ValidSlugs = ["sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas"];
 
     [HttpGet("api/rulebook-documents")]
     public async Task<ActionResult<List<RulebookDocumentOverrideResponse>>> List()

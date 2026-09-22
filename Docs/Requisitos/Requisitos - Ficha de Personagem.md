@@ -42,6 +42,8 @@
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 
+- *Estrela*: Um dropdown com as 10 Estrelas Alkerianas definidas em "[[As estrelas alkerianas]]", na ordem das Coroas — **Aeurer**, **Liora**, **Vaelen**, **Theron**, **Maetus**, **Almora**, **Elvani**, **Sareli**, **Gaelion** e **Sadir**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha uma Estrela*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição da Estrela selecionada (tendência de comportamento, mesmo texto de "[[As estrelas alkerianas]]"), para não poluir a ficha com o texto completo.
+
   
 
 ### 1.b) Nível e Progressão
@@ -79,6 +81,8 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 - *Estresse*: par atual / máximo; o Máximo é **10**.
 
 - *Vitalidade*: par atual / máximo. Máximo = (Vigor × 2) + Status de classe Vida, onde Status de classe Vida é a coluna **Vida** da vocação na "[[Tabela de Vocação]]" e "[[Tabela de Classes]]" (cruzando Vocação × Nível) — ver "[[Formulas]]". Atual não pode exceder o máximo.
+
+- *Sina*: contador de 0 a 3 Pontos de Sina (ver "[[As estrelas alkerianas]]"), sem par atual/máximo — o teto de 3 é fixo, não derivado de outro campo. Editável pelo jogador. Quando NULL, assume **0**.
 
   
 

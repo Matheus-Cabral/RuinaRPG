@@ -14,7 +14,7 @@
 
   
 
-# **R0001** - O Livro de Regras deve exibir, em abas, o conteúdo completo de quatro documentos do sistema.
+# **R0001** - O Livro de Regras deve exibir, em abas, o conteúdo completo de cinco documentos do sistema.
 
 **Descrição**: Cada aba renderiza o Markdown de um documento inteiro (não um trecho, ao contrário do Compêndio) como HTML formatado:
 
@@ -22,6 +22,7 @@
 - "[[Ruína RPG - Sistema Básico]]"
 - "[[GRAUS & CÍRCULOS]]"
 - "[[Tabela de Níveis]]"
+- "[[As estrelas alkerianas]]"
 
   
 
@@ -47,11 +48,18 @@
 | Graus & Círculos | `#` | 9 (uma por Grau/Círculo; os efeitos de cada Grau, que são `##`, continuam dentro do cartão do próprio Grau) |
 | Tabela de Níveis | — | nenhuma (o documento não tem títulos — é uma única tabela) |
 | Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
+| As Estrelas Alkerianas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
 
-Para as abas com seções (Sistema Básico e Graus & Círculos), um sumário fixo ao lado do conteúdo lista o título de cada seção; clicar em uma entrada rola a página até aquela seção. Conteúdo anterior ao primeiro título de divisão (ex: a tabela de custo de Grau, em Graus & Círculos) continua sendo exibido no topo da aba, antes do sumário e das seções.
+Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas Alkerianas), um sumário fixo ao lado do conteúdo lista o título de cada seção; clicar em uma entrada rola a página até aquela seção. Conteúdo anterior ao primeiro título de divisão (ex: a tabela de custo de Grau, em Graus & Círculos) continua sendo exibido no topo da aba, antes do sumário e das seções.
 
   
 
 # **R0005** - A aba de Características deve ser uma lista filtrável por nome, não prosa corrida.
 
 **Descrição**: Características tem mais de 50 entradas — um sumário lateral não é útil nesse volume. Em vez disso, a aba exibe um campo de busca no topo; digitar filtra a lista pelo nome da característica (busca parcial, sem diferenciar maiúsculas/minúsculas). As características continuam agrupadas por "Positivas" e "Negativas" (títulos `#` do documento fonte), cada uma exibida como seu próprio cartão.
+
+  
+
+# **R0006** - A aba de As Estrelas Alkerianas deve incluir a imagem do calendário Alkeriano.
+
+**Descrição**: A imagem `Calendario alkeriano.jpeg` (`Docs/`) aparece no topo dessa aba, antes do cartão de Sina e dos cartões de Estrela — mesmo tratamento de R0002: não tem seção correspondente no documento fonte, funciona como material de referência para o documento inteiro.

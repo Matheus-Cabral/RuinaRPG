@@ -32,7 +32,7 @@
 
 **1.a Identidade** — diferenças de "[[Requisitos - Ficha de Personagem]]":
 
-- *Linhagem*, *Variante*, *Vocação*, *Classe*, *Trabalho* e *Propriedade* não existem na Ficha de Criatura. Em vez delas:
+- *Linhagem*, *Variante*, *Vocação*, *Classe*, *Trabalho*, *Propriedade*, *Estrela* e *Sina* (ver "[[As estrelas alkerianas]]") não existem na Ficha de Criatura — uma criatura não nasce sob uma Coroa do calendário Alkeriano do mesmo jeito que um Personagem/NPC. Em vez das primeiras:
   - *Raça*: text input livre (não há uma tabela fixa de raças de criatura).
   - *Arquétipo*: dropdown com os 2 valores da "[[Tabela de Arquetipos]]": **Físico** ou **Arcano**. Substitui o papel da Vocação — determina as colunas de Vida e Arcana usadas na progressão (ver Recursos abaixo).
   - *Sub Arquétipo*: text input livre (não há uma tabela equivalente à Tabela de Classes para criaturas).

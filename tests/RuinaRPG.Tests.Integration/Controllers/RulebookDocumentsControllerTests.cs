@@ -56,7 +56,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
     }
 
     [Fact]
-    public async Task List_returns_the_3_documents_all_default_when_no_override_exists()
+    public async Task List_returns_the_4_documents_all_default_when_no_override_exists()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm1", "rulebookdocgm1@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm1@teste.com");
@@ -65,7 +65,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
-        body!.Select(d => d.Slug).Should().BeEquivalentTo("sistema-basico", "graus-e-circulos", "tabela-de-niveis");
+        body!.Select(d => d.Slug).Should().BeEquivalentTo("sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas");
         body!.Should().OnlyContain(d => d.IsDefault);
         body!.Should().OnlyContain(d => !string.IsNullOrEmpty(d.MarkdownText)); // the embedded default text, non-empty
     }
@@ -101,11 +101,21 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
             new UpdateRulebookDocumentOverrideRequest("# Sistema Básico Editado\n\nTexto novo do Auditor.")));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
-        var body = await listResponse.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
-        var edited = body!.Single(d => d.Slug == "sistema-basico");
-        edited.IsDefault.Should().BeFalse();
-        edited.MarkdownText.Should().Contain("Texto novo do Auditor.");
+        try
+        {
+            var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
+            var body = await listResponse.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
+            var edited = body!.Single(d => d.Slug == "sistema-basico");
+            edited.IsDefault.Should().BeFalse();
+            edited.MarkdownText.Should().Contain("Texto novo do Auditor.");
+        }
+        finally
+        {
+            // This class shares one Postgres instance across every test in it (IClassFixture, no
+            // per-test reset) — clean up so this override can't leak into another test that expects
+            // the embedded default for "sistema-basico" (e.g. List_returns_the_4_documents...).
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
+        }
     }
 
     [Fact]

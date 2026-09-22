@@ -25,13 +25,13 @@ public interface IRulebookRenderer
 }
 
 /// <summary>
-/// Renders the Livro de Regras' 4 documents as displayable HTML. 3 of them (Sistema Básico, Graus
-/// & Círculos, Tabela de Níveis) render a RulebookDocumentOverride's Markdown when the Rules
-/// Auditor has saved one for that Slug (see RulebookDocumentsController), the embedded
-/// Docs/Sistema RPG resource otherwise — display-only, this never affects IRulesDataProvider or
-/// any gameplay calculator. The 4th (Características) is rebuilt straight from the live Traits
-/// table instead of any Markdown at all (see BuildCaracteristicasAsync) — editing a Trait via
-/// TraitsController is what changes that one.
+/// Renders the Livro de Regras' 5 documents as displayable HTML. 4 of them (Sistema Básico, Graus
+/// & Círculos, Tabela de Níveis, As Estrelas Alkerianas) render a RulebookDocumentOverride's
+/// Markdown when the Rules Auditor has saved one for that Slug (see RulebookDocumentsController),
+/// the embedded Docs/Sistema RPG resource otherwise — display-only, this never affects
+/// IRulesDataProvider or any gameplay calculator. The 5th (Características) is rebuilt straight
+/// from the live Traits table instead of any Markdown at all (see BuildCaracteristicasAsync) —
+/// editing a Trait via TraitsController is what changes that one.
 ///
 /// Scoped (not Singleton — Program.cs registers it as such): it takes a RuinaRpgDbContext, and an
 /// override can change between requests, so nothing here is cached across requests the way it used
@@ -45,6 +45,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         await BuildSistemaBasicoAsync(),
         await BuildGrausECirculosAsync(),
         await BuildTabelaDeNiveisAsync(),
+        await BuildEstrelasAlkerianasAsync(),
     ];
 
     // UseAdvancedExtensions (not the bare default pipeline) is what turns GFM-style pipe tables
@@ -116,6 +117,26 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         </div>
         """;
 
+    /// <summary>
+    /// "As estrelas alkerianas.md" splits on `#` (splitLevel: 1) — one card for Sina (its 5 usos,
+    /// which are `##`, stay nested inside that card) plus one card per Estrela — same shape
+    /// BuildGrausECirculosAsync uses for its own `#`/`##` document. Calendario alkeriano.jpeg has no
+    /// matching section either (same reasoning as Escolas_de_Magia.png/Matriz_Elemental.png above),
+    /// so it's prepended to IntroHtml the same way.
+    /// </summary>
+    private async Task<RulebookDocument> BuildEstrelasAlkerianasAsync()
+    {
+        var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("estrelas-alkerianas"), splitLevel: 1);
+        return new RulebookDocument("estrelas-alkerianas", "As Estrelas Alkerianas", (intro ?? "") + CalendarImageHtml, sections);
+    }
+
+    private const string CalendarImageHtml = """
+        <figure style="margin:0 0 16px">
+            <img src="/rulebook/Calendario alkeriano.jpeg" alt="Calendário Alkeriano" style="max-width:100%" />
+            <figcaption>Calendário Alkeriano</figcaption>
+        </figure>
+        """;
+
     // No Markdown headings at all — one big GFM pipe table. Splitting finds nothing to split on, so
     // Sections stays empty and the whole rendered table lands in IntroHtml.
     private async Task<RulebookDocument> BuildTabelaDeNiveisAsync()
@@ -135,6 +156,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         "sistema-basico" => RulesDataProvider.ReadResource("Sistema Basico.md"),
         "graus-e-circulos" => RulesDataProvider.ReadResource("GRAUS e CIRCULOS.md"),
         "tabela-de-niveis" => RulesDataProvider.ReadResource("Tabela de Níveis.md"),
+        "estrelas-alkerianas" => RulesDataProvider.ReadResource("Estrelas Alkerianas.md"),
         _ => throw new ArgumentOutOfRangeException(nameof(slug), slug, "Slug de documento desconhecido."),
     };
 

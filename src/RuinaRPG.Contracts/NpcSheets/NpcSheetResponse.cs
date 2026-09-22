@@ -40,4 +40,6 @@ public record NpcSheetResponse(
     int EstresseMaximo,
     string? CampaignId,
     string? ImageId,
-    int? ArcaRolada);
+    int? ArcaRolada,
+    string? Estrela,
+    int SinaAtual);
