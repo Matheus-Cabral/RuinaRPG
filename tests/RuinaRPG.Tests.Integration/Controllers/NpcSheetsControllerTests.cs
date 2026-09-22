@@ -227,6 +227,50 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task Update_with_a_garbage_HistoricoId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist1", "npcupdhist1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var invalid = ValidUpdate() with { HistoricoId = "not-a-guid" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_with_a_HistoricoId_that_does_not_exist_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist2", "npcupdhist2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var invalid = ValidUpdate() with { HistoricoId = Guid.NewGuid().ToString() };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_persists_a_valid_HistoricoId()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist3", "npcupdhist3@teste.com");
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var historico = await db.Historicos.FirstAsync();
+
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var update = ValidUpdate() with { HistoricoId = historico.Id.ToString() };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.HistoricoId.Should().Be(historico.Id.ToString());
+    }
+
+    [Fact]
     public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEst2", "npcest2@teste.com");

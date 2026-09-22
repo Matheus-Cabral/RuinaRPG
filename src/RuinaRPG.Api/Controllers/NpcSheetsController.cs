@@ -92,6 +92,16 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (request.SinaAtual is < 0 or > 3)
             return BadRequest("SinaAtual deve estar entre 0 e 3.");
 
+        Guid? historicoId = null;
+        if (!string.IsNullOrWhiteSpace(request.HistoricoId))
+        {
+            if (!Guid.TryParse(request.HistoricoId, out var parsedHistoricoId))
+                return BadRequest("HistoricoId inválido.");
+            if (!await db.Historicos.AnyAsync(h => h.Id == parsedHistoricoId && !h.IsDeleted))
+                return BadRequest("Histórico não encontrado.");
+            historicoId = parsedHistoricoId;
+        }
+
         // A Variante change makes any racial characteristics already granted for the old one stale
         // (Ruína RPG - Sistema Básico.md §7 grants are per-Variante) — remove them so 5.d never
         // shows a grant that no longer matches the NPC's race, and PendingRacialTraitChoice
@@ -107,6 +117,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
         sheet.Estrela = estrela;
+        sheet.HistoricoId = historicoId;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.ExperienciaAtual = request.ExperienciaAtual;

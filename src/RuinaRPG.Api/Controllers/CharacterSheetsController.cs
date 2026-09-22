@@ -219,6 +219,16 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (request.SinaAtual is < 0 or > 3)
             return BadRequest("SinaAtual deve estar entre 0 e 3.");
 
+        Guid? historicoId = null;
+        if (!string.IsNullOrWhiteSpace(request.HistoricoId))
+        {
+            if (!Guid.TryParse(request.HistoricoId, out var parsedHistoricoId))
+                return BadRequest("HistoricoId inválido.");
+            if (!await db.Historicos.AnyAsync(h => h.Id == parsedHistoricoId && !h.IsDeleted))
+                return BadRequest("Histórico não encontrado.");
+            historicoId = parsedHistoricoId;
+        }
+
         // A Variante change makes any racial characteristics already granted for the old one stale
         // (Ruína RPG - Sistema Básico.md §7 grants are per-Variante) — remove them so 5.d never
         // shows a grant that no longer matches the character's race, and PendingRacialTraitChoice
@@ -234,6 +244,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.Afinidade = afinidade;
         sheet.Propriedade = request.Propriedade;
         sheet.Estrela = estrela;
+        sheet.HistoricoId = historicoId;
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
         var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);

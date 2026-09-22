@@ -693,6 +693,59 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Update_with_a_garbage_HistoricoId_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist1", "sheetupdhist1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist1", "sheetplayerupdhist1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Invalido");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var invalid = ValidUpdate() with { HistoricoId = "not-a-guid" };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_with_a_HistoricoId_that_does_not_exist_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist2", "sheetupdhist2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist2", "sheetplayerupdhist2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Inexistente");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var invalid = ValidUpdate() with { HistoricoId = Guid.NewGuid().ToString() };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_persists_a_valid_HistoricoId()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist3", "sheetupdhist3@teste.com");
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var historico = await db.Historicos.FirstAsync();
+
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist3", "sheetplayerupdhist3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Valido");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { HistoricoId = historico.Id.ToString() };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.HistoricoId.Should().Be(historico.Id.ToString());
+    }
+
+    [Fact]
     public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin1", "sheetafin1@teste.com");
