@@ -132,6 +132,15 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         historicos.Sections.Should().HaveCount(26);
         historicos.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
         historicos.Sections.Select(s => s.Titulo).Should().Contain("Estudo Acadêmico");
+
+        // Regression guard for Finding 1: the bonus line must render the proper Portuguese Perícia
+        // label (e.g. "Investigação", "Artefatos Mágicos"), not the raw enum identifier
+        // ("Investigacao", "ArtefatosMagicos") that Pericia.ToString() would produce. WebUtility.
+        // HtmlEncode turns accented characters into numeric entities (e.g. "ç" -> "&#231;"), so
+        // decode before comparing rather than asserting on the raw entity-encoded string.
+        var fascinioPeloPassado = historicos.Sections.Single(s => s.Titulo == "Fascínio pelo Passado");
+        var decodedHtml = WebUtility.HtmlDecode(fascinioPeloPassado.Html);
+        decodedHtml.Should().Contain("Investigação").And.Contain("Artefatos Mágicos");
     }
 
     [Fact]

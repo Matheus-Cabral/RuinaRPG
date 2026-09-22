@@ -5,6 +5,7 @@ using Markdig.Renderers;
 using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -25,13 +26,15 @@ public interface IRulebookRenderer
 }
 
 /// <summary>
-/// Renders the Livro de Regras' 5 documents as displayable HTML. 4 of them (Sistema Básico, Graus
+/// Renders the Livro de Regras' 6 documents as displayable HTML. 4 of them (Sistema Básico, Graus
 /// & Círculos, Tabela de Níveis, As Estrelas Alkerianas) render a RulebookDocumentOverride's
 /// Markdown when the Rules Auditor has saved one for that Slug (see RulebookDocumentsController),
 /// the embedded Docs/Sistema RPG resource otherwise — display-only, this never affects
 /// IRulesDataProvider or any gameplay calculator. The 5th (Características) is rebuilt straight
 /// from the live Traits table instead of any Markdown at all (see BuildCaracteristicasAsync) —
-/// editing a Trait via TraitsController is what changes that one.
+/// editing a Trait via TraitsController is what changes that one. The 6th (Históricos) gets the
+/// same live-catalog treatment as Características, but from the Historicos table instead — no
+/// Markdown-override support either (see BuildHistoricosAsync).
 ///
 /// Scoped (not Singleton — Program.cs registers it as such): it takes a RuinaRpgDbContext, and an
 /// override can change between requests, so nothing here is cached across requests the way it used
@@ -159,7 +162,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
             Id: Slugify(h.Nome),
             Titulo: h.Nome,
             Html: WebUtility.HtmlEncode(h.Descricao).Replace("\n", "<br />")
-                + $"<p><em>+6 {WebUtility.HtmlEncode(h.PericiaMaisSeis.ToString())} / +3 {WebUtility.HtmlEncode(h.PericiaMaisTres.ToString())}</em></p>"
+                + $"<p><em>+6 {WebUtility.HtmlEncode(PericiaLabels.Label(h.PericiaMaisSeis))} / +3 {WebUtility.HtmlEncode(PericiaLabels.Label(h.PericiaMaisTres))}</em></p>"
         )).ToList();
 
         return new RulebookDocument("historicos", "Históricos", intro, sections);

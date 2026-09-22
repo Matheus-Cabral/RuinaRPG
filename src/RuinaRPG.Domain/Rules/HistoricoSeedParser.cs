@@ -7,51 +7,10 @@ namespace RuinaRPG.Domain.Rules;
 public static partial class HistoricoSeedParser
 {
     // Historico.md spells out each Perícia's proper Portuguese label (e.g. "Empatia c/ Animais"),
-    // not the Pericia enum's unaccented member name — same label set as
-    // RuinaRPG.Client.Shared.PericiaDisplay, inverted. Duplicated rather than shared because Domain
-    // cannot reference the Client project.
-    private static readonly Dictionary<string, Pericia> PericiaPorRotulo = new()
-    {
-        ["Acrobacia"] = Pericia.Acrobacia,
-        ["Alquimia"] = Pericia.Alquimia,
-        ["Arcano"] = Pericia.Arcano,
-        ["Armadilhas"] = Pericia.Armadilhas,
-        ["Armas Brancas"] = Pericia.ArmasBrancas,
-        ["Artefatos Mágicos"] = Pericia.ArtefatosMagicos,
-        ["Artístico"] = Pericia.Artistico,
-        ["Atletismo"] = Pericia.Atletismo,
-        ["Avaliação"] = Pericia.Avaliacao,
-        ["Biblioteca"] = Pericia.Biblioteca,
-        ["Brigar"] = Pericia.Brigar,
-        ["Condução"] = Pericia.Conducao,
-        ["Conhecimentos"] = Pericia.Conhecimentos,
-        ["Crime"] = Pericia.Crime,
-        ["Empatia c/ Animais"] = Pericia.EmpatiaComAnimais,
-        ["Enganação"] = Pericia.Enganacao,
-        ["Força de Vontade"] = Pericia.ForcaDeVontade,
-        ["Fortitude"] = Pericia.Fortitude,
-        ["Furtividade"] = Pericia.Furtividade,
-        ["Herborismo"] = Pericia.Herborismo,
-        ["Intimidação"] = Pericia.Intimidacao,
-        ["Intuição"] = Pericia.Intuicao,
-        ["Investigação"] = Pericia.Investigacao,
-        ["Lábia"] = Pericia.Labia,
-        ["Liderança"] = Pericia.Lideranca,
-        ["Linguística"] = Pericia.Linguistica,
-        ["Medicina"] = Pericia.Medicina,
-        ["Navegação"] = Pericia.Navegacao,
-        ["Ocultismo"] = Pericia.Ocultismo,
-        ["Ofício"] = Pericia.Oficio,
-        ["Percepção"] = Pericia.Percepcao,
-        ["Pontaria"] = Pericia.Pontaria,
-        ["Prontidão"] = Pericia.Prontidao,
-        ["Reflexos"] = Pericia.Reflexos,
-        ["Religião"] = Pericia.Religiao,
-        ["Saquear"] = Pericia.Saquear,
-        ["Sedução"] = Pericia.Seducao,
-        ["Senso Comum"] = Pericia.SensoComum,
-        ["Sobrevivência"] = Pericia.Sobrevivencia,
-    };
+    // not the Pericia enum's unaccented member name — inverted from the canonical
+    // PericiaLabels map (same project, single source of truth).
+    private static readonly Dictionary<string, Pericia> PericiaPorRotulo =
+        Enum.GetValues<Pericia>().ToDictionary(p => PericiaLabels.Label(p));
 
     public static IReadOnlyList<HistoricoSeed> Parse(string markdown)
     {
