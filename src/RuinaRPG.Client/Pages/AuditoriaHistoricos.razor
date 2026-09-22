@@ -1,0 +1,173 @@
+@page "/auditoria/historicos"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Históricos</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Adicionar Histórico">
+        <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
+        <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
+        <MudSelect T="string" @bind-Value="_newForm.PericiaMaisSeis" Label="Perícia +6">
+            @foreach (var pericia in Pericias)
+            {
+                <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="string" @bind-Value="_newForm.PericiaMaisTres" Label="Perícia +3">
+            @foreach (var pericia in Pericias)
+            {
+                <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
+    </Section>
+
+    <Section Title="Históricos">
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Nome</th><th>Descrição</th><th>Perícia +6</th><th>Perícia +3</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var historico in _historicos)
+                {
+                    <tr>
+                        <td><MudTextField T="string" Value="@historico.Nome" ValueChanged="@(v => UpdateAsync(historico, nome: v))" /></td>
+                        <td><MudTextField T="string" Value="@historico.Descricao" ValueChanged="@(v => UpdateAsync(historico, descricao: v))" /></td>
+                        <td>
+                            <MudSelect T="string" Value="@historico.PericiaMaisSeis" ValueChanged="@(v => UpdateAsync(historico, periciaMaisSeis: v))">
+                                @foreach (var pericia in Pericias)
+                                {
+                                    <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td>
+                            <MudSelect T="string" Value="@historico.PericiaMaisTres" ValueChanged="@(v => UpdateAsync(historico, periciaMaisTres: v))">
+                                @foreach (var pericia in Pericias)
+                                {
+                                    <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td><MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteAsync(historico.Id))" /></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </Section>
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Históricos"),
+    };
+
+    // Same 39-value canonical list as the Pericia enum (Requisitos - Ficha de Personagem.md §2.d) —
+    // wire-format identifiers, displayed via PericiaDisplay.Label.
+    private static readonly string[] Pericias =
+    [
+        "Acrobacia", "Alquimia", "Arcano", "Armadilhas", "ArmasBrancas", "ArtefatosMagicos", "Artistico",
+        "Atletismo", "Avaliacao", "Biblioteca", "Brigar", "Conducao", "Conhecimentos", "Crime",
+        "EmpatiaComAnimais", "Enganacao", "ForcaDeVontade", "Fortitude", "Furtividade", "Herborismo",
+        "Intimidacao", "Intuicao", "Investigacao", "Labia", "Lideranca", "Linguistica", "Medicina",
+        "Navegacao", "Ocultismo", "Oficio", "Percepcao", "Pontaria", "Prontidao", "Reflexos", "Religiao",
+        "Saquear", "Seducao", "SensoComum", "Sobrevivencia",
+    ];
+
+    private List<HistoricoResponse> _historicos = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    private readonly NewHistoricoFormModel _newForm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("historicos");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os Históricos.";
+            return;
+        }
+
+        _historicos = await response.Content.ReadFromJsonAsync<List<HistoricoResponse>>() ?? new();
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("historicos",
+            new CreateHistoricoRequest(_newForm.Nome, _newForm.Descricao, _newForm.PericiaMaisSeis, _newForm.PericiaMaisTres));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o Histórico — as duas Perícias não podem ser iguais.";
+            return;
+        }
+
+        _newForm.Nome = "";
+        _newForm.Descricao = "";
+        await LoadAsync();
+    }
+
+    private async Task UpdateAsync(HistoricoResponse current, string? nome = null, string? descricao = null, string? periciaMaisSeis = null, string? periciaMaisTres = null)
+    {
+        var response = await Http.PutAsJsonAsync($"historicos/{current.Id}", new UpdateHistoricoRequest(
+            nome ?? current.Nome,
+            descricao ?? current.Descricao,
+            periciaMaisSeis ?? current.PericiaMaisSeis,
+            periciaMaisTres ?? current.PericiaMaisTres));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a alteração.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"historicos/{id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir — este Histórico pode estar em uso em alguma ficha.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private class NewHistoricoFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public string PericiaMaisSeis { get; set; } = "Acrobacia";
+        public string PericiaMaisTres { get; set; } = "Alquimia";
+    }
+}
