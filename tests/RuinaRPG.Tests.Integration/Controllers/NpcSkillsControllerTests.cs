@@ -2,9 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -58,6 +61,19 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    private static UpdateNpcSheetRequest UpdateWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+
     [Fact]
     public async Task List_returns_39_skills_all_zeroed()
     {
@@ -83,6 +99,28 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/skills", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcSkillResponse>>();
         body!.Single(s => s.Pericia == "Atletismo").Modificador.Should().Be(3); // 9 / 3
+    }
+
+    [Fact]
+    public async Task List_adds_the_sheets_Historico_bonus_to_the_matching_Pericias_Modificador()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSkillHistGm1", "npcskillhistgm1@teste.com");
+        await GrantRulesAuditorAsync("npcskillhistgm1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Teste de Bônus NPC", "Descrição de teste.", "Arcano", "Biblioteca")));
+        var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+            UpdateWithHistorico(historico!.Id)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Arcano", gmToken,
+            new UpdateNpcSkillRequest(3, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/skills", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<NpcSkillResponse>>();
+        body!.Single(s => s.Pericia == "Arcano").Modificador.Should().Be(7); // 3/3=1 + 6
     }
 
     [Fact]

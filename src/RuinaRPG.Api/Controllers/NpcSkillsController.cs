@@ -34,10 +34,13 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
+        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
+
         return skills
             .Select(s =>
             {
-                var modificador = SkillFormulas.Modificador(s.Gasto, 0);
+                var historicoBonus = HistoricoBonusCalculator.For(s.Pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres);
+                var modificador = SkillFormulas.Modificador(s.Gasto, historicoBonus);
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
                     ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
                     : (int?)null;

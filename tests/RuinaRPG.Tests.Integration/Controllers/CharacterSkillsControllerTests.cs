@@ -2,10 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -74,6 +77,19 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId);
+
     [Fact]
     public async Task List_returns_39_skills_all_zeroed()
     {
@@ -101,6 +117,33 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
         body!.Single(s => s.Pericia == "Atletismo").Modificador.Should().Be(3); // 9 / 3
+    }
+
+    [Fact]
+    public async Task List_adds_the_sheets_Historico_bonus_to_the_matching_Pericias_Modificador()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SkillHistGm1", "skillhistgm1@teste.com");
+        await GrantRulesAuditorAsync("skillhistgm1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillHistPlayer1", "skillhistplayer1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Teste de Bônus na Perícia", "Descrição de teste.", "Arcano", "Biblioteca")));
+        var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            UpdateWithHistorico(historico!.Id)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Arcano", playerToken,
+            new UpdateCharacterSkillRequest(3, null)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Biblioteca", playerToken,
+            new UpdateCharacterSkillRequest(3, null)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
+        body!.Single(s => s.Pericia == "Arcano").Modificador.Should().Be(7); // 3/3=1 + 6
+        body!.Single(s => s.Pericia == "Biblioteca").Modificador.Should().Be(4); // 3/3=1 + 3
+        body!.Single(s => s.Pericia == "Fortitude").Modificador.Should().Be(0); // untouched, no bonus
     }
 
     [Fact]
