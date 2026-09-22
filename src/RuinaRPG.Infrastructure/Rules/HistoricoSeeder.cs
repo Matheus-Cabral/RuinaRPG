@@ -17,6 +17,13 @@ public static class HistoricoSeeder
     /// - A row with IsCustomized = true is skipped entirely.
     /// - The match-key lookup includes soft-deleted rows, so a deliberately deleted Histórico is
     ///   recognized as "already present" and never reinserted.
+    ///
+    /// Known limitation of the Nome-only match key: renaming a Histórico via the Auditoria page
+    /// (HistoricosController.Update) does not rename its seed-matching key. The old Nome from
+    /// Historico.md is then no longer present in the table, so the next restart/migrate re-seeds it
+    /// as a brand-new row — leaving both the renamed entry and a resurrected duplicate under the
+    /// original name. This is a deliberate scope cut, not a bug to silently work around; recovering
+    /// from it means the Auditor manually deletes the duplicate.
     /// </summary>
     public static async Task<(int Inserted, int Updated)> SeedAsync(RuinaRpgDbContext db, string historicoMarkdown)
     {

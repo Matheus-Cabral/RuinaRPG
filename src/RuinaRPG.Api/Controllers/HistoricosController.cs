@@ -35,6 +35,11 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         if (authError is not null)
             return authError;
 
+        if (string.IsNullOrWhiteSpace(request.Nome))
+            return BadRequest("Nome é obrigatório.");
+        if (string.IsNullOrWhiteSpace(request.Descricao))
+            return BadRequest("Descrição é obrigatória.");
+
         if (!Enum.TryParse<Pericia>(request.PericiaMaisSeis, out var periciaMaisSeis))
             return BadRequest("PericiaMaisSeis inválida.");
         if (!Enum.TryParse<Pericia>(request.PericiaMaisTres, out var periciaMaisTres))
@@ -69,6 +74,11 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         var historico = await db.Historicos.FirstOrDefaultAsync(h => h.Id == id && !h.IsDeleted);
         if (historico is null)
             return NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.Nome))
+            return BadRequest("Nome é obrigatório.");
+        if (string.IsNullOrWhiteSpace(request.Descricao))
+            return BadRequest("Descrição é obrigatória.");
 
         if (!Enum.TryParse<Pericia>(request.PericiaMaisSeis, out var periciaMaisSeis))
             return BadRequest("PericiaMaisSeis inválida.");

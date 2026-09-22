@@ -137,6 +137,18 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task CreateHistorico_with_an_empty_Nome_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm10", "histcrudgm10@teste.com");
+        await GrantRulesAuditorAsync("histcrudgm10@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("   ", "Teste.", "Atletismo", "Acrobacia")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task CreateHistorico_with_an_invalid_Pericia_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm4", "histcrudgm4@teste.com");
@@ -198,6 +210,18 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         list!.Should().NotContain(h => h.Id == created.Id);
     }
 
+    // Mirrors CharacterSkillsControllerTests.UpdateWithHistorico — a minimal, valid full-form
+    // UpdateCharacterSheetRequest whose only field this test class cares about is HistoricoId.
+    private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId);
+
+    // Mirrors NpcSkillsControllerTests.UpdateWithHistorico — same shape for UpdateNpcSheetRequest,
+    // which additionally carries Nivel (int, not nullable) right after the 8 string? fields.
+    private static RuinaRPG.Contracts.NpcSheets.UpdateNpcSheetRequest UpdateNpcWithHistorico(string? historicoId) => new(
+        null, "Teste", null, null, null, null, null, null,
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+
     [Fact]
     public async Task DeleteHistorico_that_is_already_in_use_on_a_sheet_returns_409()
     {
@@ -214,14 +238,28 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
 
-        // Use the raw DB context to set HistoricoId directly — CharacterSheetsController.Update
-        // doesn't accept/validate HistoricoId until Task 7 lands, and this test only needs the
-        // reference to exist, not to exercise Update itself.
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var sheet = await db.CharacterSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
-        sheet.HistoricoId = Guid.Parse(created!.Id);
-        await db.SaveChangesAsync();
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, UpdateWithHistorico(created!.Id)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
+
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DeleteHistorico_that_is_already_in_use_on_an_npc_sheet_returns_409()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm9", "histcrudgm9@teste.com");
+        await GrantRulesAuditorAsync("histcrudgm9@teste.com");
+        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Em Uso NPC", "Teste.", "Atletismo", "Acrobacia")));
+        var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
+
+        var npcCreateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var npc = await npcCreateResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>();
+
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npc!.Id}", gmToken, UpdateNpcWithHistorico(created!.Id)));
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
 

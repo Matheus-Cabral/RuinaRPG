@@ -116,7 +116,8 @@ else
         }
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar o Histórico — as duas Perícias não podem ser iguais.";
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível adicionar o Histórico." : detail;
             return;
         }
 
