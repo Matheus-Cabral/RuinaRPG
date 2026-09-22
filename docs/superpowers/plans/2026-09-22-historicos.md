@@ -1554,19 +1554,7 @@ Replace with:
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
 ```
 
-Find, in `ToResponseAsync`:
-
-```csharp
-            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual);
-```
-
-Replace with:
-
-```csharp
-            s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString());
-```
+`ToResponseAsync` already returns `s.HistoricoId?.ToString()` as its trailing argument — Task 5 Step 6 added that when it fixed this file's `CS7036` compiler error (Task 5 runs before this task and can compute the real value directly, since `CharacterSheet.HistoricoId` already exists from Task 4; it only appends a placeholder `null` in files that have no real value to compute yet, like the test factories and the two `.razor` pages). Nothing left to do here — verify it reads that way before moving on, but do not search-and-replace it again.
 
 - [ ] **Step 4: Run the CharacterSheetsController tests to verify they pass**
 
@@ -1670,19 +1658,7 @@ Replace with:
         sheet.Nivel = request.Nivel;
 ```
 
-Find, in `ToResponseAsync`:
-
-```csharp
-            campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual);
-```
-
-Replace with:
-
-```csharp
-            campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString());
-```
+`ToResponseAsync` already returns `s.HistoricoId?.ToString()` as its trailing argument, added by Task 5 Step 6 when it fixed this file's `CS7036` compiler error — nothing left to do here, verify it reads that way and do not search-and-replace it again (same situation as `CharacterSheetsController.cs` in Step 3 above).
 
 Confirm the top of the file has `using RuinaRPG.Infrastructure.Rules;` — it already does (needed for `Historico`/`db.Historicos`, though `db.Historicos` alone doesn't strictly require the using since it's a property access, not a type name — no change needed if the build passes without it).
 
