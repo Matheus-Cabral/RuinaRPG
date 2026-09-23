@@ -433,3 +433,9 @@ A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece �
 # **R0004** - O nome de um Item nas tabelas de 3.a)-3.c) e 5.a)-5.b) abre um popup com sua Imagem e Descrição.
 
 **Descrição**: Nas tabelas de Armas, Armaduras (por slot), Escudos, Inventário e Artefatos (3.a)-3.c) e 5.a)-5.b), clicar no nome de um Item abre um popup exibindo a **Imagem** e a **Descrição** daquele Item, conforme cadastradas no catálogo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 a R0006 e R0009 — todos os 5 tipos de item têm um campo Descrição). Quando o Item não tem Imagem e/ou Descrição cadastradas, o popup mostra só o que existir (e "Sem descrição." no lugar da Descrição ausente).
+
+# **R0005** - A aba Posses oferece a escolha de um kit de Equipagem inicial, uma única vez.
+
+**Descrição**: Enquanto a ficha não tiver nenhum kit de "[[Equipagem]]" escolhido, um botão **Escolher Equipamento Inicial** aparece no topo da aba 5. Posses, acima de 5.a) Inventário. Ao clicar, abre um popup listando os kits disponíveis (dropdown por Nome); ao selecionar um kit, o popup exibe sua Descrição, os Ciclos que ele concede (quando maior que 0) e um select adicional para cada slot de escolha do kit (ex: "1 Arma Rank F de sua escolha"), cada um resolvido ao vivo contra o catálogo do GM da campanha da ficha. O botão de confirmação do popup só fica habilitado depois que **todo** slot de escolha do kit selecionado tiver uma opção marcada.
+
+Ao confirmar, os itens do kit (fixos e os escolhidos) são concedidos à ficha automaticamente, cada um no grupo correspondente ao seu Tipo — Armas em 3.a, Escudos em 3.c, os demais (Item Geral) em 5.a) Inventário — e os Ciclos do kit somam ao campo *Ciclos* de 5.a). Essa escolha é feita **uma única vez**: assim que a ficha tem um kit associado, o botão some da aba Posses e não reaparece.

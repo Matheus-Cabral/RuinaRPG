@@ -109,6 +109,8 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 
 **Descrição**:
 
+**Não há botão de Equipagem inicial** (ver "[[Requisitos - Ficha de Personagem]]" R0005) — Espólios é o que a Criatura larga ao ser saqueada, não um kit de equipamento inicial que ela carrega.
+
 **5.a Inventário é substituído por Espólios** — o que a Criatura larga ao ser derrotada e saqueada, não um inventário que ela carrega e usa. Não há campo de Ciclos aqui (Criaturas não mantêm um saldo de moeda). Lista incremental, cada linha:
 
 - *Item*: dropdown/busca vinculado a um item do "[[Requisitos - Catálogo de Itens e Equipamentos]]" (qualquer Tipo).

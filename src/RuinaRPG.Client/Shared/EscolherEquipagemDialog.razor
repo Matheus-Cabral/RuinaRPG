@@ -1,0 +1,96 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
+
+@* Requisitos - Ficha de Personagem: botão "Escolher Equipamento Inicial" na aba Posses. Kits vêm
+   do catálogo ao vivo (GET .../equipagem/kits); slots de escolha ("de sua escolha"/"ou") mostram
+   um segundo select cada, resolvido contra o catálogo do GM da campanha da ficha. *@
+<MudDialog @bind-Visible="Visible">
+    <TitleContent>Escolher Equipamento Inicial</TitleContent>
+    <DialogContent>
+        <MudSelect T="string" Label="Kit" @bind-Value="_selectedKitId" Placeholder="Escolha um kit">
+            @foreach (var kit in _kits)
+            {
+                <MudSelectItem Value="@kit.Id">@kit.Nome</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (SelectedKit is not null)
+        {
+            <MudText Class="mt-2">@SelectedKit.Descricao</MudText>
+            @if (SelectedKit.Ciclos > 0)
+            {
+                <MudText Typo="Typo.body2" Class="mt-1"><em>+@SelectedKit.Ciclos Ciclos</em></MudText>
+            }
+
+            @foreach (var slot in SelectedKit.ChoiceSlots)
+            {
+                <MudSelect T="string" Label="@slot.Label" Class="mt-3" Value="@_selections.GetValueOrDefault(slot.SlotId)"
+                           ValueChanged="@(v => OnSlotSelectionChanged(slot.SlotId, v))" Placeholder="@($"Escolha: {slot.Label}")">
+                    @foreach (var option in slot.Options)
+                    {
+                        <MudSelectItem Value="@option.ItemId">@option.Nome</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="!CanConfirm" OnClick="ConfirmAsync">Escolher Equipagem</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public string SheetKind { get; set; } = "character-sheets"; // or "npc-sheets"
+    [Parameter] public string SheetId { get; set; } = "";
+    [Parameter] public EventCallback OnChosen { get; set; }
+
+    private List<EquipmentKitOptionResponse> _kits = new();
+    private string? _selectedKitId;
+    private readonly Dictionary<string, string> _selections = new();
+
+    private EquipmentKitOptionResponse? SelectedKit => _kits.FirstOrDefault(k => k.Id == _selectedKitId);
+    private bool CanConfirm => SelectedKit is not null && SelectedKit.ChoiceSlots.All(s => _selections.ContainsKey(s.SlotId));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && _kits.Count == 0)
+        {
+            var response = await Http.GetAsync($"{SheetKind}/{SheetId}/equipagem/kits");
+            if (response.IsSuccessStatusCode)
+                _kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>() ?? new();
+        }
+    }
+
+    private void OnSlotSelectionChanged(string slotId, string? itemId)
+    {
+        if (itemId is null)
+            _selections.Remove(slotId);
+        else
+            _selections[slotId] = itemId;
+    }
+
+    private async Task Cancel()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (SelectedKit is null)
+            return;
+
+        var selections = SelectedKit.ChoiceSlots.Select(s => new ChoiceSlotSelectionRequest(s.SlotId, _selections[s.SlotId])).ToList();
+        var response = await Http.PostAsJsonAsync($"{SheetKind}/{SheetId}/equipagem/choose", new ChooseEquipmentKitRequest(SelectedKit.Id, selections));
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnChosen.InvokeAsync();
+    }
+}

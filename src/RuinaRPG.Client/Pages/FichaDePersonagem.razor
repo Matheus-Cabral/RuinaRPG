@@ -672,6 +672,11 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
+        @if (_form.EquipmentKitId is null)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mb-3" OnClick="@(() => _equipagemDialogOpen = true)">Escolher Equipamento Inicial</MudButton>
+            <EscolherEquipagemDialog @bind-Visible="_equipagemDialogOpen" SheetKind="character-sheets" SheetId="@SheetId" OnChosen="OnEquipagemChosenAsync" />
+        }
         <Section Title="Inventário">
             @if (_subAttributes?.PesoAtual is not null && _subAttributes.PesoMaximo is not null)
             {
@@ -877,6 +882,7 @@
     private CharacterTraitsListResponse? _traits;
     private PendingRacialTraitChoiceResponse? _pendingRacialChoice;
     private bool _racialChoiceDialogOpen;
+    private bool _equipagemDialogOpen;
     private string? _racialGratuitaChoice;
     private string? _racialObrigatoriaChoice;
     private string? _racialGratuitaEspecificacao;
@@ -1013,6 +1019,7 @@
         _form.Estrela = sheet.Estrela;
         _form.SinaAtual = sheet.SinaAtual;
         _form.HistoricoId = sheet.HistoricoId;
+        _form.EquipmentKitId = sheet.EquipmentKitId;
         _form.Nivel = sheet.Nivel;
         _form.Graduacao = sheet.Graduacao;
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
@@ -1497,6 +1504,12 @@
         await LoadMasteriesAsync();
     }
 
+    private async Task OnEquipagemChosenAsync()
+    {
+        await LoadSheetAsync();
+        await Task.WhenAll(LoadTabs2And3Async(), LoadInventoryAsync(), LoadArtifactsAsync());
+    }
+
     private async Task LoadInventoryAsync()
     {
         _inventory = await Http.GetFromJsonAsync<List<CharacterInventoryItemResponse>>($"character-sheets/{SheetId}/inventory") ?? new();
@@ -1722,6 +1735,7 @@
         public string? Estrela { get; set; }
         public int SinaAtual { get; set; }
         public string? HistoricoId { get; set; }
+        public string? EquipmentKitId { get; set; }
         // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
         // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
         public int Nivel { get; set; } = 1;
