@@ -94,3 +94,9 @@ Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos
 > Uma Magia/Habilidade ou uma Runa que um jogador cria em sua ficha (Requisitos - Ficha de Personagem R0003, Requisitos - Banco de Magias e Habilidades R0001, Requisitos - Banco de Runas R0007), e uma Imagem que um jogador envia a partir de sua ficha, são anexadas à campanha correspondente automaticamente como **públicas** — sem etapa de aprovação do GM. Isso não se aplica a Itens: um jogador nunca cria um Item, então este anexo automático não existe para eles.
 >
 > A tela de gerenciamento da campanha (Membros, Anexos, Diário, Notas Secretas, Conceder Ficha, Detalhes) nunca é alcançável por um jogador — a tela dele é a descrita em R0009.
+
+# **R0013** - Escolher a Equipagem inicial anexa e publica seus itens automaticamente na campanha.
+
+> Exceção equivalente à de R0012, mas do lado do GM: quando uma Ficha de Personagem ou uma Ficha de NPC concedida escolhe um kit de Equipagem inicial, cada Item que o kit concede (fixo ou de slot de escolha) é anexado à campanha correspondente e marcado **público** automaticamente — sem passar pelo fluxo manual de anexar-e-depois-publicar de R0006/R0008. A justificativa é que Itens de Equipagem são "de conhecimento geral": não há razão para o GM escondê-los dos demais jogadores só porque vieram de um kit em vez de terem sido anexados manualmente.
+>
+> Isso vale apenas para o Item em si (fica público na aba de Anexos da campanha); não altera nada sobre a ficha que recebeu a Equipagem, nem sobre outros anexos já existentes.
