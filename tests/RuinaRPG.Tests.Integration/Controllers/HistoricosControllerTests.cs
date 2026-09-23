@@ -214,13 +214,13 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     // UpdateCharacterSheetRequest whose only field this test class cares about is HistoricoId.
     private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
         null, "Teste", null, null, null, null, null, null,
-        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId);
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId, null);
 
     // Mirrors NpcSkillsControllerTests.UpdateWithHistorico — same shape for UpdateNpcSheetRequest,
     // which additionally carries Nivel (int, not nullable) right after the 8 string? fields.
     private static RuinaRPG.Contracts.NpcSheets.UpdateNpcSheetRequest UpdateNpcWithHistorico(string? historicoId) => new(
         null, "Teste", null, null, null, null, null, null,
-        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId, null);
 
     [Fact]
     public async Task DeleteHistorico_that_is_already_in_use_on_a_sheet_returns_409()

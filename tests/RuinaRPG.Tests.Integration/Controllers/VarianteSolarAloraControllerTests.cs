@@ -76,11 +76,11 @@ public class VarianteSolarAloraControllerTests : IClassFixture<PostgresFixture>,
 
     private static UpdateCharacterSheetRequest CharacterUpdate(string linhagem, string variante) => new(
         null, "Teste", linhagem, variante, "Campeao", "Duelista", null, null,
-        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null);
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null, null);
 
     private static UpdateNpcSheetRequest NpcUpdate(string linhagem, string variante) => new(
         null, "Teste", linhagem, variante, "Campeao", "Duelista", null, null,
-        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null);
+        5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null, null);
 
     private Task<HttpResponseMessage> SetNomeDaVarianteAsync(string gmToken, string? nome) =>
         _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-abilities/AloraSolar/nome-da-variante", gmToken, new UpdateNomeDaVarianteRequest(nome)));

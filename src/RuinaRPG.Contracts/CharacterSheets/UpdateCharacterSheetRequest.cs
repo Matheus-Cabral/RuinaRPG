@@ -31,4 +31,5 @@ public record UpdateCharacterSheetRequest(
     int? ArcaRolada,
     string? Estrela,
     int SinaAtual,
-    string? HistoricoId);
+    string? HistoricoId,
+    string? EquipmentKitId);

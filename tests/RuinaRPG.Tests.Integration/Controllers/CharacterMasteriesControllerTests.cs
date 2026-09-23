@@ -79,7 +79,7 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
 
     private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
         null, "Teste", null, null, null, null, null, null,
-        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId);
+        true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, historicoId, null);
 
     [Fact]
     public async Task Add_a_valid_mastery_returns_201()

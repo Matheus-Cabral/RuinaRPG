@@ -71,7 +71,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         // Adepto libera Dobra+Consagração — cobre todas as combinações que os testes já existentes
         // usam: Fogo/Terra são Dobra, Curar/Aprimorar são Consagração.
         var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null);
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
         return sheetId;
@@ -292,7 +292,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
 
         // Troca a Vocação pra Feiticeiro (não libera mais Curar, que é de Consagração).
         var updateSheet = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null);
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, updateSheet));
 
         // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.

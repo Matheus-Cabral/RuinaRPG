@@ -63,7 +63,7 @@ public class NpcMasteriesControllerTests : IClassFixture<PostgresFixture>, IAsyn
 
     private static UpdateNpcSheetRequest UpdateWithHistorico(string? historicoId) => new(
         null, "Teste", null, null, null, null, null, null,
-        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId, null);
 
     [Fact]
     public async Task Add_a_valid_mastery_returns_201()

@@ -72,7 +72,7 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private static UpdateNpcSheetRequest UpdateWithHistorico(string? historicoId) => new(
         null, "Teste", null, null, null, null, null, null,
-        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId);
+        1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId, null);
 
     [Fact]
     public async Task List_returns_39_skills_all_zeroed()
