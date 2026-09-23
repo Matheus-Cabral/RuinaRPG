@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RuinaRPG.Domain\RuinaRPG.Domain.csproj" />
+    <ProjectReference Include="..\RuinaRPG.Contracts\RuinaRPG.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

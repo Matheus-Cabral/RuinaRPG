@@ -153,3 +153,7 @@ Acesso:
 # **R0011** - O escopo de R0010 vale para todo campo de Item na ficha, não só o de reaproveitar Imagem.
 
 > R0010 já limita um jogador a imagens de itens anexados-e-públicos à sua campanha. A mesma regra vale de forma geral para qualquer campo de Item nas fichas (Armas, Armaduras, Escudos, Inventário, Artefatos — Requisitos - Ficha de Personagem R0003): um jogador só pode escolher um Item que esteja anexado à campanha da ficha **e** marcado como público (Requisitos - Campanha R0008/R0009), nunca todo o catálogo do GM.
+
+# **R0012** - Aplicar um kit de Equipagem pode cadastrar um Item Geral automaticamente no catálogo do GM.
+
+**Descrição**: Um kit de Equipagem (ver "[[Requisitos - Modelo de Dados]]", EquipmentKits) referencia seus itens fixos pelo par Nome+Tipo, não por um Item específico — o kit é um catálogo global, mas cada GM tem seu próprio catálogo de Itens (R0002). Ao aplicar um kit, se um item fixo do tipo **Item Geral** não existir ainda no catálogo do GM que está aplicando, ele é criado automaticamente com Peso e Preço em **0**, mesma convenção do Catálogo inicial (ver preâmbulo). Um item fixo do tipo **Arma**, **Escudo** ou **Artefato**, por outro lado, nunca é criado automaticamente: se faltar no catálogo do GM, a aplicação do kit falha com um erro indicando o item ausente, e cabe ao GM cadastrá-lo manualmente (R0002) antes de tentar novamente.
