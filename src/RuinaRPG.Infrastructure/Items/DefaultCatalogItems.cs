@@ -165,6 +165,8 @@ public static class DefaultCatalogItems
             new ItemGeral { Nome = "Projétil de Ferro", Subcategoria = "Munição", Descricao = "Munição simples para armas de fogo / +3 de dano perfurante" },
             new ItemGeral { Nome = "Projétil de Ferro Negro", Subcategoria = "Munição", Descricao = "Projétil bem trabalhado para armas de fogo / +8 de dano perfurante" },
             new ItemGeral { Nome = "Ração de Viagem", Subcategoria = "Alimentação", Descricao = "Comida de viagem para uma pessoa" },
+            new ItemGeral { Nome = "Tônico de Vida simples", Subcategoria = "Poções e Tônicos", Descricao = "Restaura uma pequena quantidade de Vitalidade" },
+            new ItemGeral { Nome = "Tônico de Foco simples", Subcategoria = "Poções e Tônicos", Descricao = "Restaura uma pequena quantidade de Foco" },
             new ItemGeral { Nome = "Prato Simples", Subcategoria = "Alimentação", Descricao = "Nutrição básica — ainda sentirá fome durante o dia" },
             new ItemGeral { Nome = "Prato Robusto", Subcategoria = "Alimentação", Descricao = "Nutrição moderada — mais satisfeito durante o dia" },
             new ItemGeral { Nome = "Prato Nobre", Subcategoria = "Alimentação", Descricao = "Nutrição em fartura — completamente satisfeito por 1 dia" },
