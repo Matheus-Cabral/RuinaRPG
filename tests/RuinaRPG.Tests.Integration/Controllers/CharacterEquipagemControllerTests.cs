@@ -83,7 +83,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         kits!.Should().HaveCountGreaterOrEqualTo(12);
-        var patrulheiro = kits.Single(k => k.Nome == "Patrulheiro");
+        var patrulheiro = kits!.Single(k => k.Nome == "Patrulheiro");
         patrulheiro.ChoiceSlots.Should().ContainSingle();
         patrulheiro.ChoiceSlots.Single().Options.Should().NotBeEmpty(); // Varinha de Carvalho and every default Tier-F weapon are seeded per-GM already
     }
