@@ -48,9 +48,15 @@ public class NpcEquipagemController(RuinaRpgDbContext db, EquipmentKitGrantServi
 
         var fixedItems = await db.EquipmentKitItems.Where(i => i.KitId == kitId).ToListAsync();
         var choiceSlots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kitId).ToListAsync();
-        var (plan, error) = await grantService.BuildPlanAsync(kit, fixedItems, choiceSlots, sheet.GmId, request.ChoiceSelections);
+        var (plan, error) = await grantService.BuildPlanAsync(kit, fixedItems, choiceSlots, sheet.GmId, request.ChoiceSelections ?? []);
         if (plan is null)
             return BadRequest(error);
+
+        var existingArtifactTipos = db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId)
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i.TipoDeAlvo);
+        var artifactCapError = await grantService.CheckArtifactCapAsync(plan.Grants, existingArtifactTipos);
+        if (artifactCapError is not null)
+            return BadRequest(artifactCapError);
 
         foreach (var grant in plan.Grants)
             AddGrant(sheetId, grant);

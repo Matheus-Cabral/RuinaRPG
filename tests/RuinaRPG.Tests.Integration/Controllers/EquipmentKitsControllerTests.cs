@@ -127,6 +127,23 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
     }
 
     [Fact]
+    public async Task Create_rejects_a_choice_slot_of_Tipo_other_than_Arma()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm3b", "equipkits3b@teste.com");
+        await GrantRulesAuditorAsync("equipkits3b@teste.com");
+
+        // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync only ever query the
+        // Arma table regardless of a choice slot's declared Tipo — accepting a non-Arma slot Tipo
+        // here would silently offer weapons as options and, on confirm, insert a row pointing at an
+        // Arma's Id into the wrong sheet sub-table (e.g. CharacterShield), a corrupt row Postgres
+        // never rejects because the FK targets the shared TPH Item base table.
+        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Create_by_an_Auditor_persists_items_and_choice_slots()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm4", "equipkits4@teste.com");

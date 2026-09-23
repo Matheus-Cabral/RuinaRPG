@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -59,6 +60,25 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
         var meBody = await (await _client.SendAsync(me)).Content.ReadFromJsonAsync<MeResponse>();
         return (meBody!.Id, tokens.AccessToken);
+    }
+
+    // Copied verbatim from EquipmentKitsControllerTests.cs / HistoricosControllerTests.cs — the
+    // established direct-DB way to grant the Rules Auditor role in a test (no grant endpoint exists).
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    // Copied verbatim from CharacterPossessionsControllerTests.cs's helper.
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<(string CampaignId, string SheetId)> CreateCampaignAndSheetAsync(string gmToken)
@@ -188,6 +208,85 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
 
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Choose_with_ChoiceSelections_omitted_from_the_request_body_returns_400_not_500()
+    {
+        // ChooseEquipmentKitRequest.ChoiceSelections is a non-nullable List<...> in the C# record,
+        // but a hand-crafted JSON body omitting the field deserializes it to null. Without a
+        // null-coalescing guard, BuildPlanAsync's foreach over choiceSlots would NRE (500) the first
+        // time it tries selections.FirstOrDefault(...) for a kit that actually has a choice slot
+        // (Patrulheiro) — it should fail cleanly with 400 instead.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm7", "equipagem7@teste.com");
+        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var kits = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+            .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
+        var patrulheiro = kits!.Single(k => k.Nome == "Patrulheiro");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        request.Content = JsonContent.Create(new { KitId = patrulheiro.Id });
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Choose_a_kit_that_would_push_an_Artefato_TipoDeAlvo_past_3_returns_400_and_grants_nothing()
+    {
+        // Mirrors CharacterPossessionsController.AddArtifact's own "limite de 3 por TipoDeAlvo
+        // validado na aplicação" cap (Requisitos - Modelo de Dados) — no path in the Equipagem
+        // feature enforced this before this fix, even though nothing stops an Auditor from
+        // authoring a kit with an Artefato fixed item via the Auditoria page's Tipo dropdown.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm8", "equipagem8@teste.com");
+        await GrantRulesAuditorAsync("equipagem8@teste.com");
+        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+
+        var artifact1 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 1", "Atributo", "Vigor", 1);
+        var artifact2 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 2", "Atributo", "Forca", 1);
+        var artifact3 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 3", "Atributo", "Agilidade", 1);
+        var artifact4Nome = "Anel Equipagem 4";
+        await CreateArtefatoItemAsync(gmToken, artifact4Nome, "Atributo", "Astucia", 1);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact1)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact2)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact3)));
+
+        var kitRequest = new CreateEquipmentKitRequest("Kit com Artefato", "Kit de teste com Artefato", 0,
+            [new EquipmentKitItemInput(artifact4Nome, "Artefato", 1, null)], []);
+        var kitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, kitRequest));
+        var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
+
+        var chooseResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+            new ChooseEquipmentKitRequest(kit!.Id, [])));
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
+        var sheet = await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        sheet!.EquipmentKitId.Should().BeNull(); // rejected before SaveChangesAsync — nothing partially applied
+
+        var artifactsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", gmToken));
+        var artifacts = await artifactsResponse.Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
+        artifacts!.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task ListKits_and_Choose_by_an_unrelated_jogador_return_403()
+    {
+        // Same CanEdit gate as every other sheet sub-controller (see CharacterMasteriesControllerTests's
+        // identical Add_by_an_unrelated_jogador_returns_403) — a caller who is neither the sheet's
+        // owner nor its campaign's GM cannot list kits or choose one.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm9", "equipagem9@teste.com");
+        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "EquipagemStranger9", "equipagemstranger9@teste.com");
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", otherToken));
+        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var chooseResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", otherToken,
+            new ChooseEquipmentKitRequest(Guid.NewGuid().ToString(), [])));
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

@@ -105,6 +105,35 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
         }
     }
 
+    /// <summary>
+    /// Mirrors CharacterPossessionsController/NpcPossessionsController's AddArtifact "limite de 3
+    /// por TipoDeAlvo validado na aplicação, não no schema" cap (Requisitos - Modelo de Dados). No
+    /// seeded kit grants an Artefato today, but the Auditoria page's Tipo dropdown allows authoring
+    /// one, so the same cap must hold when a kit's Artefato grant(s) land on a sheet — counting the
+    /// sheet's existing Artefatos of that TipoDeAlvo plus any Artefato grants the kit itself carries
+    /// (a single kit could grant more than one of the same TipoDeAlvo).
+    /// </summary>
+    public async Task<string?> CheckArtifactCapAsync(List<EquipmentGrantPlanItem> grants, IQueryable<TipoDeAlvo?> existingArtifactTiposOnSheet)
+    {
+        var artifactGrantItemIds = grants.Where(g => g.Tipo == ItemTipo.Artefato).Select(g => g.ItemId).ToList();
+        if (artifactGrantItemIds.Count == 0)
+            return null;
+
+        var grantedTipos = await db.Set<Artefato>()
+            .Where(a => artifactGrantItemIds.Contains(a.Id))
+            .Select(a => a.TipoDeAlvo)
+            .ToListAsync();
+
+        foreach (var group in grantedTipos.GroupBy(t => t))
+        {
+            var existingCount = await existingArtifactTiposOnSheet.CountAsync(t => t == group.Key);
+            if (existingCount + group.Count() > 3)
+                return $"Limite de 3 Artefatos do tipo {group.Key} já atingido.";
+        }
+
+        return null;
+    }
+
     public async Task UpsertCampaignAttachmentAsync(Guid campaignId, Guid itemId)
     {
         var existing = await db.CampaignAttachments.FirstOrDefaultAsync(a => a.CampaignId == campaignId && a.ItemId == itemId);

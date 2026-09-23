@@ -8,6 +8,8 @@
 <MudDialog @bind-Visible="Visible">
     <TitleContent>Escolher Equipamento Inicial</TitleContent>
     <DialogContent>
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+
         <MudSelect T="string" Label="Kit" @bind-Value="_selectedKitId" Placeholder="Escolha um kit">
             @foreach (var kit in _kits)
             {
@@ -25,13 +27,20 @@
 
             @foreach (var slot in SelectedKit.ChoiceSlots)
             {
-                <MudSelect T="string" Label="@slot.Label" Class="mt-3" Value="@_selections.GetValueOrDefault(slot.SlotId)"
-                           ValueChanged="@(v => OnSlotSelectionChanged(slot.SlotId, v))" Placeholder="@($"Escolha: {slot.Label}")">
-                    @foreach (var option in slot.Options)
-                    {
-                        <MudSelectItem Value="@option.ItemId">@option.Nome</MudSelectItem>
-                    }
-                </MudSelect>
+                @if (slot.Options.Count == 0)
+                {
+                    <MudText Color="Color.Error" Class="mt-3">Nenhuma opção no catálogo do GM para "@slot.Label".</MudText>
+                }
+                else
+                {
+                    <MudSelect T="string" Label="@slot.Label" Class="mt-3" Value="@_selections.GetValueOrDefault(slot.SlotId)"
+                               ValueChanged="@(v => OnSlotSelectionChanged(slot.SlotId, v))" Placeholder="@($"Escolha: {slot.Label}")">
+                        @foreach (var option in slot.Options)
+                        {
+                            <MudSelectItem Value="@option.ItemId">@option.Nome</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
             }
         }
     </DialogContent>
@@ -50,6 +59,7 @@
 
     private List<EquipmentKitOptionResponse> _kits = new();
     private string? _selectedKitId;
+    private string? _errorMessage;
     private readonly Dictionary<string, string> _selections = new();
 
     private EquipmentKitOptionResponse? SelectedKit => _kits.FirstOrDefault(k => k.Id == _selectedKitId);
@@ -61,7 +71,13 @@
         {
             var response = await Http.GetAsync($"{SheetKind}/{SheetId}/equipagem/kits");
             if (response.IsSuccessStatusCode)
+            {
                 _kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>() ?? new();
+            }
+            else
+            {
+                _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível carregar os kits de Equipagem.";
+            }
         }
     }
 
@@ -87,8 +103,12 @@
         var selections = SelectedKit.ChoiceSlots.Select(s => new ChoiceSlotSelectionRequest(s.SlotId, _selections[s.SlotId])).ToList();
         var response = await Http.PostAsJsonAsync($"{SheetKind}/{SheetId}/equipagem/choose", new ChooseEquipmentKitRequest(SelectedKit.Id, selections));
         if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível escolher a Equipagem inicial.";
             return;
+        }
 
+        _errorMessage = null;
         Visible = false;
         await VisibleChanged.InvokeAsync(false);
         await OnChosen.InvokeAsync();

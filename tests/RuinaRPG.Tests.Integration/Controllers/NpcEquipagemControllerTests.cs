@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
 
@@ -57,6 +58,25 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
         me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
         var meBody = await (await _client.SendAsync(me)).Content.ReadFromJsonAsync<MeResponse>();
         return (meBody!.Id, tokens.AccessToken);
+    }
+
+    // Copied verbatim from EquipmentKitsControllerTests.cs — the established direct-DB way to grant
+    // the Rules Auditor role in a test (no grant endpoint exists).
+    private async Task GrantRulesAuditorAsync(string email)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+    }
+
+    // Copied verbatim from CharacterPossessionsControllerTests.cs's helper.
+    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     // This repo's existing Npc-sheet-creation helper (see NpcRacialTraitsControllerTests.cs) — a
@@ -194,6 +214,80 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
         var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
 
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Choose_with_ChoiceSelections_omitted_from_the_request_body_returns_400_not_500()
+    {
+        // Mirrors CharacterEquipagemControllerTests's identical test — ChoiceSelections deserializes
+        // to null from a hand-crafted JSON body missing the field; BuildPlanAsync must not NRE.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemNpcGm8", "equipagemnpc8@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var kits = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/equipagem/kits", gmToken)))
+            .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
+        var patrulheiro = kits!.Single(k => k.Nome == "Patrulheiro");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
+        request.Content = JsonContent.Create(new { KitId = patrulheiro.Id });
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Choose_a_kit_that_would_push_an_Artefato_TipoDeAlvo_past_3_returns_400_and_grants_nothing()
+    {
+        // Mirrors CharacterEquipagemControllerTests's identical test — NpcPossessionsController.AddArtifact's
+        // own "limite de 3 por TipoDeAlvo" cap must hold for the Equipagem grant path too.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemNpcGm9", "equipagemnpc9@teste.com");
+        await GrantRulesAuditorAsync("equipagemnpc9@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var artifact1 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem Npc 1", "Atributo", "Vigor", 1);
+        var artifact2 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem Npc 2", "Atributo", "Forca", 1);
+        var artifact3 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem Npc 3", "Atributo", "Agilidade", 1);
+        var artifact4Nome = "Anel Equipagem Npc 4";
+        await CreateArtefatoItemAsync(gmToken, artifact4Nome, "Atributo", "Astucia", 1);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact1)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact2)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact3)));
+
+        var kitRequest = new CreateEquipmentKitRequest("Kit Npc com Artefato", "Kit de teste com Artefato", 0,
+            [new EquipmentKitItemInput(artifact4Nome, "Artefato", 1, null)], []);
+        var kitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, kitRequest));
+        var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
+
+        var chooseResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose", gmToken,
+            new ChooseEquipmentKitRequest(kit!.Id, [])));
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var sheet = await sheetResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        sheet!.EquipmentKitId.Should().BeNull();
+
+        var artifactsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken));
+        var artifacts = await artifactsResponse.Content.ReadFromJsonAsync<List<NpcArtifactResponse>>();
+        artifacts!.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task ListKits_and_Choose_by_a_different_GM_return_404()
+    {
+        // Same GrantedSheetAuthorization.CanEdit gate as every other Npc sheet sub-controller,
+        // returning NotFound rather than Forbid (see PendingRacialTraitChoice_by_a_different_gm_returns_404
+        // in NpcRacialTraitsControllerTests.cs) — avoids confirming the sheet exists to a stranger.
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("EquipagemNpcGmOwner10", "equipagemnpcowner10@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("EquipagemNpcGmOther10", "equipagemnpcother10@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/equipagem/kits", gmTokenOther));
+        listResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var chooseResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose", gmTokenOther,
+            new ChooseEquipmentKitRequest(Guid.NewGuid().ToString(), [])));
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

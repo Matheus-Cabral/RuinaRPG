@@ -140,8 +140,14 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         var slots2 = new List<EquipmentKitChoiceSlot>();
         foreach (var slot in choiceSlots)
         {
-            if (!Enum.TryParse<ItemTipo>(slot.Tipo, out var tipo) || tipo == ItemTipo.Armadura)
-                return BadRequest($"Tipo de slot de escolha inválido: \"{slot.Tipo}\".");
+            // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync only ever query
+            // the Arma table for a choice slot, regardless of its declared Tipo (Requisitos - Modelo
+            // de Dados: "sempre Arma nos dados de seed atuais") — accepting anything else here would
+            // silently offer weapons as options and, on confirm, insert a row pointing at an Arma's
+            // Id into the wrong sheet sub-table, a corrupt row the shared TPH Item base table's FK
+            // never rejects.
+            if (!Enum.TryParse<ItemTipo>(slot.Tipo, out var tipo) || tipo != ItemTipo.Arma)
+                return BadRequest("Slots de escolha só suportam Tipo=Arma nos dados atuais.");
             if (string.IsNullOrWhiteSpace(slot.Label))
                 return BadRequest("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)

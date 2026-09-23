@@ -39,7 +39,7 @@ public static class EquipmentKitSeedData
                 new("Corda", ItemTipo.ItemGeral, 1),
                 new("Pé de Cabra", ItemTipo.ItemGeral, 1),
                 new("Gazúa", ItemTipo.ItemGeral, 1),
-                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ], []),
 
         new("Patrulheiro",
@@ -48,7 +48,7 @@ public static class EquipmentKitSeedData
             [
                 new("Tampa de Madeira", ItemTipo.Escudo, 1), // alias: Equipagem.md's "Escudo de Madeira"
                 new("Mochila", ItemTipo.ItemGeral, 1),
-                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
                 new("Arma", ItemTipo.Arma, null, RuinaRPG.Domain.Items.Tier.F, 1),
@@ -75,7 +75,7 @@ public static class EquipmentKitSeedData
                 new("Diário", ItemTipo.ItemGeral, 1),
                 new("Tinta", ItemTipo.ItemGeral, 1),
                 new("Pena", ItemTipo.ItemGeral, 1),
-                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
                 new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.Tier.F, 1),
@@ -88,7 +88,7 @@ public static class EquipmentKitSeedData
                 new("Cera-viz (Material Ritualístico)", ItemTipo.ItemGeral, 1), // alias: "Cera-viz"
                 new("Manuscrito Arcano Vol.1", ItemTipo.ItemGeral, 1),
                 new("Diário", ItemTipo.ItemGeral, 1),
-                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
                 new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.Tier.F, 1),
@@ -101,7 +101,7 @@ public static class EquipmentKitSeedData
                 new("Símbolo Sagrado", ItemTipo.ItemGeral, 1),
                 new("Diário", ItemTipo.ItemGeral, 1),
                 new("Papel", ItemTipo.ItemGeral, 1),
-                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ], []),
 
         new("Artesão",
@@ -126,7 +126,7 @@ public static class EquipmentKitSeedData
                 new("Ração de Viagem", ItemTipo.ItemGeral, 3),
                 new("Vara de Madeira", ItemTipo.ItemGeral, 1),
                 new("Isca de Pesca", ItemTipo.ItemGeral, 1),
-                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ], []),
 
         new("Investigador",
@@ -157,8 +157,8 @@ public static class EquipmentKitSeedData
                 new("Mochila", ItemTipo.ItemGeral, 1),
                 new("Tocha", ItemTipo.ItemGeral, 1),
                 new("Corda", ItemTipo.ItemGeral, 1),
-                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1),
-                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1),
+                new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
+                new("Tônico de Foco simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ], []),
     ];
 }
