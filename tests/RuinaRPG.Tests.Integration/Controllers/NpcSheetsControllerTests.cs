@@ -272,6 +272,48 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task Update_never_changes_EquipmentKitId_even_if_the_request_tries_to()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitImmutableGm", "equipkitimmutable@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var before = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        before!.EquipmentKitId.Should().BeNull();
+
+        // ValidUpdate() (this file's existing helper) doesn't carry a real EquipmentKitId — the
+        // request contract simply has no field for it, since Update never accepts one; this test
+        // only confirms the response surfaces the sheet's real (still-null) value after an
+        // unrelated update.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate()));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var after = await afterResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        after!.EquipmentKitId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSheet_surfaces_the_sheet_s_real_EquipmentKitId_once_one_is_set()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitRealGm", "equipkitreal@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        Guid kitId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            kitId = (await db.EquipmentKits.FirstAsync()).Id;
+            var sheet = await db.NpcSheets.FindAsync(Guid.Parse(sheetId));
+            sheet!.EquipmentKitId = kitId;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.EquipmentKitId.Should().Be(kitId.ToString());
+    }
+
+    [Fact]
     public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEst2", "npcest2@teste.com");

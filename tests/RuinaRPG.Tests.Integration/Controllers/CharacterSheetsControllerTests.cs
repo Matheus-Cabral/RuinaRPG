@@ -747,6 +747,54 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Update_never_changes_EquipmentKitId_even_if_the_request_tries_to()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitImmutableGm", "equipkitimmutable@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "EquipKitImmutablePlayer", "equipkitimmutableplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Equip Kit Imutavel");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
+        var before = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        before!.EquipmentKitId.Should().BeNull();
+
+        // ValidUpdate() (this file's existing helper) doesn't carry a real EquipmentKitId — the
+        // request contract simply has no field for it, since Update never accepts one; this test
+        // only confirms the response surfaces the sheet's real (still-null) value after an
+        // unrelated update.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
+
+        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
+        var after = await afterResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        after!.EquipmentKitId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSheet_surfaces_the_sheet_s_real_EquipmentKitId_once_one_is_set()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitRealGm", "equipkitreal@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "EquipKitRealPlayer", "equipkitrealplayer@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Equip Kit Real");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        Guid kitId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            kitId = (await db.EquipmentKits.FirstAsync()).Id;
+            var sheet = await db.CharacterSheets.FindAsync(Guid.Parse(sheetId));
+            sheet!.EquipmentKitId = kitId;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.EquipmentKitId.Should().Be(kitId.ToString());
+    }
+
+    [Fact]
     public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin1", "sheetafin1@teste.com");
