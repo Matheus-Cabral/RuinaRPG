@@ -168,6 +168,39 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.ItemGeral && g.Qtd == 10);
     }
 
+    // The test above only proves the bonus fires FOR the matching alternative — on its own it
+    // can't rule out a bug where BonusNome always grants regardless of which eligible item was
+    // picked. This is the other half: an equally eligible, non-matching alternative (a sling,
+    // valid for the slot's own filter, but whose Subcategoria isn't the slot's BonusSubcategoria)
+    // must NOT trigger the bonus.
+    [Fact]
+    public async Task BuildPlanAsync_does_not_grant_the_conditional_bonus_when_a_non_matching_alternative_is_chosen()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmBonusNaoCondicional");
+        var sling = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Funda de Teste", Subcategoria = "Fundas e Baladeiras", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.Add(sling);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot
+        {
+            Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma à distância", Tipo = ItemTipo.Arma,
+            SubcategoriasCsv = "Arcos,Fundas e Baladeiras", Tier = Tier.F, Qtd = 1,
+            BonusSubcategoria = "Arcos", BonusNome = "Flecha de Madeira", BonusQtd = 10,
+        };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), sling.Id.ToString())]);
+
+        error.Should().BeNull();
+        plan!.Grants.Should().ContainSingle();
+        plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.Arma && g.ItemId == sling.Id);
+        plan.Grants.Should().NotContain(g => g.Tipo == ItemTipo.ItemGeral);
+    }
+
     [Fact]
     public async Task UpsertCampaignAttachmentAsync_creates_a_public_attachment_when_none_exists()
     {
