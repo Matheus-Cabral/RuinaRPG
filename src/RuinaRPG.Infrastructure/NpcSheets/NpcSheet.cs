@@ -18,6 +18,7 @@ public class NpcSheet
     public string? Propriedade { get; set; }
     public Estrela? Estrela { get; set; }
     public Guid? HistoricoId { get; set; }
+    public Guid? EquipmentKitId { get; set; }
 
     // 1.b Nível e Progressão
     public int Nivel { get; set; } = 1;

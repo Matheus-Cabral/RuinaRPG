@@ -48,6 +48,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
     public DbSet<Trait> Traits => Set<Trait>();
     public DbSet<Historico> Historicos => Set<Historico>();
+    public DbSet<EquipmentKit> EquipmentKits => Set<EquipmentKit>();
+    public DbSet<EquipmentKitItem> EquipmentKitItems => Set<EquipmentKitItem>();
+    public DbSet<EquipmentKitChoiceSlot> EquipmentKitChoiceSlots => Set<EquipmentKitChoiceSlot>();
     public DbSet<Efeito> Efeitos => Set<Efeito>();
     public DbSet<RacialAbilityOverride> RacialAbilityOverrides => Set<RacialAbilityOverride>();
     public DbSet<ArcaEntry> ArcaEntries => Set<ArcaEntry>();
@@ -236,6 +239,20 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(s => s.HistoricoId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<EquipmentKit>()
+                .WithMany()
+                .HasForeignKey(s => s.EquipmentKitId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<EquipmentKitItem>(entity =>
+        {
+            entity.HasOne<EquipmentKit>().WithMany().HasForeignKey(i => i.KitId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<EquipmentKitChoiceSlot>(entity =>
+        {
+            entity.HasOne<EquipmentKit>().WithMany().HasForeignKey(s => s.KitId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CharacterAttribute>(entity =>
@@ -391,6 +408,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Historico>().WithMany().HasForeignKey(s => s.HistoricoId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<EquipmentKit>().WithMany().HasForeignKey(s => s.EquipmentKitId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<CreatureSheet>(entity =>
