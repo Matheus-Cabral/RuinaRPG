@@ -1,0 +1,265 @@
+@page "/auditoria/equipagem"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Equipagem</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Adicionar Kit">
+        <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
+        <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
+        <MudNumericField T="int" @bind-Value="_newForm.Ciclos" Label="Ciclos" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
+    </Section>
+
+    <Section Title="Kits">
+        @foreach (var kit in _kits)
+        {
+            <MudExpansionPanel Text="@kit.Nome">
+                <MudTextField T="string" Value="@kit.Nome" ValueChanged="@(v => UpdateAsync(kit, nome: v))" Label="Nome" />
+                <MudTextField T="string" Value="@kit.Descricao" ValueChanged="@(v => UpdateAsync(kit, descricao: v))" Label="Descrição" Lines="3" />
+                <MudNumericField T="int" Value="@kit.Ciclos" ValueChanged="@(v => UpdateAsync(kit, ciclos: v))" Label="Ciclos" />
+
+                <MudText Typo="Typo.h6" Class="mt-3">Itens fixos</MudText>
+                <MudSimpleTable Dense="true">
+                    <thead><tr><th>Nome</th><th>Tipo</th><th>Qtd</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in kit.Items)
+                        {
+                            <tr>
+                                <td>@item.Nome</td><td>@item.Tipo</td><td>@item.Qtd</td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveItemAsync(kit, item))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <div class="d-flex" style="gap:8px">
+                    <MudTextField T="string" @bind-Value="_itemForm[kit.Id].Nome" Label="Nome do item" />
+                    <MudSelect T="string" @bind-Value="_itemForm[kit.Id].Tipo" Label="Tipo">
+                        <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
+                        <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
+                        <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
+                        <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
+                    </MudSelect>
+                    <MudNumericField T="int" @bind-Value="_itemForm[kit.Id].Qtd" Label="Qtd" />
+                    <MudButton Variant="Variant.Outlined" OnClick="@(() => AddItemAsync(kit))">Adicionar item</MudButton>
+                </div>
+
+                <MudText Typo="Typo.h6" Class="mt-3">Slots de escolha</MudText>
+                <MudSimpleTable Dense="true">
+                    <thead><tr><th>Label</th><th>Subcategorias</th><th>Tier</th><th>Qtd</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var slot in kit.ChoiceSlots)
+                        {
+                            <tr>
+                                <td>@slot.Label</td><td>@(slot.Subcategorias is null ? "qualquer" : string.Join(", ", slot.Subcategorias))</td><td>@(slot.Tier ?? "qualquer")</td><td>@slot.Qtd</td>
+                                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSlotAsync(kit, slot))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <div class="d-flex" style="gap:8px">
+                    <MudTextField T="string" @bind-Value="_slotForm[kit.Id].Label" Label="Label" />
+                    <MudTextField T="string" @bind-Value="_slotForm[kit.Id].SubcategoriasText" Label="Subcategorias (vírgula, vazio = qualquer)" />
+                    <MudTextField T="string" @bind-Value="_slotForm[kit.Id].Tier" Label="Tier (vazio = qualquer)" />
+                    <MudNumericField T="int" @bind-Value="_slotForm[kit.Id].Qtd" Label="Qtd" />
+                    <MudButton Variant="Variant.Outlined" OnClick="@(() => AddSlotAsync(kit))">Adicionar slot</MudButton>
+                </div>
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="mt-3" OnClick="@(() => DeleteAsync(kit.Id))">Excluir Kit</MudButton>
+            </MudExpansionPanel>
+        }
+    </Section>
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Equipagem"),
+    };
+
+    private List<EquipmentKitResponse> _kits = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    private readonly NewKitFormModel _newForm = new();
+    private readonly Dictionary<string, NewItemFormModel> _itemForm = new();
+    private readonly Dictionary<string, NewSlotFormModel> _slotForm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("equipment-kits");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar os kits de Equipagem.";
+            return;
+        }
+
+        _kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitResponse>>() ?? new();
+        foreach (var kit in _kits)
+        {
+            _itemForm.TryAdd(kit.Id, new NewItemFormModel());
+            _slotForm.TryAdd(kit.Id, new NewSlotFormModel());
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("equipment-kits", new CreateEquipmentKitRequest(_newForm.Nome, _newForm.Descricao, _newForm.Ciclos, new(), new()));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível adicionar o kit." : detail;
+            return;
+        }
+
+        _newForm.Nome = "";
+        _newForm.Descricao = "";
+        _newForm.Ciclos = 0;
+        await LoadAsync();
+    }
+
+    private async Task UpdateAsync(EquipmentKitResponse current, string? nome = null, string? descricao = null, int? ciclos = null)
+    {
+        var itemsInput = current.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
+        var slotsInput = current.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+
+        var response = await Http.PutAsJsonAsync($"equipment-kits/{current.Id}", new UpdateEquipmentKitRequest(
+            nome ?? current.Nome, descricao ?? current.Descricao, ciclos ?? current.Ciclos, itemsInput, slotsInput));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível salvar a alteração.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task AddItemAsync(EquipmentKitResponse kit)
+    {
+        var form = _itemForm[kit.Id];
+        var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint))
+            .Append(new EquipmentKitItemInput(form.Nome, form.Tipo, form.Qtd, null)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+
+        var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o item.";
+            return;
+        }
+
+        _itemForm[kit.Id] = new NewItemFormModel();
+        await LoadAsync();
+    }
+
+    private async Task AddSlotAsync(EquipmentKitResponse kit)
+    {
+        var form = _slotForm[kit.Id];
+        var subcategorias = string.IsNullOrWhiteSpace(form.SubcategoriasText) ? null : form.SubcategoriasText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd))
+            .Append(new EquipmentKitChoiceSlotInput(form.Label, "Arma", subcategorias, string.IsNullOrWhiteSpace(form.Tier) ? null : form.Tier, form.Qtd, null, null, null)).ToList();
+
+        var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível adicionar o slot de escolha.";
+            return;
+        }
+
+        _slotForm[kit.Id] = new NewSlotFormModel();
+        await LoadAsync();
+    }
+
+    private async Task RemoveItemAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item)
+    {
+        var itemsInput = kit.Items.Where(i => i.Id != item.Id).Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+
+        var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível remover o item.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RemoveSlotAsync(EquipmentKitResponse kit, EquipmentKitChoiceSlotResponse slot)
+    {
+        var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
+        var slotsInput = kit.ChoiceSlots.Where(s => s.Id != slot.Id)
+            .Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+
+        var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível remover o slot de escolha.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        var response = await Http.DeleteAsync($"equipment-kits/{id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível excluir — este kit pode estar em uso em alguma ficha.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private class NewKitFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public int Ciclos { get; set; }
+    }
+
+    private class NewItemFormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Tipo { get; set; } = "ItemGeral";
+        public int Qtd { get; set; } = 1;
+    }
+
+    private class NewSlotFormModel
+    {
+        public string Label { get; set; } = "";
+        public string SubcategoriasText { get; set; } = "";
+        public string Tier { get; set; } = "";
+        public int Qtd { get; set; } = 1;
+    }
+}
