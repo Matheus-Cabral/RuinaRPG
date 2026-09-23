@@ -26,7 +26,7 @@ public interface IRulebookRenderer
 }
 
 /// <summary>
-/// Renders the Livro de Regras' 6 documents as displayable HTML. 4 of them (Sistema Básico, Graus
+/// Renders the Livro de Regras' 7 documents as displayable HTML. 4 of them (Sistema Básico, Graus
 /// & Círculos, Tabela de Níveis, As Estrelas Alkerianas) render a RulebookDocumentOverride's
 /// Markdown when the Rules Auditor has saved one for that Slug (see RulebookDocumentsController),
 /// the embedded Docs/Sistema RPG resource otherwise — display-only, this never affects
@@ -34,7 +34,10 @@ public interface IRulebookRenderer
 /// from the live Traits table instead of any Markdown at all (see BuildCaracteristicasAsync) —
 /// editing a Trait via TraitsController is what changes that one. The 6th (Históricos) gets the
 /// same live-catalog treatment as Características, but from the Historicos table instead — no
-/// Markdown-override support either (see BuildHistoricosAsync).
+/// Markdown-override support either (see BuildHistoricosAsync). The 7th (Equipagem) gets the same
+/// hybrid treatment as Históricos — its IntroHtml still comes from Equipagem.md, but its per-kit
+/// Sections come from the live EquipmentKits/EquipmentKitItems/EquipmentKitChoiceSlots tables
+/// instead (see BuildEquipagemAsync).
 ///
 /// Scoped (not Singleton — Program.cs registers it as such): it takes a RuinaRpgDbContext, and an
 /// override can change between requests, so nothing here is cached across requests the way it used
@@ -50,6 +53,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         await BuildTabelaDeNiveisAsync(),
         await BuildEstrelasAlkerianasAsync(),
         await BuildHistoricosAsync(),
+        await BuildEquipagemAsync(),
     ];
 
     // UseAdvancedExtensions (not the bare default pipeline) is what turns GFM-style pipe tables
@@ -166,6 +170,35 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         )).ToList();
 
         return new RulebookDocument("historicos", "Históricos", intro, sections);
+    }
+
+    /// <summary>
+    /// Same hybrid-source treatment as BuildHistoricosAsync: IntroHtml from Equipagem.md's own
+    /// lead-in paragraph, but the per-kit Sections come from the live EquipmentKits table instead
+    /// of the Markdown (editing a kit via EquipmentKitsController is what changes those).
+    /// </summary>
+    private async Task<RulebookDocument> BuildEquipagemAsync()
+    {
+        var (intro, _) = SplitIntoSections(RulesDataProvider.ReadResource("Equipagem.md"), splitLevel: 1);
+
+        var kits = await db.EquipmentKits.Where(k => !k.IsDeleted).OrderBy(k => k.Nome).ToListAsync();
+
+        var sections = new List<RulebookSection>();
+        foreach (var kit in kits)
+        {
+            var items = await db.EquipmentKitItems.Where(i => i.KitId == kit.Id).ToListAsync();
+            var slots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kit.Id).ToListAsync();
+
+            var html = WebUtility.HtmlEncode(kit.Descricao).Replace("\n", "<br />") + "<ul>"
+                + string.Join("", items.Select(i => $"<li>{WebUtility.HtmlEncode(i.Nome)} x{i.Qtd}</li>"))
+                + string.Join("", slots.Select(s => $"<li>{WebUtility.HtmlEncode(s.Label)} (escolha){(s.BonusNome is not null ? $" — +{s.BonusQtd} {WebUtility.HtmlEncode(s.BonusNome)} se escolher da subcategoria {WebUtility.HtmlEncode(s.BonusSubcategoria)}" : "")}</li>"))
+                + "</ul>"
+                + (kit.Ciclos > 0 ? $"<p><em>+{kit.Ciclos} Ciclos</em></p>" : "");
+
+            sections.Add(new RulebookSection(Slugify(kit.Nome), kit.Nome, html));
+        }
+
+        return new RulebookDocument("equipagem", "Equipagem", intro, sections);
     }
 
     // No Markdown headings at all — one big GFM pipe table. Splitting finds nothing to split on, so

@@ -56,7 +56,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_returns_the_six_documents_split_into_sections()
+    public async Task Get_returns_the_seven_documents_split_into_sections()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm1", "rulebook1@teste.com");
 
@@ -65,7 +65,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         body!.Select(d => d.Slug).Should().Equal(
-            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas", "historicos");
+            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas", "historicos", "equipagem");
 
         var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
         sistemaBasico.Sections.Should().HaveCount(7);
@@ -164,6 +164,19 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         // Cleanup so this created row can't affect other tests' section counts in this class.
         await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
+    }
+
+    [Fact]
+    public async Task GetDocuments_includes_an_Equipagem_tab_built_from_the_live_kit_catalog()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RulebookEquipGm1", "rulebookequip1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+
+        var documents = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        var equipagem = documents!.Single(d => d.Slug == "equipagem");
+        equipagem.IntroHtml.Should().NotBeNullOrWhiteSpace();
+        equipagem.Sections.Should().Contain(s => s.Titulo == "Viajante");
     }
 
     [Fact]

@@ -7,7 +7,7 @@ Cada personagem escolhe uma Equipagem durante sua criação.
 
 ---
 
-VIAJANTE
+# VIAJANTE
 
 Preparado para longas jornadas, o Viajante aprendeu a carregar consigo aquilo que precisa para permanecer dias longe de casa.
 
@@ -27,7 +27,7 @@ Tocha
 
 ---
 
-EXPLORADOR
+# EXPLORADOR
 
 Equipado para atravessar lugares abandonados e superar obstáculos encontrados pelo caminho.
 
@@ -49,7 +49,7 @@ Gazúa
 
 ---
 
-PATRULHEIRO
+# PATRULHEIRO
 
 Preparado para enfrentar perigos de perto, carregando uma arma adequada ao seu estilo de combate.
 
@@ -67,7 +67,7 @@ Mochila
 
 ---
 
-CAÇADOR
+# CAÇADOR
 
 Preparado para perseguir criaturas e enfrentar ameaças à distância.
 
@@ -87,7 +87,7 @@ Corda
 
 ---
 
-ARCANO
+# ARCANO
 
 Um conjunto de materiais básicos para aqueles que estudam e canalizam forças arcanas.
 
@@ -107,7 +107,7 @@ Pena
 
 ---
 
-OCULTISTA
+# OCULTISTA
 
 Materiais reunidos por aqueles que decidiram estudar conhecimentos que muitos preferem deixar intocados.
 
@@ -125,7 +125,7 @@ Diário
 
 ---
 
-DEVOTO
+# DEVOTO
 
 Pertences de alguém que mantém sua fé consigo mesmo quando está distante de templos e lugares sagrados.
 
@@ -143,7 +143,7 @@ Papel
 
 ---
 
-ARTESÃO
+# ARTESÃO
 
 Ferramentas e materiais para aqueles acostumados a construir, reparar e trabalhar com as próprias mãos.
 
@@ -165,7 +165,7 @@ Mochila
 
 ---
 
-SOBREVIVENTE
+# SOBREVIVENTE
 
 Recursos básicos de quem aprendeu a se virar mesmo quando não há ninguém por perto para ajudar.
 
@@ -187,7 +187,7 @@ Isca de pesca
 
 ---
 
-INVESTIGADOR
+# INVESTIGADOR
 
 Materiais de alguém acostumado a observar, registrar e buscar respostas para aquilo que não compreende.
 
@@ -209,7 +209,7 @@ Espelho
 
 ---
 
-NEGOCIANTE
+# NEGOCIANTE
 
 Uma reserva financeira acompanhada de materiais simples para registrar acordos, valores e informações importantes.
 
@@ -225,7 +225,7 @@ Papel
 
 ---
 
-APRENDIZ
+# APRENDIZ
 
 Um conjunto simples e versátil para quem ainda está começando a construir seu próprio caminho.
 
@@ -245,7 +245,7 @@ Corda
 
 ---
 
-MUNIÇÃO
+# MUNIÇÃO
 
 Personagens que utilizam armas de disparo recebem a munição indicada em sua Equipagem.
 

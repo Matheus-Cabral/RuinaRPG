@@ -25,6 +25,7 @@
     <EmbeddedResource Include="../../Docs/Sistema RPG/Características.md" LogicalName="Caracteristicas.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/As estrelas alkerianas.md" LogicalName="Estrelas Alkerianas.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/Historico.md" LogicalName="Historico.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Equipagem.md" LogicalName="Equipagem.md" />
   </ItemGroup>
 
   <PropertyGroup>
