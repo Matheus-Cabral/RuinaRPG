@@ -401,6 +401,47 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | UpdatedByUserId | FK → Users, nullable |
 | UpdatedAt | DateTime, nullable |
 
+**EquipmentKits**
+
+Catálogo global (não por GM) de kits de equipamento inicial, cadastrado a partir de "[[Equipagem]]" e editável pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]").
+
+- `Id` (PK)
+- `Nome` (string, obrigatório)
+- `Descricao` (string, obrigatório — o parágrafo de sabor do kit)
+- `Ciclos` (int — moeda concedida ao escolher o kit)
+- `IsDeleted` (bool — soft delete)
+
+**EquipmentKitItems**
+
+Linhas fixas de um `EquipmentKit` — referenciam um Item do catálogo do GM por **Nome + Tipo**, nunca por Id (cada GM tem sua própria cópia do catálogo de Itens).
+
+- `Id` (PK)
+- `KitId` (FK → EquipmentKits, cascade)
+- `Nome` (string — Nome do Item alvo no catálogo do GM)
+- `Tipo` (enum ItemTipo — ItemGeral, Arma, Escudo ou Artefato; nunca Armadura)
+- `Qtd` (int)
+- `SubcategoriaHint` (string?, opcional — usado só quando o Item precisa ser criado automaticamente no catálogo do GM por não existir ainda)
+
+**EquipmentKitChoiceSlots**
+
+Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua escolha"), resolvidas ao vivo contra o catálogo do GM no momento de aplicar o kit.
+
+- `Id` (PK)
+- `KitId` (FK → EquipmentKits, cascade)
+- `Label` (string — ex: "Arma", "Condutor")
+- `Tipo` (enum ItemTipo — sempre Arma nos dados de seed atuais)
+- `SubcategoriasCsv` (string?, opcional — lista de Subcategoria aceitas separadas por vírgula; NULL = qualquer uma)
+- `Tier` (enum Tier?, opcional — NULL = qualquer Tier)
+- `Qtd` (int)
+- `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
+- `BonusNome` (string?, opcional — Item concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusQtd` (int?, opcional)
+
+**Novas colunas**
+
+- `CharacterSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — NULL até o jogador escolher um kit; depois disso, permanente (não pode ser trocado).
+- `NpcSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — mesmo comportamento.
+
 ## 6.2 NpcSheets — diferenças de CharacterSheets
 
 *(ver "[[Requisitos - Ficha de NPCs]]")*
