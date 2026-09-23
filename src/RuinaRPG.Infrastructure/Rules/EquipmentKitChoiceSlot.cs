@@ -14,4 +14,5 @@ public class EquipmentKitChoiceSlot
     public string? BonusSubcategoria { get; set; }
     public string? BonusNome { get; set; }
     public int? BonusQtd { get; set; }
+    public RuinaRPG.Domain.CharacterSheets.ArmorSlotType? ArmorSlot { get; set; }
 }

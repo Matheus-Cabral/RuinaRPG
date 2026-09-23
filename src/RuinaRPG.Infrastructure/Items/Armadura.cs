@@ -4,6 +4,7 @@ namespace RuinaRPG.Infrastructure.Items;
 
 public class Armadura : Item
 {
+    public string? Subcategoria { get; set; }
     public CategoriaProtecao? Categoria { get; set; }
     public int? Defesa { get; set; }
     public int? RF { get; set; }

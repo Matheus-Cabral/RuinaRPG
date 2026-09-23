@@ -49,6 +49,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Trait> Traits => Set<Trait>();
     public DbSet<Historico> Historicos => Set<Historico>();
     public DbSet<EquipmentKit> EquipmentKits => Set<EquipmentKit>();
+    public DbSet<SubcategoriaOption> SubcategoriaOptions => Set<SubcategoriaOption>();
     public DbSet<EquipmentKitItem> EquipmentKitItems => Set<EquipmentKitItem>();
     public DbSet<EquipmentKitChoiceSlot> EquipmentKitChoiceSlots => Set<EquipmentKitChoiceSlot>();
     public DbSet<Efeito> Efeitos => Set<Efeito>();
@@ -151,6 +152,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .HasForeignKey(i => i.ImageId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
+
+        // Subcategoria is declared independently on each Item subtype (not on the shared base
+        // class - see task-2-brief.md). Without an explicit column name per subtype, EF Core's
+        // TPH conflict resolution arbitrarily leaves one sibling's Subcategoria unprefixed and
+        // reassigns it whenever a new sibling gains the same-named property, which would orphan
+        // already-persisted data under a stale column name. Pin every subtype's column name so
+        // it never shifts again.
+        builder.Entity<ItemGeral>().Property(i => i.Subcategoria).HasColumnName("ItemGeral_Subcategoria");
+        builder.Entity<Arma>().Property(i => i.Subcategoria).HasColumnName("Arma_Subcategoria");
+        builder.Entity<Armadura>().Property(i => i.Subcategoria).HasColumnName("Armadura_Subcategoria");
+        builder.Entity<Escudo>().Property(i => i.Subcategoria).HasColumnName("Escudo_Subcategoria");
+        builder.Entity<Artefato>().Property(i => i.Subcategoria).HasColumnName("Artefato_Subcategoria");
 
         builder.Entity<RacialAbilityOverride>(entity =>
         {
