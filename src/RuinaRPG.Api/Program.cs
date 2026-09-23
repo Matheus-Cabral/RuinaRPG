@@ -212,6 +212,9 @@ if (args.Contains("--migrate"))
 
     var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
+
+    var migrateEquipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(migrateDb);
+    app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", migrateEquipmentKitSeedResult);
     return;
 }
 
@@ -278,6 +281,9 @@ if (app.Environment.IsDevelopment())
 
     var catalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(db);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", catalogSeedCount);
+
+    var equipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(db);
+    app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", equipmentKitSeedResult);
 }
 
 app.Run();
