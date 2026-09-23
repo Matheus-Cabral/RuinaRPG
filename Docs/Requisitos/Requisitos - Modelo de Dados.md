@@ -437,10 +437,22 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `BonusNome` (string?, opcional — Item concedido além da escolha, só se `BonusSubcategoria` bater)
 - `BonusQtd` (int?, opcional)
 
-**Novas colunas**
+### SubcategoriaOptions
+
+Catálogo global (não por GM) de valores de Categoria/Família usados pelo construtor de Subcategoria do cadastro de Item (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") e pelos slots de escolha da Equipagem — editável pelo Auditor de Regras na página de Auditoria de Equipagem.
+
+- `Id` (PK)
+- `Tipo` (enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral)
+- `Facet` (enum SubcategoriaFacet — Categoria ou Familia)
+- `Valor` (string, obrigatório)
+- `IsDeleted` (bool — soft delete)
+
+### Novas colunas
 
 - `CharacterSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — NULL até o jogador escolher um kit; depois disso, permanente (não pode ser trocado).
 - `NpcSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — mesmo comportamento.
+- `Items.Subcategoria` (string?, opcional) — já existia em Item Geral e Arma; passa a existir também em Armadura, Escudo e Artefato, com o mesmo comportamento (texto livre, ou o texto composto pelo construtor "Item Inicial" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]").
+- `EquipmentKitChoiceSlots.ArmorSlot` (enum ArmorSlotType?, opcional) — obrigatório quando o slot é `Tipo=Armadura` (indica em qual slot de armadura da ficha — Capacete/Superior/Inferior — o item concedido é colocado); deve ficar vazio para os outros Tipos.
 
 ## 6.2 NpcSheets — diferenças de CharacterSheets
 
