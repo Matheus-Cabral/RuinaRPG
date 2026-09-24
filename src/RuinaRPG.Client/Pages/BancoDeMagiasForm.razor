@@ -23,14 +23,21 @@
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
     }
     <Section Title="Geral">
-        <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-        <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
-            <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
-            <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
-            <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
-        </MudSelect>
-        <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
-        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+        <TitleInfo>
+            <InfoPopup Title="Como criar uma Magia/Habilidade">
+                Preencha Nome, Tipo (Magia, Habilidade ou Racial), Grau e Descrição. O <b>Grau</b> define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção <b>Efeitos</b>, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O <b>Gasto em PI</b> é a soma dos Efeitos, e o <b>Custo em Foco</b> é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+            <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
+            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
+                <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+                <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+                <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+        </ChildContent>
     </Section>
 
     <Section Title="Efeitos">

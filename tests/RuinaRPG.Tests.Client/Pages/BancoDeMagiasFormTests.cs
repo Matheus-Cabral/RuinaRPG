@@ -1,6 +1,9 @@
 using Bunit;
+using Bunit.Rendering;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
@@ -11,6 +14,44 @@ namespace RuinaRPG.Tests.Client.Pages;
 
 public class BancoDeMagiasFormTests : MudBunitContext
 {
+    // Info popups' inline <MudDialog> only renders its content through a MudDialogProvider present
+    // elsewhere in the render tree (the real app has one in MainLayout) — same idiom as
+    // ChangelogDialogTests/CatalogoItemPickerTests.
+    private IRenderedComponent<ContainerFragment> RenderWithDialogProvider(HttpClient http)
+    {
+        Services.AddScoped(_ => http);
+        return Render(builder =>
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<BancoDeMagiasForm>(1);
+            builder.CloseComponent();
+        });
+    }
+
+    [Fact]
+    public async Task Geral_section_has_an_info_popup_with_the_exact_help_text()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var cut = RenderWithDialogProvider(http);
+        await Task.Delay(50);
+
+        var infoButton = cut.Find("button[title='Como criar uma Magia/Habilidade']");
+        infoButton.GetAttribute("aria-label").Should().Be("Como criar uma Magia/Habilidade");
+
+        infoButton.Click();
+
+        var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
+        content.Should().Be(TextNormalization.Collapse(
+            "Preencha Nome, Tipo (Magia, Habilidade ou Racial), Grau e Descrição. O Grau define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção Efeitos, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O Gasto em PI é a soma dos Efeitos, e o Custo em Foco é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha."));
+    }
+
     [Fact]
     public async Task Clearing_the_required_Nome_field_blocks_the_save_call_in_edit_mode()
     {
