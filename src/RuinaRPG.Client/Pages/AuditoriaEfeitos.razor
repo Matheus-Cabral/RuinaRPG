@@ -16,6 +16,24 @@
 else
 {
     <Section Title="Adicionar Efeito">
+        <TitleInfo>
+            <InfoPopup Title="Como cadastrar um Efeito">
+                <MudText>
+                    Cada Efeito pertence a um <b>Grau/Círculo</b> e fica disponível para Magias desse Grau em diante. O <b>Tipo de Custo</b> define como o PI é calculado:
+                </MudText>
+                <ul class="mt-1">
+                    <li><b>Fixo:</b> sempre o valor de <i>Custo Fixo</i>.</li>
+                    <li><b>Por Unidade:</b> <i>Custo por Unidade</i> × a quantidade escolhida na Magia. O <i>Rótulo da Unidade</i> é o nome dessa unidade, por exemplo "Dado".</li>
+                    <li><b>Manual:</b> o Mestre digita o custo total na hora.</li>
+                    <li><b>Manual por Unidade:</b> o Mestre digita a taxa, que é multiplicada pela quantidade.</li>
+                    <li><b>Derivado de outro Efeito:</b> <i>Custo por Unidade</i> × a quantidade do Efeito de origem, informado pelo nome.</li>
+                </ul>
+                <MudText Class="mt-2">
+                    O <b>Teto de Unidades</b> limita a quantidade. Com "escala por Grau", o teto é multiplicado pelo Grau da Magia, contando a partir do Grau informado, se houver. O <b>Custo Alternativo</b> substitui o custo normal a partir do Grau indicado. Nos <b>Pré-requisitos</b>, separe grupos com <code>;</code> e alternativas com <code>,</code>. Por exemplo, <code>Duração;Atordoamento,Congelar</code> significa "exige Duração <b>e</b> (Atordoamento <b>ou</b> Congelar)". O catálogo vale para todo o servidor.
+                </MudText>
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
         <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
         <MudNumericField T="int" @bind-Value="_newForm.Grau" Label="Grau/Círculo" />
         <MudSelect T="string" @bind-Value="_newForm.TipoDeCusto" Label="Tipo de Custo">
@@ -37,6 +55,7 @@ else
         <MudTextField T="string" @bind-Value="_newForm.PreRequisitosTexto" Label="Pré-requisitos (grupos separados por ; nomes alternativos separados por ,)" HelperText="Ex.: Duração;Atordoamento,Congelar,Enraizar" />
         <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
+        </ChildContent>
     </Section>
 
     @foreach (var grauGroup in _efeitos.GroupBy(e => e.Grau).OrderBy(g => g.Key))
