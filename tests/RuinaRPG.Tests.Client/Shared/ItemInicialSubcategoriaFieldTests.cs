@@ -29,10 +29,10 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
         cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Item Inicial").Instance;
 
     private static MudSelect<string> CategoriaSelect(IRenderedComponent<ItemInicialSubcategoriaField> cut) =>
-        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Categoria").Instance;
+        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Categoria (Item Inicial)").Instance;
 
     private static MudSelect<string> FamiliaSelect(IRenderedComponent<ItemInicialSubcategoriaField> cut) =>
-        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Família").Instance;
+        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Família (Item Inicial)").Instance;
 
     [Fact]
     public void Free_text_mode_by_default_for_a_non_constructor_value()
@@ -60,8 +60,8 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
 
         cut.Instance.IsCheckedForTests.Should().BeTrue();
         var selects = cut.FindComponents<MudSelect<string>>();
-        selects.Should().Contain(c => c.Instance.Label == "Categoria" && c.Instance.Value == "Cortante");
-        selects.Should().Contain(c => c.Instance.Label == "Família" && c.Instance.Value == "Espadas");
+        selects.Should().Contain(c => c.Instance.Label == "Categoria (Item Inicial)" && c.Instance.Value == "Cortante");
+        selects.Should().Contain(c => c.Instance.Label == "Família (Item Inicial)" && c.Instance.Value == "Espadas");
     }
 
     [Fact]
@@ -115,8 +115,8 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
 
         cut.Instance.IsCheckedForTests.Should().BeTrue();
         var selects = cut.FindComponents<MudSelect<string>>();
-        selects.Should().Contain(c => c.Instance.Label == "Categoria" && c.Instance.Value == "Cortante");
-        selects.Should().Contain(c => c.Instance.Label == "Família" && c.Instance.Value == "Espadas");
+        selects.Should().Contain(c => c.Instance.Label == "Categoria (Item Inicial)" && c.Instance.Value == "Cortante");
+        selects.Should().Contain(c => c.Instance.Label == "Família (Item Inicial)" && c.Instance.Value == "Espadas");
     }
 
     [Fact]

@@ -91,7 +91,10 @@ else
                             <MudSelectItem T="string" Value="@opt.Valor">@opt.Valor</MudSelectItem>
                         }
                     </MudSelect>
-                    <MudTextField T="string" @bind-Value="_slotForm[kit.Id].Tier" Label="Tier (vazio = qualquer)" />
+                    @if (_slotForm[kit.Id].Tipo == "Arma")
+                    {
+                        <MudTextField T="string" @bind-Value="_slotForm[kit.Id].Tier" Label="Tier (vazio = qualquer)" />
+                    }
                     <MudNumericField T="int" @bind-Value="_slotForm[kit.Id].Qtd" Label="Qtd" />
                     <MudButton Variant="Variant.Outlined" OnClick="@(() => AddSlotAsync(kit))">Adicionar slot</MudButton>
                 </div>
@@ -322,7 +325,8 @@ else
         var subcategorias = form.SubcategoriasSelected.Count == 0 ? null : form.SubcategoriasSelected.ToList();
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
         var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot))
-            .Append(new EquipmentKitChoiceSlotInput(form.Label, form.Tipo, subcategorias, string.IsNullOrWhiteSpace(form.Tier) ? null : form.Tier, form.Qtd, null, null, null,
+            .Append(new EquipmentKitChoiceSlotInput(form.Label, form.Tipo, subcategorias,
+                form.Tipo == "Arma" && !string.IsNullOrWhiteSpace(form.Tier) ? form.Tier : null, form.Qtd, null, null, null,
                 form.Tipo == "Armadura" ? form.ArmorSlot : null)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));

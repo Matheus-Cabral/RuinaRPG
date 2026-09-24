@@ -13,13 +13,13 @@
 <MudCheckBox T="bool" Value="_isChecked" ValueChanged="OnCheckedChangedAsync" Label="Item Inicial" />
 @if (_isChecked)
 {
-    <MudSelect T="string" Value="_categoria" ValueChanged="OnCategoriaChangedAsync" Label="Categoria">
+    <MudSelect T="string" Value="_categoria" ValueChanged="OnCategoriaChangedAsync" Label="Categoria (Item Inicial)">
         @foreach (var opt in _categorias)
         {
             <MudSelectItem Value="@opt">@opt</MudSelectItem>
         }
     </MudSelect>
-    <MudSelect T="string" Value="_familia" ValueChanged="OnFamiliaChangedAsync" Label="Família">
+    <MudSelect T="string" Value="_familia" ValueChanged="OnFamiliaChangedAsync" Label="Família (Item Inicial)">
         @foreach (var opt in _familias)
         {
             <MudSelectItem Value="@opt">@opt</MudSelectItem>

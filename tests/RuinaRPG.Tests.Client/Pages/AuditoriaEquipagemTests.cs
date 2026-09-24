@@ -227,6 +227,79 @@ public class AuditoriaEquipagemTests : MudBunitContext
         newSlot.ArmorSlot.Should().BeNull();
     }
 
+    // Finding 5 of the final review: Tier only ever means anything for a Tipo=Arma choice slot
+    // (EquipmentKitGrantService.ResolveEligibleOptionsAsync only applies the Tier filter in the
+    // Arma branch) — the API now rejects a non-empty Tier on any other Tipo, so the form must not
+    // offer the field at all once Armadura/Escudo/Artefato is picked.
+    [Fact]
+    public async Task Tier_field_is_shown_for_Tipo_Arma_and_hidden_after_switching_away()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("equipment-kits"))
+                return Json(HttpStatusCode.OK, new[] { KitWithArmaduraSlot });
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.Contains("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaEquipagem>();
+        await Task.Delay(50);
+
+        cut.FindComponents<MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Tier (vazio = qualquer)");
+
+        var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
+        var slotTipo = tipoSelects[1];
+        await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
+        await Task.Delay(50);
+
+        cut.FindComponents<MudTextField<string>>().Should().NotContain(c => c.Instance.Label == "Tier (vazio = qualquer)");
+    }
+
+    [Fact]
+    public async Task Adding_a_non_Arma_slot_sends_Tier_null_even_if_it_was_typed_while_Tipo_was_Arma()
+    {
+        UpdateEquipmentKitRequestCapture? captured = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("equipment-kits"))
+                return Json(HttpStatusCode.OK, new[] { KitWithArmaduraSlot });
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.Contains("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            if (request.Method == HttpMethod.Put)
+            {
+                captured = request.Content!.ReadFromJsonAsync<UpdateEquipmentKitRequestCapture>().GetAwaiter().GetResult();
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaEquipagem>();
+        await Task.Delay(50);
+
+        var slotTier = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Tier (vazio = qualquer)");
+        await cut.InvokeAsync(() => slotTier.Instance.ValueChanged.InvokeAsync("F"));
+
+        var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
+        var slotTipo = tipoSelects[1];
+        await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Escudo"));
+        await Task.Delay(50);
+
+        var slotLabel = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Label");
+        await cut.InvokeAsync(() => slotLabel.Instance.ValueChanged.InvokeAsync("Rodela inicial"));
+
+        var addSlotButton = cut.FindComponents<MudButton>().Single(c => HasExactText(c, "Adicionar slot"));
+        await cut.InvokeAsync(() => addSlotButton.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        await Task.Delay(50);
+
+        captured.Should().NotBeNull();
+        var newSlot = captured!.ChoiceSlots.Single(s => s.Label == "Rodela inicial");
+        newSlot.Tipo.Should().Be("Escudo");
+        newSlot.Tier.Should().BeNull();
+    }
+
     [Fact]
     public async Task The_Familia_multi_select_sends_the_selected_values()
     {

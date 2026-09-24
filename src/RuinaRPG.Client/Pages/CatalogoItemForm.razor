@@ -29,7 +29,7 @@
     <Section Title="Geral">
         @if (ItemId is null && FixedTipo is null)
         {
-            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo">
+            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="OnTipoChanged">
                 <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
                 <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
                 <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
@@ -153,6 +153,19 @@
     }
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
+
+    // Finding 8 of the final review: Arma and Armadura/Escudo/Artefato each render their own
+    // ItemInicialSubcategoriaField instance in a different @if branch (only Armadura and Escudo
+    // share one), so switching the top-level Tipo away from Arma unmounts that field entirely and
+    // mounts a brand-new instance for the new branch — one with no memory of "the old Tipo" to
+    // detect the mismatch itself. _form.Subcategoria is owned here, not by the field, so a
+    // composed value built for the OLD Tipo must be cleared here when Tipo changes, the same way
+    // ItemInicialSubcategoriaField already clears it when Armadura<->Escudo reuse the same instance.
+    private void OnTipoChanged()
+    {
+        if (RuinaRPG.Domain.Items.SubcategoriaBuilder.TryParse(_form.Subcategoria, out var parsedTipo, out _, out _) && parsedTipo.ToString() != _form.Tipo)
+            _form.Subcategoria = null;
+    }
 
     public void Dispose()
     {

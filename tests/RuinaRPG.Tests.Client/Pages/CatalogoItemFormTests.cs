@@ -291,9 +291,9 @@ public class CatalogoItemFormTests : MudBunitContext
         var field = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
         var checkbox = field.FindComponents<MudBlazor.MudCheckBox<bool>>().Single(c => c.Instance.Label == "Item Inicial");
         await cut.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(true));
-        var categoriaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Categoria");
+        var categoriaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Categoria (Item Inicial)");
         await cut.InvokeAsync(() => categoriaSelect.Instance.ValueChanged.InvokeAsync("Pesada"));
-        var familiaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Família");
+        var familiaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Família (Item Inicial)");
         await cut.InvokeAsync(() => familiaSelect.Instance.ValueChanged.InvokeAsync("Placas"));
 
         field.Instance.IsCheckedForTests.Should().BeTrue();
@@ -302,6 +302,42 @@ public class CatalogoItemFormTests : MudBunitContext
 
         var fieldAfter = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
         fieldAfter.Instance.IsCheckedForTests.Should().BeFalse("a composed Subcategoria built for Armadura is never valid once Tipo becomes Escudo");
+        cut.FindComponents<MudBlazor.MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
+    }
+
+    [Fact]
+    public async Task Switching_top_level_Tipo_from_Arma_to_Armadura_clears_a_composed_Subcategoria_built_for_Arma()
+    {
+        // Finding 8 of the final review: unlike the Armadura<->Escudo case (which reuses the same
+        // ItemInicialSubcategoriaField instance and is covered by the earlier test above), Arma and
+        // Armadura render in different @if branches — switching Tipo unmounts the Arma-branch field
+        // and mounts a brand-new instance for the Armadura branch. That new instance's own
+        // OnParametersSetAsync has no memory of "the old Tipo", so it never clears the mismatched
+        // Value on its own — _form.Subcategoria (owned by CatalogoItemForm, not the field) must be
+        // cleared by the parent itself when the top-level Tipo changes.
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>();
+
+        var tipoSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        await cut.InvokeAsync(() => tipoSelect.Instance.ValueChanged.InvokeAsync("Arma"));
+
+        var field = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
+        var checkbox = field.FindComponents<MudBlazor.MudCheckBox<bool>>().Single(c => c.Instance.Label == "Item Inicial");
+        await cut.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(true));
+        var categoriaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Categoria (Item Inicial)");
+        await cut.InvokeAsync(() => categoriaSelect.Instance.ValueChanged.InvokeAsync("Distância"));
+        var familiaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Família (Item Inicial)");
+        await cut.InvokeAsync(() => familiaSelect.Instance.ValueChanged.InvokeAsync("Arcos"));
+
+        field.Instance.IsCheckedForTests.Should().BeTrue();
+
+        await cut.InvokeAsync(() => tipoSelect.Instance.ValueChanged.InvokeAsync("Armadura"));
+
+        var fieldAfter = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
+        fieldAfter.Instance.IsCheckedForTests.Should().BeFalse("a composed Subcategoria built for Arma is never valid once Tipo becomes Armadura");
         cut.FindComponents<MudBlazor.MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
     }
 
