@@ -71,9 +71,10 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
             null, null, null, null, null, null,
             null, null, null, null, null);
 
-    private async Task<string> CreateItemAsync(string gmToken, string nome, string tipo = "ItemGeral")
+    private async Task<string> CreateItemAsync(string gmToken, string nome, string tipo = "ItemGeral", string? subcategoria = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItem(nome, tipo)));
+        var request = subcategoria is null ? MinimalItem(nome, tipo) : MinimalItem(nome, tipo) with { Subcategoria = subcategoria };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -148,6 +149,29 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Id == weaponId);
         body.Should().NotContain(i => i.Id == generalId);
+    }
+
+    [Fact]
+    public async Task AvailableItems_returns_Subcategoria_for_Armadura_Escudo_and_Artefato()
+    {
+        // ItemsController.ToResponseAsync already round-trips Subcategoria for these 3 Tipos —
+        // this controller has its own copy of that mapping (ToItemResponseAsync), which must not
+        // regress back to the literal null it used to return for a player-facing lookup.
+        var setup = await BuildMemberSetupAsync("ItemsSubcat1");
+        var armaduraId = await CreateItemAsync(setup.GmToken, "Peitoral de Placas", "Armadura", "Equipamento inicial - Armadura - Leve - Couro");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(armaduraId, null, null, null, null));
+        var escudoId = await CreateItemAsync(setup.GmToken, "Broquel", "Escudo", "Equipamento inicial - Escudo - Leve - Madeira");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(escudoId, null, null, null, null));
+        var artefatoId = await CreateItemAsync(setup.GmToken, "Anel do Vigor", "Artefato", "Equipamento inicial - Artefato - Anel - Atributo");
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(artefatoId, null, null, null, null));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
+        body.Single(i => i.Id == armaduraId).Subcategoria.Should().Be("Equipamento inicial - Armadura - Leve - Couro");
+        body.Single(i => i.Id == escudoId).Subcategoria.Should().Be("Equipamento inicial - Escudo - Leve - Madeira");
+        body.Single(i => i.Id == artefatoId).Subcategoria.Should().Be("Equipamento inicial - Artefato - Anel - Atributo");
     }
 
     [Fact]
