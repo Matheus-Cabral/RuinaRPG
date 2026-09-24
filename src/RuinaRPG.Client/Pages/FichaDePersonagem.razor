@@ -331,14 +331,14 @@
     <MudTabPanel Text="Combate">
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
         <Section>
+                <div class="mt-2">
+                    <MudText Typo="Typo.body2">Pontos de Sina</MudText>
+                    <MudRating SelectedValue="_form.SinaAtual" SelectedValueChanged="OnSinaChangedAsync" MaxValue="3" Size="Size.Large" Class="rr-sina-rating" />
+                </div>
                 <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
-                <div class="mt-2">
-                    <MudText Typo="Typo.body2">Pontos de Sina</MudText>
-                    <MudRating SelectedValue="_form.SinaAtual" SelectedValueChanged="OnSinaChangedAsync" MaxValue="3" />
-                </div>
         </Section>
 
         @if (_subAttributes is not null)

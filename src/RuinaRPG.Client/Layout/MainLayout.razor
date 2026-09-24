@@ -28,14 +28,16 @@
     </MudDrawer>
 
     <MudMainContent Class="content">
-        @if (_mustChangePassword)
-        {
-            <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
-        }
-        else
-        {
-            @Body
-        }
+        <MudContainer MaxWidth="MaxWidth.Large">
+            @if (_mustChangePassword)
+            {
+                <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
+            }
+            else
+            {
+                @Body
+            }
+        </MudContainer>
     </MudMainContent>
 </MudLayout>
 

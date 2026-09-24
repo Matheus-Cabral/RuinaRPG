@@ -92,3 +92,14 @@ h1:focus {
 code {
     color: var(--rr-accent);
 }
+
+/* Pontos de Sina rating (FichaDePersonagem/FichaDeNpc, Combate tab): MudRating's own Color
+   parameter only accepts MudBlazor theme colors, not an arbitrary hex, so the fixed gold used for
+   Sina is applied here instead. Selector specificity (3 classes) beats MudRating's own default
+   "mud-{color}-text" class (1 class) regardless of source order, and the color is hardcoded rather
+   than a --rr-* theme token, so it holds unchanged in both light and dark mode. MudBlazor's icons
+   render as inline SVG with fill="currentColor", so setting color on .mud-icon-root recolors both
+   the filled and the outline/hover star icons. */
+.rr-sina-rating .mud-rating-item .mud-icon-root {
+    color: #F9A825;
+}

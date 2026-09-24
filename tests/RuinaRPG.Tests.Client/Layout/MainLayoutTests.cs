@@ -58,6 +58,41 @@ public class MainLayoutTests : MudBunitContext
         cut.Markup.Should().Contain("body-marker");
     }
 
+    // Item 4 of the "ajustes-ui-historico" UI-tweaks brief: cap the desktop page body at a centered
+    // 1280px (MudBlazor's MaxWidth.Large) so it isn't full-bleed wide on large monitors — smaller
+    // screens are unaffected since MudContainer only ever narrows, never widens, past its MaxWidth.
+    [Fact]
+    public void Wraps_Body_in_a_MudContainer_with_MaxWidth_Large()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, false)),
+        });
+        RegisterCommonServices(http);
+
+        var cut = RenderLayout();
+
+        var container = cut.Find(".mud-container");
+        container.ClassList.Should().Contain("mud-container-maxwidth-lg");
+        container.TextContent.Should().Contain("BODY");
+    }
+
+    [Fact]
+    public void Wraps_the_forced_password_form_in_the_same_MudContainer()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, true)),
+        });
+        RegisterCommonServices(http);
+
+        var cut = RenderLayout();
+
+        var container = cut.Find(".mud-container");
+        container.ClassList.Should().Contain("mud-container-maxwidth-lg");
+        container.TextContent.Should().Contain("Defina uma nova senha");
+    }
+
     [Fact]
     public void Renders_Body_when_the_caller_is_unauthenticated()
     {
