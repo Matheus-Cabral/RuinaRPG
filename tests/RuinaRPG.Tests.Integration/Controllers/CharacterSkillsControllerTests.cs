@@ -141,9 +141,15 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
-        body!.Single(s => s.Pericia == "Arcano").Modificador.Should().Be(7); // 3/3=1 + 6
-        body!.Single(s => s.Pericia == "Biblioteca").Modificador.Should().Be(4); // 3/3=1 + 3
-        body!.Single(s => s.Pericia == "Fortitude").Modificador.Should().Be(0); // untouched, no bonus
+        var arcano = body!.Single(s => s.Pericia == "Arcano");
+        arcano.Modificador.Should().Be(3); // (3+6)/3 = 3 -- Histórico bonus counts as Pericia points spent
+        arcano.ContaHistorico.Should().BeTrue();
+        var biblioteca = body!.Single(s => s.Pericia == "Biblioteca");
+        biblioteca.Modificador.Should().Be(2); // (3+3)/3 = 2
+        biblioteca.ContaHistorico.Should().BeTrue();
+        var fortitude = body!.Single(s => s.Pericia == "Fortitude");
+        fortitude.Modificador.Should().Be(0); // untouched, no bonus
+        fortitude.ContaHistorico.Should().BeFalse();
     }
 
     [Fact]

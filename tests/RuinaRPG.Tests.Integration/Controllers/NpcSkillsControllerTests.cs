@@ -120,7 +120,15 @@ public class NpcSkillsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/skills", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<NpcSkillResponse>>();
-        body!.Single(s => s.Pericia == "Arcano").Modificador.Should().Be(7); // 3/3=1 + 6
+        var arcano = body!.Single(s => s.Pericia == "Arcano");
+        arcano.Modificador.Should().Be(3); // (3+6)/3 = 3 -- Histórico bonus counts as Pericia points spent
+        arcano.ContaHistorico.Should().BeTrue();
+        var biblioteca = body!.Single(s => s.Pericia == "Biblioteca"); // PericiaMaisTres, Gasto still 0
+        biblioteca.Modificador.Should().Be(1); // (0+3)/3 = 1
+        biblioteca.ContaHistorico.Should().BeTrue();
+        var fortitude = body!.Single(s => s.Pericia == "Fortitude");
+        fortitude.Modificador.Should().Be(0); // untouched, no bonus
+        fortitude.ContaHistorico.Should().BeFalse();
     }
 
     [Fact]

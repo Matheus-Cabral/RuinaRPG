@@ -112,7 +112,7 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             UpdateWithHistorico(historico!.Id)));
-        // Pontaria Gasto 9 -> Modificador 3 + 6 (Histórico) = 9.
+        // Pontaria Gasto 9, Histórico bonus 6 counts as Pericia points -> Modificador (9+6)/3 = 5.
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Pontaria", playerToken,
             new UpdateCharacterSkillRequest(9, null)));
         // Destreza Gasto 4, no bônus/maestria/artefato -> Total 4.
@@ -124,7 +124,7 @@ public class CharacterMasteriesControllerTests : IClassFixture<PostgresFixture>,
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
-        body!.Total.Should().Be(15); // gastoMaestria 2 + bruto (9/3=3 + 6 Histórico = 9) + atributoTotal 4
+        body!.Total.Should().Be(11); // gastoMaestria 2 + bruto ((9+6)/3=5) + atributoTotal 4
     }
 
     [Fact]

@@ -15,9 +15,17 @@ public class SkillFormulasTests
     }
 
     [Fact]
-    public void Modificador_adds_the_Historico_bonus_on_top_of_gasto_divided_by_3()
+    public void Modificador_counts_the_Historico_bonus_as_Pericia_points_spent_not_as_raw_Modificador_points()
     {
-        SkillFormulas.Modificador(gasto: 9, historicoBonus: 6).Should().Be(9); // 3 + 6
+        // Histórico's raw bonus (6 or 3) is a multiple of 3, so it is folded into (Gasto + bonus) / 3
+        // BEFORE the division — it counts as skill points, not as points added on top of the division.
+        // Modificador = (Gasto + historicoBonus) / 3, arredondado para baixo.
+        SkillFormulas.Modificador(gasto: 9, historicoBonus: 6).Should().Be(5); // (9+6)/3 = 5, not 3+6=9
+        SkillFormulas.Modificador(gasto: 0, historicoBonus: 6).Should().Be(2); // (0+6)/3 = 2
+        SkillFormulas.Modificador(gasto: 0, historicoBonus: 3).Should().Be(1); // (0+3)/3 = 1
+        SkillFormulas.Modificador(gasto: 2, historicoBonus: 3).Should().Be(1); // (2+3)/3 = 1 (floor)
+        SkillFormulas.Modificador(gasto: 4, historicoBonus: 6).Should().Be(3); // (4+6)/3 = 3 (floor)
+        SkillFormulas.Modificador(gasto: 9, historicoBonus: 0).Should().Be(3); // no Histórico -> gasto/3
     }
 
     [Fact]

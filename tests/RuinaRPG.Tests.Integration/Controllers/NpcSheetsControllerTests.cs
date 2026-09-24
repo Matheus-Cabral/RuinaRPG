@@ -775,7 +775,8 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
             new UpdateNpcAttributeRequest(4, 0, false)));
 
-        // Prontidao Gasto 9 -> Modificador 3 + 6 (Histórico) = 9. Reflexos Gasto 6 -> Modificador 2 + 3 = 5.
+        // Prontidao Gasto 9, Histórico bonus 6 counts as Pericia points -> Modificador (9+6)/3 = 5.
+        // Reflexos Gasto 6, Histórico bonus 3 -> Modificador (6+3)/3 = 3.
         // Fortitude Gasto 3 -> Modificador 1, untouched by this Histórico.
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Prontidao", gmToken,
             new UpdateNpcSkillRequest(9, null)));
@@ -788,8 +789,8 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.Iniciativa.Should().Be(13); // agilidade 4 + brutoProntidao (3+6=9) + 0 artefato
-        body.EsquivaNatural.Should().Be(9); // agilidade 4 + brutoReflexos (2+3=5) + 0 artefatos - 0 penalidade
+        body!.Iniciativa.Should().Be(9); // agilidade 4 + brutoProntidao ((9+6)/3=5) + 0 artefato
+        body.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos ((6+3)/3=3) + 0 artefatos - 0 penalidade
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 (no bonus) + 0 escudo + 0 artefatos + 0 cobertura
     }
 

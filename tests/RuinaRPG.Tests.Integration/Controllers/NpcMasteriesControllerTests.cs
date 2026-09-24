@@ -104,7 +104,7 @@ public class NpcMasteriesControllerTests : IClassFixture<PostgresFixture>, IAsyn
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<NpcMasteryResponse>();
-        body!.Total.Should().Be(15); // gastoMaestria 2 + bruto (9/3=3 + 6 Histórico = 9) + atributoTotal 4
+        body!.Total.Should().Be(11); // gastoMaestria 2 + bruto ((9+6)/3=5, Histórico bonus counts as Pericia points) + atributoTotal 4
     }
 
     [Fact]

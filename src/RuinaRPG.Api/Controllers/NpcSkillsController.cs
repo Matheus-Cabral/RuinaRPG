@@ -44,7 +44,7 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
                     ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
                     : (int?)null;
-                return new NpcSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
+                return new NpcSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
             })
             .ToList();
     }
