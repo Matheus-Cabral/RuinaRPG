@@ -6,4 +6,4 @@ public record CreateEquipmentKitRequest(string Nome, string Descricao, int Ciclo
 public record EquipmentKitItemInput(string Nome, string Tipo, int Qtd, string? SubcategoriaHint);
 
 public record EquipmentKitChoiceSlotInput(string Label, string Tipo, List<string>? Subcategorias,
-    string? Tier, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd);
+    string? Tier, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd, string? ArmorSlot);

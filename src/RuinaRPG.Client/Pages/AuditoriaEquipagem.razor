@@ -138,7 +138,7 @@ else
     private async Task UpdateAsync(EquipmentKitResponse current, string? nome = null, string? descricao = null, int? ciclos = null)
     {
         var itemsInput = current.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = current.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+        var slotsInput = current.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{current.Id}", new UpdateEquipmentKitRequest(
             nome ?? current.Nome, descricao ?? current.Descricao, ciclos ?? current.Ciclos, itemsInput, slotsInput));
@@ -161,7 +161,7 @@ else
         var form = _itemForm[kit.Id];
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint))
             .Append(new EquipmentKitItemInput(form.Nome, form.Tipo, form.Qtd, null)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -184,8 +184,8 @@ else
         var form = _slotForm[kit.Id];
         var subcategorias = string.IsNullOrWhiteSpace(form.SubcategoriasText) ? null : form.SubcategoriasText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd))
-            .Append(new EquipmentKitChoiceSlotInput(form.Label, "Arma", subcategorias, string.IsNullOrWhiteSpace(form.Tier) ? null : form.Tier, form.Qtd, null, null, null)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot))
+            .Append(new EquipmentKitChoiceSlotInput(form.Label, "Arma", subcategorias, string.IsNullOrWhiteSpace(form.Tier) ? null : form.Tier, form.Qtd, null, null, null, null)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -206,7 +206,7 @@ else
     private async Task RemoveItemAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item)
     {
         var itemsInput = kit.Items.Where(i => i.Id != item.Id).Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -227,7 +227,7 @@ else
     {
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
         var slotsInput = kit.ChoiceSlots.Where(s => s.Id != slot.Id)
-            .Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd)).ToList();
+            .Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)

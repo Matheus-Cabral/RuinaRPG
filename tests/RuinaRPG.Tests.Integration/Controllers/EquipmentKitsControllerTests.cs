@@ -91,7 +91,7 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
     private static CreateEquipmentKitRequest ValidCreate() => new(
         "Kit de Teste", "Descrição de teste", 10,
         [new EquipmentKitItemInput("Mochila", "ItemGeral", 1, null)],
-        [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, "F", 1, null, null, null)]);
+        [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, "F", 1, null, null, null, null)]);
 
     [Fact]
     public async Task List_is_open_to_any_authenticated_caller_and_returns_the_12_seeded_kits()
@@ -137,7 +137,7 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
         // here would silently offer weapons as options and, on confirm, insert a row pointing at an
         // Arma's Id into the wrong sheet sub-table (e.g. CharacterShield), a corrupt row Postgres
         // never rejects because the FK targets the shared TPH Item base table.
-        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null)] };
+        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null, null)] };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
