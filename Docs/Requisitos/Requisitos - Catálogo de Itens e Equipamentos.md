@@ -158,13 +158,11 @@ Acesso:
 
 **Descrição**: Um kit de Equipagem (ver "[[Requisitos - Modelo de Dados]]", EquipmentKits) referencia seus itens fixos pelo par Nome+Tipo, não por um Item específico — o kit é um catálogo global, mas cada GM tem seu próprio catálogo de Itens (R0002). Ao aplicar um kit, se um item fixo do tipo **Item Geral** não existir ainda no catálogo do GM que está aplicando, ele é criado automaticamente com Peso e Preço em **0**, mesma convenção do Catálogo inicial (ver preâmbulo). Um item fixo do tipo **Arma**, **Escudo** ou **Artefato**, por outro lado, nunca é criado automaticamente: se faltar no catálogo do GM, a aplicação do kit falha com um erro indicando o item ausente, e cabe ao GM cadastrá-lo manualmente (R0002) antes de tentar novamente.
 
-  
-
 # **R0013** - Armadura, Escudo e Artefato também têm o campo Subcategoria, com um construtor opcional para "Item Inicial".
 
 **Descrição**: O campo **Subcategoria** — já descrito para Item Geral e Arma (R0003/R0004) — passa a existir também nos tipos **Armadura**, **Escudo** e **Artefato** (R0005, R0006 e R0009), com o mesmo comportamento: texto livre, com dropdown extensível sugerindo os valores já em uso.
 
-Além do texto livre, o formulário de cadastro desses três tipos oferece um checkbox **"Item Inicial"**. Marcado, ele substitui o campo de texto livre por dois selects — **Categoria** e **Família** — cujas opções vêm de um vocabulário global mantido pelo Auditor de Regras na página de Auditoria de Equipagem já existente (ver "[[Requisitos - Modelo de Dados]]", SubcategoriaOptions; não há uma página nova). Ao escolher as duas opções, a Subcategoria salva é o texto composto:
+Além do texto livre, o formulário de cadastro desses quatro tipos (Arma, Armadura, Escudo e Artefato) oferece um checkbox **"Item Inicial"**. Marcado, ele substitui o campo de texto livre por dois selects — **Categoria** e **Família** — cujas opções vêm de um vocabulário global mantido pelo Auditor de Regras na página de Auditoria de Equipagem já existente (ver "[[Requisitos - Modelo de Dados]]", SubcategoriaOptions; não há uma página nova). Ao escolher as duas opções, a Subcategoria salva é o texto composto:
 
 `"Equipamento inicial - {Tipo} - {Categoria} - {Família}"`
 

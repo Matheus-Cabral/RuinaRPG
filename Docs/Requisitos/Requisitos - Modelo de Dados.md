@@ -88,7 +88,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Peso | decimal | todos |
 | Preco | int | todos (Ciclos, R0008) |
 | ImageId | FK → Images, nullable | todos |
-| Subcategoria | string, nullable | ItemGeral, Arma |
+| Subcategoria | string, nullable | todos os 5 tipos (coluna própria por subtipo, TPH) |
 | Descricao | text, nullable | ItemGeral |
 | CapacidadeExtra | decimal, nullable | ItemGeral — ver "[[Requisitos - Ficha de Personagem]]" 2.b/5.a e "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 |
 | Tier | enum F..S, nullable | Arma |
@@ -429,8 +429,8 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `Id` (PK)
 - `KitId` (FK → EquipmentKits, cascade)
 - `Label` (string — ex: "Arma", "Condutor")
-- `Tipo` (enum ItemTipo — sempre Arma nos dados de seed atuais)
-- `SubcategoriasCsv` (string?, opcional — lista de Subcategoria aceitas separadas por vírgula; NULL = qualquer uma)
+- `Tipo` (enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral — ver "Novas colunas" abaixo para `ArmorSlot`, obrigatório quando `Tipo=Armadura`)
+- `SubcategoriasCsv` (string?, opcional — lista de valores aceitos separados por vírgula; cada valor casa tanto com a Subcategoria legada em texto livre quanto com a Família parseada de um valor composto pelo construtor "Item Inicial" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0013; NULL = qualquer uma)
 - `Tier` (enum Tier?, opcional — NULL = qualquer Tier)
 - `Qtd` (int)
 - `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
