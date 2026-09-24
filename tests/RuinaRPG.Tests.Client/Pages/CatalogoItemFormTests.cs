@@ -244,6 +244,34 @@ public class CatalogoItemFormTests : MudBunitContext
         form.AlvoForTests.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("Arma")]
+    [InlineData("Armadura")]
+    [InlineData("Escudo")]
+    [InlineData("Artefato")]
+    public void ItemInicialSubcategoriaField_appears_for_Arma_Armadura_Escudo_and_Artefato(string tipo)
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, tipo));
+
+        cut.FindComponents<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ItemInicialSubcategoriaField_does_not_appear_for_ItemGeral()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "ItemGeral"));
+
+        cut.FindComponents<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>().Should().BeEmpty();
+    }
+
     [Fact]
     public void FixedTipo_hides_the_Tipo_selector_and_preselects_it()
     {

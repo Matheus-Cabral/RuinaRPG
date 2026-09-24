@@ -58,7 +58,7 @@
     else if (_form.Tipo == "Arma")
     {
         <Section Title="Arma">
-            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
+            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Tier" Label="Tier" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" @bind-Value:after="NotifySavedAsync" />
@@ -73,6 +73,7 @@
     else if (_form.Tipo is "Armadura" or "Escudo")
     {
         <Section Title="@(_form.Tipo == "Armadura" ? "Armadura" : "Escudo")">
+            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Categoria" Label="Categoria" @bind-Value:after="NotifySavedAsync" />
             @if (_form.Tipo == "Armadura")
             {
@@ -92,6 +93,7 @@
     else if (_form.Tipo == "Artefato")
     {
         <Section Title="Artefato">
+            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
             <MudSelect T="string" @bind-Value="_form.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync" Label="Tipo de Alvo">
                 @foreach (var option in TipoDeAlvoOptions)
                 {

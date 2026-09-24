@@ -1,0 +1,125 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Items
+@inject HttpClient Http
+
+@* Requisitos - Catálogo de Itens e Equipamentos R0013 — "Item Inicial" checkbox swaps the free-text
+   Subcategoria field for two selects (Categoria, Família) drawn from the Rules Auditor's vocabulary
+   (Auditoria: Equipagem), composing "Equipamento inicial - {Tipo} - {Categoria} - {Familia}". The
+   checkbox is pure UI state — Value/ValueChanged carry only the composed (or free-text) Subcategoria
+   string, exactly like every other bound field on this form. Unchecking does NOT clear or emit a new
+   Value: the field just reverts to free text, still showing whatever composed string is already
+   there so it stays editable. *@
+<MudCheckBox T="bool" Value="_isChecked" ValueChanged="OnCheckedChangedAsync" Label="Item Inicial" />
+@if (_isChecked)
+{
+    <MudSelect T="string" Value="_categoria" ValueChanged="OnCategoriaChangedAsync" Label="Categoria">
+        @foreach (var opt in _categorias)
+        {
+            <MudSelectItem Value="@opt">@opt</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="string" Value="_familia" ValueChanged="OnFamiliaChangedAsync" Label="Família">
+        @foreach (var opt in _familias)
+        {
+            <MudSelectItem Value="@opt">@opt</MudSelectItem>
+        }
+    </MudSelect>
+}
+else
+{
+    <MudTextField T="string" Value="Value" ValueChanged="OnFreeTextChangedAsync" Label="Subcategoria" />
+}
+
+@code {
+    [Parameter] public string Tipo { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private bool _isChecked;
+    private string? _categoria;
+    private string? _familia;
+    private List<string> _categorias = new();
+    private List<string> _familias = new();
+    private string? _loadedForTipo;
+    private string? _lastSeenValue;
+    private bool _hasSeenValue;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedForTipo != Tipo)
+        {
+            _loadedForTipo = Tipo;
+            await LoadOptionsAsync();
+        }
+
+        // CatalogoItemForm loads the existing item (and its Subcategoria) after this component's
+        // own first render, so Value can arrive null the first time and only carry the real value
+        // on a later parameter set. Re-run the parse-back every time the incoming Value differs
+        // from the last one seen here — not just on the very first call — so a Value that shows
+        // up late still switches this field into constructor mode.
+        if (!_hasSeenValue || Value != _lastSeenValue)
+        {
+            _hasSeenValue = true;
+            _lastSeenValue = Value;
+            if (SubcategoriaBuilder.TryParse(Value, out var tipo, out var categoria, out var familia) && tipo.ToString() == Tipo)
+            {
+                _isChecked = true;
+                _categoria = categoria;
+                _familia = familia;
+            }
+        }
+    }
+
+    private async Task LoadOptionsAsync()
+    {
+        var categoriaResponse = await Http.GetAsync($"subcategoria-options?tipo={Tipo}&facet=Categoria");
+        if (categoriaResponse.IsSuccessStatusCode)
+            _categorias = (await categoriaResponse.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>() ?? new()).Select(o => o.Valor).ToList();
+
+        var familiaResponse = await Http.GetAsync($"subcategoria-options?tipo={Tipo}&facet=Familia");
+        if (familiaResponse.IsSuccessStatusCode)
+            _familias = (await familiaResponse.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>() ?? new()).Select(o => o.Valor).ToList();
+    }
+
+    private Task OnCheckedChangedAsync(bool value)
+    {
+        _isChecked = value;
+
+        // Unchecking is pure UI state: it must NOT emit null (that would wipe out a composed
+        // Subcategoria the moment the checkbox is toggled off). The current Value stays exactly
+        // as-is and is shown, still editable, in the free-text field below. Only a (re-)check with
+        // both selects already resolved recomposes and emits.
+        if (_isChecked)
+            return ComposeAndNotifyAsync();
+        return Task.CompletedTask;
+    }
+
+    private Task OnCategoriaChangedAsync(string value)
+    {
+        _categoria = value;
+        return ComposeAndNotifyAsync();
+    }
+
+    private Task OnFamiliaChangedAsync(string value)
+    {
+        _familia = value;
+        return ComposeAndNotifyAsync();
+    }
+
+    private Task ComposeAndNotifyAsync()
+    {
+        if (_categoria is null || _familia is null || !Enum.TryParse<ItemTipo>(Tipo, out var tipo))
+            return Task.CompletedTask;
+        return ValueChanged.InvokeAsync(SubcategoriaBuilder.Compose(tipo, _categoria, _familia));
+    }
+
+    private Task OnFreeTextChangedAsync(string? value) => ValueChanged.InvokeAsync(value);
+
+    // Test-only read seams — bUnit tests drive interaction through the real MudCheckBox/MudSelect
+    // child component instances (so Blazor's automatic post-EventCallback re-render still fires),
+    // and use these to assert on this component's resulting internal state.
+    internal bool IsCheckedForTests => _isChecked;
+    internal string? CategoriaForTests => _categoria;
+    internal string? FamiliaForTests => _familia;
+}
