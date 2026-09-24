@@ -140,14 +140,25 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         var slots2 = new List<EquipmentKitChoiceSlot>();
         foreach (var slot in choiceSlots)
         {
-            // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync only ever query
-            // the Arma table for a choice slot, regardless of its declared Tipo (Requisitos - Modelo
-            // de Dados: "sempre Arma nos dados de seed atuais") — accepting anything else here would
-            // silently offer weapons as options and, on confirm, insert a row pointing at an Arma's
-            // Id into the wrong sheet sub-table, a corrupt row the shared TPH Item base table's FK
-            // never rejects.
-            if (!Enum.TryParse<ItemTipo>(slot.Tipo, out var tipo) || tipo != ItemTipo.Arma)
-                return BadRequest("Slots de escolha só suportam Tipo=Arma nos dados atuais.");
+            // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync now dispatch on
+            // slot.Tipo to the matching concrete Item subtype's DbSet — Armadura, Escudo, Artefato
+            // and Arma are all real, resolvable choices; only Armadura also needs to know WHICH
+            // ArmorSlot to fill (validated below), since armor doesn't insert a new row the way the
+            // other 3 do.
+            if (!TryParseExact<ItemTipo>(slot.Tipo, out var tipo) || tipo == ItemTipo.ItemGeral)
+                return BadRequest($"Tipo de slot de escolha inválido: \"{slot.Tipo}\".");
+
+            RuinaRPG.Domain.CharacterSheets.ArmorSlotType? armorSlot = null;
+            if (tipo == ItemTipo.Armadura)
+            {
+                if (string.IsNullOrWhiteSpace(slot.ArmorSlot) || !TryParseExact<RuinaRPG.Domain.CharacterSheets.ArmorSlotType>(slot.ArmorSlot, out var parsedArmorSlot))
+                    return BadRequest("Slots de escolha de Tipo=Armadura precisam de um ArmorSlot válido.");
+                armorSlot = parsedArmorSlot;
+            }
+            else if (!string.IsNullOrWhiteSpace(slot.ArmorSlot))
+            {
+                return BadRequest("ArmorSlot só é aplicável a slots de escolha de Tipo=Armadura.");
+            }
             if (string.IsNullOrWhiteSpace(slot.Label))
                 return BadRequest("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)
@@ -175,6 +186,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 BonusSubcategoria = slot.BonusSubcategoria,
                 BonusNome = slot.BonusNome,
                 BonusQtd = slot.BonusQtd,
+                ArmorSlot = armorSlot,
             });
         }
 
@@ -192,8 +204,15 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome, i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
             slots.Select(s => new EquipmentKitChoiceSlotResponse(s.Id.ToString(), s.Label, s.Tipo.ToString(),
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                s.Tier?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, null)).ToList());
+                s.Tier?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
     }
+
+    // Enum.TryParse alone is lenient — it accepts numeric strings ("99"), comma-joined names
+    // ("Arma, Escudo") and stray whitespace, silently mapping them to an underlying int value
+    // that may not even be a defined enum member. Choice-slot Tipo and ArmorSlot must only ever
+    // accept an exact (ordinal, case-sensitive) match to a defined member name.
+    private static bool TryParseExact<TEnum>(string? value, out TEnum result) where TEnum : struct, Enum =>
+        Enum.TryParse(value, out result) && Enum.IsDefined(result) && result.ToString() == value;
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()
     {

@@ -127,20 +127,102 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
     }
 
     [Fact]
-    public async Task Create_rejects_a_choice_slot_of_Tipo_other_than_Arma()
+    public async Task Create_rejects_a_choice_slot_of_Tipo_ItemGeral()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm3b", "equipkits3b@teste.com");
         await GrantRulesAuditorAsync("equipkits3b@teste.com");
 
-        // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync only ever query the
-        // Arma table regardless of a choice slot's declared Tipo — accepting a non-Arma slot Tipo
-        // here would silently offer weapons as options and, on confirm, insert a row pointing at an
-        // Arma's Id into the wrong sheet sub-table (e.g. CharacterShield), a corrupt row Postgres
-        // never rejects because the FK targets the shared TPH Item base table.
-        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null, null)] };
+        // EquipmentKitGrantService now dispatches choice slots to the matching Arma/Armadura/
+        // Escudo/Artefato subtype, but ItemGeral has no such subtype to resolve options from, so
+        // it's the one ItemTipo value that stays rejected here.
+        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Item Geral", "ItemGeral", null, "F", 1, null, null, null, null)] };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_choice_slot_whose_Tipo_is_a_numeric_string()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm3c", "equipkits3c@teste.com");
+        await GrantRulesAuditorAsync("equipkits3c@teste.com");
+
+        // Enum.TryParse is lenient about numeric strings ("99") — the controller must reject them
+        // via an exact-name (ordinal, case-sensitive) check rather than accepting any int cast to
+        // a valid-looking ItemTipo.
+        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Numérico", "99", null, "F", 1, null, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_choice_slot_whose_ArmorSlot_is_a_numeric_string()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm3d", "equipkits3d@teste.com");
+        await GrantRulesAuditorAsync("equipkits3d@teste.com");
+
+        var invalid = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, "99")] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_choice_slot_of_Tipo_Armadura_with_an_ArmorSlot()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm1", "equipkitsarmor1@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor1@teste.com");
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, "Superior")] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var kit = await response.Content.ReadFromJsonAsync<EquipmentKitResponse>();
+        kit!.ChoiceSlots.Should().ContainSingle(s => s.Tipo == "Armadura" && s.ArmorSlot == "Superior");
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_choice_slot_of_Tipo_Armadura_without_an_ArmorSlot()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm2", "equipkitsarmor2@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor2@teste.com");
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_rejects_ArmorSlot_on_a_choice_slot_whose_Tipo_is_not_Armadura()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm3", "equipkitsarmor3@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor3@teste.com");
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, null, 1, null, null, null, "Superior")] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_accepts_choice_slots_of_Tipo_Escudo_and_Artefato()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm4", "equipkitsarmor4@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor4@teste.com");
+
+        var request = ValidCreate() with
+        {
+            ChoiceSlots =
+            [
+                new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, null, 1, null, null, null, null),
+                new EquipmentKitChoiceSlotInput("Artefato", "Artefato", null, null, 1, null, null, null, null),
+            ]
+        };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
