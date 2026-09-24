@@ -7,13 +7,13 @@
 
 @if (_isRulesAuditor)
 {
-    <MudNavGroup Title="Auditoria" @bind-Expanded="_expanded">
-        <MudNavLink Href="auditoria/livro-de-regras">Livro de Regras</MudNavLink>
-        <MudNavLink Href="auditoria/caracteristicas">Características</MudNavLink>
-        <MudNavLink Href="auditoria/caracteristicas-de-criatura">Características de Criatura</MudNavLink>
-        <MudNavLink Href="auditoria/efeitos">Efeitos</MudNavLink>
-        <MudNavLink Href="auditoria/historicos">Históricos</MudNavLink>
-        <MudNavLink Href="auditoria/equipagem">Equipagem</MudNavLink>
+    <MudNavGroup Title="Auditoria" @bind-Expanded="_expanded" Icon="@Icons.Material.Filled.FactCheck" IconColor="Color.Primary">
+        <MudNavLink Href="auditoria/livro-de-regras" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Primary">Livro de Regras</MudNavLink>
+        <MudNavLink Href="auditoria/caracteristicas" Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Primary">Características</MudNavLink>
+        <MudNavLink Href="auditoria/caracteristicas-de-criatura" Icon="@Icons.Material.Filled.Pets" IconColor="Color.Primary">Características de Criatura</MudNavLink>
+        <MudNavLink Href="auditoria/efeitos" Icon="@Icons.Material.Filled.Bolt" IconColor="Color.Primary">Efeitos</MudNavLink>
+        <MudNavLink Href="auditoria/historicos" Icon="@Icons.Material.Filled.History" IconColor="Color.Primary">Históricos</MudNavLink>
+        <MudNavLink Href="auditoria/equipagem" Icon="@Icons.Material.Filled.Shield" IconColor="Color.Primary">Equipagem</MudNavLink>
     </MudNavGroup>
 }
 

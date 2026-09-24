@@ -14,34 +14,34 @@
 <MudNavMenu>
     <AuthorizeView>
         <NotAuthorized>
-            <MudNavLink Href="" Match="NavLinkMatch.All">Início</MudNavLink>
-            <MudNavLink Href="login">Entrar</MudNavLink>
-            <MudNavLink Href="cadastro">Cadastrar</MudNavLink>
-            <MudNavLink Href="livro-de-regras">Livro de Regras</MudNavLink>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Primary">Início</MudNavLink>
+            <MudNavLink Href="login" Icon="@Icons.Material.Filled.Login" IconColor="Color.Primary">Entrar</MudNavLink>
+            <MudNavLink Href="cadastro" Icon="@Icons.Material.Filled.PersonAddAlt1" IconColor="Color.Primary">Cadastrar</MudNavLink>
+            <MudNavLink Href="livro-de-regras" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Primary">Livro de Regras</MudNavLink>
         </NotAuthorized>
         <Authorized>
-            <MudNavLink Href="painel">Painel</MudNavLink>
+            <MudNavLink Href="painel" Icon="@Icons.Material.Filled.Dashboard" IconColor="Color.Primary">Painel</MudNavLink>
             <AuthorizeView Roles="GM" Context="gmContext">
                 <Authorized>
-                    <MudNavLink Href="painel/convites">Convidar Jogador</MudNavLink>
-                    <MudNavLink Href="painel/jogadores">Jogadores</MudNavLink>
-                    <MudNavLink Href="catalogo">Catálogo de Itens</MudNavLink>
-                    <MudNavLink Href="npcs">NPCs do GM</MudNavLink>
-                    <MudNavLink Href="bestiario">Bestiário do GM</MudNavLink>
-                    <MudNavLink Href="banco-de-magias">Banco de Magias e Habilidades</MudNavLink>
-                    <MudNavLink Href="banco-de-runas">Banco de Runas</MudNavLink>
-                    <MudNavLink Href="habilidades-raciais">Habilidades Raciais</MudNavLink>
-                    <MudNavLink Href="campanhas">Campanhas</MudNavLink>
+                    <MudNavLink Href="painel/convites" Icon="@Icons.Material.Filled.PersonAdd" IconColor="Color.Primary">Convidar Jogador</MudNavLink>
+                    <MudNavLink Href="painel/jogadores" Icon="@Icons.Material.Filled.Group" IconColor="Color.Primary">Jogadores</MudNavLink>
+                    <MudNavLink Href="catalogo" Icon="@Icons.Material.Filled.Inventory2" IconColor="Color.Primary">Catálogo de Itens</MudNavLink>
+                    <MudNavLink Href="npcs" Icon="@Icons.Material.Filled.Person" IconColor="Color.Primary">NPCs do GM</MudNavLink>
+                    <MudNavLink Href="bestiario" Icon="@Icons.Material.Filled.Pets" IconColor="Color.Primary">Bestiário do GM</MudNavLink>
+                    <MudNavLink Href="banco-de-magias" Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Primary">Banco de Magias e Habilidades</MudNavLink>
+                    <MudNavLink Href="banco-de-runas" Icon="@Icons.Material.Filled.Diamond" IconColor="Color.Primary">Banco de Runas</MudNavLink>
+                    <MudNavLink Href="habilidades-raciais" Icon="@Icons.Material.Filled.Diversity3" IconColor="Color.Primary">Habilidades Raciais</MudNavLink>
+                    <MudNavLink Href="campanhas" Icon="@Icons.Material.Filled.Groups" IconColor="Color.Primary">Campanhas</MudNavLink>
                     <RulesAuditorNavLinks />
                 </Authorized>
             </AuthorizeView>
             <AuthorizeView Roles="Jogador" Context="jogadorContext">
                 <Authorized>
-                    <MudNavLink Href="minhas-campanhas">Minhas Campanhas</MudNavLink>
+                    <MudNavLink Href="minhas-campanhas" Icon="@Icons.Material.Filled.Groups" IconColor="Color.Primary">Minhas Campanhas</MudNavLink>
                 </Authorized>
             </AuthorizeView>
-            <MudNavLink Href="livro-de-regras">Livro de Regras</MudNavLink>
-            <MudNavLink OnClick="LogoutAsync">Sair</MudNavLink>
+            <MudNavLink Href="livro-de-regras" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Primary">Livro de Regras</MudNavLink>
+            <MudNavLink OnClick="LogoutAsync" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Primary">Sair</MudNavLink>
         </Authorized>
     </AuthorizeView>
 </MudNavMenu>

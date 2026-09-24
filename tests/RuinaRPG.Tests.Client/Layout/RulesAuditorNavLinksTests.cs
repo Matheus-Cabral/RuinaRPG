@@ -74,6 +74,36 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             ExpectedLinks.Select(l => l.Href), options => options.WithStrictOrdering());
     }
 
+    // Task brief "sidebar icons": the "Auditoria" MudNavGroup itself and each of its 6 children
+    // carry a Material icon, same style as the rest of the drawer (Icons.Material.Filled.*,
+    // Color.Primary).
+    [Fact]
+    public async Task The_Auditoria_group_and_its_children_have_the_expected_icons()
+    {
+        Services.AddScoped(_ => AuditorHttp());
+
+        var cut = Render<RulesAuditorNavLinks>();
+        await Task.Delay(50);
+
+        var group = cut.FindComponent<MudNavGroup>();
+        group.Instance.Icon.Should().Be(Icons.Material.Filled.FactCheck);
+        group.Instance.IconColor.Should().Be(Color.Primary);
+
+        var expectedChildIcons = new[]
+        {
+            Icons.Material.Filled.MenuBook,
+            Icons.Material.Filled.Psychology,
+            Icons.Material.Filled.Pets,
+            Icons.Material.Filled.Bolt,
+            Icons.Material.Filled.History,
+            Icons.Material.Filled.Shield,
+        };
+
+        var links = cut.FindComponents<MudNavLink>();
+        links.Select(l => l.Instance.Icon).Should().BeEquivalentTo(expectedChildIcons, options => options.WithStrictOrdering());
+        links.Select(l => l.Instance.IconColor).Should().AllBeEquivalentTo(Color.Primary);
+    }
+
     [Fact]
     public async Task Group_is_collapsed_when_the_current_URL_is_not_under_auditoria()
     {
