@@ -47,10 +47,58 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        // CatalogoItemForm's Armadura/Escudo branch renders a single ItemInicialSubcategoriaField
+        // shared by both Tipos — switching the top-level Tipo select reuses this same component
+        // instance with a new Tipo but an otherwise-unchanged Value. Detect that case (as opposed
+        // to this component's very first parameter set, where there is no "old" Tipo to compare
+        // against) before overwriting _loadedForTipo below.
+        var tipoChanged = _loadedForTipo is not null && _loadedForTipo != Tipo;
+
         if (_loadedForTipo != Tipo)
         {
             _loadedForTipo = Tipo;
             await LoadOptionsAsync();
+        }
+
+        if (tipoChanged)
+        {
+            // A composed Subcategoria (or a stale selection) from the OLD Tipo is never valid for
+            // the new one, so constructor-mode state is always reset first; the current Value is
+            // then re-evaluated against the NEW Tipo below.
+            _isChecked = false;
+            _categoria = null;
+            _familia = null;
+
+            if (SubcategoriaBuilder.TryParse(Value, out var parsedTipo, out var categoria, out var familia))
+            {
+                if (parsedTipo.ToString() == Tipo)
+                {
+                    // Same composed value happens to also be valid for the new Tipo — re-enter
+                    // constructor mode with it (Value itself is unchanged, so nothing to emit).
+                    _isChecked = true;
+                    _categoria = categoria;
+                    _familia = familia;
+                    _lastSeenValue = Value;
+                }
+                else
+                {
+                    // A constructor string built for the OLD Tipo — never valid for the new one.
+                    // Clear it rather than silently keep (and let CatalogoItemForm persist) a
+                    // mismatched Tipo segment.
+                    _lastSeenValue = null;
+                    _hasSeenValue = true;
+                    await ValueChanged.InvokeAsync(null);
+                    return;
+                }
+            }
+            else
+            {
+                // Free text (not a constructor string for any Tipo) survives the Tipo change as-is.
+                _lastSeenValue = Value;
+            }
+
+            _hasSeenValue = true;
+            return;
         }
 
         // CatalogoItemForm loads the existing item (and its Subcategoria) after this component's

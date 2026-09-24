@@ -273,6 +273,39 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Switching_top_level_Tipo_from_Armadura_to_Escudo_clears_the_mismatched_composed_Subcategoria()
+    {
+        // Integration regression for Task 10 fix round 1: the Armadura/Escudo branch renders a
+        // single ItemInicialSubcategoriaField shared by both Tipos, so switching the top-level Tipo
+        // select reuses the same instance. Proves the fix end-to-end through the real @bind-Value
+        // wiring, not just at the field's own component level.
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>();
+
+        var tipoSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        await cut.InvokeAsync(() => tipoSelect.Instance.ValueChanged.InvokeAsync("Armadura"));
+
+        var field = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
+        var checkbox = field.FindComponents<MudBlazor.MudCheckBox<bool>>().Single(c => c.Instance.Label == "Item Inicial");
+        await cut.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(true));
+        var categoriaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Categoria");
+        await cut.InvokeAsync(() => categoriaSelect.Instance.ValueChanged.InvokeAsync("Pesada"));
+        var familiaSelect = field.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Família");
+        await cut.InvokeAsync(() => familiaSelect.Instance.ValueChanged.InvokeAsync("Placas"));
+
+        field.Instance.IsCheckedForTests.Should().BeTrue();
+
+        await cut.InvokeAsync(() => tipoSelect.Instance.ValueChanged.InvokeAsync("Escudo"));
+
+        var fieldAfter = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
+        fieldAfter.Instance.IsCheckedForTests.Should().BeFalse("a composed Subcategoria built for Armadura is never valid once Tipo becomes Escudo");
+        cut.FindComponents<MudBlazor.MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
+    }
+
+    [Fact]
     public void FixedTipo_hides_the_Tipo_selector_and_preselects_it()
     {
         var http = FakeHttpMessageHandler.CreateClient(request =>

@@ -141,6 +141,48 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
     }
 
     [Fact]
+    public void Switching_Tipo_to_a_sibling_clears_a_composed_value_that_belonged_to_the_old_Tipo()
+    {
+        // Regression: CatalogoItemForm's Armadura/Escudo branch renders a single
+        // ItemInicialSubcategoriaField instance shared by both Tipos — switching the top-level
+        // Tipo select reuses this same component instance with a new Tipo but an unchanged Value.
+        // A composed Subcategoria for the OLD Tipo (here Armadura) is never valid once Tipo becomes
+        // Escudo, so it must be cleared (emitted as null) rather than silently kept and persisted
+        // mismatched.
+        Services.AddScoped(_ => VocabularyClient(new() { "Pesada" }, new() { "Placas" }));
+        var composedForArmadura = SubcategoriaBuilder.Compose(ItemTipo.Armadura, "Pesada", "Placas");
+        string? emitted = "not called";
+        var cut = Render<ItemInicialSubcategoriaField>(p => p
+            .Add(x => x.Tipo, "Armadura")
+            .Add(x => x.Value, composedForArmadura)
+            .Add(x => x.ValueChanged, v => emitted = v));
+        cut.Instance.IsCheckedForTests.Should().BeTrue();
+
+        cut.Render(p => p.Add(x => x.Tipo, "Escudo"));
+
+        emitted.Should().BeNull("a composed Subcategoria for Armadura is never valid once Tipo becomes Escudo — it must be cleared");
+        cut.Instance.IsCheckedForTests.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Switching_Tipo_keeps_a_free_text_value_that_is_not_a_constructor_string()
+    {
+        Services.AddScoped(_ => VocabularyClient(new(), new()));
+        string? emitted = "not called";
+        var cut = Render<ItemInicialSubcategoriaField>(p => p
+            .Add(x => x.Tipo, "Armadura")
+            .Add(x => x.Value, "Texto livre qualquer")
+            .Add(x => x.ValueChanged, v => emitted = v));
+        cut.Instance.IsCheckedForTests.Should().BeFalse();
+
+        cut.Render(p => p.Add(x => x.Tipo, "Escudo"));
+
+        emitted.Should().Be("not called", "free text is not a constructor string for any Tipo and must survive a Tipo change untouched");
+        cut.Instance.IsCheckedForTests.Should().BeFalse();
+        cut.FindComponents<MudTextField<string>>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == "Texto livre qualquer");
+    }
+
+    [Fact]
     public void Empty_option_lists_do_not_throw()
     {
         Services.AddScoped(_ => VocabularyClient(new(), new()));
