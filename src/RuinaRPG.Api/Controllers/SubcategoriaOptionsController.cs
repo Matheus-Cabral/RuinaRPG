@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using static RuinaRPG.Api.Controllers.EnumParsing;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -27,9 +28,13 @@ public class SubcategoriaOptionsController(RuinaRpgDbContext db) : ControllerBas
     {
         var query = db.SubcategoriaOptions.Where(o => !o.IsDeleted);
 
-        if (tipo is not null && Enum.TryParse<ItemTipo>(tipo, out var tipoParsed))
+        // An unparseable filter (e.g. "99") is silently ignored — the query stays unfiltered on
+        // that clause — rather than coerced into a defined-looking-but-wrong enum value that would
+        // filter the result set down to nothing. TryParseExact is what makes "99" register as
+        // unparseable in the first place; plain Enum.TryParse would happily accept it.
+        if (tipo is not null && TryParseExact<ItemTipo>(tipo, out var tipoParsed))
             query = query.Where(o => o.Tipo == tipoParsed);
-        if (facet is not null && Enum.TryParse<SubcategoriaFacet>(facet, out var facetParsed))
+        if (facet is not null && TryParseExact<SubcategoriaFacet>(facet, out var facetParsed))
             query = query.Where(o => o.Facet == facetParsed);
 
         var options = await query.OrderBy(o => o.Valor).ToListAsync();
@@ -43,16 +48,22 @@ public class SubcategoriaOptionsController(RuinaRpgDbContext db) : ControllerBas
         if (authError is not null)
             return authError;
 
-        if (!Enum.TryParse<ItemTipo>(request.Tipo, out var tipo) || tipo == ItemTipo.ItemGeral)
+        if (!TryParseExact<ItemTipo>(request.Tipo, out var tipo) || tipo == ItemTipo.ItemGeral)
             return BadRequest($"Tipo inválido para Construtor de Subcategoria: \"{request.Tipo}\".");
-        if (!Enum.TryParse<SubcategoriaFacet>(request.Facet, out var facet))
+        if (!TryParseExact<SubcategoriaFacet>(request.Facet, out var facet))
             return BadRequest($"Facet inválido: \"{request.Facet}\".");
-        if (string.IsNullOrWhiteSpace(request.Valor))
+
+        var valor = request.Valor?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(valor))
             return BadRequest("Valor é obrigatório.");
-        if (request.Valor.Contains(SubcategoriaBuilder.Separator))
+        if (valor.StartsWith('-') || valor.EndsWith('-'))
+            return BadRequest("Valor não pode começar ou terminar com \"-\".");
+        if (valor.Contains(','))
+            return BadRequest("Valor não pode conter \",\" — usado como separador na lista de Subcategorias de um slot de escolha.");
+        if (valor.Contains(SubcategoriaBuilder.Separator))
             return BadRequest($"Valor não pode conter \"{SubcategoriaBuilder.Separator}\".");
 
-        var option = new SubcategoriaOption { Id = Guid.NewGuid(), Tipo = tipo, Facet = facet, Valor = request.Valor };
+        var option = new SubcategoriaOption { Id = Guid.NewGuid(), Tipo = tipo, Facet = facet, Valor = valor };
         db.SubcategoriaOptions.Add(option);
         await db.SaveChangesAsync();
 

@@ -96,4 +96,51 @@ public class SubcategoriaBuilderTests
         act.Should().Throw<ArgumentException>()
             .WithParameterName("familia");
     }
+
+    // The domain guard must match SubcategoriaOptionsController's own Valor validation (which
+    // trims and rejects a leading/trailing '-') — Categoria/Família come from that same
+    // Auditor-managed vocabulary, so a value that slipped past the controller (e.g. seeded
+    // directly, or a future caller) must still be rejected here rather than composing a
+    // malformed 4-segment string.
+    [Theory]
+    [InlineData("-Distância")]
+    [InlineData("Distância-")]
+    [InlineData("-")]
+    public void Compose_throws_ArgumentException_when_categoria_has_a_leading_or_trailing_hyphen(string categoria)
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, categoria, "Arcos");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("categoria");
+    }
+
+    [Theory]
+    [InlineData("-Arcos")]
+    [InlineData("Arcos-")]
+    [InlineData("-")]
+    public void Compose_throws_ArgumentException_when_familia_has_a_leading_or_trailing_hyphen(string familia)
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, "Distância", familia);
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("familia");
+    }
+
+    [Fact]
+    public void Compose_throws_ArgumentException_when_categoria_has_surrounding_whitespace()
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, " Distância ", "Arcos");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("categoria");
+    }
+
+    [Fact]
+    public void Compose_throws_ArgumentException_when_familia_has_surrounding_whitespace()
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, "Distância", " Arcos ");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("familia");
+    }
 }

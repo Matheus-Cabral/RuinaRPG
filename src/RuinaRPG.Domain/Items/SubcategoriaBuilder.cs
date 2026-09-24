@@ -26,6 +26,22 @@ public static class SubcategoriaBuilder
         if (familia.Contains(Separator))
             throw new ArgumentException($"Família cannot contain the separator '{Separator}'.", nameof(familia));
 
+        // Mirrors SubcategoriaOptionsController.Create's own Valor validation (trim + reject a
+        // leading/trailing '-') — Categoria/Família come from that same Auditor-managed
+        // vocabulary, so a value that slipped past the controller must still be rejected here
+        // rather than composing a malformed 4-segment string.
+        if (categoria != categoria.Trim())
+            throw new ArgumentException("Categoria cannot have leading or trailing whitespace.", nameof(categoria));
+
+        if (familia != familia.Trim())
+            throw new ArgumentException("Família cannot have leading or trailing whitespace.", nameof(familia));
+
+        if (categoria.StartsWith('-') || categoria.EndsWith('-'))
+            throw new ArgumentException("Categoria cannot start or end with '-'.", nameof(categoria));
+
+        if (familia.StartsWith('-') || familia.EndsWith('-'))
+            throw new ArgumentException("Família cannot start or end with '-'.", nameof(familia));
+
         return string.Join(Separator, [Prefix, tipo.ToString(), categoria, familia]);
     }
 

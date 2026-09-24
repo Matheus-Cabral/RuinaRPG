@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using static RuinaRPG.Api.Controllers.EnumParsing;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -138,6 +139,11 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         }
 
         var slots2 = new List<EquipmentKitChoiceSlot>();
+        // On Choose, EquipmentKitGrantService.BuildPlanAsync carries a chosen Armadura's grant to
+        // exactly the ArmorSlot its choice slot names, overwriting whatever already sits there —
+        // two Armadura choice slots aimed at the same ArmorSlot in one kit would mean the second
+        // grant silently clobbers the first, so that's rejected here at authoring time.
+        var seenArmorSlots = new HashSet<RuinaRPG.Domain.CharacterSheets.ArmorSlotType>();
         foreach (var slot in choiceSlots)
         {
             // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync now dispatch on
@@ -153,6 +159,8 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             {
                 if (string.IsNullOrWhiteSpace(slot.ArmorSlot) || !TryParseExact<RuinaRPG.Domain.CharacterSheets.ArmorSlotType>(slot.ArmorSlot, out var parsedArmorSlot))
                     return BadRequest("Slots de escolha de Tipo=Armadura precisam de um ArmorSlot válido.");
+                if (!seenArmorSlots.Add(parsedArmorSlot))
+                    return BadRequest($"Mais de um slot de escolha de Tipo=Armadura aponta para o mesmo ArmorSlot \"{slot.ArmorSlot}\".");
                 armorSlot = parsedArmorSlot;
             }
             else if (!string.IsNullOrWhiteSpace(slot.ArmorSlot))
@@ -163,6 +171,11 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 return BadRequest("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)
                 return BadRequest("Qtd do slot de escolha deve ser pelo menos 1.");
+            // Tier only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
+            // only applies the Tier filter in the Arma branch) — a non-empty Tier elsewhere would
+            // be silently ignored at resolve time, so it's rejected here instead.
+            if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Tier))
+                return BadRequest("Tier só é aplicável a slots de escolha de Tipo=Arma.");
             Tier? tier = null;
             if (!string.IsNullOrWhiteSpace(slot.Tier))
             {
@@ -206,13 +219,6 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 s.Tier?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
     }
-
-    // Enum.TryParse alone is lenient — it accepts numeric strings ("99"), comma-joined names
-    // ("Arma, Escudo") and stray whitespace, silently mapping them to an underlying int value
-    // that may not even be a defined enum member. Choice-slot Tipo and ArmorSlot must only ever
-    // accept an exact (ordinal, case-sensitive) match to a defined member name.
-    private static bool TryParseExact<TEnum>(string? value, out TEnum result) where TEnum : struct, Enum =>
-        Enum.TryParse(value, out result) && Enum.IsDefined(result) && result.ToString() == value;
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()
     {

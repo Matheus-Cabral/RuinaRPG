@@ -206,6 +206,76 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    // On Choose (EquipmentKitGrantService.BuildPlanAsync), a chosen Armadura overwrites whichever
+    // ArmorSlot its choice slot targets — two Armadura choice slots aimed at the same ArmorSlot in
+    // one kit would mean the second grant silently clobbers the first's write, so it's rejected at
+    // authoring time instead.
+    [Fact]
+    public async Task Create_rejects_two_Armadura_choice_slots_targeting_the_same_ArmorSlot()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm5", "equipkitsarmor5@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor5@teste.com");
+
+        var request = ValidCreate() with
+        {
+            ChoiceSlots =
+            [
+                new EquipmentKitChoiceSlotInput("Capacete 1", "Armadura", null, null, 1, null, null, null, "Capacete"),
+                new EquipmentKitChoiceSlotInput("Capacete 2", "Armadura", null, null, 1, null, null, null, "Capacete"),
+            ]
+        };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_accepts_two_Armadura_choice_slots_targeting_different_ArmorSlots()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsArmorGm6", "equipkitsarmor6@teste.com");
+        await GrantRulesAuditorAsync("equipkitsarmor6@teste.com");
+
+        var request = ValidCreate() with
+        {
+            ChoiceSlots =
+            [
+                new EquipmentKitChoiceSlotInput("Capacete", "Armadura", null, null, 1, null, null, null, "Capacete"),
+                new EquipmentKitChoiceSlotInput("Superior", "Armadura", null, null, 1, null, null, null, "Superior"),
+            ]
+        };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    // Tier only ever means anything for an Arma choice slot (EquipmentKitGrantService.
+    // ResolveEligibleOptionsAsync only applies the Tier filter in the Arma branch) — a non-empty
+    // Tier on an Armadura/Escudo/Artefato slot would be silently ignored at resolve time, so it's
+    // rejected up front instead.
+    [Fact]
+    public async Task Create_rejects_a_non_empty_Tier_on_a_non_Arma_choice_slot()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsTierGm1", "equipkitstier1@teste.com");
+        await GrantRulesAuditorAsync("equipkitstier1@teste.com");
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_null_Tier_on_a_non_Arma_choice_slot()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsTierGm2", "equipkitstier2@teste.com");
+        await GrantRulesAuditorAsync("equipkitstier2@teste.com");
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, null, 1, null, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
     [Fact]
     public async Task Create_accepts_choice_slots_of_Tipo_Escudo_and_Artefato()
     {

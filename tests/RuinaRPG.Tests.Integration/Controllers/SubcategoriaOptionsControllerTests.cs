@@ -108,6 +108,107 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<PostgresFixture>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    // A comma isn't the composed-string separator, but SubcategoriasCsv (EquipmentKitChoiceSlot)
+    // stores allowed Família values joined with ',' and both EquipmentKitsController.ToResponseAsync
+    // and EquipmentKitGrantService.ResolveEligibleOptionsAsync split on ',' to read it back — a
+    // Família containing a comma would silently break that round trip (e.g. "Espadas, Adagas"
+    // becomes two separate values on split), so it must be rejected up front just like the separator.
+    [Fact]
+    public async Task Create_rejects_a_Valor_containing_a_comma()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm7", "subcat7@teste.com");
+        await GrantRulesAuditorAsync("subcat7@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Espadas, Adagas")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // Enum.TryParse alone is lenient about numeric strings ("99"), silently mapping them to an
+    // underlying int value that may not even be a defined enum member — Create must reject this
+    // the same way EquipmentKitsController.TryParseExact does for choice-slot Tipo/ArmorSlot.
+    [Fact]
+    public async Task Create_rejects_a_Tipo_that_is_a_numeric_string()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm8", "subcat8@teste.com");
+        await GrantRulesAuditorAsync("subcat8@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("99", "Familia", "X")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // Same strict parse must apply to Facet.
+    [Fact]
+    public async Task Create_rejects_a_Facet_that_is_a_numeric_string()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm9", "subcat9@teste.com");
+        await GrantRulesAuditorAsync("subcat9@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "5", "X")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // List keeps ignoring unparseable filters (brief-specified: fall back to unfiltered rather than
+    // 400ing), but must use the same strict exact-name parse as Create so "99" is treated as
+    // unparseable — not silently coerced into a defined-looking-but-wrong ItemTipo that then
+    // filters the query down to zero rows instead of leaving it unfiltered.
+    [Fact]
+    public async Task List_ignores_a_numeric_Tipo_filter_instead_of_filtering_on_an_undefined_value()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm10", "subcat10@teste.com");
+        await GrantRulesAuditorAsync("subcat10@teste.com");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "ValorParaFiltroNumerico")));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=99&facet=Familia", gmToken));
+
+        var options = await response.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>();
+        options!.Should().Contain(o => o.Valor == "ValorParaFiltroNumerico");
+    }
+
+    // Valor edge cases that pass the plain " - " substring check but still break the composed
+    // 4-segment round trip: a trailing "-" with no text after it ("Leve -"), a leading "-" with no
+    // text before it ("- Arcos"), and surrounding whitespace that would otherwise get baked into
+    // the composed string verbatim.
+    [Theory]
+    [InlineData("Leve -", "SubcatGm11a", "subcat11a@teste.com")]
+    [InlineData("- Arcos", "SubcatGm11b", "subcat11b@teste.com")]
+    [InlineData("-", "SubcatGm11c", "subcat11c@teste.com")]
+    public async Task Create_rejects_a_Valor_with_a_leading_or_trailing_hyphen(string valor, string nickname, string email)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync(nickname, email);
+        await GrantRulesAuditorAsync(email);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", valor)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_trims_a_Valor_with_surrounding_whitespace()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm12", "subcat12@teste.com");
+        await GrantRulesAuditorAsync("subcat12@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "  Arcos  ")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<SubcategoriaOptionResponse>();
+        created!.Valor.Should().Be("Arcos");
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_Valor_that_is_only_whitespace()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm13", "subcat13@teste.com");
+        await GrantRulesAuditorAsync("subcat13@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "   ")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task Delete_by_a_non_Auditor_GM_returns_403_and_by_the_Auditor_soft_deletes()
     {
