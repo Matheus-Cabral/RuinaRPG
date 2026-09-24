@@ -15,6 +15,12 @@
 else
 {
     <Section Title="Construtor de Subcategoria">
+        <TitleInfo>
+            <InfoPopup Title="Como funciona o Construtor">
+                Aqui você mantém, para cada Tipo (Arma, Armadura, Escudo, Artefato), as listas de <b>Categorias</b> e <b>Famílias</b>. No Catálogo de Itens, quando o GM marca "Item Inicial", ele escolhe uma Categoria e uma Família dessas listas. A Subcategoria do item vira então <code>Equipamento inicial - {Tipo} - {Categoria} - {Família}</code>. Os slots de escolha dos kits usam as <b>Famílias</b> para decidir quais itens o jogador pode escolher. Os valores não podem conter " - " nem vírgula. Remover um valor não altera os itens que já o usam.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
         <MudSelect T="string" @bind-Value="_subcatTipo" Label="Tipo" @bind-Value:after="LoadSubcategoriaOptionsAsync">
             <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
             <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
@@ -49,6 +55,7 @@ else
             <MudTextField T="string" @bind-Value="_newFamiliaValor" Label="Nova Família" />
             <MudButton Variant="Variant.Outlined" OnClick="@(() => AddSubcategoriaOptionAsync("Familia", _newFamiliaValor))">Adicionar</MudButton>
         </div>
+        </ChildContent>
     </Section>
 
     <Section Title="Adicionar Kit">
@@ -59,6 +66,21 @@ else
     </Section>
 
     <Section Title="Kits">
+        <TitleInfo>
+            <InfoPopup Title="Como montar um Kit">
+                <MudText>
+                    Um kit é o equipamento inicial que o jogador escolhe uma única vez na aba Posses da ficha. Os <b>Ciclos</b> são somados ao dinheiro da ficha.
+                </MudText>
+                <ul class="mt-1">
+                    <li><b>Itens fixos:</b> todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.</li>
+                    <li><b>Slots de escolha:</b> o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Tier. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.</li>
+                </ul>
+                <MudText Class="mt-2">
+                    Excluir um kit já escolhido em alguma ficha é bloqueado.
+                </MudText>
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
         @foreach (var kit in _kits)
         {
             <MudExpansionPanel Text="@kit.Nome">
@@ -139,6 +161,7 @@ else
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="mt-3" OnClick="@(() => DeleteAsync(kit.Id))">Excluir Kit</MudButton>
             </MudExpansionPanel>
         }
+        </ChildContent>
     </Section>
 }
 

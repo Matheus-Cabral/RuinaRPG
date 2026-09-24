@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.Rendering;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,22 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// </summary>
 public class AuditoriaEquipagemTests : MudBunitContext
 {
+    // Info popups' inline <MudDialog> only renders its content through a MudDialogProvider present
+    // elsewhere in the render tree (the real app has one in MainLayout) — same idiom as
+    // ChangelogDialogTests/CatalogoItemPickerTests/BancoDeMagiasFormTests. Only the two info-popup
+    // tests below need this; every pre-existing test in this file keeps using plain Render<...>().
+    private IRenderedComponent<ContainerFragment> RenderWithDialogProvider(HttpClient http)
+    {
+        Services.AddScoped(_ => http);
+        return Render(builder =>
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<AuditoriaEquipagem>(1);
+            builder.CloseComponent();
+        });
+    }
+
     private static readonly object EmptyKits = new List<object>();
 
     private static object KitWithArmaduraSlot => new
@@ -137,7 +154,9 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var cut = Render<AuditoriaEquipagem>();
         await Task.Delay(50);
 
-        var deleteButton = cut.FindComponents<MudIconButton>().Single();
+        // Scoped to the Delete icon specifically: the page also renders two InfoPopup ⓘ
+        // MudIconButtons ("Construtor de Subcategoria"/"Kits" section headers) unrelated to this option row.
+        var deleteButton = cut.FindComponents<MudIconButton>().Single(c => c.Instance.Icon == Icons.Material.Filled.Delete);
         await cut.InvokeAsync(() => deleteButton.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
         await Task.Delay(50);
 
@@ -434,6 +453,70 @@ public class AuditoriaEquipagemTests : MudBunitContext
         kitsIndex.Should().BeGreaterThan(-1);
         construtorIndex.Should().BeLessThan(adicionarKitIndex);
         construtorIndex.Should().BeLessThan(kitsIndex);
+    }
+
+    [Fact]
+    public async Task Construtor_de_Subcategoria_section_has_an_info_popup_with_the_exact_help_text()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("equipment-kits"))
+                return Json(HttpStatusCode.OK, EmptyKits);
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var cut = RenderWithDialogProvider(http);
+        await Task.Delay(50);
+
+        var infoButton = cut.Find("button[title='Como funciona o Construtor']");
+        infoButton.GetAttribute("aria-label").Should().Be("Como funciona o Construtor");
+
+        infoButton.Click();
+
+        var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
+        content.Should().Be(TextNormalization.Collapse(
+            "Aqui você mantém, para cada Tipo (Arma, Armadura, Escudo, Artefato), as listas de Categorias e Famílias. No Catálogo de Itens, quando o GM marca \"Item Inicial\", ele escolhe uma Categoria e uma Família dessas listas. A Subcategoria do item vira então Equipamento inicial - {Tipo} - {Categoria} - {Família}. Os slots de escolha dos kits usam as Famílias para decidir quais itens o jogador pode escolher. Os valores não podem conter \" - \" nem vírgula. Remover um valor não altera os itens que já o usam."));
+    }
+
+    // 5b of the info-popups brief: the "Como montar um Kit" popup belongs to the "Kits" section only
+    // — "Adicionar Kit" (which renders earlier in document order, per the reorder test above) must
+    // have no ⓘ of its own.
+    [Fact]
+    public async Task Kits_section_has_an_info_popup_and_Adicionar_Kit_does_not()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("equipment-kits"))
+                return Json(HttpStatusCode.OK, EmptyKits);
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var cut = RenderWithDialogProvider(http);
+        await Task.Delay(50);
+
+        var kitPopupButtons = cut.FindAll("button[title='Como montar um Kit']");
+        kitPopupButtons.Should().HaveCount(1);
+        kitPopupButtons[0].GetAttribute("aria-label").Should().Be("Como montar um Kit");
+
+        var adicionarKitIndex = cut.Markup.IndexOf("Adicionar Kit", StringComparison.Ordinal);
+        var kitsIndex = cut.Markup.IndexOf(">Kits<", StringComparison.Ordinal);
+        var kitPopupIndex = cut.Markup.IndexOf("Como montar um Kit", StringComparison.Ordinal);
+        adicionarKitIndex.Should().BeGreaterThan(-1);
+        kitsIndex.Should().BeGreaterThan(-1);
+        kitPopupIndex.Should().BeGreaterThan(kitsIndex, "the ⓘ belongs to the 'Kits' section, not 'Adicionar Kit'");
+
+        kitPopupButtons[0].Click();
+
+        var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
+        content.Should().Be(TextNormalization.Collapse(string.Join(" ",
+            "Um kit é o equipamento inicial que o jogador escolhe uma única vez na aba Posses da ficha. Os Ciclos são somados ao dinheiro da ficha.",
+            "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.",
+            "Slots de escolha: o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Tier. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.",
+            "Excluir um kit já escolhido em alguma ficha é bloqueado.")));
     }
 
     private record CreateSubcategoriaOptionRequestCapture(string Tipo, string Facet, string Valor);
