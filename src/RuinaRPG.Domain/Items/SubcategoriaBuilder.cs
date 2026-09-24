@@ -10,9 +10,24 @@ namespace RuinaRPG.Domain.Items;
 public static class SubcategoriaBuilder
 {
     public const string Prefix = "Equipamento inicial";
+    public const string Separator = " - ";
 
-    public static string Compose(ItemTipo tipo, string categoria, string familia) =>
-        string.Join(" - ", [Prefix, tipo.ToString(), categoria, familia]);
+    public static string Compose(ItemTipo tipo, string categoria, string familia)
+    {
+        if (string.IsNullOrWhiteSpace(categoria))
+            throw new ArgumentException("Categoria cannot be null or whitespace.", nameof(categoria));
+
+        if (string.IsNullOrWhiteSpace(familia))
+            throw new ArgumentException("Família cannot be null or whitespace.", nameof(familia));
+
+        if (categoria.Contains(Separator))
+            throw new ArgumentException($"Categoria cannot contain the separator '{Separator}'.", nameof(categoria));
+
+        if (familia.Contains(Separator))
+            throw new ArgumentException($"Família cannot contain the separator '{Separator}'.", nameof(familia));
+
+        return string.Join(Separator, [Prefix, tipo.ToString(), categoria, familia]);
+    }
 
     public static bool TryParse(string? subcategoria, out ItemTipo tipo, out string categoria, out string familia)
     {
@@ -23,8 +38,12 @@ public static class SubcategoriaBuilder
         if (string.IsNullOrEmpty(subcategoria))
             return false;
 
-        var parts = subcategoria.Split(" - ");
+        var parts = subcategoria.Split(Separator);
         if (parts.Length != 4 || parts[0] != Prefix)
+            return false;
+
+        // Reject numeric tipo strings: must be a defined enum name, not numeric
+        if (char.IsDigit(parts[1][0]) || parts[1][0] == '-')
             return false;
 
         if (!Enum.TryParse<ItemTipo>(parts[1], out tipo))

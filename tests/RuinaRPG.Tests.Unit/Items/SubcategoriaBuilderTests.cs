@@ -38,4 +38,57 @@ public class SubcategoriaBuilderTests
 
         ok.Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("Equipamento inicial - 99 - X - Y")]
+    [InlineData("Equipamento inicial - 2 - X - Y")]
+    [InlineData("Equipamento inicial - -5 - X - Y")]
+    public void TryParse_rejects_numeric_Tipo_strings(string input)
+    {
+        var ok = SubcategoriaBuilder.TryParse(input, out _, out _, out _);
+
+        ok.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Compose_throws_ArgumentException_when_categoria_contains_separator()
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, "Distância - Longa", "Arcos");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("categoria");
+    }
+
+    [Fact]
+    public void Compose_throws_ArgumentException_when_familia_contains_separator()
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, "Distância", "Arco - Longo");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("familia");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Compose_throws_ArgumentException_when_categoria_is_null_or_whitespace(string? input)
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, input!, "Arcos");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("categoria");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Compose_throws_ArgumentException_when_familia_is_null_or_whitespace(string? input)
+    {
+        var act = () => SubcategoriaBuilder.Compose(ItemTipo.Arma, "Distância", input!);
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("familia");
+    }
 }
