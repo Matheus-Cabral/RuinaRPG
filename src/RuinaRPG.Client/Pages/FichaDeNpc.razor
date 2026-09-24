@@ -243,7 +243,16 @@
                         <tr>
                             <td>@PericiaDisplay.Label(skill.Pericia)</td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
-                            <td>@skill.Modificador</td>
+                            <td>
+                                @if (skill.ContaHistorico)
+                                {
+                                    <b title="Inclui bônus de Histórico">@skill.Modificador</b>
+                                }
+                                else
+                                {
+                                    @skill.Modificador
+                                }
+                            </td>
                             <td>
                                 <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
                                     <MudSelectItem Value="@("")">—</MudSelectItem>
