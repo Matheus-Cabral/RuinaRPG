@@ -326,4 +326,45 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task Choose_a_kit_with_an_Armadura_choice_slot_updates_the_target_armor_slot()
+    {
+        // Mirrors CharacterEquipagemControllerTests's identical test — the Npc-sheet equivalent of
+        // the same AddGrant Armadura case, using this file's Npc sheet-creation helper and route shape.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemNpcArmorGm1", "equipagemnpcarmor1@teste.com");
+        await GrantRulesAuditorAsync("equipagemnpcarmor1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var meResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
+        var gmId = (await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id;
+        Guid armaduraId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var armadura = new RuinaRPG.Infrastructure.Items.Armadura
+            {
+                Id = Guid.NewGuid(), GmId = Guid.Parse(gmId), Nome = "Armadura de Teste F Npc", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro",
+                DurabilidadeMaxima = 8, Peso = 1, Preco = 0,
+            };
+            db.Add(armadura);
+            await db.SaveChangesAsync();
+            armaduraId = armadura.Id;
+        }
+
+        var kitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
+            new CreateEquipmentKitRequest("Kit Npc com Armadura", "D", 0, [],
+                [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", ["Couro"], null, 1, null, null, null, "Superior")])));
+        var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
+
+        var chooseResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose", gmToken,
+            new ChooseEquipmentKitRequest(kit!.Id, [new ChoiceSlotSelectionRequest(kit.ChoiceSlots.Single().Id, armaduraId.ToString())])));
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var slotsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/armor-slots", gmToken));
+        var slots = await slotsResponse.Content.ReadFromJsonAsync<List<NpcArmorSlotResponse>>();
+        var superior = slots!.Single(s => s.Slot == "Superior");
+        superior.Nome.Should().Be("Armadura de Teste F Npc");
+        superior.DurabilidadeAtual.Should().Be(8);
+    }
 }

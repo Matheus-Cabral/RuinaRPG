@@ -61,7 +61,7 @@ public class CharacterEquipagemController(RuinaRpgDbContext db, EquipmentKitGran
             return BadRequest(artifactCapError);
 
         foreach (var grant in plan.Grants)
-            AddGrant(sheetId, grant);
+            await AddGrantAsync(sheetId, grant);
 
         foreach (var itemId in plan.Grants.Select(g => g.ItemId).Distinct())
             await grantService.UpsertCampaignAttachmentAsync(sheet.CampaignId, itemId);
@@ -73,12 +73,17 @@ public class CharacterEquipagemController(RuinaRpgDbContext db, EquipmentKitGran
         return NoContent();
     }
 
-    private void AddGrant(Guid sheetId, EquipmentGrantPlanItem grant)
+    private async Task AddGrantAsync(Guid sheetId, EquipmentGrantPlanItem grant)
     {
         switch (grant.Tipo)
         {
             case RuinaRPG.Domain.Items.ItemTipo.Arma:
                 db.CharacterWeapons.Add(new CharacterWeapon { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
+                break;
+            case RuinaRPG.Domain.Items.ItemTipo.Armadura:
+                var armorSlot = await db.CharacterArmorSlots.SingleAsync(s => s.CharacterSheetId == sheetId && s.Slot == grant.ArmorSlot);
+                armorSlot.ItemId = grant.ItemId;
+                armorSlot.DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0;
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.Escudo:
                 db.CharacterShields.Add(new CharacterShield { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });

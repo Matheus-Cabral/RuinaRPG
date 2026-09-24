@@ -59,7 +59,7 @@ public class NpcEquipagemController(RuinaRpgDbContext db, EquipmentKitGrantServi
             return BadRequest(artifactCapError);
 
         foreach (var grant in plan.Grants)
-            AddGrant(sheetId, grant);
+            await AddGrantAsync(sheetId, grant);
 
         // NpcSheet has no direct CampaignId column — an NPC only has a campaign in the specific
         // context of "the campaign where it's attached and its current OwnerId is a member",
@@ -82,12 +82,17 @@ public class NpcEquipagemController(RuinaRpgDbContext db, EquipmentKitGrantServi
         return NoContent();
     }
 
-    private void AddGrant(Guid sheetId, EquipmentGrantPlanItem grant)
+    private async Task AddGrantAsync(Guid sheetId, EquipmentGrantPlanItem grant)
     {
         switch (grant.Tipo)
         {
             case RuinaRPG.Domain.Items.ItemTipo.Arma:
                 db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
+                break;
+            case RuinaRPG.Domain.Items.ItemTipo.Armadura:
+                var armorSlot = await db.NpcArmorSlots.SingleAsync(s => s.NpcSheetId == sheetId && s.Slot == grant.ArmorSlot);
+                armorSlot.ItemId = grant.ItemId;
+                armorSlot.DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0;
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.Escudo:
                 db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
