@@ -28,7 +28,8 @@
     </MudDrawer>
 
     <MudMainContent Class="content">
-        <MudContainer MaxWidth="MaxWidth.Large">
+        @if (_isLandingRoute)
+        {
             @if (_mustChangePassword)
             {
                 <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
@@ -37,13 +38,27 @@
             {
                 @Body
             }
-        </MudContainer>
+        }
+        else
+        {
+            <MudContainer MaxWidth="MaxWidth.Large">
+                @if (_mustChangePassword)
+                {
+                    <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
+                }
+                else
+                {
+                    @Body
+                }
+            </MudContainer>
+        }
     </MudMainContent>
 </MudLayout>
 
 @code {
     private bool _drawerOpen = true;
     private bool _mustChangePassword;
+    private bool _isLandingRoute;
 
     private void CloseDrawer() => _drawerOpen = false;
 
@@ -52,6 +67,7 @@
     // pre-MudBlazor NavMenu had. Above Breakpoint.Md MudDrawer stays visible regardless of Open.
     protected override async Task OnInitializedAsync()
     {
+        _isLandingRoute = IsLandingRoute(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
         await RefreshMustChangePasswordAsync();
     }
@@ -59,9 +75,15 @@
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _drawerOpen = false;
+        _isLandingRoute = IsLandingRoute(e.Location);
         await RefreshMustChangePasswordAsync();
         await InvokeAsync(StateHasChanged);
     }
+
+    // Landing ("/") has a deliberately full-bleed hero (Landing.razor.css, Login.razor.css refers
+    // to it too) — it's the one route the MudContainer MaxWidth.Large added below must not wrap.
+    private static bool IsLandingRoute(string uri) =>
+        new Uri(uri).AbsolutePath.TrimStart('/').Length == 0;
 
     // Same "hit auth/me, treat a failed response as false" pattern as Painel/RulesAuditorNavLinks
     // — an anonymous caller (Login/Cadastro/Landing, all routed through this same layout) gets a

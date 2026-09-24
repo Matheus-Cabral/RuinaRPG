@@ -12,6 +12,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Layout;
@@ -61,14 +62,20 @@ public class MainLayoutTests : MudBunitContext
     // Item 4 of the "ajustes-ui-historico" UI-tweaks brief: cap the desktop page body at a centered
     // 1280px (MudBlazor's MaxWidth.Large) so it isn't full-bleed wide on large monitors — smaller
     // screens are unaffected since MudContainer only ever narrows, never widens, past its MaxWidth.
+    //
+    // Fix round 1: Landing ("/") has a deliberately full-bleed hero (Landing.razor.css ~line 21,
+    // referenced from Login.razor.css ~line 4 too) — it's the one route excluded from the
+    // MudContainer. Every non-root route still gets MaxWidth.Large, so these two facts now
+    // navigate to a non-root path first; the Landing-specific behavior gets its own facts below.
     [Fact]
-    public void Wraps_Body_in_a_MudContainer_with_MaxWidth_Large()
+    public void Wraps_Body_in_a_MudContainer_with_MaxWidth_Large_on_a_non_Landing_route()
     {
         var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, false)),
         });
         RegisterCommonServices(http);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("painel");
 
         var cut = RenderLayout();
 
@@ -78,19 +85,75 @@ public class MainLayoutTests : MudBunitContext
     }
 
     [Fact]
-    public void Wraps_the_forced_password_form_in_the_same_MudContainer()
+    public void Wraps_the_forced_password_form_in_the_same_MudContainer_on_a_non_Landing_route()
     {
         var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, true)),
         });
         RegisterCommonServices(http);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("painel");
 
         var cut = RenderLayout();
 
         var container = cut.Find(".mud-container");
         container.ClassList.Should().Contain("mud-container-maxwidth-lg");
         container.TextContent.Should().Contain("Defina uma nova senha");
+    }
+
+    [Fact]
+    public void Does_not_wrap_Body_in_a_MudContainer_on_the_Landing_route()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, false)),
+        });
+        RegisterCommonServices(http);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("");
+
+        var cut = RenderLayout();
+
+        cut.FindAll(".mud-container").Should().BeEmpty();
+        cut.Markup.Should().Contain("body-marker");
+    }
+
+    [Fact]
+    public void Does_not_wrap_the_forced_password_form_in_a_MudContainer_on_the_Landing_route()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, true)),
+        });
+        RegisterCommonServices(http);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("");
+
+        var cut = RenderLayout();
+
+        cut.FindAll(".mud-container").Should().BeEmpty();
+        cut.Markup.Should().Contain("Defina uma nova senha");
+    }
+
+    [Fact]
+    public async Task The_MudContainer_exemption_updates_on_navigation_without_remounting()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, false)),
+        });
+        RegisterCommonServices(http);
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("");
+
+        var cut = RenderLayout();
+        cut.FindAll(".mud-container").Should().BeEmpty();
+
+        await cut.InvokeAsync(() => navigation.NavigateTo("painel"));
+
+        cut.Find(".mud-container").ClassList.Should().Contain("mud-container-maxwidth-lg");
+
+        await cut.InvokeAsync(() => navigation.NavigateTo(""));
+
+        cut.FindAll(".mud-container").Should().BeEmpty();
     }
 
     [Fact]
