@@ -13,35 +13,35 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="0">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                        OnClick="@(() => _drawerOpen = !_drawerOpen)" title="Abrir menu" aria-label="Abrir menu de navegação" />
-        <img src="favicon.png" alt="Ruína RPG" class="rr-logo ml-2" />
-        <MudText Typo="Typo.h6" Class="ml-2">Ruína RPG</MudText>
-        <MudSpacer />
-        <ThemeToggle />
-    </MudAppBar>
-
-    <MudDrawer @bind-Open="_drawerOpen" Breakpoint="Breakpoint.Md" Elevation="0" ClipMode="DrawerClipMode.Always">
-        <NavMenu OnLinkClicked="CloseDrawer" />
-    </MudDrawer>
-
-    <MudMainContent Class="content">
-        @if (_isLandingRoute)
-        {
-            @if (_mustChangePassword)
+@* MudBreakpointProvider is transparent to the DOM (just a CascadingValue) — it exists purely so
+   this layout can know the current breakpoint itself, independent of MudDrawer's own internal
+   breakpoint handling below, in order to hide the ☰ button on desktop. *@
+<MudBreakpointProvider OnBreakpointChanged="OnBreakpointChanged">
+    <MudLayout>
+        <MudAppBar Elevation="0">
+            @if (!_isDesktop)
             {
-                <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                                OnClick="@(() => _drawerOpen = !_drawerOpen)" title="Abrir menu" aria-label="Abrir menu de navegação" />
             }
-            else
+            <img src="favicon.png" alt="Ruína RPG" class="rr-logo ml-2" />
+            <MudText Typo="Typo.h6" Class="ml-2">Ruína RPG</MudText>
+            <MudSpacer />
+            <ThemeToggle />
+        </MudAppBar>
+
+        @* Variant stays "Mini" unconditionally — MudBlazor 9.9.0's MudDrawer already downgrades a
+           Mini drawer to behave exactly like Temporary below its own Breakpoint, so mobile keeps
+           today's toggle-by-☰/overlay/close-on-navigation behavior for free. Above Breakpoint.Md it
+           docks collapsed (icons only) and OpenMiniOnHover expands it on hover. *@
+        <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Mini" OpenMiniOnHover="true"
+                    Breakpoint="Breakpoint.Md" Elevation="0" ClipMode="DrawerClipMode.Always">
+            <NavMenu OnLinkClicked="CloseDrawer" />
+        </MudDrawer>
+
+        <MudMainContent Class="content">
+            @if (_isLandingRoute)
             {
-                @Body
-            }
-        }
-        else
-        {
-            <MudContainer MaxWidth="MaxWidth.Large">
                 @if (_mustChangePassword)
                 {
                     <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
@@ -50,21 +50,46 @@
                 {
                     @Body
                 }
-            </MudContainer>
-        }
-    </MudMainContent>
-</MudLayout>
+            }
+            else
+            {
+                <MudContainer MaxWidth="MaxWidth.Large">
+                    @if (_mustChangePassword)
+                    {
+                        <TrocaSenhaObrigatoria OnSenhaTrocada="HandleSenhaTrocada" />
+                    }
+                    else
+                    {
+                        @Body
+                    }
+                </MudContainer>
+            }
+        </MudMainContent>
+    </MudLayout>
+</MudBreakpointProvider>
 
 @code {
-    private bool _drawerOpen = true;
+    // false = collapsed mini drawer on desktop (icons only, hover-expands) / closed temporary
+    // drawer on mobile — the safe starting point for both, before the first real breakpoint report
+    // and any explicit ☰ toggle or hover.
+    private bool _drawerOpen;
     private bool _mustChangePassword;
     private bool _isLandingRoute;
+    private bool _isDesktop;
 
     private void CloseDrawer() => _drawerOpen = false;
 
+    private Task OnBreakpointChanged(Breakpoint breakpoint)
+    {
+        _isDesktop = breakpoint is Breakpoint.Md or Breakpoint.Lg or Breakpoint.Xl or Breakpoint.Xxl;
+        return Task.CompletedTask;
+    }
+
     // MudNavLink ignores OnClick whenever Href is set, so nav clicks can't tell the layout to close
     // the drawer. Close it on every navigation instead — the same unconditional behaviour the
-    // pre-MudBlazor NavMenu had. Above Breakpoint.Md MudDrawer stays visible regardless of Open.
+    // pre-MudBlazor NavMenu had. This only applies on mobile: above Breakpoint.Md the drawer is a
+    // docked Mini drawer whose Open state is driven by pointer hover, not navigation — forcing it
+    // closed here would fight that hover behaviour every time a mini-drawer link is clicked.
     protected override async Task OnInitializedAsync()
     {
         _isLandingRoute = IsLandingRoute(Navigation.Uri);
@@ -74,7 +99,10 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _drawerOpen = false;
+        if (!_isDesktop)
+        {
+            _drawerOpen = false;
+        }
         _isLandingRoute = IsLandingRoute(e.Location);
         await RefreshMustChangePasswordAsync();
         await InvokeAsync(StateHasChanged);

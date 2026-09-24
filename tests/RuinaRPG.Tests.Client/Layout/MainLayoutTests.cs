@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
+using MudBlazor.Services;
 using RuinaRPG.Client.Layout;
 using RuinaRPG.Client.Services;
 using RuinaRPG.Contracts.Auth;
@@ -20,6 +22,25 @@ namespace RuinaRPG.Tests.Client.Layout;
 public class MainLayoutTests : MudBunitContext
 {
     private const string BodyMarkup = "<div id=\"body-marker\">BODY</div>";
+    private const string DrawerSelector = ".mud-drawer";
+    private const string HamburgerSelector = "button[aria-label='Abrir menu de navegação']";
+
+    // MudBlazor's real IBrowserViewportService talks to a JS ResizeObserver bUnit's JSInterop
+    // (even in Loose mode) can't meaningfully drive — see FakeBrowserViewportService's own remarks.
+    // Registering this fake after RegisterCommonServices (so it wins DI resolution over
+    // MudBunitContext's AddMudServices()) lets a test declare the viewport up front; MainLayout's
+    // own MudBreakpointProvider and the MudDrawer it renders both resolve the same instance.
+    private FakeBrowserViewportService UseViewport(Breakpoint breakpoint)
+    {
+        var viewport = new FakeBrowserViewportService { CurrentBreakpoint = breakpoint };
+        Services.AddScoped<IBrowserViewportService>(_ => viewport);
+        return viewport;
+    }
+
+    private HttpClient DefaultHttp() => FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = JsonContent.Create(new MeResponse("u1", "Gm1", "GM", false, null, false)),
+    });
 
     private void RegisterCommonServices(HttpClient http)
     {
@@ -197,5 +218,86 @@ public class MainLayoutTests : MudBunitContext
 
         cut.Markup.Should().Contain("body-marker");
         cut.Markup.Should().NotContain("Defina uma nova senha");
+    }
+
+    // Task brief "desktop mini drawer": at/above Breakpoint.Md the drawer collapses to icons-only
+    // and expands on hover (MudDrawer Variant="Mini" OpenMiniOnHover="true"), and the AppBar's ☰
+    // button — meaningless once the drawer is always visible — is hidden. Variant itself is never
+    // toggled in C#: MudBlazor 9.9.0's MudDrawer natively downgrades a Mini drawer to behave like
+    // Temporary below its own Breakpoint parameter (verified in the decompiled MudDrawer source:
+    // EffectiveVariant/ShouldOpenDrawer/ShouldCloseDrawer/OnPointerEnterAsync), so these assertions
+    // read the rendered "mud-drawer-mini"/"mud-drawer-temporary" class — the actually-observable
+    // behavior — rather than the static Variant parameter, which never changes.
+    [Fact]
+    public async Task Desktop_viewport_renders_a_mini_drawer_and_hides_the_hamburger_button()
+    {
+        RegisterCommonServices(DefaultHttp());
+        UseViewport(Breakpoint.Lg);
+
+        var cut = RenderLayout();
+        await Task.Delay(10);
+
+        var drawer = cut.Find(DrawerSelector);
+        drawer.ClassList.Should().Contain("mud-drawer-mini");
+        drawer.ClassList.Should().NotContain("mud-drawer-temporary");
+        cut.FindComponent<MudDrawer>().Instance.OpenMiniOnHover.Should().BeTrue();
+        cut.FindAll(HamburgerSelector).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Mobile_viewport_renders_a_temporary_drawer_and_shows_the_hamburger_button()
+    {
+        RegisterCommonServices(DefaultHttp());
+        UseViewport(Breakpoint.Sm);
+
+        var cut = RenderLayout();
+        await Task.Delay(10);
+
+        cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer-temporary");
+        cut.FindAll(HamburgerSelector).Should().HaveCount(1);
+    }
+
+    // Preserves "today's behavior" on mobile exactly, per the task brief: toggled open by the ☰
+    // button, closed again on every navigation (MainLayout's own LocationChanged handler).
+    [Fact]
+    public async Task Mobile_drawer_still_closes_on_every_navigation()
+    {
+        RegisterCommonServices(DefaultHttp());
+        UseViewport(Breakpoint.Sm);
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("painel");
+
+        var cut = RenderLayout();
+        await Task.Delay(10);
+
+        cut.Find(HamburgerSelector).Click();
+        cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer--open");
+
+        await cut.InvokeAsync(() => navigation.NavigateTo("painel/jogadores"));
+
+        cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer--closed");
+    }
+
+    // The concern flagged in the task brief: MainLayout's own "close on every navigation" logic
+    // (needed for mobile, since MudNavLink only notifies MudDrawer of same-tab <a> clicks, missing
+    // e.g. browser back/forward) must not stomp on the desktop mini drawer's hover-driven Open
+    // state. It's guarded to a no-op on desktop instead.
+    [Fact]
+    public async Task Desktop_drawer_expanded_by_hover_is_not_closed_by_a_navigation()
+    {
+        RegisterCommonServices(DefaultHttp());
+        UseViewport(Breakpoint.Lg);
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("painel");
+
+        var cut = RenderLayout();
+        await Task.Delay(10);
+
+        cut.Find(DrawerSelector).PointerEnter();
+        cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer--open");
+
+        await cut.InvokeAsync(() => navigation.NavigateTo("painel/jogadores"));
+
+        cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer--open");
     }
 }
