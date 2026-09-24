@@ -349,6 +349,40 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.ItemGeral && g.Qtd == 1);
     }
 
+    // Mirrors ResolveEligibleOptionsAsync_parsed_Familia_match_does_not_cross_Tipos above, but for
+    // BuildPlanAsync's conditional-bonus check: the selected item's Subcategoria parses to a
+    // DIFFERENT Tipo than the slot's own (Arma slot, but the item is mis-composed as an "Armadura"
+    // string) whose parsed Família happens to equal BonusSubcategoria. Matches() itself already
+    // guards ResolveEligibleOptionsAsync against this cross-Tipo case, but with SubcategoriasCsv
+    // left null (matches any Subcategoria unconditionally) the item is still an eligible choice —
+    // so only the bonus-match expression's own Tipo gate can stop the bonus from firing here.
+    [Fact]
+    public async Task BuildPlanAsync_does_not_grant_the_conditional_bonus_when_the_parsed_Familia_match_crosses_Tipos()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmBonusFamiliaCrossTipo");
+        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.Add(armaMisComposta);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot
+        {
+            Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Qtd = 1,
+            BonusSubcategoria = "Couro", BonusNome = "Não Deveria Ser Concedido", BonusQtd = 1,
+        };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), armaMisComposta.Id.ToString())]);
+
+        error.Should().BeNull();
+        plan!.Grants.Should().ContainSingle();
+        plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.Arma && g.ItemId == armaMisComposta.Id);
+        plan.Grants.Should().NotContain(g => g.Tipo == ItemTipo.ItemGeral);
+    }
+
     [Fact]
     public async Task UpsertCampaignAttachmentAsync_creates_a_public_attachment_when_none_exists()
     {

@@ -115,7 +115,7 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
             grants.Add(new EquipmentGrantPlanItem(slot.Tipo, selectedItemId, slot.Qtd, selectedDurabilidade, slot.ArmorSlot));
 
             var bonusMatches = slot.BonusNome is not null && (selectedSubcategoria == slot.BonusSubcategoria
-                || (SubcategoriaBuilder.TryParse(selectedSubcategoria, out _, out _, out var selectedFamilia) && selectedFamilia == slot.BonusSubcategoria));
+                || (SubcategoriaBuilder.TryParse(selectedSubcategoria, out var selectedTipo, out _, out var selectedFamilia) && selectedTipo == slot.Tipo && selectedFamilia == slot.BonusSubcategoria));
             if (bonusMatches)
             {
                 var bonusResolved = await ResolveOrCreateFixedItemAsync(
