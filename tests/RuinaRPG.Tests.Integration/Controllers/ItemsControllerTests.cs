@@ -581,4 +581,85 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body!.ImageUrl.Should().Be(uploadBody.Url);
         body.ImageUrl.Should().StartWith("/images/");
     }
+
+    private async Task<HttpResponseMessage> PutItemAsync(string token, string id, UpdateItemRequest request)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{id}") { Content = JsonContent.Create(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await _client.SendAsync(message);
+    }
+
+    private async Task<List<ItemResponse>> ListItemsAsync(string token)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(message);
+        return (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
+    }
+
+    [Fact]
+    public async Task Create_and_Update_persist_Subcategoria_for_Armadura()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemsSubcatGmArmadura", "itemssubcatarmadura@teste.com");
+
+        var createResponse = await PostItemAsync(token,
+            MinimalArmadura("Peitoral de Placas") with { Subcategoria = "Equipamento inicial - Armadura - Leve - Couro" });
+        var armadura = await createResponse.Content.ReadFromJsonAsync<ItemResponse>();
+        armadura!.Subcategoria.Should().Be("Equipamento inicial - Armadura - Leve - Couro");
+
+        var update = new UpdateItemRequest("Peitoral de Placas", 8m, 100, null,
+            "Equipamento inicial - Armadura - Pesada - Placas", "Placas forjadas em aço temperado.",
+            null, null, null, null, null, null, null, null, 15,
+            "Pesada", 5, 2, 1, null, 12,
+            null, null, null, null, null);
+        var updateResponse = await PutItemAsync(token, armadura.Id, update);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var items = await ListItemsAsync(token);
+        items.Single(i => i.Id == armadura.Id).Subcategoria.Should().Be("Equipamento inicial - Armadura - Pesada - Placas");
+    }
+
+    [Fact]
+    public async Task Create_and_Update_persist_Subcategoria_for_Escudo()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemsSubcatGmEscudo", "itemssubcatescudo@teste.com");
+
+        var createResponse = await PostItemAsync(token,
+            MinimalEscudo("Broquel") with { Subcategoria = "Equipamento inicial - Escudo - Leve - Madeira" });
+        var escudo = await createResponse.Content.ReadFromJsonAsync<ItemResponse>();
+        escudo!.Subcategoria.Should().Be("Equipamento inicial - Escudo - Leve - Madeira");
+
+        var update = new UpdateItemRequest("Broquel", 4m, 60, null,
+            "Equipamento inicial - Escudo - Pesada - Aço", "Um pequeno broquel de madeira.",
+            null, null, null, null, null, null, null, null, 20,
+            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            3, null, null, null, null);
+        var updateResponse = await PutItemAsync(token, escudo.Id, update);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var items = await ListItemsAsync(token);
+        items.Single(i => i.Id == escudo.Id).Subcategoria.Should().Be("Equipamento inicial - Escudo - Pesada - Aço");
+    }
+
+    [Fact]
+    public async Task Create_and_Update_persist_Subcategoria_for_Artefato()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemsSubcatGmArtefato", "itemssubcatartefato@teste.com");
+
+        var createResponse = await PostItemAsync(token,
+            MinimalArtefato("Anel do Vigor") with { Subcategoria = "Equipamento inicial - Artefato - Anel - Atributo" });
+        var artefato = await createResponse.Content.ReadFromJsonAsync<ItemResponse>();
+        artefato!.Subcategoria.Should().Be("Equipamento inicial - Artefato - Anel - Atributo");
+
+        var update = new UpdateItemRequest("Anel do Vigor", 0.2m, 200, null,
+            "Equipamento inicial - Artefato - Amuleto - Atributo", "Um anel gravado com runas antigas.",
+            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, "Atributo", "Força", 2, null);
+        var updateResponse = await PutItemAsync(token, artefato.Id, update);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var items = await ListItemsAsync(token);
+        items.Single(i => i.Id == artefato.Id).Subcategoria.Should().Be("Equipamento inicial - Artefato - Amuleto - Atributo");
+    }
 }

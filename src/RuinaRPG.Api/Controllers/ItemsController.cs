@@ -52,6 +52,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             ItemTipo.Armadura => new Armadura
             {
                 Nome = request.Nome,
+                Subcategoria = request.Subcategoria,
                 Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
                 Defesa = request.Defesa,
                 RF = request.RF,
@@ -63,6 +64,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             ItemTipo.Escudo => new Escudo
             {
                 Nome = request.Nome,
+                Subcategoria = request.Subcategoria,
                 Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
                 BonusDefesa = request.BonusDefesa,
                 Penalidade = request.Penalidade,
@@ -72,6 +74,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             ItemTipo.Artefato => new Artefato
             {
                 Nome = request.Nome,
+                Subcategoria = request.Subcategoria,
                 TipoDeAlvo = ParseEnum<TipoDeAlvo>(request.TipoDeAlvo),
                 Alvo = request.Alvo,
                 Valor = request.Valor
@@ -172,13 +175,13 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 a.Subcategoria, a.Descricao, a.Tier?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
                 a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                null, ar.Descricao, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,
+                ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,
                 ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null),
             Escudo e => new ItemResponse(e.Id.ToString(), "Escudo", e.Nome, e.Peso, e.Preco, imageUrl,
-                null, e.Descricao, null, null, null, null, null, null, null, null, e.DurabilidadeMaxima,
+                e.Subcategoria, e.Descricao, null, null, null, null, null, null, null, null, e.DurabilidadeMaxima,
                 e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null),
             Artefato ar => new ItemResponse(ar.Id.ToString(), "Artefato", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                null, ar.Descricao, null, null, null, null, null, null, null, null, null,
+                ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
         };
@@ -224,6 +227,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 a.DurabilidadeMaxima = request.DurabilidadeMaxima;
                 break;
             case Armadura ar:
+                ar.Subcategoria = request.Subcategoria;
                 ar.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
                 ar.Defesa = request.Defesa;
                 ar.RF = request.RF;
@@ -233,6 +237,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 ar.DurabilidadeMaxima = request.DurabilidadeMaxima;
                 break;
             case Escudo e:
+                e.Subcategoria = request.Subcategoria;
                 e.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
                 e.BonusDefesa = request.BonusDefesa;
                 e.Penalidade = request.Penalidade;
@@ -240,6 +245,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 e.DurabilidadeMaxima = request.DurabilidadeMaxima;
                 break;
             case Artefato art:
+                art.Subcategoria = request.Subcategoria;
                 art.TipoDeAlvo = ParseEnum<TipoDeAlvo>(request.TipoDeAlvo);
                 art.Alvo = request.Alvo;
                 art.Valor = request.Valor;
