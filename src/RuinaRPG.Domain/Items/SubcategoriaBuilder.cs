@@ -42,11 +42,8 @@ public static class SubcategoriaBuilder
         if (parts.Length != 4 || parts[0] != Prefix)
             return false;
 
-        // Reject numeric tipo strings: must be a defined enum name, not numeric
-        if (char.IsDigit(parts[1][0]) || parts[1][0] == '-')
-            return false;
-
-        if (!Enum.TryParse<ItemTipo>(parts[1], out tipo))
+        // Tipo segment must be an exact (ordinal, case-sensitive) match to a defined ItemTipo name
+        if (!Enum.TryParse<ItemTipo>(parts[1], out tipo) || !Enum.IsDefined(tipo) || tipo.ToString() != parts[1])
             return false;
 
         categoria = parts[2];

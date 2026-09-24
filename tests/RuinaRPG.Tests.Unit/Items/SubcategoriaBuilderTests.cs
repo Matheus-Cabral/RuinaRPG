@@ -43,7 +43,12 @@ public class SubcategoriaBuilderTests
     [InlineData("Equipamento inicial - 99 - X - Y")]
     [InlineData("Equipamento inicial - 2 - X - Y")]
     [InlineData("Equipamento inicial - -5 - X - Y")]
-    public void TryParse_rejects_numeric_Tipo_strings(string input)
+    [InlineData("Equipamento inicial - +5 - X - Y")]
+    [InlineData("Equipamento inicial -  5 - X - Y")]
+    [InlineData("Equipamento inicial - +0 - X - Y")]
+    [InlineData("Equipamento inicial - Arma, Escudo - X - Y")]
+    [InlineData("Equipamento inicial - arma - X - Y")]
+    public void TryParse_rejects_non_exact_Tipo_strings(string input)
     {
         var ok = SubcategoriaBuilder.TryParse(input, out _, out _, out _);
 
