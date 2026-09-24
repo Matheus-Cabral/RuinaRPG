@@ -292,19 +292,20 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
     }
 
     // A parsed-Família match must not cross Tipos: an Arma slot whose allowed Família list
-    // contains "Couro" must not offer a constructor-built item whose composed Subcategoria
-    // claims Tipo "Armadura" (Família segment "Couro") even though the raw Família string
-    // matches — the per-Tipo query naturally excludes the Armadura row from an Arma slot's
-    // candidate set, but Matches() itself must also gate on tipo == slot.Tipo, not just on
-    // familia equality, so this proves the tipo check specifically.
+    // contains "Couro" must not offer an Arma row whose Subcategoria is mis-composed to parse
+    // as Tipo "Armadura" (Família segment "Couro") even though the raw Família string matches.
+    // The row is an Arma (so it IS in the Arma-slot candidate set via the per-Tipo query — this
+    // is not excluded for free by the switch dispatch), so only Matches()'s own
+    // tipo == slot.Tipo gate can exclude it. Verified load-bearing: removing that gate makes
+    // this test FAIL (see task-8-report.md, "Fix round 1").
     [Fact]
     public async Task ResolveEligibleOptionsAsync_parsed_Familia_match_does_not_cross_Tipos()
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmFamiliaCrossTipo");
-        var armaduraDeCouro = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura de Couro", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Peso = 1, Preco = 0 };
-        db.Add(armaduraDeCouro);
+        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.Add(armaMisComposta);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
         var armaSlot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, SubcategoriasCsv = "Couro", Qtd = 1 };
