@@ -12,6 +12,12 @@
     margin-bottom: var(--rr-space-3);
 }
 
+.rr-section-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--rr-space-1);
+}
+
 .rr-section-root ::deep .rr-section-title {
     font-family: var(--rr-font-heading);
 }
