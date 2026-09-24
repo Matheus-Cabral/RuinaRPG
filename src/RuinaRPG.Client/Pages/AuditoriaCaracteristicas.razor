@@ -21,7 +21,12 @@ else
             <MudSelectItem Value="@("Negativa")">Negativa</MudSelectItem>
         </MudSelect>
         <MudNumericField T="int" @bind-Value="_newForm.Custo" Label="Custo" />
-        <MudCheckBox T="bool" @bind-Value="_newForm.RequerEspecificacao" Label="Exige Especificação?" />
+        <div class="d-flex align-center" style="gap:4px">
+            <MudCheckBox T="bool" @bind-Value="_newForm.RequerEspecificacao" Label="Exige Especificação?" />
+            <InfoPopup Title="O que é Especificação">
+                Marque quando a característica pede que o jogador escolha ou nomeie algo ao recebê-la. Exemplos: qual sentido em <i>Sentidos Aguçados</i>, qual substância em <i>Alergia</i>. Nesse caso, a ficha passa a exigir o campo de texto <b>Especificação</b> para essa característica. Deixe desmarcado para características que valem sozinhas.
+            </InfoPopup>
+        </div>
         <MudTextField T="string" @bind-Value="_newForm.Descricao" Label="Descrição" Lines="3" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
     </Section>
