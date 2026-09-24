@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Items;
@@ -8,7 +9,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Rules;
 
 public record EquipmentGrantPlan(List<EquipmentGrantPlanItem> Grants, int Ciclos);
-public record EquipmentGrantPlanItem(ItemTipo Tipo, Guid ItemId, int Qtd, int? DurabilidadeMaxima);
+public record EquipmentGrantPlanItem(ItemTipo Tipo, Guid ItemId, int Qtd, int? DurabilidadeMaxima, ArmorSlotType? ArmorSlot);
 
 /// <summary>
 /// Resolves an EquipmentKit's fixed items and choice slots against one specific GM's own Item
@@ -22,16 +23,44 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
 {
     public async Task<List<EquipmentKitEligibleItemResponse>> ResolveEligibleOptionsAsync(EquipmentKitChoiceSlot slot, Guid gmId)
     {
-        var query = db.Set<Arma>().Where(a => a.GmId == gmId);
+        var allowedValues = slot.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
 
-        var subcategorias = slot.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries);
-        if (subcategorias is { Length: > 0 })
-            query = query.Where(a => subcategorias.Contains(a.Subcategoria));
-        if (slot.Tier is not null)
-            query = query.Where(a => a.Tier == slot.Tier);
+        bool Matches(string? itemSubcategoria)
+        {
+            if (allowedValues.Length == 0)
+                return true;
+            if (allowedValues.Contains(itemSubcategoria))
+                return true; // legacy: raw Subcategoria string equals one of the stored values
+            if (SubcategoriaBuilder.TryParse(itemSubcategoria, out var tipo, out _, out var familia) && tipo == slot.Tipo && allowedValues.Contains(familia))
+                return true; // new: parsed Família equals one of the stored values
+            return false;
+        }
 
-        var items = await query.OrderBy(a => a.Nome).ToListAsync();
-        return items.Select(a => new EquipmentKitEligibleItemResponse(a.Id.ToString(), a.Nome)).ToList();
+        var candidates = new List<(Guid Id, string Nome)>();
+        switch (slot.Tipo)
+        {
+            case ItemTipo.Arma:
+                var armaQuery = db.Set<Arma>().Where(a => a.GmId == gmId);
+                if (slot.Tier is not null)
+                    armaQuery = armaQuery.Where(a => a.Tier == slot.Tier);
+                var armas = await armaQuery.Select(a => new { a.Id, a.Nome, a.Subcategoria }).ToListAsync();
+                candidates.AddRange(armas.Where(a => Matches(a.Subcategoria)).Select(a => (a.Id, a.Nome)));
+                break;
+            case ItemTipo.Armadura:
+                var armaduras = await db.Set<Armadura>().Where(a => a.GmId == gmId).Select(a => new { a.Id, a.Nome, a.Subcategoria }).ToListAsync();
+                candidates.AddRange(armaduras.Where(a => Matches(a.Subcategoria)).Select(a => (a.Id, a.Nome)));
+                break;
+            case ItemTipo.Escudo:
+                var escudos = await db.Set<Escudo>().Where(e => e.GmId == gmId).Select(e => new { e.Id, e.Nome, e.Subcategoria }).ToListAsync();
+                candidates.AddRange(escudos.Where(e => Matches(e.Subcategoria)).Select(e => (e.Id, e.Nome)));
+                break;
+            case ItemTipo.Artefato:
+                var artefatos = await db.Set<Artefato>().Where(a => a.GmId == gmId).Select(a => new { a.Id, a.Nome, a.Subcategoria }).ToListAsync();
+                candidates.AddRange(artefatos.Where(a => Matches(a.Subcategoria)).Select(a => (a.Id, a.Nome)));
+                break;
+        }
+
+        return candidates.OrderBy(c => c.Nome).Select(c => new EquipmentKitEligibleItemResponse(c.Id.ToString(), c.Nome)).ToList();
     }
 
     public async Task<(EquipmentGrantPlan? Plan, string? Error)> BuildPlanAsync(EquipmentKit kit,
@@ -45,7 +74,7 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
             var resolved = await ResolveOrCreateFixedItemAsync(kitItem, gmId);
             if (resolved is null)
                 return (null, $"O item \"{kitItem.Nome}\" não está cadastrado no catálogo deste GM.");
-            grants.Add(new EquipmentGrantPlanItem(kitItem.Tipo, resolved.Value.Id, kitItem.Qtd, resolved.Value.DurabilidadeMaxima));
+            grants.Add(new EquipmentGrantPlanItem(kitItem.Tipo, resolved.Value.Id, kitItem.Qtd, resolved.Value.DurabilidadeMaxima, null));
         }
 
         foreach (var slot in choiceSlots)
@@ -60,15 +89,39 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
             if (!eligible.Any(e => e.ItemId == selectedItemId.ToString()))
                 return (null, $"O item escolhido não é uma opção válida para \"{slot.Label}\".");
 
-            var selectedItem = await db.Set<Arma>().SingleAsync(a => a.Id == selectedItemId);
-            grants.Add(new EquipmentGrantPlanItem(slot.Tipo, selectedItemId, slot.Qtd, selectedItem.DurabilidadeMaxima));
+            string? selectedSubcategoria;
+            int? selectedDurabilidade;
+            switch (slot.Tipo)
+            {
+                case ItemTipo.Arma:
+                    var arma = await db.Set<Arma>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.DurabilidadeMaxima }).SingleAsync();
+                    selectedSubcategoria = arma.Subcategoria; selectedDurabilidade = arma.DurabilidadeMaxima;
+                    break;
+                case ItemTipo.Armadura:
+                    var armadura = await db.Set<Armadura>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.DurabilidadeMaxima }).SingleAsync();
+                    selectedSubcategoria = armadura.Subcategoria; selectedDurabilidade = armadura.DurabilidadeMaxima;
+                    break;
+                case ItemTipo.Escudo:
+                    var escudo = await db.Set<Escudo>().Where(e => e.Id == selectedItemId).Select(e => new { e.Subcategoria, e.DurabilidadeMaxima }).SingleAsync();
+                    selectedSubcategoria = escudo.Subcategoria; selectedDurabilidade = escudo.DurabilidadeMaxima;
+                    break;
+                case ItemTipo.Artefato:
+                    selectedSubcategoria = await db.Set<Artefato>().Where(a => a.Id == selectedItemId).Select(a => a.Subcategoria).SingleAsync();
+                    selectedDurabilidade = null;
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unhandled choice-slot Tipo {slot.Tipo}.");
+            }
+            grants.Add(new EquipmentGrantPlanItem(slot.Tipo, selectedItemId, slot.Qtd, selectedDurabilidade, slot.ArmorSlot));
 
-            if (slot.BonusNome is not null && selectedItem.Subcategoria == slot.BonusSubcategoria)
+            var bonusMatches = slot.BonusNome is not null && (selectedSubcategoria == slot.BonusSubcategoria
+                || (SubcategoriaBuilder.TryParse(selectedSubcategoria, out _, out _, out var selectedFamilia) && selectedFamilia == slot.BonusSubcategoria));
+            if (bonusMatches)
             {
                 var bonusResolved = await ResolveOrCreateFixedItemAsync(
-                    new EquipmentKitItem { Nome = slot.BonusNome, Tipo = ItemTipo.ItemGeral, Qtd = slot.BonusQtd ?? 1 }, gmId);
+                    new EquipmentKitItem { Nome = slot.BonusNome!, Tipo = ItemTipo.ItemGeral, Qtd = slot.BonusQtd ?? 1 }, gmId);
                 if (bonusResolved is not null)
-                    grants.Add(new EquipmentGrantPlanItem(ItemTipo.ItemGeral, bonusResolved.Value.Id, slot.BonusQtd ?? 1, null));
+                    grants.Add(new EquipmentGrantPlanItem(ItemTipo.ItemGeral, bonusResolved.Value.Id, slot.BonusQtd ?? 1, null, null));
             }
         }
 

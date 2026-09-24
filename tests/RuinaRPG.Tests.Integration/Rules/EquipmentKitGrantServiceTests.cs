@@ -202,6 +202,153 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task ResolveEligibleOptionsAsync_matches_by_parsed_Familia_for_items_built_by_the_constructor()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmFamiliaParse");
+        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var machado = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Machado Composto", Subcategoria = "Equipamento inicial - Arma - Corpo a Corpo - Machado", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.AddRange(varinha, machado);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Condutor", Tipo = ItemTipo.Arma, SubcategoriasCsv = "Varinha", Qtd = 1 };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var options = await service.ResolveEligibleOptionsAsync(slot, gmId);
+
+        options.Should().ContainSingle(o => o.ItemId == varinha.Id.ToString());
+    }
+
+    [Fact]
+    public async Task ResolveEligibleOptionsAsync_still_matches_the_legacy_raw_Subcategoria_string()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmLegacyRaw");
+        var arco = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco Legado", Subcategoria = "Arcos", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.Add(arco);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma à distância", Tipo = ItemTipo.Arma, SubcategoriasCsv = "Arcos", Qtd = 1 };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var options = await service.ResolveEligibleOptionsAsync(slot, gmId);
+
+        options.Should().ContainSingle(o => o.ItemId == arco.Id.ToString());
+    }
+
+    [Fact]
+    public async Task ResolveEligibleOptionsAsync_resolves_Armadura_Escudo_and_Artefato_choice_slots()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmArmaduraEscudoArtefato");
+        var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Peso = 1, Preco = 0 };
+        var escudo = new Escudo { Id = Guid.NewGuid(), GmId = gmId, Nome = "Escudo Teste", Subcategoria = "Equipamento inicial - Escudo - Leve - Rodela", Peso = 1, Preco = 0 };
+        var artefato = new Artefato { Id = Guid.NewGuid(), GmId = gmId, Nome = "Artefato Teste", Subcategoria = "Equipamento inicial - Artefato - Passivo - Anel", Peso = 0, Preco = 0 };
+        db.AddRange(armadura, escudo, artefato);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var armaduraSlot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Armadura", Tipo = ItemTipo.Armadura, SubcategoriasCsv = "Couro", Qtd = 1, ArmorSlot = RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Superior };
+        var escudoSlot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Escudo", Tipo = ItemTipo.Escudo, SubcategoriasCsv = "Rodela", Qtd = 1 };
+        var artefatoSlot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Artefato", Tipo = ItemTipo.Artefato, SubcategoriasCsv = "Anel", Qtd = 1 };
+        db.EquipmentKitChoiceSlots.AddRange(armaduraSlot, escudoSlot, artefatoSlot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+
+        (await service.ResolveEligibleOptionsAsync(armaduraSlot, gmId)).Should().ContainSingle(o => o.ItemId == armadura.Id.ToString());
+        (await service.ResolveEligibleOptionsAsync(escudoSlot, gmId)).Should().ContainSingle(o => o.ItemId == escudo.Id.ToString());
+        (await service.ResolveEligibleOptionsAsync(artefatoSlot, gmId)).Should().ContainSingle(o => o.ItemId == artefato.Id.ToString());
+    }
+
+    [Fact]
+    public async Task BuildPlanAsync_carries_the_slot_s_ArmorSlot_through_to_the_grant_for_a_chosen_Armadura()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmArmorSlotCarry");
+        var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", DurabilidadeMaxima = 10, Peso = 1, Preco = 0 };
+        db.Add(armadura);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Armadura", Tipo = ItemTipo.Armadura, SubcategoriasCsv = "Couro", Qtd = 1, ArmorSlot = RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Capacete };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), armadura.Id.ToString())]);
+
+        error.Should().BeNull();
+        var grant = plan!.Grants.Single();
+        grant.Tipo.Should().Be(ItemTipo.Armadura);
+        grant.ArmorSlot.Should().Be(RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Capacete);
+        grant.DurabilidadeMaxima.Should().Be(10);
+    }
+
+    // A parsed-Família match must not cross Tipos: an Arma slot whose allowed Família list
+    // contains "Couro" must not offer a constructor-built item whose composed Subcategoria
+    // claims Tipo "Armadura" (Família segment "Couro") even though the raw Família string
+    // matches — the per-Tipo query naturally excludes the Armadura row from an Arma slot's
+    // candidate set, but Matches() itself must also gate on tipo == slot.Tipo, not just on
+    // familia equality, so this proves the tipo check specifically.
+    [Fact]
+    public async Task ResolveEligibleOptionsAsync_parsed_Familia_match_does_not_cross_Tipos()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmFamiliaCrossTipo");
+        var armaduraDeCouro = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura de Couro", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Peso = 1, Preco = 0 };
+        db.Add(armaduraDeCouro);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var armaSlot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, SubcategoriasCsv = "Couro", Qtd = 1 };
+        db.EquipmentKitChoiceSlots.Add(armaSlot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var options = await service.ResolveEligibleOptionsAsync(armaSlot, gmId);
+
+        options.Should().BeEmpty();
+    }
+
+    // BuildPlanAsync's conditional-bonus check must fire for a selection whose Subcategoria
+    // only matches the slot's BonusSubcategoria via the parsed-Família path, not just via the
+    // legacy raw-string equality already proven by the Caçador-style tests above.
+    [Fact]
+    public async Task BuildPlanAsync_grants_the_conditional_bonus_when_the_match_is_via_parsed_Familia()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var gmId = await NewGmAsync(db, "GmBonusFamilia");
+        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = Tier.F, Peso = 1, Preco = 0 };
+        db.Add(varinha);
+        var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
+        db.EquipmentKits.Add(kit);
+        var slot = new EquipmentKitChoiceSlot
+        {
+            Id = Guid.NewGuid(), KitId = kit.Id, Label = "Condutor", Tipo = ItemTipo.Arma,
+            SubcategoriasCsv = "Varinha", Tier = Tier.F, Qtd = 1,
+            BonusSubcategoria = "Varinha", BonusNome = "Cristal de Foco", BonusQtd = 1,
+        };
+        db.EquipmentKitChoiceSlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        var service = new EquipmentKitGrantService(db);
+        var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), varinha.Id.ToString())]);
+
+        error.Should().BeNull();
+        plan!.Grants.Should().HaveCount(2);
+        plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.Arma && g.ItemId == varinha.Id);
+        plan.Grants.Should().Contain(g => g.Tipo == ItemTipo.ItemGeral && g.Qtd == 1);
+    }
+
+    [Fact]
     public async Task UpsertCampaignAttachmentAsync_creates_a_public_attachment_when_none_exists()
     {
         using var scope = _factory.Services.CreateScope();
