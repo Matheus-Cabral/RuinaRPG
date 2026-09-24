@@ -103,7 +103,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var novaCategoria = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Nova Categoria");
         await cut.InvokeAsync(() => novaCategoria.Instance.ValueChanged.InvokeAsync("Distância"));
 
-        var addButton = cut.FindComponents<MudButton>().Where(c => HasExactText(c, "Adicionar")).ToList()[1]; // [0]=kit, [1]=categoria, [2]=familia
+        var addButton = cut.FindComponents<MudButton>().Where(c => HasExactText(c, "Adicionar")).ToList()[0]; // [0]=categoria, [1]=familia, [2]=kit ("Construtor de Subcategoria" now renders first on the page)
         await cut.InvokeAsync(() => addButton.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
         await Task.Delay(50);
 
@@ -168,11 +168,12 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var cut = Render<AuditoriaEquipagem>();
         await Task.Delay(50);
 
-        // With 1 kit rendered: item-form's "Tipo" select, then slot-form's "Tipo" select, then the
-        // vocabulary section's "Tipo" select — in that document order.
+        // With 1 kit rendered: the "Construtor de Subcategoria" section's "Tipo" select renders
+        // first (it's now the top section on the page), then item-form's "Tipo" select, then
+        // slot-form's "Tipo" select — in that document order.
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
         tipoSelects.Should().HaveCount(3);
-        var slotTipo = tipoSelects[1];
+        var slotTipo = tipoSelects[2];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
         await Task.Delay(50);
 
@@ -250,7 +251,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         cut.FindComponents<MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Tier (vazio = qualquer)");
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
-        var slotTipo = tipoSelects[1];
+        var slotTipo = tipoSelects[2];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
         await Task.Delay(50);
 
@@ -283,7 +284,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         await cut.InvokeAsync(() => slotTier.Instance.ValueChanged.InvokeAsync("F"));
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
-        var slotTipo = tipoSelects[1];
+        var slotTipo = tipoSelects[2];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Escudo"));
         await Task.Delay(50);
 
@@ -398,11 +399,41 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var novaCategoria = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Nova Categoria");
         await cut.InvokeAsync(() => novaCategoria.Instance.ValueChanged.InvokeAsync("bad - valor"));
 
-        var addButton = cut.FindComponents<MudButton>().Where(c => HasExactText(c, "Adicionar")).ToList()[1];
+        var addButton = cut.FindComponents<MudButton>().Where(c => HasExactText(c, "Adicionar")).ToList()[0]; // categoria's "Adicionar" — "Construtor de Subcategoria" now renders first
         await cut.InvokeAsync(() => addButton.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
         await Task.Delay(50);
 
         cut.Markup.Should().Contain("Valor invalido para essa Categoria.");
+    }
+
+    // Item 1 of the "ajustes-ui-historico" UI-tweaks brief: "Construtor de Subcategoria" is used to
+    // set up the vocabulary that "Adicionar Kit"/"Kits" then consume, so it belongs above them in
+    // reading order — pure reorder, no behavior change.
+    [Fact]
+    public async Task Construtor_de_Subcategoria_section_renders_before_Adicionar_Kit_and_Kits()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("equipment-kits"))
+                return Json(HttpStatusCode.OK, EmptyKits);
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaEquipagem>();
+        await Task.Delay(50);
+
+        var construtorIndex = cut.Markup.IndexOf("Construtor de Subcategoria", StringComparison.Ordinal);
+        var adicionarKitIndex = cut.Markup.IndexOf("Adicionar Kit", StringComparison.Ordinal);
+        var kitsIndex = cut.Markup.IndexOf(">Kits<", StringComparison.Ordinal);
+
+        construtorIndex.Should().BeGreaterThan(-1);
+        adicionarKitIndex.Should().BeGreaterThan(-1);
+        kitsIndex.Should().BeGreaterThan(-1);
+        construtorIndex.Should().BeLessThan(adicionarKitIndex);
+        construtorIndex.Should().BeLessThan(kitsIndex);
     }
 
     private record CreateSubcategoriaOptionRequestCapture(string Tipo, string Facet, string Valor);

@@ -1,27 +1,54 @@
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Auth
 
 @if (_isRulesAuditor)
 {
-    <MudNavLink Href="auditoria/livro-de-regras">Auditoria: Livro de Regras</MudNavLink>
-    <MudNavLink Href="auditoria/caracteristicas">Auditoria: Características</MudNavLink>
-    <MudNavLink Href="auditoria/caracteristicas-de-criatura">Auditoria: Características de Criatura</MudNavLink>
-    <MudNavLink Href="auditoria/efeitos">Auditoria: Efeitos</MudNavLink>
-    <MudNavLink Href="auditoria/historicos">Auditoria: Históricos</MudNavLink>
-    <MudNavLink Href="auditoria/equipagem">Auditoria: Equipagem</MudNavLink>
+    <MudNavGroup Title="Auditoria" @bind-Expanded="_expanded">
+        <MudNavLink Href="auditoria/livro-de-regras">Livro de Regras</MudNavLink>
+        <MudNavLink Href="auditoria/caracteristicas">Características</MudNavLink>
+        <MudNavLink Href="auditoria/caracteristicas-de-criatura">Características de Criatura</MudNavLink>
+        <MudNavLink Href="auditoria/efeitos">Efeitos</MudNavLink>
+        <MudNavLink Href="auditoria/historicos">Históricos</MudNavLink>
+        <MudNavLink Href="auditoria/equipagem">Equipagem</MudNavLink>
+    </MudNavGroup>
 }
 
 @code {
     private bool _isRulesAuditor;
+    private bool _expanded;
 
     protected override async Task OnInitializedAsync()
     {
+        _expanded = IsUnderAuditoria(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+
         var response = await Http.GetAsync("auth/me");
         if (!response.IsSuccessStatusCode)
             return;
 
         var me = await response.Content.ReadFromJsonAsync<MeResponse>();
         _isRulesAuditor = me?.IsRulesAuditor ?? false;
+    }
+
+    // RulesAuditorNavLinks is rendered unconditionally inside NavMenu, which lives in
+    // MainLayout's drawer for the whole authenticated session — it never gets torn down and
+    // re-created between page navigations, so the auto-expand state has to be kept in sync here
+    // rather than computed once in OnInitializedAsync.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _expanded = IsUnderAuditoria(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static bool IsUnderAuditoria(string uri) =>
+        new Uri(uri).AbsolutePath.TrimStart('/').StartsWith("auditoria/", StringComparison.Ordinal);
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }
