@@ -1,5 +1,6 @@
 @using MudBlazor
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Shared
 @inject HttpClient Http
 
 @* R0001 1.a — dropdown dos Históricos do catálogo + ícone de descrição, mesma ideia de popup que
@@ -13,33 +14,21 @@
             <MudSelectItem Value="@historico.Id">@historico.Nome</MudSelectItem>
         }
     </MudSelect>
-    @if (Value is not null)
+    @if (Selecionado is not null)
     {
-        <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => _open = true)" title="Descrição do Histórico" />
-    }
-</div>
-
-<MudDialog @bind-Visible="_open">
-    <TitleContent>@Selecionado?.Nome</TitleContent>
-    <DialogContent>
-        <MudText>@Selecionado?.Descricao</MudText>
-        @if (Selecionado is not null)
-        {
+        <InfoPopup Title="@Selecionado.Nome">
+            <MudText>@Selecionado.Descricao</MudText>
             <MudText Typo="Typo.body2" Class="mt-2">
                 <em>+6 @PericiaDisplay.Label(Selecionado.PericiaMaisSeis) / +3 @PericiaDisplay.Label(Selecionado.PericiaMaisTres)</em>
             </MudText>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
-    </DialogActions>
-</MudDialog>
+        </InfoPopup>
+    }
+</div>
 
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
-    private bool _open;
     private List<HistoricoResponse> _historicos = new();
 
     private HistoricoResponse? Selecionado => _historicos.FirstOrDefault(h => h.Id == Value);

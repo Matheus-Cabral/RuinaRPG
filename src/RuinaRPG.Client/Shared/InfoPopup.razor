@@ -1,0 +1,24 @@
+@using MudBlazor
+
+@* Reusable ⓘ info popup: a small MudIconButton that opens a MudDialog with a caller-supplied title
+   and body. Same look/behavior as the ⓘ in Fields/HistoricoSelect.razor and EstrelaSelect.razor —
+   this component exists so every other placement (Section headers, form fields, etc.) doesn't have
+   to repeat the MudIconButton + MudDialog boilerplate. *@
+<MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => _open = true)" title="@Title" aria-label="@Title" />
+
+<MudDialog @bind-Visible="_open">
+    <TitleContent>@Title</TitleContent>
+    <DialogContent>
+        @ChildContent
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _open;
+}
