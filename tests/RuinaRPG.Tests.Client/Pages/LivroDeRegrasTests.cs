@@ -52,4 +52,16 @@ public class LivroDeRegrasTests : MudBunitContext
         cut.FindAll("a").Should().Contain(a => a.TextContent.Trim() == "Painel");
         cut.FindAll("a").Should().NotContain(a => a.TextContent.Trim() == "Início");
     }
+
+    [Fact]
+    public void Has_a_back_to_top_button()
+    {
+        RegisterCommonServices();
+        AddAuthorization().SetNotAuthorized();
+
+        var cut = Render<CascadingAuthenticationState>(p => p
+            .AddChildContent<LivroDeRegras>());
+
+        cut.FindComponent<MudBlazor.MudScrollToTop>();
+    }
 }

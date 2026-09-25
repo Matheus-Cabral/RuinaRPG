@@ -65,7 +65,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         body!.Select(d => d.Slug).Should().Equal(
-            "caracteristicas", "sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas", "historicos", "equipagem");
+            "sistema-basico", "caracteristicas", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas", "historicos", "equipagem");
 
         var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
         sistemaBasico.Sections.Should().HaveCount(7);
@@ -112,6 +112,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var estrelas = body!.Single(d => d.Slug == "estrelas-alkerianas");
+        estrelas.Titulo.Should().Be("As Estrelas");
         estrelas.IntroHtml.Should().Contain("/rulebook/Calendario alkeriano.jpeg");
         estrelas.Sections.Should().HaveCount(11);
         estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("Sina"));

@@ -47,8 +47,8 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
 {
     public async Task<IReadOnlyList<RulebookDocument>> GetDocuments() =>
     [
-        await BuildCaracteristicasAsync(),
         await BuildSistemaBasicoAsync(),
+        await BuildCaracteristicasAsync(),
         await BuildGrausECirculosAsync(),
         await BuildTabelaDeNiveisAsync(),
         await BuildEstrelasAlkerianasAsync(),
@@ -135,7 +135,7 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
     private async Task<RulebookDocument> BuildEstrelasAlkerianasAsync()
     {
         var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("estrelas-alkerianas"), splitLevel: 1);
-        return new RulebookDocument("estrelas-alkerianas", "As Estrelas Alkerianas", (intro ?? "") + CalendarImageHtml, sections);
+        return new RulebookDocument("estrelas-alkerianas", "As Estrelas", (intro ?? "") + CalendarImageHtml, sections);
     }
 
     private const string CalendarImageHtml = """
