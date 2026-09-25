@@ -38,8 +38,8 @@ public class CreatureAttributesController(RuinaRpgDbContext db, IRulesDataProvid
     }
 
     /// <summary>
-    /// Pontos de Atributo que o Nível da ficha já deu (mesma Tabela de Níveis do Personagem) contra
-    /// o Gasto somado. Só informa — ao contrário do Personagem, o GM pode passar do total, então
+    /// Pontos de Atributo que o Rank + o Nível da ficha já deram (Rank no lugar do Nível 1 da
+    /// Tabela de Níveis — ver Requisitos - Ficha de Criaturas R0005 2.a) contra o Gasto somado. Só informa — ao contrário do Personagem, o GM pode passar do total, então
     /// o Update nunca rejeita (ver Requisitos - Ficha de NPCs R0007).
     /// </summary>
     [HttpGet("budget")]
@@ -53,7 +53,7 @@ public class CreatureAttributesController(RuinaRpgDbContext db, IRulesDataProvid
             return NotFound();
 
         var gastoTotal = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).SumAsync(a => a.Gasto);
-        return new AttributePointBudgetResponse(gastoTotal, AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis));
+        return new AttributePointBudgetResponse(gastoTotal, CreatureAttributePointBudgetCalculator.Compute(sheet.Rank, sheet.Nivel, rules.Niveis));
     }
 
     [HttpPut("{atributo}")]

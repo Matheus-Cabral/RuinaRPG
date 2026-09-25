@@ -63,7 +63,7 @@
 
 **2.a Atributos** — a Criatura tem **6 atributos**, não 8: **Força**, **Vigor**, **Agilidade**, **Destreza**, **Astúcia** e **Ego**. *Instinto*, *Influência* e *Vontade* não existem — *Ego* é a fusão dos três num único atributo. Por ora, nenhuma fórmula do sistema depende de Ego especificamente (nem dos três que ele substitui, no contexto de Criatura); campo tratado como os demais atributos (mesma estrutura Gasto/Bônus/Maestria/Total e mesmas fórmulas de Total do Personagem), mas sem uso definido nas fórmulas ainda.
 
-A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesma regra de "[[Requisitos - Ficha de NPCs]]" R0007: soma do *Gasto* dos 6 atributos contra os "Pontos de Atributo" que o *Nível* da Criatura concede na "[[Tabela de Níveis]]" (a "[[Tabela de Arquetipos]]" só define Vida e Arcana, não pontos de atributo), sem bloquear o GM ao passar do total.
+A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesma regra de "[[Requisitos - Ficha de NPCs]]" R0007: soma do *Gasto* dos 6 atributos contra os "Pontos de Atributo" que o *Nível* da Criatura concede na "[[Tabela de Níveis]]" (a "[[Tabela de Arquetipos]]" só define Vida e Arcana, não pontos de atributo), sem bloquear o GM ao passar do total. Diferença: os "+9 Pontos de Atributo" do Nível 1 são substituídos pelos pontos iniciais do *Rank* (1.a) — **F** 6, **E** 7, **D** 8, **C** 9, **B** 10, **A** 12, **S** 14 —, e do Nível 2 em diante a Criatura ganha pontos pela mesma "[[Tabela de Níveis]]". Sem Rank escolhido, vale o Nível 1 da tabela sem alteração.
 
 **2.b Sub-Atributos** — mesmos campos e fórmulas do Personagem (Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Cobertura, Redução Física, Redução Mágica), com as seguintes diferenças:
 

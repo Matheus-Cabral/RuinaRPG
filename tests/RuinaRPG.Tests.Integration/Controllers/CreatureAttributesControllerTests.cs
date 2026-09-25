@@ -221,6 +221,23 @@ public class CreatureAttributesControllerTests : IClassFixture<PostgresFixture>,
     }
 
     [Fact]
+    public async Task Budget_replaces_the_level_1_grant_with_the_Ranks_starting_points()
+    {
+        // Ficha de Criaturas R0005 2.a: Rank S começa com 14 no lugar dos +9 do Nível 1.
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBudRank", "creatureattrbudrank@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var update = new UpdateCreatureSheetRequest(null, "Dragão", null, null, null, null,
+            "S", 1, 0, 0, 0, 0, 0, "Nenhuma");
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update)))
+            .EnsureSuccessStatusCode();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes/budget", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
+        body!.PontosDisponiveis.Should().Be(14);
+    }
+
+    [Fact]
     public async Task Budget_GastoTotal_is_the_sum_of_Gasto_across_attributes()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAttrBud3", "creatureattrbud3@teste.com");
