@@ -23,6 +23,9 @@ public record RulebookDocument(string Slug, string Titulo, string? IntroHtml, IR
 public interface IRulebookRenderer
 {
     Task<IReadOnlyList<RulebookDocument>> GetDocuments();
+
+    /// <summary>A single document by Slug, or null when the Slug is unknown.</summary>
+    Task<RulebookDocument?> GetDocument(string slug);
 }
 
 /// <summary>
@@ -55,6 +58,18 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         await BuildHistoricosAsync(),
         await BuildEquipagemAsync(),
     ];
+
+    public async Task<RulebookDocument?> GetDocument(string slug) => slug switch
+    {
+        "sistema-basico" => await BuildSistemaBasicoAsync(),
+        "caracteristicas" => await BuildCaracteristicasAsync(),
+        "graus-e-circulos" => await BuildGrausECirculosAsync(),
+        "tabela-de-niveis" => await BuildTabelaDeNiveisAsync(),
+        "estrelas-alkerianas" => await BuildEstrelasAlkerianasAsync(),
+        "historicos" => await BuildHistoricosAsync(),
+        "equipagem" => await BuildEquipagemAsync(),
+        _ => null,
+    };
 
     // UseAdvancedExtensions (not the bare default pipeline) is what turns GFM-style pipe tables
     // (e.g. Tabela de Níveis.md, and GRAUS & CÍRCULOS.md's own Grau-cost table) into real <table>

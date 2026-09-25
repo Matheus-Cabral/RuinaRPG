@@ -1,0 +1,14 @@
+/* O cartão da Estrela é HTML do Markdig injetado via MarkupString (sem atributo de escopo), então o
+   ::deep vem depois de .rulebook-content — mesmo padrão de LivroDeRegras.razor.css, cuja tipografia
+   é isolada àquela página e não chega aqui. Só o essencial para parágrafos e a lista "Tendem a". */
+.rulebook-content ::deep p {
+    line-height: 1.6;
+    margin-bottom: var(--rr-space-3);
+}
+
+.rulebook-content ::deep ul {
+    list-style: disc;
+    margin-bottom: var(--rr-space-3);
+    padding-left: var(--rr-space-4);
+    line-height: 1.6;
+}

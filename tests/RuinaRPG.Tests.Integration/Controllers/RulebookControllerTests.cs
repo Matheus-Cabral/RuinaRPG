@@ -273,4 +273,54 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
             await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/graus-e-circulos", gmToken));
         }
     }
+
+    [Fact]
+    public async Task GetDocument_without_a_token_returns_only_that_document()
+    {
+        var response = await _client.GetAsync("/api/rulebook/estrelas-alkerianas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<RulebookDocumentResponse>();
+        body!.Slug.Should().Be("estrelas-alkerianas");
+        body.Titulo.Should().Be("As Estrelas");
+        body.Sections.Should().HaveCount(11);
+    }
+
+    [Fact]
+    public async Task GetDocument_with_an_unknown_slug_returns_404()
+    {
+        var response = await _client.GetAsync("/api/rulebook/nao-existe");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetDocument_reflects_a_saved_override_for_estrelas_alkerianas()
+    {
+        // Ficha de Personagem R0001 1.a: o popup da Estrela lê este endpoint, então uma edição do
+        // Auditor tem que aparecer aqui na hora.
+        var gmToken = await RegisterGmAndGetTokenAsync("RulebookGmOverrideEstrelas", "rulebookgmoverrideestrelas@teste.com");
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMOVERRIDEESTRELAS@TESTE.COM");
+        user.IsRulesAuditor = true;
+        await db.SaveChangesAsync();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/estrelas-alkerianas", gmToken,
+            new UpdateRulebookDocumentOverrideRequest("# 🌿 I — AEURER\n\nTexto novo de Aeurer pelo Auditor.")));
+
+        try
+        {
+            var body = await _client.GetFromJsonAsync<RulebookDocumentResponse>("/api/rulebook/estrelas-alkerianas");
+
+            var aeurer = body!.Sections.Single();
+            aeurer.Titulo.Should().Contain("AEURER");
+            aeurer.Html.Should().Contain("Texto novo de Aeurer pelo Auditor.");
+        }
+        finally
+        {
+            // Same cleanup reasoning as Get_reflects_a_saved_RulebookDocumentOverride_immediately.
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/estrelas-alkerianas", gmToken));
+        }
+    }
 }

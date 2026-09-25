@@ -1,8 +1,11 @@
 @using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
 
 @* R0001 1.a — dropdown das 10 Estrelas Alkerianas + ícone de descrição, para não poluir a ficha com
-   o texto completo de "As estrelas alkerianas" (mesma ideia de popup que ClickableItemName usa para
-   Imagem/Descrição de Item, mas disparado por um ícone ao lado do campo em vez do nome clicável). *@
+   o texto completo. O popup mostra o cartão daquela Estrela na aba As Estrelas do Livro de Regras
+   (GET api/rulebook/estrelas-alkerianas), buscado a cada abertura — assim uma edição do Auditor de
+   Regras aparece aqui sem recarregar a ficha. *@
 <div class="d-flex align-center" style="gap:4px">
     <MudSelect T="string" Label="Estrela" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Estrela">
         @foreach (var estrela in Estrelas)
@@ -12,14 +15,25 @@
     </MudSelect>
     @if (Value is not null)
     {
-        <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => _open = true)" title="Descrição da Estrela" />
+        <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="OpenAsync" title="Descrição da Estrela" />
     }
 </div>
 
-<MudDialog @bind-Visible="_open">
-    <TitleContent>@SelectedEstrela?.Rotulo</TitleContent>
+<MudDialog @bind-Visible="_open" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>@(_card?.Titulo ?? Value)</TitleContent>
     <DialogContent>
-        <MudText>@SelectedEstrela?.Descricao</MudText>
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+        }
+        else if (_card is not null)
+        {
+            <div class="rulebook-content">@((MarkupString)_card.Html)</div>
+        }
+        else
+        {
+            <MudText>Descrição não encontrada no Livro de Regras.</MudText>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
@@ -31,35 +45,45 @@
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
     private bool _open;
+    private bool _loading;
+    private RulebookSectionResponse? _card;
 
-    private (string Nome, string Rotulo, string Descricao)? SelectedEstrela => Estrelas.FirstOrDefault(e => e.Nome == Value) is var found && found.Nome is not null ? found : null;
-
-    // R0001 1.a — mesmo texto de "As estrelas alkerianas" (intro + linha de Sina de cada uma), sem a
-    // lista "Tendem a" e o exemplo, para caber num popup compacto em vez de repetir a aba inteira do
-    // Livro de Regras.
-    public static readonly (string Nome, string Rotulo, string Descricao)[] Estrelas =
+    // Só Nome (o valor salvo na ficha) e o rótulo do dropdown ficam fixos aqui — a descrição vem do
+    // Livro de Regras (ver OpenAsync).
+    public static readonly (string Nome, string Rotulo)[] Estrelas =
     [
-        ("Aeurer", "Aeurer — Estrela da Curiosidade",
-            "Os nascidos sob Aeurer possuem uma necessidade constante de descobrir e experimentar. O desconhecido desperta sua atenção, e raramente se contentam com uma explicação simples quando acreditam que existe algo além dela. Sina: a curiosidade de Aeurer é recompensada quando o personagem escolhe descobrir algo em vez de simplesmente ignorá-lo."),
-        ("Liora", "Liora — Estrela da Introspecção",
-            "Os nascidos sob Liora costumam voltar seus pensamentos para dentro. Antes de revelar aquilo que sentem ou tomar determinadas decisões, procuram compreender seus próprios sentimentos, desejos e inseguranças. Sina: a introspecção de Liora é recompensada quando o personagem procura compreender a si mesmo antes de agir."),
-        ("Vaelen", "Vaelen — Estrela da Proteção",
-            "Os nascidos sob Vaelen desenvolvem naturalmente um forte impulso de proteger aquilo e aqueles que consideram importantes. Quando alguém está em perigo, sua primeira preocupação costuma ser impedir que o dano aconteça. Sina: a proteção de Vaelen é recompensada quando o personagem coloca-se deliberadamente entre o perigo e aquilo que decidiu proteger."),
-        ("Theron", "Theron — Estrela da Impulsividade",
-            "Os nascidos sob Theron tendem a agir antes de pensar completamente nas consequências. São espontâneos, intensos e frequentemente preferem cometer um erro tentando alguma coisa a permanecer parados esperando pelo momento perfeito. Sina: a impulsividade de Theron é recompensada quando o personagem age espontaneamente, assumindo as consequências de sua decisão."),
-        ("Maetus", "Maetus — Estrela da Ambição",
-            "Os nascidos sob Maetus raramente se contentam com aquilo que já possuem. Existe neles o desejo de crescer, conquistar e superar seus próprios limites. Sina: a ambição de Maetus é recompensada quando o personagem escolhe buscar crescimento, reconhecimento ou conquista mesmo diante de dificuldades."),
-        ("Almora", "Almora — Estrela da Generosidade",
-            "Os nascidos sob Almora possuem uma tendência a compartilhar aquilo que possuem. Para eles, recursos, conhecimento e oportunidades podem ter mais valor quando são utilizados para beneficiar outras pessoas. Sina: a generosidade de Almora é recompensada quando o personagem abre mão voluntariamente de algo que possui para beneficiar outra pessoa."),
-        ("Elvani", "Elvani — Estrela da Prudência",
-            "Os nascidos sob Elvani preferem compreender os riscos antes de se comprometer. Costumam pensar nas consequências de suas decisões e procuram evitar situações nas quais o preço do erro seja alto demais. Sina: a prudência de Elvani é recompensada quando o personagem escolhe se preparar ou reduzir um risco antes de agir."),
-        ("Sareli", "Sareli — Estrela da Vingança",
-            "Os nascidos sob Sareli possuem dificuldade em simplesmente esquecer aqueles que os prejudicaram. Para eles, certas ações deixam marcas que não podem ser apagadas apenas com um pedido de desculpas. Sina: a vingança de Sareli é recompensada quando o personagem mantém viva uma dívida pessoal e age deliberadamente para retribuir aquilo que sofreu."),
-        ("Gaelion", "Gaelion — Estrela da Lealdade",
-            "Os nascidos sob Gaelion atribuem grande importância aos vínculos que estabelecem. Uma vez que consideram alguém parte de seu grupo, tendem a defendê-lo e permanecer ao seu lado mesmo diante de dificuldades. Sina: a lealdade de Gaelion é recompensada quando o personagem escolhe permanecer ao lado de alguém que considera parte de seu grupo, mesmo quando isso lhe traz prejuízo."),
-        ("Sadir", "Sadir — Estrela do Egoísmo",
-            "Os nascidos sob Sadir tendem a considerar seus próprios interesses antes dos interesses dos outros. Isso não significa necessariamente crueldade: eles simplesmente não enxergam como sua responsabilidade sacrificar aquilo que possuem por qualquer pessoa. Sina: o egoísmo de Sadir é recompensado quando o personagem coloca deliberadamente seus próprios interesses, recursos ou segurança acima dos interesses de outras pessoas."),
+        ("Aeurer", "Aeurer — Estrela da Curiosidade"),
+        ("Liora", "Liora — Estrela da Introspecção"),
+        ("Vaelen", "Vaelen — Estrela da Proteção"),
+        ("Theron", "Theron — Estrela da Impulsividade"),
+        ("Maetus", "Maetus — Estrela da Ambição"),
+        ("Almora", "Almora — Estrela da Generosidade"),
+        ("Elvani", "Elvani — Estrela da Prudência"),
+        ("Sareli", "Sareli — Estrela da Vingança"),
+        ("Gaelion", "Gaelion — Estrela da Lealdade"),
+        ("Sadir", "Sadir — Estrela do Egoísmo"),
     ];
+
+    private async Task OpenAsync()
+    {
+        _card = null;
+        _loading = true;
+        _open = true;
+        try
+        {
+            var documento = await Http.GetFromJsonAsync<RulebookDocumentResponse>("rulebook/estrelas-alkerianas");
+            // Cada cartão tem como título o nome da Estrela em caixa alta (ex: "🌿 I — AEURER").
+            _card = documento?.Sections.FirstOrDefault(s => s.Titulo.Contains(Value!, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (HttpRequestException)
+        {
+            _card = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
 
     private async Task OnValueChangedAsync(string? novoValor)
     {
