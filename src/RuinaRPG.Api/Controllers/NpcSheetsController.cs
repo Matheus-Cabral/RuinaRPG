@@ -10,6 +10,7 @@ using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -152,6 +153,28 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Aba História — separate from UpdateNpcSheetRequest for the same reason as
+    /// CharacterSheetsController.UpdateHistoria. Same authorization as Update (NotFound for strangers).
+    /// </summary>
+    [HttpPut("{id}/historia")]
+    public async Task<IActionResult> UpdateHistoria(Guid id, UpdateHistoriaRequest request)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (request.Historia is { Length: > HistoriaSanitizer.MaxLength })
+            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
+
+        sheet.Historia = HistoriaSanitizer.Sanitize(request.Historia);
+        await db.SaveChangesAsync();
         return NoContent();
     }
 

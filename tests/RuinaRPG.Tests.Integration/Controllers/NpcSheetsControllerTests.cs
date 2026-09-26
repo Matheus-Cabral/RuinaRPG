@@ -1084,4 +1084,74 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    private async Task<NpcSheetResponse> GetNpcAsync(string token, string sheetId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", token)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>())!;
+
+    [Fact]
+    public async Task UpdateHistoria_by_the_gm_persists_sanitized_html()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcHistGm1", "npchistgm1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/historia", gmToken,
+            new UpdateHistoriaRequest("<p>Guardiã do portal</p><img src=x onerror=alert(1)>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetNpcAsync(gmToken, sheetId)).Historia.Should().Contain("Guardiã do portal").And.NotContain("img");
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_by_a_different_gm_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcHistGm2", "npchistgm2@teste.com");
+        var otherGmToken = await RegisterGmAndGetTokenAsync("NpcHistGm2b", "npchistgm2b@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/historia", otherGmToken,
+            new UpdateHistoriaRequest("<p>x</p>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_by_the_player_the_npc_was_granted_to_is_allowed()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcHistGm3", "npchistgm3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcHistPlayer3", "npchistplayer3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha História NPC");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/historia", playerToken,
+            new UpdateHistoriaRequest("<p>Meu companheiro</p>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_longer_than_200000_characters_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcHistGm4", "npchistgm4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/historia", gmToken,
+            new UpdateHistoriaRequest(new string('a', 200_001))));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task The_general_npc_Update_leaves_Historia_untouched()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcHistGm5", "npchistgm5@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/historia", gmToken, new UpdateHistoriaRequest("<p>Passado sombrio</p>")));
+
+        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate()));
+
+        update.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetNpcAsync(gmToken, sheetId)).Historia.Should().Contain("Passado sombrio");
+    }
 }

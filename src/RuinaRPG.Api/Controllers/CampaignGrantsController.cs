@@ -174,7 +174,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             NucleosRankA = source.NucleosRankA, NucleosRankS = source.NucleosRankS,
             PontosDeIgnicaoAtual = source.PontosDeIgnicaoAtual, PontosDeIgnicaoTotal = source.PontosDeIgnicaoTotal,
             VitalidadeAtual = source.VitalidadeAtual, FocoAtual = source.FocoAtual, AdrenalinaAtual = source.AdrenalinaAtual,
-            EstresseAtual = source.EstresseAtual, Cobertura = source.Cobertura, Ciclos = source.Ciclos
+            EstresseAtual = source.EstresseAtual, Cobertura = source.Cobertura, Ciclos = source.Ciclos, Historia = source.Historia
         };
 
         // Deep-copy every child table — mechanical, one loop per table, same shape each time.

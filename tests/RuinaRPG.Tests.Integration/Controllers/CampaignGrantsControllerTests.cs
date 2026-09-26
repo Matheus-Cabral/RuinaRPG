@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -471,5 +472,21 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Grant_from_an_existing_Npc_copies_the_Historia()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGmHist", "granthist@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerHist", "grantplayerhist@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant História");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}/historia", gmToken, new UpdateHistoriaRequest("<p>Criado nas ruínas</p>")));
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        (await GetNpcSheetAsync(gmToken, body!.SheetId)).Historia.Should().Contain("Criado nas ruínas");
     }
 }
