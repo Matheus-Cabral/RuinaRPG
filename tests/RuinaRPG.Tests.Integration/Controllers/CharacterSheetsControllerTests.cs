@@ -795,7 +795,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
-    public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
+    public async Task Update_accepts_any_Afinidade_whatever_the_Vocacao()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin1", "sheetafin1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerAfin1", "sheetplayerafin1@teste.com");
@@ -803,11 +803,14 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        // Vocacao=Campeao não libera Escola nenhuma — Fogo (Dobra) deve ser rejeitado.
+        // Vocacao=Campeao não liberava Fogo (Dobra) pelo mapa antigo — a restrição foi removida.
         var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.Afinidade.Should().Be("Fogo");
     }
 
     [Fact]

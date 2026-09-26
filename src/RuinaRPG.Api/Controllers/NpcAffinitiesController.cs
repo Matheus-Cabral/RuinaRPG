@@ -25,16 +25,18 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, request.CaminhoNome, sheet.Vocacao, elementoAntigo: null, subElementoAntigo: null, caminhoNomeAntigo: null, out var elemento, out var subElemento, out var error))
+        if (!TryParseEssencias(request.Elemento, request.SegundaEssencia, out var elemento, out var segunda, out var error))
             return BadRequest(error);
 
-        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: null))
-            return BadRequest("Já existe uma linha de Afinidade com esse Elemento ou Sub-Elemento.");
+        var subElemento = Derivar(elemento, segunda);
+        if (await HasDuplicateSubElementoAsync(sheetId, subElemento, excludingId: null))
+            return BadRequest("Já existe uma linha de Afinidade com esse Sub-Elemento.");
 
         var affinity = new NpcAffinity
         {
             Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
-            SubElemento = subElemento, SubElementoValor = request.SubElementoValor, CaminhoNome = request.CaminhoNome, Experiencia = request.Experiencia
+            SegundaEssencia = segunda, SegundaEssenciaValor = request.SegundaEssenciaValor,
+            SubElemento = subElemento, SubElementoValor = request.SubElementoValor, Experiencia = request.Experiencia
         };
         db.NpcAffinities.Add(affinity);
         await db.SaveChangesAsync();
@@ -70,18 +72,20 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         if (affinity is null)
             return NotFound();
 
-        if (!TryParseElementoSubElemento(request.Elemento, request.SubElemento, request.CaminhoNome, sheet.Vocacao, affinity.Elemento, affinity.SubElemento, affinity.CaminhoNome, out var elemento, out var subElemento, out var error))
+        if (!TryParseEssencias(request.Elemento, request.SegundaEssencia, out var elemento, out var segunda, out var error))
             return BadRequest(error);
 
-        if (await HasDuplicateAsync(sheetId, elemento, subElemento, excludingId: id,
-                checkElemento: elemento != affinity.Elemento, checkSubElemento: subElemento != affinity.SubElemento))
-            return BadRequest("Já existe uma linha de Afinidade com esse Elemento ou Sub-Elemento.");
+        var essenciaMudou = elemento != affinity.Elemento || segunda != affinity.SegundaEssencia;
+        var subElemento = essenciaMudou ? Derivar(elemento, segunda) : affinity.SubElemento;
+        if (subElemento != affinity.SubElemento && await HasDuplicateSubElementoAsync(sheetId, subElemento, id))
+            return BadRequest("Já existe uma linha de Afinidade com esse Sub-Elemento.");
 
         affinity.Elemento = elemento;
         affinity.ElementoValor = request.ElementoValor;
+        affinity.SegundaEssencia = segunda;
+        affinity.SegundaEssenciaValor = request.SegundaEssenciaValor;
         affinity.SubElemento = subElemento;
         affinity.SubElementoValor = request.SubElementoValor;
-        affinity.CaminhoNome = request.CaminhoNome;
         affinity.Experiencia = request.Experiencia;
         await db.SaveChangesAsync();
 
@@ -107,15 +111,13 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    // Elemento and Sub-Elemento are both optional — an Afinidade row can be added or left as a
-    // blank placeholder, matching the PDF sheet's pre-printed empty rows (R0001 2.c). Only when
-    // both are actually given does the Matriz Elemental combination get checked.
-    private static bool TryParseElementoSubElemento(string? elementoRaw, string? subElementoRaw, string? caminhoNome, Vocacao? vocacao,
-        Elemento? elementoAntigo, SubElemento? subElementoAntigo, string? caminhoNomeAntigo,
-        out Elemento? elemento, out SubElemento? subElemento, out string? error)
+    // Essência 1 e 2 são opcionais (linha em branco continua valendo). O Sub-Elemento nunca vem do
+    // cliente: é a interseção na Matriz Elemental (Requisitos - Ficha de Personagem 2.c).
+    private static bool TryParseEssencias(string? elementoRaw, string? segundaRaw,
+        out Elemento? elemento, out EssenciaBasica? segunda, out string? error)
     {
         elemento = null;
-        subElemento = null;
+        segunda = null;
         error = null;
 
         if (!string.IsNullOrEmpty(elementoRaw))
@@ -128,60 +130,41 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
             elemento = parsed;
         }
 
-        if (!string.IsNullOrEmpty(subElementoRaw))
+        if (!string.IsNullOrEmpty(segundaRaw))
         {
-            if (!Enum.TryParse<SubElemento>(subElementoRaw, out var parsed) || !Enum.IsDefined(parsed))
+            if (!Enum.TryParse<EssenciaBasica>(segundaRaw, out var parsed) || !Enum.IsDefined(parsed))
             {
-                error = "Sub-Elemento desconhecido.";
+                error = "Essência Básica desconhecida.";
                 return false;
             }
-            subElemento = parsed;
+            segunda = parsed;
         }
 
-        if (elemento is not null && subElemento is not null && !ElementoSubElementoValidator.IsValidCombination(elemento.Value, subElemento.Value))
+        if (segunda is not null && elemento is null)
         {
-            error = "Essa combinação de Elemento e Sub-Elemento não existe na Matriz Elemental.";
-            return false;
-        }
-
-        if (elemento is not null && elemento != elementoAntigo && !VocacaoEscolaMap.PodeEscolherElemento(vocacao, elemento.Value))
-        {
-            error = "Esse Elemento não é liberado pela Vocação atual.";
-            return false;
-        }
-        if (subElemento is not null && subElemento != subElementoAntigo && !VocacaoEscolaMap.PodeEscolherSubElemento(vocacao, subElemento.Value))
-        {
-            error = "Esse Sub-Elemento não é liberado pela Vocação atual.";
+            error = "Escolha a Essência Básica 1 antes da 2.";
             return false;
         }
 
-        if (subElemento is { } se && subElemento != subElementoAntigo && CaminhoSubElementoRules.EhCaminho(se))
+        if (elemento is { } e1 && segunda is { } e2 && MatrizElemental.Intersecao(e1, e2) is null)
         {
-            error = "Alma e Vida são Caminhos, não Sub-Elementos.";
+            error = "Essas duas Essências não se cruzam na Matriz Elemental.";
             return false;
         }
-
-        error = CaminhoSubElementoRules.Validar(elemento, subElemento, caminhoNome, elementoAntigo, subElementoAntigo, caminhoNomeAntigo);
-        if (error is not null)
-            return false;
 
         return true;
     }
 
-    private async Task<bool> HasDuplicateAsync(Guid sheetId, Elemento? elemento, SubElemento? subElemento,
-        Guid? excludingId, bool checkElemento = true, bool checkSubElemento = true)
-    {
-        var query = db.NpcAffinities.Where(a => a.NpcSheetId == sheetId);
-        if (excludingId is not null)
-            query = query.Where(a => a.Id != excludingId);
+    private static SubElemento? Derivar(Elemento? elemento, EssenciaBasica? segunda) =>
+        elemento is { } e1 && segunda is { } e2 ? MatrizElemental.Intersecao(e1, e2) : null;
 
-        return await query.AnyAsync(a =>
-            (checkElemento && elemento != null && a.Elemento == elemento) ||
-            (checkSubElemento && subElemento != null && a.SubElemento == subElemento));
-    }
+    private async Task<bool> HasDuplicateSubElementoAsync(Guid sheetId, SubElemento? subElemento, Guid? excludingId) =>
+        subElemento is not null && await db.NpcAffinities.AnyAsync(a =>
+            a.NpcSheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
 
     private static NpcAffinityResponse ToResponse(NpcAffinity a) =>
-        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SubElemento?.ToString(), a.SubElementoValor, a.CaminhoNome, a.Experiencia);
+        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SubElemento?.ToString(), a.SubElementoValor, a.CaminhoNome, a.Experiencia,
+            a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

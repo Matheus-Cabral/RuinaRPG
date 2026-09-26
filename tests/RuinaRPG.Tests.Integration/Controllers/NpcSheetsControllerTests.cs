@@ -489,15 +489,19 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
-    public async Task Update_rejects_an_Afinidade_not_liberada_pela_Vocacao_atual()
+    public async Task Update_accepts_any_Afinidade_whatever_the_Vocacao()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin1", "npcafin1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
+        // Vocacao=Campeao não liberava Fogo (Dobra) pelo mapa antigo — a restrição foi removida.
         var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
+        body!.Afinidade.Should().Be("Fogo");
     }
 
     [Fact]

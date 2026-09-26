@@ -77,6 +77,14 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         return sheetId;
     }
 
+    private async Task<HttpResponseMessage> AddAsync(string token, string sheetId, string? elemento, string? segunda, int? subValor = null) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
+            new AddCharacterAffinityRequest(elemento, null, null, subValor, null, null, segunda, null)));
+
+    private async Task<List<CharacterAffinityResponse>> ListAsync(string token, string sheetId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", token)))
+            .Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>())!;
+
     [Fact]
     public async Task Add_a_valid_combination_returns_201()
     {
@@ -85,27 +93,14 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>();
-        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SubElemento == "Curar" && a.SubElementoValor == 2
-            && a.CaminhoNome == "Vida" && a.Experiencia == 10);
-    }
-
-    [Fact]
-    public async Task Add_an_invalid_Elemento_SubElemento_combination_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm2", "aff2@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer2", "affplayer2@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId);
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Ar", 0, "Ferro", 0, null, 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SegundaEssencia == "Vida" && a.SegundaEssenciaValor == 4
+            && a.SubElemento == "Curar" && a.SubElementoValor == 2 && a.Experiencia == 10);
     }
 
     [Fact]
@@ -196,18 +191,18 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Terra", 5, "Aprimorar", 1, "Vida", 8)));
+            new UpdateCharacterAffinityRequest("Terra", 5, null, 1, null, 8, "Vida", 4)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
         updated!.Elemento.Should().Be("Terra");
         updated.ElementoValor.Should().Be(5);
+        updated.SegundaEssencia.Should().Be("Vida");
         updated.SubElemento.Should().Be("Aprimorar");
         updated.SubElementoValor.Should().Be(1);
-        updated.CaminhoNome.Should().Be("Vida");
         updated.Experiencia.Should().Be(8);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
@@ -223,7 +218,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
@@ -232,6 +227,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
         updated!.Elemento.Should().BeNull();
         updated.SubElemento.Should().BeNull();
+        updated.SegundaEssencia.Should().BeNull();
     }
 
     [Fact]
@@ -266,59 +262,6 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
-    public async Task Add_rejects_an_Elemento_not_liberado_pela_Vocacao_atual()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm12", "aff12@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer12", "affplayer12@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto (Dobra+Consagração)
-
-        // Necromancia é de Maculação — Adepto não libera.
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest(null, null, "Necromancia", 1, null, null)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_keeps_an_old_SubElemento_that_no_longer_fits_a_new_Vocacao_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm13", "aff13@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer13", "affplayer13@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
-
-        // Troca a Vocação pra Feiticeiro (não libera mais Curar, que é de Consagração).
-        var updateSheet = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, updateSheet));
-
-        // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Add_rejects_a_duplicate_Elemento_already_used_by_another_row()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm14", "aff14@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer14", "affplayer14@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
-
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
     public async Task Update_does_not_flag_a_duplicate_against_its_own_row()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AffGm15", "aff15@teste.com");
@@ -326,12 +269,12 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        // Reenviar a mesma linha com o mesmo Elemento não deve se auto-rejeitar como duplicata.
+        // Reenviar a mesma linha com o mesmo Sub-Elemento derivado não deve se auto-rejeitar como duplicata.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
+            new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null, "Vida", null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -344,175 +287,164 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
         var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
         var row1 = await addResponse1.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        var addResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Terra", 1, null, null, null, null)));
-        var row2 = await addResponse2.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
-
-        // Simulate legacy pre-branch data: force row2's Elemento to collide with row1's directly
-        // in the DB, bypassing the controller's own duplicate check entirely.
+        // Simulate a pre-existing duplicate SubElemento inserted directly in the DB, bypassing the
+        // controller's own duplicate check entirely — the API now refuses to create this via HTTP.
+        Guid row2Id;
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            var row2Entity = await db.CharacterAffinities.SingleAsync(a => a.Id == Guid.Parse(row2!.Id));
-            row2Entity.Elemento = Elemento.Fogo;
+            row2Id = Guid.NewGuid();
+            db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
+            {
+                Id = row2Id, CharacterSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
+            });
             await db.SaveChangesAsync();
         }
 
-        // Re-send row2 with the same (now-colliding) Elemento, changing only Experiencia — the
+        // Re-send row2 with the same (now-colliding) SubElemento, changing only Experiencia — the
         // pre-existing collision is not newly introduced, so it must be grandfathered through.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 1, null, null, null, 7)));
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 1, null, null, null, 7, "Vida", null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
-    public async Task Add_a_Curar_row_with_Fogo_and_the_Vida_Caminho_returns_201()
+    [Theory]
+    [InlineData("Ar", "Agua", "Gelo")]
+    [InlineData("Agua", "Ar", "Gelo")]
+    [InlineData("Terra", "Vida", "Aprimorar")]
+    [InlineData("Agua", "Mundano", "Hemomancia")]
+    public async Task Add_derives_the_SubElemento_from_the_two_essencias(string e1, string e2, string sub)
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm17", "aff17@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer17", "affplayer17@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+        var gmToken = await RegisterGmAndGetTokenAsync($"AffEssGm{e1}{e2}", $"affessgm{e1}{e2}@teste.com".ToLowerInvariant());
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AffEssP{e1}{e2}", $"affessp{e1}{e2}@teste.com".ToLowerInvariant());
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
+        (await AddAsync(playerToken, sheetId, e1, e2)).StatusCode.Should().Be(HttpStatusCode.Created);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.Elemento == e1 && a.SegundaEssencia == e2 && a.SubElemento == sub);
+    }
+
+    [Fact]
+    public async Task Add_ignores_a_SubElemento_sent_by_the_client()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffEssGmIgn", "affessgmign@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssPIgn", "affesspign@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", null, "Gelo", null, "Alma", null, "Terra", null)));
+
+        (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.SubElemento == "Ferro");
     }
 
     [Theory]
-    [InlineData("Fogo", "Mundano")] // Caminho errado
-    [InlineData("Fogo", "Alma")]    // Caminho errado
-    [InlineData("Fogo", null)]      // sem Caminho
-    [InlineData(null, "Vida")]      // sem Elemento
-    [InlineData("Ar", "Vida")]      // Elemento fora da Matriz para Curar
-    public async Task Add_a_Curar_row_without_both_Fogo_and_the_Vida_Caminho_returns_400(string? elemento, string? caminho)
+    [InlineData("Ar", "Terra")]
+    [InlineData("Agua", "Fogo")]
+    [InlineData("Fogo", "Fogo")]
+    [InlineData("Fogo", "Alma")]
+    [InlineData("Ar", "Vida")]
+    public async Task Add_with_essencias_that_dont_cross_returns_400(string e1, string e2)
     {
-        var gmToken = await RegisterGmAndGetTokenAsync($"AffGm18{elemento}{caminho}", $"aff18{elemento}{caminho}@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AffPlayer18{elemento}{caminho}", $"affplayer18{elemento}{caminho}@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
+        var gmToken = await RegisterGmAndGetTokenAsync($"AffEssBadGm{e1}{e2}", $"affessbadgm{e1}{e2}@teste.com".ToLowerInvariant());
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AffEssBadP{e1}{e2}", $"affessbadp{e1}{e2}@teste.com".ToLowerInvariant());
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest(elemento, 1, "Curar", 1, caminho, 0)));
+        var response = await AddAsync(playerToken, sheetId, e1, e2);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Essas duas Essências não se cruzam na Matriz Elemental.");
     }
 
     [Fact]
-    public async Task Add_rejects_a_free_text_Caminho()
+    public async Task Add_with_SegundaEssencia_but_no_Elemento_returns_400()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm19", "aff19@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer19", "affplayer19@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("AffEssNoE1Gm", "affessnoe1gm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssNoE1P", "affessnoe1p@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 1, null, null, "Caminho da Fênix", 0)));
+        var response = await AddAsync(playerToken, sheetId, null, "Mundano");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Escolha a Essência Básica 1 antes da 2.");
     }
 
     [Fact]
-    public async Task Update_rejects_changing_the_Caminho_out_from_under_a_Curar_row()
+    public async Task Add_rejects_a_second_row_with_the_same_SubElemento_but_allows_repeating_Essencia1()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm20", "aff20@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer20", "affplayer20@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("AffEssDupGm", "affessdupgm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssDupP", "affessdupp@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await AddAsync(playerToken, sheetId, "Fogo", "Vida");
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+        var sameSub = await AddAsync(playerToken, sheetId, "Fogo", "Vida");
+        var sameE1 = await AddAsync(playerToken, sheetId, "Fogo", "Mundano");
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 1, "Curar", 1, "Mundano", 0)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        sameSub.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await sameSub.Content.ReadAsStringAsync()).Should().Contain("Já existe uma linha de Afinidade com esse Sub-Elemento.");
+        sameE1.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
-    [Fact]
-    public async Task Update_keeps_a_legacy_free_text_Caminho_row_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffGm21", "aff21@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer21", "affplayer21@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId);
-
-        Guid rowId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            rowId = Guid.NewGuid();
-            db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
-            {
-                Id = rowId, CharacterSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SubElemento = SubElemento.Curar,
-                CaminhoNome = "Caminho da Fênix", Experiencia = 3
-            });
-            await db.SaveChangesAsync();
-        }
-
-        // Só a Experiência muda — Elemento/Sub-Elemento/Caminho iguais ao salvo.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{rowId}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", null, "Curar", null, "Caminho da Fênix", 9)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    // Alma e Vida são Caminhos (dropdown próprio), não Sub-Elementos — Requisitos - Ficha de Personagem 2.c.
     [Theory]
-    [InlineData("Ar", "Alma")]
-    [InlineData("Fogo", "Vida")]
-    public async Task Add_rejects_a_new_Alma_or_Vida_as_SubElemento(string elemento, string subElemento)
+    [InlineData(null)]
+    [InlineData("Campeao")]
+    [InlineData("Feiticeiro")]
+    public async Task Any_Vocacao_can_pick_any_essencias(string? vocacao)
     {
-        var gmToken = await RegisterGmAndGetTokenAsync($"AlmaVidaGmChA1{subElemento}", $"almavidaChA1{subElemento}@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AlmaVidaPChA1{subElemento}", $"almavidapChA1{subElemento}@teste.com");
+        var suffix = vocacao ?? "Nenhuma";
+        var gmToken = await RegisterGmAndGetTokenAsync($"AffEssVocGm{suffix}", $"affessvocgm{suffix}@teste.com".ToLowerInvariant());
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AffEssVocP{suffix}", $"affessvocp{suffix}@teste.com".ToLowerInvariant());
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest(elemento, 1, subElemento, 1, null, 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AddAsync(playerToken, sheetId, "Terra", "Mundano")).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await AddAsync(playerToken, sheetId, "Agua", "Alma")).StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
-    public async Task Update_rejects_changing_the_SubElemento_to_Vida()
+    public async Task Update_changing_only_values_keeps_a_legacy_SubElemento()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("AlmaVidaGmChB1", "almavidaChB1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AlmaVidaPChB1", "almavidapChB1@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("AffEssLegGm", "affesslegm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssLegP", "affesslegp@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 1, "Vida", 1, "Vida", 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_keeps_a_legacy_row_whose_SubElemento_is_Vida_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AlmaVidaGmChC1", "almavidaChC1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AlmaVidaPChC1", "almavidapChC1@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId);
-
-        Guid rowId;
+        var legacyId = Guid.NewGuid();
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            rowId = Guid.NewGuid();
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
-            {
-                Id = rowId, CharacterSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 3
-            });
+                { Id = legacyId, CharacterSheetId = Guid.Parse(sheetId), Elemento = RuinaRPG.Domain.CharacterSheets.Elemento.Ar, SubElemento = RuinaRPG.Domain.CharacterSheets.SubElemento.Curar });
             await db.SaveChangesAsync();
         }
 
-        // Só a Experiência muda — Elemento/Sub-Elemento/Caminho iguais ao salvo.
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{rowId}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", null, "Vida", null, null, 9)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{legacyId}", playerToken,
+            new UpdateCharacterAffinityRequest("Ar", 5, null, 3, null, 7, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.SubElemento == "Curar" && a.ElementoValor == 5 && a.SubElementoValor == 3 && a.Experiencia == 7);
+    }
+
+    [Fact]
+    public async Task Update_changing_an_essencia_recomputes_the_SubElemento()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffEssRecGm", "affessrecgm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssRecP", "affessrecp@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var added = await (await AddAsync(playerToken, sheetId, "Fogo", "Vida")).Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null, "Mundano", null)));
+        var afterChange = (await ListAsync(playerToken, sheetId)).Single();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null, null, null)));
+        var afterClear = (await ListAsync(playerToken, sheetId)).Single();
+
+        afterChange.SubElemento.Should().Be("Necromancia");
+        afterClear.SubElemento.Should().BeNull();
+        afterClear.SegundaEssencia.Should().BeNull();
     }
 }

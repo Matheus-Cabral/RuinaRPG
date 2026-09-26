@@ -103,9 +103,10 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
                 1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null)));
 
-    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? subElemento, int? subElementoValor, string? caminhoNome, int? experiencia) =>
+    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? subElemento, int? subElementoValor, string? caminhoNome, int? experiencia,
+        string? segundaEssencia = null, int? segundaEssenciaValor = null) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia)));
+            new AddNpcAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia, segundaEssencia, segundaEssenciaValor)));
 
     private async Task<List<NpcAffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
     {
@@ -262,20 +263,9 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         await AddMemberAsync(gmToken, campaignId, playerId);
 
         var sourceId = await CreateNpcSheetAsync(gmToken);
-        await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // libera Dobra (Fogo) + Consagração (Curar)
-        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Curar", 2, "Vida", 10);
-
-        // SegundaEssencia/SegundaEssenciaValor aren't exposed by the AddNpcAffinity contract yet
-        // (Task 3) — set them directly through the DbContext on the source row, same as the copy
-        // is asserted below.
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            var sourceAffinity = await db.NpcAffinities.SingleAsync(a => a.NpcSheetId == Guid.Parse(sourceId));
-            sourceAffinity.SegundaEssencia = RuinaRPG.Domain.CharacterSheets.EssenciaBasica.Vida;
-            sourceAffinity.SegundaEssenciaValor = 5;
-            await db.SaveChangesAsync();
-        }
+        await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // Vocação não restringe mais a Afinidade (Task 3)
+        // Fogo + Vida = Curar na Matriz Elemental — o Sub-Elemento é derivado, não enviado.
+        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, null, 2, null, 10, "Vida", 5);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);

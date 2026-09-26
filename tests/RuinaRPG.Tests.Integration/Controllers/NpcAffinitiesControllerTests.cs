@@ -66,26 +66,14 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcAffinityResponse>>();
-        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SubElemento == "Curar" && a.SubElementoValor == 2
-            && a.CaminhoNome == "Vida" && a.Experiencia == 10);
-    }
-
-    [Fact]
-    public async Task Add_an_invalid_Elemento_SubElemento_combination_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm2", "npcaff2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Ar", 0, "Ferro", 0, null, 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SegundaEssencia == "Vida" && a.SegundaEssenciaValor == 4
+            && a.SubElemento == "Curar" && a.SubElementoValor == 2 && a.Experiencia == 10);
     }
 
     [Fact]
@@ -153,14 +141,15 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddNpcAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Terra", 5, "Aprimorar", 1, "Vida", 8)));
+            new UpdateNpcAffinityRequest("Terra", 5, null, 1, null, 8, "Vida", 4)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
         updated!.Elemento.Should().Be("Terra");
+        updated.SegundaEssencia.Should().Be("Vida");
         updated.SubElemento.Should().Be("Aprimorar");
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
@@ -186,67 +175,17 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
     }
 
     [Fact]
-    public async Task Add_rejects_an_Elemento_not_liberado_pela_Vocacao_atual()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm12", "npcaff12@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto (Dobra+Consagração)
-
-        // Necromancia é de Maculação — Adepto não libera.
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(null, null, "Necromancia", 1, null, null)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_keeps_an_old_SubElemento_that_no_longer_fits_a_new_Vocacao_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm13", "npcaff13@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
-        var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
-
-        // Troca a Vocação pra Feiticeiro (não libera mais Vida, que é de Consagração).
-        var updateSheet = new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
-            1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, updateSheet));
-
-        // Reenvia a mesma linha sem mudar Elemento/Sub-Elemento — não deve ser bloqueado.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Add_rejects_a_duplicate_Elemento_already_used_by_another_row()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm14", "npcaff14@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
-
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null)));
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 5, null, null, null, null)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
     public async Task Update_does_not_flag_a_duplicate_against_its_own_row()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm15", "npcaff15@teste.com");
         var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null)));
+            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 5, null, null, null, null)));
+            new UpdateNpcAffinityRequest("Fogo", 5, null, null, null, null, "Vida", null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -258,166 +197,69 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
 
         var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null)));
+            new AddNpcAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
         var row1 = await addResponse1.Content.ReadFromJsonAsync<NpcAffinityResponse>();
 
-        var addResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Terra", 1, null, null, null, null)));
-        var row2 = await addResponse2.Content.ReadFromJsonAsync<NpcAffinityResponse>();
-
-        // Simulate legacy pre-branch data: force row2's Elemento to collide with row1's directly
-        // in the DB, bypassing the controller's own duplicate check entirely.
+        // Simulate a pre-existing duplicate SubElemento inserted directly in the DB, bypassing the
+        // controller's own duplicate check entirely — the API now refuses to create this via HTTP.
+        Guid row2Id;
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            var row2Entity = await db.NpcAffinities.SingleAsync(a => a.Id == Guid.Parse(row2!.Id));
-            row2Entity.Elemento = Elemento.Fogo;
+            row2Id = Guid.NewGuid();
+            db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
+            {
+                Id = row2Id, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
+            });
             await db.SaveChangesAsync();
         }
 
-        // Re-send row2 with the same (now-colliding) Elemento, changing only Experiencia — the
+        // Re-send row2 with the same (now-colliding) SubElemento, changing only Experiencia — the
         // pre-existing collision is not newly introduced, so it must be grandfathered through.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{row2!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 1, null, null, null, 7)));
+        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{row2Id}", gmToken,
+            new UpdateNpcAffinityRequest("Fogo", 1, null, null, null, 7, "Vida", null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Add_a_Curar_row_with_Fogo_and_the_Vida_Caminho_returns_201()
+    public async Task Add_derives_the_SubElemento_from_the_two_essencias()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm17", "npcaff17@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken); // Vocacao=Adepto
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffEssGm1", "npcaffessgm1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
+            new AddNpcAffinityRequest("Fogo", null, null, null, null, null, "Terra", 2)));
+        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken)))
+            .Content.ReadFromJsonAsync<List<NpcAffinityResponse>>();
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+        list!.Should().ContainSingle(a => a.SubElemento == "Ferro" && a.SegundaEssencia == "Terra" && a.SegundaEssenciaValor == 2);
     }
 
-    [Theory]
-    [InlineData("Fogo", "Mundano")]
-    [InlineData("Fogo", "Alma")]
-    [InlineData("Fogo", null)]
-    [InlineData(null, "Vida")]
-    [InlineData("Ar", "Vida")]
-    public async Task Add_a_Curar_row_without_both_Fogo_and_the_Vida_Caminho_returns_400(string? elemento, string? caminho)
+    [Fact]
+    public async Task Add_with_essencias_that_dont_cross_returns_400()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync($"NpcAffGm18{elemento}{caminho}", $"npcaff18{elemento}{caminho}@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffEssGm2", "npcaffessgm2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(elemento, 1, "Curar", 1, caminho, 0)));
+            new AddNpcAffinityRequest("Agua", null, null, null, null, null, "Vida", null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task Add_rejects_a_free_text_Caminho()
+    public async Task Add_rejects_a_duplicate_SubElemento()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm19", "npcaff19@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffEssGm3", "npcaffessgm3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Ar", null, null, null, null, null, "Agua", null)));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 1, null, null, "Caminho da Fênix", 0)));
+            new AddNpcAffinityRequest("Agua", null, null, null, null, null, "Ar", null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_rejects_changing_the_Caminho_out_from_under_a_Curar_row()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm20", "npcaff20@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
-        var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
-
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 1, "Curar", 1, "Mundano", 0)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_keeps_a_legacy_free_text_Caminho_row_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm21", "npcaff21@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        Guid rowId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            rowId = Guid.NewGuid();
-            db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
-            {
-                Id = rowId, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SubElemento = SubElemento.Curar,
-                CaminhoNome = "Caminho da Fênix", Experiencia = 3
-            });
-            await db.SaveChangesAsync();
-        }
-
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{rowId}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", null, "Curar", null, "Caminho da Fênix", 9)));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    // Alma e Vida são Caminhos (dropdown próprio), não Sub-Elementos — Requisitos - Ficha de Personagem 2.c.
-    [Theory]
-    [InlineData("Ar", "Alma")]
-    [InlineData("Fogo", "Vida")]
-    public async Task Add_rejects_a_new_Alma_or_Vida_as_SubElemento(string elemento, string subElemento)
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync($"AlmaVidaGmNpA1{subElemento}", $"almavidaNpA1{subElemento}@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(elemento, 1, subElemento, 1, null, 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_rejects_changing_the_SubElemento_to_Vida()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AlmaVidaGmNpB1", "almavidaNpB1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest("Fogo", 1, "Curar", 1, "Vida", 0)));
-        var added = await addResponse.Content.ReadFromJsonAsync<NpcAffinityResponse>();
-
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{added!.Id}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", 1, "Vida", 1, "Vida", 0)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_keeps_a_legacy_row_whose_SubElemento_is_Vida_when_resubmitted_unchanged()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AlmaVidaGmNpC1", "almavidaNpC1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        Guid rowId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            rowId = Guid.NewGuid();
-            db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
-            {
-                Id = rowId, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 3
-            });
-            await db.SaveChangesAsync();
-        }
-
-        // Só a Experiência muda — Elemento/Sub-Elemento/Caminho iguais ao salvo.
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/affinities/{rowId}", gmToken,
-            new UpdateNpcAffinityRequest("Fogo", null, "Vida", null, null, 9)));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

@@ -207,11 +207,6 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return BadRequest("Afinidade inválida.");
         if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
             return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
-        // Só valida contra a Vocação quando o valor realmente muda — uma Afinidade antiga
-        // reenviada sem alteração nunca é invalidada por uma troca de Vocação posterior (ver
-        // docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md).
-        if (afinidade is not null && afinidade != sheet.Afinidade && !VocacaoEscolaMap.PodeEscolherAfinidade(vocacao, afinidade.Value))
-            return BadRequest("Essa Afinidade não é liberada pela Vocação atual.");
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
         if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
