@@ -10,11 +10,21 @@ namespace RuinaRPG.Infrastructure.CharacterSheets;
 /// editor and later opened by the GM, so it's run through an allowlist before it's ever persisted —
 /// only the tags/attributes/CSS the Jodit toolbar can produce survive. Anything else (script, event
 /// handlers, iframes, images, javascript:/data: links, class/id) is dropped, whatever the client sent.
+/// A disallowed tag is unwrapped so its text survives (pasted &lt;pre&gt;, &lt;section&gt;, wrappers…),
+/// except for the non-text elements in <see cref="DroppedWithContent"/>, which go away whole.
 /// </summary>
 public static partial class HistoriaSanitizer
 {
     public const int MaxLength = 200_000;
+    // The raw request may be larger than MaxLength (sanitizing can also shrink it); this only caps the work.
+    public const int MaxRawLength = MaxLength * 2;
     public const string MaxLengthMessage = "A História pode ter no máximo 200.000 caracteres.";
+
+    // Unwrapping these would leak code, CSS or hidden/fallback markup into the story as text.
+    private static readonly HashSet<string> DroppedWithContent = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "script", "style", "template", "noscript", "iframe", "object", "embed", "svg", "math", "textarea", "select",
+    };
 
     private static readonly HtmlSanitizer Sanitizer = Build();
 
@@ -40,12 +50,19 @@ public static partial class HistoriaSanitizer
             AllowedCssProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "color", "background-color", "font-family", "font-size", "text-align", "text-decoration", "padding-left", "margin-left",
+                "list-style-type", "vertical-align", "width", "border-collapse",
             },
             AllowedSchemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "http", "https", "mailto" },
             UriAttributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "href" },
         };
 
-        var sanitizer = new HtmlSanitizer(options);
+        var sanitizer = new HtmlSanitizer(options) { KeepChildNodes = true };
+        // With KeepChildNodes a removed tag is replaced by its children; emptying it first makes it vanish whole.
+        sanitizer.RemovingTag += (_, e) =>
+        {
+            if (DroppedWithContent.Contains(e.Tag.LocalName))
+                e.Tag.TextContent = string.Empty;
+        };
         // target/rel aren't accepted from input (not in AllowedAttributes) — set here on every surviving link.
         sanitizer.PostProcessNode += (_, e) =>
         {
@@ -62,7 +79,7 @@ public static partial class HistoriaSanitizer
     private static bool HasVisibleContent(string html) =>
         html.Contains("<hr", StringComparison.OrdinalIgnoreCase)
         || html.Contains("<table", StringComparison.OrdinalIgnoreCase)
-        || !string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(TagRegex().Replace(html, "")).Replace(' ', ' '));
+        || !string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(TagRegex().Replace(html, "")));
 
     [GeneratedRegex("<[^>]+>")]
     private static partial Regex TagRegex();

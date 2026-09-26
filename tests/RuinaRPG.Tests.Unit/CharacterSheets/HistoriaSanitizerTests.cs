@@ -112,4 +112,67 @@ public class HistoriaSanitizerTests
 
         result.Should().Contain("rgba(255, 0, 0, 1) no jogo");
     }
+
+    [Fact]
+    public void Unwraps_a_disallowed_pre_block_keeping_its_text()
+    {
+        var result = HistoriaSanitizer.Sanitize("<pre>codigo importante</pre>");
+
+        result.Should().NotBeNull();
+        result.Should().Contain("codigo importante").And.NotContain("<pre");
+    }
+
+    [Fact]
+    public void Unwraps_inline_code_keeping_the_surrounding_text()
+    {
+        var result = HistoriaSanitizer.Sanitize("<p>a <code>x()</code> b</p>");
+
+        result.Should().Contain("x()").And.Contain("a ").And.Contain(" b").And.NotContain("<code");
+    }
+
+    [Fact]
+    public void Unwraps_a_section_keeping_its_allowed_children()
+    {
+        HistoriaSanitizer.Sanitize("<section><p>Texto</p></section>").Should().Contain("<p>Texto</p>").And.NotContain("section");
+    }
+
+    [Fact]
+    public void Unwraps_the_google_sheets_paste_wrapper_keeping_the_table()
+    {
+        var result = HistoriaSanitizer.Sanitize("<google-sheets-html-origin><table><tbody><tr><td>Célula</td></tr></tbody></table></google-sheets-html-origin>");
+
+        result.Should().Contain("<td>Célula</td>").And.NotContain("google-sheets");
+    }
+
+    [Fact]
+    public void Keeps_list_style_type()
+    {
+        HistoriaSanitizer.Sanitize("<ul style=\"list-style-type: lower-alpha\"><li>x</li></ul>").Should().Contain("list-style-type: lower-alpha");
+    }
+
+    [Fact]
+    public void Keeps_table_width_border_collapse_and_vertical_align()
+    {
+        var result = HistoriaSanitizer.Sanitize("<table style=\"width: 100%; border-collapse: collapse\"><tbody><tr><td style=\"vertical-align: top; width: 50%\">x</td></tr></tbody></table>");
+
+        result.Should().Contain("width").And.Contain("border-collapse").And.Contain("vertical-align");
+    }
+
+    [Theory]
+    [InlineData("<noscript><p>escondido</p></noscript><p>visivel</p>", "visivel", "escondido")]
+    [InlineData("<svg><text>desenho</text></svg><p>ok</p>", "ok", "desenho")]
+    [InlineData("<template><p>molde</p></template><p>ok</p>", "ok", "molde")]
+    [InlineData("<textarea>rascunho</textarea><p>ok</p>", "ok", "rascunho")]
+    [InlineData("<select><option>opcao</option></select><p>ok</p>", "ok", "opcao")]
+    [InlineData("<math><mi>equacao</mi></math><p>ok</p>", "ok", "equacao")]
+    [InlineData("<object><p>fallback</p></object><p>ok</p>", "ok", "fallback")]
+    [InlineData("<p>oi</p><script>alert(1)</script>", "oi", "alert")]
+    [InlineData("<style>p{color:red}</style><p>oi</p>", "oi", "p{color")]
+    [InlineData("<pre>antes<script>alert(1)</script>depois</pre>", "antesdepois", "alert")]
+    public void Drops_the_contents_of_non_text_elements_entirely(string input, string kept, string dropped)
+    {
+        var result = HistoriaSanitizer.Sanitize(input);
+
+        result.Should().Contain(kept).And.NotContain(dropped);
+    }
 }
