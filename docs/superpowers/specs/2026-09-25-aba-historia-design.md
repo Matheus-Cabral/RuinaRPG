@@ -52,10 +52,15 @@ even before the server sanitizes it.
 ### Saving
 
 Autosave, no Save button: the editor reports a change ~1s after typing stops (debounced in JS) and
-immediately on blur. Each sheet wires those to its **own** `AutoSaveCoordinator` instance dedicated
-to the História, which calls `PUT …/historia`; the sheet's existing autosave indicator shows the
-História's save state as well (the page combines both coordinators' states — Saving/Error win over
-Saved).
+immediately on blur (flushing a pending debounce). A shared `HistoriaEditor` component (used by both
+sheets) owns its **own** `AutoSaveCoordinator` and `AutoSaveIndicator`, shown in the História tab
+next to the editor, and calls `PUT …/historia`.
+
+The editor receives its content only when it is created (tab opened). The sheet sets
+`_form.Historia` from the API only on the sheet's **first** load, and `HistoriaEditor` keeps
+`_form.Historia` updated on every change via `@bind-Html` — so the sheet's general autosave reload
+(triggered by any other field) can never push stale text into an editor the player is typing in,
+and reopening the tab shows the latest text.
 
 A 400 from the API (too long) surfaces through the sheet's existing `_errorMessage` alert.
 
@@ -122,20 +127,22 @@ can't inject script either.
 - **`wwwroot/js/richTextEditor.js`** — `window.ruinaRichText`:
   - `create(element, dotNetRef, initialHtml)` — on first call injects the Jodit `<link>`/`<script>`
     and awaits load; then builds the editor with the toolbar/theme/paste config above; wires
-    `change` (debounced 1000ms in JS) → `dotNetRef.invokeMethodAsync('OnEditorChanged', html)` and
-    `blur` → `dotNetRef.invokeMethodAsync('OnEditorBlurred', html)`.
-  - `setValue(element, html)` — replaces content without firing a change (used when the sheet
-    reloads).
-  - `destroy(element)` — tears the editor and the theme observer down.
+    `change` (debounced 1000ms in JS) → `dotNetRef.invokeMethodAsync('OnEditorChanged', html)`;
+    `blur` flushes a pending debounce immediately.
+  - `destroy(element)` — flushes a pending debounce, then tears the editor and the theme observer down.
   - Registered in `index.html` next to `theme.js`/`clipboard.js` (it's tiny; only Jodit itself is lazy).
-- **`Shared/Fields/RichTextEditor.razor`** — parameters `Value`, `ValueChanged`, `OnCommit`
-  (`EventCallback<string?>`, fired on the debounced change and on blur); renders a `<div @ref>`
-  host; `OnAfterRenderAsync(firstRender)` → `create`; `[JSInvokable] OnEditorChanged/OnEditorBlurred`
-  update `Value`, raise `ValueChanged`, then `OnCommit`; `OnParametersSet` with an externally
-  changed `Value` → `setValue`; `IAsyncDisposable` → `destroy` (swallowing `JSDisconnectedException`).
-- **Sheets:** `FichaDePersonagem.razor`/`FichaDeNpc.razor` get the new `<MudTabPanel Text="História">`,
-  lose `EstrelaSelect`/`HistoricoSelect` from Informações Básicas, and add `_form.Historia` plus a
-  `_historiaAutoSave` coordinator whose delegate `PUT`s `…/historia`.
+- **`Shared/Fields/RichTextEditor.razor`** — parameters `Html`, `HtmlChanged`, `OnCommit`
+  (`EventCallback<string?>`); renders a `<div @ref>` host; `OnAfterRenderAsync(firstRender)` →
+  `create`; `[JSInvokable] OnEditorChanged(html)` updates `Html`, raises `HtmlChanged` then
+  `OnCommit`; `IAsyncDisposable` → `destroy` (swallowing `JSDisconnectedException`).
+- **`Shared/Fields/HistoriaEditor.razor`** — parameters `SaveUrl`, `Html`/`HtmlChanged`,
+  `OnError` (`EventCallback<string>`); wraps `RichTextEditor`, owns the `AutoSaveCoordinator` +
+  `AutoSaveIndicator`, PUTs `UpdateHistoriaRequest` to `SaveUrl`; on a non-success response raises
+  `OnError` (400 → the API's message via `ReadErrorMessageAsync`) and throws so the indicator shows
+  "Erro ao salvar".
+- **Sheets:** `FichaDePersonagem.razor`/`FichaDeNpc.razor` get the new `<MudTabPanel Text="História">`
+  (Estrela + Histórico section, then `HistoriaEditor`), lose `EstrelaSelect`/`HistoricoSelect` from
+  Informações Básicas, and add `_form.Historia` (set on first load only).
 
 ## Testing (TDD — failing test first for every unit)
 
@@ -148,12 +155,13 @@ can't inject script either.
   >200,000 chars → 400; Personagem: unrelated player/other GM → 403; NPC: other GM → 404;
   the general sheet PUT leaves `Historia` untouched; granted-player NPC can write it;
   NPC deep-copy grant carries `Historia`.
-- **bUnit** (`tests/RuinaRPG.Tests.Client`): `RichTextEditor` calls `ruinaRichText.create` on first
-  render and propagates an `OnEditorChanged` JS callback to `ValueChanged` + `OnCommit`; both sheets
-  render a "História" tab in the right position containing Estrela and Histórico, and Informações
-  Básicas no longer contains them.
-- **Browser check** at the end (bUnit can't run Jodit): run the app locally, open a sheet's História
-  tab, confirm toolbar, pt-BR, dark theme, typing → "Salvo", reload → content persists, a table and
+- **bUnit** (`tests/RuinaRPG.Tests.Client`): `RichTextEditor` calls `ruinaRichText.create` with
+  the initial HTML on first render, propagates `OnEditorChanged` to `HtmlChanged` + `OnCommit`, and
+  calls `ruinaRichText.destroy` on dispose; `HistoriaEditor` PUTs the changed HTML to `SaveUrl` and
+  surfaces a 400's message through `OnError`. (The full sheet pages are too HTTP-heavy to render in
+  bUnit; tab placement is covered by the browser check.)
+- **Browser check** at the end (bUnit can't run Jodit): run the app locally, open both sheets' História
+  tab, confirm tab order, Estrela/Histórico moved, toolbar, pt-BR, dark theme, typing → "Salvo", reload → content persists, a table and
   a colored heading survive the round trip.
 
 ## Docs
