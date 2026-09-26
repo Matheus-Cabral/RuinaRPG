@@ -103,10 +103,9 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
                 1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null)));
 
-    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? subElemento, int? subElementoValor, string? caminhoNome, int? experiencia,
-        string? segundaEssencia = null, int? segundaEssenciaValor = null) =>
+    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? segundaEssencia, int? segundaEssenciaValor, int? subElementoValor, int? experiencia) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia, segundaEssencia, segundaEssenciaValor)));
+            new AddNpcAffinityRequest(elemento, elementoValor, segundaEssencia, segundaEssenciaValor, subElementoValor, experiencia)));
 
     private async Task<List<NpcAffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
     {
@@ -265,7 +264,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var sourceId = await CreateNpcSheetAsync(gmToken);
         await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // Vocação não restringe mais a Afinidade (Task 3)
         // Fogo + Vida = Curar na Matriz Elemental — o Sub-Elemento é derivado, não enviado.
-        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, null, 2, null, 10, "Vida", 5);
+        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Vida", 5, 2, 10);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);

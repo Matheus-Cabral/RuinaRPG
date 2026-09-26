@@ -79,7 +79,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
 
     private async Task<HttpResponseMessage> AddAsync(string token, string sheetId, string? elemento, string? segunda, int? subValor = null) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
-            new AddCharacterAffinityRequest(elemento, null, null, subValor, null, null, segunda, null)));
+            new AddCharacterAffinityRequest(elemento, null, segunda, null, subValor, null)));
 
     private async Task<List<CharacterAffinityResponse>> ListAsync(string token, string sheetId) =>
         (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", token)))
@@ -93,7 +93,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -111,7 +111,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Terra", 1, "Aprimorar", 1, "Vida", 5)));
+            new AddCharacterAffinityRequest("Terra", 1, null, null, 1, 5)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken));
@@ -131,7 +131,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", otherToken,
-            new AddCharacterAffinityRequest("Terra", 1, "Aprimorar", 1, "Vida", 5)));
+            new AddCharacterAffinityRequest("Terra", 1, null, null, 1, 5)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -163,7 +163,6 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var added = await response.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
         added!.Elemento.Should().BeNull();
         added.SubElemento.Should().BeNull();
-        added.CaminhoNome.Should().BeNull();
         added.Experiencia.Should().BeNull();
     }
 
@@ -191,11 +190,11 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Terra", 5, null, 1, null, 8, "Vida", 4)));
+            new UpdateCharacterAffinityRequest("Terra", 5, "Vida", 4, 1, 8)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
         updated!.Elemento.Should().Be("Terra");
@@ -218,7 +217,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, 2, null, 10, "Vida", 4)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
@@ -239,11 +238,11 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, "Curar", 2, "Vida", 10)));
+            new AddCharacterAffinityRequest("Fogo", 3, null, null, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", otherToken,
-            new UpdateCharacterAffinityRequest("Terra", 1, "Aprimorar", 1, "Vida", 1)));
+            new UpdateCharacterAffinityRequest("Terra", 1, null, null, 1, 1)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -256,7 +255,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{Guid.NewGuid()}", playerToken,
-            new UpdateCharacterAffinityRequest("Terra", 1, "Aprimorar", 1, "Vida", 1)));
+            new UpdateCharacterAffinityRequest("Terra", 1, null, null, 1, 1)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -269,12 +268,12 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", null, null, null)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         // Reenviar a mesma linha com o mesmo Sub-Elemento derivado não deve se auto-rejeitar como duplicata.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null, "Vida", null)));
+            new UpdateCharacterAffinityRequest("Fogo", 5, "Vida", null, null, null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -287,7 +286,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
         var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null, "Vida", null)));
+            new AddCharacterAffinityRequest("Fogo", 3, "Vida", null, null, null)));
         var row1 = await addResponse1.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         // Simulate a pre-existing duplicate SubElemento inserted directly in the DB, bypassing the
@@ -307,7 +306,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         // Re-send row2 with the same (now-colliding) SubElemento, changing only Experiencia — the
         // pre-existing collision is not newly introduced, so it must be grandfathered through.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", 1, null, null, null, 7, "Vida", null)));
+            new UpdateCharacterAffinityRequest("Fogo", 1, "Vida", null, null, 7)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -326,19 +325,6 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         (await AddAsync(playerToken, sheetId, e1, e2)).StatusCode.Should().Be(HttpStatusCode.Created);
 
         (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.Elemento == e1 && a.SegundaEssencia == e2 && a.SubElemento == sub);
-    }
-
-    [Fact]
-    public async Task Add_ignores_a_SubElemento_sent_by_the_client()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("AffEssGmIgn", "affessgmign@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssPIgn", "affesspign@teste.com");
-        var sheetId = await SetUpSheetAsync(gmToken, playerId);
-
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", null, "Gelo", null, "Alma", null, "Terra", null)));
-
-        (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.SubElemento == "Ferro");
     }
 
     [Theory]
@@ -422,7 +408,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         }
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{legacyId}", playerToken,
-            new UpdateCharacterAffinityRequest("Ar", 5, null, 3, null, 7, null, null)));
+            new UpdateCharacterAffinityRequest("Ar", 5, null, null, 3, 7)));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await ListAsync(playerToken, sheetId)).Should().ContainSingle(a => a.SubElemento == "Curar" && a.ElementoValor == 5 && a.SubElementoValor == 3 && a.Experiencia == 7);
@@ -437,10 +423,10 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var added = await (await AddAsync(playerToken, sheetId, "Fogo", "Vida")).Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null, "Mundano", null)));
+            new UpdateCharacterAffinityRequest("Fogo", null, "Mundano", null, null, null)));
         var afterChange = (await ListAsync(playerToken, sheetId)).Single();
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
-            new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null, null, null)));
+            new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null)));
         var afterClear = (await ListAsync(playerToken, sheetId)).Single();
 
         afterChange.SubElemento.Should().Be("Necromancia");

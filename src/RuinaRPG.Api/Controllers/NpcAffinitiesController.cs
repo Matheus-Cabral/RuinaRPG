@@ -163,8 +163,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
             a.NpcSheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
 
     private static NpcAffinityResponse ToResponse(NpcAffinity a) =>
-        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SubElemento?.ToString(), a.SubElementoValor, a.CaminhoNome, a.Experiencia,
-            a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor);
+        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

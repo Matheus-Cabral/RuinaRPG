@@ -140,7 +140,7 @@
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <LinhagemVarianteFields VariantesLiberadas="_variantesLiberadas" @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
+                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadeSelect.Afinidades" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
@@ -297,21 +297,27 @@
 
         <Section Title="Afinidades">
             <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Essência Básica</th><th>Caminho</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
+                <thead><tr><th>Essência Básica 1</th><th>Essência Básica 2</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var affinity in _affinities)
                     {
                         <tr>
                             <td>
-                                <AfinidadeEssenciaField Label="Elemento" Opcoes="ElementosPermitidosPelaVocacao()"
+                                <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
                                                          Nome="@affinity.Elemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "Elemento", v))"
                                                          Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" />
                             </td>
-                            <td><CaminhoSelect Value="@affinity.CaminhoNome" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "CaminhoNome", v))" /></td>
                             <td>
-                                <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosDisponiveis(affinity.Elemento, affinity.CaminhoNome, affinity.SubElemento)"
-                                                         Nome="@affinity.SubElemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElemento", v))"
-                                                         Valor="@affinity.SubElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElementoValor", v))" />
+                                <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(affinity.Elemento, affinity.SegundaEssencia)"
+                                                         Disabled="@string.IsNullOrEmpty(affinity.Elemento)"
+                                                         Nome="@affinity.SegundaEssencia" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssencia", v))"
+                                                         Valor="@affinity.SegundaEssenciaValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssenciaValor", v))" />
+                            </td>
+                            <td>
+                                <div class="d-flex align-center" style="gap:4px">
+                                    <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(affinity.SubElemento)</MudText>
+                                    <MudNumericField T="int?" Value="@affinity.SubElementoValor" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElementoValor", v))" Margin="Margin.Dense" Style="max-width:4.5rem" />
+                                </div>
                             </td>
                             <td><MudNumericField T="int?" Value="@affinity.Experiencia" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "Experiencia", v))" /></td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</MudButton></td>
@@ -319,13 +325,19 @@
                     }
                     <tr>
                         <td>
-                            <AfinidadeEssenciaField Label="Elemento" Opcoes="ElementosPermitidosPelaVocacao()"
-                                                     @bind-Nome="_affinityForm.Elemento" @bind-Valor="_affinityForm.ElementoValor" />
+                            <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
+                                                     Nome="@_affinityForm.Elemento" NomeChanged="OnNovaEssencia1Changed" @bind-Valor="_affinityForm.ElementoValor" />
                         </td>
-                        <td><CaminhoSelect @bind-Value="_affinityForm.CaminhoNome" /></td>
                         <td>
-                            <AfinidadeEssenciaField Label="Sub-Elemento" Opcoes="SubElementosDisponiveis(_affinityForm.Elemento, _affinityForm.CaminhoNome, _affinityForm.SubElemento)"
-                                                     @bind-Nome="_affinityForm.SubElemento" @bind-Valor="_affinityForm.SubElementoValor" />
+                            <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(_affinityForm.Elemento, null)"
+                                                     Disabled="@string.IsNullOrEmpty(_affinityForm.Elemento)"
+                                                     @bind-Nome="_affinityForm.SegundaEssencia" @bind-Valor="_affinityForm.SegundaEssenciaValor" />
+                        </td>
+                        <td>
+                            <div class="d-flex align-center" style="gap:4px">
+                                <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(SubElementoDaNovaLinha())</MudText>
+                                <MudNumericField T="int?" @bind-Value="_affinityForm.SubElementoValor" Margin="Margin.Dense" Style="max-width:4.5rem" />
+                            </div>
                         </td>
                         <td><MudNumericField T="int?" @bind-Value="_affinityForm.Experiencia" /></td>
                         <td><MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="AddAffinityAsync">Adicionar</MudButton></td>
@@ -1263,35 +1275,34 @@
         await LoadTabs2And3Async();
     }
 
-    private (string Valor, string Rotulo)[] AfinidadesPermitidasPelaVocacao() =>
-        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
-            ? AfinidadeSelect.Afinidades.Where(a => Enum.TryParse<AfinidadeElemental>(a.Valor, out var af) && VocacaoEscolaMap.PodeEscolherAfinidade(vocacao, af)).ToArray()
-            : [];
+    private void OnNovaEssencia1Changed(string? elemento)
+    {
+        _affinityForm.Elemento = elemento;
+        if (!AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == _affinityForm.SegundaEssencia))
+            _affinityForm.SegundaEssencia = null;
+    }
 
-    private (string Valor, string Rotulo)[] ElementosPermitidosPelaVocacao() =>
-        Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacao)
-            ? AfinidadeEssenciaField.Elementos.Where(e => Enum.TryParse<Elemento>(e.Valor, out var el) && VocacaoEscolaMap.PodeEscolherElemento(vocacao, el)).ToArray()
-            : [];
-
-    private (string Valor, string Rotulo)[] SubElementosDisponiveis(string? elemento, string? caminho, string? atual) =>
-        AfinidadeEssenciaField.SubElementosDisponiveis(_form.Vocacao, elemento, caminho, atual);
+    private string? SubElementoDaNovaLinha() =>
+        Enum.TryParse<Elemento>(_affinityForm.Elemento, out var e1) && Enum.TryParse<EssenciaBasica>(_affinityForm.SegundaEssencia, out var e2)
+            ? MatrizElemental.Intersecao(e1, e2)?.ToString()
+            : null;
 
     private async Task AddAffinityAsync()
     {
         var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/affinities",
-            new AddCharacterAffinityRequest(_affinityForm.Elemento, _affinityForm.ElementoValor, _affinityForm.SubElemento, _affinityForm.SubElementoValor,
-                _affinityForm.CaminhoNome, _affinityForm.Experiencia));
+            new AddCharacterAffinityRequest(_affinityForm.Elemento, _affinityForm.ElementoValor, _affinityForm.SegundaEssencia, _affinityForm.SegundaEssenciaValor,
+                _affinityForm.SubElementoValor, _affinityForm.Experiencia));
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar a afinidade.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a afinidade.";
             return;
         }
 
         _affinityForm.Elemento = null;
         _affinityForm.ElementoValor = null;
-        _affinityForm.SubElemento = null;
+        _affinityForm.SegundaEssencia = null;
+        _affinityForm.SegundaEssenciaValor = null;
         _affinityForm.SubElementoValor = null;
-        _affinityForm.CaminhoNome = null;
         _affinityForm.Experiencia = null;
         await LoadTabs2And3Async();
     }
@@ -1301,13 +1312,16 @@
         var current = _affinities.Single(a => a.Id == id);
         var elemento = field == "Elemento" ? value?.ToString() : current.Elemento;
         var elementoValor = field == "ElementoValor" ? value as int? : current.ElementoValor;
-        var subElemento = field == "SubElemento" ? value?.ToString() : current.SubElemento;
+        var segunda = field == "SegundaEssencia" ? value?.ToString() : current.SegundaEssencia;
+        var segundaValor = field == "SegundaEssenciaValor" ? value as int? : current.SegundaEssenciaValor;
         var subElementoValor = field == "SubElementoValor" ? value as int? : current.SubElementoValor;
-        var caminhoNome = field == "CaminhoNome" ? value?.ToString() : current.CaminhoNome;
         var experiencia = field == "Experiencia" ? value as int? : current.Experiencia;
 
+        if (field == "Elemento" && !AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == segunda))
+            segunda = null;
+
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/affinities/{id}",
-            new UpdateCharacterAffinityRequest(elemento, elementoValor, subElemento, subElementoValor, caminhoNome, experiencia));
+            new UpdateCharacterAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
@@ -1868,9 +1882,9 @@
     {
         public string? Elemento { get; set; }
         public int? ElementoValor { get; set; }
-        public string? SubElemento { get; set; }
+        public string? SegundaEssencia { get; set; }
+        public int? SegundaEssenciaValor { get; set; }
         public int? SubElementoValor { get; set; }
-        public string? CaminhoNome { get; set; }
         public int? Experiencia { get; set; }
     }
 

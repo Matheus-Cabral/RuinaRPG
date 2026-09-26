@@ -1,14 +1,14 @@
 @using MudBlazor
 @using RuinaRPG.Domain.CharacterSheets
 
-@* One "Essência" cell of the Afinidades table: a name dropdown (Elemento or Sub-Elemento,
-   depending on which static option list the caller passes) paired with its own numeric value,
-   matching the PDF sheet's "- AFINIDADES -" table (Essências Básicas | Sub-Elementos | Cam. e
-   Exp., each column a name+number pair). Used twice per row — once for Elemento, once for
-   Sub-Elemento — so the pairing doesn't get re-typed on both Ficha de Personagem and Ficha de NPC. *@
+@* One "Essência" cell of the Afinidades table: a name dropdown (Essência Básica 1 or 2)
+   paired with its own numeric value, matching the PDF sheet's "- AFINIDADES -" table
+   (Essências Básicas | Sub-Elementos | Cam. e Exp., each column a name+number pair). Used
+   twice per row — once for cada Essência Básica — so the pairing doesn't get re-typed on
+   both Ficha de Personagem and Ficha de NPC. *@
 
 <div class="d-flex align-center" style="gap:4px">
-    <MudSelect T="string" Value="Nome" ValueChanged="OnNomeChangedAsync" Placeholder="@Label" Margin="Margin.Dense" Style="min-width:7rem">
+    <MudSelect T="string" Value="Nome" ValueChanged="OnNomeChangedAsync" Placeholder="@Label" Margin="Margin.Dense" Style="min-width:7rem" Disabled="Disabled">
         @foreach (var (valor, rotulo) in Opcoes)
         {
             <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
@@ -24,6 +24,7 @@
     [Parameter] public EventCallback<string?> NomeChanged { get; set; }
     [Parameter] public int? Valor { get; set; }
     [Parameter] public EventCallback<int?> ValorChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
 
     // Os 4 Elementos da Matriz Elemental ("Mundano", presente na matriz apenas como referência,
     // não é uma opção válida aqui).
@@ -32,38 +33,27 @@
         ("Ar", "Ar"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Terra", "Terra"),
     ];
 
-    // Os 12 Sub-Elementos que se escolhem de fato, mesmos rótulos usados em AfinidadeSelect. Alma e Vida
-    // são Caminhos (CaminhoSelect), não Sub-Elementos — ver Requisitos - Ficha de Personagem 2.c.
-    public static readonly (string Valor, string Rotulo)[] SubElementos =
+    public static readonly (string Valor, string Rotulo)[] EssenciasBasicas =
     [
-        ("Gelo", "Gelo"), ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"),
-        ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
-        ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
+        ("Ar", "Ar"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Terra", "Terra"), ("Alma", "Alma"), ("Vida", "Vida"), ("Mundano", "Mundano"),
     ];
 
-    // Só pra uma linha antiga que ainda tem Alma/Vida salvos como Sub-Elemento continuar exibindo o valor.
-    private static readonly (string Valor, string Rotulo)[] SubElementosLegados = [("Alma", "Alma"), ("Vida", "Vida")];
-
-    // Sub-Elementos oferecidos numa linha de Afinidade: o filtro por Vocação (Escola de Magia) e,
-    // pros 8 que dependem de Caminho (Prever, Purificar, Curar, Aprimorar, Ecomancia, Hemomancia,
-    // Necromancia, Invocação), o Elemento + Caminho da própria linha. O valor já salvo (atual) fica
-    // sempre na lista, pro select não aparecer em branco quando algo mudou ao redor dele.
-    public static (string Valor, string Rotulo)[] SubElementosDisponiveis(string? vocacao, string? elemento, string? caminho, string? atual)
+    // Essência 2 de uma linha de Afinidade: só o que cruza com a Essência 1 na Matriz Elemental. O valor
+    // já salvo (atual) fica na lista pro select não aparecer em branco.
+    public static (string Valor, string Rotulo)[] OpcoesSegundaEssencia(string? elemento, string? atual)
     {
-        var vocacaoValida = Enum.TryParse<Vocacao>(vocacao, out var voc);
-        Elemento? el = Enum.TryParse<Elemento>(elemento, out var e) ? e : null;
-        Caminho? cam = CaminhoSubElementoRules.TryParseCaminho(caminho, out var c) ? c : null;
-
-        var oferecidos = SubElementos.Where(s =>
-            s.Valor == atual ||
-            (vocacaoValida
-                && Enum.TryParse<SubElemento>(s.Valor, out var se)
-                && VocacaoEscolaMap.PodeEscolherSubElemento(voc, se)
-                && CaminhoSubElementoRules.Permite(el, cam, se)));
-
-        // Um Alma/Vida antigo já salvo na linha continua listado, mas nunca é oferecido como escolha nova.
-        return oferecidos.Concat(SubElementosLegados.Where(s => s.Valor == atual)).ToArray();
+        if (!Enum.TryParse<Elemento>(elemento, out var e1))
+            return [];
+        var validas = MatrizElemental.OpcoesSegundaEssencia(e1).Select(e => e.ToString()).ToHashSet();
+        return EssenciasBasicas.Where(o => validas.Contains(o.Valor) || o.Valor == atual).ToArray();
     }
+
+    public static string RotuloSubElemento(string? subElemento) => subElemento switch
+    {
+        null or "" => "—",
+        "Invocacao" => "Invocação",
+        _ => subElemento,
+    };
 
     internal Task SetNomeForTests(string? nome) => OnNomeChangedAsync(nome);
     internal Task SetValorForTests(int? valor) => OnValorChangedAsync(valor);

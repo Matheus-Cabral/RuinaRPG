@@ -1,5 +1,6 @@
 using Bunit;
 using FluentAssertions;
+using MudBlazor;
 using RuinaRPG.Client.Shared.Fields;
 using Xunit;
 
@@ -11,13 +12,6 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     public void Elementos_has_the_4_elements_of_the_Matriz_Elemental()
     {
         AfinidadeEssenciaField.Elementos.Select(o => o.Valor).Should().BeEquivalentTo(["Ar", "Agua", "Fogo", "Terra"]);
-    }
-
-    [Fact]
-    public void SubElementos_has_the_12_sub_elements_of_the_Matriz_Elemental_without_the_Caminhos()
-    {
-        AfinidadeEssenciaField.SubElementos.Should().HaveCount(12);
-        AfinidadeEssenciaField.SubElementos.Select(o => o.Valor).Should().Contain("Invocacao").And.NotContain(["Alma", "Vida"]);
     }
 
     [Fact]
@@ -40,9 +34,9 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
     {
         int? newValor = -1;
         var cut = Render<AfinidadeEssenciaField>(p => p
-            .Add(x => x.Label, "Sub-Elemento")
-            .Add(x => x.Opcoes, AfinidadeEssenciaField.SubElementos)
-            .Add(x => x.Nome, "Curar")
+            .Add(x => x.Label, "Essência 2")
+            .Add(x => x.Opcoes, AfinidadeEssenciaField.EssenciasBasicas)
+            .Add(x => x.Nome, "Vida")
             .Add(x => x.Valor, (int?)null)
             .Add(x => x.ValorChanged, v => newValor = v));
 
@@ -66,61 +60,34 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
         newValor.Should().BeNull();
     }
 
-    private static string[] Disponiveis(string? vocacao, string? elemento, string? caminho, string? atual = null) =>
-        AfinidadeEssenciaField.SubElementosDisponiveis(vocacao, elemento, caminho, atual).Select(o => o.Valor).ToArray();
-
-    [Fact]
-    public void SubElementosDisponiveis_offers_Curar_only_with_Fogo_and_the_Vida_Caminho()
+    [Theory]
+    [InlineData("Fogo", new[] { "Ar", "Terra", "Vida", "Mundano" })]
+    [InlineData("Agua", new[] { "Ar", "Terra", "Alma", "Mundano" })]
+    public void OpcoesSegundaEssencia_follow_the_Matriz_for_the_chosen_Essencia1(string elemento, string[] esperado)
     {
-        Disponiveis("Adepto", "Fogo", "Vida").Should().Contain("Curar");
-        Disponiveis("Adepto", "Fogo", "Mundano").Should().NotContain("Curar");
-        Disponiveis("Adepto", "Fogo", null).Should().NotContain("Curar");
-        Disponiveis("Adepto", null, "Vida").Should().NotContain("Curar");
-        Disponiveis("Adepto", "Ar", "Vida").Should().NotContain("Curar");
+        AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, atual: null).Select(o => o.Valor).Should().Equal(esperado);
     }
 
     [Fact]
-    public void SubElementosDisponiveis_offers_only_the_gated_SubElementos_that_match_the_Elemento_and_Caminho()
+    public void OpcoesSegundaEssencia_is_empty_without_Essencia1()
     {
-        Disponiveis("Adepto", "Ar", "Alma").Should().Contain("Prever").And.NotContain("Purificar");
-        Disponiveis("Adepto", "Agua", "Alma").Should().Contain("Purificar").And.NotContain("Prever");
-        Disponiveis("Adepto", "Terra", "Vida").Should().Contain("Aprimorar").And.NotContain("Curar");
+        AfinidadeEssenciaField.OpcoesSegundaEssencia(null, atual: null).Should().BeEmpty();
     }
 
     [Fact]
-    public void SubElementosDisponiveis_keeps_the_ungated_SubElementos_the_Vocacao_allows_regardless_of_Elemento_and_Caminho()
+    public void OpcoesSegundaEssencia_labels_Agua_with_its_accent()
     {
-        Disponiveis("Adepto", null, null).Should().BeEmpty(); // só sobram os 4 que dependem de Caminho
-        Disponiveis("Feiticeiro", null, null).Should().BeEquivalentTo(["Gelo", "Flora", "Ferro", "Raio"]);
+        AfinidadeEssenciaField.OpcoesSegundaEssencia("Ar", atual: null).Should().Contain(("Agua", "Água"));
     }
 
     [Fact]
-    public void SubElementosDisponiveis_still_filters_by_Vocacao()
+    public void Disabled_disables_the_name_select()
     {
-        // Necromancia é de Maculação: Bruxo libera, Adepto não — mesmo com Fogo + Mundano.
-        Disponiveis("Bruxo", "Fogo", "Mundano").Should().Contain("Necromancia");
-        Disponiveis("Adepto", "Fogo", "Mundano").Should().NotContain("Necromancia");
-        Disponiveis("Campeao", "Fogo", "Vida").Should().BeEmpty();
-        Disponiveis(null, "Fogo", "Vida").Should().BeEmpty();
-    }
+        var cut = Render<AfinidadeEssenciaField>(p => p
+            .Add(x => x.Label, "Essência 2")
+            .Add(x => x.Opcoes, Array.Empty<(string, string)>())
+            .Add(x => x.Disabled, true));
 
-    [Fact]
-    public void SubElementosDisponiveis_keeps_the_currently_saved_value_so_the_select_never_shows_blank()
-    {
-        Disponiveis("Adepto", "Fogo", "Mundano", atual: "Curar").Should().Contain("Curar");
-    }
-
-    [Fact]
-    public void SubElementosDisponiveis_never_offers_Alma_or_Vida_as_a_new_choice()
-    {
-        Disponiveis("Adepto", "Fogo", "Vida").Should().NotContain(["Alma", "Vida"]);
-        Disponiveis("Feiticeiro", "Fogo", "Vida").Should().NotContain(["Alma", "Vida"]);
-    }
-
-    [Fact]
-    public void SubElementosDisponiveis_still_lists_a_legacy_Alma_or_Vida_already_saved_on_the_row()
-    {
-        Disponiveis("Adepto", "Fogo", null, atual: "Vida").Should().Contain("Vida");
-        Disponiveis(null, null, null, atual: "Alma").Should().Equal("Alma");
+        cut.FindComponent<MudSelect<string>>().Instance.Disabled.Should().BeTrue();
     }
 }
