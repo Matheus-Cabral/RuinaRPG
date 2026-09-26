@@ -33,6 +33,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 table: "CharacterAffinities",
                 type: "text",
                 nullable: true);
+
+            // Repõe o Caminho a partir da Essência 2 quando ela é um dos antigos Caminhos
+            // (EssenciaBasica: 4 = Alma, 5 = Vida, 6 = Mundano), pra um rollback não perdê-lo.
+            foreach (var table in new[] { "NpcAffinities", "CharacterAffinities" })
+                migrationBuilder.Sql(
+                    $"UPDATE \"{table}\" SET \"CaminhoNome\" = CASE \"SegundaEssencia\" WHEN 4 THEN 'Alma' WHEN 5 THEN 'Vida' WHEN 6 THEN 'Mundano' END WHERE \"SegundaEssencia\" >= 4;");
         }
     }
 }
