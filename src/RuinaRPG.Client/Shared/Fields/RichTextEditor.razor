@@ -1,9 +1,14 @@
+@using MudBlazor
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 @* Aba História — hosts a Jodit editor through wwwroot/js/richTextEditor.js. Html is read ONLY when
    the editor is created: later parameter changes (e.g. the sheet reloading after another field's
    autosave) are ignored on purpose, so they can never overwrite what the player is typing. *@
+@if (_loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Dense="true">Não foi possível carregar o editor. Recarregue a página.</MudAlert>
+}
 <div @ref="_host" class="rr-rich-text-editor"></div>
 
 @code {
@@ -15,6 +20,8 @@
     private ElementReference _host;
     private DotNetObjectReference<RichTextEditor>? _selfRef;
     private bool _created;
+    private bool _disposed;
+    private bool _loadFailed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -22,7 +29,24 @@
             return;
 
         _selfRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "");
+        try
+        {
+            await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "");
+        }
+        catch (JSException)
+        {
+            // Jodit failed to download or to start — say so instead of leaving a blank box.
+            _loadFailed = true;
+            StateHasChanged();
+            return;
+        }
+
+        if (_disposed)
+        {
+            // The tab was closed while Jodit was still loading: DisposeAsync skipped destroy, so do it now.
+            await DestroyEditorAsync();
+            return;
+        }
         _created = true;
     }
 
@@ -36,17 +60,21 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         if (_created)
-        {
-            try
-            {
-                await JS.InvokeVoidAsync("ruinaRichText.destroy", _host);
-            }
-            catch (JSDisconnectedException)
-            {
-                // Page already torn down — nothing left to destroy.
-            }
-        }
+            await DestroyEditorAsync();
         _selfRef?.Dispose();
+    }
+
+    private async Task DestroyEditorAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ruinaRichText.destroy", _host);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Page already torn down — nothing left to destroy.
+        }
     }
 }

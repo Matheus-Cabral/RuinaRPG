@@ -1,5 +1,6 @@
 using Bunit;
 using FluentAssertions;
+using Microsoft.JSInterop;
 using RuinaRPG.Client.Shared.Fields;
 using Xunit;
 
@@ -59,5 +60,29 @@ public class RichTextEditorTests : MudBunitContext
 
         JSInterop.VerifyInvoke("ruinaRichText.destroy");
         _ = cut;
+    }
+
+    [Fact]
+    public void A_failed_js_create_shows_an_error_instead_of_the_editor()
+    {
+        JSInterop.SetupVoid("ruinaRichText.create", _ => true).SetException(new JSException("falhou"));
+
+        var cut = Render<RichTextEditor>();
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Não foi possível carregar o editor"));
+    }
+
+    [Fact]
+    public async Task Disposing_while_create_is_still_pending_destroys_the_editor_once_it_exists()
+    {
+        var plan = JSInterop.SetupVoid("ruinaRichText.create", _ => true);
+        Render<RichTextEditor>();
+
+        await DisposeComponentsAsync();
+        // create's continuation resumes on the renderer's dispatcher; a second dispatcher hop lets it run.
+        await Renderer.Dispatcher.InvokeAsync(plan.SetVoidResult);
+        await Renderer.Dispatcher.InvokeAsync(() => { });
+
+        JSInterop.VerifyInvoke("ruinaRichText.destroy");
     }
 }

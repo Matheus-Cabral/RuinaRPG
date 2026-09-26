@@ -16,7 +16,11 @@ window.ruinaRichText = {
                 var script = document.createElement('script');
                 script.src = 'lib/jodit/jodit.min.js';
                 script.onload = resolve;
-                script.onerror = reject;
+                script.onerror = function (err) {
+                    // Forget the failed attempt so the next editor created can try again.
+                    window.ruinaRichText._loading = null;
+                    reject(err);
+                };
                 document.head.appendChild(script);
             });
         }
@@ -42,6 +46,13 @@ window.ruinaRichText = {
             askBeforePasteHTML: false,
             askBeforePasteFromWord: false,
             defaultActionOnPaste: 'insert_clear_html',
+            // Jodit's default paragraph list minus pre ("Code"): the server allowlist has no <pre>.
+            // Jodit.atom stops Jodit merging this over the default list (which would bring "pre" back).
+            controls: {
+                paragraph: {
+                    list: Jodit.atom({ p: 'Paragraph', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', h4: 'Heading 4', blockquote: 'Quote' })
+                }
+            },
             disablePlugins: ['image', 'video', 'file', 'media', 'source', 'print', 'about', 'speech-recognize', 'ai-assistant'],
             buttons: [
                 'undo', 'redo', '|',
