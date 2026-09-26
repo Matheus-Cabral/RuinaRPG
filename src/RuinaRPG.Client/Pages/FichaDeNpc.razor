@@ -721,7 +721,15 @@
             <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
         </Section>
         <Section>
-            <HistoriaEditor SaveUrl="@($"npc-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)" />
+            @if (_historiaLoaded)
+            {
+                <HistoriaEditor SaveUrl="@($"npc-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)" />
+            }
+            else
+            {
+                @* The editor reads Html only once, when created — wait for the sheet so it never starts empty. *@
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" /> <span>Carregando…</span>
+            }
         </Section>
     </MudTabPanel>
 </MudTabs>
