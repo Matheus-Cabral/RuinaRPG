@@ -44,4 +44,5 @@ public record NpcSheetResponse(
     string? Estrela,
     int SinaAtual,
     string? HistoricoId,
-    string? EquipmentKitId);
+    string? EquipmentKitId,
+    string? Historia);

@@ -583,7 +583,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
             campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString());
+            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

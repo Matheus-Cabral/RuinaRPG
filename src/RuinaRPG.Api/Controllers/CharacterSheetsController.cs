@@ -317,6 +317,30 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return NoContent();
     }
 
+    /// <summary>
+    /// Aba História — kept out of UpdateCharacterSheetRequest on purpose, so the general autosave
+    /// (fired by any other field) can never overwrite the backstory with a stale copy, and vice versa.
+    /// Same authorization as Update.
+    /// </summary>
+    [HttpPut("api/character-sheets/{id}/historia")]
+    public async Task<IActionResult> UpdateHistoria(Guid id, UpdateHistoriaRequest request)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        if (request.Historia is { Length: > HistoriaSanitizer.MaxLength })
+            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
+
+        sheet.Historia = HistoriaSanitizer.Sanitize(request.Historia);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("api/character-sheets/{id}/level-up-notice")]
     public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
     {
@@ -574,7 +598,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString());
+            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia);
     }
 
     /// <summary>

@@ -1376,4 +1376,103 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    private async Task<(string GmToken, string PlayerToken, string SheetId)> CreateOwnedSheetAsync(string suffix)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"HistGm{suffix}", $"histgm{suffix}@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"HistPlayer{suffix}", $"histplayer{suffix}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha História {suffix}");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        return (gmToken, playerToken, sheetId);
+    }
+
+    private async Task<CharacterSheetResponse> GetSheetAsync(string token, string sheetId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token)))
+            .Content.ReadFromJsonAsync<CharacterSheetResponse>())!;
+
+    [Fact]
+    public async Task UpdateHistoria_by_the_owner_persists_sanitized_html_and_Get_returns_it()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C1");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken,
+            new UpdateHistoriaRequest("<h2>Origem</h2><p style=\"color: red\">Nasceu em Alkeria</p><script>alert(1)</script>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var sheet = await GetSheetAsync(playerToken, sheetId);
+        sheet.Historia.Should().Contain("<h2>Origem</h2>").And.Contain("Nasceu em Alkeria").And.Contain("color: rgba(255, 0, 0, 1)").And.NotContain("script");
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_by_the_campaign_gm_is_allowed()
+    {
+        var (gmToken, _, sheetId) = await CreateOwnedSheetAsync("C2");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", gmToken,
+            new UpdateHistoriaRequest("<p>Nota do mestre</p>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_by_an_unrelated_jogador_returns_403()
+    {
+        var (gmToken, _, sheetId) = await CreateOwnedSheetAsync("C3");
+        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "HistPlayerC3b", "histplayerc3b@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", otherToken,
+            new UpdateHistoriaRequest("<p>invasão</p>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_on_a_nonexistent_sheet_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("HistGmC4", "histgmc4@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{Guid.NewGuid()}/historia", gmToken,
+            new UpdateHistoriaRequest("<p>x</p>")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_accepts_exactly_200000_characters_and_rejects_200001()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C5");
+        var noLimite = "<p>" + new string('a', 200_000 - 7) + "</p>";
+
+        var ok = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest(noLimite)));
+        var tooLong = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest(noLimite + "a")));
+
+        noLimite.Length.Should().Be(200_000);
+        ok.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        tooLong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await tooLong.Content.ReadAsStringAsync()).Should().Contain("A História pode ter no máximo 200.000 caracteres.");
+    }
+
+    [Fact]
+    public async Task UpdateHistoria_with_only_empty_markup_stores_null()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C6");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest("<p>algo</p>")));
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest("<p><br></p>")));
+
+        (await GetSheetAsync(playerToken, sheetId)).Historia.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task The_general_sheet_Update_leaves_Historia_untouched()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C7");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest("<p>Minha história</p>")));
+
+        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
+
+        update.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetSheetAsync(playerToken, sheetId)).Historia.Should().Contain("Minha história");
+    }
 }

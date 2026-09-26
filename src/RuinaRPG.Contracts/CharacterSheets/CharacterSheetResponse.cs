@@ -47,4 +47,5 @@ public record CharacterSheetResponse(
     string? Estrela,
     int SinaAtual,
     string? HistoricoId,
-    string? EquipmentKitId);
+    string? EquipmentKitId,
+    string? Historia);

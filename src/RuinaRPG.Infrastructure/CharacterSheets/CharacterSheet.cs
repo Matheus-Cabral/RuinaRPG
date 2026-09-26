@@ -20,6 +20,9 @@ public class CharacterSheet
     public Guid? HistoricoId { get; set; }
     public Guid? EquipmentKitId { get; set; }
 
+    /// <summary>Aba História: sanitized HTML (see HistoriaSanitizer). NULL = empty editor.</summary>
+    public string? Historia { get; set; }
+
     // 1.b Nível e Progressão
     public int Nivel { get; set; } = 1;
 
