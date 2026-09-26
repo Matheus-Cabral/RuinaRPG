@@ -50,16 +50,29 @@ public class EstrelaSelectTests : MudBunitContext
     }
 
     [Fact]
-    public void The_dropdown_labels_are_the_card_titles_from_the_Livro_de_Regras()
+    public void The_dropdown_label_is_the_card_title_and_subtitle_from_the_Livro_de_Regras()
     {
         RegisterRulebookWith(
             new RulebookSectionResponse("sina", "Sina", "<p>Texto da Sina.</p>", null),
-            new RulebookSectionResponse("i-aeurer", "🌿 I — AEURER, a Curiosa", "<p>Aeurer.</p>", null));
+            new RulebookSectionResponse("i-aeurer", "🌿 I — AEURER, a Curiosa",
+                "<p><em>Estrela da Curiosidade &amp; da Busca</em></p>\n<p>Aeurer.</p>", null));
 
         var cut = RenderSelect("Aeurer");
 
-        cut.WaitForAssertion(() => cut.Find("input").GetAttribute("value").Should().Be("🌿 I — AEURER, a Curiosa"));
+        cut.WaitForAssertion(() => cut.Find("input").GetAttribute("value")
+            .Should().Be("🌿 I — AEURER, a Curiosa — Estrela da Curiosidade & da Busca"));
         _requestedPaths.Should().Equal("/api/rulebook/estrelas-alkerianas");
+    }
+
+    [Fact]
+    public void A_card_that_does_not_open_with_an_italic_subtitle_labels_with_the_title_only()
+    {
+        RegisterRulebookWith(new RulebookSectionResponse("i-aeurer", "🌿 I — AEURER",
+            "<p>Os nascidos sob <em>Aeurer</em> são curiosos.</p>", null));
+
+        var cut = RenderSelect("Aeurer");
+
+        cut.WaitForAssertion(() => cut.Find("input").GetAttribute("value").Should().Be("🌿 I — AEURER"));
     }
 
     [Fact]

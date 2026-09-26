@@ -1,10 +1,12 @@
 @using MudBlazor
 @using RuinaRPG.Contracts.Rules
+@using System.Net
+@using System.Text.RegularExpressions
 @inject HttpClient Http
 
 @* R0001 1.a — dropdown das 10 Estrelas Alkerianas + ícone de descrição, para não poluir a ficha com
-   o texto completo. Os rótulos do dropdown são os títulos dos cartões da aba As Estrelas do Livro de
-   Regras (GET api/rulebook/estrelas-alkerianas), e o popup mostra o cartão daquela Estrela, buscado a
+   o texto completo. Os rótulos do dropdown são o título + subtítulo dos cartões da aba As Estrelas do
+   Livro de Regras (GET api/rulebook/estrelas-alkerianas), e o popup mostra o cartão daquela Estrela, buscado a
    cada abertura — assim uma edição do Auditor de Regras aparece aqui. *@
 <div class="d-flex align-center" style="gap:4px">
     <MudSelect T="string" Label="Estrela" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Estrela"
@@ -59,8 +61,26 @@
         _cartoes = (await BuscarCartoesAsync()) ?? new();
 
     // Sem o cartão (Livro de Regras fora do ar ou cartão removido), o rótulo cai para o próprio Nome.
-    private string Rotulo(string? nome) =>
-        nome is null ? "" : CartaoDe(_cartoes, nome)?.Titulo ?? nome;
+    private string Rotulo(string? nome)
+    {
+        if (nome is null)
+            return "";
+        var cartao = CartaoDe(_cartoes, nome);
+        if (cartao is null)
+            return nome;
+        var subtitulo = Subtitulo(cartao.Html);
+        return subtitulo is null ? cartao.Titulo : $"{cartao.Titulo} — {subtitulo}";
+    }
+
+    // O subtítulo é a linha em itálico logo abaixo do título ("*Estrela da Curiosidade*"), que o
+    // Markdig renderiza como o parágrafo de abertura <p><em>…</em></p>.
+    private static readonly Regex SubtituloRegex = new(@"^\s*<p><em>(?<texto>[^<]*)</em></p>", RegexOptions.Compiled);
+
+    private static string? Subtitulo(string html)
+    {
+        var match = SubtituloRegex.Match(html);
+        return match.Success ? WebUtility.HtmlDecode(match.Groups["texto"].Value).Trim() : null;
+    }
 
     // Cada cartão tem como título o nome da Estrela em caixa alta (ex: "🌿 I — AEURER").
     private static RulebookSectionResponse? CartaoDe(IEnumerable<RulebookSectionResponse> cartoes, string nome) =>
