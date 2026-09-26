@@ -2,7 +2,7 @@
 
   
 
-> **Documento relacionado**: uma Ficha de NPC usa a **mesma estrutura completa** de "[[Requisitos - Ficha de Personagem]]" — todas as 6 abas (Informações Básicas, Atributos & Perícias, Combate, Magias & Habilidades, Posses, História), todos os campos, fórmulas e convenções de lá se aplicam aqui integralmente. Este documento só registra o que é **diferente**.
+> **Documento relacionado**: uma Ficha de NPC usa a **mesma estrutura completa** de "[[Requisitos - Ficha de Personagem]]" — todas as 6 abas (Informações Básicas, Atributos & Perícias, Combate, Magias & Habilidades, Posses, Antecedentes), todos os campos, fórmulas e convenções de lá se aplicam aqui integralmente. Este documento só registra o que é **diferente**.
 
   
 
@@ -59,6 +59,6 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
   
 
-# **R0009** - A aba História do NPC é a última aba.
+# **R0009** - A aba Antecedentes do NPC é a última aba.
 
-**Descrição**: A aba História segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático e a mesma limpeza de HTML). Como a Ficha de NPC não tem Diário, a História é a última aba. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto.
+**Descrição**: A aba Antecedentes segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático e a mesma limpeza de HTML). Como a Ficha de NPC não tem Diário, a aba Antecedentes é a última. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto.

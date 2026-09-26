@@ -118,6 +118,9 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("Sina"));
         estrelas.Sections.Select(s => s.Titulo).Should().Contain(s => s.Contains("AEURER"));
         estrelas.Sections.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Id) && !string.IsNullOrWhiteSpace(s.Html));
+        // EstrelaSelect.razor lê o subtítulo do dropdown desse parágrafo de abertura em itálico.
+        estrelas.Sections.Single(s => s.Titulo.Contains("AEURER")).Html
+            .Should().StartWith("<p><em>Estrela da Curiosidade</em></p>");
     }
 
     [Fact]

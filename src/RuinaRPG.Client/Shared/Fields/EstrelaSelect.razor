@@ -1,16 +1,19 @@
 @using MudBlazor
 @using RuinaRPG.Contracts.Rules
+@using System.Net
+@using System.Text.RegularExpressions
 @inject HttpClient Http
 
 @* R0001 1.a — dropdown das 10 Estrelas Alkerianas + ícone de descrição, para não poluir a ficha com
-   o texto completo. O popup mostra o cartão daquela Estrela na aba As Estrelas do Livro de Regras
-   (GET api/rulebook/estrelas-alkerianas), buscado a cada abertura — assim uma edição do Auditor de
-   Regras aparece aqui sem recarregar a ficha. *@
+   o texto completo. Os rótulos do dropdown são o título + subtítulo dos cartões da aba As Estrelas do
+   Livro de Regras (GET api/rulebook/estrelas-alkerianas), e o popup mostra o cartão daquela Estrela, buscado a
+   cada abertura — assim uma edição do Auditor de Regras aparece aqui. *@
 <div class="d-flex align-center" style="gap:4px">
-    <MudSelect T="string" Label="Estrela" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Estrela">
-        @foreach (var estrela in Estrelas)
+    <MudSelect T="string" Label="Estrela" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Estrela"
+               ToStringFunc="Rotulo">
+        @foreach (var nome in Estrelas)
         {
-            <MudSelectItem Value="@estrela.Nome">@estrela.Rotulo</MudSelectItem>
+            <MudSelectItem Value="@nome">@Rotulo(nome)</MudSelectItem>
         }
     </MudSelect>
     @if (Value is not null)
@@ -47,42 +50,65 @@
     private bool _open;
     private bool _loading;
     private RulebookSectionResponse? _card;
+    private List<RulebookSectionResponse> _cartoes = new();
 
-    // Só Nome (o valor salvo na ficha) e o rótulo do dropdown ficam fixos aqui — a descrição vem do
-    // Livro de Regras (ver OpenAsync).
-    public static readonly (string Nome, string Rotulo)[] Estrelas =
-    [
-        ("Aeurer", "Aeurer — Estrela da Curiosidade"),
-        ("Liora", "Liora — Estrela da Introspecção"),
-        ("Vaelen", "Vaelen — Estrela da Proteção"),
-        ("Theron", "Theron — Estrela da Impulsividade"),
-        ("Maetus", "Maetus — Estrela da Ambição"),
-        ("Almora", "Almora — Estrela da Generosidade"),
-        ("Elvani", "Elvani — Estrela da Prudência"),
-        ("Sareli", "Sareli — Estrela da Vingança"),
-        ("Gaelion", "Gaelion — Estrela da Lealdade"),
-        ("Sadir", "Sadir — Estrela do Egoísmo"),
-    ];
+    // Só o Nome (o valor salvo na ficha) fica fixo aqui — o rótulo e a descrição vêm do Livro de
+    // Regras (ver OnInitializedAsync e OpenAsync).
+    public static readonly string[] Estrelas =
+        ["Aeurer", "Liora", "Vaelen", "Theron", "Maetus", "Almora", "Elvani", "Sareli", "Gaelion", "Sadir"];
+
+    protected override async Task OnInitializedAsync() =>
+        _cartoes = (await BuscarCartoesAsync()) ?? new();
+
+    // Sem o cartão (Livro de Regras fora do ar ou cartão removido), o rótulo cai para o próprio Nome.
+    private string Rotulo(string? nome)
+    {
+        if (nome is null)
+            return "";
+        var cartao = CartaoDe(_cartoes, nome);
+        if (cartao is null)
+            return nome;
+        var subtitulo = Subtitulo(cartao.Html);
+        return subtitulo is null ? cartao.Titulo : $"{cartao.Titulo} — {subtitulo}";
+    }
+
+    // O subtítulo é a linha em itálico logo abaixo do título ("*Estrela da Curiosidade*"), que o
+    // Markdig renderiza como o parágrafo de abertura <p><em>…</em></p>.
+    private static readonly Regex SubtituloRegex = new(@"^\s*<p><em>(?<texto>[^<]*)</em></p>", RegexOptions.Compiled);
+
+    private static string? Subtitulo(string html)
+    {
+        var match = SubtituloRegex.Match(html);
+        return match.Success ? WebUtility.HtmlDecode(match.Groups["texto"].Value).Trim() : null;
+    }
+
+    // Cada cartão tem como título o nome da Estrela em caixa alta (ex: "🌿 I — AEURER").
+    private static RulebookSectionResponse? CartaoDe(IEnumerable<RulebookSectionResponse> cartoes, string nome) =>
+        cartoes.FirstOrDefault(s => s.Titulo.Contains(nome, StringComparison.OrdinalIgnoreCase));
+
+    private async Task<List<RulebookSectionResponse>?> BuscarCartoesAsync()
+    {
+        try
+        {
+            var documento = await Http.GetFromJsonAsync<RulebookDocumentResponse>("rulebook/estrelas-alkerianas");
+            return documento?.Sections;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
 
     private async Task OpenAsync()
     {
         _card = null;
         _loading = true;
         _open = true;
-        try
-        {
-            var documento = await Http.GetFromJsonAsync<RulebookDocumentResponse>("rulebook/estrelas-alkerianas");
-            // Cada cartão tem como título o nome da Estrela em caixa alta (ex: "🌿 I — AEURER").
-            _card = documento?.Sections.FirstOrDefault(s => s.Titulo.Contains(Value!, StringComparison.OrdinalIgnoreCase));
-        }
-        catch (HttpRequestException)
-        {
-            _card = null;
-        }
-        finally
-        {
-            _loading = false;
-        }
+        var cartoes = await BuscarCartoesAsync();
+        if (cartoes is not null)
+            _cartoes = cartoes;
+        _card = cartoes is null ? null : CartaoDe(cartoes, Value!);
+        _loading = false;
     }
 
     private async Task OnValueChangedAsync(string? novoValor)

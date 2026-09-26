@@ -780,7 +780,7 @@
         </Section>
     </MudTabPanel>
 
-    <MudTabPanel Text="História">
+    <MudTabPanel Text="Antecedentes">
         <Section Title="Estrela e Histórico">
             <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
             <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
@@ -882,7 +882,7 @@
     private int? _periciaCriticoDelta;
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
-    // Aba História: _form.Historia comes from the API only on the first load — later reloads (after
+    // Aba Antecedentes: _form.Historia comes from the API only on the first load — later reloads (after
     // any other field's autosave) must not overwrite what HistoriaEditor is holding.
     private bool _historiaLoaded;
     private List<ImageSummaryResponse> _myImages = new();
