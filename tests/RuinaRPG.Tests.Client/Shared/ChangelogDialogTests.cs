@@ -51,24 +51,20 @@ public class ChangelogDialogTests : MudBunitContext
         var cut = RenderDialog("9.9.9", EventCallback.Factory.Create(this, () => { }));
 
         cut.Markup.Should().Contain("Novidades da Versão 9.9.9");
-        cut.Markup.Should().NotContain("1.3.0");
+        cut.Markup.Should().NotContain("1.3.1");
     }
 
     [Fact]
-    public void Rendered_list_contains_all_ten_section_labels_and_does_not_contain_Auditoria()
+    public void Rendered_list_contains_the_five_section_labels_of_1_3_1_and_does_not_contain_Auditoria()
     {
-        var cut = RenderDialog("1.3.0", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.3.1", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Históricos");
-        cut.Markup.Should().Contain("Estrelas Alkerianas");
-        cut.Markup.Should().Contain("Equipagem inicial");
-        cut.Markup.Should().Contain("Construtor de Subcategoria");
-        cut.Markup.Should().Contain("Banco de Runas");
+        cut.Markup.Should().Contain("Aba História");
         cut.Markup.Should().Contain("Afinidades");
-        cut.Markup.Should().Contain("Alóra");
-        cut.Markup.Should().Contain("Fichas de NPC e Criatura");
-        cut.Markup.Should().Contain("Interface");
-        cut.Markup.Should().Contain("Correções");
+        cut.Markup.Should().Contain("Estrelas");
+        cut.Markup.Should().Contain("Livro de Regras");
+        cut.Markup.Should().Contain("Ficha de Criatura");
+        cut.Markup.Should().NotContain("Equipagem inicial"); // item da 1.3.0 — a lista é só da versão atual
         cut.Markup.Should().NotContain("Auditoria");
     }
 }

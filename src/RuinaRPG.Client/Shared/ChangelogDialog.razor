@@ -3,24 +3,13 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.3.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.3.1 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Históricos:</b> novo campo Histórico nas fichas de Personagem e NPC, com um popup que descreve o Histórico escolhido. O bônus de +6/+3 conta como pontos gastos na Perícia (+2/+1 no Modificador), que aparece em negrito na ficha. Há também uma nova aba Históricos no Livro de Regras.</li>
-            <li><b>Estrelas Alkerianas:</b> nova aba no Livro de Regras, campo Estrela e Pontos de Sina nas fichas.</li>
-            <li><b>Equipagem inicial:</b> botão "Escolher Equipamento Inicial" na aba Posses (Personagem e NPC), com 12 kits. Os itens escolhidos entram na ficha automaticamente, incluindo Armadura no slot certo. Há uma nova aba Equipagem no Livro de Regras, e o Tônico de Vida/Foco simples entrou no catálogo padrão.</li>
-            <li><b>Construtor de Subcategoria:</b> checkbox "Item Inicial" no cadastro de itens (Arma, Armadura, Escudo e Artefato) para montar a Subcategoria a partir de listas padronizadas.</li>
-            <li><b>Banco de Runas:</b> um banco de Runas do GM. As Runas das fichas podem partir dele, e as Runas podem ser anexadas à campanha e ter imagem.</li>
-            <li><b>Afinidades:</b> o Caminho virou um dropdown antes do Sub-Elemento, e os Sub-Elementos agora dependem do Elemento e do Caminho. Alma e Vida passaram a ser Caminhos.</li>
-            <li><b>Alóra:</b> nova variante solar nas Habilidades Raciais e nas fichas.</li>
-            <li><b>Fichas de NPC e Criatura:</b> contador de Pontos de Atributo.</li>
-            <li><b>Interface:</b>
-                <ul>
-                    <li>Sidebar com ícones, que no desktop fica recolhida e expande quando o cursor passa por cima.</li>
-                    <li>Conteúdo com largura máxima no desktop.</li>
-                    <li>Novo ícone ⓘ de ajuda no formulário do Banco de Magias.</li>
-                </ul>
-            </li>
-            <li><b>Correções:</b> o Banco de Magias passa a ser visível só para o GM, e as regras de cópia de entradas do banco foram ajustadas.</li>
+            <li><b>Aba História:</b> nova aba nas fichas de Personagem e NPC (antes do Diário no Personagem), que reúne a Estrela, o Histórico e um campo para escrever a história do personagem, com editor de texto completo: títulos, fontes, cores, listas, alinhamento, citações, links e tabelas. Salva automaticamente.</li>
+            <li><b>Afinidades:</b> cada linha agora tem duas Essências Básicas. A segunda aceita Elementos e os Caminhos Alma, Vida e Mundano, e o Sub-Elemento é calculado automaticamente pela interseção das duas na Matriz Elemental. As afinidades não dependem mais da Vocação.</li>
+            <li><b>Estrelas:</b> o popup da Estrela nas fichas mostra o texto do Livro de Regras, acompanhando qualquer atualização.</li>
+            <li><b>Livro de Regras:</b> abre na aba Sistema Básico, a aba "As Estrelas Alkerianas" passou a se chamar "As Estrelas", e há um botão para voltar ao topo.</li>
+            <li><b>Ficha de Criatura:</b> os Pontos de Atributo iniciais dependem do Rank (F 6, E 7, D 8, C 9, B 10, A 12, S 14), e os níveis seguintes somam pela Tabela de Níveis.</li>
         </ul>
     </DialogContent>
     <DialogActions>
