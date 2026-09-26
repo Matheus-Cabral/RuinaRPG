@@ -24,7 +24,6 @@ public static partial class HistoriaSanitizer
             return null;
 
         var clean = Sanitizer.Sanitize(html);
-        clean = DenormalizeColors(clean);
         return HasVisibleContent(clean) ? clean : null;
     }
 
@@ -63,37 +62,7 @@ public static partial class HistoriaSanitizer
     private static bool HasVisibleContent(string html) =>
         html.Contains("<hr", StringComparison.OrdinalIgnoreCase)
         || html.Contains("<table", StringComparison.OrdinalIgnoreCase)
-        || !string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(TagRegex().Replace(html, "")).Replace(' ', ' '));
-
-    // AngleSharp normalizes CSS color names to rgba() format. Convert back to original names for readability.
-    private static string DenormalizeColors(string html)
-    {
-        var replacements = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            { "rgba(255, 0, 0, 1)", "red" },
-            { "rgba(0, 0, 255, 1)", "blue" },
-            { "rgba(255, 255, 0, 1)", "yellow" },
-            { "rgba(0, 128, 0, 1)", "green" },
-            { "rgba(255, 255, 255, 1)", "white" },
-            { "rgba(0, 0, 0, 1)", "black" },
-            { "rgba(128, 0, 0, 1)", "maroon" },
-            { "rgba(0, 0, 128, 1)", "navy" },
-            { "rgba(128, 128, 0, 1)", "olive" },
-            { "rgba(0, 128, 128, 1)", "teal" },
-            { "rgba(128, 0, 128, 1)", "purple" },
-            { "rgba(192, 192, 192, 1)", "silver" },
-            { "rgba(128, 128, 128, 1)", "gray" },
-            { "rgba(255, 165, 0, 1)", "orange" },
-            { "rgba(255, 192, 203, 1)", "pink" },
-        };
-
-        var result = html;
-        foreach (var (rgba, name) in replacements)
-        {
-            result = result.Replace(rgba, name, StringComparison.Ordinal);
-        }
-        return result;
-    }
+        || !string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(TagRegex().Replace(html, "")).Replace(' ', ' '));
 
     [GeneratedRegex("<[^>]+>")]
     private static partial Regex TagRegex();

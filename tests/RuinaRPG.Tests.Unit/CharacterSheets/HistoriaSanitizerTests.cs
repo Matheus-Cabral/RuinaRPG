@@ -24,8 +24,8 @@ public class HistoriaSanitizerTests
     {
         var result = HistoriaSanitizer.Sanitize("<p style=\"color: red; background-color: yellow; text-align: center; position: fixed; font-size: 20px\">Texto</p>");
 
-        result.Should().Contain("color: red")
-            .And.Contain("background-color: yellow")
+        result.Should().Contain("color: rgba(255, 0, 0, 1)")
+            .And.Contain("background-color: rgba(255, 255, 0, 1)")
             .And.Contain("text-align: center")
             .And.Contain("font-size: 20px")
             .And.NotContain("position");
@@ -73,7 +73,7 @@ public class HistoriaSanitizerTests
         var result = HistoriaSanitizer.Sanitize("<p class=\"MsoNormal\" style=\"mso-line-height-alt: 12pt; color: blue\"><b>Capítulo 1</b><o:p></o:p></p>");
 
         result.Should().Contain("<b>Capítulo 1</b>")
-            .And.Contain("color: blue")
+            .And.Contain("color: rgba(0, 0, 255, 1)")
             .And.NotContain("Mso")
             .And.NotContain("mso-")
             .And.NotContain("o:p");
@@ -103,5 +103,13 @@ public class HistoriaSanitizerTests
     public void A_lone_horizontal_rule_counts_as_content()
     {
         HistoriaSanitizer.Sanitize("<hr>").Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Player_prose_with_rgba_values_is_untouched()
+    {
+        var result = HistoriaSanitizer.Sanitize("<p>Minha cor favorita é rgba(255, 0, 0, 1) no jogo.</p>");
+
+        result.Should().Contain("rgba(255, 0, 0, 1) no jogo");
     }
 }
