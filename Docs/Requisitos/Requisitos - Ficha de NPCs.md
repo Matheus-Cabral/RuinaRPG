@@ -2,7 +2,7 @@
 
   
 
-> **Documento relacionado**: uma Ficha de NPC usa a **mesma estrutura completa** de "[[Requisitos - Ficha de Personagem]]" — todas as 5 abas (Informações Básicas, Atributos & Perícias, Combate, Magias & Habilidades, Posses), todos os campos, fórmulas e convenções de lá se aplicam aqui integralmente. Este documento só registra o que é **diferente**.
+> **Documento relacionado**: uma Ficha de NPC usa a **mesma estrutura completa** de "[[Requisitos - Ficha de Personagem]]" — todas as 6 abas (Informações Básicas, Atributos & Perícias, Combate, Magias & Habilidades, Posses, História), todos os campos, fórmulas e convenções de lá se aplicam aqui integralmente. Este documento só registra o que é **diferente**.
 
   
 
@@ -56,3 +56,9 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0008** - As Runas do NPC usam o Banco de Runas.
 
 **Descrição**: A aba 4.d do NPC segue "[[Requisitos - Ficha de Personagem]]" 4.d sem alteração, inclusive a origem da Runa (do zero ou do "[[Requisitos - Banco de Runas]]") e a cópia automática para o banco do GM (R0001 do banco). O GM que gerencia o NPC escolhe qualquer entrada do próprio banco; quando o NPC foi concedido a um jogador (R0001, exceção), o jogador só escolhe entre as entradas públicas da campanha da concessão, e a Runa que ele cria também vira anexo público dessa campanha (R0007 do banco).
+
+  
+
+# **R0009** - A aba História do NPC é a última aba.
+
+**Descrição**: A aba História segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático e a mesma limpeza de HTML). Como a Ficha de NPC não tem Diário, a História é a última aba. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto.

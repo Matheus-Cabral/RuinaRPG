@@ -42,9 +42,7 @@
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 
-- *Estrela*: Um dropdown com as 10 Estrelas Alkerianas definidas em "[[As estrelas alkerianas]]", na ordem das Coroas — **Aeurer**, **Liora**, **Vaelen**, **Theron**, **Maetus**, **Almora**, **Elvani**, **Sareli**, **Gaelion** e **Sadir**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha uma Estrela*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição da Estrela selecionada, para não poluir a ficha com o texto completo. O conteúdo do popup é o cartão daquela Estrela na aba As Estrelas do "[[Requisitos - Livro de Regras]]" (que renderiza "[[As estrelas alkerianas]]"), buscado a cada abertura — se o Auditor de Regras editar a descrição de uma Estrela (ver "[[Requisitos - Auditoria de Regras]]"), o popup acompanha. Se o cartão da Estrela não existir mais no Livro de Regras, o popup avisa que a descrição não foi encontrada.
-
-- *Histórico*: Um dropdown com os Históricos cadastrados no catálogo (ver "[[Requisitos - Auditoria de Regras]]" — CRUD completo pelo Auditor de Regras), cada um concedendo +6 numa Perícia e +3 em outra (ver "[[Historico]]"). O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha um Histórico*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição do Histórico selecionado e as duas Perícias bonificadas, para não poluir a ficha com o texto completo. O bônus de +6/+3 conta como pontos gastos na Perícia (não como pontos somados direto ao Modificador): `Modificador = (Gasto + bônus de Histórico) ÷ 3`, arredondado para baixo — ou seja, +6 soma +2 e +3 soma +1 ao Modificador. O ganho se propaga a tudo que já deriva de Modificador (Sub-Atributos via "Bruto [Perícia]", Maestrias). Nas duas Perícias bonificadas, a ficha exibe o Modificador em **negrito** (com um tooltip "Inclui bônus de Histórico"), para diferenciá-lo de um Modificador comum.
+- *Estrela* e *Histórico*: ficam na aba **História** (ver R0006).
 
   
 
@@ -180,7 +178,7 @@ A ficha exibe uma lista fixa das Perícias do sistema: Acrobacia, Alquimia, Arca
 - *Gasto*: campo numérico ≥ 0, editável pelo jogador — pontos investidos naquela Perícia (ver "[[Tabela de Níveis]]" para os Pontos de Perícia concedidos por nível, e §2 de "[[Ruína RPG - Sistema Básico]]" para o ganho de pontos por Acerto Crítico em teste). Quando NULL, assume **0**. A soma do Gasto de todas as Perícias é exibida ao lado do total de Pontos de Perícia concedidos por nível (conforme a "[[Tabela de Níveis]]"), só como referência — diferente do orçamento de Atributos (2.a), não bloqueia o Gasto acima do valor da tabela.
 
 Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da tabela de níveis, então a soma acima eventualmente fica acima do máximo por um motivo legítimo), um campo dedicado permite adicionar ou subtrair a quantidade de pontos ganhos dessa forma (mesmo padrão do campo de XP em "Experiência atual", 1.b); esse valor é subtraído da soma de Gasto antes de compará-la ao total da tabela.
-- *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]". Se esta Perícia for uma das duas bonificadas pelo Histórico escolhido (1.a), o bônus (+6 ou +3) entra somado ao Gasto antes da divisão — `Modificador = (Gasto + bônus de Histórico) ÷ 3` — e o valor é exibido em **negrito**.
+- *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]". Se esta Perícia for uma das duas bonificadas pelo Histórico escolhido (aba História, ver R0006), o bônus (+6 ou +3) entra somado ao Gasto antes da divisão — `Modificador = (Gasto + bônus de Histórico) ÷ 3` — e o valor é exibido em **negrito**.
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
 - *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
 
@@ -333,7 +331,9 @@ Uma Maestria pode ser removida pelo jogador a qualquer momento.
 
   
 
-6. **Diário**: anotações pessoais do jogador sobre a campanha. Ver detalhes abaixo.
+6. **História**: Estrela, Histórico e a história do personagem em texto formatado. Ver R0006.
+
+7. **Diário**: anotações pessoais do jogador sobre a campanha. Ver detalhes abaixo.
 
   
 
@@ -404,7 +404,7 @@ O orçamento de pontos de Característica é **5 de base na criação** (concedi
 
   
 
-## 6. Diário
+## 7. Diário
 
   
 
@@ -426,7 +426,7 @@ A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece �
 
 # **R0003** - Os campos de Item, Magia/Habilidade, Runa e Imagem só oferecem o que a campanha liberou.
 
-> Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades e 4.d) Runas (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 6. Diário só listam Itens, entradas do Banco de Magias e Habilidades, entradas do Banco de Runas e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
+> Quando um **jogador** edita a própria Ficha de Personagem, ou uma Ficha de NPC/Criatura que lhe foi concedida (Requisitos - Campanha R0010), os campos de 1.a) Imagem, 3.a)-3.c) Armas/Armaduras/Escudos, 4.b) Magias & Habilidades e 4.d) Runas (ao reaproveitar uma entrada do Banco), 5.a)-5.b) Inventário/Artefatos e 7. Diário só listam Itens, entradas do Banco de Magias e Habilidades, entradas do Banco de Runas e Imagens que estão anexados à campanha daquela ficha **e** marcados como públicos (Requisitos - Campanha R0008/R0009) — não o catálogo/banco/biblioteca de imagens inteiro do GM vinculado.
 >
 > Um **GM** editando qualquer ficha (a própria, ou a de um jogador) continua com acesso irrestrito ao catálogo/banco/imagens, como hoje.
 
@@ -439,3 +439,13 @@ A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece �
 **Descrição**: Enquanto a ficha não tiver nenhum kit de "[[Equipagem]]" escolhido, um botão **Escolher Equipamento Inicial** aparece no topo da aba 5. Posses, acima de 5.a) Inventário. Ao clicar, abre um popup listando os kits disponíveis (dropdown por Nome); ao selecionar um kit, o popup exibe sua Descrição, os Ciclos que ele concede (quando maior que 0) e um select adicional para cada slot de escolha do kit (ex: "1 Arma Rank F de sua escolha"), cada um resolvido ao vivo contra o catálogo do GM da campanha da ficha. O botão de confirmação do popup só fica habilitado depois que **todo** slot de escolha do kit selecionado tiver uma opção marcada.
 
 Ao confirmar, os itens do kit (fixos e os escolhidos) são concedidos à ficha automaticamente, cada um no grupo correspondente ao seu Tipo — Armas em 3.a, Escudos em 3.c, Artefatos em 5.b), os demais (Item Geral) em 5.a) Inventário. Uma Armadura escolhida não vai para uma tabela própria: ela preenche o slot de 3.b) que o próprio slot de escolha do kit define (Capacete, Superior ou Inferior — ver "[[Requisitos - Auditoria de Regras]]" R0010), substituindo o que já estivesse equipado naquela posição. Os Ciclos do kit somam ao campo *Ciclos* de 5.a). Essa escolha é feita **uma única vez**: assim que a ficha tem um kit associado, o botão some da aba Posses e não reaparece.
+
+  
+
+# **R0006** - A aba História reúne Estrela, Histórico e a história do personagem.
+
+**Descrição**: Aba entre Posses e Diário, com, de cima para baixo:
+
+- *Estrela*: Um dropdown com as 10 Estrelas Alkerianas definidas em "[[As estrelas alkerianas]]", na ordem das Coroas — **Aeurer**, **Liora**, **Vaelen**, **Theron**, **Maetus**, **Almora**, **Elvani**, **Sareli**, **Gaelion** e **Sadir**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha uma Estrela*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição da Estrela selecionada, para não poluir a ficha com o texto completo. O conteúdo do popup é o cartão daquela Estrela na aba As Estrelas do "[[Requisitos - Livro de Regras]]" (que renderiza "[[As estrelas alkerianas]]"), buscado a cada abertura — se o Auditor de Regras editar a descrição de uma Estrela (ver "[[Requisitos - Auditoria de Regras]]"), o popup acompanha. Se o cartão da Estrela não existir mais no Livro de Regras, o popup avisa que a descrição não foi encontrada.
+- *Histórico*: Um dropdown com os Históricos cadastrados no catálogo (ver "[[Requisitos - Auditoria de Regras]]" — CRUD completo pelo Auditor de Regras), cada um concedendo +6 numa Perícia e +3 em outra (ver "[[Historico]]"). O valor padrão do dropdown deve ser o salvo no banco de dados e caso for NULL, exibe o placeholder *Escolha um Histórico*. Um ícone ⓘ ao lado do dropdown abre um popup com a descrição do Histórico selecionado e as duas Perícias bonificadas, para não poluir a ficha com o texto completo. O bônus de +6/+3 conta como pontos gastos na Perícia (não como pontos somados direto ao Modificador): `Modificador = (Gasto + bônus de Histórico) ÷ 3`, arredondado para baixo — ou seja, +6 soma +2 e +3 soma +1 ao Modificador. O ganho se propaga a tudo que já deriva de Modificador (Sub-Atributos via "Bruto [Perícia]", Maestrias). Nas duas Perícias bonificadas, a ficha exibe o Modificador em **negrito** (com um tooltip "Inclui bônus de Histórico"), para diferenciá-lo de um Modificador comum.
+- *História do personagem*: campo de texto rico, editado com uma barra de formatação completa — desfazer/refazer, parágrafo/títulos, fonte e tamanho, negrito, itálico, sublinhado, tachado, sobrescrito, subscrito, cor do texto e do fundo, listas com marcador e numeradas, recuo, alinhamento, citação, link, tabela (inserir, adicionar/remover linhas e colunas, mesclar células), linha horizontal, localizar e substituir, limpar formatação e tela cheia. Não aceita imagens, vídeos ou arquivos. Salva automaticamente cerca de 1 segundo após o jogador parar de digitar e ao sair do campo, com o indicador de salvamento automático próprio da aba. Quando NULL, o editor aparece vazio. Máximo de 200.000 caracteres; acima disso, o salvamento é recusado com aviso. O texto é gravado como HTML e o servidor remove tudo o que a barra de formatação não produz (scripts, eventos, imagens, iframes, links que não sejam http/https/mailto) antes de gravar (ver "[[Requisitos - Modelo de Dados]]").

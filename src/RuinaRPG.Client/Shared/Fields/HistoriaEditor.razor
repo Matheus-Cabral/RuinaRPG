@@ -1,0 +1,55 @@
+@using System.Net
+@using MudBlazor
+@using RuinaRPG.Client.Services
+@using RuinaRPG.Contracts.CharacterSheets
+@inject HttpClient Http
+@implements IDisposable
+
+@* Aba História (Personagem e NPC): the rich-text editor plus its own autosave — the História has a
+   dedicated endpoint (PUT …/historia), so it doesn't ride the sheet's general autosave. *@
+<div class="d-flex align-center justify-space-between mb-2">
+    <MudText Typo="Typo.h6">História do personagem</MudText>
+    <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
+</div>
+<RichTextEditor Html="@Html" HtmlChanged="OnHtmlChangedAsync" OnCommit="OnCommit" />
+
+@code {
+    [Parameter, EditorRequired] public string SaveUrl { get; set; } = "";
+    [Parameter] public string? Html { get; set; }
+    [Parameter] public EventCallback<string?> HtmlChanged { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private readonly AutoSaveCoordinator _autoSave = new();
+
+    protected override void OnInitialized() => _autoSave.StateChanged += Refresh;
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => _autoSave.StateChanged -= Refresh;
+
+    private async Task OnHtmlChangedAsync(string? html)
+    {
+        Html = html;
+        await HtmlChanged.InvokeAsync(html);
+    }
+
+    private Task OnCommit(string? html)
+    {
+        _autoSave.NotifyChanged(() => SaveAsync(html));
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SaveAsync(string? html)
+    {
+        var response = await Http.PutAsJsonAsync(SaveUrl, new UpdateHistoriaRequest(html));
+        if (response.IsSuccessStatusCode)
+            return true;
+
+        var message = response.StatusCode == HttpStatusCode.BadRequest
+            ? await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a História."
+            : "Não foi possível salvar a História.";
+        await InvokeAsync(() => OnError.InvokeAsync(message));
+        // Throwing (not returning false) is what makes AutoSaveCoordinator show "Erro ao salvar".
+        throw new InvalidOperationException(message);
+    }
+}

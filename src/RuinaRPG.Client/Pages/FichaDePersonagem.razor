@@ -142,8 +142,6 @@
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
                 <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadesPermitidasPelaVocacao()" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
-                <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
-                <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
             <Section Title="Nível e Progressão">
@@ -770,6 +768,16 @@
         </Section>
     </MudTabPanel>
 
+    <MudTabPanel Text="História">
+        <Section Title="Estrela e Histórico">
+            <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
+            <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
+        </Section>
+        <Section>
+            <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)" />
+        </Section>
+    </MudTabPanel>
+
     <MudTabPanel Text="Diário">
         <Section Title="Adicionar Entrada">
             <EditForm Model="_diaryForm" OnValidSubmit="AddDiaryEntryAsync">
@@ -854,6 +862,9 @@
     private int? _periciaCriticoDelta;
     private List<string> _levelUpBonuses = new();
     private string? _errorMessage;
+    // Aba História: _form.Historia comes from the API only on the first load — later reloads (after
+    // any other field's autosave) must not overwrite what HistoriaEditor is holding.
+    private bool _historiaLoaded;
     private List<ImageSummaryResponse> _myImages = new();
     private bool _imageExpanded;
     private bool _imageEditing;
@@ -1028,6 +1039,11 @@
         _form.Estrela = sheet.Estrela;
         _form.SinaAtual = sheet.SinaAtual;
         _form.HistoricoId = sheet.HistoricoId;
+        if (!_historiaLoaded)
+        {
+            _form.Historia = sheet.Historia;
+            _historiaLoaded = true;
+        }
         _form.EquipmentKitId = sheet.EquipmentKitId;
         _form.Nivel = sheet.Nivel;
         _form.Graduacao = sheet.Graduacao;
@@ -1744,6 +1760,7 @@
         public string? Estrela { get; set; }
         public int SinaAtual { get; set; }
         public string? HistoricoId { get; set; }
+        public string? Historia { get; set; }
         public string? EquipmentKitId { get; set; }
         // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
         // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
