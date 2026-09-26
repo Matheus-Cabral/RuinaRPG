@@ -1,0 +1,52 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Aba História — hosts a Jodit editor through wwwroot/js/richTextEditor.js. Html is read ONLY when
+   the editor is created: later parameter changes (e.g. the sheet reloading after another field's
+   autosave) are ignored on purpose, so they can never overwrite what the player is typing. *@
+<div @ref="_host" class="rr-rich-text-editor"></div>
+
+@code {
+    [Parameter] public string? Html { get; set; }
+    [Parameter] public EventCallback<string?> HtmlChanged { get; set; }
+    /// <summary>Fired after HtmlChanged for every change the editor reports (debounced ~1s in JS, flushed on blur/destroy).</summary>
+    [Parameter] public EventCallback<string?> OnCommit { get; set; }
+
+    private ElementReference _host;
+    private DotNetObjectReference<RichTextEditor>? _selfRef;
+    private bool _created;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _selfRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "");
+        _created = true;
+    }
+
+    [JSInvokable]
+    public async Task OnEditorChanged(string html)
+    {
+        Html = html;
+        await HtmlChanged.InvokeAsync(html);
+        await OnCommit.InvokeAsync(html);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_created)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("ruinaRichText.destroy", _host);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Page already torn down — nothing left to destroy.
+            }
+        }
+        _selfRef?.Dispose();
+    }
+}
