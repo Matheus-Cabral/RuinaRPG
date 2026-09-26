@@ -118,4 +118,30 @@ public class SubAttributeFormulasTests
     {
         SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, []).Should().Be(0);
     }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_uses_the_highest_Valor_among_rows_with_that_Elemento_regardless_of_order()
+    {
+        var comValorPrimeiro = new List<LinhaDeAfinidade>
+        {
+            new(Elemento.Fogo, 5, SubElemento.Curar, null),
+            new(Elemento.Fogo, null, SubElemento.Necromancia, null),
+        };
+        var comValorPorUltimo = new List<LinhaDeAfinidade> { comValorPrimeiro[1], comValorPrimeiro[0] };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, comValorPrimeiro).Should().Be(5);
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, comValorPorUltimo).Should().Be(5);
+    }
+
+    [Fact]
+    public void ValorDaAfinidadeCorrespondente_picks_the_max_when_two_rows_share_the_Elemento()
+    {
+        var linhas = new List<LinhaDeAfinidade>
+        {
+            new(Elemento.Fogo, 2, SubElemento.Curar, null),
+            new(Elemento.Fogo, 7, SubElemento.Necromancia, null),
+        };
+
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, linhas).Should().Be(7);
+    }
 }

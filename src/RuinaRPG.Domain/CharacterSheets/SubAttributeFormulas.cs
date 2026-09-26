@@ -29,10 +29,12 @@ public static class SubAttributeFormulas
     public static int DanoElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente;
 
     /// <summary>
-    /// Acha, entre as linhas de Afinidade (2.c), o Valor da que bate com a Afinidade escolhida em
+    /// Acha, entre as linhas de Afinidade (2.c), o Valor que bate com a Afinidade escolhida em
     /// 1.a — entrada de EficienciaElemental/DanoElemental acima. AfinidadeElemental compartilha os
     /// mesmos nomes de membro que Elemento/SubElemento, então resolve pra qual dos dois enums o
-    /// valor pertence antes de procurar a linha.
+    /// valor pertence antes de procurar. Se for um Elemento, vale o maior Valor entre as linhas
+    /// cuja Essência 1 é esse Elemento (mais de uma linha pode tê-lo); se for um Sub-Elemento,
+    /// vale o Valor da única linha com ele.
     /// </summary>
     public static int ValorDaAfinidadeCorrespondente(AfinidadeElemental? afinidade, IReadOnlyList<LinhaDeAfinidade> linhas)
     {
@@ -40,7 +42,7 @@ public static class SubAttributeFormulas
             return 0;
 
         if (Enum.TryParse<Elemento>(valor.ToString(), out var elemento))
-            return linhas.FirstOrDefault(l => l.Elemento == elemento).ElementoValor ?? 0;
+            return linhas.Where(l => l.Elemento == elemento).Select(l => l.ElementoValor ?? 0).DefaultIfEmpty(0).Max();
 
         var subElemento = Enum.Parse<SubElemento>(valor.ToString());
         return linhas.FirstOrDefault(l => l.SubElemento == subElemento).SubElementoValor ?? 0;
