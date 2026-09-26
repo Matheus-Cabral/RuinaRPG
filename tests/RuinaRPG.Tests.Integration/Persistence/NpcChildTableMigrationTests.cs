@@ -54,7 +54,7 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
 
         db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
         db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Pericia = Pericia.Atletismo, Gasto = 6 });
-        db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, CaminhoNome = "Caminho da Fênix", Experiencia = 10 });
+        db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
         db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
         db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
         db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
@@ -83,7 +83,6 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
 
         (await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheet.Id)).Gasto.Should().Be(3);
         (await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheet.Id)).Gasto.Should().Be(6);
-        (await db.NpcAffinities.SingleAsync(a => a.NpcSheetId == sheet.Id)).CaminhoNome.Should().Be("Caminho da Fênix");
         (await db.NpcWeapons.SingleAsync(w => w.NpcSheetId == sheet.Id)).ItemId.Should().Be(weaponItem.Id);
         (await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheet.Id)).ItemId.Should().Be(armorItem.Id);
         (await db.NpcShields.SingleAsync(s => s.NpcSheetId == sheet.Id)).ItemId.Should().Be(shieldItem.Id);

@@ -31,8 +31,8 @@ public static class SubAttributeFormulas
     /// <summary>
     /// Acha, entre as linhas de Afinidade (2.c), o Valor da que bate com a Afinidade escolhida em
     /// 1.a — entrada de EficienciaElemental/DanoElemental acima. AfinidadeElemental compartilha os
-    /// mesmos nomes de membro que Elemento/SubElemento (ver VocacaoEscolaMap.PodeEscolherAfinidade),
-    /// então resolve pra qual dos dois enums o valor pertence antes de procurar a linha.
+    /// mesmos nomes de membro que Elemento/SubElemento, então resolve pra qual dos dois enums o
+    /// valor pertence antes de procurar a linha.
     /// </summary>
     public static int ValorDaAfinidadeCorrespondente(AfinidadeElemental? afinidade, IReadOnlyList<LinhaDeAfinidade> linhas)
     {

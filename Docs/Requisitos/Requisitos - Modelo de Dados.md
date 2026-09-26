@@ -255,7 +255,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
 
-**CharacterAffinities** — lista incremental (2.c). `CaminhoNome` guarda `Alma`, `Vida` ou `Mundano` (validado pela API; linhas antigas podem ter texto livre). `SubElemento` agora é derivado pelo servidor a partir da Matriz Elemental (interseção de `Elemento` com `SegundaEssencia`) — ver Ficha de Personagem 2.c.
+**CharacterAffinities** — lista incremental (2.c). `SubElemento` é derivado pelo servidor a partir da Matriz Elemental (interseção de `Elemento` com `SegundaEssencia`) — ver Ficha de Personagem 2.c.
 
 | Coluna | Tipo |
 |---|---|
@@ -265,7 +265,6 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | SubElemento | enum |
 | SegundaEssencia | enum EssenciaBasica (Ar, Água, Fogo, Terra, Alma, Vida, Mundano) — nullable |
 | SegundaEssenciaValor | int — nullable |
-| CaminhoNome | string |
 | Experiencia | int |
 
 **CharacterWeapons** — arsenal (3.a). Referência ao vivo ao Catálogo, exceto Durabilidade.

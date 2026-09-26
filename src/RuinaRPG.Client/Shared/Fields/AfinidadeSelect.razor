@@ -10,9 +10,8 @@
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
-    // null (padrão) mostra todos os 16 valores — usado hoje por FichaDeCriatura, que não filtra
-    // por Vocação (Criatura não tem esse conceito). Personagem/NPC passam o subconjunto liberado
-    // pela Vocação atual (ver VocacaoEscolaMap).
+    // null (padrão) mostra todos os 16 valores. Personagem/NPC/Criatura passam a mesma lista
+    // completa Afinidades explicitamente (não há mais filtro por Vocação).
     [Parameter] public (string Valor, string Rotulo)[]? OpcoesPermitidas { get; set; }
 
     // R0001 1.a — 4 Elementos + 12 Sub-Elementos da Matriz Elemental (Alma e Vida são Caminhos).

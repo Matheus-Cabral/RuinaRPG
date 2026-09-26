@@ -36,7 +36,7 @@ public class CharacterAffinityMigrationTests : IClassFixture<PostgresFixture>
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, CaminhoNome = "Caminho da Fênix", Experiencia = 10 });
+        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAffinities.CountAsync()).Should().Be(1);

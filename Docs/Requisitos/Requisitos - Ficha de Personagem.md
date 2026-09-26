@@ -38,7 +38,7 @@
 
 - *Trabalho*: campo previsto porém ainda não implementado. Vamos apenas não implementa-lo.
 
-- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 12 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Aprimorar**, **Necromancia** e **Invocação**. *Alma* e *Vida* não estão aqui: na Matriz Elemental elas são **Caminhos** (ver 2.c), não Afinidades. Uma ficha que já tinha Alma ou Vida salvas continua exibindo o valor, mas não é possível escolhê-los de novo. Restrita pela Vocação atual via Escola de Magia — ver 2.c, Afinidades, para a tabela de Escolas e a regra de não invalidar uma escolha já salva.
+- *Afinidade*: Um dropdown com a afinidade elemental do personagem. Os valores correspondem aos 4 Elementos e aos 12 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Aprimorar**, **Necromancia** e **Invocação**. *Alma* e *Vida* não estão aqui: na Matriz Elemental elas são **Caminhos** (ver 2.c), não Afinidades. Uma ficha que já tinha Alma ou Vida salvas continua exibindo o valor, mas não é possível escolhê-los de novo.
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 
@@ -125,47 +125,37 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
   
 
-Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): campos por linha, na ordem — Essência Básica (Elemento), Caminho, Sub-Elemento e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
+Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): campos por linha, na ordem — Essência Básica 1, Essência Básica 2, Sub-Elemento e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
 
-- *Elemento*: dropdown fixo com os 4 elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`). "Mundano", que na matriz é o centro de onde partem os Caminhos, não é um Elemento — aparece aqui só como opção de *Caminho* (abaixo).
-- *Valor do Elemento*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
-- *Caminho*: dropdown fixo com os 3 Caminhos da Matriz Elemental: **Alma**, **Vida** e **Mundano** (substitui o antigo nome livre). Pode ficar vazio. Um valor em texto livre já salvo de antes continua sendo exibido e aceito enquanto não for alterado.
-- *Sub-Elemento*: dropdown fixo com os 12 Sub-Elementos da Matriz Elemental: Gelo, Raio, Prever, Ecomancia, Flora, Purificar, Hemomancia, Ferro, Curar, Necromancia, Aprimorar, Invocação. *Alma* e *Vida* não são Sub-Elementos — são os Caminhos (campo anterior); o servidor rejeita uma escolha nova de qualquer um dos dois aqui, e uma linha antiga que já os tinha como Sub-Elemento continua válida e é exibida normalmente enquanto não for alterada. Oito deles dependem do *Caminho* e do *Elemento* da própria linha — só são oferecidos quando os dois batem, e o servidor rejeita o resto:
+- *Essência Básica 1*: dropdown fixo com os 4 Elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`).
+- *Valor da Essência Básica 1*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
+- *Essência Básica 2*: dropdown cujas opções dependem da Essência Básica 1 da própria linha — só os valores que cruzam com ela na Matriz Elemental (Elementos e os Caminhos **Alma**, **Vida** e **Mundano**; ver tabela abaixo). Fica desabilitado enquanto a Essência Básica 1 estiver vazia. Trocar a Essência Básica 1 limpa uma Essência Básica 2 que deixou de cruzar com ela.
+- *Valor da Essência Básica 2*: campo numérico ≥ 0, mesma regra do Valor da Essência Básica 1.
+- *Sub-Elemento*: não é escolhido — é **calculado** pelo servidor como o cruzamento das duas Essências Básicas na Matriz Elemental, e exibido só como nome (ou vazio, sem as duas Essências). Os pares de Elemento são simétricos (Água + Ar também dá Gelo):
 
-  | Caminho | Sub-Elemento | Elemento exigido |
+  | Essência 1 (Elemento) | Essência 2 | Sub-Elemento |
   |---|---|---|
-  | Alma | Prever | Ar |
-  | Alma | Purificar | Água |
-  | Vida | Curar | Fogo |
-  | Vida | Aprimorar | Terra |
-  | Mundano | Ecomancia | Ar |
-  | Mundano | Hemomancia | Água |
-  | Mundano | Necromancia | Fogo |
-  | Mundano | Invocação | Terra |
+  | Ar | Água | Gelo |
+  | Ar | Fogo | Raio |
+  | Água | Terra | Flora |
+  | Fogo | Terra | Ferro |
+  | Ar | Alma | Prever |
+  | Água | Alma | Purificar |
+  | Fogo | Vida | Curar |
+  | Terra | Vida | Aprimorar |
+  | Ar | Mundano | Ecomancia |
+  | Água | Mundano | Hemomancia |
+  | Fogo | Mundano | Necromancia |
+  | Terra | Mundano | Invocação |
 
-  Ex.: para ter *Curar*, a linha precisa de Elemento **Fogo** e Caminho **Vida**. Gelo, Raio, Flora e Ferro não dependem de Caminho. Além dessa regra, o Sub-Elemento continua restrito pela Vocação (abaixo). Sem Elemento ou sem Caminho preenchido, esses oito não são oferecidos. Como nos demais campos, o servidor só valida o que *mudou* em relação ao já salvo: uma linha antiga reenviada sem alteração nunca é rejeitada.
-- *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor do Elemento.
-- *Experiência*: valor numérico ≥ 0, a "Experiência" no Caminho da linha.
+  Qualquer outra combinação de Essências (incluindo a mesma Essência Básica 1 duas vezes) não cruza — nenhum Sub-Elemento. O Sub-Elemento salvo só é recalculado quando a Essência Básica 1 ou 2 muda; editar só o Valor ou a Experiência da linha não mexe nele — é o que preserva, até a próxima edição de Essência, uma linha salva antes desta mudança cujo Sub-Elemento não vem da Matriz.
+- *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor das Essências.
+- *Experiência*: valor numérico ≥ 0.
 
 Qualquer campo de uma linha de Afinidade já existente pode ser editado pelo jogador a qualquer momento (não só no momento de adicionar a linha), e a linha pode ser removida a qualquer momento.
 
-O *Elemento* e o *Sub-Elemento* de cada linha (e, por extensão, o dropdown único de *Afinidade* em 1.a) são restritos pela *Vocação* atual do personagem, via 4 Escolas de Magia (ver "Escolas_de_Magia.png" em `Docs/Sistema RPG`, sem uma seção correspondente no documento fonte — mesmo tratamento de material de referência que "Matriz_Elemental.png" já recebe):
-
-| Escola | Elementos/Sub-Elementos |
-|---|---|
-| Dobra | Ar, Água, Fogo, Terra |
-| Transmutação | Flora, Ferro, Raio, Gelo |
-| Maculação | Necromancia, Invocação, Ecomancia, Hemomancia |
-| Consagração | Curar, Aprimorar, Prever, Purificar |
-
-Cada Vocação libera um subconjunto fixo de Escolas: Feiticeiro → Dobra e Transmutação; Adepto →
-Dobra e Consagração; Bruxo → Dobra e Maculação; Campeão, Caçador, ou nenhuma Vocação
-escolhida → nenhuma Escola (não é possível escolher Elemento/Sub-Elemento algum). Uma troca de
-Vocação nunca invalida uma escolha já salva — só uma escolha *nova* (ou uma mudança pra um valor
-diferente) é bloqueada quando cai fora da Vocação atual.
-
-Duas linhas de Afinidade não podem ter o mesmo Elemento não-nulo entre si, nem o mesmo
-Sub-Elemento não-nulo entre si — o servidor rejeita a segunda.
+Duas linhas de Afinidade não podem produzir o mesmo Sub-Elemento não-nulo — o servidor rejeita a
+segunda. A Essência Básica 1 pode se repetir livremente entre linhas.
 
   
 
