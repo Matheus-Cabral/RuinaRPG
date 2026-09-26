@@ -8,7 +8,7 @@
    both Ficha de Personagem and Ficha de NPC. *@
 
 <div class="d-flex align-center" style="gap:4px">
-    <MudSelect T="string" Value="Nome" ValueChanged="OnNomeChangedAsync" Placeholder="@Label" Margin="Margin.Dense" Style="min-width:7rem" Disabled="Disabled">
+    <MudSelect T="string" Value="Nome" ValueChanged="OnNomeChangedAsync" Placeholder="@Label" Margin="Margin.Dense" Style="min-width:7rem" Disabled="Disabled" Clearable="Clearable">
         @foreach (var (valor, rotulo) in Opcoes)
         {
             <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
@@ -25,6 +25,7 @@
     [Parameter] public int? Valor { get; set; }
     [Parameter] public EventCallback<int?> ValorChanged { get; set; }
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Clearable { get; set; }
 
     // Os 4 Elementos da Matriz Elemental ("Mundano", presente na matriz apenas como referência,
     // não é uma opção válida aqui).

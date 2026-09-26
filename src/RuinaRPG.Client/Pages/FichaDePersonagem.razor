@@ -309,7 +309,7 @@
                             </td>
                             <td>
                                 <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(affinity.Elemento, affinity.SegundaEssencia)"
-                                                         Disabled="@string.IsNullOrEmpty(affinity.Elemento)"
+                                                         Disabled="@string.IsNullOrEmpty(affinity.Elemento)" Clearable="true"
                                                          Nome="@affinity.SegundaEssencia" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssencia", v))"
                                                          Valor="@affinity.SegundaEssenciaValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssenciaValor", v))" />
                             </td>
@@ -330,8 +330,8 @@
                         </td>
                         <td>
                             <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(_affinityForm.Elemento, null)"
-                                                     Disabled="@string.IsNullOrEmpty(_affinityForm.Elemento)"
-                                                     @bind-Nome="_affinityForm.SegundaEssencia" @bind-Valor="_affinityForm.SegundaEssenciaValor" />
+                                                     Disabled="@string.IsNullOrEmpty(_affinityForm.Elemento)" Clearable="true"
+                                                     Nome="@_affinityForm.SegundaEssencia" NomeChanged="OnNovaEssencia2Changed" @bind-Valor="_affinityForm.SegundaEssenciaValor" />
                         </td>
                         <td>
                             <div class="d-flex align-center" style="gap:4px">
@@ -1279,7 +1279,15 @@
     {
         _affinityForm.Elemento = elemento;
         if (!AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == _affinityForm.SegundaEssencia))
-            _affinityForm.SegundaEssencia = null;
+            OnNovaEssencia2Changed(null);
+    }
+
+    // Sem o nome da Essência 2, o Valor dela também é descartado.
+    private void OnNovaEssencia2Changed(string? segunda)
+    {
+        _affinityForm.SegundaEssencia = segunda;
+        if (segunda is null)
+            _affinityForm.SegundaEssenciaValor = null;
     }
 
     private string? SubElementoDaNovaLinha() =>
@@ -1319,6 +1327,8 @@
 
         if (field == "Elemento" && !AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == segunda))
             segunda = null;
+        if (segunda is null)
+            segundaValor = null;
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/affinities/{id}",
             new UpdateCharacterAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));

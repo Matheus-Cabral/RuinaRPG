@@ -90,4 +90,25 @@ public class AfinidadeEssenciaFieldTests : MudBunitContext
 
         cut.FindComponent<MudSelect<string>>().Instance.Disabled.Should().BeTrue();
     }
+
+    [Fact]
+    public void Clearable_is_passed_to_the_name_select()
+    {
+        var cut = Render<AfinidadeEssenciaField>(p => p
+            .Add(x => x.Label, "Essência 2")
+            .Add(x => x.Opcoes, AfinidadeEssenciaField.EssenciasBasicas)
+            .Add(x => x.Clearable, true));
+
+        cut.FindComponent<MudSelect<string>>().Instance.Clearable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void The_name_select_is_not_clearable_by_default()
+    {
+        var cut = Render<AfinidadeEssenciaField>(p => p
+            .Add(x => x.Label, "Elemento")
+            .Add(x => x.Opcoes, AfinidadeEssenciaField.Elementos));
+
+        cut.FindComponent<MudSelect<string>>().Instance.Clearable.Should().BeFalse();
+    }
 }
