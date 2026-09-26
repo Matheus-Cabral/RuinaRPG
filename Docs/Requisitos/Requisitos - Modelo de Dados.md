@@ -255,7 +255,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
 
-**CharacterAffinities** — lista incremental (2.c). `CaminhoNome` guarda `Alma`, `Vida` ou `Mundano` (validado pela API; linhas antigas podem ter texto livre).
+**CharacterAffinities** — lista incremental (2.c). `CaminhoNome` guarda `Alma`, `Vida` ou `Mundano` (validado pela API; linhas antigas podem ter texto livre). `SubElemento` agora é derivado pelo servidor a partir da Matriz Elemental (interseção de `Elemento` com `SegundaEssencia`) — ver Ficha de Personagem 2.c.
 
 | Coluna | Tipo |
 |---|---|
@@ -263,6 +263,8 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | CharacterSheetId | FK |
 | Elemento | enum |
 | SubElemento | enum |
+| SegundaEssencia | enum EssenciaBasica (Ar, Água, Fogo, Terra, Alma, Vida, Mundano) — nullable |
+| SegundaEssenciaValor | int — nullable |
 | CaminhoNome | string |
 | Experiencia | int |
 

@@ -265,6 +265,18 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // libera Dobra (Fogo) + Consagração (Curar)
         await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Curar", 2, "Vida", 10);
 
+        // SegundaEssencia/SegundaEssenciaValor aren't exposed by the AddNpcAffinity contract yet
+        // (Task 3) — set them directly through the DbContext on the source row, same as the copy
+        // is asserted below.
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var sourceAffinity = await db.NpcAffinities.SingleAsync(a => a.NpcSheetId == Guid.Parse(sourceId));
+            sourceAffinity.SegundaEssencia = RuinaRPG.Domain.CharacterSheets.EssenciaBasica.Vida;
+            sourceAffinity.SegundaEssenciaValor = 5;
+            await db.SaveChangesAsync();
+        }
+
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
@@ -274,6 +286,15 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         copied.ElementoValor.Should().Be(3);
         copied.SubElemento.Should().Be("Curar");
         copied.SubElementoValor.Should().Be(2);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var copiedRow = await db.NpcAffinities.AsNoTracking()
+                .SingleAsync(a => a.NpcSheetId == Guid.Parse(body.SheetId) && a.Elemento == RuinaRPG.Domain.CharacterSheets.Elemento.Fogo);
+            copiedRow.SegundaEssencia.Should().Be(RuinaRPG.Domain.CharacterSheets.EssenciaBasica.Vida);
+            copiedRow.SegundaEssenciaValor.Should().Be(5);
+        }
     }
 
     [Fact]

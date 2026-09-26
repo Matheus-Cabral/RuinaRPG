@@ -10,6 +10,8 @@ public class CharacterAffinity
     public int? ElementoValor { get; set; }
     public SubElemento? SubElemento { get; set; }
     public int? SubElementoValor { get; set; }
+    public EssenciaBasica? SegundaEssencia { get; set; }
+    public int? SegundaEssenciaValor { get; set; }
     public string? CaminhoNome { get; set; }
     public int? Experiencia { get; set; }
 }
