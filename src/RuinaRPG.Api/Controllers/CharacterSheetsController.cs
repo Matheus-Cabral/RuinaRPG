@@ -333,10 +333,15 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        if (request.Historia is { Length: > HistoriaSanitizer.MaxLength })
+        // The limit applies to what's stored (sanitizing can grow CSS values); the raw cap only bounds the work.
+        if (request.Historia is { Length: > HistoriaSanitizer.MaxRawLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
-        sheet.Historia = HistoriaSanitizer.Sanitize(request.Historia);
+        var clean = HistoriaSanitizer.Sanitize(request.Historia);
+        if (clean is { Length: > HistoriaSanitizer.MaxLength })
+            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
+
+        sheet.Historia = clean;
         await db.SaveChangesAsync();
         return NoContent();
     }

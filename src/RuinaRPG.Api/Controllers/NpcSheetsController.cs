@@ -170,10 +170,15 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        if (request.Historia is { Length: > HistoriaSanitizer.MaxLength })
+        // The limit applies to what's stored (sanitizing can grow CSS values); the raw cap only bounds the work.
+        if (request.Historia is { Length: > HistoriaSanitizer.MaxRawLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
-        sheet.Historia = HistoriaSanitizer.Sanitize(request.Historia);
+        var clean = HistoriaSanitizer.Sanitize(request.Historia);
+        if (clean is { Length: > HistoriaSanitizer.MaxLength })
+            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
+
+        sheet.Historia = clean;
         await db.SaveChangesAsync();
         return NoContent();
     }

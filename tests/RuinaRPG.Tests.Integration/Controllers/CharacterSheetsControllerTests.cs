@@ -1454,6 +1454,22 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task UpdateHistoria_rejects_input_that_grows_past_200000_characters_when_sanitized()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C8");
+        // The sanitizer rewrites "red" as "rgba(255, 0, 0, 1)", so each paragraph grows by ~60%: as many
+        // repetitions as fit in 200,000 raw chars sanitize to well over 200,000.
+        const string paragrafo = "<p style=\"color: red\">x</p>";
+        var historia = string.Concat(Enumerable.Repeat(paragrafo, 200_000 / paragrafo.Length));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/historia", playerToken, new UpdateHistoriaRequest(historia)));
+
+        historia.Length.Should().BeLessThanOrEqualTo(200_000);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("A História pode ter no máximo 200.000 caracteres.");
+    }
+
+    [Fact]
     public async Task UpdateHistoria_with_only_empty_markup_stores_null()
     {
         var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("C6");
