@@ -37,7 +37,7 @@ undo/redo · paragraph/heading format · font family · font size · bold · ita
 strikethrough · superscript · subscript · text color / background color · bulleted list · numbered
 list · outdent/indent · alignment · blockquote · link · table (insert, add/remove rows/cols, merge
 cells — Jodit's built-in table plugin) · horizontal rule · find & replace · clear formatting ·
-fullscreen.
+fullscreen. (The paragraph dropdown offers Normal, H1–H4 and Quote — no code block.)
 
 Explicitly **disabled**: image, video, file upload, source/HTML view, print, "about".
 
@@ -46,8 +46,8 @@ Theme follows the app: Jodit's `theme: 'dark'` whenever `document.documentElemen
 open editor in sync when the user toggles the theme.
 
 Pasting from Word/Google Docs uses Jodit's paste cleaning (`askBeforePasteHTML: false`,
-`defaultActionOnPaste: 'insert_clear_html'`), so the stored HTML stays within the allowlist below
-even before the server sanitizes it.
+`defaultActionOnPaste: 'insert_clear_html'`). Jodit's paste cleaning strips attributes; tags outside
+the allowlist are unwrapped by the server so their text survives.
 
 ### Saving
 
@@ -91,8 +91,8 @@ New nullable column on both sheet tables (EF Core, one migration `AddSheetHistor
   `CharacterSheetAuthorization.CanEdit(caller, sheet.OwnerId, campaign GM)` (owner or the campaign's
   GM). NPC: 404 if the sheet doesn't exist or `GrantedSheetAuthorization.CanEdit` fails (GM, or the
   player the NPC was granted to) — same as `NpcSheetsController.Update`.
-- **Responses:** 204 on success; 400 when the raw input exceeds **200,000 characters**
-  (`"A História pode ter no máximo 200.000 caracteres."`). Empty/whitespace-only input (after
+- **Responses:** 204 on success; 400 when the raw input exceeds **400,000 characters** or the
+  sanitized output exceeds **200,000 characters** (`"A História pode ter no máximo 200.000 caracteres."`). Empty/whitespace-only input (after
   sanitizing) is stored as NULL.
 
 ### Sanitization (server-side, before persisting)
@@ -105,11 +105,13 @@ MIT) with an explicit allowlist:
 - **Attributes:** `style` (any allowed tag), `href` (`a`), `colspan`/`rowspan` (`th`/`td`).
   `target`/`rel` are not accepted from input — the sanitizer sets them itself on every `a`.
 - **CSS properties (inside `style`):** `color`, `background-color`, `font-family`, `font-size`,
-  `text-align`, `text-decoration`, `padding-left`, `margin-left` (Jodit indents with either).
+  `text-align`, `text-decoration`, `padding-left`, `margin-left` (Jodit indents with either),
+  `list-style-type`, `vertical-align`, `width`, `border-collapse`.
 - **URL schemes:** `http`, `https`, `mailto`. Every surviving `a` gets
   `target="_blank" rel="noopener noreferrer"`.
 - Everything else is dropped: `<script>`, `<style>`, `<iframe>`, `<img>`, `<object>`, event-handler
   attributes (`on*`), `javascript:`/`data:` URLs, `class`/`id`.
+- Disallowed tags are unwrapped (their text kept); the contents of script/style/template/noscript/iframe/object/embed/svg/math/textarea/select are dropped entirely.
 
 The client renders only HTML that came back from the API, so a direct API call bypassing the editor
 can't inject script either.
