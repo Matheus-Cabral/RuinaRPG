@@ -62,3 +62,9 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0009** - A aba Antecedentes do NPC é a última aba.
 
 **Descrição**: A aba Antecedentes segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático e a mesma limpeza de HTML). Como a Ficha de NPC não tem Diário, a aba Antecedentes é a última. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto.
+
+  
+
+# **R0010** - O limite de Vocação Arcana das Afinidades é exibido, mas não bloqueia o GM.
+
+**Descrição**: O contador **Vocação Arcana: gasto / máximo** e o campo *Afinidade Adicional* seguem "[[Requisitos - Ficha de Personagem]]" R0007 sem alteração no cálculo. Diferente do Personagem, o máximo **não é um limite**: o GM pode salvar Afinidades acima dele, e o contador apenas fica destacado em vermelho como aviso — mesmo tratamento de R0007 deste documento para os Pontos de Atributo.

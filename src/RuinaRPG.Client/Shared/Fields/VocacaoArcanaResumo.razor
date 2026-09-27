@@ -1,0 +1,25 @@
+@using MudBlazor
+@using RuinaRPG.Domain.CharacterSheets
+
+@* Cabeçalho da seção Afinidades (Ficha de Personagem 2.c): pontos de Vocação Arcana gastos
+   sobre o máximo, mais a Afinidade Adicional que aumenta esse máximo. Compartilhado entre
+   Ficha de Personagem e Ficha de NPC — só o servidor da Ficha de Personagem bloqueia o excesso. *@
+
+<div class="d-flex align-center flex-wrap mb-2" style="gap:16px">
+    <MudText Typo="Typo.subtitle1" Color="@(Gasto > Maxima ? Color.Error : Color.Default)">Vocação Arcana: @Gasto / @Maxima</MudText>
+    <MudNumericField T="int" Value="AfinidadeAdicional" ValueChanged="AfinidadeAdicionalChanged" Label="Afinidade Adicional" Min="0" Margin="Margin.Dense" Style="max-width:10rem" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int Gasto { get; set; }
+    [Parameter, EditorRequired] public int Maxima { get; set; }
+    [Parameter] public int AfinidadeAdicional { get; set; }
+    [Parameter] public EventCallback<int> AfinidadeAdicionalChanged { get; set; }
+
+    // As linhas já carregadas na página, para o contador acompanhar cada edição sem recarregar a ficha.
+    public static int CalcularGasto(IEnumerable<(string? Elemento, int? ElementoValor, string? SegundaEssencia, int? SegundaEssenciaValor, int? SubElementoValor)> linhas) =>
+        VocacaoArcanaCalculator.Gasto(linhas.Select(l => new LinhaDeAfinidade(
+            Enum.TryParse<Elemento>(l.Elemento, out var e1) ? e1 : null, l.ElementoValor,
+            null, l.SubElementoValor,
+            Enum.TryParse<EssenciaBasica>(l.SegundaEssencia, out var e2) ? e2 : null, l.SegundaEssenciaValor)));
+}

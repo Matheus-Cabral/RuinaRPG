@@ -213,6 +213,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return BadRequest("Estrela inválida.");
         if (request.SinaAtual is < 0 or > 3)
             return BadRequest("SinaAtual deve estar entre 0 e 3.");
+        if (request.AfinidadeAdicional < 0)
+            return BadRequest("Afinidade Adicional não pode ser negativa.");
 
         Guid? historicoId = null;
         if (!string.IsNullOrWhiteSpace(request.HistoricoId))
@@ -245,6 +247,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);
         sheet.Nivel = nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
+        sheet.AfinidadeAdicional = request.AfinidadeAdicional;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
         // sheet.EAPAtual is intentionally never written from here on — EAPAtual is now a pure
         // function of Nivel + NucleosRank* (EapCalculator, used in ToResponseAsync), same
@@ -441,7 +444,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor))
+            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
 
@@ -584,6 +587,11 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
+        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == s.Id)
+            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
+            .ToListAsync();
+        var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
+
         var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
         var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, rules.XpPorNivel);
         var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, rules.Niveis);
@@ -598,7 +606,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia);
+            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
+            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap));
     }
 
     /// <summary>

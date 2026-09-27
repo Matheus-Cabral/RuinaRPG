@@ -90,6 +90,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             return BadRequest("Estrela inválida.");
         if (request.SinaAtual is < 0 or > 3)
             return BadRequest("SinaAtual deve estar entre 0 e 3.");
+        if (request.AfinidadeAdicional < 0)
+            return BadRequest("Afinidade Adicional não pode ser negativa.");
 
         Guid? historicoId = null;
         if (!string.IsNullOrWhiteSpace(request.HistoricoId))
@@ -119,6 +121,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.HistoricoId = historicoId;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
+        sheet.AfinidadeAdicional = request.AfinidadeAdicional;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
         sheet.EAPAtual = request.EAPAtual;
         sheet.NucleosRankF = request.NucleosRankF;
@@ -402,7 +405,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor))
+            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
 
@@ -582,6 +585,11 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
+        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == s.Id)
+            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
+            .ToListAsync();
+        var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
+
         var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos);
@@ -609,7 +617,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
             campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
-            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia);
+            s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
+            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap));
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

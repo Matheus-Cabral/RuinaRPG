@@ -32,4 +32,5 @@ public record UpdateNpcSheetRequest(
     string? Estrela,
     int SinaAtual,
     string? HistoricoId,
-    string? EquipmentKitId);
+    string? EquipmentKitId,
+    int AfinidadeAdicional);

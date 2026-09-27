@@ -58,7 +58,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
     }
 
     private static UpdateNpcSheetRequest ValidUpdate() => new(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
-        1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null);
+        1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0);
 
     private Task<HttpResponseMessage> AddAsync(string gmToken, string sheetId, string? elemento, string? segundaEssencia) =>
         _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
@@ -339,5 +339,34 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         afterChange.SubElemento.Should().Be("Necromancia");
         afterClear.SubElemento.Should().BeNull();
         afterClear.SegundaEssencia.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Npc_affinities_beyond_the_vocacao_arcana_maximum_are_accepted_and_reported()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffVaGm", "npcaffvagm@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { AfinidadeAdicional = 1 }));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+            new AddNpcAffinityRequest("Fogo", 3, "Terra", 2, 1, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sheet = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>())!;
+        sheet.AfinidadeAdicional.Should().Be(1);
+        sheet.VocacaoArcanaMaxima.Should().Be(4); // Adepto sem coração de mana → Círculo 0 → 3, + 1
+        sheet.VocacaoArcanaGasta.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task Negative_AfinidadeAdicional_is_rejected()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffVaNegGm", "npcaffvaneggm@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { AfinidadeAdicional = -1 }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

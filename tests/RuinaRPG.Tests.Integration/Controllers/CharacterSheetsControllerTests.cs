@@ -189,7 +189,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, "Marcado pela Ruína",
         // 749 XP is one below Nível 6's threshold (750) — Nível is derived now, and reaching a
         // threshold exactly already counts as that Nível, so 749 keeps this at Nível 5.
-        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null, null);
+        true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null, null, 0);
 
     [Fact]
     public async Task Get_returns_the_sheet()
@@ -1186,7 +1186,7 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         // Adepto libera Dobra (Fogo) — Afinidade principal = Fogo.
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null)));
 
