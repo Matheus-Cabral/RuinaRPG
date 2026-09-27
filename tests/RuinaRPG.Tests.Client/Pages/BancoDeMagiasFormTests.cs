@@ -250,6 +250,7 @@ public class BancoDeMagiasFormTests : MudBunitContext
         var cut = Render<BancoDeMagiasForm>(p => p.Add(x => x.EntryId, "entry-1"));
         await Task.Delay(50);
 
-        cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Magia/Habilidade de Criatura").Instance.Value.Should().BeTrue();
+        var checkbox = cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Magia/Habilidade de Criatura");
+        ((AngleSharp.Html.Dom.IHtmlInputElement)checkbox.Find("input[type=checkbox]")).IsChecked.Should().BeTrue();
     }
 }

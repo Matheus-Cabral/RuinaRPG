@@ -87,18 +87,25 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.NpcRunes.Add(rune);
 
-        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
-        db.RuneBankEntries.Add(bankCopy);
-
-        if (callerId != sheet.GmId && campaignId is not null)
+        // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
+        // banco do GM, e a Runa da ficha guarda o vínculo com ela. Partir de uma entrada do banco (R0003) só
+        // copia para a ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
+        if (!fromBank)
         {
-            db.CampaignAttachments.Add(new CampaignAttachment
+            var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
+            db.RuneBankEntries.Add(bankCopy);
+            rune.SourceBankEntryId = bankCopy.Id;
+
+            if (callerId != sheet.GmId && campaignId is not null)
             {
-                Id = Guid.NewGuid(),
-                CampaignId = campaignId.Value,
-                RuneBankEntryId = bankCopy.Id,
-                IsPublic = true
-            });
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = campaignId.Value,
+                    RuneBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

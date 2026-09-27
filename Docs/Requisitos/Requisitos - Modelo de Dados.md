@@ -323,7 +323,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nome | string |
 | Descricao | text |
 | Grau | int |
-| SourceBankEntryId | FK → RuneBankEntries, nullable (só rastreabilidade — R0003 do Banco de Runas) |
+| SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
 **CharacterMasteries** (4.e)
