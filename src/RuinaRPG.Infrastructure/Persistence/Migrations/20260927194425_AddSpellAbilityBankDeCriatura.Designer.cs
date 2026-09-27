@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RuinaRPG.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    partial class RuinaRpgDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927194425_AddSpellAbilityBankDeCriatura")]
+    partial class AddSpellAbilityBankDeCriatura
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -528,9 +531,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("Afinidade")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AfinidadeAdicional")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ArcaRolada")
@@ -1946,9 +1946,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("Afinidade")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AfinidadeAdicional")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ArcaRolada")

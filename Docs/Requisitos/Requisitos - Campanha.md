@@ -79,6 +79,8 @@
 
 Em ambos os casos, a partir da concessão a ficha passa a ter um **jogador dono** e segue o mesmo modelo de edição de uma Ficha de Personagem (o jogador dono edita os campos livremente; criação e exclusão continuam exclusivas do GM) — mantendo, porém, a estrutura de campos de NPC ou Criatura (ver "[[Requisitos - Ficha de NPCs]]" R0001 e "[[Requisitos - Ficha de Criaturas]]" R0001, que descrevem o modelo padrão sem jogador dono). No painel do jogador, fichas concedidas aparecem numa seção própria, separada da lista de Fichas de Personagem (ex: "Meus Companheiros"), já que têm estrutura de campos diferente.
 
+Na **cópia de uma existente**, cada Magia/Habilidade da ficha copiada fica **anexada à campanha como pública** (R0008), para o jogador vê-la e reaproveitá-la ("[[Requisitos - Banco de Magias e Habilidades]]" R0003). O anexo usa a entrada do banco de onde aquela Magia/Habilidade veio — nenhuma entrada nova é criada; se ela já estava anexada como privada, passa a pública. Uma Magia/Habilidade antiga, sem vínculo com o banco, reaproveita uma entrada idêntica do banco do GM (mesmo Nome, Tipo, Grau e Descrição); só na falta dela é criada uma entrada nova, à qual a cópia passa a ficar vinculada.
+
   
 
 # **R0011** - A campanha deve ter Notas Secretas endereçadas a um ou mais jogadores.

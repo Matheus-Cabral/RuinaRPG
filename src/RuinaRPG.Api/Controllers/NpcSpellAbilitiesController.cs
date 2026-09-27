@@ -91,26 +91,31 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         sheetCopy.Efeitos = efeitos.Select(e => new NpcSpellAbilityEffect { Id = Guid.NewGuid(), NpcSpellAbilityId = sheetCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.NpcSpellAbilities.Add(sheetCopy);
 
-        // R0001 (Banco de Magias): every creation — from scratch or from an existing bank entry —
-        // also lands an independent copy in the GM's bank, applying "em qualquer ficha" (NPC included).
-        var bankCopy = new SpellAbilityBankEntry
+        // R0001 (Banco de Magias): uma criação do zero também grava uma cópia independente no banco do GM,
+        // e a ficha guarda o vínculo com ela. Partir de uma entrada do banco (R0003) só copia para a
+        // ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
+        if (!fromBank)
         {
-            Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
-        };
-        bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
-        db.SpellAbilityBankEntries.Add(bankCopy);
-
-        // Same rule as CharacterSpellAbilitiesController (see its comment) — the granted-sheet
-        // "campaign" isn't a stored column, it's resolved through the grant-link CampaignAttachment.
-        if (CurrentUserId() != sheet.GmId && campaignId is not null)
-        {
-            db.CampaignAttachments.Add(new CampaignAttachment
+            var bankCopy = new SpellAbilityBankEntry
             {
-                Id = Guid.NewGuid(),
-                CampaignId = campaignId.Value,
-                SpellAbilityBankEntryId = bankCopy.Id,
-                IsPublic = true
-            });
+                Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
+            };
+            bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
+            db.SpellAbilityBankEntries.Add(bankCopy);
+            sheetCopy.SourceBankEntryId = bankCopy.Id;
+
+            // Same rule as CharacterSpellAbilitiesController (see its comment) — the granted-sheet
+            // "campaign" isn't a stored column, it's resolved through the grant-link CampaignAttachment.
+            if (CurrentUserId() != sheet.GmId && campaignId is not null)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = campaignId.Value,
+                    SpellAbilityBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

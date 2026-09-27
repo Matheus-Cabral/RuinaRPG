@@ -76,22 +76,27 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         var rune = new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.CharacterRunes.Add(rune);
 
-        // Requisitos - Banco de Runas R0001: toda criação — do zero ou a partir do banco — grava também
-        // uma cópia independente no banco do GM, seja o GM ou o jogador quem criou.
-        var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
-        db.RuneBankEntries.Add(bankCopy);
-
-        // R0007: quando quem cria é o jogador dono (não o GM), a cópia vira anexo público da campanha
-        // da ficha (Requisitos - Campanha R0012).
-        if (callerId != campaignGmId)
+        // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
+        // banco do GM, e a Runa da ficha guarda o vínculo com ela. Partir de uma entrada do banco (R0003) só
+        // copia para a ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
+        if (!fromBank)
         {
-            db.CampaignAttachments.Add(new CampaignAttachment
+            var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Descricao = descricao, Grau = grau, ImageId = imageId };
+            db.RuneBankEntries.Add(bankCopy);
+            rune.SourceBankEntryId = bankCopy.Id;
+
+            // R0007: quando quem cria é o jogador dono (não o GM), a cópia vira anexo público da campanha
+            // da ficha (Requisitos - Campanha R0012).
+            if (callerId != campaignGmId)
             {
-                Id = Guid.NewGuid(),
-                CampaignId = sheet.CampaignId,
-                RuneBankEntryId = bankCopy.Id,
-                IsPublic = true
-            });
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = sheet.CampaignId,
+                    RuneBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

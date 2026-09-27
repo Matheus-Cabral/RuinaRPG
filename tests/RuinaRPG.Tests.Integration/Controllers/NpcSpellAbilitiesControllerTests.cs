@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
@@ -86,7 +88,7 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
     }
 
     [Fact]
-    public async Task AddFromBankEntry_copies_every_field_and_still_creates_a_second_independent_bank_copy()
+    public async Task AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcMagiasGm2", "npcmagias2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -110,8 +112,8 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
         sheetCopy.Efeitos.Should().BeEquivalentTo(bankEntry.Efeitos);
 
         var bank = await GetBankAsync(gmToken);
-        bank.Should().HaveCount(2); // the original + the auto-copy this creation also landed (R0001)
-        bank.Where(e => e.Nome == "Cura Leve").Should().HaveCount(2);
+        bank.Should().ContainSingle().Which.Id.Should().Be(bankEntry.Id); // escolher do banco não gera uma segunda entrada
+        (await SourceBankEntryIdAsync(sheetCopy.Id)).Should().Be(Guid.Parse(bankEntry.Id));
     }
 
     [Fact]
@@ -276,5 +278,26 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
             new AddNpcSpellAbilityRequest(foreignEntryId, null, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private async Task<Guid?> SourceBankEntryIdAsync(string sheetSpellAbilityId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        return await db.NpcSpellAbilities.Where(e => e.Id == Guid.Parse(sheetSpellAbilityId)).Select(e => e.SourceBankEntryId).SingleAsync();
+    }
+
+    [Fact]
+    public async Task AddFromScratch_links_the_sheet_entry_to_the_bank_entry_it_created()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcMagiasGmLink", "npcmagiasgmlink@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        var sheetCopy = await response.Content.ReadFromJsonAsync<NpcSpellAbilityResponse>();
+
+        var bankEntry = (await GetBankAsync(gmToken)).Should().ContainSingle().Subject;
+        (await SourceBankEntryIdAsync(sheetCopy!.Id)).Should().Be(Guid.Parse(bankEntry.Id));
+        bankEntry.DeCriatura.Should().Be(false);
     }
 }

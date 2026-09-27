@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -110,7 +112,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
     // not edit-in-place — so there is no endpoint to exercise for this case; intentionally omitted.
 
     [Fact]
-    public async Task AddFromBankEntry_copies_every_field_and_still_creates_a_second_independent_bank_copy()
+    public async Task AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasGm2", "magias2@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayer2", "magiasplayer2@teste.com");
@@ -138,8 +140,8 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         sheetCopy.Efeitos.Should().BeEquivalentTo(bankEntry.Efeitos);
 
         var bank = await GetBankAsync(gmToken);
-        bank.Should().HaveCount(2); // the original + the auto-copy this creation also landed (R0001/R0003)
-        bank.Where(e => e.Nome == "Cura Leve").Should().HaveCount(2);
+        bank.Should().ContainSingle().Which.Id.Should().Be(bankEntry.Id); // escolher do banco não gera uma segunda entrada
+        (await SourceBankEntryIdAsync(sheetCopy.Id)).Should().Be(Guid.Parse(bankEntry.Id));
     }
 
     [Fact]
@@ -292,5 +294,27 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
             new AddCharacterSpellAbilityRequest(foreignEntryId, null, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private async Task<Guid?> SourceBankEntryIdAsync(string sheetSpellAbilityId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        return await db.CharacterSpellAbilities.Where(e => e.Id == Guid.Parse(sheetSpellAbilityId)).Select(e => e.SourceBankEntryId).SingleAsync();
+    }
+
+    [Fact]
+    public async Task AddFromScratch_links_the_sheet_entry_to_the_bank_entry_it_created()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasGmLink", "magiasgmlink@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayerLink", "magiasplayerlink@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        var sheetCopy = await response.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>();
+
+        var bankEntry = (await GetBankAsync(gmToken)).Should().ContainSingle().Subject;
+        (await SourceBankEntryIdAsync(sheetCopy!.Id)).Should().Be(Guid.Parse(bankEntry.Id));
+        bankEntry.DeCriatura.Should().Be(false);
     }
 }

@@ -7,4 +7,5 @@ public record CreateSpellAbilityEntryRequest(
     string Tipo,
     [Range(0, int.MaxValue)] int Grau,
     string Descricao,
-    List<SpellAbilityEffectRequest> Efeitos);
+    List<SpellAbilityEffectRequest> Efeitos,
+    bool DeCriatura = false);

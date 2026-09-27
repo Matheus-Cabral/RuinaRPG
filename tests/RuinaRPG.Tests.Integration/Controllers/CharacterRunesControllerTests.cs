@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -208,7 +210,7 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task A_rune_picked_from_the_bank_copies_its_fields_and_makes_a_new_independent_bank_copy()
+    public async Task A_rune_picked_from_the_bank_copies_its_fields_without_duplicating_the_bank_entry()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RuneBkGm3", "runebk3@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneBkPlayer3", "runebkplayer3@teste.com");
@@ -223,7 +225,8 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
         created!.Nome.Should().Be("Runa da Luz");
         created.Descricao.Should().Be("Ilumina a área.");
         created.Grau.Should().Be(3);
-        (await BankOfAsync(gmToken)).Count(e => e.Nome == "Runa da Luz").Should().Be(2); // a original + a cópia (R0001)
+        (await BankOfAsync(gmToken)).Should().ContainSingle().Which.Id.Should().Be(entryId); // escolher do banco não duplica (R0003)
+        (await SourceBankEntryIdAsync(created.Id)).Should().Be(Guid.Parse(entryId));
     }
 
     [Fact]
@@ -439,7 +442,7 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task A_rune_picked_from_the_bank_inherits_the_entrys_image_on_the_rune_and_on_the_new_bank_copy()
+    public async Task A_rune_picked_from_the_bank_inherits_the_entrys_image()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RuneImgGm8", "runeimg8@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneImgPlayer8", "runeimgplayer8@teste.com");
@@ -455,7 +458,7 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await response.Content.ReadFromJsonAsync<CharacterRuneResponse>())!.ImageUrl.Should().Be(imageUrl);
         (await RunesOfAsync(sheetId, gmToken)).Should().ContainSingle(r => r.Nome == "Runa Herdeira" && r.ImageUrl == imageUrl);
-        (await BankOfAsync(gmToken)).Where(e => e.Nome == "Runa Herdeira").Should().HaveCount(2).And.OnlyContain(e => e.ImageId == imageId);
+        (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa Herdeira").Which.ImageId.Should().Be(imageId);
     }
 
     [Fact]
@@ -471,5 +474,27 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
             new AddCharacterRuneRequest(null, null, null, entryId, imageId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task A_rune_added_from_scratch_is_linked_to_the_bank_entry_it_created()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneLinkGm", "runelinkgm@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneLinkPlayer", "runelinkplayer@teste.com");
+        var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+            new AddCharacterRuneRequest("Runa Nova", "Criada do zero.", 1, null)));
+        var created = (await response.Content.ReadFromJsonAsync<CharacterRuneResponse>())!;
+
+        var bankEntry = (await BankOfAsync(gmToken)).Should().ContainSingle().Subject;
+        (await SourceBankEntryIdAsync(created.Id)).Should().Be(Guid.Parse(bankEntry.Id));
+    }
+
+    private async Task<Guid?> SourceBankEntryIdAsync(string runeId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        return await db.CharacterRunes.Where(r => r.Id == Guid.Parse(runeId)).Select(r => r.SourceBankEntryId).SingleAsync();
     }
 }
