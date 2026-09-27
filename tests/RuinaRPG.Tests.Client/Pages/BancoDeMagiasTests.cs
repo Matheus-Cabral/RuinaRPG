@@ -57,8 +57,12 @@ public class BancoDeMagiasTests : MudBunitContext
         var cut = RenderPage(Entrada("Garras", deCriatura: true), Entrada("Bola de Fogo", deCriatura: false));
         await Task.Delay(50);
 
-        var chips = cut.FindComponents<MudChip<string>>();
-        chips.Should().ContainSingle().Which.Instance.Text.Should().Be("Criatura");
-        cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Garras")).TextContent.Should().Contain("Criatura");
+        // Mesmo ícone e cor do Bestiário no menu lateral (NavMenu).
+        cut.FindComponents<MudChip<string>>().Should().BeEmpty();
+        var icone = cut.FindComponents<MudIcon>().Where(i => i.Instance.Icon == Icons.Material.Filled.Pets).Should().ContainSingle().Subject;
+        icone.Instance.Color.Should().Be(Color.Primary);
+        icone.Instance.Title.Should().Be("Magia/Habilidade de Criatura");
+        cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Garras")).InnerHtml.Should().Contain("Magia/Habilidade de Criatura");
+        cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Bola de Fogo")).InnerHtml.Should().NotContain("Magia/Habilidade de Criatura");
     }
 }

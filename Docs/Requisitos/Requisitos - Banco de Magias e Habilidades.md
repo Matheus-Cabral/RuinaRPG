@@ -32,7 +32,7 @@
 
 # **R0004** - O banco deve ser listado com filtros avançados.
 
-**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome**, **Tipo** (Magia, Habilidade ou Racial), **Grau** e **Criatura** (Todas / Só de Criatura / Sem Criatura — ver R0008). As entradas marcadas como de Criatura exibem uma etiqueta "Criatura" na lista.
+**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome**, **Tipo** (Magia, Habilidade ou Racial), **Grau** e **Criatura** (Todas / Só de Criatura / Sem Criatura — ver R0008). As entradas marcadas como de Criatura exibem, ao lado do Nome, o mesmo ícone (e cor) do Bestiário no menu lateral, com a dica "Magia/Habilidade de Criatura".
 
   
 

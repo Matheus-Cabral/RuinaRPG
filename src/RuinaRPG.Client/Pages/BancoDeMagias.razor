@@ -60,7 +60,8 @@
                         @entry.Nome
                         @if (entry.DeCriatura)
                         {
-                            <MudChip T="string" Text="Criatura" Size="Size.Small" Color="Color.Secondary" Class="ml-2" />
+                            @* Mesmo ícone e cor do Bestiário no menu lateral (NavMenu). *@
+                            <MudIcon Icon="@Icons.Material.Filled.Pets" Color="Color.Primary" Size="Size.Small" Title="Magia/Habilidade de Criatura" Class="ml-1" Style="vertical-align:middle" />
                         }
                     </td>
                     <td>@entry.Tipo</td>
