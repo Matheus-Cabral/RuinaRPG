@@ -71,7 +71,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         // Adepto libera Dobra+Consagração — cobre todas as combinações que os testes já existentes
         // usam: Fogo/Terra são Dobra, Curar/Aprimorar são Consagração.
         var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 100);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
         return sheetId;
@@ -385,7 +385,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"AffEssVocP{suffix}", $"affessvocp{suffix}@teste.com".ToLowerInvariant());
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null);
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 100);
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
         (await AddAsync(playerToken, sheetId, "Terra", "Mundano")).StatusCode.Should().Be(HttpStatusCode.Created);
@@ -432,5 +432,122 @@ public class CharacterAffinitiesControllerTests : IClassFixture<PostgresFixture>
         afterChange.SubElemento.Should().Be("Necromancia");
         afterClear.SubElemento.Should().BeNull();
         afterClear.SegundaEssencia.Should().BeNull();
+    }
+
+    // Vocação Arcana (2.c): Feiticeiro sem coração de mana está no Círculo 0 → máximo 3 + adicional.
+    private async Task SetVocacaoAsync(string gmToken, string sheetId, string? vocacao, int afinidadeAdicional)
+    {
+        var update = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, afinidadeAdicional);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
+        response.EnsureSuccessStatusCode();
+    }
+
+    private async Task<HttpResponseMessage> AddValoresAsync(string token, string sheetId, string elemento, int elementoValor, string? segunda, int? segundaValor, int? subValor) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
+            new AddCharacterAffinityRequest(elemento, elementoValor, segunda, segundaValor, subValor, null)));
+
+    private async Task<CharacterSheetResponse> GetSheetAsync(string token, string sheetId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token)))
+            .Content.ReadFromJsonAsync<CharacterSheetResponse>())!;
+
+    [Fact]
+    public async Task Add_up_to_the_vocacao_arcana_maximum_is_accepted_and_beyond_it_is_rejected()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm1", "affvagm1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP1", "affvap1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 0);
+
+        var within = await AddValoresAsync(playerToken, sheetId, "Fogo", 2, "Terra", 1, 0);
+        var beyond = await AddValoresAsync(playerToken, sheetId, "Ar", 1, null, null, null);
+
+        within.StatusCode.Should().Be(HttpStatusCode.Created);
+        beyond.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await beyond.Content.ReadAsStringAsync()).Should().Contain("Vocação Arcana");
+        (await ListAsync(playerToken, sheetId)).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task A_repeated_essencia_only_costs_its_highest_value()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm2", "affvagm2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP2", "affvap2@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 0);
+
+        (await AddValoresAsync(playerToken, sheetId, "Fogo", 2, null, null, null)).StatusCode.Should().Be(HttpStatusCode.Created);
+        // Fogo 1 na Essência 2 não custa nada além do Fogo 2 já pago; Mundano 1 leva o gasto a 3.
+        (await AddValoresAsync(playerToken, sheetId, "Terra", 0, "Fogo", 1, null)).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await AddValoresAsync(playerToken, sheetId, "Agua", 0, "Mundano", 1, null)).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        (await GetSheetAsync(playerToken, sheetId)).VocacaoArcanaGasta.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task AfinidadeAdicional_raises_the_maximum()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm3", "affvagm3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP3", "affvap3@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 2);
+
+        (await AddValoresAsync(playerToken, sheetId, "Fogo", 5, null, null, null)).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var sheet = await GetSheetAsync(playerToken, sheetId);
+        sheet.AfinidadeAdicional.Should().Be(2);
+        sheet.VocacaoArcanaMaxima.Should().Be(5);
+        sheet.VocacaoArcanaGasta.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task A_martial_vocacao_only_has_the_afinidade_adicional()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm4", "affvagm4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP4", "affvap4@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVocacaoAsync(gmToken, sheetId, "Campeao", 0);
+
+        var costly = await AddValoresAsync(playerToken, sheetId, "Fogo", 1, null, null, null);
+        var free = await AddAsync(playerToken, sheetId, "Fogo", null);
+
+        costly.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        free.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetSheetAsync(playerToken, sheetId)).VocacaoArcanaMaxima.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Lowering_the_maximum_is_allowed_and_then_only_updates_that_lower_the_gasto_go_through()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm5", "affvagm5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP5", "affvap5@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 3);
+        var added = await (await AddValoresAsync(playerToken, sheetId, "Fogo", 6, null, null, null)).Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+
+        await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 0); // gasto 6 > máximo 3, mas baixar o máximo não é bloqueado
+
+        var lower = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
+        var higher = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
+            new UpdateCharacterAffinityRequest("Fogo", 6, null, null, null, null)));
+
+        lower.StatusCode.Should().Be(HttpStatusCode.OK);
+        higher.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await GetSheetAsync(playerToken, sheetId)).VocacaoArcanaGasta.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Negative_AfinidadeAdicional_is_rejected()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AffVaGm6", "affvagm6@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "AffVaP6", "affvap6@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var update = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
+            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, -1);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

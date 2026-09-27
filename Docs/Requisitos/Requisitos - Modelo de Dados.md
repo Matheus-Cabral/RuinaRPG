@@ -223,6 +223,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Circulo | int | 1.b — colunas vestigiais: mantidas no schema mas não mais atualizadas pela aplicação; a Graduação exibida (`GraduacaoLabel`/`Graduacao` na response) é hoje **computada em tempo de leitura** a partir de `EAPAtual`/`Vocacao`, não lida daqui. Mesma situação em NpcSheets (6.2), que herda esta tabela sem diferença nesses dois campos. |
 | Grau | int | 1.b — ver nota de `Circulo` acima. |
 | PossuiCoracaoDeMana | bool | 1.b |
+| AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura, não gravados. Mesma coluna existe em NpcSheets (6.2), sem diferença. |
 | ExperienciaAtual | int | 1.b |
 | EAPAtual | int | 1.b |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |

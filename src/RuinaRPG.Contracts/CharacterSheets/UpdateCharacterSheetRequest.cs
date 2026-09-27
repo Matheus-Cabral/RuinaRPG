@@ -32,4 +32,5 @@ public record UpdateCharacterSheetRequest(
     string? Estrela,
     int SinaAtual,
     string? HistoricoId,
-    string? EquipmentKitId);
+    string? EquipmentKitId,
+    int AfinidadeAdicional);

@@ -48,4 +48,7 @@ public record CharacterSheetResponse(
     int SinaAtual,
     string? HistoricoId,
     string? EquipmentKitId,
-    string? Historia);
+    string? Historia,
+    int AfinidadeAdicional,
+    int VocacaoArcanaGasta,
+    int VocacaoArcanaMaxima);

@@ -168,7 +168,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             Id = Guid.NewGuid(), GmId = gmId, OwnerId = ownerId, ImageId = source.ImageId, Nome = source.Nome,
             Linhagem = source.Linhagem, Variante = source.Variante, Vocacao = source.Vocacao, SubVocacao = source.SubVocacao,
             Afinidade = source.Afinidade, Propriedade = source.Propriedade, Nivel = source.Nivel, Circulo = source.Circulo,
-            Grau = source.Grau, PossuiCoracaoDeMana = source.PossuiCoracaoDeMana, ExperienciaAtual = source.ExperienciaAtual,
+            Grau = source.Grau, PossuiCoracaoDeMana = source.PossuiCoracaoDeMana, AfinidadeAdicional = source.AfinidadeAdicional, ExperienciaAtual = source.ExperienciaAtual,
             EAPAtual = source.EAPAtual, NucleosRankF = source.NucleosRankF, NucleosRankE = source.NucleosRankE,
             NucleosRankD = source.NucleosRankD, NucleosRankC = source.NucleosRankC, NucleosRankB = source.NucleosRankB,
             NucleosRankA = source.NucleosRankA, NucleosRankS = source.NucleosRankS,
