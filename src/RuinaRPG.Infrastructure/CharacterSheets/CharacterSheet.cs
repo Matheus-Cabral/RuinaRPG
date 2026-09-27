@@ -42,6 +42,10 @@ public class CharacterSheet
     /// </summary>
     public int Grau { get; set; }
     public bool PossuiCoracaoDeMana { get; set; }
+
+    /// <summary>Pontos de Vocação Arcana somados ao máximo que a Vocação/Círculo concedem (2.c) —
+    /// a única fonte desses pontos para as Vocações marciais.</summary>
+    public int AfinidadeAdicional { get; set; }
     public int ExperienciaAtual { get; set; }
     public int EAPAtual { get; set; }
     public int NucleosRankF { get; set; }

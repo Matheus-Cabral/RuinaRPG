@@ -147,7 +147,11 @@
             <Section Title="Nível e Progressão">
                 <MudText Typo="Typo.h6">Nível: @_form.Nivel</MudText>
                 <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
-                <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
+                @* Só as Vocações mágicas usam Círculo (1.b); o valor salvo continua lá se a Vocação mudar. *@
+                @if (VocacaoArcanaCalculator.EhMagica(Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacaoAtual) ? vocacaoAtual : null))
+                {
+                    <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
+                }
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudText Typo="Typo.body2" Color="Color.Secondary">
                     @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
@@ -296,6 +300,9 @@
         <br/>
 
         <Section Title="Afinidades">
+            <VocacaoArcanaResumo Gasto="@VocacaoArcanaResumo.CalcularGasto(_affinities.Select(a => (a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor)))"
+                                 Maxima="_form.VocacaoArcanaMaxima"
+                                 @bind-AfinidadeAdicional="_form.AfinidadeAdicional" @bind-AfinidadeAdicional:after="NotifySavedAsync" />
             <MudSimpleTable Dense="true" Hover="true">
                 <thead><tr><th>Essência Básica 1</th><th>Essência Básica 2</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
                 <tbody>
@@ -1069,6 +1076,8 @@
         _form.Graduacao = sheet.Graduacao;
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
         _form.PossuiCoracaoDeMana = sheet.PossuiCoracaoDeMana;
+        _form.AfinidadeAdicional = sheet.AfinidadeAdicional;
+        _form.VocacaoArcanaMaxima = sheet.VocacaoArcanaMaxima;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
         _form.XpParaProximoNivel = sheet.XpParaProximoNivel;
         _form.EAPAtual = sheet.EAPAtual;
@@ -1127,7 +1136,7 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1800,6 +1809,8 @@
         public int Graduacao { get; set; }
         public string GraduacaoLabel { get; set; } = "Grau";
         public bool PossuiCoracaoDeMana { get; set; }
+        public int AfinidadeAdicional { get; set; }
+        public int VocacaoArcanaMaxima { get; set; }
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
         public int? XpParaProximoNivel { get; set; }

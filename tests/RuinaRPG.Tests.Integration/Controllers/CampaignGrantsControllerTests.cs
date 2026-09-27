@@ -101,7 +101,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     private async Task SetNpcVocacaoAsync(string gmToken, string sheetId, string vocacao) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
-                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null)));
+                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0)));
 
     private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? segundaEssencia, int? segundaEssenciaValor, int? subElementoValor, int? experiencia) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
@@ -498,5 +498,23 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
         (await GetNpcSheetAsync(gmToken, body!.SheetId)).Historia.Should().Contain("Criado nas ruínas");
+    }
+
+    [Fact]
+    public async Task Grant_from_an_existing_Npc_copies_the_AfinidadeAdicional()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGmAfAd", "grantafad@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerAfAd", "grantplayerafad@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Afinidade Adicional");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}", gmToken,
+            new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, "Campeao", null, null, null,
+                1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 3)));
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        (await GetNpcSheetAsync(gmToken, body!.SheetId)).AfinidadeAdicional.Should().Be(3);
     }
 }
