@@ -313,4 +313,37 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var updated = body!.Single(e => e.Id == entryId);
         updated.Tipo.Should().Be("Habilidade");
     }
+
+    [Fact]
+    public async Task DeCriatura_is_saved_on_create_and_update()
+    {
+        var token = await RegisterGmAndGetTokenAsync("BankGmCriat1", "bankcriat1@teste.com");
+        await CreateAsync(token, BolaDeFogo() with { DeCriatura = true });
+        var created = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
+            .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>())!.Single();
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{created.Id}", token,
+            new UpdateSpellAbilityEntryRequest(created.Nome, created.Tipo, created.Grau, created.Descricao,
+                [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)], DeCriatura: false)));
+        var updated = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
+            .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>())!.Single();
+
+        created.DeCriatura.Should().BeTrue();
+        updated.DeCriatura.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("true", "Garras")]
+    [InlineData("false", "Bola de Fogo")]
+    public async Task List_can_filter_by_DeCriatura(string deCriatura, string esperado)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"BankGmCriatF{deCriatura}", $"bankcriatf{deCriatura}@teste.com");
+        await CreateAsync(token, BolaDeFogo());
+        await CreateAsync(token, new CreateSpellAbilityEntryRequest("Garras", "Habilidade", 1, "Ataque de garras.", [], DeCriatura: true));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/spell-ability-bank?deCriatura={deCriatura}", token));
+
+        var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        body!.Should().ContainSingle().Which.Nome.Should().Be(esperado);
+    }
 }

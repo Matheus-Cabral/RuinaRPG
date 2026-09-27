@@ -40,7 +40,8 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
             Grau = request.Grau,
             GastoEmPI = gastoEmPI,
             Custo = SpellAbilityCostCalculator.Custo(gastoEmPI),
-            Descricao = request.Descricao
+            Descricao = request.Descricao,
+            DeCriatura = request.DeCriatura
         };
         entry.Efeitos = request.Efeitos
             .Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = entry.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
@@ -56,7 +57,8 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     public async Task<ActionResult<List<SpellAbilityEntryResponse>>> List(
         [FromQuery] string? nome,
         [FromQuery] string? tipo,
-        [FromQuery] int? grau)
+        [FromQuery] int? grau,
+        [FromQuery] bool? deCriatura)
     {
         var gmId = CurrentUserId();
 
@@ -72,6 +74,9 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
 
         if (grau is not null)
             query = query.Where(e => e.Grau == grau);
+
+        if (deCriatura is not null)
+            query = query.Where(e => e.DeCriatura == deCriatura);
 
         var entries = await query.ToListAsync();
         return entries.Select(ToResponse).ToList();
@@ -99,6 +104,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         entry.Tipo = tipo;
         entry.Grau = request.Grau;
         entry.Descricao = request.Descricao;
+        entry.DeCriatura = request.DeCriatura;
         entry.GastoEmPI = gastoEmPI;
         entry.Custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
 
@@ -133,7 +139,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
 
     private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
-        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
+        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

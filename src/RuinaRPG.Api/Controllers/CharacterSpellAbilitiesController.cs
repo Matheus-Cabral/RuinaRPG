@@ -80,27 +80,32 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         sheetCopy.Efeitos = efeitos.Select(e => new CharacterSpellAbilityEffect { Id = Guid.NewGuid(), CharacterSpellAbilityId = sheetCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.CharacterSpellAbilities.Add(sheetCopy);
 
-        // R0001: every creation — from scratch or from an existing bank entry — also lands an
-        // independent copy in the GM's bank, whether the GM or the player created it.
-        var bankCopy = new SpellAbilityBankEntry
+        // R0001 (Banco de Magias): uma criação do zero também grava uma cópia independente no banco do GM,
+        // e a ficha guarda o vínculo com ela. Partir de uma entrada do banco (R0003) só copia para a
+        // ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
+        if (!fromBank)
         {
-            Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
-        };
-        bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
-        db.SpellAbilityBankEntries.Add(bankCopy);
-
-        // Requisitos - Banco de Magias e Habilidades R0007: when the creator is the owning
-        // Jogador (not the GM managing the sheet), the bank copy also becomes a public campaign
-        // attachment — no GM approval step, per Requisitos - Campanha R0012.
-        if (CurrentUserId() != campaignGmId)
-        {
-            db.CampaignAttachments.Add(new CampaignAttachment
+            var bankCopy = new SpellAbilityBankEntry
             {
-                Id = Guid.NewGuid(),
-                CampaignId = sheet.CampaignId,
-                SpellAbilityBankEntryId = bankCopy.Id,
-                IsPublic = true
-            });
+                Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
+            };
+            bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
+            db.SpellAbilityBankEntries.Add(bankCopy);
+            sheetCopy.SourceBankEntryId = bankCopy.Id;
+
+            // Requisitos - Banco de Magias e Habilidades R0007: when the creator is the owning
+            // Jogador (not the GM managing the sheet), the bank copy also becomes a public campaign
+            // attachment — no GM approval step, per Requisitos - Campanha R0012.
+            if (CurrentUserId() != campaignGmId)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = sheet.CampaignId,
+                    SpellAbilityBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

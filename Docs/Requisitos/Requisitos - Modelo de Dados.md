@@ -129,6 +129,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | GastoEmPI | int | soma dos Efeitos (abaixo) |
 | Custo | int | `teto(1,25 × GastoEmPI)` |
 | Descricao | text | |
+| DeCriatura | bool, default false | R0008 do Banco — só filtro; `true` automático na cópia vinda de uma Ficha de Criatura |
 
 **SpellAbilityBankEffects** — os Efeitos comprados de uma entrada.
 
@@ -303,7 +304,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| SourceBankEntryId | FK → SpellAbilityBankEntries, nullable (só rastreabilidade — R0003 do Banco) |
+| SourceBankEntryId | FK → SpellAbilityBankEntries, nullable — a entrada escolhida (R0003 do Banco) ou a cópia criada do zero (R0001); usada para anexar a Magia/Habilidade à campanha na concessão (Campanha R0010). NULL em entradas antigas, criadas do zero antes desse vínculo. |
 | Nome | string |
 | Tipo | enum Magia \| Habilidade |
 | Grau | int |

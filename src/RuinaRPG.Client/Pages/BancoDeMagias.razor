@@ -11,10 +11,10 @@
 
 <Section Title="Filtros">
     <MudGrid Class="mt-3">
-        <MudItem xs="12" md="4">
+        <MudItem xs="12" sm="6" md="3">
             <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
         </MudItem>
-        <MudItem xs="12" md="4">
+        <MudItem xs="12" sm="6" md="3">
             <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="LoadAsync" Label="Tipo">
                 <MudSelectItem Value="@("")">Todos os Tipos</MudSelectItem>
                 <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
@@ -22,8 +22,15 @@
                 <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" md="4">
+        <MudItem xs="12" sm="6" md="3">
             <MudNumericField T="int?" @bind-Value="_grauFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Grau" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="string" @bind-Value="_criaturaFiltro" @bind-Value:after="LoadAsync" Label="Criatura">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                <MudSelectItem Value="@("true")">Só de Criatura</MudSelectItem>
+                <MudSelectItem Value="@("false")">Sem Criatura</MudSelectItem>
+            </MudSelect>
         </MudItem>
     </MudGrid>
 </Section>
@@ -49,7 +56,13 @@
             @foreach (var entry in _entries)
             {
                 <tr>
-                    <td>@entry.Nome</td>
+                    <td>
+                        @entry.Nome
+                        @if (entry.DeCriatura)
+                        {
+                            <MudChip T="string" Text="Criatura" Size="Size.Small" Color="Color.Secondary" Class="ml-2" />
+                        }
+                    </td>
                     <td>@entry.Tipo</td>
                     <td>@entry.Grau</td>
                     <td>@entry.GastoEmPI</td>
@@ -75,6 +88,7 @@
     private string _nomeFiltro = "";
     private string _tipoFiltro = "";
     private int? _grauFiltro;
+    private string _criaturaFiltro = "";
     private List<SpellAbilityEntryResponse> _entries = new();
     private string? _errorMessage;
 
@@ -102,6 +116,8 @@
     private async Task LoadAsync()
     {
         var query = $"?nome={Uri.EscapeDataString(_nomeFiltro)}&tipo={_tipoFiltro}&grau={_grauFiltro}";
+        if (_criaturaFiltro != "")
+            query += $"&deCriatura={_criaturaFiltro}";
         var response = await Http.GetAsync($"spell-ability-bank{query}");
         if (!response.IsSuccessStatusCode)
         {

@@ -12,5 +12,9 @@ public class SpellAbilityBankEntry
     public int GastoEmPI { get; set; }
     public int Custo { get; set; }
     public required string Descricao { get; set; }
+
+    /// <summary>Magia/Habilidade de Criatura — marcada pelo GM no banco, ou automaticamente quando a
+    /// entrada nasce de uma Ficha de Criatura. Só serve de filtro no Banco.</summary>
+    public bool DeCriatura { get; set; }
     public List<SpellAbilityBankEffect> Efeitos { get; set; } = [];
 }

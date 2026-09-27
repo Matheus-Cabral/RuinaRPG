@@ -91,24 +91,30 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db) : Controller
         sheetCopy.Efeitos = efeitos.Select(e => new CreatureSpellAbilityEffect { Id = Guid.NewGuid(), CreatureSpellAbilityId = sheetCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.CreatureSpellAbilities.Add(sheetCopy);
 
-        // R0001 (Banco de Magias): every creation — from scratch or from an existing bank entry —
-        // also lands an independent copy in the GM's bank, applying "em qualquer ficha" (Criatura included).
-        var bankCopy = new SpellAbilityBankEntry
+        // R0001 (Banco de Magias): uma criação do zero também grava uma cópia independente no banco do GM,
+        // e a ficha guarda o vínculo com ela. Criada numa Ficha de Criatura, a entrada já nasce marcada como
+        // Magia/Habilidade de Criatura. Partir de uma entrada do banco (R0003) só copia para a ficha — reusa
+        // a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
+        if (!fromBank)
         {
-            Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
-        };
-        bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
-        db.SpellAbilityBankEntries.Add(bankCopy);
-
-        if (CurrentUserId() != sheet.GmId && campaignId is not null)
-        {
-            db.CampaignAttachments.Add(new CampaignAttachment
+            var bankCopy = new SpellAbilityBankEntry
             {
-                Id = Guid.NewGuid(),
-                CampaignId = campaignId.Value,
-                SpellAbilityBankEntryId = bankCopy.Id,
-                IsPublic = true
-            });
+                Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao, DeCriatura = true
+            };
+            bankCopy.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = bankCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
+            db.SpellAbilityBankEntries.Add(bankCopy);
+            sheetCopy.SourceBankEntryId = bankCopy.Id;
+
+            if (CurrentUserId() != sheet.GmId && campaignId is not null)
+            {
+                db.CampaignAttachments.Add(new CampaignAttachment
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = campaignId.Value,
+                    SpellAbilityBankEntryId = bankCopy.Id,
+                    IsPublic = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

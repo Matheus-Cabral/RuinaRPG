@@ -499,4 +499,107 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         (await GetNpcSheetAsync(gmToken, body!.SheetId)).Historia.Should().Contain("Criado nas ruínas");
     }
+
+    // Requisitos - Campanha: as Magias/Habilidades de uma ficha concedida ficam anexadas à campanha como
+    // públicas, reusando a entrada do banco que já existe — nunca uma segunda cópia.
+    private static RuinaRPG.Contracts.SpellsAndAbilities.SpellAbilityEffectRequest[] EfeitosDeTeste() =>
+        [new("Dano", 4, 8), new("Alcance", 2, 6)];
+
+    private async Task<(List<RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry> Banco, List<RuinaRPG.Infrastructure.Campaigns.CampaignAttachment> Anexos)> BancoEAnexosAsync(string campaignId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var anexos = await db.CampaignAttachments.Where(a => a.CampaignId == Guid.Parse(campaignId) && a.SpellAbilityBankEntryId != null).ToListAsync();
+        var gmId = await db.Campaigns.Where(c => c.Id == Guid.Parse(campaignId)).Select(c => c.GmId).SingleAsync();
+        return (await db.SpellAbilityBankEntries.Where(e => e.GmId == gmId).ToListAsync(), anexos);
+    }
+
+    [Theory]
+    [InlineData("Npc")]
+    [InlineData("Creature")]
+    public async Task Grant_from_an_existing_sheet_attaches_its_spell_abilities_as_public_without_duplicating_the_bank(string tipo)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"GrantGmMag{tipo}", $"grantmag{tipo}@teste.com".ToLowerInvariant());
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, $"GrantPlayerMag{tipo}", $"grantplayermag{tipo}@teste.com".ToLowerInvariant());
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Grant Magias {tipo}");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var (sourceId, rota) = tipo == "Npc" ? (await CreateNpcSheetAsync(gmToken), "npc-sheets") : (await CreateCreatureSheetAsync(gmToken), "creature-sheets");
+        object addRequest = tipo == "Npc"
+            ? new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())
+            : new AddCreatureSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList());
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{rota}/{sourceId}/spell-abilities", gmToken, addRequest));
+        var bancoAntes = (await BancoEAnexosAsync(campaignId)).Banco;
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, tipo, sourceId));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var (banco, anexos) = await BancoEAnexosAsync(campaignId);
+        banco.Select(e => e.Id).Should().BeEquivalentTo(bancoAntes.Select(e => e.Id));
+        anexos.Should().ContainSingle(a => a.SpellAbilityBankEntryId == bancoAntes.Single().Id && a.IsPublic);
+    }
+
+    [Fact]
+    public async Task Grant_makes_an_already_attached_private_spell_ability_public()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGmMagPriv", "grantmagpriv@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerMagPriv", "grantplayermagpriv@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Magia Privada");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gmToken,
+            new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())));
+        var entryId = (await BancoEAnexosAsync(campaignId)).Banco.Single().Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, entryId.ToString(), null)));
+
+        await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+
+        (await BancoEAnexosAsync(campaignId)).Anexos.Should().ContainSingle(a => a.SpellAbilityBankEntryId == entryId && a.IsPublic);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Grant_of_a_legacy_spell_ability_without_a_bank_link_reuses_an_identical_entry_or_creates_one(bool existeIgual)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"GrantGmMagLeg{existeIgual}", $"grantmagleg{existeIgual}@teste.com".ToLowerInvariant());
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, $"GrantPlayerMagLeg{existeIgual}", $"grantplayermagleg{existeIgual}@teste.com".ToLowerInvariant());
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Magia Legada");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        Guid? identica = null;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var gmId = await db.NpcSheets.Where(n => n.Id == Guid.Parse(sourceId)).Select(n => n.GmId).SingleAsync();
+            db.NpcSpellAbilities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcSpellAbility
+            {
+                Id = Guid.NewGuid(), NpcSheetId = Guid.Parse(sourceId), SourceBankEntryId = null,
+                Nome = "Toque Antigo", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia, Grau = 1, GastoEmPI = 0, Custo = 0, Descricao = "Legado."
+            });
+            if (existeIgual)
+            {
+                identica = Guid.NewGuid();
+                db.SpellAbilityBankEntries.Add(new RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry
+                {
+                    Id = identica.Value, GmId = gmId, Nome = "Toque Antigo", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia, Grau = 1, Descricao = "Legado."
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+
+        var body = await (await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId))).Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        var (banco, anexos) = await BancoEAnexosAsync(campaignId);
+        var entrada = banco.Should().ContainSingle(e => e.Nome == "Toque Antigo").Subject;
+        if (identica is not null)
+            entrada.Id.Should().Be(identica.Value);
+        anexos.Should().ContainSingle(a => a.SpellAbilityBankEntryId == entrada.Id && a.IsPublic);
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.NpcSpellAbilities.Where(s => s.NpcSheetId == Guid.Parse(body!.SheetId)).Select(s => s.SourceBankEntryId).SingleAsync())
+                .Should().Be(entrada.Id);
+        }
+    }
 }

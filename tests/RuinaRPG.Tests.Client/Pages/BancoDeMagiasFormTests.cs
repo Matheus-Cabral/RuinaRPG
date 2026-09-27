@@ -198,4 +198,58 @@ public class BancoDeMagiasFormTests : MudBunitContext
             BaseAddress = new Uri("http://localhost/api/"),
         };
     }
+
+    [Fact]
+    public async Task Create_sends_the_DeCriatura_checkbox()
+    {
+        RuinaRPG.Contracts.SpellsAndAbilities.CreateSpellAbilityEntryRequest? enviado = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            if (request.Method == HttpMethod.Post)
+            {
+                enviado = request.Content!.ReadFromJsonAsync<RuinaRPG.Contracts.SpellsAndAbilities.CreateSpellAbilityEntryRequest>().GetAwaiter().GetResult();
+                return new HttpResponseMessage(HttpStatusCode.Created);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeMagiasForm>();
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Garras"));
+        var deCriatura = cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Magia/Habilidade de Criatura");
+        await cut.InvokeAsync(() => deCriatura.Instance.ValueChanged.InvokeAsync(true));
+
+        var salvar = cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar"));
+        await cut.InvokeAsync(() => salvar.Click());
+
+        enviado!.DeCriatura.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Edit_mode_loads_the_DeCriatura_flag()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "entry-1", Nome = "Garras", Tipo = "Habilidade", Grau = 1, Descricao = "",
+                          Efeitos = new List<object>(), DeCriatura = true }
+                }) };
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeMagiasForm>(p => p.Add(x => x.EntryId, "entry-1"));
+        await Task.Delay(50);
+
+        cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Magia/Habilidade de Criatura").Instance.Value.Should().BeTrue();
+    }
 }

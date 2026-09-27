@@ -37,6 +37,7 @@
             </MudSelect>
             <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+            <MudCheckBox T="bool" @bind-Value="_form.DeCriatura" Label="Magia/Habilidade de Criatura" @bind-Value:after="NotifySavedAsync" />
         </ChildContent>
     </Section>
 
@@ -110,6 +111,7 @@
         _form.Tipo = existing.Tipo;
         _form.Grau = existing.Grau;
         _form.Descricao = existing.Descricao;
+        _form.DeCriatura = existing.DeCriatura;
         _form.Efeitos = existing.Efeitos
             .Select(e => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(e.EfeitoNome, e.Quantidade, e.CustoPI))
             .ToList();
@@ -130,7 +132,7 @@
             return;
 
         var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var response = await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
+        var response = await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos, _form.DeCriatura));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -147,7 +149,7 @@
             return false;
 
         var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos));
+        var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos, _form.DeCriatura));
 
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
@@ -177,6 +179,7 @@
         [Range(0, int.MaxValue)]
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
+        public bool DeCriatura { get; set; }
         public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
     }
 }

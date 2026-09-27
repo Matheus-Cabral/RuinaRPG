@@ -6,10 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
+using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -50,7 +52,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             }
             else
             {
-                newSheet = await DeepCopyNpcAsync(sourceSheetId.Value, gmId, playerId);
+                newSheet = await DeepCopyNpcAsync(sourceSheetId.Value, gmId, playerId, campaignId);
             }
             if (newSheet is null)
                 return BadRequest("Ficha de NPC de origem não encontrada.");
@@ -73,7 +75,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             }
             else
             {
-                newSheet = await DeepCopyCreatureAsync(sourceSheetId.Value, gmId, playerId);
+                newSheet = await DeepCopyCreatureAsync(sourceSheetId.Value, gmId, playerId, campaignId);
             }
             if (newSheet is null)
                 return BadRequest("Ficha de Criatura de origem não encontrada.");
@@ -154,7 +156,44 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Slot = slot });
     }
 
-    private async Task<NpcSheet?> DeepCopyNpcAsync(Guid sourceId, Guid gmId, Guid ownerId)
+    /// <summary>
+    /// Requisitos - Campanha R0010: cada Magia/Habilidade de uma ficha concedida fica anexada à campanha
+    /// como pública, para o jogador vê-la e escolhê-la. Reusa a entrada do banco a que a ficha já aponta;
+    /// uma magia antiga, sem esse vínculo, reusa uma entrada idêntica do banco do GM, e só na falta dela é
+    /// que uma entrada nova é criada. Devolve a entrada usada, que a cópia da ficha passa a apontar.
+    /// </summary>
+    private async Task<Guid> PublicarMagiaNaCampanhaAsync(Guid campaignId, Guid gmId, Guid? sourceBankEntryId,
+        string nome, SpellAbilityTipo tipo, int grau, int gastoEmPI, int custo, string descricao,
+        IEnumerable<(string EfeitoNome, int? Quantidade, int CustoPI)> efeitos, bool deCriatura)
+    {
+        // Local primeiro: duas magias legadas iguais na mesma concessão reusam a entrada criada para a primeira.
+        var entrada = sourceBankEntryId is { } id
+            ? db.SpellAbilityBankEntries.Local.FirstOrDefault(e => e.Id == id && e.GmId == gmId)
+                ?? await db.SpellAbilityBankEntries.FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId)
+            : null;
+        entrada ??= db.SpellAbilityBankEntries.Local.FirstOrDefault(e => e.GmId == gmId && e.Nome == nome && e.Tipo == tipo && e.Grau == grau && e.Descricao == descricao)
+            ?? await db.SpellAbilityBankEntries.FirstOrDefaultAsync(e => e.GmId == gmId && e.Nome == nome && e.Tipo == tipo && e.Grau == grau && e.Descricao == descricao);
+        if (entrada is null)
+        {
+            entrada = new SpellAbilityBankEntry
+            {
+                Id = Guid.NewGuid(), GmId = gmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao, DeCriatura = deCriatura
+            };
+            entrada.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = entrada.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
+            db.SpellAbilityBankEntries.Add(entrada);
+        }
+
+        var anexo = db.CampaignAttachments.Local.FirstOrDefault(a => a.CampaignId == campaignId && a.SpellAbilityBankEntryId == entrada.Id)
+            ?? await db.CampaignAttachments.FirstOrDefaultAsync(a => a.CampaignId == campaignId && a.SpellAbilityBankEntryId == entrada.Id);
+        if (anexo is null)
+            db.CampaignAttachments.Add(new CampaignAttachment { Id = Guid.NewGuid(), CampaignId = campaignId, SpellAbilityBankEntryId = entrada.Id, IsPublic = true });
+        else
+            anexo.IsPublic = true;
+
+        return entrada.Id;
+    }
+
+    private async Task<NpcSheet?> DeepCopyNpcAsync(Guid sourceId, Guid gmId, Guid ownerId, Guid campaignId)
     {
         // Scoped to the calling GM's own registry (R0010: "ficha já cadastrada no Bestiário/NPCs
         // do GM") — "doesn't exist" and "exists but belongs to another GM" both fall through to
@@ -200,13 +239,16 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             db.NpcArtifacts.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
         foreach (var sa in await db.NpcSpellAbilities.Where(x => x.NpcSheetId == sourceId).ToListAsync())
         {
+            var efeitos = await db.NpcSpellAbilityEffects.Where(x => x.NpcSpellAbilityId == sa.Id).ToListAsync();
+            var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
+                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: false);
             var saCopy = new NpcSpellAbility
             {
-                Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = sa.SourceBankEntryId, Nome = sa.Nome,
+                Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao
             };
             db.NpcSpellAbilities.Add(saCopy);
-            foreach (var eff in await db.NpcSpellAbilityEffects.Where(x => x.NpcSpellAbilityId == sa.Id).ToListAsync())
+            foreach (var eff in efeitos)
                 db.NpcSpellAbilityEffects.Add(new() { Id = Guid.NewGuid(), NpcSpellAbilityId = saCopy.Id, EfeitoNome = eff.EfeitoNome, Quantidade = eff.Quantidade, CustoPI = eff.CustoPI });
         }
         foreach (var aff in await db.NpcAffections.Where(x => x.NpcSheetId == sourceId).ToListAsync())
@@ -217,7 +259,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         return copy;
     }
 
-    private async Task<CreatureSheet?> DeepCopyCreatureAsync(Guid sourceId, Guid gmId, Guid ownerId)
+    private async Task<CreatureSheet?> DeepCopyCreatureAsync(Guid sourceId, Guid gmId, Guid ownerId, Guid campaignId)
     {
         // Scoped to the calling GM's own registry — same rationale as DeepCopyNpcAsync above.
         var source = await db.CreatureSheets.FirstOrDefaultAsync(s => s.Id == sourceId && s.GmId == gmId);
@@ -255,13 +297,16 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             db.CreatureArtifacts.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
         foreach (var sa in await db.CreatureSpellAbilities.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
         {
+            var efeitos = await db.CreatureSpellAbilityEffects.Where(x => x.CreatureSpellAbilityId == sa.Id).ToListAsync();
+            var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
+                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: true);
             var saCopy = new CreatureSpellAbility
             {
-                Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = sa.SourceBankEntryId, Nome = sa.Nome,
+                Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao
             };
             db.CreatureSpellAbilities.Add(saCopy);
-            foreach (var eff in await db.CreatureSpellAbilityEffects.Where(x => x.CreatureSpellAbilityId == sa.Id).ToListAsync())
+            foreach (var eff in efeitos)
                 db.CreatureSpellAbilityEffects.Add(new() { Id = Guid.NewGuid(), CreatureSpellAbilityId = saCopy.Id, EfeitoNome = eff.EfeitoNome, Quantidade = eff.Quantidade, CustoPI = eff.CustoPI });
         }
         foreach (var aff in await db.CreatureAffections.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
