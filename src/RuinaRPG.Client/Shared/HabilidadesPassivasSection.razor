@@ -1,0 +1,83 @@
+@inject HttpClient Http
+@using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.SpellsAndAbilities
+@using MudBlazor
+
+@* Ficha 4.f (Personagem, NPC e Criatura): Passivas só entram escolhidas do Banco; as que a ficha não
+   cumpre aparecem desabilitadas, com o motivo. Ver Requisitos - Ficha de Personagem 4.f. *@
+<Section Title="Habilidades Passivas">
+    <DismissibleAlert @bind-Message="_errorMessage" />
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudSelect T="string" @bind-Value="_selecionada" Label="Passiva do Banco">
+            @foreach (var p in _disponiveis)
+            {
+                <MudSelectItem Value="@p.Entrada.Id" Disabled="@(p.Pendencias.Count > 0)">
+                    @(p.Pendencias.Count > 0 ? $"{p.Entrada.Nome} — falta: {string.Join(", ", p.Pendencias)}" : p.Entrada.Nome)
+                </MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@string.IsNullOrEmpty(_selecionada)" OnClick="AddAsync">Adicionar Passiva</MudButton>
+    </MudStack>
+
+    <MudSimpleTable Class="mt-3">
+        <tbody>
+            @foreach (var p in _passivas)
+            {
+                <tr>
+                    <td>
+                        <b>@p.Nome</b> (@CategoriaLabel(p.Categoria)) — @p.Descricao
+                        @if (p.RequisitosPendentes is { Count: > 0 } pendentes)
+                        {
+                            <MudTooltip Text="@string.Join(", ", pendentes)">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">⚠ Requisitos não cumpridos: @string.Join(", ", pendentes)</MudChip>
+                            </MudTooltip>
+                        }
+                    </td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAsync(p.Id))">Remover</MudButton></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [Parameter, EditorRequired] public string SpellAbilitiesUrl { get; set; } = "";
+
+    // Subconjunto comum das respostas de Character/Npc/CreatureSpellAbilityResponse.
+    private record PassivaDaFicha(string Id, string Nome, string Tipo, string Descricao, string? Categoria, List<string>? RequisitosPendentes);
+
+    private List<PassivaDaFicha> _passivas = new();
+    private List<PassivaDisponivelResponse> _disponiveis = new();
+    private string? _selecionada;
+    private string? _errorMessage;
+
+    protected override Task OnParametersSetAsync() => ReloadAsync();
+
+    public async Task ReloadAsync()
+    {
+        var todas = await Http.GetFromJsonAsync<List<PassivaDaFicha>>(SpellAbilitiesUrl) ?? new();
+        _passivas = todas.Where(e => e.Tipo == "Passiva").ToList();
+        _disponiveis = await Http.GetFromJsonAsync<List<PassivaDisponivelResponse>>($"{SpellAbilitiesUrl}/passivas-disponiveis") ?? new();
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync(SpellAbilitiesUrl, new { SourceBankEntryId = _selecionada });
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a Passiva.";
+            return;
+        }
+        _selecionada = null;
+        await ReloadAsync();
+    }
+
+    private async Task RemoveAsync(string id)
+    {
+        await Http.DeleteAsync($"{SpellAbilitiesUrl}/{id}");
+        await ReloadAsync();
+    }
+
+    private static string CategoriaLabel(string? categoria) =>
+        Enum.TryParse<CategoriaDePassiva>(categoria, out var c) ? RequisitoLabels.Categoria(c) : "—";
+}
