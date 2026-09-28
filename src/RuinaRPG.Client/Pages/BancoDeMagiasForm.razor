@@ -34,20 +34,48 @@
                 <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
                 <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
                 <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+                <MudSelectItem Value="@("Passiva")">Passiva</MudSelectItem>
             </MudSelect>
-            <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+            @if (_form.Tipo != "Passiva")
+            {
+                <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+            }
             <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
             <MudCheckBox T="bool" @bind-Value="_form.DeCriatura" Label="Magia/Habilidade de Criatura" @bind-Value:after="NotifySavedAsync" />
+            @if (_form.Tipo == "Passiva")
+            {
+                <MudSelect T="string" @bind-Value="_form.Categoria" Label="Categoria" @bind-Value:after="NotifySavedAsync">
+                    <MudSelectItem Value="@("Livre")">Passiva Livre</MudSelectItem>
+                    <MudSelectItem Value="@("Vocacional")">Passiva Vocacional</MudSelectItem>
+                    <MudSelectItem Value="@("DeClasse")">Passiva de Classe</MudSelectItem>
+                </MudSelect>
+            }
         </ChildContent>
     </Section>
 
-    <Section Title="Efeitos">
-        <AddEfeitoForm Grau="_form.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionadoAsync" />
-        <EfeitosTable Efeitos="_form.Efeitos" Grau="_form.Grau" OnChanged="NotifySavedAsync" />
+    @if (_form.Tipo != "Passiva")
+    {
+        <Section Title="Efeitos">
+            <AddEfeitoForm Grau="_form.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionadoAsync" />
+            <EfeitosTable Efeitos="_form.Efeitos" Grau="_form.Grau" OnChanged="NotifySavedAsync" />
 
-        <MudText Class="mt-3">Gasto em PI (calculado ao salvar): @GastoEmPI</MudText>
-        <MudText>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</MudText>
-    </Section>
+            <MudText Class="mt-3">Gasto em PI (calculado ao salvar): @GastoEmPI</MudText>
+            <MudText>Custo em Foco (calculado ao salvar): @SpellAbilityCostCalculator.Custo(GastoEmPI)</MudText>
+        </Section>
+    }
+    else
+    {
+        <Section Title="Requisitos">
+            <TitleInfo>
+                <InfoPopup Title="Como cadastrar uma Passiva">
+                    Passivas só são cadastradas aqui, no Banco: nas fichas elas só podem ser escolhidas. Uma Passiva tem Nome, Descrição e Categoria (Passiva Livre, Vocacional ou de Classe), sem Grau nem Efeitos. Em <b>Requisitos</b>, preencha só o que a ficha precisa ter — campo vazio não é requisito — e todos os preenchidos precisam ser cumpridos. Atributos, Perícias e Sub-Atributos comparam com o Total da ficha. Uma ficha que não cumpre os requisitos não recebe a Passiva, nem pelo Mestre. Fichas de Criatura ignoram os requisitos de campos que não têm (Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Estrela, Histórico e os atributos Instinto, Vontade e Influência). Se a ficha deixar de cumprir os requisitos depois, a Passiva continua lá, com um aviso.
+                </InfoPopup>
+            </TitleInfo>
+            <ChildContent>
+                <RequisitosDePassivaEditor Model="_form.Requisitos" OnChanged="NotifySavedAsync" />
+            </ChildContent>
+        </Section>
+    }
 
     @if (EntryId is null)
     {
@@ -115,6 +143,8 @@
         _form.Efeitos = existing.Efeitos
             .Select(e => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(e.EfeitoNome, e.Quantidade, e.CustoPI))
             .ToList();
+        _form.Categoria = existing.Categoria ?? "Livre";
+        _form.Requisitos = RequisitosFormModel.FromDto(existing.Requisitos);
     }
 
     private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
@@ -126,13 +156,18 @@
         return NotifySavedAsync();
     }
 
+    private (int Grau, List<SpellAbilityEffectRequest> Efeitos, string? Categoria, RequisitosDePassivaDto? Requisitos) CamposPorTipo() =>
+        _form.Tipo == "Passiva"
+            ? (0, new(), _form.Categoria, _form.Requisitos.ToDto())
+            : (_form.Grau, _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), null, null);
+
     private async Task CreateAsync()
     {
         if (!_editContext.Validate())
             return;
 
-        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var response = await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos, _form.DeCriatura));
+        var (grau, efeitos, categoria, requisitos) = CamposPorTipo();
+        var response = await Http.PostAsJsonAsync("spell-ability-bank", new CreateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, grau, _form.Descricao, efeitos, _form.DeCriatura, categoria, requisitos));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -148,8 +183,8 @@
         if (!_editContext.Validate())
             return false;
 
-        var efeitos = _form.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
-        var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, _form.Grau, _form.Descricao, efeitos, _form.DeCriatura));
+        var (grau, efeitos, categoria, requisitos) = CamposPorTipo();
+        var response = await Http.PutAsJsonAsync($"spell-ability-bank/{EntryId}", new UpdateSpellAbilityEntryRequest(_form.Nome, _form.Tipo, grau, _form.Descricao, efeitos, _form.DeCriatura, categoria, requisitos));
 
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
@@ -181,5 +216,7 @@
         public string Descricao { get; set; } = "";
         public bool DeCriatura { get; set; }
         public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
+        public string Categoria { get; set; } = "Livre";
+        public RequisitosFormModel Requisitos { get; set; } = new();
     }
 }
