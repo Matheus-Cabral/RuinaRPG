@@ -71,6 +71,12 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats sta
             // revela seus requisitos. O bloqueio vale para todos, GM incluído.
             if (bankEntry.Tipo == SpellAbilityTipo.Passiva)
             {
+                // Uma Magia/Habilidade comum pode repetir na ficha (cópias independentes); uma Passiva não —
+                // ela é um estado ligado/desligado por Categoria, então a mesma entrada do banco só pode
+                // virar uma cópia por ficha.
+                if (await db.NpcSpellAbilities.AnyAsync(e => e.NpcSheetId == sheetId && e.SourceBankEntryId == bankEntryId))
+                    return BadRequest("Esta Passiva já está na ficha.");
+
                 var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await stats.FichaParaRequisitosAsync(sheet),
                     await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos));
                 if (pendencias.Count > 0)

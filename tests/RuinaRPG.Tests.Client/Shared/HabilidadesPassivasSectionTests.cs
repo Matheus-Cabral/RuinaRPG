@@ -110,4 +110,32 @@ public class HabilidadesPassivasSectionTests : MudBunitContext
 
         posted.Should().Contain("\"sourceBankEntryId\":\"a\"");
     }
+
+    /// <summary>
+    /// Finding 3 of the final whole-branch review: the server (not the client) is the one that
+    /// refuses adding the same Passiva twice — this only checks the section surfaces that 400
+    /// verbatim, the same way it already does for any other server rejection.
+    /// </summary>
+    [Fact]
+    public async Task Adding_a_duplicate_passiva_shows_the_servers_error_message()
+    {
+        const string serverMessage = "Esta Passiva já está na ficha.";
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Post)
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(serverMessage) };
+            return request.RequestUri!.AbsolutePath.EndsWith("passivas-disponiveis")
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { Disponivel("a", "Livre") }) }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<HabilidadesPassivasSection>(p => p.Add(x => x.SpellAbilitiesUrl, Url));
+        await Task.Delay(50);
+        await cut.InvokeAsync(() => cut.FindComponent<MudBlazor.MudSelect<string>>().Instance.ValueChanged.InvokeAsync("a"));
+        cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar Passiva")).Click();
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain(serverMessage);
+    }
 }

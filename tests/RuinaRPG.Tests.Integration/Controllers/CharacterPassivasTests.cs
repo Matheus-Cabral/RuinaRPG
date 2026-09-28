@@ -194,6 +194,24 @@ public class CharacterPassivasTests : IClassFixture<PostgresFixture>, IAsyncLife
     }
 
     [Fact]
+    public async Task Adding_the_same_passiva_twice_is_refused()
+    {
+        // Finding 3 of the final whole-branch review: unlike a Magia/Habilidade comum, a Passiva
+        // is a scalar on/off per bank entry — the sheet must not end up with two independent copies
+        // of the same one just because the player (or GM) clicked "Adicionar" twice.
+        var gm = await RegisterGmAndGetTokenAsync("PassGm8", "passgm8@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "PassPl8", "passpl8@teste.com");
+        var (sheetId, _) = await SetUpSheetInCampaignAsync(gm, playerId);
+        var passivaId = await CreatePassivaAsync(gm, "Pele de Pedra", null);
+
+        (await AddFromBankAsync(gm, sheetId, passivaId)).StatusCode.Should().Be(HttpStatusCode.Created);
+        var second = await AddFromBankAsync(gm, sheetId, passivaId);
+
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await second.Content.ReadAsStringAsync()).Should().Contain("Esta Passiva já está na ficha.");
+    }
+
+    [Fact]
     public async Task A_historico_requisito_is_checked_and_named()
     {
         var gm = await RegisterGmAndGetTokenAsync("PassGm7", "passgm7@teste.com");

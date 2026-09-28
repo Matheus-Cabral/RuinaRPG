@@ -149,6 +149,43 @@ public class NpcCreaturePassivasTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task Npc_adding_the_same_passiva_twice_is_refused()
+    {
+        // Finding 3 of the final whole-branch review: same rule as the Ficha de Personagem — a
+        // Passiva is a scalar on/off per bank entry, so a second Add of the same bank entry on the
+        // same sheet must be refused rather than creating a duplicate copy.
+        var gm = await RegisterGmAndGetTokenAsync("NpcPassGm5", "npcpassgm5@teste.com");
+        var sheetId = await CreateNpcSheetAsync(gm);
+        var passivaId = await CreatePassivaAsync(gm, "Vigilante", null);
+
+        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+            new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)));
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+            new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)));
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await second.Content.ReadAsStringAsync()).Should().Contain("Esta Passiva já está na ficha.");
+    }
+
+    [Fact]
+    public async Task Creature_adding_the_same_passiva_twice_is_refused()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("CrPassGm2", "crpassgm2@teste.com");
+        var sheetId = await CreateCreatureSheetAsync(gm);
+        var passivaId = await CreatePassivaAsync(gm, "Casco Duro", null);
+
+        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+            new AddCreatureSpellAbilityRequest(passivaId, null, null, null, null, null)));
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+            new AddCreatureSpellAbilityRequest(passivaId, null, null, null, null, null)));
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await second.Content.ReadAsStringAsync()).Should().Contain("Esta Passiva já está na ficha.");
+    }
+
+    [Fact]
     public async Task Granting_an_npc_copies_its_passivas_categoria_and_requisitos()
     {
         var gm = await RegisterGmAndGetTokenAsync("NpcPassGm2", "npcpassgm2@teste.com");
