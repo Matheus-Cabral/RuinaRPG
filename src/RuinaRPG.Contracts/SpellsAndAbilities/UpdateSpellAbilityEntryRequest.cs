@@ -8,4 +8,6 @@ public record UpdateSpellAbilityEntryRequest(
     [Range(0, int.MaxValue)] int Grau,
     string Descricao,
     List<SpellAbilityEffectRequest> Efeitos,
-    bool DeCriatura = false);
+    bool DeCriatura = false,
+    string? Categoria = null,
+    RequisitosDePassivaDto? Requisitos = null);

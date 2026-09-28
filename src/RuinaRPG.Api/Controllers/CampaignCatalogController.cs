@@ -157,7 +157,8 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
 
     private static SpellAbilityEntryResponse ToSpellAbilityResponse(RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry entry) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
-        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura);
+        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura,
+        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

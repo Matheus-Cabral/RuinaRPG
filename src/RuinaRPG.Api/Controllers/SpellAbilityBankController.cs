@@ -23,7 +23,13 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     public async Task<ActionResult<SpellAbilityEntryResponse>> Create(CreateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
-            return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
+            return BadRequest("Tipo desconhecido. Use Magia, Habilidade, Racial ou Passiva.");
+
+        CategoriaDePassiva? categoria = null;
+        RequisitosDePassiva? requisitos = null;
+        var passivaError = await ValidarPassivaAsync(tipo, request.Grau, request.Efeitos, request.Categoria, request.Requisitos, (c, r) => { categoria = c; requisitos = r; });
+        if (passivaError is not null)
+            return BadRequest(passivaError);
 
         var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
         if (validationError is not null)
@@ -41,7 +47,9 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
             GastoEmPI = gastoEmPI,
             Custo = SpellAbilityCostCalculator.Custo(gastoEmPI),
             Descricao = request.Descricao,
-            DeCriatura = request.DeCriatura
+            DeCriatura = request.DeCriatura,
+            Categoria = categoria,
+            Requisitos = requisitos
         };
         entry.Efeitos = request.Efeitos
             .Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = entry.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
@@ -86,13 +94,19 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
     public async Task<IActionResult> Update(Guid id, UpdateSpellAbilityEntryRequest request)
     {
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
-            return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
+            return BadRequest("Tipo desconhecido. Use Magia, Habilidade, Racial ou Passiva.");
 
         var gmId = CurrentUserId();
         var entry = await db.SpellAbilityBankEntries
             .FirstOrDefaultAsync(e => e.Id == id && e.GmId == gmId);
         if (entry is null)
             return NotFound();
+
+        CategoriaDePassiva? categoria = null;
+        RequisitosDePassiva? requisitos = null;
+        var passivaError = await ValidarPassivaAsync(tipo, request.Grau, request.Efeitos, request.Categoria, request.Requisitos, (c, r) => { categoria = c; requisitos = r; });
+        if (passivaError is not null)
+            return BadRequest(passivaError);
 
         var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
         if (validationError is not null)
@@ -107,6 +121,8 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         entry.DeCriatura = request.DeCriatura;
         entry.GastoEmPI = gastoEmPI;
         entry.Custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
+        entry.Categoria = categoria;
+        entry.Requisitos = requisitos;
 
         // Delete old effects
         var oldEffects = await db.SpellAbilityBankEffects
@@ -137,9 +153,38 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Passiva (R0009): exige Categoria, aceita Requisitos, não tem Grau nem Efeitos. Os demais tipos não
+    /// têm Categoria nem Requisitos. Devolve a mensagem de erro, ou nulo quando o pedido é válido.
+    /// </summary>
+    private async Task<string?> ValidarPassivaAsync(SpellAbilityTipo tipo, int grau, List<SpellAbilityEffectRequest> efeitos,
+        string? categoriaRaw, RequisitosDePassivaDto? requisitosDto, Action<CategoriaDePassiva?, RequisitosDePassiva?> aplicar)
+    {
+        if (tipo != SpellAbilityTipo.Passiva)
+        {
+            if (categoriaRaw is not null || requisitosDto is not null)
+                return "Categoria e Requisitos só existem em Passivas.";
+            aplicar(null, null);
+            return null;
+        }
+
+        if (grau != 0 || efeitos.Count > 0)
+            return "Uma Passiva não tem Grau nem Efeitos.";
+        if (!Enum.TryParse<CategoriaDePassiva>(categoriaRaw, out var categoria) || !Enum.IsDefined(categoria))
+            return "Categoria desconhecida. Use Livre, Vocacional ou DeClasse.";
+        if (!RequisitosDePassivaMapper.TryParse(requisitosDto, out var requisitos, out var erro))
+            return erro;
+        if (requisitos?.HistoricoId is { } historicoId && !await db.Historicos.AnyAsync(h => h.Id == historicoId))
+            return "Histórico não encontrado.";
+
+        aplicar(categoria, requisitos);
+        return null;
+    }
+
     private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
-        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura);
+        entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura,
+        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

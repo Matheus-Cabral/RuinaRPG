@@ -32,13 +32,13 @@
 
 # **R0004** - O banco deve ser listado com filtros avançados.
 
-**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome**, **Tipo** (Magia, Habilidade ou Racial), **Grau** e **Criatura** (Todas / Só de Criatura / Sem Criatura — ver R0008). As entradas marcadas como de Criatura exibem, ao lado do Nome, o mesmo ícone (e cor) do Bestiário no menu lateral, com a dica "Magia/Habilidade de Criatura".
+**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome**, **Tipo** (Magia, Habilidade, Racial ou Passiva), **Grau** e **Criatura** (Todas / Só de Criatura / Sem Criatura — ver R0008). As entradas marcadas como de Criatura exibem, ao lado do Nome, o mesmo ícone (e cor) do Bestiário no menu lateral, com a dica "Magia/Habilidade de Criatura". Uma linha de Passiva (Tipo = Passiva) exibe a **Categoria** no lugar de Grau/Efeitos.
 
   
 
 # **R0005** - Campos de uma entrada do banco.
 
-**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**, e mais o checkbox **Magia/Habilidade de Criatura** (R0008), que só existe no banco. O Nome de cada Efeito e seu Custo em PI seguem o catálogo e o cálculo automático descritos em "[[Requisitos - Auditoria de Regras]]" R0006/R0007 — não são mais campos de texto/número livres.
+**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**, e mais o checkbox **Magia/Habilidade de Criatura** (R0008), que só existe no banco. O Nome de cada Efeito e seu Custo em PI seguem o catálogo e o cálculo automático descritos em "[[Requisitos - Auditoria de Regras]]" R0006/R0007 — não são mais campos de texto/número livres. Quando o Tipo é Passiva, os campos são outros — ver R0009.
 
   
 
@@ -55,3 +55,12 @@
 # **R0008** - Uma entrada pode ser marcada como Magia/Habilidade de Criatura.
 
 **Descrição**: Nas páginas de nova entrada e de edição do banco (só acessíveis ao GM), o checkbox **Magia/Habilidade de Criatura** marca a entrada como própria de criaturas. A marcação serve apenas de filtro na lista (R0004) — não restringe em qual ficha a entrada pode ser usada. A cópia que R0001 cria a partir de uma **Ficha de Criatura** já nasce marcada, sem checkbox na ficha; as vindas de Ficha de Personagem ou de NPC nascem desmarcadas. Padrão: **desmarcado**.
+
+
+# **R0009** - Passivas são cadastradas só no banco, com Categoria e Requisitos.
+
+**Descrição**: Uma Passiva (Tipo = Passiva) é um novo tipo de entrada do banco, com campos próprios: **Nome**, **Descrição**, **Categoria** (Passiva Livre / Passiva Vocacional / Passiva de Classe) e o checkbox **Magia/Habilidade de Criatura** (R0008). Ela não tem Grau, Efeitos, Gasto em PI nem Custo. Uma Passiva nunca é montada do zero numa ficha — só pode ser escolhida a partir do banco (ver "[[Requisitos - Ficha de Personagem]]" 4.f), tanto pelo GM quanto pelo jogador.
+
+**Requisitos**: além dos campos acima, uma Passiva tem uma seção de Requisitos que a ficha precisa cumprir para recebê-la. Todo campo é opcional; NULL/vazio significa que aquele requisito não existe, e todos os campos preenchidos precisam ser cumpridos ao mesmo tempo (E lógico) — a checagem vale para qualquer ficha, GM incluído. Os campos são: **Nível** (mínimo), **Vocação**, **Classe**, **Linhagem**, **Variante**, **Grau/Círculo** (mínimo), **Coração de Mana** (exige que a ficha o possua), **Afinidade Elemental**, **Estrela**, **Histórico** (referência ao catálogo de "[[Requisitos - Ficha de Personagem]]"), mais três listas construídas incrementalmente pelo GM: **Atributos** (cada item: qual Atributo e o mínimo exigido — o Atributo compara com o Total, não com o valor base), **Sub-Atributos** (Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Redução Física ou Redução Mágica, cada um com um mínimo) e **Perícias** (cada item: qual Perícia e o Total mínimo exigido).
+
+Um ⓘ ao lado da seção de Requisitos abre um popup explicando ao GM como o cadastro funciona: Passivas só são cadastradas aqui; campos vazios não são requisito; todos os requisitos preenchidos precisam ser cumpridos; uma ficha que não os cumpre não recebe a Passiva, nem o GM pode forçar; uma Criatura ignora requisitos sobre campos que ela não possui; e uma ficha que deixa de cumprir os requisitos depois de já ter a Passiva a mantém, apenas com um aviso.
