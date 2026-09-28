@@ -124,12 +124,14 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Id | PK | |
 | GmId | FK → Users | |
 | Nome | string | |
-| Tipo | enum Magia \| Habilidade \| Racial | |
+| Tipo | enum Magia \| Habilidade \| Racial \| Passiva | |
 | Grau | int | |
 | GastoEmPI | int | soma dos Efeitos (abaixo) |
 | Custo | int | `teto(1,25 × GastoEmPI)` |
 | Descricao | text | |
 | DeCriatura | bool, default false | R0008 do Banco — só filtro; `true` automático na cópia vinda de uma Ficha de Criatura |
+| Categoria | enum Livre \| Vocacional \| DeClasse, nullable | só em Passiva (Tipo = Passiva) |
+| Requisitos | jsonb, nullable | só em Passiva; ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009 |
 
 **SpellAbilityBankEffects** — os Efeitos comprados de uma entrada.
 
@@ -307,11 +309,13 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | CharacterSheetId | FK |
 | SourceBankEntryId | FK → SpellAbilityBankEntries, nullable — a entrada escolhida (R0003 do Banco) ou a cópia criada do zero (R0001); usada para anexar a Magia/Habilidade à campanha na concessão (Campanha R0010). NULL em entradas antigas, criadas do zero antes desse vínculo. |
 | Nome | string |
-| Tipo | enum Magia \| Habilidade |
+| Tipo | enum Magia \| Habilidade \| Passiva |
 | Grau | int |
 | GastoEmPI | int |
 | Custo | int |
 | Descricao | text |
+| Categoria | enum Livre \| Vocacional \| DeClasse, nullable — só em Passiva (Tipo = Passiva) |
+| Requisitos | jsonb, nullable — só em Passiva; ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009 |
 
 **CharacterSpellAbilityEffects** — mesma forma de `SpellAbilityBankEffects`, FK pra `CharacterSpellAbilities`.
 

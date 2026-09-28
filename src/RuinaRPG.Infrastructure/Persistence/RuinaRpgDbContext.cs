@@ -211,6 +211,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithOne()
                 .HasForeignKey(ef => ef.SpellAbilityBankEntryId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
         builder.Entity<RuneBankEntry>(entity =>
@@ -336,6 +338,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(e => e.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.CharacterSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
         builder.Entity<CampaignMember>(entity =>
@@ -487,6 +491,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(e => e.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.NpcSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
         builder.Entity<NpcAffection>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
@@ -546,6 +552,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(e => e.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.CreatureSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
         builder.Entity<CreatureAffection>(entity => entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade));

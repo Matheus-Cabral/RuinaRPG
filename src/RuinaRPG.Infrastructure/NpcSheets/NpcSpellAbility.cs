@@ -14,4 +14,10 @@ public class NpcSpellAbility
     public int Custo { get; set; }
     public required string Descricao { get; set; }
     public List<NpcSpellAbilityEffect> Efeitos { get; set; } = [];
+
+    /// <summary>Só em Passivas (Tipo = Passiva); nulo nos demais tipos.</summary>
+    public CategoriaDePassiva? Categoria { get; set; }
+
+    /// <summary>Só em Passivas; gravado como jsonb. Nulo = sem requisitos.</summary>
+    public RequisitosDePassiva? Requisitos { get; set; }
 }
