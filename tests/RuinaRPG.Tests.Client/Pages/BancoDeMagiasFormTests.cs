@@ -50,7 +50,7 @@ public class BancoDeMagiasFormTests : MudBunitContext
 
         var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
         content.Should().Be(TextNormalization.Collapse(
-            "Preencha Nome, Tipo (Magia, Habilidade ou Racial), Grau e Descrição. O Grau define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção Efeitos, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O Gasto em PI é a soma dos Efeitos, e o Custo em Foco é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha."));
+            "Preencha Nome, Tipo (Magia, Habilidade, Racial ou Passiva), Grau e Descrição (uma Passiva não tem Grau nem Efeitos — veja a seção Requisitos). O Grau define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção Efeitos, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O Gasto em PI é a soma dos Efeitos, e o Custo em Foco é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha."));
     }
 
     [Fact]
@@ -302,6 +302,86 @@ public class BancoDeMagiasFormTests : MudBunitContext
         sent.Efeitos.Should().BeEmpty();
         sent.Categoria.Should().Be("DeClasse");
         sent.Requisitos!.Nivel.Should().Be(4);
+    }
+
+    /// <summary>
+    /// Finding 1 of the final whole-branch review: on the edit page, switching Tipo across the
+    /// Passiva boundary autosaves immediately (Grau 0 + no Efeitos going in; Categoria/Requisitos
+    /// cleared going out) — a misclick silently loses server-side state. In edit mode, a Passiva
+    /// entry's Tipo select must offer only "Passiva", disabled, with the explanatory helper text.
+    /// </summary>
+    [Fact]
+    public async Task Edit_mode_on_a_passiva_locks_the_Tipo_select_to_Passiva_only()
+    {
+        // Rendering the Passiva branch also nests RequisitosDePassivaEditor, whose EstrelaSelect and
+        // HistoricoSelect fetch their own catalogs on init — same stubs as RequisitosDePassivaEditorTests.
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("estrelas-alkerianas"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new RuinaRPG.Contracts.Rules.RulebookDocumentResponse("estrelas-alkerianas", "As Estrelas", null, [])),
+                };
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("historicos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<RuinaRPG.Contracts.Rules.HistoricoResponse>()) };
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("spell-ability-bank"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "entry-1", Nome = "Pele de Pedra", Tipo = "Passiva", Grau = 0, Descricao = "",
+                          Efeitos = new List<object>(), Categoria = "Livre" }
+                }) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeMagiasForm>(p => p.Add(x => x.EntryId, "entry-1"));
+        await Task.Delay(50);
+
+        var tipo = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        tipo.Instance.Disabled.Should().BeTrue();
+        tipo.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Equal("Passiva");
+        cut.Markup.Should().Contain("Para transformar essa entrada em Passiva (ou o contrário), crie uma nova entrada.");
+    }
+
+    /// <summary>Same finding, the other direction: a non-Passiva entry must not offer Passiva as a target.</summary>
+    [Fact]
+    public async Task Edit_mode_on_a_non_passiva_does_not_offer_Passiva_but_stays_switchable()
+    {
+        var putCalled = false;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("efeitos"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<object>()) };
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "entry-1", Nome = "Bola de Fogo", Tipo = "Magia", Grau = 1, Descricao = "",
+                          Efeitos = new List<object>() }
+                }) };
+            if (request.Method == HttpMethod.Put)
+            {
+                putCalled = true;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeMagiasForm>(p => p.Add(x => x.EntryId, "entry-1"));
+        await Task.Delay(50);
+
+        var tipo = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        tipo.Instance.Disabled.Should().BeFalse();
+        tipo.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().BeEquivalentTo(new[] { "Magia", "Habilidade", "Racial" });
+        cut.Markup.Should().Contain("Para transformar essa entrada em Passiva (ou o contrário), crie uma nova entrada.");
+
+        // Switching among Magia/Habilidade/Racial must still autosave — only the Passiva boundary is blocked.
+        await cut.InvokeAsync(() => tipo.Instance.ValueChanged.InvokeAsync("Habilidade"));
+        await Task.Delay(700); // past the 400ms debounce
+
+        putCalled.Should().BeTrue("Magia -> Habilidade does not cross the Passiva boundary and must still autosave");
     }
 
     [Fact]

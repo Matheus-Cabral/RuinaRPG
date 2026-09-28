@@ -25,17 +25,31 @@
     <Section Title="Geral">
         <TitleInfo>
             <InfoPopup Title="Como criar uma Magia/Habilidade">
-                Preencha Nome, Tipo (Magia, Habilidade ou Racial), Grau e Descrição. O <b>Grau</b> define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção <b>Efeitos</b>, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O <b>Gasto em PI</b> é a soma dos Efeitos, e o <b>Custo em Foco</b> é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha.
+                Preencha Nome, Tipo (Magia, Habilidade, Racial ou Passiva), Grau e Descrição (uma Passiva não tem Grau nem Efeitos — veja a seção Requisitos). O <b>Grau</b> define quais Efeitos você pode comprar: estão disponíveis os Efeitos do Grau escolhido e de todos os Graus abaixo dele. Na seção <b>Efeitos</b>, escolha cada Efeito da lista. Efeitos com pré-requisito só aparecem depois que o pré-requisito já estiver na Magia. O Custo em PI de cada Efeito é calculado automaticamente, exceto nos Efeitos de custo Manual, em que o Mestre digita o valor. O <b>Gasto em PI</b> é a soma dos Efeitos, e o <b>Custo em Foco</b> é o Gasto em PI × 1,25, arredondado para cima. Ao salvar, a entrada fica no seu banco e pode ser usada como ponto de partida em qualquer ficha.
             </InfoPopup>
         </TitleInfo>
         <ChildContent>
             <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
-                <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
-                <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
-                <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
-                <MudSelectItem Value="@("Passiva")">Passiva</MudSelectItem>
+            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" Disabled="@(EntryId is not null && _originalTipo == "Passiva")" @bind-Value:after="NotifySavedAsync">
+                @if (EntryId is null || _originalTipo != "Passiva")
+                {
+                    <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+                    <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+                    <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+                }
+                @if (EntryId is null || _originalTipo == "Passiva")
+                {
+                    <MudSelectItem Value="@("Passiva")">Passiva</MudSelectItem>
+                }
             </MudSelect>
+            @if (EntryId is not null)
+            {
+                // Finding 1 of the final whole-branch review: switching Tipo across the Passiva boundary
+                // (Passiva <-> Magia/Habilidade/Racial) on autosave silently drops server-side state —
+                // Grau/Efeitos on the way in, Categoria/Requisitos on the way out. The select above blocks
+                // that crossing outright in edit mode; this line is the only way left to do it.
+                <MudText Typo="Typo.caption" Class="mt-n2 mb-2" Style="display:block">Para transformar essa entrada em Passiva (ou o contrário), crie uma nova entrada.</MudText>
+            }
             @if (_form.Tipo != "Passiva")
             {
                 <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
@@ -96,6 +110,10 @@
     };
 
     private readonly EntryFormModel _form = new();
+    // Snapshot of the loaded entry's Tipo, taken once in OnInitializedAsync and never updated
+    // afterward — drives the Tipo select's edit-mode restriction (Finding 1), independent of
+    // whatever _form.Tipo is currently set to.
+    private string? _originalTipo;
     // Constructed synchronously (not inside OnInitializedAsync, and not after any await there) so
     // it is never null on first render — EditContext only holds a reference to _form and reads its
     // properties lazily at validation time, so it doesn't need _form to already be populated from
@@ -137,6 +155,7 @@
 
         _form.Nome = existing.Nome;
         _form.Tipo = existing.Tipo;
+        _originalTipo = existing.Tipo;
         _form.Grau = existing.Grau;
         _form.Descricao = existing.Descricao;
         _form.DeCriatura = existing.DeCriatura;
