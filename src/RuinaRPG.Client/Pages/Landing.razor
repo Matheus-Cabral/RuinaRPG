@@ -64,13 +64,14 @@
     private record Lineage(string Nome, string Flavor, string[] Variantes);
     private record Feature(string Icon, string Titulo, string Descricao);
 
-    // Frases e nomes de variante extraídos de "Ruína RPG - Sistema Básico.md" §7 — não inventados.
+    // Frases e nomes de variante extraídos de "Ruína RPG - Sistema Básico.md" §7 — não inventados
+    // (exceto Veûna, a solar dos Ecônos, nomeada pelo autor do sistema e ainda fora do livro).
     private static readonly Lineage[] Lineages =
     [
         new("Humano", "Versáteis e numerosos, adaptam-se a qualquer caminho.", ["☀️ Sinir", "🌙 Laonir"]),
         new("Phylauc", "Felinos humanoides que prezam pela honra, força e instinto selvagem.", ["☀️ Phylac'tai", "🌙 Es'Phylauc"]),
         new("Nephrytes", "Pássaros humanoides nativos da ilha voadora, valorizam a liberdade acima de tudo.", ["☀️ Koroanos", "🌙 Yavos"]),
-        new("Ecônos", "Os \"Repatriados\" — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua.", ["🌙 Alóra"]),
+        new("Ecônos", "Os \"Repatriados\" — antigas criaturas sem vontade, hoje um povo liberto pela bênção da Lua.", ["🌙 Alóra", "☀️ Veûna"]),
     ];
 
     private static readonly Feature[] Features =
