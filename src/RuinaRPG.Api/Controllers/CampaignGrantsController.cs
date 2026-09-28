@@ -164,7 +164,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
     /// </summary>
     private async Task<Guid> PublicarMagiaNaCampanhaAsync(Guid campaignId, Guid gmId, Guid? sourceBankEntryId,
         string nome, SpellAbilityTipo tipo, int grau, int gastoEmPI, int custo, string descricao,
-        IEnumerable<(string EfeitoNome, int? Quantidade, int CustoPI)> efeitos, bool deCriatura)
+        IEnumerable<(string EfeitoNome, int? Quantidade, int CustoPI)> efeitos, bool deCriatura,
+        CategoriaDePassiva? categoria, RequisitosDePassiva? requisitos)
     {
         // Local primeiro: duas magias legadas iguais na mesma concessão reusam a entrada criada para a primeira.
         var entrada = sourceBankEntryId is { } id
@@ -177,7 +178,9 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         {
             entrada = new SpellAbilityBankEntry
             {
-                Id = Guid.NewGuid(), GmId = gmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao, DeCriatura = deCriatura
+                Id = Guid.NewGuid(), GmId = gmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao, DeCriatura = deCriatura,
+                // Uma Passiva recriada (a original saiu do banco) mantém Categoria e Requisitos (Banco R0009).
+                Categoria = categoria, Requisitos = requisitos
             };
             entrada.Efeitos = efeitos.Select(e => new SpellAbilityBankEffect { Id = Guid.NewGuid(), SpellAbilityBankEntryId = entrada.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
             db.SpellAbilityBankEntries.Add(entrada);
@@ -241,7 +244,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         {
             var efeitos = await db.NpcSpellAbilityEffects.Where(x => x.NpcSpellAbilityId == sa.Id).ToListAsync();
             var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
-                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: false);
+                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: false, sa.Categoria, sa.Requisitos);
             var saCopy = new NpcSpellAbility
             {
                 Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
@@ -300,7 +303,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         {
             var efeitos = await db.CreatureSpellAbilityEffects.Where(x => x.CreatureSpellAbilityId == sa.Id).ToListAsync();
             var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
-                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: true);
+                efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: true, sa.Categoria, sa.Requisitos);
             var saCopy = new CreatureSpellAbility
             {
                 Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,

@@ -205,6 +205,7 @@ public class CharacterPassivasTests : IClassFixture<PostgresFixture>, IAsyncLife
 
         var response = await AddFromBankAsync(gm, sheetId, passivaId);
 
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain($"Histórico: {historico.Nome}");
     }
 }

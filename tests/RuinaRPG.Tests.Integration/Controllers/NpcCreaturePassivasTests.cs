@@ -188,4 +188,29 @@ public class NpcCreaturePassivasTests : IClassFixture<PostgresFixture>, IAsyncLi
         var paraGm = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, url, gm))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         paraGm!.Select(p => p.Entrada.Nome).Should().BeEquivalentTo(["Pública", "Privada"]);
     }
+
+    [Fact]
+    public async Task Granting_an_npc_whose_passiva_left_the_bank_recreates_it_with_categoria_and_requisitos()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPassGm4", "npcpassgm4@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "NpcPassPl4", "npcpasspl4@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        var sourceId = await CreateNpcSheetAsync(gm);
+        var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
+            new CreateSpellAbilityEntryRequest("Sentinela", "Passiva", 0, "Descrição.", [], false, "Vocacional", new RequisitosDePassivaDto(Nivel: 1))));
+        var passivaId = (await create.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gm,
+            new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)))).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{passivaId}", gm))).IsSuccessStatusCode.Should().BeTrue();
+
+        await GrantNpcAsync(gm, campaignId, playerId, sourceId);
+
+        var bank = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Passiva", gm)))
+            .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        var recriada = bank!.Single(e => e.Nome == "Sentinela");
+        recriada.Id.Should().NotBe(passivaId);
+        recriada.Categoria.Should().Be("Vocacional");
+        recriada.Requisitos!.Nivel.Should().Be(1);
+    }
 }
