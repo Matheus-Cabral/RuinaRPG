@@ -433,8 +433,9 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             .ToListAsync();
 
     /// <summary>
-    /// Shared by SubAttributes and the máximo computation in ToResponseAsync — a single-row
-    /// lookup + AttributeTotalCalculator.Total, rather than duplicating that logic a third time.
+    /// Used by the máximo computation (vigorTotal/astuciaTotal) in ToResponseAsync — a single-row
+    /// lookup + AttributeTotalCalculator.Total. SubAttributes no longer calls this: that formula was
+    /// extracted into CharacterSheetStats, shared with the Passiva requisitos snapshot.
     /// </summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {

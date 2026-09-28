@@ -28,7 +28,7 @@
     <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparLinhagemAsync" title="Limpar Linhagem/Variante" aria-label="Limpar Linhagem/Variante" />
 </div>
 
-<MudNumericField T="int?" @bind-Value="Model.Graduacao" Label="Grau/Círculo mínimo" Min="0" Max="9" @bind-Value:after="OnChangedAsync" />
+<MudNumericField T="int?" @bind-Value="Model.Graduacao" Label="Grau/Círculo mínimo" Min="0" Max="9" Clearable="true" @bind-Value:after="OnChangedAsync" />
 
 <MudCheckBox T="bool" @bind-Value="Model.CoracaoDeMana" Label="Exige Coração de Mana" @bind-Value:after="OnChangedAsync" />
 

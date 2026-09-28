@@ -79,11 +79,11 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
         {
             // Mudar um item de uma lista dentro do jsonb precisa ser detectado (comparer por valor).
             var bank = await db.SpellAbilityBankEntries.SingleAsync(e => e.Id == bankId);
-            bank.Requisitos = bank.Requisitos! with { Nivel = 7 };
+            bank.Requisitos = bank.Requisitos! with { Atributos = [new(Atributo.Forca, 9)] };
             await db.SaveChangesAsync();
         }
 
         await using (var db = new RuinaRpgDbContext(options))
-            (await db.SpellAbilityBankEntries.SingleAsync(e => e.Id == bankId)).Requisitos!.Nivel.Should().Be(7);
+            (await db.SpellAbilityBankEntries.SingleAsync(e => e.Id == bankId)).Requisitos!.Atributos.Should().Equal(new RequisitoDeAtributo(Atributo.Forca, 9));
     }
 }

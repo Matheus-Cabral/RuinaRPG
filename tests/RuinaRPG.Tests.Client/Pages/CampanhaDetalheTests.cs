@@ -3,6 +3,7 @@ using Bunit.TestDoubles;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
+using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
@@ -53,6 +54,64 @@ public class CampanhaDetalheTests : MudBunitContext
     {
         var tabHeader = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Detalhes");
         cut.InvokeAsync(() => tabHeader.Click());
+    }
+
+    private static void GoToAnexosTab(IRenderedComponent<CampanhaDetalhe> cut)
+    {
+        var tabHeader = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Anexos");
+        cut.InvokeAsync(() => tabHeader.Click());
+    }
+
+    /// <summary>
+    /// Finding 7 of the final whole-branch review: the "Entrada do Banco de Magias" picker on the
+    /// Anexos tab (used to publish a Banco entry, Passiva included, to the campaign) formatted every
+    /// result as "Nome (Tipo, Grau N)" — for a Passiva (always Grau 0) that read as the meaningless
+    /// "(Passiva, Grau 0)". It must show the Categoria instead, like the rest of the app does for
+    /// Passivas (BancoDeMagias list, HabilidadesPassivasSection).
+    /// </summary>
+    [Fact]
+    public async Task Anexos_tab_banco_picker_labels_a_passiva_by_categoria_not_grau()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) })
+                };
+
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.Contains("spell-ability-bank"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new[]
+                    {
+                        new { Id = "p1", Nome = "Pele de Pedra", Tipo = "Passiva", Grau = 0, GastoEmPI = 0, Custo = 0, Descricao = "d", Efeitos = new List<object>(), DeCriatura = false, Categoria = (string?)"Vocacional" },
+                        new { Id = "m1", Nome = "Bola de Fogo", Tipo = "Magia", Grau = 2, GastoEmPI = 3, Custo = 4, Descricao = "d", Efeitos = new List<object>(), DeCriatura = false, Categoria = (string?)null },
+                    })
+                };
+
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+        await Task.Delay(100);
+
+        GoToAnexosTab(cut);
+        await Task.Delay(50);
+
+        var picker = cut.FindComponents<EntityPicker>().Single(c => c.Instance.Placeholder == "Buscar magia/habilidade...");
+        var results = await picker.Instance.SearchAsyncForTests("");
+
+        results.Should().Contain(o => o.Id == "p1" && o.Label == "Pele de Pedra (Passiva Vocacional)");
+        results.Should().Contain(o => o.Id == "m1" && o.Label == "Bola de Fogo (Magia, Grau 2)");
     }
 
     [Fact]

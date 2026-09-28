@@ -71,7 +71,7 @@
                         <td>—</td>
                         <td>—</td>
                         <td>—</td>
-                        <td>@RequisitoLabels.Categoria(Enum.Parse<CategoriaDePassiva>(entry.Categoria!))</td>
+                        <td>@(Enum.TryParse<CategoriaDePassiva>(entry.Categoria, out var categoria) ? RequisitoLabels.Categoria(categoria) : "—")</td>
                     }
                     else
                     {

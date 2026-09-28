@@ -357,8 +357,9 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>
-    /// Shared by SubAttributes and the máximo computation in ToResponseAsync — a single-row
-    /// lookup + AttributeTotalCalculator.Total, rather than duplicating that logic a third time.
+    /// Used by the máximo computation (vigorTotal/astuciaTotal) in ToResponseAsync — a single-row
+    /// lookup + AttributeTotalCalculator.Total. SubAttributes no longer calls this: that formula was
+    /// extracted into NpcSheetStats, shared with the Passiva requisitos snapshot.
     /// Mirrors CharacterSheetsController.GetAttributeTotalAsync, scoped to NpcAttributes.
     /// </summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
