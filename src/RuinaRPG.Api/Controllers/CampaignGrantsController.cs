@@ -245,7 +245,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             var saCopy = new NpcSpellAbility
             {
                 Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
-                Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao
+                Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos
             };
             db.NpcSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)
@@ -303,7 +304,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             var saCopy = new CreatureSpellAbility
             {
                 Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
-                Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao
+                Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos
             };
             db.CreatureSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)

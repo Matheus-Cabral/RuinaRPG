@@ -244,7 +244,7 @@ Quatro campos calculados, não editáveis, um por Tipo de Dano — **Cortante**,
 
   
 
-4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas e maestrias. Composta pelos subgrupos abaixo.
+4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas, maestrias e habilidades passivas. Composta pelos subgrupos abaixo.
 
   
 
@@ -271,7 +271,7 @@ Uma entrada fixa, não removível, pré-preenchida a partir da Linhagem/Variante
 Lista incremental: o jogador adiciona uma Magia ou Habilidade por vez, montando do zero ou partindo de uma entrada existente no "[[Requisitos - Banco de Magias e Habilidades]]" (que preenche os campos abaixo automaticamente). Toda entrada criada aqui, de qualquer uma das duas formas, é automaticamente salva como uma cópia independente naquele banco (ver lá, R0001). Cada entrada:
 
 - *Nome*: text input.
-- *Tipo*: dropdown, **Magia** ou **Habilidade**.
+- *Tipo*: dropdown, **Magia** ou **Habilidade**. Passivas não são montadas aqui — ficam em 4.f.
 - *Grau*: campo numérico, limitado ao Grau/Círculo atual do personagem (ver 1.b). Determina quais Efeitos (abaixo) estão disponíveis para compra, conforme o Grau em que cada um é introduzido em "[[GRAUS & CÍRCULOS]]".
 - *Efeitos*: lista dos Efeitos comprados para essa entrada — os 3 Efeitos Básicos universais (**Dano**, **Alcance**, **Duração**, cada um comprado em unidades até o teto do Grau escolhido, ver tabela no topo de "[[GRAUS & CÍRCULOS]]") e quaisquer Efeitos Especiais nomeados disponíveis até aquele Grau (ex: Aumentar Armadura, Cura, Deslocamento — ver "[[GRAUS & CÍRCULOS]]"). Alguns Efeitos Especiais exigem a compra prévia de outro Efeito (ex: "obrigatória a compra de Duração"); ao comprar um Efeito cujo pré-requisito ainda não foi comprado, a interface adiciona esse pré-requisito automaticamente em vez de impedir a compra — com Quantidade zerada e editável em seguida quando o tipo de custo do pré-requisito for cobrado por unidade (ex: Duração), ou já completo, sem Quantidade, quando for um custo fixo (ex: os três candidatos de Detrito: Atordoamento, Congelar e Enraizar). Se o grupo de pré-requisito tiver mais de uma opção válida, a interface pergunta qual delas usar. Cada linha de Efeito permanece editável conforme seu próprio tipo de custo: a Quantidade é editável quando o custo é cobrado por unidade, e o Custo em PI é editável quando o Mestre define o valor manualmente; um Efeito de custo fixo, ou cujo custo é derivado de outra linha, já chega completo e não precisa de edição. Onde quer que uma entrada de Magia/Habilidade já salva seja listada (nesta ficha, na Ficha de NPC/Criatura, e no "[[Requisitos - Banco de Magias e Habilidades]]"), um resumo compacto dos Efeitos comprados é exibido junto — cada Efeito com Quantidade mostra "Nome: Quantidade" (ex: "Alcance: 4"), exceto Dano e Duração, que mostram também o tamanho do dado correspondente ao Grau da entrada, conforme a tabela no topo de "[[GRAUS & CÍRCULOS]]" (ex: "Dano: 3d6" numa entrada de Grau 3); um Efeito sem Quantidade (custo fixo ou derivado) mostra só o nome.
 - *Gasto em PI*: campo calculado, não editável. Soma do custo em PI de todos os Efeitos comprados nessa entrada.
@@ -318,6 +318,21 @@ Recurso separado da Maestria de Atributos (ver 2.a) — tem seu próprio poço d
 - *Total*: campo calculado, não editável. `Total = Gasto Maestria + Bruto [Perícia escolhida] + [Atributo escolhido]` (ver "[[Formulas]]"; "Bruto [Perícia]" definido em 2.b).
 
 Uma Maestria pode ser removida pelo jogador a qualquer momento.
+
+  
+
+### 4.f) Habilidades Passivas
+
+  
+
+Lista incremental. Uma Passiva nunca é montada do zero na ficha: o jogador (ou o GM) só a adiciona escolhendo uma Passiva cadastrada no "[[Requisitos - Banco de Magias e Habilidades]]" (R0009 do banco) — o jogador só entre as que o GM liberou como públicas na campanha (R0003). A entrada vira uma cópia independente na ficha, com a Categoria e os Requisitos da Passiva escolhida. Cada entrada exibe:
+
+- *Nome*.
+- *Categoria*: Passiva Livre, Passiva Vocacional ou Passiva de Classe.
+- *Descrição*.
+- *Aviso*: se a ficha deixou de cumprir os Requisitos da Passiva depois de recebê-la, a entrada mostra "⚠ Requisitos não cumpridos" com o que falta (R0008).
+
+Uma Passiva pode ser removida a qualquer momento.
 
 5. **Posses**: inventário, artefatos, afeições e características (positivas/negativas). Composta pelos subgrupos abaixo.
 
@@ -453,3 +468,11 @@ Ao confirmar, os itens do kit (fixos e os escolhidos) são concedidos à ficha a
 - *Afinidade Adicional*: campo numérico ≥ 0 que aumenta o máximo. Padrão **0**.
 
 O servidor rejeita adicionar ou editar uma linha quando isso faria o gasto **subir** acima do máximo. Baixar o máximo (trocar a Vocação, perder o coração de mana, reduzir a Afinidade Adicional) continua permitido; a ficha só fica com o contador em vermelho, e a partir daí aceita apenas edições que não aumentem o gasto.
+
+  
+
+# **R0008** - Uma Passiva só entra na ficha se ela cumprir os requisitos.
+
+**Descrição**: Ao adicionar uma Passiva (4.f), o servidor confere os Requisitos cadastrados nela (ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009) contra os valores atuais da ficha e recusa a adição, listando o que falta, quando algum não é cumprido — para qualquer um, **GM incluído**. A janela de adicionar lista as Passivas alcançáveis (as do banco do GM; para o jogador, só as públicas na campanha) e mostra desabilitadas, com o motivo, as que a ficha ainda não cumpre. Uma entrada que o jogador não alcança responde como não encontrada, sem revelar seus requisitos.
+
+Uma Passiva que já está na ficha **permanece** quando a ficha deixa de cumprir os requisitos (ex: um Atributo reduzido): ela só passa a exibir o aviso "⚠ Requisitos não cumpridos" com o que falta, e o aviso some sozinho quando a ficha volta a cumpri-los.
