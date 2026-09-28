@@ -77,8 +77,8 @@ Banco endpoints.
 `SpellAbilityBankEntry`, `CharacterSpellAbility`, `NpcSpellAbility` and `CreatureSpellAbility` each gain:
 
 - `CategoriaDePassiva? Categoria` — int, NULL for non-Passivas.
-- `RequisitosDePassiva? Requisitos` — **jsonb**, mapped with `OwnsOne(e => e.Requisitos, b => b.ToJson())`
-  (EF Core 8 / Npgsql). NULL for non-Passivas. The whole object is always read/written as a unit and
+- `RequisitosDePassiva? Requisitos` — **jsonb**, mapped with a System.Text.Json value converter +
+  value comparer (keeps the domain record free of EF owned-type constraints). NULL for non-Passivas. The whole object is always read/written as a unit and
   never queried into, so jsonb avoids ~11 columns + 3 child tables × 4 tables.
 
 For a Passiva, `Grau = 0`, `GastoEmPI = 0`, `Custo = 0`, no Efeitos.
@@ -94,7 +94,8 @@ in the same change.
 - `Tipo = Passiva`: `Categoria` required; `Requisitos` optional (NULL/empty = no requirements);
   `Grau` and `Efeitos` must be absent/empty (400 otherwise); stored with 0/0/0.
 - `Tipo ≠ Passiva`: `Categoria`/`Requisitos` must be absent (400 otherwise).
-- Classe without Vocação, or Variante without Linhagem, or a Classe/Variante not belonging to it → 400.
+- Classe without Vocação, or Variante without Linhagem (or not belonging to it) → 400. Classe is free
+  text, like the sheet's own `SubVocacao` — its membership in the Vocação isn't validated.
   `HistoricoId` must exist in the catalog → 400 otherwise. Duplicate list items → 400.
 - List filter by Tipo accepts `Passiva`.
 
