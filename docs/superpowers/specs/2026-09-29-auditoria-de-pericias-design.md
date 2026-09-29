@@ -70,6 +70,14 @@ active rows instead. `HistoricoSeedParser`'s label→enum map becomes a label→
 - **Fichas (Personagem/NPC/Criatura)** — perícia list comes from `GET api/pericias`. The name shows the description as a `MudTooltip` on hover; on mobile, tapping the name opens a small popup with it. No icon when description is null.
 - Históricos (Auditoria), Maestria forms, Passiva requisites editor, Catálogo Artefato Alvo dropdown — options come from `GET api/pericias`.
 
+## Ajuda (ⓘ)
+
+Every new UI surface gets the existing `Shared/InfoPopup.razor` (ⓘ via `Section`'s `TitleInfo`), same pattern as
+`AuditoriaDurabilidadePorRank.razor`. Draft texts (refine during implementation):
+
+- **`/auditoria/pericias`, section Perícias** — "Aqui você adiciona, edita e remove as perícias usadas em todas as fichas. O Atributo sugerido só vem pré-selecionado numa ficha nova — o jogador pode trocar a qualquer momento, pois o GM pode pedir uma perícia com outro atributo numa ação específica. A Descrição aparece ao passar o mouse sobre o nome da perícia na ficha (no celular, ao tocar no nome). 'Disponível para Criaturas' controla se a perícia aparece nas fichas de Criatura. Prontidão, Reflexos e Fortitude (🔒) entram em fórmulas e não podem ser removidas, mas podem ser renomeadas."
+- **Same page, remove confirmation / section Removidas** — "Remover uma perícia devolve os pontos gastos nela ao saldo de Pontos de Perícia de todas as fichas, para serem redistribuídos. Enquanto removida, ela some das fichas, e os bônus de Histórico, requisitos de Passiva e Maestrias ligados a ela deixam de valer. Ao restaurar, ela volta zerada em todas as fichas."
+
 ## Docs
 
 - `Requisitos - Auditoria de Regras.md`: new **R0012**.

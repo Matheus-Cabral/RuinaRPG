@@ -58,6 +58,14 @@ no roll, no Arca row, or nothing unlocked. The filter is a small pure Domain hel
 - **`/habilidades-raciais`** — every row of the Tabela de Arcas gets an expandable "Evoluções" area: a list of `Nível` (numeric) + `Descrição` (multiline), edited inline (save on change, like the Arca row itself), a delete button per evolution and an "Adicionar evolução" button.
 - **FichaDePersonagem / FichaDeNpc**, tab Magias & Habilidades, section "Habilidade Racial" — under the Arca's description, a button "Evoluções da Arca (N)". It opens a `MudDialog` listing "Nível X — descrição" for each unlocked evolution. Disabled when N = 0.
 
+## Ajuda (ⓘ)
+
+Every new UI surface gets the existing `Shared/InfoPopup.razor` (ⓘ via `Section`'s `TitleInfo`, or inline next
+to the control), same pattern as `AuditoriaDurabilidadePorRank.razor`. Draft texts (refine during implementation):
+
+- **`/habilidades-raciais`, section Tabela de Arcas** — "Cada Arca pode ter evoluções, cada uma liberada a partir de um nível. As evoluções somam-se à descrição da Arca, não a substituem. Na ficha de um Humano, o botão 'Evoluções da Arca' mostra todas as evoluções que o nível do personagem ou NPC já liberou; as futuras não aparecem. Pode haver mais de uma evolução no mesmo nível."
+- **Ficha (Personagem/NPC), section Habilidade Racial, next to the button** — "Evoluções liberadas pela Arca rolada até o nível atual. Novas evoluções aparecem sozinhas quando o personagem sobe de nível. Quem cadastra as evoluções é o GM."
+
 ## Docs
 
 - `Requisitos - Habilidades Raciais.md`: new **R0006** (evoluções por nível).
