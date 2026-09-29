@@ -56,6 +56,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Efeito> Efeitos => Set<Efeito>();
     public DbSet<RacialAbilityOverride> RacialAbilityOverrides => Set<RacialAbilityOverride>();
     public DbSet<ArcaEntry> ArcaEntries => Set<ArcaEntry>();
+    public DbSet<ArcaEvolucao> ArcaEvolucoes => Set<ArcaEvolucao>();
     public DbSet<RacialTraitOverride> RacialTraitOverrides => Set<RacialTraitOverride>();
     public DbSet<RulebookDocumentOverride> RulebookDocumentOverrides => Set<RulebookDocumentOverride>();
     public DbSet<CharacterAffection> CharacterAffections => Set<CharacterAffection>();
@@ -191,6 +192,15 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(a => a.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(a => a.Evolucoes)
+                .WithOne()
+                .HasForeignKey(e => e.ArcaEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ArcaEvolucao>(entity =>
+        {
+            entity.HasIndex(e => new { e.ArcaEntryId, e.Nivel });
         });
 
         builder.Entity<RacialTraitOverride>(entity =>

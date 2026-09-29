@@ -7,4 +7,5 @@ public class ArcaEntry
     public int Roll { get; set; }
     public required string Nome { get; set; }
     public required string Descricao { get; set; }
+    public List<ArcaEvolucao> Evolucoes { get; set; } = new();
 }

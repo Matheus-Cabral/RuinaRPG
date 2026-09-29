@@ -120,13 +120,16 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     public async Task<ActionResult<List<ArcaEntryResponse>>> ListArcas()
     {
         var gmId = CurrentUserId();
-        var entries = await db.ArcaEntries.Where(a => a.GmId == gmId).ToListAsync();
+        var entries = await db.ArcaEntries.Include(a => a.Evolucoes).Where(a => a.GmId == gmId).ToListAsync();
 
         var responses = new List<ArcaEntryResponse>();
         for (var roll = 1; roll <= 18; roll++)
         {
             var entry = entries.FirstOrDefault(a => a.Roll == roll);
-            responses.Add(new ArcaEntryResponse(roll, entry?.Nome, entry?.Descricao));
+            var evolucoes = entry is null
+                ? new List<ArcaEvolucaoResponse>()
+                : ArcaEvolucaoRules.Desbloqueadas(entry.Evolucoes, e => e.Nivel, e => e.CriadaEm, int.MaxValue).Select(ToResponse).ToList();
+            responses.Add(new ArcaEntryResponse(roll, entry?.Nome, entry?.Descricao, evolucoes));
         }
         return responses;
     }
@@ -152,6 +155,76 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpPost("api/arcas/{roll:int}/evolucoes")]
+    public async Task<ActionResult<ArcaEvolucaoResponse>> AddEvolucao(int roll, ArcaEvolucaoRequest request)
+    {
+        if (ValidateEvolucao(roll, request) is { } invalid)
+            return invalid;
+
+        var gmId = CurrentUserId();
+        var arca = await db.ArcaEntries.FirstOrDefaultAsync(a => a.GmId == gmId && a.Roll == roll);
+        if (arca is null)
+        {
+            arca = new ArcaEntry { Id = Guid.NewGuid(), GmId = gmId, Roll = roll, Nome = "", Descricao = "" };
+            db.ArcaEntries.Add(arca);
+        }
+
+        var evolucao = new ArcaEvolucao { Id = Guid.NewGuid(), ArcaEntryId = arca.Id, Nivel = request.Nivel, Descricao = request.Descricao.Trim(), CriadaEm = DateTimeOffset.UtcNow };
+        db.ArcaEvolucoes.Add(evolucao);
+        await db.SaveChangesAsync();
+        return Created($"/api/arcas/{roll}/evolucoes/{evolucao.Id}", ToResponse(evolucao));
+    }
+
+    [HttpPut("api/arcas/{roll:int}/evolucoes/{id:guid}")]
+    public async Task<ActionResult<ArcaEvolucaoResponse>> UpdateEvolucao(int roll, Guid id, ArcaEvolucaoRequest request)
+    {
+        if (ValidateEvolucao(roll, request) is { } invalid)
+            return invalid;
+
+        var evolucao = await FindOwnEvolucaoAsync(roll, id);
+        if (evolucao is null)
+            return NotFound();
+
+        evolucao.Nivel = request.Nivel;
+        evolucao.Descricao = request.Descricao.Trim();
+        await db.SaveChangesAsync();
+        return ToResponse(evolucao);
+    }
+
+    [HttpDelete("api/arcas/{roll:int}/evolucoes/{id:guid}")]
+    public async Task<IActionResult> DeleteEvolucao(int roll, Guid id)
+    {
+        var evolucao = await FindOwnEvolucaoAsync(roll, id);
+        if (evolucao is null)
+            return NotFound();
+
+        db.ArcaEvolucoes.Remove(evolucao);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private ActionResult? ValidateEvolucao(int roll, ArcaEvolucaoRequest request)
+    {
+        if (roll is < 1 or > 18)
+            return BadRequest("Roll deve estar entre 1 e 18.");
+        if (!ArcaEvolucaoRules.NivelValido(request.Nivel))
+            return BadRequest($"O nível da evolução deve estar entre 1 e {ArcaEvolucaoRules.NivelMaximo}.");
+        if (string.IsNullOrWhiteSpace(request.Descricao))
+            return BadRequest("Descreva a evolução.");
+        return null;
+    }
+
+    // Scoped by GM *and* roll: an id from another GM, or from another roll of the same GM, is a 404.
+    private Task<ArcaEvolucao?> FindOwnEvolucaoAsync(int roll, Guid id)
+    {
+        var gmId = CurrentUserId();
+        return db.ArcaEvolucoes
+            .Where(e => e.Id == id && db.ArcaEntries.Any(a => a.Id == e.ArcaEntryId && a.GmId == gmId && a.Roll == roll))
+            .FirstOrDefaultAsync();
+    }
+
+    private static ArcaEvolucaoResponse ToResponse(ArcaEvolucao e) => new(e.Id, e.Nivel, e.Descricao);
 
     /// <summary>
     /// GM-editable overrides for RacialTraitLookup's hardcoded Característica Gratuita/Obrigatória
