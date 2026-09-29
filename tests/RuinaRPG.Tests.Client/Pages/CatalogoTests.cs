@@ -25,21 +25,21 @@ public class CatalogoTests
     [Fact]
     public void BuildQueryString_includes_nome_when_set()
     {
-        Catalogo.BuildQueryString(nome: "Espada", tipo: "", subcategoria: null, tier: null, categoria: null, tipoDeDano: null)
+        Catalogo.BuildQueryString(nome: "Espada", tipo: "", subcategoria: null, rank: null, categoria: null, tipoDeDano: null)
             .Should().Be("?nome=Espada");
     }
 
     [Fact]
     public void BuildQueryString_omits_nome_when_blank()
     {
-        Catalogo.BuildQueryString(nome: "  ", tipo: "", subcategoria: null, tier: null, categoria: null, tipoDeDano: null)
+        Catalogo.BuildQueryString(nome: "  ", tipo: "", subcategoria: null, rank: null, categoria: null, tipoDeDano: null)
             .Should().Be("");
     }
 
     [Fact]
     public void BuildQueryString_combines_every_filter()
     {
-        Catalogo.BuildQueryString(nome: "Espada", tipo: "Arma", subcategoria: "Lâmina", tier: "1", categoria: "Corte", tipoDeDano: "Cortante")
-            .Should().Be("?nome=Espada&tipo=Arma&subcategoria=L%C3%A2mina&tier=1&categoria=Corte&tipoDeDano=Cortante");
+        Catalogo.BuildQueryString(nome: "Espada", tipo: "Arma", subcategoria: "Lâmina", rank: "F", categoria: "Corte", tipoDeDano: "Cortante")
+            .Should().Be("?nome=Espada&tipo=Arma&subcategoria=L%C3%A2mina&rank=F&categoria=Corte&tipoDeDano=Cortante");
     }
 }

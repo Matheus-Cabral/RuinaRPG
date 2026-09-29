@@ -267,7 +267,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var token = await RegisterGmAndGetTokenAsync("ItemGmFilter2", "itemfilter2@teste.com");
         await PostItemAsync(token, MinimalArma("Espada Curta")); // Subcategoria "Espadas", Tier F
 
-        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?subcategoria=Espadas&tier=F");
+        var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?subcategoria=Espadas&rank=F");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var response = await _client.SendAsync(message);
 

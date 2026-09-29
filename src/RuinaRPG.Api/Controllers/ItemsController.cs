@@ -105,7 +105,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         [FromQuery] string? nome,
         [FromQuery] string? tipo,
         [FromQuery] string? subcategoria,
-        [FromQuery] string? tier,
+        [FromQuery] string? rank,
         [FromQuery] string? categoria,
         [FromQuery] string? tipoDeDano)
     {
@@ -129,7 +129,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
 
         return responses
             .Where(r => subcategoria is null || r.Subcategoria == subcategoria)
-            .Where(r => tier is null || r.Rank == tier)
+            .Where(r => rank is null || r.Rank == rank)
             .Where(r => categoria is null || r.Categoria == categoria)
             .Where(r => tipoDeDano is null || r.TipoDeDano == tipoDeDano)
             .ToList();

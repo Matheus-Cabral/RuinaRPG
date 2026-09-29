@@ -247,12 +247,12 @@ public class AuditoriaEquipagemTests : MudBunitContext
         newSlot.ArmorSlot.Should().BeNull();
     }
 
-    // Finding 5 of the final review: Tier only ever means anything for a Tipo=Arma choice slot
-    // (EquipmentKitGrantService.ResolveEligibleOptionsAsync only applies the Tier filter in the
-    // Arma branch) — the API now rejects a non-empty Tier on any other Tipo, so the form must not
+    // Finding 5 of the final review: Rank only ever means anything for a Tipo=Arma choice slot
+    // (EquipmentKitGrantService.ResolveEligibleOptionsAsync only applies the Rank filter in the
+    // Arma branch) — the API now rejects a non-empty Rank on any other Tipo, so the form must not
     // offer the field at all once Armadura/Escudo/Artefato is picked.
     [Fact]
-    public async Task Tier_field_is_shown_for_Tipo_Arma_and_hidden_after_switching_away()
+    public async Task Rank_field_is_shown_for_Tipo_Arma_and_hidden_after_switching_away()
     {
         var http = FakeHttpMessageHandler.CreateClient(request =>
         {
@@ -267,18 +267,25 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var cut = Render<AuditoriaEquipagem>();
         await Task.Delay(50);
 
-        cut.FindComponents<MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Tier (vazio = qualquer)");
+        cut.FindComponents<MudSelect<string>>().Should().Contain(c => c.Instance.Label == "Rank (vazio = qualquer)");
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
         var slotTipo = tipoSelects[2];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
         await Task.Delay(50);
 
-        cut.FindComponents<MudTextField<string>>().Should().NotContain(c => c.Instance.Label == "Tier (vazio = qualquer)");
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Rank (vazio = qualquer)");
     }
 
     [Fact]
-    public async Task Adding_a_non_Arma_slot_sends_Tier_null_even_if_it_was_typed_while_Tipo_was_Arma()
+    public void Rank_select_offers_F_through_SS()
+    {
+        AuditoriaEquipagem.RankOptions.Should().BeEquivalentTo(
+            new[] { "F", "E", "D", "C", "B", "A", "S", "SS" }, o => o.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task Adding_a_non_Arma_slot_sends_Rank_null_even_if_it_was_chosen_while_Tipo_was_Arma()
     {
         UpdateEquipmentKitRequestCapture? captured = null;
         var http = FakeHttpMessageHandler.CreateClient(request =>
@@ -299,8 +306,8 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var cut = Render<AuditoriaEquipagem>();
         await Task.Delay(50);
 
-        var slotTier = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Tier (vazio = qualquer)");
-        await cut.InvokeAsync(() => slotTier.Instance.ValueChanged.InvokeAsync("F"));
+        var slotRank = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Rank (vazio = qualquer)");
+        await cut.InvokeAsync(() => slotRank.Instance.ValueChanged.InvokeAsync("F"));
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
         var slotTipo = tipoSelects[2];
@@ -515,7 +522,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         content.Should().Be(TextNormalization.Collapse(string.Join(" ",
             "Um kit é o equipamento inicial que o jogador escolhe uma única vez na aba Posses da ficha. Os Ciclos são somados ao dinheiro da ficha.",
             "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.",
-            "Slots de escolha: o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Tier. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.",
+            "Slots de escolha: o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Rank. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.",
             "Excluir um kit já escolhido em alguma ficha é bloqueado.")));
     }
 
