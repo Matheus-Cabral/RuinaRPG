@@ -108,7 +108,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         var gmId = Guid.NewGuid();
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
-        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Tier = Tier.F, Qtd = 1 };
+        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Tier = RankDeItem.F, Qtd = 1 };
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
@@ -125,11 +125,11 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmForaDoFiltro");
-        var outOfTierWeapon = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Espada Lendária", Subcategoria = "Espadas", Tier = Tier.S, Peso = 1, Preco = 0 };
+        var outOfTierWeapon = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Espada Lendária", Subcategoria = "Espadas", Tier = RankDeItem.S, Peso = 1, Preco = 0 };
         db.Add(outOfTierWeapon);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
-        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Tier = Tier.F, Qtd = 1 };
+        var slot = new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Tier = RankDeItem.F, Qtd = 1 };
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
@@ -146,14 +146,14 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusCondicional");
-        var bow = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco de Teste", Subcategoria = "Arcos", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var bow = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco de Teste", Subcategoria = "Arcos", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(bow);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
         var slot = new EquipmentKitChoiceSlot
         {
             Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma à distância", Tipo = ItemTipo.Arma,
-            SubcategoriasCsv = "Arcos,Fundas e Baladeiras", Tier = Tier.F, Qtd = 1,
+            SubcategoriasCsv = "Arcos,Fundas e Baladeiras", Tier = RankDeItem.F, Qtd = 1,
             BonusSubcategoria = "Arcos", BonusNome = "Flecha de Madeira", BonusQtd = 10,
         };
         db.EquipmentKitChoiceSlots.Add(slot);
@@ -179,14 +179,14 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusNaoCondicional");
-        var sling = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Funda de Teste", Subcategoria = "Fundas e Baladeiras", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var sling = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Funda de Teste", Subcategoria = "Fundas e Baladeiras", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(sling);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
         var slot = new EquipmentKitChoiceSlot
         {
             Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma à distância", Tipo = ItemTipo.Arma,
-            SubcategoriasCsv = "Arcos,Fundas e Baladeiras", Tier = Tier.F, Qtd = 1,
+            SubcategoriasCsv = "Arcos,Fundas e Baladeiras", Tier = RankDeItem.F, Qtd = 1,
             BonusSubcategoria = "Arcos", BonusNome = "Flecha de Madeira", BonusQtd = 10,
         };
         db.EquipmentKitChoiceSlots.Add(slot);
@@ -207,8 +207,8 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmFamiliaParse");
-        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = Tier.F, Peso = 1, Preco = 0 };
-        var machado = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Machado Composto", Subcategoria = "Equipamento inicial - Arma - Corpo a Corpo - Machado", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
+        var machado = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Machado Composto", Subcategoria = "Equipamento inicial - Arma - Corpo a Corpo - Machado", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.AddRange(varinha, machado);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
@@ -228,7 +228,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmLegacyRaw");
-        var arco = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco Legado", Subcategoria = "Arcos", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var arco = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco Legado", Subcategoria = "Arcos", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(arco);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
@@ -304,7 +304,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmFamiliaCrossTipo");
-        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(armaMisComposta);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
@@ -327,14 +327,14 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusFamilia");
-        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(varinha);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
         var slot = new EquipmentKitChoiceSlot
         {
             Id = Guid.NewGuid(), KitId = kit.Id, Label = "Condutor", Tipo = ItemTipo.Arma,
-            SubcategoriasCsv = "Varinha", Tier = Tier.F, Qtd = 1,
+            SubcategoriasCsv = "Varinha", Tier = RankDeItem.F, Qtd = 1,
             BonusSubcategoria = "Varinha", BonusNome = "Cristal de Foco", BonusQtd = 1,
         };
         db.EquipmentKitChoiceSlots.Add(slot);
@@ -362,7 +362,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusFamiliaCrossTipo");
-        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = Tier.F, Peso = 1, Preco = 0 };
+        var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Tier = RankDeItem.F, Peso = 1, Preco = 0 };
         db.Add(armaMisComposta);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);

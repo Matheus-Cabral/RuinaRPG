@@ -176,10 +176,10 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             // be silently ignored at resolve time, so it's rejected here instead.
             if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Tier))
                 return BadRequest("Tier só é aplicável a slots de escolha de Tipo=Arma.");
-            Tier? tier = null;
+            RankDeItem? tier = null;
             if (!string.IsNullOrWhiteSpace(slot.Tier))
             {
-                if (!Enum.TryParse<Tier>(slot.Tier, out var parsedTier))
+                if (!Enum.TryParse<RankDeItem>(slot.Tier, out var parsedTier))
                     return BadRequest($"Tier inválido: \"{slot.Tier}\".");
                 tier = parsedTier;
             }

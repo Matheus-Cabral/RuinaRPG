@@ -39,7 +39,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             {
                 Nome = request.Nome,
                 Subcategoria = request.Subcategoria,
-                Tier = ParseEnum<Tier>(request.Tier),
+                Tier = ParseEnum<RankDeItem>(request.Tier),
                 Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura),
                 Dados = request.Dados,
                 Dano = request.Dano,
@@ -216,7 +216,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 break;
             case Arma a:
                 a.Subcategoria = request.Subcategoria;
-                a.Tier = ParseEnum<Tier>(request.Tier);
+                a.Tier = ParseEnum<RankDeItem>(request.Tier);
                 a.Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura);
                 a.Dados = request.Dados;
                 a.Dano = request.Dano;

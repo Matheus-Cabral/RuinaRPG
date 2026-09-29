@@ -5,7 +5,7 @@ namespace RuinaRPG.Infrastructure.Items;
 public class Arma : Item
 {
     public string? Subcategoria { get; set; }
-    public Tier? Tier { get; set; }
+    public RankDeItem? Tier { get; set; }
     public Empunhadura? Empunhadura { get; set; }
     public string? Dados { get; set; }
     public int? Dano { get; set; }

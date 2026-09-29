@@ -28,7 +28,7 @@ public class ItemMigrationTests : IClassFixture<PostgresFixture>
         db.Users.Add(gm);
         await db.SaveChangesAsync();
 
-        db.Set<Arma>().Add(new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Espada Curta", Peso = 1.5m, Preco = 50, Tier = Tier.F, Dano = 3 });
+        db.Set<Arma>().Add(new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Espada Curta", Peso = 1.5m, Preco = 50, Tier = RankDeItem.F, Dano = 3 });
         db.Set<ItemGeral>().Add(new ItemGeral { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Corda", Peso = 0.5m, Preco = 5 });
         await db.SaveChangesAsync();
 

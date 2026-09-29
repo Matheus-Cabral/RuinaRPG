@@ -180,7 +180,7 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
             var bow = new RuinaRPG.Infrastructure.Items.Arma
             {
                 Id = Guid.NewGuid(), GmId = Guid.Parse(gmId), Nome = "Arco de Teste F Npc", Subcategoria = "Arcos",
-                Tier = RuinaRPG.Domain.Items.Tier.F, Peso = 1, Preco = 0,
+                Tier = RuinaRPG.Domain.Items.RankDeItem.F, Peso = 1, Preco = 0,
             };
             db.Add(bow);
             await db.SaveChangesAsync();
