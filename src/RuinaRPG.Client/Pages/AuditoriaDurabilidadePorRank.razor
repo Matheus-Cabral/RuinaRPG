@@ -1,0 +1,89 @@
+@page "/auditoria/durabilidade-por-rank"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Durabilidade por Rank</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Durabilidade por Rank">
+        <TitleInfo>
+            <InfoPopup Title="Como funciona a Durabilidade por Rank">
+                A durabilidade máxima de Armas, Armaduras e Escudos vem do Rank do item, conforme esta tabela. Marque Inquebrável para que os itens daquele Rank nunca quebrem — a ficha mostra 'Inquebrável' e não controla a durabilidade atual. Itens sem Rank não têm durabilidade. Ao reduzir um valor, a durabilidade atual das fichas que passar do novo máximo é limitada a ele; ao aumentar, ela não é recarregada.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Rank</th><th>Durabilidade</th><th>Inquebrável</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var linha in _linhas)
+                {
+                    <tr>
+                        <td>@linha.Rank</td>
+                        <td><MudNumericField T="int?" Value="@linha.Durabilidade" ValueChanged="@(v => UpdateAsync(linha, durabilidade: v))" Min="1" Disabled="@linha.Inquebravel" /></td>
+                        <td><MudCheckBox T="bool" Value="@linha.Inquebravel" ValueChanged="@(v => UpdateAsync(linha, inquebravel: v))" /></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        </ChildContent>
+    </Section>
+}
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Durabilidade por Rank"),
+    };
+
+    private List<DurabilidadePorRankResponse> _linhas = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("durabilidades-por-rank");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a Durabilidade por Rank.";
+            return;
+        }
+
+        _linhas = await response.Content.ReadFromJsonAsync<List<DurabilidadePorRankResponse>>() ?? new();
+    }
+
+    private async Task UpdateAsync(DurabilidadePorRankResponse current, int? durabilidade = null, bool? inquebravel = null)
+    {
+        var novoInquebravel = inquebravel ?? current.Inquebravel;
+        var novaDurabilidade = novoInquebravel ? null : (durabilidade ?? current.Durabilidade);
+
+        var response = await Http.PutAsJsonAsync($"durabilidades-por-rank/{current.Rank}",
+            new UpdateDurabilidadePorRankRequest(novaDurabilidade, novoInquebravel));
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            return;
+        }
+
+        await LoadAsync();
+    }
+}
