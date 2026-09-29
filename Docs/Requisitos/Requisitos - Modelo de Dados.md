@@ -286,7 +286,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | CharacterSheetId | FK |
 | ItemId | FK → Items (Tipo=Arma) |
 | IsEquipped | bool |
-| DurabilidadeAtual | int | inicializada = Durabilidade Máxima do item (resolvida do `Items.Rank` via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) no momento em que a linha é criada; editável depois, mas sempre limitada a [0, máximo atual] — na leitura e ao salvar |
+| DurabilidadeAtual | int | inicializada = Durabilidade Máxima do item (resolvida do `Items.Rank` via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) no momento em que a linha é criada; editável depois, mas sempre limitada a [0, máximo atual] — na leitura e ao salvar. Backfill único na atualização (migration `RemoveDurabilidadeMaximaDosItens`): linhas de `CharacterWeapons`/`NpcWeapons`/`CreatureWeapons` cujo item não tinha Durabilidade Máxima digitada (gravadas com 0) recebem a durabilidade do Rank do item |
 
 **CharacterArmorSlots** — 3 linhas fixas por ficha (3.b). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
