@@ -140,8 +140,8 @@ public class EfeitosNoLivroDeRegrasTests : IClassFixture<PostgresFixture>, IAsyn
 
         var depois = await GetMarkdownAsync(token);
         Bloco(depois, "Cura").Should().Contain("Descrição nova da Cura pelo Auditor.");
-        Bloco(depois, "Aceleração").Should().Be(Bloco(antes, "Aceleração"));
-        Bloco(depois, "Contrato Mágico").Should().Be(Bloco(antes, "Contrato Mágico"));
+        // Everything outside the Cura block is byte-for-byte unchanged.
+        depois.Replace(Bloco(depois, "Cura"), "<<CURA>>").Should().Be(antes.Replace(Bloco(antes, "Cura"), "<<CURA>>"));
         GrauHtml(await GetLivroAsync(), 1).Should().Contain("Descrição nova da Cura pelo Auditor.");
     }
 
@@ -186,8 +186,9 @@ public class EfeitosNoLivroDeRegrasTests : IClassFixture<PostgresFixture>, IAsyn
         var md = await GetMarkdownAsync(token);
         var editado = md.Replace("## Aceleração\n", "## Chama Rubra\n\nEscrito à mão.\n\n## Aceleração\n");
         editado.Should().NotBe(md);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/graus-e-circulos", token,
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/graus-e-circulos", token,
             new UpdateRulebookDocumentOverrideRequest(editado)));
+        put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/efeitos", token,
             new CreateEfeitoRequest("Chama Rubra", 2, "Chama vermelha.", "Fixo", 3, null, null, null, null, false, null, null, null, [])));
@@ -251,5 +252,38 @@ public class EfeitosNoLivroDeRegrasTests : IClassFixture<PostgresFixture>, IAsyn
         restore.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         GrauHtml(await GetLivroAsync(), 6).Should().Contain("Brasa Oculta");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    public async Task Create_with_a_Grau_outside_1_to_9_returns_400(int grau)
+    {
+        var token = await RegisterAuditorAsync($"LivroEfeitoGrauC{grau}", $"livroefeitograuc{grau}@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/efeitos", token,
+            new CreateEfeitoRequest($"Fora do Livro {grau}", grau, "Grau inválido.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Grau deve estar entre 1 e 9.");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    public async Task Update_with_a_Grau_outside_1_to_9_returns_400_and_keeps_the_Livro_block(int grau)
+    {
+        var token = await RegisterAuditorAsync($"LivroEfeitoGrauU{grau}", $"livroefeitograuu{grau}@teste.com");
+        var nome = $"Faísca Válida {grau}";
+        var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/efeitos", token,
+            new CreateEfeitoRequest(nome, 2, "Faísca.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+        var id = (await create.Content.ReadFromJsonAsync<EfeitoResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/efeitos/{id}", token,
+            new UpdateEfeitoRequest($"Faísca Renomeada {grau}", grau, "Faísca.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Grau deve estar entre 1 e 9.");
+        GrauHtml(await GetLivroAsync(), 2).Should().Contain(nome);
     }
 }

@@ -35,7 +35,7 @@ else
         </TitleInfo>
         <ChildContent>
         <MudTextField T="string" @bind-Value="_newForm.Nome" Label="Nome" />
-        <MudNumericField T="int" @bind-Value="_newForm.Grau" Label="Grau/Círculo" />
+        <MudNumericField T="int" @bind-Value="_newForm.Grau" Label="Grau/Círculo" Min="1" Max="9" />
         <MudSelect T="string" @bind-Value="_newForm.TipoDeCusto" Label="Tipo de Custo">
             <MudSelectItem Value="@(nameof(TipoDeCusto.Fixo))">Fixo</MudSelectItem>
             <MudSelectItem Value="@(nameof(TipoDeCusto.PorUnidade))">Por Unidade</MudSelectItem>

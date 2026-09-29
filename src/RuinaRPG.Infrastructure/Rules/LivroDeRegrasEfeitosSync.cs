@@ -66,8 +66,8 @@ public class LivroDeRegrasEfeitosSync(RuinaRpgDbContext db)
         e.MaxUnidades, e.MaxEscalaPorGrau, e.CustoAlternativo, e.CustoAlternativoAPartirDoGrau,
         string.IsNullOrEmpty(e.PreRequisitosJson) ? [] : JsonSerializer.Deserialize<List<List<string>>>(e.PreRequisitosJson)!);
 
-    // The document only has sections for Graus 1-9; the catalog doesn't validate Grau, so an
-    // out-of-range one is left out of the Livro rather than crashing the request.
+    // The document only has sections for Graus 1-9. EfeitosController rejects any other Grau, so
+    // this is only a defensive skip for a legacy row written before that validation existed.
     private static bool GrauValido(int grau) => grau is >= 1 and <= 9;
 
     private async Task AplicarAsync(Func<string, string> operacao, Guid? autor)

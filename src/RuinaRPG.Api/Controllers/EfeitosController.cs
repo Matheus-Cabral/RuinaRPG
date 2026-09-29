@@ -46,6 +46,10 @@ public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync li
             request.CustoAlternativo, request.CustoAlternativoAPartirDoGrau);
         if (camposError is not null)
             return BadRequest(camposError);
+        // Graus & Círculos only has Graus 1-9, and every catalog Efeito must have a block in the
+        // Livro (Requisitos - Auditoria de Regras R0006).
+        if (request.Grau is < 1 or > 9)
+            return BadRequest("Grau deve estar entre 1 e 9.");
 
         var efeito = new Efeito
         {
@@ -85,6 +89,10 @@ public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync li
             request.CustoAlternativo, request.CustoAlternativoAPartirDoGrau);
         if (camposError is not null)
             return BadRequest(camposError);
+        // Graus & Círculos only has Graus 1-9, and every catalog Efeito must have a block in the
+        // Livro (Requisitos - Auditoria de Regras R0006).
+        if (request.Grau is < 1 or > 9)
+            return BadRequest("Grau deve estar entre 1 e 9.");
 
         var nomeAntigo = efeito.Nome;
         efeito.Nome = request.Nome; efeito.Grau = request.Grau; efeito.Descricao = request.Descricao;

@@ -93,7 +93,8 @@ public class RulebookDocumentsController(RuinaRpgDbContext db, LivroDeRegrasEfei
         }
 
         // "Restaurar padrão" of Graus & Círculos must still list every catalog Efeito — the
-        // embedded .md only has the original ones (Requisitos - Auditoria de Regras R0006).
+        // embedded .md only has the original ones (Requisitos - Auditoria de Regras R0006). Runs
+        // after the delete's save: the sync would otherwise re-read the still-tracked Deleted row.
         if (slug == LivroDeRegrasEfeitosSync.Slug)
             await livroDeRegras.SincronizarFaltantesAsync(CurrentUserId());
 
