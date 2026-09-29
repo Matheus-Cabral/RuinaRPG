@@ -11,9 +11,10 @@ namespace RuinaRPG.Domain.Rules;
 ///
 /// The document is `#` sections (one per Grau, in document order: 1st `#` = Grau 1, 2nd = Grau 2, …)
 /// each containing `##` blocks. A block spans its heading line through the line before the next
-/// `##`/`#` (whichever comes first). Three basic Efeitos (Dano, Alcance, Duração) share the
-/// `## Efeitos Básicos` heading, and every `Nome (X)` Efeito (e.g. "Libra (Arcana)") shares the
-/// `## Nome` heading with its siblings — those shared blocks are never rewritten or removed by sync.
+/// `##`/`#` (whichever comes first). A heading matches an Efeito Nome when both are equal after
+/// trimming and ignoring case and accents. Two exceptions share one heading: the three basic Efeitos
+/// (exactly Dano, Alcance, Duração) share `## Efeitos Básicos`, and every `Libra (X)` Efeito shares
+/// `## Libra` — those shared blocks are never rewritten or removed by sync.
 /// </summary>
 public static partial class GrausECirculosMarkdown
 {
@@ -23,21 +24,21 @@ public static partial class GrausECirculosMarkdown
     public static bool Contem(string md, string nome)
     {
         md = NormalizarQuebrasDeLinha(md);
-        var headings = ParseHeadings(md);
-        var normBase = Normalizar(StripParenteses(nome));
-
-        if (NomesBasicos.Contains(normBase))
-            return headings.Any(h => h.Level == 2 && Normalizar(h.Title) == Normalizar("Efeitos Básicos"));
-
-        var normFull = Normalizar(nome);
-        return headings.Any(h => h.Level == 2 && (Normalizar(h.Title) == normFull || Normalizar(h.Title) == normBase));
+        var chave = ChaveDoBloco(nome);
+        return ParseHeadings(md).Any(h => h.Level == 2 && Normalizar(h.Title) == chave);
     }
 
     public static bool EhBlocoCompartilhado(string nome)
     {
-        var normBase = Normalizar(StripParenteses(nome));
-        return NomesBasicos.Contains(normBase) || normBase == "libra";
+        var norm = Normalizar(nome);
+        return NomesBasicos.Contains(norm) || LibraRegex().IsMatch(norm);
     }
+
+    /// <summary>
+    /// Whether two Efeito Nomes are the same for the Livro (equal after trimming, ignoring case and
+    /// accents) — the catalog rejects such duplicates, since both would map to one `##` block.
+    /// </summary>
+    public static bool NomesEquivalentes(string a, string b) => Normalizar(a) == Normalizar(b);
 
     public static string Inserir(string md, int grau, string bloco)
     {
@@ -62,8 +63,10 @@ public static partial class GrausECirculosMarkdown
     public static string Substituir(string md, string nomeAntigo, int grau, string bloco)
     {
         md = NormalizarQuebrasDeLinha(md);
+        // A shared block (Efeitos Básicos / Libra) is never rewritten, but a rename away from a
+        // shared name still needs the new name's block (Inserir is a no-op if it's shared too).
         if (EhBlocoCompartilhado(nomeAntigo))
-            return md;
+            return Inserir(md, grau, bloco);
 
         var loc = LocalizarBloco(md, nomeAntigo);
         if (loc is null)
@@ -106,8 +109,7 @@ public static partial class GrausECirculosMarkdown
     private static BlocoLocalizado? LocalizarBloco(string md, string nome)
     {
         var headings = ParseHeadings(md);
-        var normBase = Normalizar(StripParenteses(nome));
-        var normFull = Normalizar(nome);
+        var chave = ChaveDoBloco(nome);
         var sectionIndex = -1;
 
         for (var i = 0; i < headings.Count; i++)
@@ -119,8 +121,7 @@ public static partial class GrausECirculosMarkdown
                 continue;
             }
 
-            var titulo = Normalizar(h.Title);
-            if (titulo == normFull || titulo == normBase)
+            if (Normalizar(h.Title) == chave)
             {
                 var end = i + 1 < headings.Count ? headings[i + 1].Start : md.Length;
                 return new BlocoLocalizado(h.Start, end, sectionIndex);
@@ -144,17 +145,23 @@ public static partial class GrausECirculosMarkdown
         return primeiraLinha.TrimStart('#').Trim();
     }
 
-    private static string StripParenteses(string nome)
+    // The normalized `##` heading title an Efeito Nome lives under.
+    private static string ChaveDoBloco(string nome)
     {
-        var trimmed = nome.Trim();
-        var match = ParenRegex().Match(trimmed);
-        return match.Success ? match.Groups[1].Value : trimmed;
+        var norm = Normalizar(nome);
+        if (NomesBasicos.Contains(norm))
+            return "efeitos basicos";
+        return LibraRegex().IsMatch(norm) ? "libra" : norm;
     }
 
     private static string NormalizarQuebrasDeLinha(string md) => md.Replace("\r\n", "\n");
 
     private static string Normalizar(string s)
     {
+        // EfeitoMarkdownBlock escapes a Nome starting with "#" as "\\#"; match it to the raw Nome.
+        s = s.Trim();
+        if (s.StartsWith("\\#", StringComparison.Ordinal))
+            s = s[1..];
         var formaD = s.Normalize(NormalizationForm.FormD);
         var sb = new StringBuilder(formaD.Length);
         foreach (var c in formaD)
@@ -166,6 +173,6 @@ public static partial class GrausECirculosMarkdown
     [GeneratedRegex(@"^(#{1,2})[ \t]+(.*?)[ \t]*$", RegexOptions.Multiline)]
     private static partial Regex HeadingRegex();
 
-    [GeneratedRegex(@"^(.+?)\s*\(.*\)$")]
-    private static partial Regex ParenRegex();
+    [GeneratedRegex(@"^libra\s*\(.*\)$")]
+    private static partial Regex LibraRegex();
 }

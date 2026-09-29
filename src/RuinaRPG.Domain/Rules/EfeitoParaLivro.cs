@@ -17,6 +17,7 @@ public sealed record EfeitoParaLivro(
     string? QuantidadeDerivadaDeEfeito,
     int? MaxUnidades,
     bool MaxEscalaPorGrau,
+    int? MaxContandoAPartirDoGrau,
     int? CustoAlternativo,
     int? CustoAlternativoAPartirDoGrau,
     IReadOnlyList<IReadOnlyList<string>> PreRequisitos);

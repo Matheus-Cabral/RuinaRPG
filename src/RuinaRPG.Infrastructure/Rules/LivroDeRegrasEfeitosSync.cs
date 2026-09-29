@@ -63,7 +63,7 @@ public class LivroDeRegrasEfeitosSync(RuinaRpgDbContext db)
     public static EfeitoParaLivro ParaLivro(Efeito e) => new(
         e.Nome, e.Grau, e.Descricao, e.TipoDeCusto,
         e.CustoFixo, e.CustoPorUnidade, e.UnidadeLabel, e.QuantidadeDerivadaDeEfeito,
-        e.MaxUnidades, e.MaxEscalaPorGrau, e.CustoAlternativo, e.CustoAlternativoAPartirDoGrau,
+        e.MaxUnidades, e.MaxEscalaPorGrau, e.MaxContandoAPartirDoGrau, e.CustoAlternativo, e.CustoAlternativoAPartirDoGrau,
         string.IsNullOrEmpty(e.PreRequisitosJson) ? [] : JsonSerializer.Deserialize<List<List<string>>>(e.PreRequisitosJson)!);
 
     // The document only has sections for Graus 1-9. EfeitosController rejects any other Grau, so

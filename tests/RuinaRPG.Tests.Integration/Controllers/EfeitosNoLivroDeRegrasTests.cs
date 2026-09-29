@@ -286,4 +286,36 @@ public class EfeitosNoLivroDeRegrasTests : IClassFixture<PostgresFixture>, IAsyn
         (await response.Content.ReadAsStringAsync()).Should().Contain("Grau deve estar entre 1 e 9.");
         GrauHtml(await GetLivroAsync(), 2).Should().Contain(nome);
     }
+
+    [Theory]
+    [InlineData(1, "cura")]
+    [InlineData(2, " CÚRA ")]
+    public async Task Create_with_a_Nome_equal_to_another_ignoring_case_and_accents_returns_400(int caso, string nome)
+    {
+        var token = await RegisterAuditorAsync($"LivroEfeitoNomeC{caso}", $"livroefeitonomec{caso}@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/efeitos", token,
+            new CreateEfeitoRequest(nome, 1, "Duplicada.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Já existe um Efeito com esse Nome.");
+    }
+
+    [Fact]
+    public async Task Update_to_a_Nome_equal_to_another_ignoring_case_and_accents_returns_400_but_recasing_its_own_Nome_is_fine()
+    {
+        var token = await RegisterAuditorAsync("LivroEfeitoNomeU", "livroefeitonomeu@teste.com");
+        var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/efeitos", token,
+            new CreateEfeitoRequest("Lampejo Sutil", 2, "Lampejo.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+        var id = (await create.Content.ReadFromJsonAsync<EfeitoResponse>())!.Id;
+
+        var duplicada = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/efeitos/{id}", token,
+            new UpdateEfeitoRequest("CURA", 2, "Lampejo.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+        duplicada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await duplicada.Content.ReadAsStringAsync()).Should().Contain("Já existe um Efeito com esse Nome.");
+
+        var recase = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/efeitos/{id}", token,
+            new UpdateEfeitoRequest("Lampejo SUTIL", 2, "Lampejo.", "Fixo", 2, null, null, null, null, false, null, null, null, [])));
+        recase.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }

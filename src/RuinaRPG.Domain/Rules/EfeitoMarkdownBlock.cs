@@ -13,22 +13,28 @@ public static class EfeitoMarkdownBlock
     {
         var paragrafos = new List<string>
         {
-            $"## {e.Nome}",
+            $"## {EscaparCerquilha(e.Nome)}",
             $"**Gasto:** {Gasto(e)}.",
         };
 
         if (e.MaxUnidades is { } max)
-            paragrafos.Add(e.MaxEscalaPorGrau
-                ? $"Max. {max} {e.UnidadeLabel} por Grau/Círculo."
-                : $"Max. {max} {e.UnidadeLabel}.");
+            paragrafos.Add(!e.MaxEscalaPorGrau
+                ? $"Max. {max} {e.UnidadeLabel}."
+                : e.MaxContandoAPartirDoGrau is { } inicio
+                    ? $"Max. {max} {e.UnidadeLabel} por Grau/Círculo, contando a partir do {inicio}º Grau/Círculo."
+                    : $"Max. {max} {e.UnidadeLabel} por Grau/Círculo.");
 
-        paragrafos.Add(e.Descricao);
+        paragrafos.Add(string.Join("\n", e.Descricao.Split('\n').Select(EscaparCerquilha)));
 
         foreach (var grupo in e.PreRequisitos)
             paragrafos.Add($"Obrigatória a compra de {string.Join(" ou ", grupo)}.");
 
         return string.Join("\n\n", paragrafos) + "\n";
     }
+
+    // Auditor-authored text must not open "#"/"##" headings, which would break the document's
+    // Grau sections / Efeito blocks — a leading "\\#" renders as a literal "#".
+    private static string EscaparCerquilha(string linha) => linha.StartsWith('#') ? "\\" + linha : linha;
 
     private static string Gasto(EfeitoParaLivro e)
     {

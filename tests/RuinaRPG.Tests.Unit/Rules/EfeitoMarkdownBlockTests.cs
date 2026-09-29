@@ -7,9 +7,9 @@ namespace RuinaRPG.Tests.Unit.Rules;
 public class EfeitoMarkdownBlockTests
 {
     private static EfeitoParaLivro Efeito(TipoDeCusto tipo, int? fixo = null, int? porUnidade = null, string? unidade = null,
-        string? derivado = null, int? max = null, bool maxPorGrau = false, int? alt = null, int? altGrau = null,
+        string? derivado = null, string nome = "Chama Viva", string descricao = "Envolve o alvo em chamas.", int? max = null, bool maxPorGrau = false, int? maxAPartir = null, int? alt = null, int? altGrau = null,
         IReadOnlyList<IReadOnlyList<string>>? pre = null) =>
-        new("Chama Viva", 2, "Envolve o alvo em chamas.", tipo, fixo, porUnidade, unidade, derivado, max, maxPorGrau, alt, altGrau, pre ?? []);
+        new(nome, 2, descricao, tipo, fixo, porUnidade, unidade, derivado, max, maxPorGrau, maxAPartir, alt, altGrau, pre ?? []);
 
     [Fact]
     public void Fixo() =>
@@ -45,4 +45,14 @@ public class EfeitoMarkdownBlockTests
     public void Alternative_cost() =>
         EfeitoMarkdownBlock.Gerar(Efeito(TipoDeCusto.Fixo, fixo: 3, alt: 5, altGrau: 4))
             .Should().Contain("**Gasto:** 3 PI (5 PI a partir do 4º Grau).");
+
+    [Fact]
+    public void Max_counting_from_a_grau() =>
+        EfeitoMarkdownBlock.Gerar(Efeito(TipoDeCusto.PorUnidade, porUnidade: 3, unidade: "Dado", max: 3, maxPorGrau: true, maxAPartir: 7))
+            .Should().Contain("\n\nMax. 3 Dado por Grau/Círculo, contando a partir do 7º Grau/Círculo.\n\n");
+
+    [Fact]
+    public void Lines_starting_with_hash_are_escaped_so_they_cannot_become_headings() =>
+        EfeitoMarkdownBlock.Gerar(Efeito(TipoDeCusto.Fixo, fixo: 3, nome: "# Chama", descricao: "Linha um.\n# Falso Grau\n## Falso bloco\nFim #."))
+            .Should().Be("## \\# Chama\n\n**Gasto:** 3 PI.\n\nLinha um.\n\\# Falso Grau\n\\## Falso bloco\nFim #.\n");
 }

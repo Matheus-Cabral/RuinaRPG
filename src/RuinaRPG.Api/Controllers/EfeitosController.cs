@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Enums;
+using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
 
@@ -39,7 +40,7 @@ public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync li
 
         if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto) || !Enum.IsDefined(tipoDeCusto))
             return BadRequest("TipoDeCusto inválido.");
-        if (await db.Efeitos.AnyAsync(e => e.Nome == request.Nome && !e.IsDeleted))
+        if (await NomeJaExisteAsync(request.Nome, idIgnorado: null))
             return BadRequest("Já existe um Efeito com esse Nome.");
         var camposError = ValidarCamposDoTipoDeCusto(
             tipoDeCusto, request.CustoFixo, request.CustoPorUnidade, request.QuantidadeDerivadaDeEfeito,
@@ -82,7 +83,7 @@ public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync li
 
         if (!Enum.TryParse<TipoDeCusto>(request.TipoDeCusto, out var tipoDeCusto) || !Enum.IsDefined(tipoDeCusto))
             return BadRequest("TipoDeCusto inválido.");
-        if (await db.Efeitos.AnyAsync(e => e.Id != id && e.Nome == request.Nome && !e.IsDeleted))
+        if (await NomeJaExisteAsync(request.Nome, idIgnorado: id))
             return BadRequest("Já existe um Efeito com esse Nome.");
         var camposError = ValidarCamposDoTipoDeCusto(
             tipoDeCusto, request.CustoFixo, request.CustoPorUnidade, request.QuantidadeDerivadaDeEfeito,
@@ -136,6 +137,18 @@ public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync li
     /// types). Also rejects an inconsistent CustoAlternativo/CustoAlternativoAPartirDoGrau pair,
     /// the same class of poison row (see Calcular's own use of that pair).
     /// </summary>
+    // Two Nomes equal ignoring case/accents would map to the same "## Nome" block in the Livro
+    // (GrausECirculosMarkdown), so they count as duplicates. The catalog is small (~50 rows), so
+    // the comparison runs in memory.
+    private async Task<bool> NomeJaExisteAsync(string nome, Guid? idIgnorado)
+    {
+        var nomes = await db.Efeitos
+            .Where(e => !e.IsDeleted && e.Id != idIgnorado)
+            .Select(e => e.Nome)
+            .ToListAsync();
+        return nomes.Any(n => GrausECirculosMarkdown.NomesEquivalentes(n, nome));
+    }
+
     private static string? ValidarCamposDoTipoDeCusto(
         TipoDeCusto tipoDeCusto, int? custoFixo, int? custoPorUnidade, string? quantidadeDerivadaDeEfeito,
         int? custoAlternativo, int? custoAlternativoAPartirDoGrau)
