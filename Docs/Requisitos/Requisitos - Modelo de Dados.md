@@ -638,6 +638,16 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Nome | string |
 | Descricao | text |
 
+**ArcaEvolucoes** — evoluções de uma Arca liberadas por nível (Habilidades Raciais R0006). Apagar a Arca apaga suas evoluções.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| ArcaEntryId | FK → ArcaEntries (cascade) |
+| Nivel | int, 1 a 50 |
+| Descricao | text |
+| CriadaEm | timestamptz — desempate entre evoluções do mesmo nível |
+
   
 
 # 11. Auditoria de Regras
