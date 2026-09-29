@@ -693,6 +693,54 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task RacialAbility_lists_only_Arca_evolucoes_unlocked_by_the_npc_level()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo1", "npcarcaevo1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/3", gmToken, new UpdateArcaEntryRequest("Sombra Fugaz", "Some por 1 turno.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(5, "cinco")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "dois")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(6, "seis")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 3, Nivel = 5 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("dois", "cinco");
+    }
+
+    [Fact]
+    public async Task RacialAbility_has_no_Arca_evolucoes_when_the_npc_is_not_Humano()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo2", "npcarcaevo2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "um")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 3, Nivel = 5 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos", ArcaRolada = 3, Nivel = 5 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaEvolucoes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RacialAbility_treats_an_Arca_created_only_by_an_evolucao_as_not_registered_but_lists_the_evolucao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo3", "npcarcaevo3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/8/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "um")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 8, Nivel = 1 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaNome.Should().BeNull();
+        body.ArcaDescricao.Should().BeNull();
+        body.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("um");
+    }
+
+    [Fact]
     public async Task RacialAbility_by_a_different_gm_returns_404()
     {
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwnerRacial2", "npcownerracial2@teste.com");

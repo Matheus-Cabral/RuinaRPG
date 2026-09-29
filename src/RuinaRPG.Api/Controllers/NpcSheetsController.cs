@@ -319,7 +319,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null, null, null, null);
+            return new RacialAbilityResponse(null, null, null, null, null, new());
 
         var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == sheet.GmId && o.Variante == sheet.Variante.Value);
         var (nome, descricao) = over is not null
@@ -328,14 +328,20 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         string? arcaNome = null;
         string? arcaDescricao = null;
+        var arcaEvolucoes = new List<ArcaEvolucaoResponse>();
         if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null)
         {
-            var arca = await db.ArcaEntries.FirstOrDefaultAsync(a => a.GmId == sheet.GmId && a.Roll == sheet.ArcaRolada.Value);
-            arcaNome = arca?.Nome;
-            arcaDescricao = arca?.Descricao;
+            var arca = await db.ArcaEntries.Include(a => a.Evolucoes)
+                .FirstOrDefaultAsync(a => a.GmId == sheet.GmId && a.Roll == sheet.ArcaRolada.Value);
+            // An Arca row created only to hold evoluções has an empty Nome — the sheet treats it as not registered.
+            arcaNome = string.IsNullOrEmpty(arca?.Nome) ? null : arca.Nome;
+            arcaDescricao = string.IsNullOrEmpty(arca?.Descricao) ? null : arca.Descricao;
+            if (arca is not null)
+                arcaEvolucoes = ArcaEvolucaoRules.Desbloqueadas(arca.Evolucoes, e => e.Nivel, e => e.CriadaEm, sheet.Nivel)
+                    .Select(e => new ArcaEvolucaoResponse(e.Id, e.Nivel, e.Descricao)).ToList();
         }
 
-        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao);
+        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao, arcaEvolucoes);
     }
 
     /// <summary>
