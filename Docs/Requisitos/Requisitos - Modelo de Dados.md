@@ -651,5 +651,5 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Id | PK |
 | Slug | string, único — "sistema-basico" \| "graus-e-circulos" \| "tabela-de-niveis" |
 | MarkdownText | text |
-| UpdatedByUserId | FK → Users |
+| UpdatedByUserId | FK → Users, NULL = escrita do sistema (ex.: a sincronização de Efeitos na inicialização do servidor — [[Requisitos - Auditoria de Regras]] R0006) |
 | UpdatedAt | DateTime |

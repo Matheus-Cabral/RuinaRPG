@@ -23,7 +23,7 @@ namespace RuinaRPG.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
-public class RulebookDocumentsController(RuinaRpgDbContext db) : ControllerBase
+public class RulebookDocumentsController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync livroDeRegras) : ControllerBase
 {
     private static readonly string[] ValidSlugs = ["sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas"];
 
@@ -91,6 +91,11 @@ public class RulebookDocumentsController(RuinaRpgDbContext db) : ControllerBase
             db.RulebookDocumentOverrides.Remove(existing);
             await db.SaveChangesAsync();
         }
+
+        // "Restaurar padrão" of Graus & Círculos must still list every catalog Efeito — the
+        // embedded .md only has the original ones (Requisitos - Auditoria de Regras R0006).
+        if (slug == LivroDeRegrasEfeitosSync.Slug)
+            await livroDeRegras.SincronizarFaltantesAsync(CurrentUserId());
 
         return NoContent();
     }

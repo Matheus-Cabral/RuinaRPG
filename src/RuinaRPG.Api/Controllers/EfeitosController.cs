@@ -15,12 +15,13 @@ namespace RuinaRPG.Api.Controllers;
 /// The "[[GRAUS & CÍRCULOS]]" effect catalog — global, Auditor-editable, same access model as
 /// TraitsController/CreatureExclusiveTraitsController: List open to any authenticated caller
 /// (every Magia/Habilidade-editing form uses it), Create/Update/Delete gated to the Rules
-/// Auditor.
+/// Auditor. Create/Update/Delete also keep the Efeito's block in the Livro de Regras' Graus &amp;
+/// Círculos document in sync (LivroDeRegrasEfeitosSync), saved in the same SaveChangesAsync.
 /// </summary>
 [ApiController]
 [Route("api/efeitos")]
 [Authorize]
-public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
+public class EfeitosController(RuinaRpgDbContext db, LivroDeRegrasEfeitosSync livroDeRegras) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<EfeitoResponse>>> List()
@@ -58,6 +59,7 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
             IsCustomized = true, UpdatedByUserId = CurrentUserId(), UpdatedAt = DateTime.UtcNow,
         };
         db.Efeitos.Add(efeito);
+        await livroDeRegras.AoCriarAsync(efeito, CurrentUserId());
         await db.SaveChangesAsync();
 
         return Created(string.Empty, ToResponse(efeito));
@@ -84,6 +86,7 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
         if (camposError is not null)
             return BadRequest(camposError);
 
+        var nomeAntigo = efeito.Nome;
         efeito.Nome = request.Nome; efeito.Grau = request.Grau; efeito.Descricao = request.Descricao;
         efeito.TipoDeCusto = tipoDeCusto; efeito.CustoFixo = request.CustoFixo; efeito.CustoPorUnidade = request.CustoPorUnidade;
         efeito.UnidadeLabel = request.UnidadeLabel; efeito.QuantidadeDerivadaDeEfeito = request.QuantidadeDerivadaDeEfeito;
@@ -92,6 +95,7 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
         efeito.CustoAlternativo = request.CustoAlternativo; efeito.CustoAlternativoAPartirDoGrau = request.CustoAlternativoAPartirDoGrau;
         efeito.PreRequisitosJson = JsonSerializer.Serialize(request.PreRequisitos);
         efeito.IsCustomized = true; efeito.UpdatedByUserId = CurrentUserId(); efeito.UpdatedAt = DateTime.UtcNow;
+        await livroDeRegras.AoEditarAsync(nomeAntigo, efeito, CurrentUserId());
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -110,6 +114,7 @@ public class EfeitosController(RuinaRpgDbContext db) : ControllerBase
 
         efeito.IsDeleted = true;
         efeito.UpdatedByUserId = CurrentUserId(); efeito.UpdatedAt = DateTime.UtcNow;
+        await livroDeRegras.AoExcluirAsync(efeito, CurrentUserId());
         await db.SaveChangesAsync();
 
         return NoContent();

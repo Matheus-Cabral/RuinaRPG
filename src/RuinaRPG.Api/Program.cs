@@ -71,6 +71,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddSingleton<IRulesDataProvider, RulesDataProvider>();
 builder.Services.AddScoped<IRulebookRenderer, RulebookRenderer>();
+builder.Services.AddScoped<LivroDeRegrasEfeitosSync>();
 builder.Services.AddScoped<DurabilidadePorRankProvider>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
 builder.Services.AddScoped<CharacterSheetStats>();
@@ -216,6 +217,9 @@ if (args.Contains("--migrate"))
     await EfeitoSeeder.SeedAsync(migrateDb);
     app.Logger.LogInformation("Efeito seed: catalog synced");
 
+    var migrateLivroEfeitosCount = await migrateScope.ServiceProvider.GetRequiredService<LivroDeRegrasEfeitosSync>().SincronizarFaltantesAsync();
+    app.Logger.LogInformation("Livro de Regras (Graus & Círculos): {InsertedCount} Efeito block(s) added", migrateLivroEfeitosCount);
+
     var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
 
@@ -288,6 +292,9 @@ if (app.Environment.IsDevelopment())
 
     await EfeitoSeeder.SeedAsync(db);
     app.Logger.LogInformation("Efeito seed: catalog synced");
+
+    var livroEfeitosCount = await scope.ServiceProvider.GetRequiredService<LivroDeRegrasEfeitosSync>().SincronizarFaltantesAsync();
+    app.Logger.LogInformation("Livro de Regras (Graus & Círculos): {InsertedCount} Efeito block(s) added", livroEfeitosCount);
 
     var catalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(db);
     app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", catalogSeedCount);

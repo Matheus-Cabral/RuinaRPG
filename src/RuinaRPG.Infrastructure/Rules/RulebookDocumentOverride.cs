@@ -12,6 +12,6 @@ public class RulebookDocumentOverride
     public Guid Id { get; set; }
     public required string Slug { get; set; }
     public required string MarkdownText { get; set; }
-    public Guid UpdatedByUserId { get; set; }
+    public Guid? UpdatedByUserId { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
