@@ -291,6 +291,25 @@ public class CatalogoItemFormTests : MudBunitContext
     }
 
     [Fact]
+    public async Task When_the_durabilidades_table_fails_to_load_a_chosen_Rank_shows_an_unknown_Durabilidade()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("durabilidades-por-rank")
+                ? new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50);
+
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("D"));
+
+        cut.Markup.Should().Contain("Durabilidade: —");
+        cut.Markup.Should().NotContain("Sem durabilidade");
+    }
+
+    [Fact]
     public async Task Clearing_the_Rank_shows_Sem_durabilidade()
     {
         CreateClientWithDurabilidadesPorRank();

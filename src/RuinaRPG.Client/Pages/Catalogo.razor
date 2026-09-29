@@ -28,7 +28,12 @@
                               Label="Subcategoria" Clearable="true" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null" />
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudTextField T="string" @bind-Value="_rankFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Rank" />
+            <MudSelect T="string" @bind-Value="_rankFiltro" @bind-Value:after="LoadAsync" Label="Rank">
+                @foreach (var (valor, rotulo) in RankFiltroOptions)
+                {
+                    <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+                }
+            </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_categoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Categoria" />
@@ -85,6 +90,10 @@
     private string _tipoFiltro = "";
     private string? _subcategoriaFiltro;
     private string _rankFiltro = "";
+
+    // "Todos" + F..SS (RankDeItem, na ordem de declaração) — os mesmos Ranks do formulário do item.
+    internal static readonly (string Valor, string Rotulo)[] RankFiltroOptions =
+        [("", "Todos"), .. CatalogoItemForm.RankOptions.Select(r => (r, r))];
     private string _categoriaFiltro = "";
     private string _tipoDeDanoFiltro = "";
     private List<ItemResponse> _items = new();

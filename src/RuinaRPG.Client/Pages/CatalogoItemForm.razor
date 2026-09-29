@@ -153,6 +153,7 @@
     private string? _errorMessage;
     private Dictionary<RankDeItem, DurabilidadeDeRank> _durabilidadesPorRank = new();
     private string _durabilidadeHint = "Sem durabilidade";
+    private bool _durabilidadesPorRankIndisponivel;
 
     // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
     // Rank page and the DurabilidadesPorRankController both work off of.
@@ -244,7 +245,11 @@
     {
         var response = await Http.GetAsync("durabilidades-por-rank");
         if (!response.IsSuccessStatusCode)
+        {
+            // Sem a tabela não dá pra saber a durabilidade de um Rank — o hint não pode afirmar "Sem durabilidade".
+            _durabilidadesPorRankIndisponivel = true;
             return;
+        }
 
         var linhas = await response.Content.ReadFromJsonAsync<List<DurabilidadePorRankResponse>>() ?? new();
         _durabilidadesPorRank = linhas
@@ -261,6 +266,11 @@
     private void RecomputeDurabilidadeHint()
     {
         RankDeItem? rank = Enum.TryParse<RankDeItem>(_form.Rank, out var parsed) ? parsed : null;
+        if (rank is not null && _durabilidadesPorRankIndisponivel)
+        {
+            _durabilidadeHint = "Durabilidade: —";
+            return;
+        }
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, _durabilidadesPorRank);
         _durabilidadeHint = inquebravel ? "Inquebrável" : maxima is null ? "Sem durabilidade" : $"Durabilidade: {maxima}";
     }
