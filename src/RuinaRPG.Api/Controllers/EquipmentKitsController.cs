@@ -194,7 +194,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 Label = slot.Label,
                 Tipo = tipo,
                 SubcategoriasCsv = slot.Subcategorias is null ? null : string.Join(",", slot.Subcategorias),
-                Tier = tier,
+                Rank = tier,
                 Qtd = slot.Qtd,
                 BonusSubcategoria = slot.BonusSubcategoria,
                 BonusNome = slot.BonusNome,
@@ -217,7 +217,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome, i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
             slots.Select(s => new EquipmentKitChoiceSlotResponse(s.Id.ToString(), s.Label, s.Tipo.ToString(),
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                s.Tier?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
+                s.Rank?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
     }
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()

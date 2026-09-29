@@ -30,12 +30,12 @@ public class EquipmentKitSchemaTests : IClassFixture<PostgresFixture>, IAsyncLif
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit de Teste", Descricao = "Descrição de teste", Ciclos = 5 };
         db.EquipmentKits.Add(kit);
         db.EquipmentKitItems.Add(new EquipmentKitItem { Id = Guid.NewGuid(), KitId = kit.Id, Nome = "Mochila", Tipo = ItemTipo.ItemGeral, Qtd = 1 });
-        db.EquipmentKitChoiceSlots.Add(new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Tier = RankDeItem.F, Qtd = 1 });
+        db.EquipmentKitChoiceSlots.Add(new EquipmentKitChoiceSlot { Id = Guid.NewGuid(), KitId = kit.Id, Label = "Arma", Tipo = ItemTipo.Arma, Rank = RankDeItem.F, Qtd = 1 });
         await db.SaveChangesAsync();
 
         var reloadedItem = await db.EquipmentKitItems.SingleAsync(i => i.KitId == kit.Id);
         reloadedItem.Nome.Should().Be("Mochila");
         var reloadedSlot = await db.EquipmentKitChoiceSlots.SingleAsync(s => s.KitId == kit.Id);
-        reloadedSlot.Tier.Should().Be(RankDeItem.F);
+        reloadedSlot.Rank.Should().Be(RankDeItem.F);
     }
 }

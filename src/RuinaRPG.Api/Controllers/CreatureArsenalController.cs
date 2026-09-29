@@ -313,7 +313,7 @@ public class CreatureArsenalController(RuinaRpgDbContext db) : ControllerBase
         {
             var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
             var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-            return new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Tier?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima, imageUrl, item.Descricao);
+            return new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Rank?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima, imageUrl, item.Descricao);
         }
 
         // A manual (natural attack) weapon has no catalog Item to read an ImageUrl/Descricao from.

@@ -39,7 +39,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
             {
                 Nome = request.Nome,
                 Subcategoria = request.Subcategoria,
-                Tier = ParseEnum<RankDeItem>(request.Tier),
+                Rank = ParseEnum<RankDeItem>(request.Tier),
                 Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura),
                 Dados = request.Dados,
                 Dano = request.Dano,
@@ -172,7 +172,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
-                a.Subcategoria, a.Descricao, a.Tier?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
+                a.Subcategoria, a.Descricao, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
                 a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
                 ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,
@@ -216,7 +216,7 @@ public class ItemsController(RuinaRpgDbContext db) : ControllerBase
                 break;
             case Arma a:
                 a.Subcategoria = request.Subcategoria;
-                a.Tier = ParseEnum<RankDeItem>(request.Tier);
+                a.Rank = ParseEnum<RankDeItem>(request.Tier);
                 a.Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura);
                 a.Dados = request.Dados;
                 a.Dano = request.Dano;

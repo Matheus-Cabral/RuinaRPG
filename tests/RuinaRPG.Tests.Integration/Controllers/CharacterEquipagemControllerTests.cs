@@ -174,7 +174,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
             var bow = new RuinaRPG.Infrastructure.Items.Arma
             {
                 Id = Guid.NewGuid(), GmId = Guid.Parse(gmId), Nome = "Arco de Teste F", Subcategoria = "Arcos",
-                Tier = RuinaRPG.Domain.Items.RankDeItem.F, Peso = 1, Preco = 0,
+                Rank = RuinaRPG.Domain.Items.RankDeItem.F, Peso = 1, Preco = 0,
             };
             db.Add(bow);
             await db.SaveChangesAsync();

@@ -276,7 +276,7 @@ public class NpcArsenalController(RuinaRpgDbContext db) : ControllerBase
     {
         var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        return new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Tier?.ToString(), item.Peso, weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0, imageUrl, item.Descricao);
+        return new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, weapon.DurabilidadeAtual, item.DurabilidadeMaxima ?? 0, imageUrl, item.Descricao);
     }
 
     private async Task<NpcArmorSlotResponse> ToArmorSlotResponseAsync(NpcArmorSlot slot)

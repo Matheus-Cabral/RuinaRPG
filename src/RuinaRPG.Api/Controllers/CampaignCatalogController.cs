@@ -140,7 +140,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
                 g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
-                a.Subcategoria, null, a.Tier?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
+                a.Subcategoria, null, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
                 a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
                 ar.Subcategoria, null, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,

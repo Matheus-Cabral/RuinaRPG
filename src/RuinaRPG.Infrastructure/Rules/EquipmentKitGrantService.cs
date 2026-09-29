@@ -41,8 +41,8 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
         {
             case ItemTipo.Arma:
                 var armaQuery = db.Set<Arma>().Where(a => a.GmId == gmId);
-                if (slot.Tier is not null)
-                    armaQuery = armaQuery.Where(a => a.Tier == slot.Tier);
+                if (slot.Rank is not null)
+                    armaQuery = armaQuery.Where(a => a.Rank == slot.Rank);
                 var armas = await armaQuery.Select(a => new { a.Id, a.Nome, a.Subcategoria }).ToListAsync();
                 candidates.AddRange(armas.Where(a => Matches(a.Subcategoria)).Select(a => (a.Id, a.Nome)));
                 break;
