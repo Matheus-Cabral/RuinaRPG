@@ -10,7 +10,7 @@
 
   
 
-> **Catálogo inicial**: todo GM começa com esse mesmo levantamento (`ruina-itens.docx`) já cadastrado como itens de catálogo — nenhum tipo Artefato, já que o documento-fonte não descreve nenhum. Peso e Preço nascem em **0** e Durabilidade/RF/RM ficam **vazios** em todos eles, pois o documento não traz esses valores; um Escudo cujo "Req. Fortitude" a fonte descreve é gravado no campo Requisito de Vigor (R0006) — não existe um requisito de Fortitude separado no app. A partir daí esses itens são cadastros comuns: o GM edita ou exclui qualquer um deles como faria com um item criado do zero (R0007).
+> **Catálogo inicial**: todo GM começa com esse mesmo levantamento (`ruina-itens.docx`) já cadastrado como itens de catálogo — nenhum tipo Artefato, já que o documento-fonte não descreve nenhum. Peso e Preço nascem em **0** e RF/RM ficam **vazios** em todos eles, pois o documento não traz esses valores (a Durabilidade vem do Rank de cada Arma, ver R0004); um Escudo cujo "Req. Fortitude" a fonte descreve é gravado no campo Requisito de Vigor (R0006) — não existe um requisito de Fortitude separado no app. A partir daí esses itens são cadastros comuns: o GM edita ou exclui qualquer um deles como faria com um item criado do zero (R0007).
 
   
 
@@ -29,7 +29,7 @@
 - **Nome**: busca por texto livre (substring, sem diferenciar maiúsculas/minúsculas).
 - **Tipo**: Item Geral, Arma, Armadura, Escudo ou Artefato (ver R0002).
 - **Subcategoria**: depende do Tipo selecionado (ver R0003 e R0004). Como o número de subcategorias cadastradas cresce livremente (dropdown extensível, ver R0003/R0004), o filtro é uma lista pesquisável (o GM digita para filtrar as subcategorias já em uso, em vez de rolar uma lista longa).
-- **Tier / Categoria**: Tier (F a S) para Armas; Categoria (Leve/Médio/Pesada) para Armaduras e Escudos.
+- **Rank / Categoria**: Rank (F a SS) para Armas, Armaduras e Escudos; Categoria (Leve/Médio/Pesada) para Armaduras e Escudos.
 - **Tipo de Dano**: Cortante, Perfurante, Contundente ou Mágico (específico de Armas).
 
   
@@ -60,7 +60,7 @@
 
 - **Nome**: text input.
 - **Subcategoria**: dropdown extensível, como em R0003. As subcategorias observadas são: Lâminas (Facas e Punhais), Espadas, Machados, Lanças, Mangual, Clavas e Bastões, Facas de Caça, Arcos, Varinhas Mágicas e Cajados Mágicos.
-- **Tier**: dropdown com os valores F, E, D, C, B, A, S.
+- **Rank**: dropdown com os valores F, E, D, C, B, A, S, SS (opcional). Define a Durabilidade da arma (ver abaixo).
 - **Empunhadura**: dropdown com os valores "Uma Mão" ou "Duas Mãos".
 - **Dados**: text input em notação de dado (ex: `2D10`) — quais e quantos dados a arma rola. Não é um campo numérico porque varia em quantidade e face do dado. Exibe travessão para armas que não rolam dado próprio (ex: Facas de Caça, que só somam um modificador a outra arma).
 - **Dano**: valor numérico — o modificador fixo somado ao resultado dos Dados (ex: `+5`).
@@ -72,7 +72,7 @@
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003.
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008).
 - **Imagem**: opcional, mesmo comportamento de R0003.
-- **Durabilidade**: valor numérico inteiro ≥ 0 — o máximo de durabilidade da arma, definido livremente pelo GM (ver "[[GRAUS & CÍRCULOS]]", efeito "Ato Múltiplo", que já referencia a durabilidade da arma como recurso consumível). Este é o valor **máximo**; o valor **atual** só existe quando a arma está vinculada a uma ficha (ver "[[Requisitos - Ficha de Personagem]]" 3.a).
+- **Durabilidade**: não é mais digitada — vem do Rank, conforme a [[Tabela de Durabilidade por Rank]] (editável pelo Auditor de Regras); sem Rank, o item não tem durabilidade; Rank inquebrável → a ficha mostra "Inquebrável". Este é o valor **máximo** (ver "[[GRAUS & CÍRCULOS]]", efeito "Ato Múltiplo", que já referencia a durabilidade da arma como recurso consumível); o valor **atual** só existe quando a arma está vinculada a uma ficha (ver "[[Requisitos - Ficha de Personagem]]" 3.a).
 
   
 
@@ -82,6 +82,7 @@
 
 - **Nome**: text input.
 - **Categoria**: dropdown com os valores Leve, Médio ou Pesada.
+- **Rank**: mesmo dropdown de R0004 (F a SS), opcional.
 - **Defesa**: valor numérico concedido por peça equipada.
 - **RF (Redução Física)**: valor numérico por peça equipada (ver "Redução Física" em "[[Formulas]]").
 - **RM (Redução Mágica)**: valor numérico por peça equipada (ver "Redução Mágica" em "[[Formulas]]").
@@ -91,7 +92,7 @@
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003 (referente a uma peça).
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008), referente a uma peça.
 - **Imagem**: opcional, mesmo comportamento de R0003.
-- **Durabilidade**: valor numérico inteiro ≥ 0, máximo definido pelo GM, mesmo comportamento de R0004 (referente a uma peça).
+- **Durabilidade**: não é mais digitada — vem do Rank, conforme a [[Tabela de Durabilidade por Rank]] (editável pelo Auditor de Regras); sem Rank, o item não tem durabilidade; Rank inquebrável → a ficha mostra "Inquebrável". Referente a uma peça.
 
   
 
@@ -101,6 +102,7 @@
 
 - **Nome**: text input.
 - **Categoria**: dropdown com os valores Leve, Médio ou Pesada.
+- **Rank**: mesmo dropdown de R0004 (F a SS), opcional.
 - **Bônus de Defesa**: valor numérico (ex: `+10`).
 - **Penalidade**: text input, mesmo comportamento de R0005.
 - **Requisito de Vigor**: valor numérico mínimo exigido para equipar sem penalidade adicional. Exibe travessão quando não houver requisito.
@@ -108,7 +110,7 @@
 - **Peso**: valor numérico decimal (float) ≥ 0, mesmo comportamento de R0003.
 - **Preço**: valor numérico inteiro ≥ 0, em Ciclos (ver R0008).
 - **Imagem**: opcional, mesmo comportamento de R0003.
-- **Durabilidade**: valor numérico inteiro ≥ 0, máximo definido pelo GM, mesmo comportamento de R0004.
+- **Durabilidade**: não é mais digitada — vem do Rank, conforme a [[Tabela de Durabilidade por Rank]] (editável pelo Auditor de Regras); sem Rank, o item não tem durabilidade; Rank inquebrável → a ficha mostra "Inquebrável".
 
   
 

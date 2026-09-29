@@ -1,10 +1,15 @@
+using Bunit;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
+using RuinaRPG.Tests.Client.Shared;
+using System.Net;
+using System.Net.Http.Json;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Pages;
 
-public class CatalogoTests
+public class CatalogoTests : MudBunitContext
 {
     [Fact]
     public void FiltrarSubcategorias_returns_everything_when_the_query_is_blank()
@@ -25,21 +30,46 @@ public class CatalogoTests
     [Fact]
     public void BuildQueryString_includes_nome_when_set()
     {
-        Catalogo.BuildQueryString(nome: "Espada", tipo: "", subcategoria: null, tier: null, categoria: null, tipoDeDano: null)
+        Catalogo.BuildQueryString(nome: "Espada", tipo: "", subcategoria: null, rank: null, categoria: null, tipoDeDano: null)
             .Should().Be("?nome=Espada");
     }
 
     [Fact]
     public void BuildQueryString_omits_nome_when_blank()
     {
-        Catalogo.BuildQueryString(nome: "  ", tipo: "", subcategoria: null, tier: null, categoria: null, tipoDeDano: null)
+        Catalogo.BuildQueryString(nome: "  ", tipo: "", subcategoria: null, rank: null, categoria: null, tipoDeDano: null)
             .Should().Be("");
     }
 
     [Fact]
     public void BuildQueryString_combines_every_filter()
     {
-        Catalogo.BuildQueryString(nome: "Espada", tipo: "Arma", subcategoria: "Lâmina", tier: "1", categoria: "Corte", tipoDeDano: "Cortante")
-            .Should().Be("?nome=Espada&tipo=Arma&subcategoria=L%C3%A2mina&tier=1&categoria=Corte&tipoDeDano=Cortante");
+        Catalogo.BuildQueryString(nome: "Espada", tipo: "Arma", subcategoria: "Lâmina", rank: "F", categoria: "Corte", tipoDeDano: "Cortante")
+            .Should().Be("?nome=Espada&tipo=Arma&subcategoria=L%C3%A2mina&rank=F&categoria=Corte&tipoDeDano=Cortante");
+    }
+
+    [Fact]
+    public async Task The_Rank_filter_is_a_select_of_Todos_plus_F_through_SS_that_filters_by_the_exact_Rank()
+    {
+        var requested = new List<string>();
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            requested.Add(request.RequestUri!.PathAndQuery);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<Catalogo>();
+        await Task.Delay(50);
+
+        cut.FindComponents<MudBlazor.MudTextField<string>>().Should().NotContain(c => c.Instance.Label == "Rank");
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        Catalogo.RankFiltroOptions.Should().BeEquivalentTo(
+            new[] { ("", "Todos"), ("F", "F"), ("E", "E"), ("D", "D"), ("C", "C"), ("B", "B"), ("A", "A"), ("S", "S"), ("SS", "SS") },
+            o => o.WithStrictOrdering());
+
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("SS"));
+
+        requested.Should().Contain(q => q.EndsWith("items?rank=SS"));
     }
 }

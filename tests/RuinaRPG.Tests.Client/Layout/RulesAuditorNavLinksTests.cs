@@ -30,6 +30,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
         ("Efeitos", "auditoria/efeitos"),
         ("Históricos", "auditoria/historicos"),
         ("Equipagem", "auditoria/equipagem"),
+        ("Durabilidade por Rank", "auditoria/durabilidade-por-rank"),
     };
 
     private static HttpClient AuditorHttp() => FakeHttpMessageHandler.CreateClient(_ =>
@@ -57,7 +58,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
     }
 
     [Fact]
-    public async Task Renders_a_MudNavGroup_titled_Auditoria_with_the_6_links_and_new_texts_in_order()
+    public async Task Renders_a_MudNavGroup_titled_Auditoria_with_the_7_links_and_new_texts_in_order()
     {
         Services.AddScoped(_ => AuditorHttp());
 
@@ -74,7 +75,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             ExpectedLinks.Select(l => l.Href), options => options.WithStrictOrdering());
     }
 
-    // Task brief "sidebar icons": the "Auditoria" MudNavGroup itself and each of its 6 children
+    // Task brief "sidebar icons": the "Auditoria" MudNavGroup itself and each of its children
     // carry a Material icon, same style as the rest of the drawer (Icons.Material.Filled.*,
     // Color.Primary).
     [Fact]
@@ -97,6 +98,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             Icons.Material.Filled.Bolt,
             Icons.Material.Filled.History,
             Icons.Material.Filled.Shield,
+            Icons.Material.Filled.Build,
         };
 
         var links = cut.FindComponents<MudNavLink>();

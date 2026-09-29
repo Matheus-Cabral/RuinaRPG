@@ -28,7 +28,12 @@
                               Label="Subcategoria" Clearable="true" CoerceText="false" ResetValueOnEmptyText="true" MaxItems="null" />
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudTextField T="string" @bind-Value="_tierFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Tier" />
+            <MudSelect T="string" @bind-Value="_rankFiltro" @bind-Value:after="LoadAsync" Label="Rank">
+                @foreach (var (valor, rotulo) in RankFiltroOptions)
+                {
+                    <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+                }
+            </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_categoriaFiltro" Immediate="true" @bind-Value:after="LoadAsync" Label="Categoria" />
@@ -84,7 +89,11 @@
     private string _nomeFiltro = "";
     private string _tipoFiltro = "";
     private string? _subcategoriaFiltro;
-    private string _tierFiltro = "";
+    private string _rankFiltro = "";
+
+    // "Todos" + F..SS (RankDeItem, na ordem de declaração) — os mesmos Ranks do formulário do item.
+    internal static readonly (string Valor, string Rotulo)[] RankFiltroOptions =
+        [("", "Todos"), .. CatalogoItemForm.RankOptions.Select(r => (r, r))];
     private string _categoriaFiltro = "";
     private string _tipoDeDanoFiltro = "";
     private List<ItemResponse> _items = new();
@@ -126,7 +135,7 @@
 
     private async Task LoadAsync()
     {
-        var queryString = BuildQueryString(_nomeFiltro, _tipoFiltro, _subcategoriaFiltro, _tierFiltro, _categoriaFiltro, _tipoDeDanoFiltro);
+        var queryString = BuildQueryString(_nomeFiltro, _tipoFiltro, _subcategoriaFiltro, _rankFiltro, _categoriaFiltro, _tipoDeDanoFiltro);
         var response = await Http.GetAsync($"items{queryString}");
         if (!response.IsSuccessStatusCode)
         {
@@ -138,7 +147,7 @@
         _errorMessage = null;
     }
 
-    internal static string BuildQueryString(string? nome, string? tipo, string? subcategoria, string? tier, string? categoria, string? tipoDeDano)
+    internal static string BuildQueryString(string? nome, string? tipo, string? subcategoria, string? rank, string? categoria, string? tipoDeDano)
     {
         var query = new List<string>();
         if (!string.IsNullOrWhiteSpace(nome))
@@ -147,8 +156,8 @@
             query.Add($"tipo={tipo}");
         if (!string.IsNullOrWhiteSpace(subcategoria))
             query.Add($"subcategoria={Uri.EscapeDataString(subcategoria)}");
-        if (!string.IsNullOrWhiteSpace(tier))
-            query.Add($"tier={Uri.EscapeDataString(tier)}");
+        if (!string.IsNullOrWhiteSpace(rank))
+            query.Add($"rank={Uri.EscapeDataString(rank)}");
         if (!string.IsNullOrWhiteSpace(categoria))
             query.Add($"categoria={Uri.EscapeDataString(categoria)}");
         if (!string.IsNullOrWhiteSpace(tipoDeDano))

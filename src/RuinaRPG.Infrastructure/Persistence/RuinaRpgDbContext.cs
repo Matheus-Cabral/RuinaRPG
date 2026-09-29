@@ -24,6 +24,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
+    public DbSet<DurabilidadePorRank> DurabilidadesPorRank => Set<DurabilidadePorRank>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
     public DbSet<RuneBankEntry> RuneBankEntries => Set<RuneBankEntry>();
@@ -164,6 +165,15 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         builder.Entity<Armadura>().Property(i => i.Subcategoria).HasColumnName("Armadura_Subcategoria");
         builder.Entity<Escudo>().Property(i => i.Subcategoria).HasColumnName("Escudo_Subcategoria");
         builder.Entity<Artefato>().Property(i => i.Subcategoria).HasColumnName("Artefato_Subcategoria");
+
+        // Same TPH conflict-resolution problem as Subcategoria above, now for Rank (ex-Tier):
+        // Arma/Armadura/Escudo each declare their own Rank property, so every one needs its own
+        // pinned column name or EF Core's TPH resolution would collapse them onto one shared column.
+        builder.Entity<Arma>().Property(i => i.Rank).HasColumnName("Arma_Rank");
+        builder.Entity<Armadura>().Property(i => i.Rank).HasColumnName("Armadura_Rank");
+        builder.Entity<Escudo>().Property(i => i.Rank).HasColumnName("Escudo_Rank");
+
+        builder.Entity<DurabilidadePorRank>().HasKey(d => d.Rank);
 
         builder.Entity<RacialAbilityOverride>(entity =>
         {

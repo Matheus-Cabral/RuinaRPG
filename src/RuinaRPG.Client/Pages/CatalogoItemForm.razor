@@ -10,6 +10,7 @@
 @using MudBlazor
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.Items
+@using RuinaRPG.Contracts.Rules
 
 @if (!OnCreated.HasDelegate)
 {
@@ -59,7 +60,13 @@
     {
         <Section Title="Arma">
             <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Tier" Label="Tier" @bind-Value:after="NotifySavedAsync" />
+            <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
+                @foreach (var rank in RankOptions)
+                {
+                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@_durabilidadeHint</MudText>
             <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="int?" @bind-Value="_form.Dano" Label="Dano" @bind-Value:after="NotifySavedAsync" />
@@ -67,7 +74,6 @@
             <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.RequisitoAtributo" Label="Requisito de Atributo" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" For="@(() => _form.DurabilidadeMaxima)" Label="Durabilidade" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo is "Armadura" or "Escudo")
@@ -87,7 +93,13 @@
             }
             <MudTextField T="string" @bind-Value="_form.Penalidade" Label="Penalidade" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="int?" @bind-Value="_form.RequisitoVigor" Label="Requisito de Vigor" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.DurabilidadeMaxima" For="@(() => _form.DurabilidadeMaxima)" Label="Durabilidade" @bind-Value:after="NotifySavedAsync" />
+            <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
+                @foreach (var rank in RankOptions)
+                {
+                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@_durabilidadeHint</MudText>
         </Section>
     }
     else if (_form.Tipo == "Artefato")
@@ -139,6 +151,13 @@
     private List<ImageSummaryResponse> _myImages = new();
     private List<string> _imageIds = new();
     private string? _errorMessage;
+    private Dictionary<RankDeItem, DurabilidadeDeRank> _durabilidadesPorRank = new();
+    private string _durabilidadeHint = "Sem durabilidade";
+    private bool _durabilidadesPorRankIndisponivel;
+
+    // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
+    // Rank page and the DurabilidadesPorRankController both work off of.
+    internal static readonly string[] RankOptions = Enum.GetNames<RankDeItem>();
 
     public CatalogoItemForm()
     {
@@ -178,6 +197,8 @@
         if (imagesResponse.IsSuccessStatusCode)
             _myImages = await imagesResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
 
+        await LoadDurabilidadesPorRankAsync();
+
         if (ItemId is null)
             return;
 
@@ -199,7 +220,7 @@
         _form.Subcategoria = existing.Subcategoria;
         _form.Descricao = existing.Descricao;
         _form.CapacidadeExtra = existing.CapacidadeExtra;
-        _form.Tier = existing.Tier;
+        _form.Rank = existing.Rank;
         _form.Empunhadura = existing.Empunhadura;
         _form.Dados = existing.Dados;
         _form.Dano = existing.Dano;
@@ -207,7 +228,6 @@
         _form.Alcance = existing.Alcance;
         _form.TipoDeDano = existing.TipoDeDano;
         _form.RequisitoAtributo = existing.RequisitoAtributo;
-        _form.DurabilidadeMaxima = existing.DurabilidadeMaxima;
         _form.Categoria = existing.Categoria;
         _form.Defesa = existing.Defesa;
         _form.RF = existing.RF;
@@ -218,6 +238,41 @@
         _form.TipoDeAlvo = existing.TipoDeAlvo;
         _form.Alvo = existing.Alvo;
         _form.Valor = existing.Valor;
+        RecomputeDurabilidadeHint();
+    }
+
+    private async Task LoadDurabilidadesPorRankAsync()
+    {
+        var response = await Http.GetAsync("durabilidades-por-rank");
+        if (!response.IsSuccessStatusCode)
+        {
+            // Sem a tabela não dá pra saber a durabilidade de um Rank — o hint não pode afirmar "Sem durabilidade".
+            _durabilidadesPorRankIndisponivel = true;
+            return;
+        }
+
+        var linhas = await response.Content.ReadFromJsonAsync<List<DurabilidadePorRankResponse>>() ?? new();
+        _durabilidadesPorRank = linhas
+            .Where(l => Enum.TryParse<RankDeItem>(l.Rank, out _))
+            .ToDictionary(l => Enum.Parse<RankDeItem>(l.Rank), l => new DurabilidadeDeRank(Enum.Parse<RankDeItem>(l.Rank), l.Durabilidade, l.Inquebravel));
+    }
+
+    private Task OnRankChangedAsync()
+    {
+        RecomputeDurabilidadeHint();
+        return NotifySavedAsync();
+    }
+
+    private void RecomputeDurabilidadeHint()
+    {
+        RankDeItem? rank = Enum.TryParse<RankDeItem>(_form.Rank, out var parsed) ? parsed : null;
+        if (rank is not null && _durabilidadesPorRankIndisponivel)
+        {
+            _durabilidadeHint = "Durabilidade: —";
+            return;
+        }
+        var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, _durabilidadesPorRank);
+        _durabilidadeHint = inquebravel ? "Inquebrável" : maxima is null ? "Sem durabilidade" : $"Durabilidade: {maxima}";
     }
 
     private async Task CreateAsync()
@@ -226,8 +281,8 @@
             return;
 
         var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-            _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PostAsJsonAsync("items", request);
@@ -259,8 +314,8 @@
             return false;
 
         var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-            _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
@@ -350,7 +405,7 @@
         public string? Descricao { get; set; }
         [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? CapacidadeExtra { get; set; }
-        public string? Tier { get; set; }
+        public string? Rank { get; set; }
         public string? Empunhadura { get; set; }
         public string? Dados { get; set; }
         public int? Dano { get; set; }
@@ -358,8 +413,6 @@
         public int? Alcance { get; set; }
         public string? TipoDeDano { get; set; }
         public string? RequisitoAtributo { get; set; }
-        [Range(0, int.MaxValue)]
-        public int? DurabilidadeMaxima { get; set; }
         public string? Categoria { get; set; }
         public int? Defesa { get; set; }
         public int? RF { get; set; }

@@ -184,10 +184,10 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 
 Lista tipo arsenal: o jogador adiciona quantas armas quiser (inclui varinhas e cajados mágicos, que são subcategorias de Arma no catálogo — não há distinção de "condutor" à parte). Cada linha:
 
-- *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Tier** são preenchidos automaticamente a partir do item, somente leitura.
+- *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Rank** são preenchidos automaticamente a partir do item, somente leitura.
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada — uma arma equipada é considerada "no corpo", não uma carga extra.
 - *Equipada*: seleção exclusiva — apenas 1 arma do arsenal pode estar marcada como equipada por vez, exceto se o personagem tiver a característica **Ambidestria** (ver aba "Posses", Características), que permite 2.
-- *Durabilidade*: par **Atual / Máximo**. O Máximo é herdado do item (somente leitura, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004) — diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo.
+- *Durabilidade*: par **Atual / Máximo**. O Máximo é somente leitura e vem do Rank do item ([[Tabela de Durabilidade por Rank]]; ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004). Diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo — se o Máximo diminuir depois (mudança do Rank do item ou da tabela), o Atual é limitado ao novo Máximo. Itens de Rank inquebrável (ver a tabela) não têm Atual/Máximo: a linha mostra apenas "Inquebrável".
 
 Uma linha pode ser removida pelo jogador a qualquer momento.
 
@@ -201,7 +201,7 @@ Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**.
 
 - *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
 - *Peso*: herdado do item (somente leitura) de cada slot preenchido. **Não** soma ao Peso Atual (ver 2.b, Movimentação) — todo slot preenchido está sempre equipado (não há estado "desequipado" para Armadura), então seu peso é sempre considerado "no corpo".
-- *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo herdado do item (R0005), Atual editável pelo jogador e específico daquele slot.
+- *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0005, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquele slot. Rank inquebrável: o slot mostra apenas "Inquebrável".
 
   
 
@@ -214,7 +214,7 @@ Lista tipo arsenal, mesmo padrão de 3.a: o jogador adiciona quantos escudos qui
 - *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria**, **Bônus de Defesa**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura.
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada, mesma regra de 3.a.
 - *Equipado*: seleção exclusiva — apenas 1 escudo do arsenal pode estar marcado como equipado por vez (sem exceção).
-- *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo herdado do item (R0006), Atual editável pelo jogador e específico daquela linha.
+- *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0006, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquela linha. Rank inquebrável: a linha mostra apenas "Inquebrável".
 
 Uma linha pode ser removida pelo jogador a qualquer momento.
 

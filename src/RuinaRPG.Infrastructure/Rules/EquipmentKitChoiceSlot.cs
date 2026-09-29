@@ -9,7 +9,7 @@ public class EquipmentKitChoiceSlot
     public required string Label { get; set; }
     public ItemTipo Tipo { get; set; }
     public string? SubcategoriasCsv { get; set; }
-    public Tier? Tier { get; set; }
+    public RankDeItem? Rank { get; set; }
     public int Qtd { get; set; }
     public string? BonusSubcategoria { get; set; }
     public string? BonusNome { get; set; }

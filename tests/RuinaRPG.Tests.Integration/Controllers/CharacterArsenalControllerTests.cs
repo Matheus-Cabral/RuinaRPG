@@ -66,24 +66,24 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateArmaItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Arma", "Espada", 1.5m, 50, imageId, "Espadas", descricao, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("Arma", "Espada", 1.5m, 50, imageId, "Espadas", descricao, rank, "UmaMao", "2D6", 3, "19", 2, "Cortante", null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaduraItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
+            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, imageId, null, descricao, rank, null, null, null, null, null, null, null, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateEscudoItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateEscudoItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
+            new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, rank, null, null, null, null, null, null, null, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -111,7 +111,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm1", "arsenal1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer1", "arsenalplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken,
             new AddCharacterWeaponRequest(weaponItemId)));
@@ -131,8 +131,8 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm2", "arsenal2@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer2", "arsenalplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId1 = await CreateArmaItemAsync(gmToken, 20);
-        var weaponItemId2 = await CreateArmaItemAsync(gmToken, 15);
+        var weaponItemId1 = await CreateArmaItemAsync(gmToken, "F");
+        var weaponItemId2 = await CreateArmaItemAsync(gmToken, "F");
 
         var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId1)));
         var weapon1Id = (await add1.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
@@ -170,7 +170,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm4", "arsenal4@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer4", "arsenalplayer4@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken,
             new UpdateCharacterArmorSlotRequest(armorItemId)));
@@ -181,8 +181,8 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var slot = body!.Single(s => s.Slot == "Capacete");
         slot.ItemId.Should().Be(armorItemId);
         slot.Nome.Should().Be("Elmo de Ferro");
-        slot.DurabilidadeAtual.Should().Be(12);
-        slot.DurabilidadeMaxima.Should().Be(12);
+        slot.DurabilidadeAtual.Should().Be(20);
+        slot.DurabilidadeMaxima.Should().Be(20);
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm5", "arsenal5@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer5", "arsenalplayer5@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken,
             new AddCharacterShieldRequest(shieldItemId)));
@@ -204,8 +204,8 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         shield.ItemId.Should().Be(shieldItemId);
         shield.Nome.Should().Be("Broquel");
         shield.BonusDefesa.Should().Be(2);
-        shield.DurabilidadeAtual.Should().Be(10);
-        shield.DurabilidadeMaxima.Should().Be(10);
+        shield.DurabilidadeAtual.Should().Be(20);
+        shield.DurabilidadeMaxima.Should().Be(20);
     }
 
     [Fact]
@@ -215,9 +215,9 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayerImg1", "arsenalplayerimg1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var imageId = await UploadImageAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20, imageId, "Uma lâmina antiga.");
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12, imageId, "Placas enferrujadas.");
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10, imageId, "Um broquel rachado.");
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F", imageId, "Uma lâmina antiga.");
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F", imageId, "Placas enferrujadas.");
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F", imageId, "Um broquel rachado.");
 
         var weaponResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
         var weaponBody = await weaponResponse.Content.ReadFromJsonAsync<CharacterWeaponResponse>();
@@ -242,7 +242,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm7", "arsenal7@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer7", "arsenalplayer7@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
         var weaponId = (await addResponse.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
 
@@ -260,7 +260,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm8", "arsenal8@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer8", "arsenalplayer8@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
 
         var unlinkResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(null)));
@@ -279,7 +279,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm9", "arsenal9@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer9", "arsenalplayer9@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
         var shieldId = (await addResponse.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
 
@@ -298,8 +298,8 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer6", "arsenalplayer6@teste.com");
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer6b", "arsenalplayer6b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var addWeapon = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
         var weaponId = (await addWeapon.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
         var addShield = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
@@ -407,8 +407,8 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm16", "arsenal16@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer16", "arsenalplayer16@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, 10);
-        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, 8);
+        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, "F");
+        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, "F");
 
         var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId1)));
         var shield1Id = (await add1.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
@@ -431,7 +431,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm17", "arsenal17@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer17", "arsenalplayer17@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
         var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
 
@@ -449,7 +449,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm18", "arsenal18@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer18", "arsenalplayer18@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
         var shieldId = (await add.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
 
@@ -467,7 +467,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm19", "arsenal19@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer19", "arsenalplayer19@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete/durabilidade", playerToken, 7));
@@ -485,7 +485,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm21", "arsenal21@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer21", "arsenalplayer21@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(weaponItemId)));
         var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
 
@@ -502,7 +502,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm22", "arsenal22@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer22", "arsenalplayer22@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
         var shieldId = (await add.Content.ReadFromJsonAsync<CharacterShieldResponse>())!.Id;
 
@@ -510,7 +510,7 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
-        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(10);
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(20);
     }
 
     [Fact]
@@ -519,14 +519,14 @@ public class CharacterArsenalControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ArsenalGm23", "arsenal23@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "ArsenalPlayer23", "arsenalplayer23@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorItemId)));
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete/durabilidade", playerToken, 999));
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
-        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(15);
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(20);
     }
 
     [Fact]

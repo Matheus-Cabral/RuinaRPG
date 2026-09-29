@@ -279,7 +279,7 @@
                         <th>Dados</th>
                         <th>Dano</th>
                         <th>Crítico</th>
-                        <th>Tier</th>
+                        <th>Rank</th>
                         <th>Durabilidade</th>
                         <th>Equipada</th>
                         <th></th>
@@ -295,15 +295,19 @@
                             <td>@(weapon.Dados ?? "—")</td>
                             <td>@(weapon.Dano?.ToString() ?? "—")</td>
                             <td>@(weapon.Critico ?? "—")</td>
-                            <td>@(weapon.Tier ?? "—")</td>
+                            <td>@(weapon.Rank ?? "—")</td>
                             <td>
-                                @if (weapon.ItemId is not null)
+                                @if (weapon.ItemId is null)
                                 {
-                                    <text><MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" /> / @weapon.DurabilidadeMaximo</text>
+                                    <text>Ataque natural</text>
+                                }
+                                else if (weapon.Inquebravel)
+                                {
+                                    <text>Inquebrável</text>
                                 }
                                 else
                                 {
-                                    <text>Ataque natural</text>
+                                    <text><MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" /> / @weapon.DurabilidadeMaximo</text>
                                 }
                             </td>
                             <td>@(weapon.IsEquipped ? "Equipada" : "")</td>
@@ -359,8 +363,15 @@
                             <td>
                                 @if (slot.ItemId is not null)
                                 {
-                                    <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => UpdateArmorSlotDurabilidadeAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
-                                    <text> / @slot.DurabilidadeMaximo</text>
+                                    @if (slot.Inquebravel)
+                                    {
+                                        <text>Inquebrável</text>
+                                    }
+                                    else
+                                    {
+                                        <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => UpdateArmorSlotDurabilidadeAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
+                                        <text> / @slot.DurabilidadeMaximo</text>
+                                    }
                                 }
                             </td>
                             <td>
@@ -412,8 +423,15 @@
                             <td>@(shield.RequisitoVigor?.ToString() ?? "—")</td>
                             <td>@shield.Peso</td>
                             <td>
-                                <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
-                                / @shield.DurabilidadeMaxima
+                                @if (shield.Inquebravel)
+                                {
+                                    <text>Inquebrável</text>
+                                }
+                                else
+                                {
+                                    <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
+                                    <text> / @shield.DurabilidadeMaxima</text>
+                                }
                             </td>
                             <td>@(shield.IsEquipped ? "Equipado" : "")</td>
                             <td>

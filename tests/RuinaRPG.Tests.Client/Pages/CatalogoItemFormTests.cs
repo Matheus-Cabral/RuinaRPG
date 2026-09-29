@@ -24,7 +24,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -65,7 +65,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -162,7 +162,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -189,6 +189,184 @@ public class CatalogoItemFormTests : MudBunitContext
 
         return Render<CatalogoItemForm>().Instance;
     }
+
+    // Task 5 ("Client — Rank in the Catálogo and Inquebrável on the sheets"): Arma/Armadura/Escudo
+    // no longer take a free-typed Durabilidade — the max comes from the item's Rank via the global
+    // Tabela de Durabilidade por Rank (GET durabilidades-por-rank), resolved client-side with
+    // RuinaRPG.Domain.Items.DurabilidadeDeItem.Resolver.
+    private static readonly object DurabilidadesPorRankTabela = new[]
+    {
+        new { Rank = "F", Durabilidade = (int?)20, Inquebravel = false },
+        new { Rank = "E", Durabilidade = (int?)45, Inquebravel = false },
+        new { Rank = "D", Durabilidade = (int?)80, Inquebravel = false },
+        new { Rank = "C", Durabilidade = (int?)125, Inquebravel = false },
+        new { Rank = "B", Durabilidade = (int?)180, Inquebravel = false },
+        new { Rank = "A", Durabilidade = (int?)245, Inquebravel = false },
+        new { Rank = "S", Durabilidade = (int?)null, Inquebravel = true },
+        new { Rank = "SS", Durabilidade = (int?)null, Inquebravel = true },
+    };
+
+    private HttpClient CreateClientWithDurabilidadesPorRank()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("durabilidades-por-rank"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(DurabilidadesPorRankTabela) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+        return http;
+    }
+
+    [Fact]
+    public async Task Arma_offers_a_Rank_select_with_no_free_typed_Durabilidade_field()
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50);
+
+        cut.FindComponents<MudBlazor.MudSelect<string>>().Should().Contain(c => c.Instance.Label == "Rank");
+        cut.FindComponents<MudBlazor.MudNumericField<int?>>().Should().NotContain(c => c.Instance.Label == "Durabilidade");
+    }
+
+    [Fact]
+    public void RankOptions_lists_F_through_SS_in_order()
+    {
+        CatalogoItemForm.RankOptions.Should().BeEquivalentTo(
+            new[] { "F", "E", "D", "C", "B", "A", "S", "SS" }, o => o.WithStrictOrdering());
+    }
+
+    [Theory]
+    [InlineData("Armadura")]
+    [InlineData("Escudo")]
+    public void Armadura_and_Escudo_also_offer_the_Rank_select_and_no_Durabilidade_field(string tipo)
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, tipo));
+
+        cut.FindComponents<MudBlazor.MudSelect<string>>().Should().Contain(c => c.Instance.Label == "Rank");
+        cut.FindComponents<MudBlazor.MudNumericField<int?>>().Should().NotContain(c => c.Instance.Label == "Durabilidade");
+    }
+
+    [Theory]
+    [InlineData("ItemGeral")]
+    [InlineData("Artefato")]
+    public void ItemGeral_and_Artefato_do_not_offer_a_Rank_select(string tipo)
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, tipo));
+
+        cut.FindComponents<MudBlazor.MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Rank");
+    }
+
+    [Fact]
+    public async Task Choosing_Rank_D_shows_the_resolved_Durabilidade_from_the_table()
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50); // let the durabilidades-por-rank GET land before picking a Rank
+
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("D"));
+
+        cut.Markup.Should().Contain("Durabilidade: 80");
+    }
+
+    [Fact]
+    public async Task Choosing_Rank_S_shows_Inquebravel_instead_of_a_number()
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50);
+
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("S"));
+
+        cut.Markup.Should().Contain("Inquebrável");
+    }
+
+    [Fact]
+    public async Task When_the_durabilidades_table_fails_to_load_a_chosen_Rank_shows_an_unknown_Durabilidade()
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+            request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("durabilidades-por-rank")
+                ? new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50);
+
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("D"));
+
+        cut.Markup.Should().Contain("Durabilidade: —");
+        cut.Markup.Should().NotContain("Sem durabilidade");
+    }
+
+    [Fact]
+    public async Task Clearing_the_Rank_shows_Sem_durabilidade()
+    {
+        CreateClientWithDurabilidadesPorRank();
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "Arma"));
+        await Task.Delay(50);
+
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("D"));
+        cut.Markup.Should().Contain("Durabilidade: 80");
+
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync(null));
+
+        cut.Markup.Should().Contain("Sem durabilidade");
+    }
+
+    [Fact]
+    public async Task Saving_a_new_Arma_sends_the_chosen_Rank()
+    {
+        CreateEquipmentRequestCapture? captured = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            captured = request.Content!.ReadFromJsonAsync<CreateEquipmentRequestCapture>().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new
+            {
+                Id = "item-new", Tipo = "Arma", Nome = "Espada", Peso = 1m, Preco = 5,
+                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Rank = "D",
+                Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
+                Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
+                DurabilidadeMaxima = (int?)80, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,
+                RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null, CapacidadeExtra = (decimal?)null,
+            }) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CatalogoItemForm>(p => p
+            .Add(x => x.FixedTipo, "Arma")
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<RuinaRPG.Contracts.Items.ItemResponse>(this, _ => { })));
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Espada"));
+        var rankSelect = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => rankSelect.Instance.ValueChanged.InvokeAsync("D"));
+
+        await cut.InvokeAsync(() => cut.Instance.CreateForTestsAsync());
+
+        captured.Should().NotBeNull();
+        captured!.Rank.Should().Be("D");
+    }
+
+    private record CreateEquipmentRequestCapture(string Tipo, string Nome, decimal Peso, int Preco, string? ImageId,
+        string? Subcategoria, string? Descricao, string? Rank, string? Empunhadura, string? Dados, int? Dano,
+        string? Critico, int? Alcance, string? TipoDeDano, string? RequisitoAtributo, string? Categoria, int? Defesa,
+        int? RF, int? RM, string? Penalidade, int? RequisitoVigor, int? BonusDefesa, string? TipoDeAlvo, string? Alvo,
+        int? Valor, decimal? CapacidadeExtra);
 
     [Fact]
     public void TipoDeAlvo_offers_the_4_fixed_options()
@@ -403,7 +581,7 @@ public class CatalogoItemFormTests : MudBunitContext
             return new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new
             {
                 Id = "item-new", Tipo = "ItemGeral", Nome = "Poção Nova", Peso = 1m, Preco = 5,
-                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null,
+                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null,
                 Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
                 Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
                 DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,
@@ -423,7 +601,10 @@ public class CatalogoItemFormTests : MudBunitContext
 
         created.Should().NotBeNull();
         created!.Nome.Should().Be("Poção Nova");
-        getCount.Should().Be(1, "OnCreated deve substituir a navegação, não disparar uma nova busca");
+        // 2, not 1: OnInitializedAsync now also fetches the durabilidades-por-rank table
+        // unconditionally (images/mine + durabilidades-por-rank) — the assertion still proves
+        // CreateAsync/OnCreated doesn't trigger a further GET of its own.
+        getCount.Should().Be(2, "OnCreated deve substituir a navegação, não disparar uma nova busca");
     }
 
     /// <summary>

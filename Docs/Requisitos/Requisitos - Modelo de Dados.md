@@ -91,7 +91,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Subcategoria | string, nullable | todos os 5 tipos (coluna própria por subtipo, TPH) |
 | Descricao | text, nullable | ItemGeral |
 | CapacidadeExtra | decimal, nullable | ItemGeral — ver "[[Requisitos - Ficha de Personagem]]" 2.b/5.a e "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 |
-| Tier | enum F..S, nullable | Arma |
+| Rank | enum RankDeItem (F, E, D, C, B, A, S, SS), nullable | Arma, Armadura, Escudo — coluna própria por subtipo (mesmo motivo do Subcategoria acima); determina a Durabilidade Máxima via `DurabilidadesPorRank` (ver "Durabilidade por Rank" abaixo), NULL = sem durabilidade |
 | Empunhadura | enum, nullable | Arma |
 | Dados | string, nullable | Arma |
 | Dano | int, nullable | Arma |
@@ -109,7 +109,14 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
 | Alvo | string, nullable | Artefato |
 | Valor | int, nullable | Artefato |
-| DurabilidadeMaxima | int, nullable | Arma, Armadura, Escudo — valor de referência definido pelo GM; o valor **atual** não mora aqui, mora por instância (ver `CharacterWeapons`/`CharacterArmorSlots`/`CharacterShields` na seção 6) |
+
+**DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
+
+| Coluna | Tipo |
+|---|---|
+| Rank | enum RankDeItem (F, E, D, C, B, A, S, SS) — PK |
+| Durabilidade | int, nullable |
+| Inquebravel | bool — quando true, Durabilidade é NULL e o item não tem máximo (ver "[[Requisitos - Auditoria de Regras]]") |
 
   
 
@@ -279,7 +286,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | CharacterSheetId | FK |
 | ItemId | FK → Items (Tipo=Arma) |
 | IsEquipped | bool |
-| DurabilidadeAtual | int | inicializada = `Items.DurabilidadeMaxima` no momento em que a linha é criada; editável e independente depois |
+| DurabilidadeAtual | int | inicializada = Durabilidade Máxima do item (resolvida do `Items.Rank` via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) no momento em que a linha é criada; editável depois, mas sempre limitada a [0, máximo atual] — na leitura e ao salvar. Backfill único na atualização (migration `RemoveDurabilidadeMaximaDosItens`): linhas de `CharacterWeapons`/`NpcWeapons`/`CreatureWeapons` cujo item não tinha Durabilidade Máxima digitada (gravadas com 0) recebem a durabilidade do Rank do item |
 
 **CharacterArmorSlots** — 3 linhas fixas por ficha (3.b). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
@@ -439,7 +446,7 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `Label` (string — ex: "Arma", "Condutor")
 - `Tipo` (enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral — ver "Novas colunas" abaixo para `ArmorSlot`, obrigatório quando `Tipo=Armadura`)
 - `SubcategoriasCsv` (string?, opcional — lista de valores aceitos separados por vírgula; cada valor casa tanto com a Subcategoria legada em texto livre quanto com a Família parseada de um valor composto pelo construtor "Item Inicial" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0013; NULL = qualquer uma)
-- `Tier` (enum Tier?, opcional — NULL = qualquer Tier)
+- `Rank` (enum RankDeItem?, opcional — NULL = qualquer Rank)
 - `Qtd` (int)
 - `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
 - `BonusNome` (string?, opcional — Item concedido além da escolha, só se `BonusSubcategoria` bater)
@@ -489,7 +496,7 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
 - `CreatureSkills.Pericia` só permite o subconjunto ~20 de Perícias listado em R0005 (restrição de aplicação, não de schema, já que reaproveita o enum `Pericia` completo).
 - Sem `CharacterAffinities` equivalente (não existe aba de Afinidades pra Criatura).
-- `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Tier/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
+- `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
 - Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
 - `CreatureInventoryItems` → renomeada `CreatureSpoils` (Espólios), ganha coluna `DT` (int) e **perde** `Ciclos` na ficha raiz.
 - Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Kill** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.

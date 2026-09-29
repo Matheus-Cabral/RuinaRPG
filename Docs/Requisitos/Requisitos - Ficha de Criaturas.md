@@ -83,8 +83,8 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesm
 
 **3.a Armas e Condutores** — modelo híbrido: ao adicionar uma linha, o GM escolhe entre:
 
-- **Vincular ao Catálogo**: mesmo comportamento do Personagem (3.a) — escolhe uma Arma do "[[Requisitos - Catálogo de Itens e Equipamentos]]", todos os campos (Nome, Tipo de Dano, Alcance, Dados, Dano, Crítico, Tier, Durabilidade Atual/Máximo) vêm preenchidos automaticamente, com o mesmo comportamento de Durabilidade Atual editável e independente por linha.
-- **Preencher manualmente**: para ataques naturais (ex: garra, mordida) sem vínculo com o Catálogo. Campos digitados diretamente: *Nome*, *Tipo de Dano* (dropdown, mesmos valores do Catálogo), *Dados* e *Dano*. Sem Alcance, Crítico, Tier ou Durabilidade — ataque natural não tem durabilidade.
+- **Vincular ao Catálogo**: mesmo comportamento do Personagem (3.a) — escolhe uma Arma do "[[Requisitos - Catálogo de Itens e Equipamentos]]", todos os campos (Nome, Tipo de Dano, Alcance, Dados, Dano, Crítico, Rank, Durabilidade Atual/Máximo) vêm preenchidos automaticamente, com o mesmo comportamento de Durabilidade Atual editável e independente por linha (Máximo vem do Rank, ver [[Tabela de Durabilidade por Rank]]; Rank inquebrável mostra apenas "Inquebrável").
+- **Preencher manualmente**: para ataques naturais (ex: garra, mordida) sem vínculo com o Catálogo. Campos digitados diretamente: *Nome*, *Tipo de Dano* (dropdown, mesmos valores do Catálogo), *Dados* e *Dano*. Sem Alcance, Crítico, Rank ou Durabilidade — ataque natural não tem durabilidade.
 
 O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igual ao Personagem.
 

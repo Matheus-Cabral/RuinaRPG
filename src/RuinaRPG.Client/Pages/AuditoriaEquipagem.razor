@@ -1,6 +1,7 @@
 @page "/auditoria/equipagem"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Items
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -73,7 +74,7 @@ else
                 </MudText>
                 <ul class="mt-1">
                     <li><b>Itens fixos:</b> todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.</li>
-                    <li><b>Slots de escolha:</b> o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Tier. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.</li>
+                    <li><b>Slots de escolha:</b> o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Rank. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.</li>
                 </ul>
                 <MudText Class="mt-2">
                     Excluir um kit já escolhido em alguma ficha é bloqueado.
@@ -115,12 +116,12 @@ else
 
                 <MudText Typo="Typo.h6" Class="mt-3">Slots de escolha</MudText>
                 <MudSimpleTable Dense="true">
-                    <thead><tr><th>Label</th><th>Tipo</th><th>Subcategorias</th><th>Tier</th><th>Qtd</th><th></th></tr></thead>
+                    <thead><tr><th>Label</th><th>Tipo</th><th>Subcategorias</th><th>Rank</th><th>Qtd</th><th></th></tr></thead>
                     <tbody>
                         @foreach (var slot in kit.ChoiceSlots)
                         {
                             <tr>
-                                <td>@slot.Label</td><td>@slot.Tipo@(slot.ArmorSlot is null ? "" : $" ({slot.ArmorSlot})")</td><td>@(slot.Subcategorias is null ? "qualquer" : string.Join(", ", slot.Subcategorias))</td><td>@(slot.Tier ?? "qualquer")</td><td>@slot.Qtd</td>
+                                <td>@slot.Label</td><td>@slot.Tipo@(slot.ArmorSlot is null ? "" : $" ({slot.ArmorSlot})")</td><td>@(slot.Subcategorias is null ? "qualquer" : string.Join(", ", slot.Subcategorias))</td><td>@(slot.Rank ?? "qualquer")</td><td>@slot.Qtd</td>
                                 <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSlotAsync(kit, slot))" /></td>
                             </tr>
                         }
@@ -152,7 +153,13 @@ else
                     </MudSelect>
                     @if (_slotForm[kit.Id].Tipo == "Arma")
                     {
-                        <MudTextField T="string" @bind-Value="_slotForm[kit.Id].Tier" Label="Tier (vazio = qualquer)" />
+                        <MudSelect T="string" @bind-Value="_slotForm[kit.Id].Rank" Label="Rank (vazio = qualquer)">
+                            <MudSelectItem Value="@("")">Qualquer</MudSelectItem>
+                            @foreach (var rank in RankOptions)
+                            {
+                                <MudSelectItem Value="@rank">@rank</MudSelectItem>
+                            }
+                        </MudSelect>
                     }
                     <MudNumericField T="int" @bind-Value="_slotForm[kit.Id].Qtd" Label="Qtd" />
                     <MudButton Variant="Variant.Outlined" OnClick="@(() => AddSlotAsync(kit))">Adicionar slot</MudButton>
@@ -301,7 +308,7 @@ else
     private async Task UpdateAsync(EquipmentKitResponse current, string? nome = null, string? descricao = null, int? ciclos = null)
     {
         var itemsInput = current.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = current.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
+        var slotsInput = current.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Rank, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{current.Id}", new UpdateEquipmentKitRequest(
             nome ?? current.Nome, descricao ?? current.Descricao, ciclos ?? current.Ciclos, itemsInput, slotsInput));
@@ -324,7 +331,7 @@ else
         var form = _itemForm[kit.Id];
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint))
             .Append(new EquipmentKitItemInput(form.Nome, form.Tipo, form.Qtd, null)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Rank, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -347,9 +354,9 @@ else
         var form = _slotForm[kit.Id];
         var subcategorias = form.SubcategoriasSelected.Count == 0 ? null : form.SubcategoriasSelected.ToList();
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot))
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Rank, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot))
             .Append(new EquipmentKitChoiceSlotInput(form.Label, form.Tipo, subcategorias,
-                form.Tipo == "Arma" && !string.IsNullOrWhiteSpace(form.Tier) ? form.Tier : null, form.Qtd, null, null, null,
+                form.Tipo == "Arma" && !string.IsNullOrWhiteSpace(form.Rank) ? form.Rank : null, form.Qtd, null, null, null,
                 form.Tipo == "Armadura" ? form.ArmorSlot : null)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
@@ -373,7 +380,7 @@ else
     private async Task RemoveItemAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item)
     {
         var itemsInput = kit.Items.Where(i => i.Id != item.Id).Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
-        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
+        var slotsInput = kit.ChoiceSlots.Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Rank, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -394,7 +401,7 @@ else
     {
         var itemsInput = kit.Items.Select(i => new EquipmentKitItemInput(i.Nome, i.Tipo, i.Qtd, i.SubcategoriaHint)).ToList();
         var slotsInput = kit.ChoiceSlots.Where(s => s.Id != slot.Id)
-            .Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Tier, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
+            .Select(s => new EquipmentKitChoiceSlotInput(s.Label, s.Tipo, s.Subcategorias, s.Rank, s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot)).ToList();
 
         var response = await Http.PutAsJsonAsync($"equipment-kits/{kit.Id}", new UpdateEquipmentKitRequest(kit.Nome, kit.Descricao, kit.Ciclos, itemsInput, slotsInput));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -448,7 +455,11 @@ else
         public string Tipo { get; set; } = "Arma";
         public string? ArmorSlot { get; set; }
         public List<string> SubcategoriasSelected { get; set; } = new();
-        public string Tier { get; set; } = "";
+        public string Rank { get; set; } = "";
         public int Qtd { get; set; } = 1;
     }
+
+    // F..SS in RankDeItem declaration order — same set the Catálogo item form and the Auditoria:
+    // Durabilidade por Rank page use.
+    internal static readonly string[] RankOptions = Enum.GetNames<RankDeItem>();
 }

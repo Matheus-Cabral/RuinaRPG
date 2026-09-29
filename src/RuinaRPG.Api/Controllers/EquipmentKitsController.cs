@@ -171,17 +171,18 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 return BadRequest("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)
                 return BadRequest("Qtd do slot de escolha deve ser pelo menos 1.");
-            // Tier only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
-            // only applies the Tier filter in the Arma branch) — a non-empty Tier elsewhere would
+            // Rank only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
+            // only applies the Rank filter in the Arma branch) — a non-empty Rank elsewhere would
             // be silently ignored at resolve time, so it's rejected here instead.
-            if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Tier))
-                return BadRequest("Tier só é aplicável a slots de escolha de Tipo=Arma.");
-            Tier? tier = null;
-            if (!string.IsNullOrWhiteSpace(slot.Tier))
+            if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Rank))
+                return BadRequest("Rank só é aplicável a slots de escolha de Tipo=Arma.");
+            RankDeItem? rank = null;
+            if (!string.IsNullOrWhiteSpace(slot.Rank))
             {
-                if (!Enum.TryParse<Tier>(slot.Tier, out var parsedTier))
-                    return BadRequest($"Tier inválido: \"{slot.Tier}\".");
-                tier = parsedTier;
+                // Nome exato do enum: Enum.TryParse também aceitaria "3"/"99" (valores numéricos).
+                if (!Enum.GetNames<RankDeItem>().Contains(slot.Rank) || !Enum.TryParse<RankDeItem>(slot.Rank, out var parsedRank))
+                    return BadRequest($"Rank inválido: \"{slot.Rank}\".");
+                rank = parsedRank;
             }
             if ((slot.BonusSubcategoria is null) != (slot.BonusNome is null))
                 return BadRequest("BonusSubcategoria e BonusNome devem ser informados juntos, ou nenhum dos dois.");
@@ -194,7 +195,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 Label = slot.Label,
                 Tipo = tipo,
                 SubcategoriasCsv = slot.Subcategorias is null ? null : string.Join(",", slot.Subcategorias),
-                Tier = tier,
+                Rank = rank,
                 Qtd = slot.Qtd,
                 BonusSubcategoria = slot.BonusSubcategoria,
                 BonusNome = slot.BonusNome,
@@ -217,7 +218,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome, i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
             slots.Select(s => new EquipmentKitChoiceSlotResponse(s.Id.ToString(), s.Label, s.Tipo.ToString(),
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                s.Tier?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
+                s.Rank?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
     }
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()

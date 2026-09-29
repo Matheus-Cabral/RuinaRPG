@@ -1679,6 +1679,22 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("InviteCodes");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Items.DurabilidadePorRank", b =>
+                {
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Durabilidade")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Inquebravel")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Rank");
+
+                    b.ToTable("DurabilidadesPorRank");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.Items.Item", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2427,11 +2443,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Qtd")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("Rank")
+                        .HasColumnType("integer");
+
                     b.Property<string>("SubcategoriasCsv")
                         .HasColumnType("text");
-
-                    b.Property<int?>("Tier")
-                        .HasColumnType("integer");
 
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");
@@ -2722,11 +2738,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Dano")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("DurabilidadeMaxima")
-                        .HasColumnType("integer");
-
                     b.Property<int?>("Empunhadura")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("Arma_Rank");
 
                     b.Property<string>("RequisitoAtributo")
                         .HasColumnType("text");
@@ -2735,17 +2752,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("Arma_Subcategoria");
 
-                    b.Property<int?>("Tier")
-                        .HasColumnType("integer");
-
                     b.Property<int?>("TipoDeDano")
                         .HasColumnType("integer");
-
-                    b.ToTable("Items", t =>
-                        {
-                            t.Property("DurabilidadeMaxima")
-                                .HasColumnName("Arma_DurabilidadeMaxima");
-                        });
 
                     b.HasDiscriminator().HasValue("Arma");
                 });
@@ -2760,9 +2768,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Defesa")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("DurabilidadeMaxima")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Penalidade")
                         .HasColumnType("text");
 
@@ -2771,6 +2776,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("RM")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("Armadura_Rank");
 
                     b.Property<int?>("RequisitoVigor")
                         .HasColumnType("integer");
@@ -2783,9 +2792,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         {
                             t.Property("Categoria")
                                 .HasColumnName("Armadura_Categoria");
-
-                            t.Property("DurabilidadeMaxima")
-                                .HasColumnName("Armadura_DurabilidadeMaxima");
 
                             t.Property("Penalidade")
                                 .HasColumnName("Armadura_Penalidade");
@@ -2827,11 +2833,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Categoria")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("DurabilidadeMaxima")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Penalidade")
                         .HasColumnType("text");
+
+                    b.Property<int?>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("Escudo_Rank");
 
                     b.Property<int?>("RequisitoVigor")
                         .HasColumnType("integer");

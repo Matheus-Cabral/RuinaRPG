@@ -4,7 +4,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 
 public record EquipmentKitSeed(string Nome, string Descricao, int Ciclos, List<EquipmentKitItemSeed> Items, List<EquipmentKitChoiceSlotSeed> ChoiceSlots);
 public record EquipmentKitItemSeed(string Nome, ItemTipo Tipo, int Qtd, string? SubcategoriaHint = null);
-public record EquipmentKitChoiceSlotSeed(string Label, ItemTipo Tipo, List<string>? Subcategorias, Tier? Tier, int Qtd,
+public record EquipmentKitChoiceSlotSeed(string Label, ItemTipo Tipo, List<string>? Subcategorias, RankDeItem? Rank, int Qtd,
     string? BonusSubcategoria = null, string? BonusNome = null, int? BonusQtd = null);
 
 /// <summary>
@@ -51,7 +51,7 @@ public static class EquipmentKitSeedData
                 new("Tônico de Vida simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
-                new("Arma", ItemTipo.Arma, null, RuinaRPG.Domain.Items.Tier.F, 1),
+                new("Arma", ItemTipo.Arma, null, RuinaRPG.Domain.Items.RankDeItem.F, 1),
             ]),
 
         new("Caçador",
@@ -63,7 +63,7 @@ public static class EquipmentKitSeedData
                 new("Ração de Viagem", ItemTipo.ItemGeral, 2),
             ],
             [
-                new("Arma à distância", ItemTipo.Arma, ["Arcos", "Fundas e Baladeiras"], RuinaRPG.Domain.Items.Tier.F, 1,
+                new("Arma à distância", ItemTipo.Arma, ["Arcos", "Fundas e Baladeiras"], RuinaRPG.Domain.Items.RankDeItem.F, 1,
                     BonusSubcategoria: "Arcos", BonusNome: "Flecha de Madeira", BonusQtd: 10),
             ]),
 
@@ -78,7 +78,7 @@ public static class EquipmentKitSeedData
                 new("Tônico de Foco simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
-                new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.Tier.F, 1),
+                new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.RankDeItem.F, 1),
             ]),
 
         new("Ocultista",
@@ -91,7 +91,7 @@ public static class EquipmentKitSeedData
                 new("Tônico de Foco simples", ItemTipo.ItemGeral, 1, SubcategoriaHint: "Poções e Tônicos"),
             ],
             [
-                new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.Tier.F, 1),
+                new("Condutor", ItemTipo.Arma, ["Varinhas Mágicas", "Cajados Mágicos"], RuinaRPG.Domain.Items.RankDeItem.F, 1),
             ]),
 
         new("Devoto",
