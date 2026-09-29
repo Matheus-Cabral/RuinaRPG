@@ -8,5 +8,5 @@ namespace RuinaRPG.Domain;
 /// </summary>
 public static class AppVersionInfo
 {
-    public const string Current = "1.3.1";
+    public const string Current = "1.4.0";
 }
