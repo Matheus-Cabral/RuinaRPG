@@ -1,0 +1,36 @@
+@using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
+
+@* Ficha 4.a: evoluções da Arca rolada já liberadas pelo nível da ficha (a API já filtra e ordena). *@
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.TrendingUp"
+               Disabled="@(Evolucoes.Count == 0)" OnClick="@(() => _open = true)">
+        Evoluções da Arca (@Evolucoes.Count)
+    </MudButton>
+    <InfoPopup Title="Evoluções da Arca">
+        Evoluções liberadas pela Arca rolada até o nível atual. Novas evoluções aparecem sozinhas quando o personagem sobe de nível. Quem cadastra as evoluções é o GM.
+    </InfoPopup>
+</MudStack>
+
+<MudDialog @bind-Visible="_open">
+    <TitleContent>Evoluções da Arca</TitleContent>
+    <DialogContent>
+        <MudList T="string" Dense="true">
+            @foreach (var ev in Evolucoes)
+            {
+                <MudListItem T="string">
+                    <MudText><b>Nível @ev.Nivel</b> — @ev.Descricao</MudText>
+                </MudListItem>
+            }
+        </MudList>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ArcaEvolucaoResponse> Evolucoes { get; set; } = Array.Empty<ArcaEvolucaoResponse>();
+
+    private bool _open;
+}
