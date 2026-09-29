@@ -291,7 +291,14 @@ public class DurabilidadePorRankItemsTests : IClassFixture<PostgresFixture>, IAs
         var undo = await SetRankAsync(RankDeItem.C, null, true);
         try
         {
-            await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 10));
+            var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 10));
+            put.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+                (await db.CharacterWeapons.SingleAsync(w => w.Id == Guid.Parse(weaponId))).DurabilidadeAtual.Should().Be(0);
+            }
 
             var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
                 .Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();

@@ -179,7 +179,8 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
             RankDeItem? rank = null;
             if (!string.IsNullOrWhiteSpace(slot.Rank))
             {
-                if (!Enum.TryParse<RankDeItem>(slot.Rank, out var parsedRank))
+                // Nome exato do enum: Enum.TryParse também aceitaria "3"/"99" (valores numéricos).
+                if (!Enum.GetNames<RankDeItem>().Contains(slot.Rank) || !Enum.TryParse<RankDeItem>(slot.Rank, out var parsedRank))
                     return BadRequest($"Rank inválido: \"{slot.Rank}\".");
                 rank = parsedRank;
             }

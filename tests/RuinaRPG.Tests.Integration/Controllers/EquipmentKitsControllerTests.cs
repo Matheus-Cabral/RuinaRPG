@@ -264,6 +264,23 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Theory]
+    [InlineData("3")]
+    [InlineData("99")]
+    [InlineData("f")]
+    public async Task Create_rejects_a_Rank_that_is_not_an_exact_RankDeItem_name(string rank)
+    {
+        var email = $"equipkitsrank{rank.ToLowerInvariant()}@teste.com";
+        var gmToken = await RegisterGmAndGetTokenAsync($"EquipKitsRankGm{rank}", email);
+        await GrantRulesAuditorAsync(email);
+
+        var request = ValidCreate() with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, rank, 1, null, null, null, null)] };
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Rank inválido");
+    }
+
     [Fact]
     public async Task Create_accepts_a_null_Tier_on_a_non_Arma_choice_slot()
     {
