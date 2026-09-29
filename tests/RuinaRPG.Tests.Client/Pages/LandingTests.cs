@@ -21,6 +21,17 @@ public class LandingTests : MudBunitContext
     }
 
     [Fact]
+    public void Econos_card_lists_the_solar_variant_Veuna_after_the_lunar_Alora()
+    {
+        var cut = Render<Landing>();
+
+        var card = cut.FindAll(".mud-card").Single(c => c.TextContent.Contains("Ecônos"));
+        var chips = card.QuerySelectorAll(".mud-chip").Select(c => c.TextContent.Trim()).ToList();
+
+        chips.Should().Equal("🌙 Alóra", "☀️ Veûna");
+    }
+
+    [Fact]
     public void Footer_credits_the_site_and_links_to_the_developers_GitHub()
     {
         // Credits the site's own development only — not the RPG system/rulebook, which isn't
