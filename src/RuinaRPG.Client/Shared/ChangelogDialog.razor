@@ -3,13 +3,15 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.3.1 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.4.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Aba História:</b> nova aba nas fichas de Personagem e NPC (antes do Diário no Personagem), que reúne a Estrela, o Histórico e um campo para escrever a história do personagem, com editor de texto completo: títulos, fontes, cores, listas, alinhamento, citações, links e tabelas. Salva automaticamente.</li>
-            <li><b>Afinidades:</b> cada linha agora tem duas Essências Básicas. A segunda aceita Elementos e os Caminhos Alma, Vida e Mundano, e o Sub-Elemento é calculado automaticamente pela interseção das duas na Matriz Elemental. As afinidades não dependem mais da Vocação.</li>
-            <li><b>Estrelas:</b> o popup da Estrela nas fichas mostra o texto do Livro de Regras, acompanhando qualquer atualização.</li>
-            <li><b>Livro de Regras:</b> abre na aba Sistema Básico, a aba "As Estrelas Alkerianas" passou a se chamar "As Estrelas", e há um botão para voltar ao topo.</li>
-            <li><b>Ficha de Criatura:</b> os Pontos de Atributo iniciais dependem do Rank (F 6, E 7, D 8, C 9, B 10, A 12, S 14), e os níveis seguintes somam pela Tabela de Níveis.</li>
+            <li><b>Habilidades Passivas:</b> novo tipo de habilidade no Banco de Magias, com Categoria (Passiva Livre, Vocacional ou de Classe) e Requisitos: Nível, Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Afinidade, Estrela, Histórico, e listas de Atributos, Sub-Atributos e Perícias. As fichas ganharam a seção "Habilidades Passivas", e uma Passiva só entra na ficha se ela cumprir os requisitos. Se a ficha deixar de cumpri-los depois, aparece um aviso.</li>
+            <li><b>Durabilidade por Rank:</b> Armas, Armaduras e Escudos agora têm Rank (F a SS), e a durabilidade vem dele: F 20, E 45, D 80, C 125, B 180, A 245, S e SS inquebráveis. O antigo "Tier" das Armas passou a se chamar Rank, e itens inquebráveis aparecem como "Inquebrável" nas fichas.</li>
+            <li><b>Antecedentes:</b> a aba História passou a se chamar Antecedentes, e o seletor de Estrela mostra os títulos do Livro de Regras.</li>
+            <li><b>Vocação Arcana:</b> os pontos distribuídos nas Afinidades respeitam o limite da Vocação Arcana, e o Coração de Mana só aparece para vocações mágicas.</li>
+            <li><b>Banco de Magias:</b> entradas podem ser marcadas como Magia/Habilidade de Criatura, com filtro e o ícone do Bestiário. Conceder um NPC ou Criatura não duplica mais as magias no banco, e escolher uma Runa do banco não duplica a entrada.</li>
+            <li><b>Livro de Regras:</b> a aba Graus &amp; Círculos passa a mostrar todos os Efeitos cadastrados, inclusive os novos.</li>
+            <li><b>Página inicial:</b> o card dos Ecônos mostra a variante solar, Veûna.</li>
         </ul>
     </DialogContent>
     <DialogActions>
