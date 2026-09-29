@@ -67,7 +67,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
 
     private static CreateItemRequest MinimalItem(string nome, string tipo = "ItemGeral") =>
         new(tipo, nome, 0.5m, 5, null, "Equipamentos de Aventura", "Descrição.",
-            null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null, null, null,
             null, null, null, null, null, null,
             null, null, null, null, null);
 
@@ -149,6 +149,30 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Id == weaponId);
         body.Should().NotContain(i => i.Id == generalId);
+    }
+
+    [Fact]
+    public async Task AvailableItems_returns_the_Rank_and_the_durability_resolved_from_it()
+    {
+        var setup = await BuildMemberSetupAsync("ItemsRank1");
+        var armaduraResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Peitoral D", "Armadura") with { Rank = "D" }));
+        var armaduraId = (await armaduraResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(armaduraId, null, null, null, null));
+        var escudoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Égide S", "Escudo") with { Rank = "S" }));
+        var escudoId = (await escudoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+        await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(escudoId, null, null, null, null));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
+
+        var body = (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
+        var armadura = body.Single(i => i.Id == armaduraId);
+        armadura.Rank.Should().Be("D");
+        armadura.DurabilidadeMaxima.Should().Be(80);
+        armadura.Inquebravel.Should().BeFalse();
+        var escudo = body.Single(i => i.Id == escudoId);
+        escudo.Rank.Should().Be("S");
+        escudo.DurabilidadeMaxima.Should().BeNull();
+        escudo.Inquebravel.Should().BeTrue();
     }
 
     [Fact]

@@ -53,14 +53,14 @@ public class CreaturePossessionsControllerTests : IClassFixture<PostgresFixture>
     private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco, string? imageId = null, string descricao = "Um item qualquer")
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 

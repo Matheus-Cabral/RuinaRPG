@@ -36,7 +36,7 @@ public class CharacterArsenalMigrationTests : IClassFixture<PostgresFixture>
         await db.SaveChangesAsync();
         var sheet = new CharacterSheet { Id = Guid.NewGuid(), CampaignId = campaign.Id, OwnerId = player.Id };
         db.CharacterSheets.Add(sheet);
-        var weaponItem = new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Espada", Peso = 1, Preco = 10, DurabilidadeMaxima = 20 };
+        var weaponItem = new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Espada", Peso = 1, Preco = 10 };
         db.Set<Arma>().Add(weaponItem);
         await db.SaveChangesAsync();
 

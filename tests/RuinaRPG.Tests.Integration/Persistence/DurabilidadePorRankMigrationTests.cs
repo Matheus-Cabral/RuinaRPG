@@ -44,6 +44,20 @@ public class DurabilidadePorRankMigrationTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task Migrate_drops_the_hand_typed_DurabilidadeMaxima_columns_of_the_items()
+    {
+        await using var db = await NewDbAsync();
+
+        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
+        appliedMigrations.Should().Contain(m => m.EndsWith("RemoveDurabilidadeMaximaDosItens"));
+        var itemColumns = await db.Database
+            .SqlQuery<string>($"SELECT CAST(column_name AS text) AS \"Value\" FROM information_schema.columns WHERE table_name = 'Items'")
+            .ToListAsync();
+        itemColumns.Should().NotContain(c => c.Contains("DurabilidadeMaxima"));
+        itemColumns.Should().Contain(["Arma_Rank", "Armadura_Rank", "Escudo_Rank"]);
+    }
+
+    [Fact]
     public async Task SeedAsync_inserts_the_eight_ranks_from_the_markdown_and_is_idempotent()
     {
         await using var db = await NewDbAsync();

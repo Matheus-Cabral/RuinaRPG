@@ -13,5 +13,4 @@ public class Arma : Item
     public int? Alcance { get; set; }
     public TipoDeDano? TipoDeDano { get; set; }
     public string? RequisitoAtributo { get; set; }
-    public int? DurabilidadeMaxima { get; set; }
 }

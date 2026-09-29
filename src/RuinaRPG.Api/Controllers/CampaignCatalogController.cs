@@ -27,7 +27,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/campaigns/{campaignId}")]
-public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
+public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades) : ControllerBase
 {
     [HttpGet("available-items")]
     public async Task<ActionResult<List<ItemResponse>>> AvailableItems(Guid campaignId, [FromQuery] string? nome, [FromQuery] string? tipo)
@@ -47,9 +47,10 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
             query = query.Where(i => EF.Property<string>(i, "Tipo") == tipoParsed.ToString());
 
         var items = await query.ToListAsync();
+        var tabela = await durabilidades.TabelaAsync();
         var responses = new List<ItemResponse>();
         foreach (var item in items)
-            responses.Add(await ToItemResponseAsync(item));
+            responses.Add(await ToItemResponseAsync(item, tabela));
         return responses;
     }
 
@@ -125,7 +126,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
 
     // Mirrors ItemsController.ToResponseAsync exactly (see its comment for why this isn't
     // factored into a shared helper — every controller in this codebase owns its own mapping).
-    private async Task<ItemResponse> ToItemResponseAsync(Item item)
+    private async Task<ItemResponse> ToItemResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
     {
         string? imageUrl = null;
         if (item.ImageId is not null)
@@ -134,6 +135,9 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
+        var rank = item switch { Arma a => a.Rank, Armadura ar => ar.Rank, Escudo e => e.Rank, _ => null };
+        var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, tabela);
+
         return item switch
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
@@ -141,13 +145,13 @@ public class CampaignCatalogController(RuinaRpgDbContext db) : ControllerBase
                 null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
                 a.Subcategoria, null, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
-                a.DurabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null),
+                maxima, null, null, null, null, null, null, null, null, null, null, null, inquebravel),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                ar.Subcategoria, null, null, null, null, null, null, null, null, null, ar.DurabilidadeMaxima,
-                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null),
+                ar.Subcategoria, null, ar.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
+                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null, inquebravel),
             Escudo e => new ItemResponse(e.Id.ToString(), "Escudo", e.Nome, e.Peso, e.Preco, imageUrl,
-                e.Subcategoria, null, null, null, null, null, null, null, null, null, e.DurabilidadeMaxima,
-                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null),
+                e.Subcategoria, null, e.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
+                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null, inquebravel),
             Artefato ar => new ItemResponse(ar.Id.ToString(), "Artefato", ar.Nome, ar.Peso, ar.Preco, imageUrl,
                 ar.Subcategoria, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),

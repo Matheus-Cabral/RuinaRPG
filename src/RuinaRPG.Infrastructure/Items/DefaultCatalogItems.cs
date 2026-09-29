@@ -14,9 +14,10 @@ namespace RuinaRPG.Infrastructure.Items;
 ///
 /// Fields absent from the source document are left at their type's default rather than invented:
 /// Peso = 0, Preço = 0 on every item (the docx has no economy columns at all), and
-/// DurabilidadeMaxima/RF/RM stay null on Armas/Armaduras (no durability or reduction columns
-/// either — Requisitos - Catálogo R0004/R0005 both call these GM-defined, not derived from the
-/// rulebook). The GM fills these in by editing, same as any other catalog item.
+/// RF/RM stay null on Armaduras (no reduction columns either — Requisitos - Catálogo R0005 calls
+/// these GM-defined, not derived from the rulebook). The GM fills these in by editing, same as any
+/// other catalog item. Durabilidade isn't a field at all: it's resolved from each Arma's Rank via
+/// the Tabela de Durabilidade por Rank.
 ///
 /// Two lossy mappings from the source table format, both called out per-row below where they
 /// apply:

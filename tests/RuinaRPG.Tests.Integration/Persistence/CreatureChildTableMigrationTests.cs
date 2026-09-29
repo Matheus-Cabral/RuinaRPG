@@ -42,9 +42,9 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         var sheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gm.Id };
         db.CreatureSheets.Add(sheet);
 
-        var weaponItem = new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Garras", Peso = 1, Preco = 10, DurabilidadeMaxima = 20 };
-        var armorItem = new Armadura { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Escama", Peso = 1, Preco = 10, DurabilidadeMaxima = 10 };
-        var shieldItem = new Escudo { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Broquel", Peso = 1, Preco = 10, DurabilidadeMaxima = 10 };
+        var weaponItem = new Arma { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Garras", Peso = 1, Preco = 10 };
+        var armorItem = new Armadura { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Escama", Peso = 1, Preco = 10 };
+        var shieldItem = new Escudo { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Broquel", Peso = 1, Preco = 10 };
         var spoilItem = new ItemGeral { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Presa", Peso = 1, Preco = 5 };
         var artifactItem = new Artefato { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Anel do Poder", Peso = 0.1m, Preco = 500 };
         db.Set<Arma>().Add(weaponItem);

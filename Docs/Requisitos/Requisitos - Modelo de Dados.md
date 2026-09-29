@@ -109,7 +109,6 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
 | Alvo | string, nullable | Artefato |
 | Valor | int, nullable | Artefato |
-| DurabilidadeMaxima | int, nullable | Arma, Armadura, Escudo — valor de referência definido pelo GM; o valor **atual** não mora aqui, mora por instância (ver `CharacterWeapons`/`CharacterArmorSlots`/`CharacterShields` na seção 6) |
 
 **DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
 
@@ -287,7 +286,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | CharacterSheetId | FK |
 | ItemId | FK → Items (Tipo=Arma) |
 | IsEquipped | bool |
-| DurabilidadeAtual | int | inicializada = `Items.DurabilidadeMaxima` no momento em que a linha é criada; editável e independente depois |
+| DurabilidadeAtual | int | inicializada = Durabilidade Máxima do item (resolvida do `Items.Rank` via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) no momento em que a linha é criada; editável depois, mas sempre limitada a [0, máximo atual] — na leitura e ao salvar |
 
 **CharacterArmorSlots** — 3 linhas fixas por ficha (3.b). Referência ao vivo ao Catálogo, exceto Durabilidade.
 

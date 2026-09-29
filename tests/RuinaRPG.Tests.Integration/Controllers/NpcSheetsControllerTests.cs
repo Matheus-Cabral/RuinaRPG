@@ -807,7 +807,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
             new UpdateNpcAttributeRequest(4, 0, false)));
 
         var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, "SubAtributo", "Esquiva Natural", 3, null)));
         var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
@@ -821,7 +821,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, 12, "Medio", 5, rf, rm, "-1 Furtividade", 2, null, null, null, null, null)));
+            new RuinaRPG.Contracts.Items.CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, null, "Medio", 5, rf, rm, "-1 Furtividade", 2, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
     }
 
@@ -846,7 +846,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new RuinaRPG.Contracts.Items.CreateItemRequest("ItemGeral", nome, peso, 5, null, "Diversos", "Um item qualquer",
-                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, capacidadeExtra)));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
@@ -856,7 +856,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new RuinaRPG.Contracts.Items.CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
-                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, 10,
+                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
                 null, null, null, null, null, null,
                 null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
@@ -866,7 +866,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new RuinaRPG.Contracts.Items.CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
-                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
                 "Leve", null, null, null, "-1 Agilidade", 1,
                 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
@@ -997,7 +997,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var sheetId = await CreateSheetAsync(gmToken);
 
         var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
         var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
@@ -1015,11 +1015,11 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var sheetId = await CreateSheetAsync(gmToken);
 
         var cortanteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+            new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, "Dano", "Cortante", 3, null)));
         var cortanteItemId = (await cortanteResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
         var arcanoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null,
+            new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, "Dano", "Arcano", 2, null)));
         var arcanoItemId = (await arcanoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(cortanteItemId)));

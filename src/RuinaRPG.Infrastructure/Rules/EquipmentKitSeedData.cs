@@ -4,7 +4,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 
 public record EquipmentKitSeed(string Nome, string Descricao, int Ciclos, List<EquipmentKitItemSeed> Items, List<EquipmentKitChoiceSlotSeed> ChoiceSlots);
 public record EquipmentKitItemSeed(string Nome, ItemTipo Tipo, int Qtd, string? SubcategoriaHint = null);
-public record EquipmentKitChoiceSlotSeed(string Label, ItemTipo Tipo, List<string>? Subcategorias, RankDeItem? Tier, int Qtd,
+public record EquipmentKitChoiceSlotSeed(string Label, ItemTipo Tipo, List<string>? Subcategorias, RankDeItem? Rank, int Qtd,
     string? BonusSubcategoria = null, string? BonusNome = null, int? BonusQtd = null);
 
 /// <summary>

@@ -50,24 +50,24 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateArmaItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Arma", "Espada", 1.5m, 50, imageId, "Espadas", descricao, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, durabilidadeMaxima, null, null, null, null, null, null, null, null, null, null, null)));
+            new CreateItemRequest("Arma", "Espada", 1.5m, 50, imageId, "Espadas", descricao, rank, "UmaMao", "2D6", 3, "19", 2, "Cortante", null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateArmaduraItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateArmaduraItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
+            new CreateItemRequest("Armadura", "Elmo de Ferro", 3m, 30, imageId, null, descricao, rank, null, null, null, null, null, null, null, "Medio", 5, 1, 1, "-1 Furtividade", 2, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
-    private async Task<string> CreateEscudoItemAsync(string gmToken, int durabilidadeMaxima, string? imageId = null, string? descricao = null)
+    private async Task<string> CreateEscudoItemAsync(string gmToken, string? rank, string? imageId = null, string? descricao = null)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, null, null, null, null, null, null, null, null, durabilidadeMaxima, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
+            new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, rank, null, null, null, null, null, null, null, "Leve", null, null, null, "-1 Agilidade", 1, 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -94,7 +94,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm1", "creaturearsenal1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken,
             new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
@@ -127,7 +127,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         body.Dano.Should().Be(2);
         body.Alcance.Should().BeNull();
         body.Critico.Should().BeNull();
-        body.Tier.Should().BeNull();
+        body.Rank.Should().BeNull();
         body.DurabilidadeAtual.Should().BeNull();
         body.DurabilidadeMaximo.Should().BeNull();
     }
@@ -137,7 +137,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm3", "creaturearsenal3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken,
             new AddCreatureWeaponRequest(weaponItemId, "Garras", "Cortante", "1D6", 2)));
@@ -162,7 +162,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm5", "creaturearsenal5@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var weaponItemId1 = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId1 = await CreateArmaItemAsync(gmToken, "F");
 
         var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId1, null, null, null, null)));
         var weapon1Id = (await add1.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
@@ -198,7 +198,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm7", "creaturearsenal7@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken,
             new UpdateCreatureArmorSlotRequest(armorItemId)));
@@ -209,8 +209,8 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         var slot = body!.Single(s => s.Slot == "Capacete");
         slot.ItemId.Should().Be(armorItemId);
         slot.Nome.Should().Be("Elmo de Ferro");
-        slot.DurabilidadeAtual.Should().Be(12);
-        slot.DurabilidadeMaximo.Should().Be(12);
+        slot.DurabilidadeAtual.Should().Be(20);
+        slot.DurabilidadeMaximo.Should().Be(20);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm8", "creaturearsenal8@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken,
             new AddCreatureShieldRequest(shieldItemId)));
@@ -231,8 +231,8 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         shield.ItemId.Should().Be(shieldItemId);
         shield.Nome.Should().Be("Broquel");
         shield.BonusDefesa.Should().Be(2);
-        shield.DurabilidadeAtual.Should().Be(10);
-        shield.DurabilidadeMaxima.Should().Be(10);
+        shield.DurabilidadeAtual.Should().Be(20);
+        shield.DurabilidadeMaxima.Should().Be(20);
     }
 
     [Fact]
@@ -241,9 +241,9 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGmImg1", "creaturearsenalimg1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var imageId = await UploadImageAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20, imageId, "Uma lâmina antiga.");
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12, imageId, "Placas enferrujadas.");
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10, imageId, "Um broquel rachado.");
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F", imageId, "Uma lâmina antiga.");
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F", imageId, "Placas enferrujadas.");
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F", imageId, "Um broquel rachado.");
 
         var weaponResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
         var weaponBody = await weaponResponse.Content.ReadFromJsonAsync<CreatureWeaponResponse>();
@@ -281,7 +281,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm9", "creaturearsenal9@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
         var weaponId = (await addResponse.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
 
@@ -298,7 +298,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm10", "creaturearsenal10@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 12);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateCreatureArmorSlotRequest(armorItemId)));
 
         var unlinkResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateCreatureArmorSlotRequest(null)));
@@ -316,7 +316,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm11", "creaturearsenal11@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId)));
         var shieldId = (await addResponse.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
 
@@ -334,8 +334,8 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureArsenalGmOwner12", "creaturearsenalowner12@teste.com");
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureArsenalGmOther12", "creaturearsenalother12@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
-        var weaponItemId = await CreateArmaItemAsync(gmTokenOwner, 20);
-        var shieldItemId = await CreateEscudoItemAsync(gmTokenOwner, 10);
+        var weaponItemId = await CreateArmaItemAsync(gmTokenOwner, "F");
+        var shieldItemId = await CreateEscudoItemAsync(gmTokenOwner, "F");
         var addWeapon = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmTokenOwner, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
         var weaponId = (await addWeapon.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
         var addShield = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmTokenOwner, new AddCreatureShieldRequest(shieldItemId)));
@@ -436,8 +436,8 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm19", "creaturearsenal19@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, 10);
-        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, 8);
+        var shieldItemId1 = await CreateEscudoItemAsync(gmToken, "F");
+        var shieldItemId2 = await CreateEscudoItemAsync(gmToken, "F");
         var add1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId1)));
         var shield1Id = (await add1.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
         var add2 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId2)));
@@ -458,7 +458,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm20", "creaturearsenal20@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var weaponItemId = await CreateArmaItemAsync(gmToken, 20);
+        var weaponItemId = await CreateArmaItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken, new AddCreatureWeaponRequest(weaponItemId, null, null, null, null)));
         var weaponId = (await add.Content.ReadFromJsonAsync<CreatureWeaponResponse>())!.Id;
 
@@ -487,7 +487,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm22", "creaturearsenal22@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, 10);
+        var shieldItemId = await CreateEscudoItemAsync(gmToken, "F");
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId)));
         var shieldId = (await add.Content.ReadFromJsonAsync<CreatureShieldResponse>())!.Id;
 
@@ -495,7 +495,7 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/shields", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureShieldResponse>>();
-        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(10);
+        body!.Single(s => s.Id == shieldId).DurabilidadeAtual.Should().Be(20);
     }
 
     [Fact]
@@ -503,14 +503,14 @@ public class CreatureArsenalControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureArsenalGm23", "creaturearsenal23@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, 15);
+        var armorItemId = await CreateArmaduraItemAsync(gmToken, "F");
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken, new UpdateCreatureArmorSlotRequest(armorItemId)));
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete/durabilidade", gmToken, 999));
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/armor-slots", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CreatureArmorSlotResponse>>();
-        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(15);
+        body!.Single(a => a.Slot == "Capacete").DurabilidadeAtual.Should().Be(20);
     }
 
     [Fact]

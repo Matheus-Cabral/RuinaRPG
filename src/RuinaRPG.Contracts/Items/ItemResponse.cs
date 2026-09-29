@@ -9,7 +9,7 @@ public record ItemResponse(
     string? ImageUrl,
     string? Subcategoria,
     string? Descricao,
-    string? Tier,
+    string? Rank,
     string? Empunhadura,
     string? Dados,
     int? Dano,
@@ -28,4 +28,5 @@ public record ItemResponse(
     string? TipoDeAlvo,
     string? Alvo,
     int? Valor,
-    decimal? CapacidadeExtra);
+    decimal? CapacidadeExtra,
+    bool Inquebravel = false);

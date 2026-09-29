@@ -77,7 +77,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -193,6 +193,13 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         var inventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", gmToken));
         var inventory = await inventoryResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
         inventory!.Should().Contain(i => i.Nome == "Flecha de Madeira" && i.Qtd == 10);
+
+        // Durabilidade por Rank: a Rank-F kit weapon lands with atual = max = 20 (Tabela).
+        var weaponsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", gmToken));
+        var weapons = await weaponsResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        var bowOnSheet = weapons!.Single(w => w.ItemId == testBowId.ToString());
+        bowOnSheet.DurabilidadeAtual.Should().Be(20);
+        bowOnSheet.DurabilidadeMaxima.Should().Be(20);
     }
 
     [Fact]
@@ -331,7 +338,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
             var armadura = new RuinaRPG.Infrastructure.Items.Armadura
             {
                 Id = Guid.NewGuid(), GmId = Guid.Parse(gmId), Nome = "Armadura de Teste F", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro",
-                DurabilidadeMaxima = 8, Peso = 1, Preco = 0,
+                Peso = 1, Preco = 0, // no Rank → no durability (Durabilidade por Rank)
             };
             db.Add(armadura);
             await db.SaveChangesAsync();
@@ -351,6 +358,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         var slots = await slotsResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
         var superior = slots!.Single(s => s.Slot == "Superior");
         superior.Nome.Should().Be("Armadura de Teste F");
-        superior.DurabilidadeAtual.Should().Be(8);
+        superior.DurabilidadeAtual.Should().Be(0);
+        superior.DurabilidadeMaxima.Should().BeNull();
     }
 }

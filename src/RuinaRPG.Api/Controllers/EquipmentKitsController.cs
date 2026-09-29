@@ -171,17 +171,17 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 return BadRequest("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)
                 return BadRequest("Qtd do slot de escolha deve ser pelo menos 1.");
-            // Tier only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
-            // only applies the Tier filter in the Arma branch) — a non-empty Tier elsewhere would
+            // Rank only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
+            // only applies the Rank filter in the Arma branch) — a non-empty Rank elsewhere would
             // be silently ignored at resolve time, so it's rejected here instead.
-            if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Tier))
-                return BadRequest("Tier só é aplicável a slots de escolha de Tipo=Arma.");
-            RankDeItem? tier = null;
-            if (!string.IsNullOrWhiteSpace(slot.Tier))
+            if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Rank))
+                return BadRequest("Rank só é aplicável a slots de escolha de Tipo=Arma.");
+            RankDeItem? rank = null;
+            if (!string.IsNullOrWhiteSpace(slot.Rank))
             {
-                if (!Enum.TryParse<RankDeItem>(slot.Tier, out var parsedTier))
-                    return BadRequest($"Tier inválido: \"{slot.Tier}\".");
-                tier = parsedTier;
+                if (!Enum.TryParse<RankDeItem>(slot.Rank, out var parsedRank))
+                    return BadRequest($"Rank inválido: \"{slot.Rank}\".");
+                rank = parsedRank;
             }
             if ((slot.BonusSubcategoria is null) != (slot.BonusNome is null))
                 return BadRequest("BonusSubcategoria e BonusNome devem ser informados juntos, ou nenhum dos dois.");
@@ -194,7 +194,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 Label = slot.Label,
                 Tipo = tipo,
                 SubcategoriasCsv = slot.Subcategorias is null ? null : string.Join(",", slot.Subcategorias),
-                Rank = tier,
+                Rank = rank,
                 Qtd = slot.Qtd,
                 BonusSubcategoria = slot.BonusSubcategoria,
                 BonusNome = slot.BonusNome,

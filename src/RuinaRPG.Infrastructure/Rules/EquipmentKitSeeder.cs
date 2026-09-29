@@ -35,7 +35,7 @@ public static class EquipmentKitSeeder
                     Label = slot.Label,
                     Tipo = slot.Tipo,
                     SubcategoriasCsv = slot.Subcategorias is null ? null : string.Join(",", slot.Subcategorias),
-                    Rank = slot.Tier,
+                    Rank = slot.Rank,
                     Qtd = slot.Qtd,
                     BonusSubcategoria = slot.BonusSubcategoria,
                     BonusNome = slot.BonusNome,

@@ -199,7 +199,7 @@
         _form.Subcategoria = existing.Subcategoria;
         _form.Descricao = existing.Descricao;
         _form.CapacidadeExtra = existing.CapacidadeExtra;
-        _form.Tier = existing.Tier;
+        _form.Tier = existing.Rank;
         _form.Empunhadura = existing.Empunhadura;
         _form.Dados = existing.Dados;
         _form.Dano = existing.Dano;
@@ -227,7 +227,7 @@
 
         var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
             _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PostAsJsonAsync("items", request);
@@ -260,7 +260,7 @@
 
         var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
             _form.Subcategoria, _form.Descricao, _form.Tier, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo, _form.DurabilidadeMaxima,
+            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);

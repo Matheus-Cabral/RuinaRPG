@@ -24,7 +24,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -65,7 +65,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -162,7 +162,7 @@ public class CatalogoItemFormTests : MudBunitContext
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
-                          Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null, Empunhadura = (string?)null,
+                          Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
                           RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
                           RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
@@ -403,7 +403,7 @@ public class CatalogoItemFormTests : MudBunitContext
             return new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new
             {
                 Id = "item-new", Tipo = "ItemGeral", Nome = "Poção Nova", Peso = 1m, Preco = 5,
-                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Tier = (string?)null,
+                ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null,
                 Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
                 Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
                 DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,

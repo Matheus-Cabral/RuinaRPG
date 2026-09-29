@@ -19,7 +19,7 @@ public record EquipmentGrantPlanItem(ItemTipo Tipo, Guid ItemId, int Qtd, int? D
 /// upserts the campaign-visibility side effect (Requisitos - Campanha's "itens de conhecimento
 /// geral" exception to the normal manual-attach-and-publish flow).
 /// </summary>
-public class EquipmentKitGrantService(RuinaRpgDbContext db)
+public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades)
 {
     public async Task<List<EquipmentKitEligibleItemResponse>> ResolveEligibleOptionsAsync(EquipmentKitChoiceSlot slot, Guid gmId)
     {
@@ -90,28 +90,29 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
                 return (null, $"O item escolhido não é uma opção válida para \"{slot.Label}\".");
 
             string? selectedSubcategoria;
-            int? selectedDurabilidade;
+            RankDeItem? selectedRank;
             switch (slot.Tipo)
             {
                 case ItemTipo.Arma:
-                    var arma = await db.Set<Arma>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.DurabilidadeMaxima }).SingleAsync();
-                    selectedSubcategoria = arma.Subcategoria; selectedDurabilidade = arma.DurabilidadeMaxima;
+                    var arma = await db.Set<Arma>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.Rank }).SingleAsync();
+                    selectedSubcategoria = arma.Subcategoria; selectedRank = arma.Rank;
                     break;
                 case ItemTipo.Armadura:
-                    var armadura = await db.Set<Armadura>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.DurabilidadeMaxima }).SingleAsync();
-                    selectedSubcategoria = armadura.Subcategoria; selectedDurabilidade = armadura.DurabilidadeMaxima;
+                    var armadura = await db.Set<Armadura>().Where(a => a.Id == selectedItemId).Select(a => new { a.Subcategoria, a.Rank }).SingleAsync();
+                    selectedSubcategoria = armadura.Subcategoria; selectedRank = armadura.Rank;
                     break;
                 case ItemTipo.Escudo:
-                    var escudo = await db.Set<Escudo>().Where(e => e.Id == selectedItemId).Select(e => new { e.Subcategoria, e.DurabilidadeMaxima }).SingleAsync();
-                    selectedSubcategoria = escudo.Subcategoria; selectedDurabilidade = escudo.DurabilidadeMaxima;
+                    var escudo = await db.Set<Escudo>().Where(e => e.Id == selectedItemId).Select(e => new { e.Subcategoria, e.Rank }).SingleAsync();
+                    selectedSubcategoria = escudo.Subcategoria; selectedRank = escudo.Rank;
                     break;
                 case ItemTipo.Artefato:
                     selectedSubcategoria = await db.Set<Artefato>().Where(a => a.Id == selectedItemId).Select(a => a.Subcategoria).SingleAsync();
-                    selectedDurabilidade = null;
+                    selectedRank = null;
                     break;
                 default:
                     throw new InvalidOperationException($"Unhandled choice-slot Tipo {slot.Tipo}.");
             }
+            var selectedDurabilidade = (await durabilidades.ResolverAsync(selectedRank)).Maxima;
             grants.Add(new EquipmentGrantPlanItem(slot.Tipo, selectedItemId, slot.Qtd, selectedDurabilidade, slot.ArmorSlot));
 
             var bonusMatches = slot.BonusNome is not null && (selectedSubcategoria == slot.BonusSubcategoria
@@ -146,10 +147,10 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db)
                 return (created.Id, null);
             case ItemTipo.Arma:
                 var arma = await db.Set<Arma>().FirstOrDefaultAsync(a => a.GmId == gmId && a.Nome == kitItem.Nome);
-                return arma is null ? null : (arma.Id, arma.DurabilidadeMaxima);
+                return arma is null ? null : (arma.Id, (await durabilidades.ResolverAsync(arma.Rank)).Maxima);
             case ItemTipo.Escudo:
                 var escudo = await db.Set<Escudo>().FirstOrDefaultAsync(e => e.GmId == gmId && e.Nome == kitItem.Nome);
-                return escudo is null ? null : (escudo.Id, escudo.DurabilidadeMaxima);
+                return escudo is null ? null : (escudo.Id, (await durabilidades.ResolverAsync(escudo.Rank)).Maxima);
             case ItemTipo.Artefato:
                 var artefato = await db.Set<Artefato>().FirstOrDefaultAsync(a => a.GmId == gmId && a.Nome == kitItem.Nome);
                 return artefato is null ? null : (artefato.Id, (int?)null);

@@ -63,7 +63,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitItems.Add(kitItem);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [kitItem], [], gmId, []);
         // BuildPlanAsync only stages the auto-created ItemGeral on the change tracker (via
         // db.Add) — persisting it is the caller's job, same as Task 9's controllers will do
@@ -93,7 +93,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitItems.Add(kitItem);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, _) = await service.BuildPlanAsync(kit, [kitItem], [], gmId, []);
 
         plan!.Grants.Single().ItemId.Should().Be(existing.Id);
@@ -112,7 +112,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, []);
 
         plan.Should().BeNull();
@@ -133,7 +133,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), outOfTierWeapon.Id.ToString())]);
 
         plan.Should().BeNull();
@@ -159,7 +159,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), bow.Id.ToString())]);
 
         error.Should().BeNull();
@@ -192,7 +192,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), sling.Id.ToString())]);
 
         error.Should().BeNull();
@@ -216,7 +216,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var options = await service.ResolveEligibleOptionsAsync(slot, gmId);
 
         options.Should().ContainSingle(o => o.ItemId == varinha.Id.ToString());
@@ -236,7 +236,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var options = await service.ResolveEligibleOptionsAsync(slot, gmId);
 
         options.Should().ContainSingle(o => o.ItemId == arco.Id.ToString());
@@ -260,7 +260,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.AddRange(armaduraSlot, escudoSlot, artefatoSlot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
 
         (await service.ResolveEligibleOptionsAsync(armaduraSlot, gmId)).Should().ContainSingle(o => o.ItemId == armadura.Id.ToString());
         (await service.ResolveEligibleOptionsAsync(escudoSlot, gmId)).Should().ContainSingle(o => o.ItemId == escudo.Id.ToString());
@@ -273,7 +273,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmArmorSlotCarry");
-        var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", DurabilidadeMaxima = 10, Peso = 1, Preco = 0 };
+        var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Rank = RankDeItem.E, Peso = 1, Preco = 0 };
         db.Add(armadura);
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
         db.EquipmentKits.Add(kit);
@@ -281,14 +281,14 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), armadura.Id.ToString())]);
 
         error.Should().BeNull();
         var grant = plan!.Grants.Single();
         grant.Tipo.Should().Be(ItemTipo.Armadura);
         grant.ArmorSlot.Should().Be(RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Capacete);
-        grant.DurabilidadeMaxima.Should().Be(10);
+        grant.DurabilidadeMaxima.Should().Be(45); // Rank E, Tabela de Durabilidade por Rank
     }
 
     // A parsed-Família match must not cross Tipos: an Arma slot whose allowed Família list
@@ -312,7 +312,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(armaSlot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var options = await service.ResolveEligibleOptionsAsync(armaSlot, gmId);
 
         options.Should().BeEmpty();
@@ -340,7 +340,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), varinha.Id.ToString())]);
 
         error.Should().BeNull();
@@ -374,7 +374,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.EquipmentKitChoiceSlots.Add(slot);
         await db.SaveChangesAsync();
 
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
         var (plan, error) = await service.BuildPlanAsync(kit, [], [slot], gmId, [new ChoiceSlotSelectionRequest(slot.Id.ToString(), armaMisComposta.Id.ToString())]);
 
         error.Should().BeNull();
@@ -394,7 +394,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         db.Add(item);
         await db.SaveChangesAsync();
         var itemId = item.Id;
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
 
         await service.UpsertCampaignAttachmentAsync(campaignId, itemId);
         await db.SaveChangesAsync();
@@ -416,7 +416,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<PostgresFixture>, IAs
         var itemId = item.Id;
         db.CampaignAttachments.Add(new CampaignAttachment { Id = Guid.NewGuid(), CampaignId = campaignId, ItemId = itemId, IsPublic = false });
         await db.SaveChangesAsync();
-        var service = new EquipmentKitGrantService(db);
+        var service = new EquipmentKitGrantService(db, new DurabilidadePorRankProvider(db));
 
         await service.UpsertCampaignAttachmentAsync(campaignId, itemId);
         await db.SaveChangesAsync();

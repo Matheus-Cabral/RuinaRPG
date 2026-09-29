@@ -306,7 +306,7 @@ public class EquipmentKitsControllerTests : IClassFixture<PostgresFixture>, IAsy
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var kit = await response.Content.ReadFromJsonAsync<EquipmentKitResponse>();
         kit!.Items.Should().ContainSingle(i => i.Nome == "Mochila");
-        kit.ChoiceSlots.Should().ContainSingle(s => s.Label == "Arma" && s.Tier == "F");
+        kit.ChoiceSlots.Should().ContainSingle(s => s.Label == "Arma" && s.Rank == "F");
     }
 
     [Fact]

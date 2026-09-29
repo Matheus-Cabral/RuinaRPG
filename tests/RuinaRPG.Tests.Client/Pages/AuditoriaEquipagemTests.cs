@@ -50,7 +50,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
             new
             {
                 Id = "slot-1", Label = "Armadura inicial", Tipo = "Armadura",
-                Subcategorias = (List<string>?)null, Tier = (string?)null, Qtd = 1,
+                Subcategorias = (List<string>?)null, Rank = (string?)null, Qtd = 1,
                 BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusQtd = (int?)null,
                 ArmorSlot = "Superior",
             },
@@ -317,7 +317,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         captured.Should().NotBeNull();
         var newSlot = captured!.ChoiceSlots.Single(s => s.Label == "Rodela inicial");
         newSlot.Tipo.Should().Be("Escudo");
-        newSlot.Tier.Should().BeNull();
+        newSlot.Rank.Should().BeNull();
     }
 
     [Fact]
@@ -527,5 +527,5 @@ public class AuditoriaEquipagemTests : MudBunitContext
     private record EquipmentKitItemInputCapture(string Nome, string Tipo, int Qtd, string? SubcategoriaHint);
 
     private record EquipmentKitChoiceSlotInputCapture(string Label, string Tipo, List<string>? Subcategorias,
-        string? Tier, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd, string? ArmorSlot);
+        string? Rank, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd, string? ArmorSlot);
 }

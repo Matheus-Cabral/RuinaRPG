@@ -399,7 +399,7 @@
                             <td>@(weapon.Dados ?? "—")</td>
                             <td>@(weapon.Dano?.ToString() ?? "—")</td>
                             <td>@(weapon.Critico ?? "—")</td>
-                            <td>@(weapon.Tier ?? "—")</td>
+                            <td>@(weapon.Rank ?? "—")</td>
                             <td>@weapon.Peso</td>
                             <td>
                                 <MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />

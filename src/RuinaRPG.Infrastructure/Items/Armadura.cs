@@ -12,5 +12,4 @@ public class Armadura : Item
     public int? RM { get; set; }
     public string? Penalidade { get; set; }
     public int? RequisitoVigor { get; set; }
-    public int? DurabilidadeMaxima { get; set; }
 }
