@@ -14,7 +14,7 @@ public class ArcaEvolucoesEditorTests : MudBunitContext
 {
     private readonly List<(HttpMethod Method, string Path, ArcaEvolucaoRequest? Body)> _log = new();
 
-    private IRenderedComponent<ArcaEvolucoesEditor> RenderEditor(List<ArcaEvolucaoResponse> evolucoes, Action? onChanged = null)
+    private IRenderedComponent<ArcaEvolucoesEditor> RenderEditor(List<ArcaEvolucaoResponse> evolucoes, Action? onChanged = null, HttpStatusCode putStatus = HttpStatusCode.OK)
     {
         var http = FakeHttpMessageHandler.CreateClient(request =>
         {
@@ -23,7 +23,7 @@ public class ArcaEvolucoesEditorTests : MudBunitContext
             if (request.Method == HttpMethod.Post)
                 return new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new ArcaEvolucaoResponse(Guid.NewGuid(), body!.Nivel, body.Descricao)) };
             if (request.Method == HttpMethod.Put)
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new ArcaEvolucaoResponse(Guid.NewGuid(), body!.Nivel, body.Descricao)) };
+                return new HttpResponseMessage(putStatus) { Content = putStatus == HttpStatusCode.OK ? JsonContent.Create(new ArcaEvolucaoResponse(Guid.NewGuid(), body!.Nivel, body.Descricao)) : new StringContent("Descrição inválida.") };
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         });
         Services.AddScoped(_ => http);
@@ -81,5 +81,20 @@ public class ArcaEvolucoesEditorTests : MudBunitContext
         await Task.Delay(50);
 
         _log.Should().ContainSingle(l => l.Method == HttpMethod.Delete && l.Path.EndsWith($"/arcas/4/evolucoes/{id}"));
+    }
+
+    [Fact]
+    public async Task A_rejected_edit_shows_the_original_text_again()
+    {
+        var id = Guid.NewGuid();
+        var evolucoes = new List<ArcaEvolucaoResponse> { new(id, 3, "três") };
+        var cut = RenderEditor(evolucoes, putStatus: HttpStatusCode.BadRequest);
+
+        cut.FindAll("textarea").First().Change("texto rejeitado");
+        await Task.Delay(50);
+
+        // Asserted through markup: MUD0012 forbids reading .Instance.Value.
+        cut.WaitForAssertion(() => cut.FindAll("textarea").First().TextContent.Trim().Should().Be("três"));
+        cut.Markup.Should().NotContain("texto rejeitado");
     }
 }

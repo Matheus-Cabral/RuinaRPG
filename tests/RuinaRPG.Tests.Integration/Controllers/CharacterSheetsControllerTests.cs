@@ -1287,6 +1287,13 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
             .Content.ReadFromJsonAsync<RacialAbilityResponse>();
 
         body!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("nível um");
+
+        // XP 50 is the Nível 2 threshold (NivelCalculator) — the level-2 evolução unlocks after this save.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Sinir", ArcaRolada = 7, ExperienciaAtual = 50 }));
+        var atLevel2 = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        atLevel2!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("nível um", "nível dois");
     }
 
     [Fact]

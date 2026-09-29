@@ -1176,6 +1176,8 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
+        // Evoluções de Arca unlocked depend on Nível.
+        await LoadRacialAbilityAsync();
         return true;
     }
 
