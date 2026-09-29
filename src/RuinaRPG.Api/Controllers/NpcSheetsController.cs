@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats) : ControllerBase
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
     // granted one already does — same reasoning as List below.
@@ -338,10 +339,9 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>
-    /// Read-only, everything derived live — nothing here is persisted. "Bruto [Perícia]" terms
-    /// (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador alone (Sistema Básico §2 /
-    /// SkillFormulas.Modificador), sourced from the sheet's own NpcSkill rows below. Mirrors
-    /// CharacterSheetsController.SubAttributes exactly, table-for-table.
+    /// Read-only, everything derived live — nothing here is persisted. The computation itself
+    /// lives in NpcSheetStats.SubAtributosAsync, shared with the FichaParaRequisitos snapshot
+    /// used by Passiva requisitos.
     /// </summary>
     [HttpGet("{id}/sub-attributes")]
     public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
@@ -353,81 +353,13 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var artefatos = await GetArtifactBonusInputsAsync(id);
-        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
-        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
-        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
-
-        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-
-        var brutoSkills = await db.NpcSkills
-            .Where(s => s.NpcSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
-            .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(
-            brutoSkills.Single(s => s.Pericia == pericia).Gasto,
-            HistoricoBonusCalculator.For(pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
-
-        var brutoProntidao = BrutoOf(Pericia.Prontidao);
-        var brutoReflexos = BrutoOf(Pericia.Reflexos);
-        var brutoFortitude = BrutoOf(Pericia.Fortitude);
-
-        var weapons = await db.NpcWeapons.Where(w => w.NpcSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var shields = await db.NpcShields.Where(s => s.NpcSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
-        var inventoryItems = await db.NpcInventoryItems.Where(i => i.NpcSheetId == id)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
-            .ToListAsync();
-
-        // Peso Total 2.b (corrected — see docs/superpowers/specs/2026-09-08-inventory-weight-and-
-        // capacity-design.md): Inventário (5.a) + Armas/Escudos DESequipados. Armaduras never count
-        // — an NpcArmorSlot with an ItemId is inherently worn (no unequipped state exists for armor
-        // in this schema). A Capacidade Extra ("mochila") item doesn't add its own Peso here — it
-        // raises pesoMaximo instead.
-        var pesoAtual = inventoryItems.Where(i => CarryWeightCalculator.CountsTowardPesoAtual(i.CapacidadeExtra)).Sum(i => i.Peso * i.Qtd)
-            + weapons.Where(w => !w.IsEquipped).Sum(w => w.Peso)
-            + shields.Where(s => !s.IsEquipped).Sum(s => s.Peso);
-        var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
-        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal);
-
-        var equippedShield = await db.NpcShields
-            .Where(s => s.NpcSheetId == id && s.IsEquipped)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => i.BonusDefesa)
-            .FirstOrDefaultAsync();
-        var coberturaBonus = sheet.Cobertura switch { Cobertura.Parcial => 5, Cobertura.Completa => 10, _ => 0 };
-
-        // Every NpcArmorSlot with an ItemId is inherently worn (no separate IsEquipped
-        // flag, unlike weapons/shields) — so, unlike Peso Total Carregado, this is already
-        // scoped to equipped armor only.
-        var armorRfRm = await db.NpcArmorSlots
-            .Where(a => a.NpcSheetId == id && a.ItemId != null)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { i.RF, i.RM })
-            .ToListAsync();
-        var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
-        var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
-
-        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
-
-        return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
-            // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
-            // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
-            // numeric formula term today. Unlike Bruto above, this is a real, still-open gap.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
-            PesoAtual: pesoAtual,
-            PesoMaximo: pesoMaximo,
-            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade),
-            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade));
+        return await stats.SubAtributosAsync(sheet);
     }
 
     /// <summary>
-    /// Shared by SubAttributes and the máximo computation in ToResponseAsync — a single-row
-    /// lookup + AttributeTotalCalculator.Total, rather than duplicating that logic a third time.
+    /// Used by the máximo computation (vigorTotal/astuciaTotal) in ToResponseAsync — a single-row
+    /// lookup + AttributeTotalCalculator.Total. SubAttributes no longer calls this: that formula was
+    /// extracted into NpcSheetStats, shared with the Passiva requisitos snapshot.
     /// Mirrors CharacterSheetsController.GetAttributeTotalAsync, scoped to NpcAttributes.
     /// </summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)

@@ -14,6 +14,7 @@
 @using RuinaRPG.Contracts.Players
 @using RuinaRPG.Contracts.Runes
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.SpellsAndAbilities
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
@@ -481,8 +482,15 @@
         var response = await Http.GetAsync($"spell-ability-bank?nome={Uri.EscapeDataString(query)}");
         if (!response.IsSuccessStatusCode) return new();
         var entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
-        return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} ({e.Tipo}, Grau {e.Grau})")).ToList();
+        return entries.Select(e => new PickerOption(e.Id, BankEntryLabel(e))).ToList();
     }
+
+    // Uma Passiva não tem Grau (fica sempre 0) — mostrar "Grau 0" seria enganoso, então ela usa a
+    // Categoria (Passiva Livre/Vocacional/de Classe) em vez do par Tipo/Grau das demais entradas.
+    private static string BankEntryLabel(SpellAbilityEntryResponse e) =>
+        e.Tipo == "Passiva" && Enum.TryParse<CategoriaDePassiva>(e.Categoria, out var categoria)
+            ? $"{e.Nome} ({RequisitoLabels.Categoria(categoria)})"
+            : $"{e.Nome} ({e.Tipo}, Grau {e.Grau})";
 
     private async Task<List<PickerOption>> SearchRuneEntriesAsync(string query)
     {

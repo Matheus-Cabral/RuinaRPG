@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/spell-abilities")]
-public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : ControllerBase
+public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSheetStats stats) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterSpellAbilityResponse>> Add(Guid sheetId, AddCharacterSpellAbilityRequest request)
@@ -37,6 +38,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
 
         string nome; SpellAbilityTipo tipo; int grau; string descricao; List<SpellAbilityEffectRequest> efeitos;
         Guid? sourceBankEntryId = null;
+        CategoriaDePassiva? categoria = null; RequisitosDePassiva? requisitos = null;
 
         if (fromBank)
         {
@@ -54,6 +56,23 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
                 && !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == sheet.CampaignId && a.IsPublic && a.SpellAbilityBankEntryId == bankEntryId))
                 return BadRequest("Entrada do banco não encontrada.");
 
+            // Depois das checagens de acesso: uma entrada inalcançável responde "não encontrada" e nunca
+            // revela seus requisitos. O bloqueio vale para todos, GM incluído.
+            if (bankEntry.Tipo == SpellAbilityTipo.Passiva)
+            {
+                // Uma Magia/Habilidade comum pode repetir na ficha (cópias independentes); uma Passiva não —
+                // ela é um estado ligado/desligado por Categoria, então a mesma entrada do banco só pode
+                // virar uma cópia por ficha.
+                if (await db.CharacterSpellAbilities.AnyAsync(e => e.CharacterSheetId == sheetId && e.SourceBankEntryId == bankEntryId))
+                    return BadRequest("Esta Passiva já está na ficha.");
+
+                var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await stats.FichaParaRequisitosAsync(sheet),
+                    await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos));
+                if (pendencias.Count > 0)
+                    return BadRequest("Requisitos não cumpridos: " + string.Join(", ", pendencias));
+            }
+            categoria = bankEntry.Categoria; requisitos = bankEntry.Requisitos;
+
             nome = bankEntry.Nome; tipo = bankEntry.Tipo; grau = bankEntry.Grau; descricao = bankEntry.Descricao;
             efeitos = bankEntry.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList();
             sourceBankEntryId = bankEntryId;
@@ -62,6 +81,8 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         {
             if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out tipo))
                 return BadRequest("Tipo desconhecido. Use Magia, Habilidade ou Racial.");
+            if (tipo == SpellAbilityTipo.Passiva)
+                return BadRequest("Passivas só são cadastradas no Banco de Magias e Habilidades.");
             nome = request.Nome!; grau = request.Grau!.Value; descricao = request.Descricao!; efeitos = request.Efeitos!;
 
             var validationError = await EfeitoValidationHelper.ValidarAsync(db, grau, efeitos);
@@ -75,7 +96,8 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         var sheetCopy = new CharacterSpellAbility
         {
             Id = Guid.NewGuid(), CharacterSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
-            Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
+            Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao,
+            Categoria = categoria, Requisitos = requisitos
         };
         sheetCopy.Efeitos = efeitos.Select(e => new CharacterSpellAbilityEffect { Id = Guid.NewGuid(), CharacterSpellAbilityId = sheetCopy.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI }).ToList();
         db.CharacterSpellAbilities.Add(sheetCopy);
@@ -109,7 +131,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         }
 
         await db.SaveChangesAsync();
-        return Created(string.Empty, ToResponse(sheetCopy));
+        return Created(string.Empty, await ToResponseAsync(sheetCopy, sheetCopy.Tipo == SpellAbilityTipo.Passiva ? await stats.FichaParaRequisitosAsync(sheet) : null));
     }
 
     [HttpGet]
@@ -124,7 +146,31 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         var entries = await db.CharacterSpellAbilities.Include(e => e.Efeitos).Where(e => e.CharacterSheetId == sheetId).ToListAsync();
-        return entries.Select(ToResponse).ToList();
+        // Uma só leitura da ficha, e só se houver Passivas; mapeamento sequencial (um único DbContext).
+        var ficha = entries.Any(e => e.Tipo == SpellAbilityTipo.Passiva) ? await stats.FichaParaRequisitosAsync(sheet) : null;
+        var result = new List<CharacterSpellAbilityResponse>();
+        foreach (var e in entries)
+            result.Add(await ToResponseAsync(e, ficha));
+        return result;
+    }
+
+    [HttpGet("passivas-disponiveis")]
+    public async Task<ActionResult<List<PassivaDisponivelResponse>>> PassivasDisponiveis(Guid sheetId)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return NotFound();
+
+        // Mesmo alcance do Add: o GM vê todas as Passivas do próprio banco; o jogador, só as públicas na campanha.
+        var query = db.SpellAbilityBankEntries.Where(e => e.GmId == campaignGmId && e.Tipo == SpellAbilityTipo.Passiva);
+        if (CurrentUserId() != campaignGmId)
+            query = query.Where(e => db.CampaignAttachments.Any(a => a.CampaignId == sheet.CampaignId && a.IsPublic && a.SpellAbilityBankEntryId == e.Id));
+
+        return await PassivasDisponiveisAsync(query, await stats.FichaParaRequisitosAsync(sheet));
     }
 
     [HttpDelete("{id}")]
@@ -147,9 +193,30 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db) : Controlle
         return NoContent();
     }
 
-    private static CharacterSpellAbilityResponse ToResponse(CharacterSpellAbility e) => new(
-        e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
-        e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList());
+    private async Task<CharacterSpellAbilityResponse> ToResponseAsync(CharacterSpellAbility e, FichaParaRequisitos? ficha)
+    {
+        List<string>? pendentes = null;
+        if (e.Tipo == SpellAbilityTipo.Passiva && ficha is not null)
+            pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos)).ToList();
+        return new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
+            e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList(),
+            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos), pendentes);
+    }
+
+    private async Task<List<PassivaDisponivelResponse>> PassivasDisponiveisAsync(IQueryable<SpellAbilityBankEntry> query, FichaParaRequisitos ficha)
+    {
+        var entradas = await query.OrderBy(e => e.Nome).ToListAsync();
+        var result = new List<PassivaDisponivelResponse>();
+        foreach (var e in entradas)
+        {
+            var pendencias = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos));
+            result.Add(new PassivaDisponivelResponse(
+                new SpellAbilityEntryResponse(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, [], e.DeCriatura,
+                    e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos)),
+                pendencias.ToList()));
+        }
+        return result;
+    }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -17,4 +17,10 @@ public class SpellAbilityBankEntry
     /// entrada nasce de uma Ficha de Criatura. Só serve de filtro no Banco.</summary>
     public bool DeCriatura { get; set; }
     public List<SpellAbilityBankEffect> Efeitos { get; set; } = [];
+
+    /// <summary>Só em Passivas (Tipo = Passiva); nulo nos demais tipos.</summary>
+    public CategoriaDePassiva? Categoria { get; set; }
+
+    /// <summary>Só em Passivas; gravado como jsonb. Nulo = sem requisitos.</summary>
+    public RequisitosDePassiva? Requisitos { get; set; }
 }

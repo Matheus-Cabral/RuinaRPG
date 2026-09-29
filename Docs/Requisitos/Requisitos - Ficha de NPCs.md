@@ -68,3 +68,9 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0010** - O limite de Vocação Arcana das Afinidades é exibido, mas não bloqueia o GM.
 
 **Descrição**: O contador **Vocação Arcana: gasto / máximo** e o campo *Afinidade Adicional* seguem "[[Requisitos - Ficha de Personagem]]" R0007 sem alteração no cálculo. Diferente do Personagem, o máximo **não é um limite**: o GM pode salvar Afinidades acima dele, e o contador apenas fica destacado em vermelho como aviso — mesmo tratamento de R0007 deste documento para os Pontos de Atributo.
+
+  
+
+# **R0011** - O NPC também recebe Habilidades Passivas.
+
+**Descrição**: A seção 4.f (Habilidades Passivas) segue "[[Requisitos - Ficha de Personagem]]" 4.f e R0008 sem alteração: a Passiva só vem do "[[Requisitos - Banco de Magias e Habilidades]]", os Requisitos são conferidos contra os valores do NPC e bloqueiam também o GM — ao contrário dos contadores de R0007 e R0010, aqui não há exceção para o GM. No NPC concedido a um jogador (R0001, exceção), o jogador só escolhe entre as Passivas públicas da campanha da concessão, e a concessão copia as Passivas do NPC de origem com Categoria e Requisitos.

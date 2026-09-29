@@ -1,5 +1,6 @@
 using RuinaRPG.Api;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
@@ -71,6 +72,9 @@ builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddSingleton<IRulesDataProvider, RulesDataProvider>();
 builder.Services.AddScoped<IRulebookRenderer, RulebookRenderer>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
+builder.Services.AddScoped<CharacterSheetStats>();
+builder.Services.AddScoped<NpcSheetStats>();
+builder.Services.AddScoped<CreatureSheetStats>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
 {

@@ -1,0 +1,241 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared
+@using RuinaRPG.Domain.CharacterSheets
+@using RuinaRPG.Domain.SpellsAndAbilities
+
+@* Edita RequisitosDePassivaDto (via RequisitosFormModel). Campo vazio = não é requisito; todos os
+   preenchidos precisam ser cumpridos (ver PassivaRequisitosEvaluator). Vocação/Classe, Linhagem/
+   Variante, Afinidade, Estrela e Histórico reaproveitam os componentes de campo já usados nas
+   fichas — nenhum deles tem uma opção "em branco" no próprio dropdown, então cada um ganha aqui um
+   botão "Limpar" que zera o(s) campo(s) do Model diretamente, sem alterar o componente reaproveitado
+   nem o comportamento dele nas fichas. *@
+
+<MudNumericField T="int?" @bind-Value="Model.Nivel" Label="Nível mínimo" Clearable="true" @bind-Value:after="OnChangedAsync" />
+
+<div class="d-flex align-center" style="gap:4px">
+    <div style="flex:1">
+        <VocacaoSubVocacaoFields Vocacao="Model.Vocacao" VocacaoChanged="OnVocacaoChangedAsync"
+                                  SubVocacao="Model.Classe" SubVocacaoChanged="OnClasseChangedAsync" />
+    </div>
+    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparVocacaoAsync" title="Limpar Vocação/Classe" aria-label="Limpar Vocação/Classe" />
+</div>
+
+<div class="d-flex align-center" style="gap:4px">
+    <div style="flex:1">
+        <LinhagemVarianteFields Linhagem="Model.Linhagem" LinhagemChanged="OnLinhagemChangedAsync"
+                                 Variante="Model.Variante" VarianteChanged="OnVarianteChangedAsync" />
+    </div>
+    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparLinhagemAsync" title="Limpar Linhagem/Variante" aria-label="Limpar Linhagem/Variante" />
+</div>
+
+<MudNumericField T="int?" @bind-Value="Model.Graduacao" Label="Grau/Círculo mínimo" Min="0" Max="9" Clearable="true" @bind-Value:after="OnChangedAsync" />
+
+<MudCheckBox T="bool" @bind-Value="Model.CoracaoDeMana" Label="Exige Coração de Mana" @bind-Value:after="OnChangedAsync" />
+
+<div class="d-flex align-center" style="gap:4px">
+    <div style="flex:1">
+        <AfinidadeSelect Value="Model.Afinidade" ValueChanged="OnAfinidadeChangedAsync" />
+    </div>
+    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparAfinidadeAsync" title="Limpar Afinidade" aria-label="Limpar Afinidade" />
+</div>
+
+<div class="d-flex align-center" style="gap:4px">
+    <div style="flex:1">
+        <EstrelaSelect Value="Model.Estrela" ValueChanged="OnEstrelaChangedAsync" />
+    </div>
+    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparEstrelaAsync" title="Limpar Estrela" aria-label="Limpar Estrela" />
+</div>
+
+<div class="d-flex align-center" style="gap:4px">
+    <div style="flex:1">
+        <HistoricoSelect Value="Model.HistoricoId" ValueChanged="OnHistoricoChangedAsync" />
+    </div>
+    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparHistoricoAsync" title="Limpar Histórico" aria-label="Limpar Histórico" />
+</div>
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Atributos</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.Atributos.Count; i++)
+        {
+            var linha = Model.Atributos[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in AtributoOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.Atributos, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Minimo" ValueChanged="@(v => OnMinimoChangedAsync(linha, v))" Label="Mínimo" Min="0" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.Atributos, index))" title="Remover Atributo" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.Atributos))">Adicionar Atributo</MudButton>
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Sub-Atributos</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.SubAtributos.Count; i++)
+        {
+            var linha = Model.SubAtributos[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in SubAtributoOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.SubAtributos, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Minimo" ValueChanged="@(v => OnMinimoChangedAsync(linha, v))" Label="Mínimo" Min="0" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.SubAtributos, index))" title="Remover Sub-Atributo" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.SubAtributos))">Adicionar Sub-Atributo</MudButton>
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Perícias</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.Pericias.Count; i++)
+        {
+            var linha = Model.Pericias[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in PericiaOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.Pericias, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Minimo" ValueChanged="@(v => OnMinimoChangedAsync(linha, v))" Label="Mínimo" Min="0" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.Pericias, index))" title="Remover Perícia" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.Pericias))">Adicionar Perícia</MudButton>
+
+@code {
+    [Parameter, EditorRequired] public RequisitosFormModel Model { get; set; } = null!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private static readonly (string Valor, string Rotulo)[] AtributoOpcoes =
+        Enum.GetValues<Atributo>().Select(a => (a.ToString(), AtributoDisplay.Label(a.ToString()))).ToArray();
+    private static readonly (string Valor, string Rotulo)[] SubAtributoOpcoes =
+        Enum.GetValues<SubAtributo>().Select(a => (a.ToString(), RequisitoLabels.SubAtributo(a))).ToArray();
+    private static readonly (string Valor, string Rotulo)[] PericiaOpcoes =
+        Enum.GetValues<Pericia>().Select(p => (p.ToString(), PericiaDisplay.Label(p.ToString()))).ToArray();
+
+    private static bool JaEscolhidoEmOutraLinha(List<RequisitoMinimoLinha> linhas, int index, string valor) =>
+        linhas.Where((_, i) => i != index).Any(l => l.Alvo == valor);
+
+    private Task OnChangedAsync() => OnChanged.HasDelegate ? OnChanged.InvokeAsync() : Task.CompletedTask;
+
+    private Task OnVocacaoChangedAsync(string? valor)
+    {
+        Model.Vocacao = valor;
+        return OnChangedAsync();
+    }
+
+    private Task OnClasseChangedAsync(string? valor)
+    {
+        Model.Classe = valor;
+        return OnChangedAsync();
+    }
+
+    private Task LimparVocacaoAsync()
+    {
+        Model.Vocacao = null;
+        Model.Classe = null;
+        return OnChangedAsync();
+    }
+
+    private Task OnLinhagemChangedAsync(string? valor)
+    {
+        Model.Linhagem = valor;
+        return OnChangedAsync();
+    }
+
+    private Task OnVarianteChangedAsync(string? valor)
+    {
+        Model.Variante = valor;
+        return OnChangedAsync();
+    }
+
+    private Task LimparLinhagemAsync()
+    {
+        Model.Linhagem = null;
+        Model.Variante = null;
+        return OnChangedAsync();
+    }
+
+    private Task OnAfinidadeChangedAsync(string? valor)
+    {
+        Model.Afinidade = valor;
+        return OnChangedAsync();
+    }
+
+    private Task LimparAfinidadeAsync()
+    {
+        Model.Afinidade = null;
+        return OnChangedAsync();
+    }
+
+    private Task OnEstrelaChangedAsync(string? valor)
+    {
+        Model.Estrela = valor;
+        return OnChangedAsync();
+    }
+
+    private Task LimparEstrelaAsync()
+    {
+        Model.Estrela = null;
+        return OnChangedAsync();
+    }
+
+    private Task OnHistoricoChangedAsync(string? valor)
+    {
+        Model.HistoricoId = valor;
+        return OnChangedAsync();
+    }
+
+    private Task LimparHistoricoAsync()
+    {
+        Model.HistoricoId = null;
+        return OnChangedAsync();
+    }
+
+    private Task OnAlvoChangedAsync(RequisitoMinimoLinha linha, string valor)
+    {
+        linha.Alvo = valor;
+        return OnChangedAsync();
+    }
+
+    private Task OnMinimoChangedAsync(RequisitoMinimoLinha linha, int valor)
+    {
+        linha.Minimo = valor;
+        return OnChangedAsync();
+    }
+
+    private Task AdicionarAsync(List<RequisitoMinimoLinha> linhas)
+    {
+        linhas.Add(new RequisitoMinimoLinha());
+        return OnChangedAsync();
+    }
+
+    private Task RemoverAsync(List<RequisitoMinimoLinha> linhas, int index)
+    {
+        linhas.RemoveAt(index);
+        return OnChangedAsync();
+    }
+}

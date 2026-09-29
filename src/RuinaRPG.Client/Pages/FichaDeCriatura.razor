@@ -439,7 +439,7 @@
                 {
                     <MudSelect T="string" @bind-Value="_spellAbilityForm.SourceBankEntryId" Label="Entrada do Banco">
                         <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
-                        @foreach (var entry in _bankEntries)
+                        @foreach (var entry in _bankEntries.Where(e => e.Tipo != "Passiva"))
                         {
                             <MudSelectItem Value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</MudSelectItem>
                         }
@@ -465,7 +465,7 @@
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
                 <tbody>
-                    @foreach (var spellAbility in _spellAbilities)
+                    @foreach (var spellAbility in _spellAbilities.Where(s => s.Tipo != "Passiva"))
                     {
                         <tr>
                             <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
@@ -475,6 +475,8 @@
                 </tbody>
             </MudSimpleTable>
         </Section>
+
+        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" />
 
         <Section Title="Maestrias">
             <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">

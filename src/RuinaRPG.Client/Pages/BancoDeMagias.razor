@@ -20,6 +20,7 @@
                 <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
                 <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
                 <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+                <MudSelectItem Value="@("Passiva")">Passiva</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
@@ -65,10 +66,20 @@
                         }
                     </td>
                     <td>@entry.Tipo</td>
-                    <td>@entry.Grau</td>
-                    <td>@entry.GastoEmPI</td>
-                    <td>@entry.Custo</td>
-                    <td>@SpellAbilityEffectSummaryFormatter.Formatar(entry.Grau, entry.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
+                    @if (entry.Tipo == "Passiva")
+                    {
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>@(Enum.TryParse<CategoriaDePassiva>(entry.Categoria, out var categoria) ? RequisitoLabels.Categoria(categoria) : "—")</td>
+                    }
+                    else
+                    {
+                        <td>@entry.Grau</td>
+                        <td>@entry.GastoEmPI</td>
+                        <td>@entry.Custo</td>
+                        <td>@SpellAbilityEffectSummaryFormatter.Formatar(entry.Grau, entry.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
+                    }
                     <td>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-magias/{entry.Id}/editar"))">Editar</MudButton>
                         <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAsync(entry.Id))">Excluir</MudButton>

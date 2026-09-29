@@ -721,6 +721,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Categoria")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("CharacterSheetId")
                         .HasColumnType("uuid");
 
@@ -740,6 +743,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
@@ -1156,6 +1162,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Categoria")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("CreatureSheetId")
                         .HasColumnType("uuid");
 
@@ -1175,6 +1184,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
@@ -2133,6 +2145,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Categoria")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Custo")
                         .HasColumnType("integer");
 
@@ -2152,6 +2167,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("NpcSheetId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
@@ -2649,6 +2667,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Categoria")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Custo")
                         .HasColumnType("integer");
 
@@ -2671,6 +2692,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("Tipo")
                         .HasColumnType("integer");

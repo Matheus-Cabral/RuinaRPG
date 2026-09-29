@@ -65,4 +65,27 @@ public class BancoDeMagiasTests : MudBunitContext
         cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Garras")).InnerHtml.Should().Contain("Magia/Habilidade de Criatura");
         cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Bola de Fogo")).InnerHtml.Should().NotContain("Magia/Habilidade de Criatura");
     }
+
+    [Fact]
+    public async Task The_Tipo_filter_offers_Passiva()
+    {
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        var filtro = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        await cut.InvokeAsync(() => filtro.Instance.ValueChanged.InvokeAsync("Passiva"));
+
+        _queries.Last().Should().Contain("tipo=Passiva");
+    }
+
+    [Fact]
+    public async Task A_passiva_row_renders_its_categoria_label_instead_of_grau_and_efeitos()
+    {
+        var passiva = new SpellAbilityEntryResponse(Guid.NewGuid().ToString(), "Pele de Pedra", "Passiva", 0, 0, 0, "", [], false, "Vocacional");
+        var cut = RenderPage(passiva);
+        await Task.Delay(50);
+
+        var linha = cut.FindAll("tbody tr").Single(r => r.TextContent.Contains("Pele de Pedra"));
+        linha.TextContent.Should().Contain("Passiva Vocacional");
+    }
 }
