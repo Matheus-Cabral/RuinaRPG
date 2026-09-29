@@ -52,14 +52,20 @@
         }
     }
 
-    <MudText Typo="Typo.h6" Class="mt-4">Tabela de Arcas</MudText>
+</Section>
+
+<Section Title="Tabela de Arcas">
+    <TitleInfo>
+        <InfoPopup Title="Como funcionam as Arcas e suas evoluções">
+            Cada número de 1 a 18 é uma Arca, usada pelo Racial de Sinir/Laonir (Humano). Cada Arca pode ter evoluções, cada uma liberada a partir de um nível.
+            As evoluções somam-se à descrição da Arca, não a substituem, e pode haver mais de uma no mesmo nível.
+            Na ficha de um Humano, o botão "Evoluções da Arca" mostra todas as evoluções que o nível do personagem ou NPC já liberou; as futuras não aparecem.
+        </InfoPopup>
+    </TitleInfo>
+    <ChildContent>
     <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
         <thead>
-            <tr>
-                <th>Roll</th>
-                <th>Nome</th>
-                <th>Descrição</th>
-            </tr>
+            <tr><th>Roll</th><th>Nome</th><th>Descrição</th></tr>
         </thead>
         <tbody>
             @foreach (var arca in _arcas)
@@ -69,9 +75,20 @@
                     <td><MudTextField T="string" Value="@arca.Nome" ValueChanged="@(v => UpdateArcaAsync(arca.Roll, "Nome", v))" /></td>
                     <td><MudTextField T="string" Value="@arca.Descricao" ValueChanged="@(v => UpdateArcaAsync(arca.Roll, "Descricao", v))" /></td>
                 </tr>
+                <tr>
+                    <td></td>
+                    <td colspan="2">
+                        <MudExpansionPanels Elevation="0">
+                            <MudExpansionPanel Text="@($"Evoluções ({arca.Evolucoes.Count})")">
+                                <ArcaEvolucoesEditor Roll="@arca.Roll" Evolucoes="@arca.Evolucoes" OnChanged="LoadArcasAsync" />
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </td>
+                </tr>
             }
         </tbody>
     </MudSimpleTable>
+    </ChildContent>
 </Section>
 
 @code {
