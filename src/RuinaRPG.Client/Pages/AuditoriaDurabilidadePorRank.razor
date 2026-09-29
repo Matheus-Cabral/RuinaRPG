@@ -30,8 +30,14 @@ else
                 {
                     <tr>
                         <td>@linha.Rank</td>
-                        <td><MudNumericField T="int?" Value="@linha.Durabilidade" ValueChanged="@(v => UpdateAsync(linha, durabilidade: v))" Min="1" Disabled="@linha.Inquebravel" /></td>
-                        <td><MudCheckBox T="bool" Value="@linha.Inquebravel" ValueChanged="@(v => UpdateAsync(linha, inquebravel: v))" /></td>
+                        <td>
+                            <MudNumericField T="int?" Value="@linha.Durabilidade" ValueChanged="@(v => OnDurabilidadeChangedAsync(linha, v))" Min="1" Disabled="@linha.Inquebravel" />
+                            @if (!linha.Inquebravel && linha.Durabilidade is null)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error">Informe a durabilidade (mínimo 1).</MudText>
+                            }
+                        </td>
+                        <td><MudCheckBox T="bool" Value="@linha.Inquebravel" ValueChanged="@(v => OnInquebravelChangedAsync(linha, v))" /></td>
                     </tr>
                 }
             </tbody>
@@ -65,13 +71,30 @@ else
         _linhas = await response.Content.ReadFromJsonAsync<List<DurabilidadePorRankResponse>>() ?? new();
     }
 
-    private async Task UpdateAsync(DurabilidadePorRankResponse current, int? durabilidade = null, bool? inquebravel = null)
+    private async Task OnInquebravelChangedAsync(DurabilidadePorRankResponse linha, bool inquebravel)
     {
-        var novoInquebravel = inquebravel ?? current.Inquebravel;
-        var novaDurabilidade = novoInquebravel ? null : (durabilidade ?? current.Durabilidade);
+        if (!inquebravel && linha.Durabilidade is null)
+        {
+            // Unchecking a rank that has no number yet (S/SS as seeded) must not PUT {null, false}
+            // — the server rejects that with 400 (R0011: unchecking requires a number >= 1). Just
+            // flip the row locally so the number field enables and the auditor can type one; the
+            // PUT happens once they do, from OnDurabilidadeChangedAsync below.
+            var index = _linhas.FindIndex(l => l.Rank == linha.Rank);
+            if (index >= 0)
+                _linhas[index] = linha with { Inquebravel = false };
+            return;
+        }
 
+        await SaveAsync(linha, linha.Durabilidade, inquebravel);
+    }
+
+    private async Task OnDurabilidadeChangedAsync(DurabilidadePorRankResponse linha, int? durabilidade) =>
+        await SaveAsync(linha, durabilidade, linha.Inquebravel);
+
+    private async Task SaveAsync(DurabilidadePorRankResponse current, int? durabilidade, bool inquebravel)
+    {
         var response = await Http.PutAsJsonAsync($"durabilidades-por-rank/{current.Rank}",
-            new UpdateDurabilidadePorRankRequest(novaDurabilidade, novoInquebravel));
+            new UpdateDurabilidadePorRankRequest(inquebravel ? null : durabilidade, inquebravel));
         if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
             _forbidden = true;
@@ -81,6 +104,9 @@ else
         {
             var detail = await response.Content.ReadAsStringAsync();
             _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            // Revert this row's displayed value to the last saved state instead of leaving the
+            // rejected input on screen.
+            await LoadAsync();
             return;
         }
 

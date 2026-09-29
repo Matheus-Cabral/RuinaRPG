@@ -36,6 +36,9 @@ public class AuditoriaDurabilidadePorRankTests : MudBunitContext
         new() { Rank = "SS", Durabilidade = null, Inquebravel = true },
     };
 
+    // Mirrors the real controller's validation (see DurabilidadesPorRankController.Update): a PUT
+    // that isn't Inquebravel and has no Durabilidade >= 1 is rejected with 400 and never mutates
+    // the row — needed so the "revert on a failed PUT" behavior can be exercised faithfully.
     private HttpClient CreateStatefulHttp(List<Row> rows, List<(string Rank, UpdateDurabilidadePorRankRequest Body)> putLog)
         => FakeHttpMessageHandler.CreateClient(request =>
         {
@@ -47,6 +50,11 @@ public class AuditoriaDurabilidadePorRankTests : MudBunitContext
                 var rank = request.RequestUri!.AbsolutePath.Split('/').Last();
                 var body = request.Content!.ReadFromJsonAsync<UpdateDurabilidadePorRankRequest>().GetAwaiter().GetResult()!;
                 putLog.Add((rank, body));
+
+                if (!body.Inquebravel && (body.Durabilidade is null || body.Durabilidade < 1))
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                        { Content = new StringContent("Informe a durabilidade (mínimo 1) ou marque Inquebrável.") };
+
                 var row = rows.Single(r => r.Rank == rank);
                 row.Inquebravel = body.Inquebravel;
                 row.Durabilidade = body.Inquebravel ? null : body.Durabilidade;
@@ -129,6 +137,83 @@ public class AuditoriaDurabilidadePorRankTests : MudBunitContext
         rank.Should().Be("C");
         body.Durabilidade.Should().Be(130);
         body.Inquebravel.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Unchecking_Inquebravel_on_a_row_with_no_number_sends_no_PUT_and_enables_the_field()
+    {
+        var rows = SeedRows();
+        var putLog = new List<(string, UpdateDurabilidadePorRankRequest)>();
+        var http = CreateStatefulHttp(rows, putLog);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaDurabilidadePorRank>();
+        await Task.Delay(50);
+
+        // Rows render F, E, D, C, B, A, S, SS in order — S (Durabilidade null, Inquebravel true
+        // as seeded) is index 6.
+        var checkbox = cut.FindComponents<MudCheckBox<bool>>()[6];
+        await cut.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(false));
+        await Task.Delay(50);
+
+        putLog.Should().BeEmpty();
+
+        var numeric = cut.FindComponents<MudNumericField<int?>>()[6];
+        numeric.Instance.Disabled.Should().BeFalse();
+        // MudBlazor's analyzer (MUD0012) disallows reading a component's own [Parameter] state
+        // (Value) directly — assert through the rendered <input>'s value attribute instead, same
+        // idiom as EstrelaSelectTests.
+        cut.FindAll("tbody tr")[6].QuerySelector("input")!.GetAttribute("value").Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Unchecking_Inquebravel_then_typing_a_number_PUTs_it()
+    {
+        var rows = SeedRows();
+        var putLog = new List<(string, UpdateDurabilidadePorRankRequest)>();
+        var http = CreateStatefulHttp(rows, putLog);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaDurabilidadePorRank>();
+        await Task.Delay(50);
+
+        var checkbox = cut.FindComponents<MudCheckBox<bool>>()[6]; // S
+        await cut.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(false));
+        await Task.Delay(50);
+        putLog.Should().BeEmpty();
+
+        var numeric = cut.FindComponents<MudNumericField<int?>>()[6];
+        await cut.InvokeAsync(() => numeric.Instance.ValueChanged.InvokeAsync(300));
+        await Task.Delay(50);
+
+        var (rank, body) = putLog.Should().ContainSingle().Subject;
+        rank.Should().Be("S");
+        body.Durabilidade.Should().Be(300);
+        body.Inquebravel.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_failed_PUT_reverts_the_row_to_the_last_saved_value_and_keeps_the_error_visible()
+    {
+        var rows = SeedRows();
+        var putLog = new List<(string, UpdateDurabilidadePorRankRequest)>();
+        var http = CreateStatefulHttp(rows, putLog);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaDurabilidadePorRank>();
+        await Task.Delay(50);
+
+        var numeric = cut.FindComponents<MudNumericField<int?>>()[3]; // C, seeded at 125
+        await cut.InvokeAsync(() => numeric.Instance.ValueChanged.InvokeAsync(0));
+        await Task.Delay(50);
+
+        var (rank, body) = putLog.Should().ContainSingle().Subject;
+        rank.Should().Be("C");
+        body.Durabilidade.Should().Be(0);
+
+        cut.Markup.Should().Contain("Informe a durabilidade (mínimo 1) ou marque Inquebrável.");
+
+        cut.FindAll("tbody tr")[3].QuerySelector("input")!.GetAttribute("value").Should().Be("125");
     }
 
     [Fact]
