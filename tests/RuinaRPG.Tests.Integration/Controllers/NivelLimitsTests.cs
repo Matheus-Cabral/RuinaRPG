@@ -176,6 +176,23 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Shrinking_the_attribute_budget_below_what_was_spent_still_allows_lowering_and_editing_bonus()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("A2");
+        (await PutCharacterForcaAsync(gm, sheetId, 5)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var anterior = await SetLimiteAsync("PontosDeAtributo", 3); // orçamento do nível 1 (3) < gasto (5)
+        try
+        {
+            // Subir é recusado; manter, baixar e editar Bônus/Maestria seguem permitidos.
+            (await PutCharacterForcaAsync(gm, sheetId, 6)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var bonus = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", gm, new UpdateCharacterAttributeRequest(5, 2, true)));
+            bonus.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await PutCharacterForcaAsync(gm, sheetId, 4)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+        finally { await SetLimiteAsync("PontosDeAtributo", anterior); }
+    }
+
+    [Fact]
     public async Task Npc_attribute_gasto_above_MaxAtributo_is_rejected()
     {
         var gm = await RegisterGmAndGetTokenAsync("LimGmN1", "limgmn1@teste.com");

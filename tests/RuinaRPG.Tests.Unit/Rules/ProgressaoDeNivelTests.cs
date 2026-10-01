@@ -1,4 +1,5 @@
 using FluentAssertions;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules.Niveis;
 using Xunit;
 
@@ -71,5 +72,31 @@ public class ProgressaoDeNivelTests
         t.LinhasDeBonus(1).Should().Equal("Pontos de Atributo: +9", "Fama: +1", "Status de Vida Aprimorado", "Status de Foco Aprimorado");
         t.LinhasDeBonus(2).Should().BeEmpty();
         t.ComoLevelBonus().Single(b => b.Nivel == 3).BonusText.Should().Be("Pontos de Atributo: +2<br>Terceira linha");
+    }
+
+    private static ProgressaoDeNivel TabelaComUltimo(int? xpDoPenultimo, int? xpDoUltimo)
+    {
+        var xp = new ColunaDeNivelDef(Guid.NewGuid(), "XP", TipoDeColunaDeNivel.PorNivel, ChavesDeNivel.XpParaProximoNivel, 0);
+        return new ProgressaoDeNivel(new[] { xp }, new[]
+        {
+            new LinhaDeNivel(1, null, new Dictionary<Guid, int?> { [xp.Id] = 50 }),
+            new LinhaDeNivel(2, null, new Dictionary<Guid, int?> { [xp.Id] = xpDoPenultimo }),
+            new LinhaDeNivel(3, null, new Dictionary<Guid, int?> { [xp.Id] = xpDoUltimo }),
+        });
+    }
+
+    [Fact]
+    public void Xp_filled_on_the_last_level_is_ignored_and_the_level_never_exceeds_the_last()
+    {
+        var t = TabelaComUltimo(150, 999);
+        t.ComoXpPorNivel().Last().XpAbsoluto.Should().Be("Lvl. Max");
+        NivelCalculator.Compute(1_000_000, t.ComoXpPorNivel()).Should().Be(3);
+    }
+
+    [Fact]
+    public void Adding_a_level_only_unlocks_it_once_the_previous_levels_xp_is_filled()
+    {
+        NivelCalculator.Compute(1_000_000, TabelaComUltimo(null, null).ComoXpPorNivel()).Should().Be(2);
+        NivelCalculator.Compute(1_000_000, TabelaComUltimo(150, null).ComoXpPorNivel()).Should().Be(3);
     }
 }

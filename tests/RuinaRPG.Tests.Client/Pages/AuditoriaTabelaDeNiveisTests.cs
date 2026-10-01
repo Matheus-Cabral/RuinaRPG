@@ -327,5 +327,6 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         cut.Find("button[title='Como funciona a Tabela de Níveis']").Click();
 
         cut.Markup.Should().Contain("célula vazia repete o valor");
+        cut.Markup.Should().Contain("usam os valores de Vida e Arcana do último nível dessas tabelas");
     }
 }

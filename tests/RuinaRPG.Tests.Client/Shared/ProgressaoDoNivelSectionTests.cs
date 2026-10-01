@@ -99,4 +99,32 @@ public class ProgressaoDoNivelSectionTests : MudBunitContext
 
         cut.Markup.Should().NotContain("Progressão do nível");
     }
+
+    [Fact]
+    public async Task Custom_por_nivel_column_shows_the_plain_value_or_a_dash_never_a_cap()
+    {
+        var comValor = Guid.NewGuid();
+        var vazia = Guid.NewGuid();
+        var tabela = new TabelaDeNiveisResponse(
+            [Col(comValor, "Bênçãos", "PorNivel", null, 1), Col(vazia, "Títulos", "PorNivel", null, 2)],
+            [Linha(1, (comValor, 7), (vazia, null))]);
+
+        var cut = await RenderAsync(tabela, 1);
+
+        cut.Markup.Should().Contain("Bênçãos").And.Contain("Títulos").And.Contain("7").And.Contain("—");
+        cut.Markup.Should().NotContain("máx.").And.NotContain("sem limite");
+    }
+
+    [Fact]
+    public async Task A_column_with_an_unknown_tipo_is_skipped_without_dropping_the_panel()
+    {
+        var tabela = new TabelaDeNiveisResponse(
+            [Col(Pontos, "Pontos de Atributo", "Acumulativa", ChavesDeNivel.PontosDeAtributo, 1),
+             Col(Custom, "Coluna Estranha", "Futuro", null, 2)],
+            [Linha(1, (Pontos, 9), (Custom, 3))]);
+
+        var cut = await RenderAsync(tabela, 1);
+
+        cut.Markup.Should().Contain("Pontos de Atributo").And.NotContain("Coluna Estranha");
+    }
 }

@@ -75,6 +75,9 @@
 .rulebook-content ::deep table {
     border-collapse: collapse;
     width: 100%;
+    /* Tabelas largas (ex.: Tabela de Níveis gerada, 14+ colunas) rolam na horizontal em vez de estourar a página. */
+    display: block;
+    overflow-x: auto;
     margin-bottom: var(--rr-space-4);
 }
 

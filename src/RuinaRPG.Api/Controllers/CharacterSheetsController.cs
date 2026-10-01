@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -565,8 +566,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var artefatos = await GetArtifactBonusInputsAsync(sheetId);
         var vigorTotal = await GetAttributeTotalAsync(sheetId, Atributo.Vigor, artefatos);
         var astuciaTotal = await GetAttributeTotalAsync(sheetId, Atributo.Astucia, artefatos);
-        var statusVida = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var (statusVida, statusFoco) = vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(vocacao.Value), nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         return (

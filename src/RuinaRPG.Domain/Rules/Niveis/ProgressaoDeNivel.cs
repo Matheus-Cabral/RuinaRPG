@@ -42,8 +42,9 @@ public sealed class ProgressaoDeNivel
         return linhas;
     }
 
+    /// <summary>O último nível é sempre "Lvl. Max", seja qual for o XP gravado nele (não há próximo nível).</summary>
     public IReadOnlyList<XpPorNivel> ComoXpPorNivel() =>
-        Linhas.Select(l => new XpPorNivel(l.Nivel, ValorExato(ChavesDeNivel.XpParaProximoNivel, l.Nivel)?.ToString() ?? "Lvl. Max", "")).ToList();
+        Linhas.Select(l => new XpPorNivel(l.Nivel, l.Nivel == UltimoNivel ? "Lvl. Max" : ValorExato(ChavesDeNivel.XpParaProximoNivel, l.Nivel)?.ToString() ?? "Lvl. Max", "")).ToList();
 
     public IReadOnlyList<EapPorNivel> ComoEapPorNivel() =>
         Linhas.Select(l => new EapPorNivel(l.Nivel, ValorExato(ChavesDeNivel.EapBase, l.Nivel) ?? 0)).ToList();

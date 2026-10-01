@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -543,8 +544,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos);
-        var statusVida = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = s.Vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(s.Vocacao.Value) && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var (statusVida, statusFoco) = s.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(s.Vocacao.Value), s.Nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);

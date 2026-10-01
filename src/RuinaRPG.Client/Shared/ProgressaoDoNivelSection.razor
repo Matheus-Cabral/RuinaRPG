@@ -46,6 +46,7 @@
             var tabela = await response.Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
             if (tabela is null) return;
             var colunas = tabela.Colunas
+                .Where(c => Enum.TryParse<TipoDeColunaDeNivel>(c.Tipo, out _))
                 .Select(c => new ColunaDeNivelDef(c.Id, c.Nome, Enum.Parse<TipoDeColunaDeNivel>(c.Tipo), c.ChaveDeSistema, c.Ordem)).ToList();
             var linhas = tabela.Linhas
                 .Select(l => new LinhaDeNivel(l.Nivel, l.OutrosBonus, l.Valores.ToDictionary(v => v.Key, v => v.Value))).ToList();
@@ -60,8 +61,11 @@
     private string Formatar(ColunaDeNivelDef coluna)
     {
         var valor = _progressao!.Resolver(coluna, Nivel);
-        return coluna.Tipo == TipoDeColunaDeNivel.Acumulativa
-            ? $"{valor ?? 0}"
-            : valor is null ? "sem limite" : $"máx. {valor}";
+        if (coluna.Tipo == TipoDeColunaDeNivel.Acumulativa)
+            return $"{valor ?? 0}";
+        // Coluna criada pelo Auditor é só informação: não é um teto aplicado pelo app.
+        if (coluna.ChaveDeSistema is null)
+            return valor?.ToString() ?? "—";
+        return valor is null ? "sem limite" : $"máx. {valor}";
     }
 }

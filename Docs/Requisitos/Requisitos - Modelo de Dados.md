@@ -687,12 +687,12 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 
 | Coluna | Tipo |
 |---|---|
-| Id | int, PK |
+| Id | Guid (uuid), PK |
 | Nome | string |
 | Tipo | enum Acumulativa \| PorNivel (imutável) |
 | ChaveDeSistema | string, nullable, único — preenchida nas colunas do sistema (não removíveis) |
 | Ordem | int |
-| IsDeleted | bool |
+| IsDeleted | bool — reservado, não usado: remover uma coluna é exclusão física (apaga também os valores) |
 
 **ValoresDeNivel** — valor de uma célula.
 

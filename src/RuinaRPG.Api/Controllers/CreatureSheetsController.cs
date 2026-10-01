@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -399,8 +400,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos);
-        var statusVida = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
