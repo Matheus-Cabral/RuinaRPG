@@ -30,9 +30,8 @@ public class VidaEArcanaPorNivelTests
         => VidaEArcanaPorNivel.Vocacao(Vocacoes, "Mago", 0).Should().Be((0, 0));
 
     [Fact]
-    public void Classe_and_Arquetipo_fall_back_the_same_way()
+    public void Arquetipo_falls_back_the_same_way()
     {
-        VidaEArcanaPorNivel.Classe(new[] { new ClasseProgressao("X", 1, 3, 4) }, "X", 60).Should().Be((3, 4));
         VidaEArcanaPorNivel.Arquetipo(new[] { new ArquetipoProgressao("Y", 1, 5, 6) }, "Y", 60).Should().Be((5, 6));
     }
 }

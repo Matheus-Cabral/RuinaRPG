@@ -10,9 +10,6 @@ public static class VidaEArcanaPorNivel
     public static (int Vida, int Arcana) Vocacao(IEnumerable<VocacaoProgressao> tabela, string nome, int nivel)
         => Escolher(tabela.Where(v => v.Vocacao == nome).Select(v => (v.Nivel, v.Vida, v.Arcana)), nivel);
 
-    public static (int Vida, int Arcana) Classe(IEnumerable<ClasseProgressao> tabela, string nome, int nivel)
-        => Escolher(tabela.Where(v => v.Classe == nome).Select(v => (v.Nivel, v.Vida, v.Arcana)), nivel);
-
     public static (int Vida, int Arcana) Arquetipo(IEnumerable<ArquetipoProgressao> tabela, string nome, int nivel)
         => Escolher(tabela.Where(v => v.Arquetipo == nome).Select(v => (v.Nivel, v.Vida, v.Arcana)), nivel);
 
