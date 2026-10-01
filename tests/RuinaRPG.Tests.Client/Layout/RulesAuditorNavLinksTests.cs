@@ -29,6 +29,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
         ("Características de Criatura", "auditoria/caracteristicas-de-criatura"),
         ("Efeitos", "auditoria/efeitos"),
         ("Históricos", "auditoria/historicos"),
+        ("Perícias", "auditoria/pericias"),
         ("Equipagem", "auditoria/equipagem"),
         ("Durabilidade por Rank", "auditoria/durabilidade-por-rank"),
     };
@@ -97,6 +98,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             Icons.Material.Filled.Pets,
             Icons.Material.Filled.Bolt,
             Icons.Material.Filled.History,
+            Icons.Material.Filled.FormatListBulleted,
             Icons.Material.Filled.Shield,
             Icons.Material.Filled.Build,
         };
