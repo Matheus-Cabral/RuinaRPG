@@ -203,8 +203,8 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     [Fact]
     public async Task UpdateHistorico_keeping_a_removed_Pericia_is_accepted_but_switching_to_another_removed_one_returns_400()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm8", "histcrudgm8@teste.com");
-        await GrantRulesAuditorAsync("histcrudgm8@teste.com");
+        var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm11", "histcrudgm11@teste.com");
+        await GrantRulesAuditorAsync("histcrudgm11@teste.com");
         var seis = await CreatePericiaAsync(gmToken, "Perícia Seis Removida");
         var tres = await CreatePericiaAsync(gmToken, "Perícia Três Removida");
         var outra = await CreatePericiaAsync(gmToken, "Perícia Outra Removida");

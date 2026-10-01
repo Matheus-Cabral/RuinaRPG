@@ -272,10 +272,10 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         body!.BonusTexts.Should().HaveCount(10);
         body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
-        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
-        // Auditoria da Tabela de Níveis: numeric bonuses are now rendered as "+N <nome da coluna>",
-        // so Nível 2's "+1 Ponto de Atributo" (Markdown wording) reads "+1 Pontos de Atributo".
-        body.BonusTexts.Should().Contain("+1 Pontos de Atributo");
+        // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
+        // (column names are free text the Auditor can edit, so they can't be singularized).
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
     }
 
     [Fact]

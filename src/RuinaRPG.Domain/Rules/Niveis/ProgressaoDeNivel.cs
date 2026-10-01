@@ -35,7 +35,7 @@ public sealed class ProgressaoDeNivel
     {
         var linhas = Colunas.Where(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa)
             .Select(c => (c, v: Celula(c, nivel) ?? 0)).Where(x => x.v != 0)
-            .Select(x => $"+{x.v} {x.c.Nome}").ToList();
+            .Select(x => $"{x.c.Nome}: +{x.v}").ToList();
         var outros = Linhas.FirstOrDefault(l => l.Nivel == nivel)?.OutrosBonus;
         if (!string.IsNullOrWhiteSpace(outros))
             linhas.AddRange(outros.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));

@@ -68,8 +68,8 @@ public class ProgressaoDeNivelTests
     public void LinhasDeBonus_lists_nonzero_acumulativas_then_the_free_text_lines()
     {
         var t = Tabela();
-        t.LinhasDeBonus(1).Should().Equal("+9 Pontos de Atributo", "+1 Fama", "Status de Vida Aprimorado", "Status de Foco Aprimorado");
+        t.LinhasDeBonus(1).Should().Equal("Pontos de Atributo: +9", "Fama: +1", "Status de Vida Aprimorado", "Status de Foco Aprimorado");
         t.LinhasDeBonus(2).Should().BeEmpty();
-        t.ComoLevelBonus().Single(b => b.Nivel == 3).BonusText.Should().Be("+2 Pontos de Atributo<br>Terceira linha");
+        t.ComoLevelBonus().Single(b => b.Nivel == 3).BonusText.Should().Be("Pontos de Atributo: +2<br>Terceira linha");
     }
 }
