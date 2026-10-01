@@ -135,13 +135,11 @@ public class PericiasController(RuinaRpgDbContext db) : ControllerBase
     private static Atributo? ParseAtributo(string? valor) =>
         Enum.GetNames<Atributo>().Contains(valor) && Enum.TryParse<Atributo>(valor, out var a) ? a : null;
 
-    // Task 3 converts the skill entities' Pericia to int PericiaId; until then compare through the enum.
     private async Task ZerarGastoAsync(int id)
     {
-        var pericia = (Pericia)id;
-        await db.CharacterSkills.Where(s => s.Pericia == pericia).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
-        await db.NpcSkills.Where(s => s.Pericia == pericia).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
-        await db.CreatureSkills.Where(s => s.Pericia == pericia).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
+        await db.CharacterSkills.Where(s => s.PericiaId == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
+        await db.NpcSkills.Where(s => s.PericiaId == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
+        await db.CreatureSkills.Where(s => s.PericiaId == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.Gasto, 0));
     }
 
     private static PericiaAuditoriaResponse ToAuditoria(PericiaDefinicao p) =>

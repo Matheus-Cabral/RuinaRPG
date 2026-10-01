@@ -1,5 +1,7 @@
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
+using RuinaRPG.Client.Services;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client;
@@ -15,6 +17,10 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
     protected MudBunitContext()
     {
         Services.AddMudServices();
+        // Same registration as the app's Program.cs: the fichas, CatalogoItemForm, AuditoriaHistoricos,
+        // HistoricoSelect and RequisitosDePassivaEditor inject it. It resolves the HttpClient each test
+        // registers, so a test whose page needs Perícia names answers GET pericias in its fake handler.
+        Services.AddScoped<PericiaCatalogo>();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 

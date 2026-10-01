@@ -2,6 +2,7 @@
 @page "/catalogo/{ItemId}/editar"
 @implements IDisposable
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Items
 @using RuinaRPG.Contracts.Images
@@ -114,9 +115,9 @@
             </MudSelect>
             <MudSelect T="string" @bind-Value="_form.Alvo" @bind-Value:after="NotifySavedAsync" Label="Alvo"
                        Disabled="@string.IsNullOrEmpty(_form.TipoDeAlvo)">
-                @foreach (var option in AlvoOptionsFor(_form.TipoDeAlvo))
+                @foreach (var option in AlvoOptionsFor(_form.TipoDeAlvo, Pericias.Ativas.Select(p => p.Chave)))
                 {
-                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                    <MudSelectItem Value="@option">@(_form.TipoDeAlvo == "Pericia" ? Pericias.Label(option) : option)</MudSelectItem>
                 }
             </MudSelect>
             <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" @bind-Value:after="NotifySavedAsync" />
@@ -193,6 +194,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var imagesResponse = await Http.GetAsync("images/mine");
         if (imagesResponse.IsSuccessStatusCode)
             _myImages = await imagesResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
@@ -346,15 +348,15 @@
         SubAtributoAlvo.Adrenalina,
     ];
 
-    // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — same "Atributo",
-    // "Pericia" and "Dano" enum-member spelling every other Alvo dropdown in the app already shows
-    // raw (no accented relabeling), so a value picked here round-trips identically through
-    // ArtifactBonusCalculator's string comparison elsewhere. Fixed, closed sets — a plain MudSelect,
-    // not an autocomplete: with at most 39 options (Perícia) there's nothing to search.
-    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo) => tipoDeAlvo switch
+    // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — the value is always
+    // the stable identifier ("Atributo"/"Dano" enum-member spelling, a Perícia's Chave), so a value
+    // picked here round-trips identically through ArtifactBonusCalculator's string comparison
+    // elsewhere. The Perícia group comes from the Auditoria de Perícias catalog (its active Chaves)
+    // instead of a fixed enum. Small closed sets — a plain MudSelect, not an autocomplete.
+    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo, IEnumerable<string> pericias) => tipoDeAlvo switch
     {
         "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
-        "Pericia" => Enum.GetValues<Pericia>().Select(p => p.ToString()),
+        "Pericia" => pericias,
         "SubAtributo" => SubAtributoAlvoOptions,
         "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
         _ => Enumerable.Empty<string>(),

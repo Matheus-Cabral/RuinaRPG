@@ -8,13 +8,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, IRulesDataProvider rules) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
@@ -27,7 +28,8 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
+        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).OrderBy(s => s.PericiaId).ToListAsync();
+        var porId = await pericias.PorIdAsync();
 
         // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
         var artefatos = await db.CharacterArtifacts
@@ -47,12 +49,12 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider 
         return skills
             .Select(s =>
             {
-                var historicoBonus = HistoricoBonusCalculator.For(s.Pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres);
+                var historicoBonus = HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
                 var modificador = SkillFormulas.Modificador(s.Gasto, historicoBonus);
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
                     : (int?)null;
-                return new CharacterSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
+                return new CharacterSkillResponse(porId[s.PericiaId].Chave, s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
             })
             .ToList();
     }
@@ -77,8 +79,13 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider 
     }
 
     [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, Pericia pericia, UpdateCharacterSkillRequest request)
+    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateCharacterSkillRequest request)
     {
+        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
+        var def = await pericias.AtivaPorChaveAsync(pericia);
+        if (def is null)
+            return NotFound();
+
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
         if (sheet is null)
             return NotFound();
@@ -87,7 +94,7 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var skill = await db.CharacterSkills.SingleAsync(s => s.CharacterSheetId == sheetId && s.Pericia == pericia);
+        var skill = await db.CharacterSkills.SingleAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id);
         skill.Gasto = request.Gasto;
         skill.AtributoEscolhido = Enum.TryParse<Atributo>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();

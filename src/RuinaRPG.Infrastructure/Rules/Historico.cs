@@ -1,5 +1,3 @@
-using RuinaRPG.Domain.CharacterSheets;
-
 namespace RuinaRPG.Infrastructure.Rules;
 
 public class Historico
@@ -7,8 +5,8 @@ public class Historico
     public Guid Id { get; set; }
     public required string Nome { get; set; }
     public required string Descricao { get; set; }
-    public Pericia PericiaMaisSeis { get; set; }
-    public Pericia PericiaMaisTres { get; set; }
+    public int PericiaMaisSeisId { get; set; }
+    public int PericiaMaisTresId { get; set; }
 
     // Set by HistoricosController's Create/Update — once true, HistoricoSeeder never touches this
     // row again, so a manual edit always wins over whatever Historico.md says. Mirrors Trait.

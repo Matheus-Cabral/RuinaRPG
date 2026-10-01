@@ -10,6 +10,7 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -27,7 +28,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/campaigns/{campaignId}")]
-public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades) : ControllerBase
+public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpGet("available-items")]
     public async Task<ActionResult<List<ItemResponse>>> AvailableItems(Guid campaignId, [FromQuery] string? nome, [FromQuery] string? tipo)
@@ -70,7 +71,8 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
             query = query.Where(e => EF.Functions.ILike(e.Nome, $"%{nome}%"));
 
         var entries = await query.ToListAsync();
-        return entries.Select(ToSpellAbilityResponse).ToList();
+        var porId = await pericias.PorIdAsync();
+        return entries.Select(e => ToSpellAbilityResponse(e, porId)).ToList();
     }
 
     [HttpGet("available-runes")]
@@ -159,10 +161,10 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
         };
     }
 
-    private static SpellAbilityEntryResponse ToSpellAbilityResponse(RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry entry) => new(
+    private static SpellAbilityEntryResponse ToSpellAbilityResponse(RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry entry, IReadOnlyDictionary<int, PericiaDefinicao> porId) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
         entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura,
-        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos));
+        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos, porId));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

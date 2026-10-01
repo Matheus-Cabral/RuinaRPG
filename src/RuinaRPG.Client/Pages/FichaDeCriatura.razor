@@ -1,6 +1,7 @@
 @page "/criaturas/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
@@ -188,7 +189,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
+                            <td>@Pericias.Label(skill.Pericia)</td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>@skill.Modificador</td>
                             <td>
@@ -503,7 +504,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@Pericias.Label(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -521,7 +522,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @Pericias.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -716,6 +717,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         _isGmCaller = authState.User.IsInRole("GM");
 

@@ -53,13 +53,13 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
         await db.SaveChangesAsync();
 
         db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
-        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Pericia = Pericia.Atletismo, Gasto = 6 });
+        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
         db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
         db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
         db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
         db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
         db.NpcRunes.Add(new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
-        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Maestria em Pontaria", Pericia = Pericia.Pontaria, Atributo = Atributo.Destreza, GastoMaestria = 3 });
+        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
         db.NpcInventoryItems.Add(new NpcInventoryItem { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
         db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
         db.NpcAffections.Add(new NpcAffection { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });

@@ -41,7 +41,7 @@ public class HistoricoSeederTests
     {
         var result = HistoricoSeedParser.Parse(RealHistoricoMarkdown());
 
-        result.Should().OnlyContain(h => h.PericiaMaisSeis != h.PericiaMaisTres);
+        result.Should().OnlyContain(h => h.PericiaMaisSeisId != h.PericiaMaisTresId);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class HistoricoSeederTests
         var result = HistoricoSeedParser.Parse(RealHistoricoMarkdown());
 
         var estudoAcademico = result.Should().ContainSingle(h => h.Nome == "Estudo Acadêmico").Subject;
-        estudoAcademico.PericiaMaisSeis.Should().Be(Pericia.Arcano);
-        estudoAcademico.PericiaMaisTres.Should().Be(Pericia.Biblioteca);
+        estudoAcademico.PericiaMaisSeisId.Should().Be(2 /* Arcano */);
+        estudoAcademico.PericiaMaisTresId.Should().Be(9 /* Biblioteca */);
     }
 }

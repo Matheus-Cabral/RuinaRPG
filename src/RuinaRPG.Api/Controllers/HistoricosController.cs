@@ -19,13 +19,14 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/historicos")]
 [Authorize]
-public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
+public class HistoricosController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<HistoricoResponse>>> List()
     {
         var historicos = await db.Historicos.Where(h => !h.IsDeleted).OrderBy(h => h.Nome).ToListAsync();
-        return historicos.Select(ToResponse).ToList();
+        var porId = await pericias.PorIdAsync();
+        return historicos.Select(h => ToResponse(h, porId)).ToList();
     }
 
     [HttpPost]
@@ -40,11 +41,13 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Descricao))
             return BadRequest("Descrição é obrigatória.");
 
-        if (!Enum.TryParse<Pericia>(request.PericiaMaisSeis, out var periciaMaisSeis))
+        var periciaMaisSeis = await pericias.AtivaPorChaveAsync(request.PericiaMaisSeis);
+        if (periciaMaisSeis is null)
             return BadRequest("PericiaMaisSeis inválida.");
-        if (!Enum.TryParse<Pericia>(request.PericiaMaisTres, out var periciaMaisTres))
+        var periciaMaisTres = await pericias.AtivaPorChaveAsync(request.PericiaMaisTres);
+        if (periciaMaisTres is null)
             return BadRequest("PericiaMaisTres inválida.");
-        if (periciaMaisSeis == periciaMaisTres)
+        if (periciaMaisSeis.Id == periciaMaisTres.Id)
             return BadRequest("PericiaMaisSeis e PericiaMaisTres não podem ser a mesma Perícia.");
 
         var historico = new Historico
@@ -52,8 +55,8 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
             Id = Guid.NewGuid(),
             Nome = request.Nome,
             Descricao = request.Descricao,
-            PericiaMaisSeis = periciaMaisSeis,
-            PericiaMaisTres = periciaMaisTres,
+            PericiaMaisSeisId = periciaMaisSeis.Id,
+            PericiaMaisTresId = periciaMaisTres.Id,
             IsCustomized = true,
             UpdatedByUserId = CurrentUserId(),
             UpdatedAt = DateTime.UtcNow,
@@ -61,7 +64,7 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         db.Historicos.Add(historico);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(historico));
+        return Created(string.Empty, ToResponse(historico, await pericias.PorIdAsync()));
     }
 
     [HttpPut("{id}")]
@@ -80,17 +83,19 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Descricao))
             return BadRequest("Descrição é obrigatória.");
 
-        if (!Enum.TryParse<Pericia>(request.PericiaMaisSeis, out var periciaMaisSeis))
+        var periciaMaisSeis = await pericias.AtivaPorChaveAsync(request.PericiaMaisSeis);
+        if (periciaMaisSeis is null)
             return BadRequest("PericiaMaisSeis inválida.");
-        if (!Enum.TryParse<Pericia>(request.PericiaMaisTres, out var periciaMaisTres))
+        var periciaMaisTres = await pericias.AtivaPorChaveAsync(request.PericiaMaisTres);
+        if (periciaMaisTres is null)
             return BadRequest("PericiaMaisTres inválida.");
-        if (periciaMaisSeis == periciaMaisTres)
+        if (periciaMaisSeis.Id == periciaMaisTres.Id)
             return BadRequest("PericiaMaisSeis e PericiaMaisTres não podem ser a mesma Perícia.");
 
         historico.Nome = request.Nome;
         historico.Descricao = request.Descricao;
-        historico.PericiaMaisSeis = periciaMaisSeis;
-        historico.PericiaMaisTres = periciaMaisTres;
+        historico.PericiaMaisSeisId = periciaMaisSeis.Id;
+        historico.PericiaMaisTresId = periciaMaisTres.Id;
         historico.IsCustomized = true;
         historico.UpdatedByUserId = CurrentUserId();
         historico.UpdatedAt = DateTime.UtcNow;
@@ -123,8 +128,8 @@ public class HistoricosController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static HistoricoResponse ToResponse(Historico h) =>
-        new(h.Id.ToString(), h.Nome, h.Descricao, h.PericiaMaisSeis.ToString(), h.PericiaMaisTres.ToString(), h.IsCustomized);
+    private static HistoricoResponse ToResponse(Historico h, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>
+        new(h.Id.ToString(), h.Nome, h.Descricao, porId[h.PericiaMaisSeisId].Chave, porId[h.PericiaMaisTresId].Chave, h.IsCustomized);
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()
     {

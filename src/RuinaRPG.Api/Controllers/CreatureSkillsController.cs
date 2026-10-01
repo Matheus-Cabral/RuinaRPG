@@ -8,13 +8,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
+public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
@@ -26,7 +27,8 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
+        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).OrderBy(s => s.PericiaId).ToListAsync();
+        var porId = await pericias.PorIdAsync();
 
         var artefatos = await GetArtifactBonusInputsAsync(sheetId);
 
@@ -40,16 +42,21 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
             {
                 var modificador = SkillFormulas.Modificador(s.Gasto, 0);
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
                     : (int?)null;
-                return new CreatureSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
+                return new CreatureSkillResponse(porId[s.PericiaId].Chave, s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
             })
             .ToList();
     }
 
     [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, Pericia pericia, UpdateCreatureSkillRequest request)
+    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateCreatureSkillRequest request)
     {
+        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
+        var def = await pericias.AtivaPorChaveAsync(pericia);
+        if (def is null)
+            return NotFound();
+
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         if (sheet is null)
             return NotFound();
@@ -57,13 +64,13 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values have a seeded
-        // CreatureSkill row. Checked before the SingleAsync below so a disallowed-but-real Pericia
+        // R0005's "lista fixa mais curta" — only Perícias flagged DisponivelParaCriaturas have a seeded
+        // CreatureSkill row. Checked before the SingleAsync below so a disallowed-but-real Perícia
         // (e.g. Alquimia) 400s instead of 500ing on a row that was never seeded.
-        if (!CreatureSkillAllowList.IsAllowed(pericia))
+        if (!def.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
-        var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.Pericia == pericia);
+        var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == def.Id);
         skill.Gasto = request.Gasto;
         skill.AtributoEscolhido = Enum.TryParse<AtributoCriatura>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();

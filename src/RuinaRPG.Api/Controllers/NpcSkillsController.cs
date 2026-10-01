@@ -7,13 +7,14 @@ using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/skills")]
-public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
+public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId)
@@ -25,7 +26,8 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
+        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).OrderBy(s => s.PericiaId).ToListAsync();
+        var porId = await pericias.PorIdAsync();
 
         var artefatos = await GetArtifactBonusInputsAsync(sheetId);
 
@@ -39,19 +41,24 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
         return skills
             .Select(s =>
             {
-                var historicoBonus = HistoricoBonusCalculator.For(s.Pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres);
+                var historicoBonus = HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
                 var modificador = SkillFormulas.Modificador(s.Gasto, historicoBonus);
                 var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
                     : (int?)null;
-                return new NpcSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
+                return new NpcSkillResponse(porId[s.PericiaId].Chave, s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
             })
             .ToList();
     }
 
     [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, Pericia pericia, UpdateNpcSkillRequest request)
+    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateNpcSkillRequest request)
     {
+        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
+        var def = await pericias.AtivaPorChaveAsync(pericia);
+        if (def is null)
+            return NotFound();
+
         var sheet = await db.NpcSheets.FindAsync(sheetId);
         if (sheet is null)
             return NotFound();
@@ -59,7 +66,7 @@ public class NpcSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var skill = await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheetId && s.Pericia == pericia);
+        var skill = await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheetId && s.PericiaId == def.Id);
         skill.Gasto = request.Gasto;
         skill.AtributoEscolhido = Enum.TryParse<Atributo>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();

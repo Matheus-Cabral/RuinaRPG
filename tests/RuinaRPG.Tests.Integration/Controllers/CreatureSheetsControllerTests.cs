@@ -367,7 +367,7 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         // The R0005 allow-list has 20 members (not all 39 Pericia values, unlike Ficha de NPCs).
         skills.Should().HaveCount(20);
         skills.Should().OnlyContain(s => s.Gasto == 0);
-        skills.Select(s => s.Pericia).Should().BeEquivalentTo(CreatureSkillAllowList.AllowedPericias);
+        skills.Select(s => s.PericiaId).Should().BeEquivalentTo(RuinaRPG.Domain.CharacterSheets.PericiasIniciais.Todas.Where(p => p.DisponivelParaCriaturas).Select(p => p.Id));
         // ArmorSlotType has 3 members (Capacete, Superior, Inferior) — not 6.
         armorSlots.Should().HaveCount(3);
         armorSlots.Should().OnlyContain(a => a.ItemId == null);

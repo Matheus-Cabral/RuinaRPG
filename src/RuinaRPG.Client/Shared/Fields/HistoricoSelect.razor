@@ -2,6 +2,7 @@
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Client.Shared
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 
 @* R0001 1.a — dropdown dos Históricos do catálogo + ícone de descrição, mesma ideia de popup que
    EstrelaSelect.razor usa — mas as opções vêm do catálogo ao vivo (GET api/historicos) em vez de
@@ -19,7 +20,7 @@
         <InfoPopup Title="@Selecionado.Nome">
             <MudText>@Selecionado.Descricao</MudText>
             <MudText Typo="Typo.body2" Class="mt-2">
-                <em>+6 @PericiaDisplay.Label(Selecionado.PericiaMaisSeis) / +3 @PericiaDisplay.Label(Selecionado.PericiaMaisTres)</em>
+                <em>+6 @Pericias.Label(Selecionado.PericiaMaisSeis) / +3 @Pericias.Label(Selecionado.PericiaMaisTres)</em>
             </MudText>
         </InfoPopup>
     }
@@ -35,6 +36,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var response = await Http.GetAsync("historicos");
         if (response.IsSuccessStatusCode)
             _historicos = await response.Content.ReadFromJsonAsync<List<HistoricoResponse>>() ?? new();

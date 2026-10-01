@@ -176,6 +176,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         builder.Entity<Escudo>().Property(i => i.Rank).HasColumnName("Escudo_Rank");
 
         builder.Entity<DurabilidadePorRank>().HasKey(d => d.Rank);
+        builder.Entity<Historico>(entity =>
+        {
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(h => h.PericiaMaisSeisId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(h => h.PericiaMaisTresId).OnDelete(DeleteBehavior.Restrict);
+        });
         builder.Entity<PericiaDefinicao>(entity =>
         {
             entity.ToTable("Pericias");
@@ -309,7 +314,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.CharacterSheetId, s.Pericia }).IsUnique();
+            entity.HasIndex(s => new { s.CharacterSheetId, s.PericiaId }).IsUnique();
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CharacterSheet>()
                 .WithMany()
                 .HasForeignKey(s => s.CharacterSheetId)
@@ -329,7 +335,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
         });
-        builder.Entity<CharacterMastery>(entity => entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.CharacterSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<CharacterMastery>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         builder.Entity<CharacterWeapon>(entity =>
         {
@@ -471,7 +481,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.NpcSheetId, s.Pericia }).IsUnique();
+            entity.HasIndex(s => new { s.NpcSheetId, s.PericiaId }).IsUnique();
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -482,7 +493,11 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
         });
-        builder.Entity<NpcMastery>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<NpcMastery>(entity =>
+        {
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         builder.Entity<NpcWeapon>(entity =>
         {
@@ -539,11 +554,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CreatureSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.CreatureSheetId, s.Pericia }).IsUnique();
+            entity.HasIndex(s => new { s.CreatureSheetId, s.PericiaId }).IsUnique();
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<CreatureMastery>(entity => entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(m => m.CreatureSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<CreatureMastery>(entity =>
+        {
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(m => m.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         builder.Entity<CreatureWeapon>(entity =>
         {

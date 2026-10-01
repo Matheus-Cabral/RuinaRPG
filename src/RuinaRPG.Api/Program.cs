@@ -71,6 +71,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddSingleton<IRulesDataProvider, RulesDataProvider>();
 builder.Services.AddScoped<IRulebookRenderer, RulebookRenderer>();
+builder.Services.AddScoped<IPericiaCatalogo, PericiaCatalogo>();
 builder.Services.AddScoped<LivroDeRegrasEfeitosSync>();
 builder.Services.AddScoped<DurabilidadePorRankProvider>();
 builder.Services.AddScoped<EquipmentKitGrantService>();

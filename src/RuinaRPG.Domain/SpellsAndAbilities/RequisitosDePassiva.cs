@@ -4,7 +4,8 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 
 public sealed record RequisitoDeAtributo(Atributo Atributo, int Minimo);
 public sealed record RequisitoDeSubAtributo(SubAtributo SubAtributo, int Minimo);
-public sealed record RequisitoDePericia(Pericia Pericia, int Minimo);
+/// <summary><c>Pericia</c> é o Id da linha em Pericias — o nome da propriedade fica como era no tempo do enum, porque é o nome gravado no jsonb.</summary>
+public sealed record RequisitoDePericia(int Pericia, int Minimo);
 
 /// <summary>
 /// Requisitos de uma Passiva (Banco de Magias e Habilidades). Todo campo nulo — ou lista vazia — não

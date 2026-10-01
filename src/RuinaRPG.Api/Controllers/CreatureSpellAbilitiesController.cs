@@ -11,6 +11,7 @@ using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/spell-abilities")]
-public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureSheetStats stats) : ControllerBase
+public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CreatureSpellAbilityResponse>> Add(Guid sheetId, AddCreatureSpellAbilityRequest request)
@@ -78,7 +79,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
                     return BadRequest("Esta Passiva já está na ficha.");
 
                 var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await stats.FichaParaRequisitosAsync(sheet),
-                    await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos));
+                    await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync()));
                 if (pendencias.Count > 0)
                     return BadRequest("Requisitos não cumpridos: " + string.Join(", ", pendencias));
             }
@@ -212,10 +213,10 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
     {
         List<string>? pendentes = null;
         if (e.Tipo == SpellAbilityTipo.Passiva && ficha is not null)
-            pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos)).ToList();
+            pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync())).ToList();
         return new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
             e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList(),
-            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos), pendentes);
+            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes);
     }
 
     private async Task<List<PassivaDisponivelResponse>> PassivasDisponiveisAsync(IQueryable<SpellAbilityBankEntry> query, FichaParaRequisitos ficha)
@@ -224,10 +225,10 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         var result = new List<PassivaDisponivelResponse>();
         foreach (var e in entradas)
         {
-            var pendencias = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos));
+            var pendencias = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync()));
             result.Add(new PassivaDisponivelResponse(
                 new SpellAbilityEntryResponse(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, [], e.DeCriatura,
-                    e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos)),
+                    e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync())),
                 pendencias.ToList()));
         }
         return result;

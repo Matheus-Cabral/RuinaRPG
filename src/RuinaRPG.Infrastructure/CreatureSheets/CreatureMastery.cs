@@ -8,7 +8,7 @@ public class CreatureMastery
     public Guid Id { get; set; }
     public Guid CreatureSheetId { get; set; }
     public required string Nome { get; set; }
-    public Pericia Pericia { get; set; }
+    public int PericiaId { get; set; }
     public AtributoCriatura Atributo { get; set; }
     public int GastoMaestria { get; set; }
 }

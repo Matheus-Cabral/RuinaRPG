@@ -2,6 +2,7 @@
 @using RuinaRPG.Client.Shared
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.SpellsAndAbilities
+@inject PericiaCatalogo Pericias
 
 @* Edita RequisitosDePassivaDto (via RequisitosFormModel). Campo vazio = não é requisito; todos os
    preenchidos precisam ser cumpridos (ver PassivaRequisitosEvaluator). Vocação/Classe, Linhagem/
@@ -133,8 +134,10 @@
         Enum.GetValues<Atributo>().Select(a => (a.ToString(), AtributoDisplay.Label(a.ToString()))).ToArray();
     private static readonly (string Valor, string Rotulo)[] SubAtributoOpcoes =
         Enum.GetValues<SubAtributo>().Select(a => (a.ToString(), RequisitoLabels.SubAtributo(a))).ToArray();
-    private static readonly (string Valor, string Rotulo)[] PericiaOpcoes =
-        Enum.GetValues<Pericia>().Select(p => (p.ToString(), PericiaDisplay.Label(p.ToString()))).ToArray();
+    // Perícias ativas da Auditoria (Chave = valor gravado, Nome = rótulo) — não mais um enum fixo.
+    private (string Valor, string Rotulo)[] PericiaOpcoes => Pericias.Ativas.Select(p => (p.Chave, p.Nome)).ToArray();
+
+    protected override async Task OnInitializedAsync() => await Pericias.CarregarAsync();
 
     private static bool JaEscolhidoEmOutraLinha(List<RequisitoMinimoLinha> linhas, int index, string valor) =>
         linhas.Where((_, i) => i != index).Any(l => l.Alvo == valor);

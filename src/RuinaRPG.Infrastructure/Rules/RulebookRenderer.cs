@@ -176,12 +176,14 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
             .Where(h => !h.IsDeleted)
             .OrderBy(h => h.Nome)
             .ToListAsync();
+        // Inclui as removidas: um Histórico pode continuar apontando para uma Perícia removida.
+        var pericias = await db.Pericias.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Nome);
 
         var sections = historicos.Select(h => new RulebookSection(
             Id: Slugify(h.Nome),
             Titulo: h.Nome,
             Html: WebUtility.HtmlEncode(h.Descricao).Replace("\n", "<br />")
-                + $"<p><em>+6 {WebUtility.HtmlEncode(PericiaLabels.Label(h.PericiaMaisSeis))} / +3 {WebUtility.HtmlEncode(PericiaLabels.Label(h.PericiaMaisTres))}</em></p>"
+                + $"<p><em>+6 {WebUtility.HtmlEncode(pericias[h.PericiaMaisSeisId])} / +3 {WebUtility.HtmlEncode(pericias[h.PericiaMaisTresId])}</em></p>"
         )).ToList();
 
         return new RulebookDocument("historicos", "Históricos", intro, sections);

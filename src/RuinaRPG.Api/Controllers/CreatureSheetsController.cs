@@ -14,13 +14,14 @@ using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -35,10 +36,11 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
             db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = atributo });
-        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values, not all 39
-        // (unlike Ficha de NPCs' Enum.GetValues<Pericia>()).
-        foreach (var pericia in CreatureSkillAllowList.AllowedPericias)
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Pericia = pericia });
+        // R0005's "lista fixa mais curta" — only the Perícias flagged DisponivelParaCriaturas, not
+        // every active one (unlike Ficha de NPCs). The suggested Atributo only applies when the
+        // Criatura has it (AtributoCriatura is a shorter enum).
+        foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
             db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = slot });
 

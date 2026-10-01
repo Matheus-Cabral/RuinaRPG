@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Shared.Fields;
+using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -14,8 +15,18 @@ namespace RuinaRPG.Tests.Client.Shared.Fields;
 
 public class HistoricoSelectTests : MudBunitContext
 {
+    // HistoricoSelect também carrega o PericiaCatalogo (GET pericias) para nomear o +6/+3.
     private static HttpClient ClientWithHistoricos() => FakeHttpMessageHandler.CreateClient(request =>
-        new HttpResponseMessage(HttpStatusCode.OK)
+        request.RequestUri!.AbsolutePath.EndsWith("pericias")
+            ? new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new List<PericiaResponse>
+                {
+                    new(4, "ArmasBrancas", "Armas Brancas", null, null, false, false),
+                    new(38, "Sobrevivencia", "Sobrevivência", null, null, true, false),
+                }),
+            }
+            : new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new[]
             {
@@ -69,7 +80,7 @@ public class HistoricoSelectTests : MudBunitContext
 
         cut.Markup.Should().Contain("Órfão de Guerra");
         cut.Markup.Should().Contain("Cresceu entre ruínas e perdas.");
-        cut.Markup.Should().Contain("+6");
-        cut.Markup.Should().Contain("+3");
+        cut.Markup.Should().Contain("+6 Armas Brancas");
+        cut.Markup.Should().Contain("+3 Sobrevivência");
     }
 }

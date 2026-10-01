@@ -42,8 +42,8 @@ public static class HistoricoSeeder
                 Id = Guid.NewGuid(),
                 Nome = seed.Nome,
                 Descricao = seed.Descricao,
-                PericiaMaisSeis = seed.PericiaMaisSeis,
-                PericiaMaisTres = seed.PericiaMaisTres,
+                PericiaMaisSeisId = seed.PericiaMaisSeisId,
+                PericiaMaisTresId = seed.PericiaMaisTresId,
             });
         }
 

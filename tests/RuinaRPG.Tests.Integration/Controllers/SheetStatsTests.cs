@@ -118,7 +118,7 @@ public class SheetStatsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         ficha.SubAtributos[SubAtributo.Iniciativa].Should().Be(subAttributes!.Iniciativa);
         ficha.SubAtributos[SubAtributo.DefesaNatural].Should().Be(subAttributes.DefesaNatural);
         foreach (var skill in skills!)
-            ficha.Pericias[Enum.Parse<Pericia>(skill.Pericia)].Should().Be(skill.Total);
+            ficha.Pericias[PericiasIniciais.Todas.Single(p => p.Chave == skill.Pericia).Id].Should().Be(skill.Total);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class SheetStatsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
         ficha.TemIdentidadeDePersonagem.Should().BeFalse();
         ficha.Atributos.Keys.Should().BeEquivalentTo([Atributo.Forca, Atributo.Vigor, Atributo.Agilidade, Atributo.Destreza, Atributo.Astucia]);
-        ficha.Pericias.Keys.Should().BeEquivalentTo(CreatureSkillAllowList.AllowedPericias);
+        ficha.Pericias.Keys.Should().BeEquivalentTo(PericiasIniciais.Todas.Where(p => p.DisponivelParaCriaturas).Select(p => p.Id));
         ficha.SubAtributos.Should().HaveCount(6);
     }
 

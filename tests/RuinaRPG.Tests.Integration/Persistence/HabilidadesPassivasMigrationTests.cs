@@ -34,7 +34,7 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
         var requisitos = new RequisitosDePassiva
         {
             Nivel = 3, Vocacao = Vocacao.Feiticeiro, Classe = "Elementalista",
-            Atributos = [new(Atributo.Forca, 4)], SubAtributos = [new(SubAtributo.Iniciativa, 2)], Pericias = [new(Pericia.Atletismo, 5)]
+            Atributos = [new(Atributo.Forca, 4)], SubAtributos = [new(SubAtributo.Iniciativa, 2)], Pericias = [new(7 /* Atletismo */, 5)]
         };
         var bankId = Guid.NewGuid();
         var sheetEntryId = Guid.NewGuid();

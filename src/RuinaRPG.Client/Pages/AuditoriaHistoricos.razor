@@ -1,5 +1,6 @@
 @page "/auditoria/historicos"
 @inject HttpClient Http
+@inject PericiaCatalogo Catalogo
 @using RuinaRPG.Contracts.Rules
 @using MudBlazor
 
@@ -20,13 +21,13 @@ else
         <MudSelect T="string" @bind-Value="_newForm.PericiaMaisSeis" Label="Perícia +6">
             @foreach (var pericia in Pericias)
             {
-                <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                <MudSelectItem Value="@pericia">@Catalogo.Label(pericia)</MudSelectItem>
             }
         </MudSelect>
         <MudSelect T="string" @bind-Value="_newForm.PericiaMaisTres" Label="Perícia +3">
             @foreach (var pericia in Pericias)
             {
-                <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                <MudSelectItem Value="@pericia">@Catalogo.Label(pericia)</MudSelectItem>
             }
         </MudSelect>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AddAsync">Adicionar</MudButton>
@@ -47,7 +48,7 @@ else
                             <MudSelect T="string" Value="@historico.PericiaMaisSeis" ValueChanged="@(v => UpdateAsync(historico, periciaMaisSeis: v))">
                                 @foreach (var pericia in Pericias)
                                 {
-                                    <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                                    <MudSelectItem Value="@pericia">@Catalogo.Label(pericia)</MudSelectItem>
                                 }
                             </MudSelect>
                         </td>
@@ -55,7 +56,7 @@ else
                             <MudSelect T="string" Value="@historico.PericiaMaisTres" ValueChanged="@(v => UpdateAsync(historico, periciaMaisTres: v))">
                                 @foreach (var pericia in Pericias)
                                 {
-                                    <MudSelectItem Value="@pericia">@RuinaRPG.Client.Shared.PericiaDisplay.Label(pericia)</MudSelectItem>
+                                    <MudSelectItem Value="@pericia">@Catalogo.Label(pericia)</MudSelectItem>
                                 }
                             </MudSelect>
                         </td>
@@ -74,24 +75,20 @@ else
         new("Auditoria: Históricos"),
     };
 
-    // Same 39-value canonical list as the Pericia enum (Requisitos - Ficha de Personagem.md §2.d) —
-    // wire-format identifiers, displayed via PericiaDisplay.Label.
-    private static readonly string[] Pericias =
-    [
-        "Acrobacia", "Alquimia", "Arcano", "Armadilhas", "ArmasBrancas", "ArtefatosMagicos", "Artistico",
-        "Atletismo", "Avaliacao", "Biblioteca", "Brigar", "Conducao", "Conhecimentos", "Crime",
-        "EmpatiaComAnimais", "Enganacao", "ForcaDeVontade", "Fortitude", "Furtividade", "Herborismo",
-        "Intimidacao", "Intuicao", "Investigacao", "Labia", "Lideranca", "Linguistica", "Medicina",
-        "Navegacao", "Ocultismo", "Oficio", "Percepcao", "Pontaria", "Prontidao", "Reflexos", "Religiao",
-        "Saquear", "Seducao", "SensoComum", "Sobrevivencia",
-    ];
+    // Chaves das Perícias ativas (Auditoria de Perícias) — o valor que a API recebe e devolve; o nome
+    // exibido vem de Catalogo.Label.
+    private IEnumerable<string> Pericias => Catalogo.Ativas.Select(p => p.Chave);
 
     private List<HistoricoResponse> _historicos = new();
     private string? _errorMessage;
     private bool _forbidden;
     private readonly NewHistoricoFormModel _newForm = new();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Catalogo.CarregarAsync();
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

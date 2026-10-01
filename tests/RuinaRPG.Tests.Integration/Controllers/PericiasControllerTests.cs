@@ -85,8 +85,8 @@ public class PericiasControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         body.Should().HaveCountGreaterThanOrEqualTo(39);
         body!.Select(p => p.Nome).Should().BeInAscendingOrder(StringComparer.CurrentCulture);
-        body.Single(p => p.Chave == "Prontidao").Protegida.Should().BeTrue();
-        body.Single(p => p.Chave == "Atletismo").Protegida.Should().BeFalse();
+        body!.Single(p => p.Chave == "Prontidao").Protegida.Should().BeTrue();
+        body!.Single(p => p.Chave == "Atletismo").Protegida.Should().BeFalse();
     }
 
     [Fact]

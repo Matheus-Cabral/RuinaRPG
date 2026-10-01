@@ -6,6 +6,7 @@ using RuinaRPG.Domain.Rules;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Services;
 
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Services;
 /// Passiva requisitos check (Task 5) share one live computation instead of two. Read-only,
 /// everything derived live — nothing here is persisted.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias)
 {
     /// <summary>
     /// "Bruto [Perícia]" terms (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador
@@ -34,15 +35,15 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
         var brutoSkills = await db.CharacterSkills
-            .Where(s => s.CharacterSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
+            .Where(s => s.CharacterSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
             .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(
-            brutoSkills.Single(s => s.Pericia == pericia).Gasto,
-            HistoricoBonusCalculator.For(pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
+        int BrutoOf(int periciaId) => SkillFormulas.Modificador(
+            brutoSkills.Single(s => s.PericiaId == periciaId).Gasto,
+            HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
 
-        var brutoProntidao = BrutoOf(Pericia.Prontidao);
-        var brutoReflexos = BrutoOf(Pericia.Reflexos);
-        var brutoFortitude = BrutoOf(Pericia.Fortitude);
+        var brutoProntidao = BrutoOf(PericiasDeSistema.Prontidao);
+        var brutoReflexos = BrutoOf(PericiasDeSistema.Reflexos);
+        var brutoFortitude = BrutoOf(PericiasDeSistema.Fortitude);
 
         var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
         var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
@@ -114,11 +115,12 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
         // Mesmo Total da 2.d que CharacterSkillsController.List mostra.
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
         var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheet.Id).ToListAsync();
-        var pericias = skills.ToDictionary(s => s.Pericia, s =>
+        var porId = await pericias.PorIdAsync();
+        var totaisDePericia = skills.ToDictionary(s => s.PericiaId, s =>
         {
-            var modificador = SkillFormulas.Modificador(s.Gasto, HistoricoBonusCalculator.For(s.Pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
+            var modificador = SkillFormulas.Modificador(s.Gasto, HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
             return s.AtributoEscolhido is { } atributo && atributos.TryGetValue(atributo, out var atributoTotal)
-                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
                 : (int?)null;
         });
 
@@ -131,7 +133,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: true, sheet.Nivel, sheet.Vocacao, sheet.SubVocacao, sheet.Linhagem, sheet.Variante,
             graduacao, sheet.PossuiCoracaoDeMana, sheet.Afinidade, sheet.Estrela, sheet.HistoricoId,
-            atributos, SubAtributosPorEnum(sub), pericias);
+            atributos, SubAtributosPorEnum(sub), totaisDePericia);
     }
 
     /// <summary>Shared by NpcSheetStats/CreatureSheetStats — same SubAttributesResponse shape, keyed by SubAtributo instead.</summary>
