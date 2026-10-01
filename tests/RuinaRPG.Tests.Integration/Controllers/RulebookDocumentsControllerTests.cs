@@ -56,7 +56,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
     }
 
     [Fact]
-    public async Task List_returns_the_4_documents_all_default_when_no_override_exists()
+    public async Task List_returns_the_3_documents_all_default_when_no_override_exists()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm1", "rulebookdocgm1@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm1@teste.com");
@@ -65,7 +65,8 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
-        body!.Select(d => d.Slug).Should().BeEquivalentTo("sistema-basico", "graus-e-circulos", "tabela-de-niveis", "estrelas-alkerianas");
+        body!.Select(d => d.Slug).Should().BeEquivalentTo("sistema-basico", "graus-e-circulos", "estrelas-alkerianas");
+        body!.Select(d => d.Slug).Should().NotContain("tabela-de-niveis");
         body!.Should().OnlyContain(d => d.IsDefault);
         body!.Should().OnlyContain(d => !string.IsNullOrEmpty(d.MarkdownText)); // the embedded default text, non-empty
     }
@@ -113,7 +114,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
         {
             // This class shares one Postgres instance across every test in it (IClassFixture, no
             // per-test reset) — clean up so this override can't leak into another test that expects
-            // the embedded default for "sistema-basico" (e.g. List_returns_the_4_documents...).
+            // the embedded default for "sistema-basico" (e.g. List_returns_the_3_documents...).
             await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
         }
     }
@@ -135,14 +136,28 @@ public class RulebookDocumentsControllerTests : IClassFixture<PostgresFixture>, 
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm5", "rulebookdocgm5@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm5@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/tabela-de-niveis", gmToken,
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
             new UpdateRulebookDocumentOverrideRequest("| Custom |")));
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/tabela-de-niveis", gmToken));
+        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
-        body!.Single(d => d.Slug == "tabela-de-niveis").IsDefault.Should().BeTrue();
+        body!.Single(d => d.Slug == "sistema-basico").IsDefault.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Tabela_de_niveis_is_no_longer_an_editable_document()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm9", "rulebookdocgm9@teste.com");
+        await GrantRulesAuditorAsync("rulebookdocgm9@teste.com");
+
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/tabela-de-niveis", gmToken,
+            new UpdateRulebookDocumentOverrideRequest("# Não")));
+        var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/tabela-de-niveis", gmToken));
+
+        put.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        delete.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

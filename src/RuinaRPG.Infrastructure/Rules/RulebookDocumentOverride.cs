@@ -2,7 +2,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 
 /// <summary>
 /// GM-editable override of one Livro de Regras document's raw Markdown, keyed by the same Slug
-/// RulebookRenderer already uses ("sistema-basico", "graus-e-circulos", "tabela-de-niveis" — never
+/// RulebookRenderer already uses ("sistema-basico", "graus-e-circulos" — never
 /// "caracteristicas", which is DB-driven from Traits instead, see RulebookRenderer). One row per
 /// Slug; absence of a row means "use the embedded .md resource", exactly as before this feature
 /// existed. Display-only: nothing here feeds IRulesDataProvider or any gameplay calculator.

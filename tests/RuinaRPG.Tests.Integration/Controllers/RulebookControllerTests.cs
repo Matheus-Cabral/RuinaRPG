@@ -220,34 +220,37 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
-    public async Task Get_reflects_a_saved_RulebookDocumentOverride_immediately()
+    public async Task TabelaDeNiveis_is_generated_from_the_level_table_including_custom_columns()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("RulebookGmOverride1", "rulebookgmoverride1@teste.com");
+        var token = await RegisterGmAndGetTokenAsync("RulebookGmTabela1", "rulebookgmtabela1@teste.com");
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMOVERRIDE1@TESTE.COM");
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMTABELA1@TESTE.COM");
         user.IsRulesAuditor = true;
         await db.SaveChangesAsync();
 
-        var updateMessage = new HttpRequestMessage(HttpMethod.Put, "/api/rulebook-documents/tabela-de-niveis");
-        updateMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        updateMessage.Content = JsonContent.Create(new UpdateRulebookDocumentOverrideRequest("# Texto Substituído Pelo Auditor"));
-        await _client.SendAsync(updateMessage);
+        var html = async () =>
+        {
+            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+            var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+            return body!.Single(d => d.Slug == "tabela-de-niveis").IntroHtml ?? "";
+        };
 
+        var padrao = await html();
+        padrao.Should().Contain("<table").And.Contain("<th>Nível</th>").And.Contain("<th>Pontos de Atributo</th>").And.Contain("<th>Outros bônus</th>");
+        padrao.Should().NotContain("Pontos de Fama");
+
+        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/tabela-de-niveis/colunas", token,
+            new CriarColunaDeNivelRequest("Pontos de Fama", "Acumulativa")));
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var coluna = await created.Content.ReadFromJsonAsync<ColunaDeNivelResponse>();
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
-
-            var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
-            var tabelaDeNiveis = body!.Single(d => d.Slug == "tabela-de-niveis");
-            (tabelaDeNiveis.IntroHtml ?? "").Should().Contain("Texto Substituído Pelo Auditor");
+            (await html()).Should().Contain("<th>Pontos de Fama</th>");
         }
         finally
         {
-            // The override lives in the same Postgres container for every test in this class
-            // (IClassFixture<PostgresFixture>, no per-test reset) — clean it up so it can't leak
-            // into another test that expects the embedded default for this Slug.
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/tabela-de-niveis", gmToken));
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{coluna!.Id}", token));
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Renderers;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Infrastructure.Rules;
 
@@ -29,13 +31,14 @@ public interface IRulebookRenderer
 }
 
 /// <summary>
-/// Renders the Livro de Regras' 7 documents as displayable HTML. 4 of them (Sistema Básico, Graus
-/// & Círculos, Tabela de Níveis, As Estrelas Alkerianas) render a RulebookDocumentOverride's
+/// Renders the Livro de Regras' 7 documents as displayable HTML. 3 of them (Sistema Básico, Graus
+/// & Círculos, As Estrelas Alkerianas) render a RulebookDocumentOverride's
 /// Markdown when the Rules Auditor has saved one for that Slug (see RulebookDocumentsController),
 /// the embedded Docs/Sistema RPG resource otherwise — display-only, this never affects
 /// IRulesDataProvider or any gameplay calculator. The 5th (Características) is rebuilt straight
 /// from the live Traits table instead of any Markdown at all (see BuildCaracteristicasAsync) —
-/// editing a Trait via TraitsController is what changes that one. The 6th (Históricos) gets the
+/// editing a Trait via TraitsController is what changes that one. Tabela de Níveis is likewise
+/// built live, from the Auditoria's level table (ITabelaDeNiveis), with no Markdown override. The 6th (Históricos) gets the
 /// same live-catalog treatment as Características, but from the Historicos table instead — no
 /// Markdown-override support either (see BuildHistoricosAsync). The 7th (Equipagem) gets the same
 /// hybrid treatment as Históricos — its IntroHtml still comes from Equipagem.md, but its per-kit
@@ -46,7 +49,7 @@ public interface IRulebookRenderer
 /// override can change between requests, so nothing here is cached across requests the way it used
 /// to be with the old Lazy&lt;&gt; field.
 /// </summary>
-public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
+public class RulebookRenderer(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : IRulebookRenderer
 {
     public async Task<IReadOnlyList<RulebookDocument>> GetDocuments() =>
     [
@@ -227,12 +230,29 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
         return new RulebookDocument("equipagem", "Equipagem", intro, sections);
     }
 
-    // No Markdown headings at all — one big GFM pipe table. Splitting finds nothing to split on, so
-    // Sections stays empty and the whole rendered table lands in IntroHtml.
+    /// <summary>
+    /// Montada ao vivo a partir da Tabela de Níveis da Auditoria (ITabelaDeNiveis): uma tabela com
+    /// Nível, uma coluna por coluna da Auditoria (valores como armazenados) e Outros bônus. Sem
+    /// seções — a tabela inteira vai no IntroHtml. Não há override em Markdown para este documento.
+    /// </summary>
     private async Task<RulebookDocument> BuildTabelaDeNiveisAsync()
     {
-        var (intro, sections) = SplitIntoSections(await ReadMarkdownAsync("tabela-de-niveis"), splitLevel: 2);
-        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", intro, sections);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var colunas = tabela.Colunas;
+        var html = new StringBuilder("<table><thead><tr><th>Nível</th>");
+        foreach (var c in colunas)
+            html.Append("<th>").Append(WebUtility.HtmlEncode(c.Nome)).Append("</th>");
+        html.Append("<th>Outros bônus</th></tr></thead><tbody>");
+        foreach (var linha in tabela.Linhas)
+        {
+            html.Append("<tr><td>").Append(linha.Nivel).Append("</td>");
+            foreach (var c in colunas)
+                html.Append("<td>").Append(linha.Valores.GetValueOrDefault(c.Id)?.ToString() ?? "").Append("</td>");
+            var outros = WebUtility.HtmlEncode(linha.OutrosBonus ?? "").Replace("\n", "<br />");
+            html.Append("<td>").Append(outros).Append("</td></tr>");
+        }
+        html.Append("</tbody></table>");
+        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", html.ToString(), []);
     }
 
     /// <summary>
@@ -245,7 +265,6 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
     {
         "sistema-basico" => RulesDataProvider.ReadResource("Sistema Basico.md"),
         "graus-e-circulos" => RulesDataProvider.ReadResource("GRAUS e CIRCULOS.md"),
-        "tabela-de-niveis" => RulesDataProvider.ReadResource("Tabela de Níveis.md"),
         "estrelas-alkerianas" => RulesDataProvider.ReadResource("Estrelas Alkerianas.md"),
         _ => throw new ArgumentOutOfRangeException(nameof(slug), slug, "Slug de documento desconhecido."),
     };

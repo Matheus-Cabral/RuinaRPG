@@ -21,7 +21,6 @@ public class AuditoriaLivroDeRegrasTests : MudBunitContext
             {
                 new("sistema-basico", "# Sistema", true),
                 new("graus-e-circulos", "# Graus", true),
-                new("tabela-de-niveis", "| Nível |", true),
                 new("estrelas-alkerianas", "# Sina", true),
             }),
         }));
@@ -29,7 +28,7 @@ public class AuditoriaLivroDeRegrasTests : MudBunitContext
         var cut = Render<AuditoriaLivroDeRegras>();
 
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("As Estrelas"));
-        cut.Markup.Should().Contain("Sistema Básico").And.Contain("Graus &amp; Círculos").And.Contain("Tabela de Níveis");
+        cut.Markup.Should().Contain("Sistema Básico").And.Contain("Graus &amp; Círculos").And.NotContain("Tabela de Níveis");
         cut.Markup.Should().NotContain(">estrelas-alkerianas<");
     }
 }
