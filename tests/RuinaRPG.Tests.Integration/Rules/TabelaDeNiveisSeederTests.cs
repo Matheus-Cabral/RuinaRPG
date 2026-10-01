@@ -29,11 +29,14 @@ public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
         var tabela = await new TabelaDeNiveis(db).ObterAsync();
 
         tabela.UltimoNivel.Should().Be(50);
-        foreach (var nivel in new[] { 1, 10, 25, 50 })
+        // Literals = what the regex calculators (deleted since) produced over the Markdown; the
+        // full 50-level snapshot lives in NivelBonusExtractorTests.
+        foreach (var (nivel, atributo, pericia, caracteristica, ignicao) in new[] { (1, 9, 4, 5, 10), (10, 13, 6, 7, 50), (25, 23, 17, 8, 202), (50, 56, 43, 11, 648) })
         {
-            tabela.Acumulado(ChavesDeNivel.PontosDeAtributo, nivel).Should().Be(AttributePointBudgetCalculator.Compute(nivel, rules.Niveis));
-            tabela.Acumulado(ChavesDeNivel.PontosDePericia, nivel).Should().Be(SkillPointBudgetCalculator.Compute(nivel, rules.Niveis));
-            tabela.Acumulado(ChavesDeNivel.PontosDeIgnicao, nivel).Should().Be(PontosDeIgnicaoCalculator.ComputeTotal(nivel, 0, rules.Niveis));
+            AttributePointBudgetCalculator.Compute(nivel, tabela).Should().Be(atributo);
+            SkillPointBudgetCalculator.Compute(nivel, tabela).Should().Be(pericia);
+            TraitPointBudgetCalculator.Compute(nivel, tabela).Should().Be(caracteristica);
+            PontosDeIgnicaoCalculator.ComputeTotal(nivel, 0, tabela).Should().Be(ignicao);
         }
         tabela.ComoXpPorNivel().Select(x => x.XpAbsoluto).Should().Equal(rules.XpPorNivel.OrderBy(x => x.Nivel).Select(x => x.XpAbsoluto));
         tabela.ComoEapPorNivel().Select(x => x.ValorAbsoluto).Should().Equal(rules.EapPorNivel.OrderBy(x => x.Nivel).Select(x => x.ValorAbsoluto));

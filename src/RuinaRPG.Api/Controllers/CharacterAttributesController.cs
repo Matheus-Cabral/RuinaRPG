@@ -8,13 +8,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/attributes")]
-public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterAttributeResponse>>> List(Guid sheetId)
@@ -60,7 +61,8 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
             return Forbid();
 
         var gastoTotal = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).SumAsync(a => a.Gasto);
-        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
         return new AttributePointBudgetResponse(gastoTotal, pontosDisponiveis);
     }
 
@@ -83,7 +85,8 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
         // legitimate scenario where a previously-valid Gasto becomes invalid out from under the
         // player; the only way to exceed it is trying to spend more than they have.
         var gastoDosOutros = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
-        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
         if (gastoDosOutros + request.Gasto > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");
 

@@ -1,19 +1,18 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CreatureSheets;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
+using static RuinaRPG.Tests.Unit.Rules.TabelaDeNiveisDeTeste;
 
 namespace RuinaRPG.Tests.Unit.CreatureSheets;
 
 public class CreatureAttributePointBudgetCalculatorTests
 {
-    // Real excerpts from Tabela de Níveis' Bônus column.
-    private static readonly IReadOnlyList<LevelBonus> Niveis =
-    [
-        new(1, "+9 Pontos de Atributo  <br>+Status de Vida Aprimorado  <br>+10 Pontos de Ignição"),
-        new(2, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+1 Ponto de Atributo"),
-        new(3, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco"),
-        new(6, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+1 Ponto de Atributo"),
-    ];
+    // Real values from the Tabela de Níveis.
+    private static readonly ProgressaoDeNivel Niveis = Criar(
+        Nivel(1, (ChavesDeNivel.PontosDeAtributo, 9), (ChavesDeNivel.PontosDeIgnicao, 10)),
+        Nivel(2, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.PontosDeAtributo, 1)),
+        Nivel(3, (ChavesDeNivel.PontosDeIgnicao, 4)),
+        Nivel(6, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.PontosDeAtributo, 1)));
 
     [Theory]
     [InlineData(Rank.F, 6)]

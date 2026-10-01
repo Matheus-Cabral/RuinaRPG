@@ -14,11 +14,10 @@ public static class LevelUpNoticeCalculator
     }
 
     /// <summary>
-    /// Tabela de Níveis.md packs a level's several bonuses into one markdown-table cell separated
-    /// by literal "&lt;br&gt;" (a level's real bonus count doesn't fit one line). BonusText itself
-    /// stays a single raw string — the point-budget calculators regex-scan the whole cell — this
-    /// only flattens it for display, so a client renders each bonus on its own line instead of a
-    /// raw "&lt;br&gt;" showing up as literal text.
+    /// BonusText packs a level's several bonuses into one string separated by literal
+    /// "&lt;br&gt;" (ProgressaoDeNivel.ComoLevelBonus: the numeric columns first, then the
+    /// free-text lines). This flattens it for display, so a client renders each bonus on its own
+    /// line instead of a raw "&lt;br&gt;" showing up as literal text.
     /// </summary>
     public static List<string> FlattenBonusLines(IReadOnlyList<LevelBonus> bonuses) => bonuses
         .SelectMany(b => b.BonusText.Split("<br>", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))

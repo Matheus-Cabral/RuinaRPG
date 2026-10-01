@@ -7,10 +7,8 @@ namespace RuinaRPG.Domain.CharacterSheets;
 /// </summary>
 public static class ArcaEvolucaoRules
 {
-    /// <summary>Último nível da Tabela de Níveis hoje.</summary>
-    public const int NivelMaximo = 50;
-
-    public static bool NivelValido(int nivel) => nivel is >= 1 and <= NivelMaximo;
+    /// <summary>Uma evolução só pode ser marcada num nível que existe na Tabela de Níveis.</summary>
+    public static bool NivelValido(int nivel, int ultimoNivel) => nivel >= 1 && nivel <= ultimoNivel;
 
     public static IReadOnlyList<T> Desbloqueadas<T>(IEnumerable<T> evolucoes, Func<T, int> nivel, Func<T, DateTimeOffset> criadaEm, int nivelDaFicha) =>
         evolucoes.Where(e => nivel(e) <= nivelDaFicha)

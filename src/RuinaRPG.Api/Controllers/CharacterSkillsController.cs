@@ -10,13 +10,14 @@ using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, IRulesDataProvider rules) : ControllerBase
+public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
@@ -82,7 +83,8 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         // Pontos ganhos por Acerto Crítico não vêm do orçamento por Nível — subtraídos do Gasto
         // Total para não acusar "acima do máximo" por um ganho legítimo (2.d).
         var gastoTotal = gastoBruto - sheet.PontosDePericiaBonusCritico;
-        var pontosDisponiveis = SkillPointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = SkillPointBudgetCalculator.Compute(sheet.Nivel, tabela);
         return new SkillPointBudgetResponse(gastoTotal, pontosDisponiveis);
     }
 

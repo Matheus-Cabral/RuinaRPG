@@ -13,6 +13,7 @@ using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -21,7 +22,7 @@ namespace RuinaRPG.Api.Controllers;
 // api/campaigns/{campaignId}/character-sheets and api/character-sheets/{id}.
 [ApiController]
 [Authorize]
-public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpPost("api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
@@ -252,7 +253,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.HistoricoId = historicoId;
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
-        var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var nivel = NivelCalculator.Compute(request.ExperienciaAtual, tabela.ComoXpPorNivel());
         sheet.Nivel = nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
@@ -363,7 +365,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, tabela.ComoLevelBonus());
         return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
     }
 
@@ -520,7 +523,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // EAPAtual is no longer a stored/editable value — same treatment already given to
         // Círculo/Grau, which became a pure function instead of a directly-set column. "Segue a
         // tabela [XP/EAP por Nível] e é somado pelo resultado de Âmbares Absorvidos" (1.b).
-        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, rules.EapPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, tabela.ComoEapPorNivel());
 
         var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
@@ -532,8 +536,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
         var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
-        var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, rules.XpPorNivel);
-        var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, rules.Niveis);
+        var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, tabela.ComoXpPorNivel());
+        var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, tabela);
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,

@@ -37,8 +37,15 @@ public class ArcaEvolucaoRulesTests
     [InlineData(1, true)]
     [InlineData(50, true)]
     [InlineData(51, false)]
-    public void NivelValido_accepts_1_to_50(int nivel, bool esperado)
+    public void NivelValido_accepts_1_to_the_last_level_of_the_table(int nivel, bool esperado)
     {
-        ArcaEvolucaoRules.NivelValido(nivel).Should().Be(esperado);
+        ArcaEvolucaoRules.NivelValido(nivel, ultimoNivel: 50).Should().Be(esperado);
+    }
+
+    [Fact]
+    public void NivelValido_follows_the_last_level_it_is_given()
+    {
+        ArcaEvolucaoRules.NivelValido(51, ultimoNivel: 60).Should().BeTrue();
+        ArcaEvolucaoRules.NivelValido(31, ultimoNivel: 30).Should().BeFalse();
     }
 }

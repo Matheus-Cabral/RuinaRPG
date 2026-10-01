@@ -8,7 +8,7 @@
 @foreach (var ev in Evolucoes)
 {
     <MudStack @key="(ev.Id, _renderGeneration)" Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-        <MudNumericField T="int" Value="@ev.Nivel" ValueChanged="@(v => UpdateAsync(ev, v, ev.Descricao))" Label="Nível" Min="1" Max="50" Style="width:6em;" />
+        <MudNumericField T="int" Value="@ev.Nivel" ValueChanged="@(v => UpdateAsync(ev, v, ev.Descricao))" Label="Nível" Min="1" Style="width:6em;" />
         <MudTextField T="string" Value="@ev.Descricao" ValueChanged="@(v => UpdateAsync(ev, ev.Nivel, v))" Label="Evolução" Lines="2" />
         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
                        aria-label="@($"Remover evolução do nível {ev.Nivel}")" title="Remover evolução"
@@ -16,7 +16,7 @@
     </MudStack>
 }
 <MudStack Row="true" AlignItems="AlignItems.Center">
-    <MudNumericField T="int" @bind-Value="_novoNivel" Label="Nível" Min="1" Max="50" Style="width:6em;" />
+    <MudNumericField T="int" @bind-Value="_novoNivel" Label="Nível" Min="1" Style="width:6em;" />
     <MudTextField T="string" @bind-Value="_novaDescricao" Label="Nova evolução" Lines="2" />
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
                Disabled="@string.IsNullOrWhiteSpace(_novaDescricao)" OnClick="AddAsync">Adicionar evolução</MudButton>

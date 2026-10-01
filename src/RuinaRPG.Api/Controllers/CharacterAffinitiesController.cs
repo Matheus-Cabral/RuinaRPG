@@ -8,13 +8,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/affinities")]
-public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterAffinityResponse>> Add(Guid sheetId, AddCharacterAffinityRequest request)
@@ -187,7 +188,8 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         var gastoAntes = VocacaoArcanaCalculator.Gasto(existentes.Select(e => e.Linha));
         var gastoDepois = VocacaoArcanaCalculator.Gasto(existentes.Where(e => e.Id != substituindoId).Select(e => e.Linha).Append(novaLinha));
 
-        var eapAtual = EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, rules.EapPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var eapAtual = EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
         var graduacao = sheet.Vocacao is { } vocacao ? GraduacaoCalculator.Compute(vocacao, eapAtual, sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap) : 0;
         var maxima = VocacaoArcanaCalculator.Maxima(sheet.Vocacao, graduacao, sheet.AfinidadeAdicional, rules.CirculoGrauPorEap);
 

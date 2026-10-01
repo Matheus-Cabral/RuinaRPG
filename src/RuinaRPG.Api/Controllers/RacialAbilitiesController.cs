@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -22,7 +23,7 @@ namespace RuinaRPG.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize(Roles = "GM")]
-public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
+public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet("api/racial-abilities")]
     public async Task<ActionResult<List<RacialAbilityEntryResponse>>> ListRacialAbilities()
@@ -159,7 +160,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     [HttpPost("api/arcas/{roll:int}/evolucoes")]
     public async Task<ActionResult<ArcaEvolucaoResponse>> AddEvolucao(int roll, ArcaEvolucaoRequest request)
     {
-        if (ValidateEvolucao(roll, request) is { } invalid)
+        if (await ValidateEvolucaoAsync(roll, request) is { } invalid)
             return invalid;
 
         var gmId = CurrentUserId();
@@ -179,7 +180,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
     [HttpPut("api/arcas/{roll:int}/evolucoes/{id:guid}")]
     public async Task<ActionResult<ArcaEvolucaoResponse>> UpdateEvolucao(int roll, Guid id, ArcaEvolucaoRequest request)
     {
-        if (ValidateEvolucao(roll, request) is { } invalid)
+        if (await ValidateEvolucaoAsync(roll, request) is { } invalid)
             return invalid;
 
         var evolucao = await FindOwnEvolucaoAsync(roll, id);
@@ -204,12 +205,13 @@ public class RacialAbilitiesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private ActionResult? ValidateEvolucao(int roll, ArcaEvolucaoRequest request)
+    private async Task<ActionResult?> ValidateEvolucaoAsync(int roll, ArcaEvolucaoRequest request)
     {
         if (roll is < 1 or > 18)
             return BadRequest("Roll deve estar entre 1 e 18.");
-        if (!ArcaEvolucaoRules.NivelValido(request.Nivel))
-            return BadRequest($"O nível da evolução deve estar entre 1 e {ArcaEvolucaoRules.NivelMaximo}.");
+        var ultimo = (await tabelaDeNiveis.ObterAsync()).UltimoNivel;
+        if (!ArcaEvolucaoRules.NivelValido(request.Nivel, ultimo))
+            return BadRequest($"O nível da evolução deve estar entre 1 e {ultimo}.");
         if (string.IsNullOrWhiteSpace(request.Descricao))
             return BadRequest("Descreva a evolução.");
         return null;

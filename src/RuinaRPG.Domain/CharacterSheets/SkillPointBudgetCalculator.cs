@@ -1,5 +1,4 @@
-using System.Text.RegularExpressions;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
 
 namespace RuinaRPG.Domain.CharacterSheets;
 
@@ -11,15 +10,8 @@ namespace RuinaRPG.Domain.CharacterSheets;
 /// Total by the caller (CharacterSkillsController.Budget) so it isn't flagged as over budget.
 /// Still displayed for reference only, not enforced server-side like AttributePointBudgetCalculator's.
 /// </summary>
-public static partial class SkillPointBudgetCalculator
+public static class SkillPointBudgetCalculator
 {
-    public static int Compute(int nivel, IReadOnlyList<LevelBonus> niveis) =>
-        niveis
-            .Where(n => n.Nivel <= nivel)
-            .Sum(n => PontosDePericiaRegex().Matches(n.BonusText).Sum(m => int.Parse(m.Groups[1].Value)));
-
-    // Per[ií]cia + IgnoreCase: the source table spells this inconsistently — some rows use
-    // "Perícia", others the unaccented "Pericia" (e.g. Nível 12, 22, 32, 42).
-    [GeneratedRegex(@"\+(\d+)\s+Pontos?\s+de\s+Per[ií]cia\b", RegexOptions.IgnoreCase)]
-    private static partial Regex PontosDePericiaRegex();
+    public static int Compute(int nivel, ProgressaoDeNivel tabela) =>
+        tabela.Acumulado(ChavesDeNivel.PontosDePericia, nivel);
 }

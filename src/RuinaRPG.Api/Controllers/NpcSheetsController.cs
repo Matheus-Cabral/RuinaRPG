@@ -15,13 +15,14 @@ using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
     // granted one already does — same reasoning as List below.
@@ -204,8 +205,12 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (nivel < 1 || nivel > tabela.UltimoNivel)
+            return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
+
         sheet.Nivel = nivel;
-        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, rules.XpPorNivel);
+        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 
@@ -223,7 +228,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         sheet.ExperienciaAtual = experienciaAtual;
-        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, rules.XpPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 
@@ -240,7 +246,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, tabela.ComoLevelBonus());
         return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
     }
 

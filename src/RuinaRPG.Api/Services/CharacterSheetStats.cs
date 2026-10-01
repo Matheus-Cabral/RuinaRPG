@@ -7,6 +7,7 @@ using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Services;
 
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Services;
 /// Passiva requisitos check (Task 5) share one live computation instead of two. Read-only,
 /// everything derived live — nothing here is persisted.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias)
 {
     /// <summary>
     /// "Bruto [Perícia]" terms (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador
@@ -131,7 +132,8 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var sub = await SubAtributosAsync(sheet);
 
         // Mesmo Grau/Círculo que CharacterSheetsController.ToResponseAsync mostra em 1.b.
-        var eapAtual = EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, rules.EapPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var eapAtual = EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
         var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, eapAtual, sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
 
         return new FichaParaRequisitos(

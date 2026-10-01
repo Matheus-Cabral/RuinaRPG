@@ -9,13 +9,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/attributes")]
-public class NpcAttributesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcAttributeResponse>>> List(Guid sheetId)
@@ -58,7 +59,8 @@ public class NpcAttributesController(RuinaRpgDbContext db, IRulesDataProvider ru
             return NotFound();
 
         var gastoTotal = await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).SumAsync(a => a.Gasto);
-        return new AttributePointBudgetResponse(gastoTotal, AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis));
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        return new AttributePointBudgetResponse(gastoTotal, AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela));
     }
 
     [HttpPut("{atributo}")]

@@ -1,26 +1,25 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
+using static RuinaRPG.Tests.Unit.Rules.TabelaDeNiveisDeTeste;
 
 namespace RuinaRPG.Tests.Unit.CharacterSheets;
 
 public class TraitPointBudgetCalculatorTests
 {
-    // Real excerpts from Tabela de Níveis' Bônus column.
-    private static readonly IReadOnlyList<LevelBonus> Niveis =
-    [
-        new(1, "+9 Pontos de Atributo  <br>+Status de Vida Aprimorado"),
-        new(4, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+1 Espaço de Caracteristica"),
-        new(8, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+1 Espaço de Caracteristica"),
-    ];
+    // Real values from the Tabela de Níveis.
+    private static readonly ProgressaoDeNivel Niveis = Criar(
+        Nivel(1, (ChavesDeNivel.PontosDeAtributo, 9)),
+        Nivel(4, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.EspacosDeCaracteristica, 1)),
+        Nivel(8, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.EspacosDeCaracteristica, 1)));
 
     [Fact]
     public void Compute_below_the_first_table_grant_is_just_the_creation_base_of_5()
     {
-        // 5 is a flat creation grant that never appears as "+X Espaço de Característica" text in
-        // Tabela de Níveis (unlike Atributo/Perícia, whose level-1 row IS their creation grant) —
-        // confirmed by reading the real table: its first "Espaço de Característica" bonus is at
-        // level 4, nothing at level 1, so this base has to be added here instead.
+        // 5 is a flat creation grant that never appears in the Tabela de Níveis (unlike
+        // Atributo/Perícia, whose level-1 row IS their creation grant) — confirmed by reading the
+        // real table: its first "Espaço de Característica" grant is at level 4, nothing at level
+        // 1, so this base has to be added here instead.
         TraitPointBudgetCalculator.Compute(nivel: 3, Niveis).Should().Be(5);
     }
 

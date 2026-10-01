@@ -11,13 +11,14 @@ using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     /// <summary>
     /// R0006 3.d: Butim (Spoils), not the plain inventory the Personagem/NPC sheet has — Custo and
@@ -216,7 +217,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
             return BadRequest("Esta característica exige uma especificação.");
 
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
         var existingTotal = await SumExistingCustoAsync(sheetId, trait.Polaridade);
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
@@ -281,7 +283,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, IRulesDataProvi
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
         return new CreatureTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
     }
 

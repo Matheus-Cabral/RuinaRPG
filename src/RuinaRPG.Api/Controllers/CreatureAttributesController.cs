@@ -10,13 +10,14 @@ using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/attributes")]
-public class CreatureAttributesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureAttributeResponse>>> List(Guid sheetId)
@@ -53,7 +54,8 @@ public class CreatureAttributesController(RuinaRpgDbContext db, IRulesDataProvid
             return NotFound();
 
         var gastoTotal = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).SumAsync(a => a.Gasto);
-        return new AttributePointBudgetResponse(gastoTotal, CreatureAttributePointBudgetCalculator.Compute(sheet.Rank, sheet.Nivel, rules.Niveis));
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        return new AttributePointBudgetResponse(gastoTotal, CreatureAttributePointBudgetCalculator.Compute(sheet.Rank, sheet.Nivel, tabela));
     }
 
     [HttpPut("{atributo}")]

@@ -1,19 +1,18 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
+using static RuinaRPG.Tests.Unit.Rules.TabelaDeNiveisDeTeste;
 
 namespace RuinaRPG.Tests.Unit.CharacterSheets;
 
 public class AttributePointBudgetCalculatorTests
 {
-    // Real excerpts from Tabela de Níveis' Bônus column.
-    private static readonly IReadOnlyList<LevelBonus> Niveis =
-    [
-        new(1, "+9 Pontos de Atributo  <br>+Status de Vida Aprimorado  <br>+10 Pontos de Ignição"),
-        new(2, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+1 Ponto de Atributo"),
-        new(3, "+4 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco"),
-        new(40, "+20 Pontos de Ignição  <br>+Status de Vocação de Vida/Foco  <br>+6 Pontos de Atributo  <br>+1 Espaço de Maestria"),
-    ];
+    // Real values from the Tabela de Níveis.
+    private static readonly ProgressaoDeNivel Niveis = Criar(
+        Nivel(1, (ChavesDeNivel.PontosDeAtributo, 9), (ChavesDeNivel.PontosDeIgnicao, 10)),
+        Nivel(2, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.PontosDeAtributo, 1)),
+        Nivel(3, (ChavesDeNivel.PontosDeIgnicao, 4)),
+        Nivel(40, (ChavesDeNivel.PontosDeIgnicao, 20), (ChavesDeNivel.PontosDeAtributo, 6), (ChavesDeNivel.EspacosDeMaestria, 1)));
 
     [Fact]
     public void Compute_at_level_1_is_just_the_level_1_creation_grant()
@@ -44,12 +43,12 @@ public class AttributePointBudgetCalculatorTests
     }
 
     [Fact]
-    public void Compute_counts_a_grant_even_when_atributo_is_spelled_lowercase()
+    public void Compute_reads_only_the_Pontos_de_Atributo_column()
     {
-        // Real bug: Nível 10's own row spells it "Pontos de atributo" (lowercase) — a
-        // case-sensitive regex silently dropped this and every other lowercase occurrence.
-        var niveisComMinuscula = new List<LevelBonus> { new(10, "+2 Pontos de atributo") };
+        // The spelling variants of the Markdown ("Pontos de atributo", lowercase) are the
+        // extractor's problem now (NivelBonusExtractorTests) — here the column is already a number.
+        var soNivel10 = Criar(Nivel(10, (ChavesDeNivel.PontosDeAtributo, 2), (ChavesDeNivel.PontosDePericia, 2), (ChavesDeNivel.PontosDeIgnicao, 8)));
 
-        AttributePointBudgetCalculator.Compute(nivel: 10, niveisComMinuscula).Should().Be(2);
+        AttributePointBudgetCalculator.Compute(nivel: 10, soNivel10).Should().Be(2);
     }
 }

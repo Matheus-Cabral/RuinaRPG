@@ -1,18 +1,17 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
+using static RuinaRPG.Tests.Unit.Rules.TabelaDeNiveisDeTeste;
 
 namespace RuinaRPG.Tests.Unit.CharacterSheets;
 
 public class PontosDeIgnicaoCalculatorTests
 {
-    // Real excerpts from Tabela de Níveis' Bônus column, including Nível 11's lowercase "pontos".
-    private static readonly IReadOnlyList<LevelBonus> Niveis =
-    [
-        new(1, "+9 Pontos de Atributo  <br>+10 Pontos de Ignição"),
-        new(2, "+4 Pontos de Ignição  <br>+1 Ponto de Atributo"),
-        new(11, "+8 pontos de Ignição  <br>+Status de Vocação de Vida/Foco"), // lowercase "pontos"
-    ];
+    // Real values from the Tabela de Níveis.
+    private static readonly ProgressaoDeNivel Niveis = Criar(
+        Nivel(1, (ChavesDeNivel.PontosDeAtributo, 9), (ChavesDeNivel.PontosDeIgnicao, 10)),
+        Nivel(2, (ChavesDeNivel.PontosDeIgnicao, 4), (ChavesDeNivel.PontosDeAtributo, 1)),
+        Nivel(11, (ChavesDeNivel.PontosDeIgnicao, 8)));
 
     [Fact]
     public void ComputeTotal_at_level_1_with_no_manual_bonus_is_just_the_level_1_grant()
@@ -27,7 +26,7 @@ public class PontosDeIgnicaoCalculatorTests
     }
 
     [Fact]
-    public void ComputeTotal_counts_a_grant_even_when_pontos_is_spelled_lowercase()
+    public void ComputeTotal_keeps_summing_across_later_levels()
     {
         PontosDeIgnicaoCalculator.ComputeTotal(nivel: 11, bonusManual: 0, Niveis).Should().Be(22); // 10 + 4 + 8
     }
