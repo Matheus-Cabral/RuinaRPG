@@ -12,6 +12,7 @@ using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.Runes;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
@@ -25,6 +26,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<DurabilidadePorRank> DurabilidadesPorRank => Set<DurabilidadePorRank>();
+    public DbSet<NivelProgressao> NiveisProgressao => Set<NivelProgressao>();
+    public DbSet<ColunaDeNivel> ColunasDeNivel => Set<ColunaDeNivel>();
+    public DbSet<ValorDeNivel> ValoresDeNivel => Set<ValorDeNivel>();
     public DbSet<PericiaDefinicao> Pericias => Set<PericiaDefinicao>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
@@ -176,6 +180,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         builder.Entity<Escudo>().Property(i => i.Rank).HasColumnName("Escudo_Rank");
 
         builder.Entity<DurabilidadePorRank>().HasKey(d => d.Rank);
+
+        builder.Entity<NivelProgressao>(e => { e.ToTable("NiveisProgressao"); e.HasKey(n => n.Nivel); e.Property(n => n.Nivel).ValueGeneratedNever(); });
+        builder.Entity<ColunaDeNivel>(e => { e.ToTable("ColunasDeNivel"); e.HasIndex(c => c.ChaveDeSistema).IsUnique().HasFilter("\"ChaveDeSistema\" IS NOT NULL"); });
+        builder.Entity<ValorDeNivel>(e =>
+        {
+            e.ToTable("ValoresDeNivel");
+            e.HasKey(v => new { v.Nivel, v.ColunaId });
+            e.HasOne<NivelProgressao>().WithMany().HasForeignKey(v => v.Nivel).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ColunaDeNivel>().WithMany().HasForeignKey(v => v.ColunaId).OnDelete(DeleteBehavior.Cascade);
+        });
         builder.Entity<Historico>(entity =>
         {
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(h => h.PericiaMaisSeisId).OnDelete(DeleteBehavior.Restrict);

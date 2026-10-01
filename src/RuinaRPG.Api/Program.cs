@@ -9,6 +9,7 @@ using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -74,6 +75,7 @@ builder.Services.AddScoped<IRulebookRenderer, RulebookRenderer>();
 builder.Services.AddScoped<IPericiaCatalogo, PericiaCatalogo>();
 builder.Services.AddScoped<LivroDeRegrasEfeitosSync>();
 builder.Services.AddScoped<DurabilidadePorRankProvider>();
+builder.Services.AddScoped<ITabelaDeNiveis, TabelaDeNiveis>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
 builder.Services.AddScoped<CharacterSheetStats>();
 builder.Services.AddScoped<NpcSheetStats>();
@@ -230,6 +232,10 @@ if (args.Contains("--migrate"))
     var migrateDurabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
     var migrateDurabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(migrateDb, migrateDurabilidadeMarkdown);
     app.Logger.LogInformation("DurabilidadePorRank seed: {InsertedCount} new row(s) inserted", migrateDurabilidadeSeedResult);
+
+    var migrateRules = new RulesDataProvider();
+    var migrateNiveisSeedResult = await TabelaDeNiveisSeeder.SeedAsync(migrateDb, RulesDataProvider.ReadResource("Tabela de Níveis.md"), migrateRules.XpPorNivel, migrateRules.EapPorNivel);
+    app.Logger.LogInformation("TabelaDeNiveis seed: {InsertedCount} new row(s)/column(s) inserted", migrateNiveisSeedResult);
     return;
 }
 
@@ -306,6 +312,10 @@ if (app.Environment.IsDevelopment())
     var durabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
     var durabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(db, durabilidadeMarkdown);
     app.Logger.LogInformation("DurabilidadePorRank seed: {InsertedCount} new row(s) inserted", durabilidadeSeedResult);
+
+    var niveisRules = scope.ServiceProvider.GetRequiredService<IRulesDataProvider>();
+    var niveisSeedResult = await TabelaDeNiveisSeeder.SeedAsync(db, RulesDataProvider.ReadResource("Tabela de Níveis.md"), niveisRules.XpPorNivel, niveisRules.EapPorNivel);
+    app.Logger.LogInformation("TabelaDeNiveis seed: {InsertedCount} new row(s)/column(s) inserted", niveisSeedResult);
 }
 
 app.Run();
