@@ -104,14 +104,17 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToListAsync();
+        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
         var porId = await pericias.PorIdAsync();
-        // Só Perícias ativas: um requisito sobre uma Perícia removida é ignorado pelo avaliador.
-        var totaisDePericia = skills.Where(s => porId.TryGetValue(s.PericiaId, out var p) && !p.IsDeleted).ToDictionary(s => s.PericiaId, s =>
+        // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
+        // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
+        var totaisDePericia = porId.Values.Where(p => !p.IsDeleted).ToDictionary(p => p.Id, p =>
         {
-            var modificador = SkillFormulas.Modificador(s.Gasto, HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
-            return s.AtributoEscolhido is { } atributo && atributos.TryGetValue(atributo, out var atributoTotal)
-                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
+            skills.TryGetValue(p.Id, out var s);
+            var modificador = SkillFormulas.Modificador(s?.Gasto ?? 0, HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
+            var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
+            return atributo is { } chosen && atributos.TryGetValue(chosen, out var atributoTotal)
+                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                 : (int?)null;
         });
 

@@ -22,6 +22,6 @@ public class RequisitosDePassivaMapperTests
 
         var dto = RequisitosDePassivaMapper.ToDto(requisitos, porId);
 
-        dto!.Pericias.Select(p => p.Alvo).Should().Equal("Viva");
+        dto!.Pericias!.Select(p => p.Alvo).Should().Equal("Viva");
     }
 }

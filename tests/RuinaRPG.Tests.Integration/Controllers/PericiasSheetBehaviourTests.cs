@@ -11,6 +11,7 @@ using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -18,6 +19,7 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 public class PericiasSheetBehaviourTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private readonly PostgresFixture _postgres;
+    private string _ultimaCampanhaId = "";
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
@@ -81,7 +83,7 @@ public class PericiasSheetBehaviourTests : IClassFixture<PostgresFixture>, IAsyn
         var me = await GetAsync<MeResponse>("/api/auth/me", tokens.AccessToken);
 
         var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(prefix + " Campanha", "")));
-        var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        var campaignId = _ultimaCampanhaId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(me.Id)));
         var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(me.Id)));
         return ((await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, tokens.AccessToken);
@@ -286,5 +288,33 @@ public class PericiasSheetBehaviourTests : IClassFixture<PostgresFixture>, IAsyn
 
         (await GetAsync<List<NpcSkillResponse>>($"/api/npc-sheets/{npcId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
         (await GetAsync<List<CreatureSkillResponse>>($"/api/creature-sheets/{creatureId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task A_passiva_requiring_a_pericia_created_after_the_sheet_is_blocked_until_the_sheet_meets_it()
+    {
+        var auditor = await RegisterAuditorAsync("PerSheetAud12", "persheetaud12@teste.com");
+        var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet12");
+        var campaignId = _ultimaCampanhaId;
+        var nova = await CreatePericiaAsync(auditor, "Heroísmo Tardio", "Forca", criaturas: false);
+        var bankResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", auditor,
+            new CreateSpellAbilityEntryRequest("Passiva Tardia", "Passiva", 0, "Descrição.", [], false, "Livre",
+                new RequisitosDePassivaDto(Pericias: [new(nova.Chave, 5)]))));
+        bankResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var entryId = (await bankResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", auditor,
+            new AttachToCampaignRequest(null, null, null, entryId, null)));
+        var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", auditor, true));
+
+        var bloqueada = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
+            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null)));
+        bloqueada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await bloqueada.Content.ReadAsStringAsync()).Should().Contain("Requisitos não cumpridos").And.Contain("Heroísmo Tardio");
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateCharacterSkillRequest(30, "Forca")));
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
+            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null))))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

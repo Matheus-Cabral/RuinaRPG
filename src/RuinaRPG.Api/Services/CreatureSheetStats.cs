@@ -116,14 +116,17 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
             .Where(kv => AtributoCriaturaParaAtributo.ContainsKey(kv.Key))
             .ToDictionary(kv => AtributoCriaturaParaAtributo[kv.Key], kv => kv.Value);
 
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToListAsync();
+        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
         var porId = await pericias.PorIdAsync();
-        // Só Perícias ativas: um requisito sobre uma Perícia removida é ignorado pelo avaliador.
-        var totaisDePericia = skills.Where(s => porId.TryGetValue(s.PericiaId, out var p) && !p.IsDeleted).ToDictionary(s => s.PericiaId, s =>
+        // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
+        // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
+        var totaisDePericia = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToDictionary(p => p.Id, p =>
         {
-            var modificador = SkillFormulas.Modificador(s.Gasto, 0);
-            return s.AtributoEscolhido is { } atributo && atributosCriatura.TryGetValue(atributo, out var atributoTotal)
-                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
+            skills.TryGetValue(p.Id, out var s);
+            var modificador = SkillFormulas.Modificador(s?.Gasto ?? 0, 0);
+            var atributo = s?.AtributoEscolhido ?? (p.AtributoSugerido is { } sug && Enum.TryParse<AtributoCriatura>(sug.ToString(), out var sugCriatura) ? sugCriatura : null);
+            return atributo is { } chosen && atributosCriatura.TryGetValue(chosen, out var atributoTotal)
+                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                 : (int?)null;
         });
 
