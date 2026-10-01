@@ -71,3 +71,14 @@ Os slots de escolha de um kit de Equipagem (a sub-tabela de R0009) passam a acei
 **Descrição**: Uma página separada lista as 8 linhas fixas da "[[Tabela de Durabilidade por Rank]]" — uma por Rank de item (F, E, D, C, B, A, S, SS) — cada uma com um número (Durabilidade) ou a marcação "Inquebrável" editáveis; não há criação nem exclusão de linha. Marcar "Inquebrável" limpa o número daquela linha (a durabilidade máxima passa a não existir); desmarcar exige informar um número (mínimo 1). Os valores iniciais vêm do documento-fonte (F 20, E 45, D 80, C 125, B 180, A 245, S e SS Inquebrável).
 
 Essa tabela é o que resolve a durabilidade máxima de toda Arma, Armadura e Escudo em toda Ficha (Personagem, NPC, Criatura) e no Catálogo de Itens — um item sem Rank não tem durabilidade. Reduzir o valor de uma linha limita (mas não recarrega) a durabilidade atual das fichas que já ultrapassam o novo máximo; aumentar o valor não recarrega a durabilidade atual de ninguém. Diferente dos demais catálogos deste documento, essa tabela não aparece no "[[Requisitos - Livro de Regras]]".
+
+# **R0012** - O Auditor mantém a lista de Perícias.
+
+**Descrição**: A página **Auditoria → Perícias** lista todas as perícias do sistema. Cada perícia tem **Nome** (obrigatório, único entre as ativas), **Descrição** (opcional), **Atributo sugerido** (opcional) e **Disponível para Criaturas**. O Auditor pode:
+
+- **Adicionar** uma perícia: ela aparece em todas as fichas (Personagem, NPC e, se marcada, Criatura) com 0 pontos.
+- **Editar** qualquer campo. O Atributo sugerido só vem pré-selecionado numa ficha — o jogador sempre pode escolher outro atributo, porque o GM pode pedir a perícia com outro atributo numa ação específica.
+- **Remover** uma perícia: a remoção é lógica. Os pontos gastos nela são **devolvidos** ao saldo de Pontos de Perícia de todas as fichas, e enquanto removida ela some das fichas e das listas de escolha; bônus de Histórico, requisitos de Passiva e Maestrias ligados a ela deixam de valer.
+- **Restaurar** uma perícia removida: ela volta com 0 pontos em todas as fichas. Recusado se já houver uma perícia ativa com o mesmo nome.
+
+**Prontidão**, **Reflexos** e **Fortitude** entram em fórmulas (ver "[[Formulas]]"): podem ser renomeadas e descritas, mas não removidas nem retiradas das Criaturas. Na ficha, a Descrição aparece ao passar o mouse sobre o nome da perícia (desktop) ou ao tocar nele (celular).

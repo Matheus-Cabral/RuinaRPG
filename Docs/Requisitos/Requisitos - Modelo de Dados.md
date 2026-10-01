@@ -107,7 +107,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Penalidade | string, nullable | Armadura, Escudo |
 | RequisitoVigor | int, nullable | Armadura, Escudo |
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
-| Alvo | string, nullable | Artefato |
+| Alvo | string, nullable (para TipoDeAlvo = Pericia, é a `Chave` de `Pericias`) | Artefato |
 | Valor | int, nullable | Artefato |
 
 **DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
@@ -261,7 +261,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| Pericia | enum |
+| PericiaId | FK → Pericias |
 | Gasto | int |
 
 *(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
@@ -345,7 +345,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | CharacterSheetId | FK |
 | Nome | string |
-| Pericia | enum |
+| PericiaId | FK → Pericias |
 | Atributo | enum |
 | GastoMaestria | int |
 
@@ -409,8 +409,8 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | Nome | string |
 | Descricao | text |
-| PericiaMaisSeis | enum Pericia |
-| PericiaMaisTres | enum Pericia |
+| PericiaMaisSeisId | FK → Pericias |
+| PericiaMaisTresId | FK → Pericias |
 | IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Historico.md |
 | IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
 | UpdatedByUserId | FK → Users, nullable |
@@ -494,7 +494,7 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 - `PontosDeIgnicao`: **um único int**, não par atual/total.
 - Sem `EstresseAtual`.
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
-- `CreatureSkills.Pericia` só permite o subconjunto ~20 de Perícias listado em R0005 (restrição de aplicação, não de schema, já que reaproveita o enum `Pericia` completo).
+- `CreatureSkills.PericiaId` só permite as Perícias com `DisponivelParaCriaturas` (R0005 e Auditoria de Regras R0012) — restrição de aplicação, não de schema.
 - Sem `CharacterAffinities` equivalente (não existe aba de Afinidades pra Criatura).
 - `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
 - Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
@@ -663,3 +663,15 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | MarkdownText | text |
 | UpdatedByUserId | FK → Users, NULL = escrita do sistema (ex.: a sincronização de Efeitos na inicialização do servidor — [[Requisitos - Auditoria de Regras]] R0006) |
 | UpdatedAt | DateTime |
+
+**Pericias** — perícias do sistema (Auditoria de Regras R0012). Nunca apagadas de verdade.
+
+| Coluna | Tipo |
+|---|---|
+| Id | int, PK (0–38 = perícias iniciais; novas = maior Id + 1) |
+| Chave | string, único, imutável — identificador usado pela API e pelo Alvo de Artefatos |
+| Nome | string, único entre as não removidas |
+| Descricao | text, nullable |
+| AtributoSugerido | enum Atributo, nullable |
+| DisponivelParaCriaturas | bool |
+| IsDeleted | bool |

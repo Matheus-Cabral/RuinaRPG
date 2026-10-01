@@ -73,7 +73,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesm
 
 **2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
 
-**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. Mesma estrutura Gasto/Modificador/Atributo/Total do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
+**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. Mesma estrutura Gasto/Modificador/Atributo/Total do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). A lista passa a ser as perícias marcadas como *Disponível para Criaturas* na Auditoria de Perícias ("[[Requisitos - Auditoria de Regras]]" R0012); a lista acima é a inicial.
 
   
 
