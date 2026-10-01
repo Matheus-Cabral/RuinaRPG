@@ -25,6 +25,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Image> Images => Set<Image>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<DurabilidadePorRank> DurabilidadesPorRank => Set<DurabilidadePorRank>();
+    public DbSet<PericiaDefinicao> Pericias => Set<PericiaDefinicao>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
     public DbSet<RuneBankEntry> RuneBankEntries => Set<RuneBankEntry>();
@@ -175,6 +176,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         builder.Entity<Escudo>().Property(i => i.Rank).HasColumnName("Escudo_Rank");
 
         builder.Entity<DurabilidadePorRank>().HasKey(d => d.Rank);
+        builder.Entity<PericiaDefinicao>(entity =>
+        {
+            entity.ToTable("Pericias");
+            entity.Property(p => p.Id).ValueGeneratedNever();
+            entity.HasIndex(p => p.Chave).IsUnique();
+            entity.HasIndex(p => p.Nome).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
 
         builder.Entity<RacialAbilityOverride>(entity =>
         {
