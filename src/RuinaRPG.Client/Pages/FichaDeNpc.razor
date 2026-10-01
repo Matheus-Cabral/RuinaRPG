@@ -212,6 +212,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
+        <ProgressaoDoNivelSection Nivel="@(_form.Nivel ?? 1)" />
         <Section Title="Atributos">
             @if (_attributeBudget is not null)
             {
