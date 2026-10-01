@@ -118,7 +118,8 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
 
         var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToListAsync();
         var porId = await pericias.PorIdAsync();
-        var totaisDePericia = skills.ToDictionary(s => s.PericiaId, s =>
+        // Só Perícias ativas: um requisito sobre uma Perícia removida é ignorado pelo avaliador.
+        var totaisDePericia = skills.Where(s => porId.TryGetValue(s.PericiaId, out var p) && !p.IsDeleted).ToDictionary(s => s.PericiaId, s =>
         {
             var modificador = SkillFormulas.Modificador(s.Gasto, 0);
             return s.AtributoEscolhido is { } atributo && atributosCriatura.TryGetValue(atributo, out var atributoTotal)

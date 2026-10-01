@@ -75,4 +75,35 @@ public class PericiaCatalogoTests
 
         chamadas().Should().Be(2);
     }
+
+    private sealed class GatedHandler : HttpMessageHandler
+    {
+        public int Chamadas;
+        public TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Chamadas);
+            await Gate.Task;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<PericiaResponse>
+            {
+                new(4, "ArmasBrancas", "Armas Brancas", "Lâminas.", "Forca", false, false),
+            }) };
+        }
+    }
+
+    [Fact]
+    public async Task Concurrent_loads_share_a_single_request()
+    {
+        var handler = new GatedHandler();
+        var catalogo = new PericiaCatalogo(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/api/") });
+
+        var a = catalogo.CarregarAsync();
+        var b = catalogo.CarregarAsync();
+        handler.Gate.SetResult();
+        await Task.WhenAll(a, b);
+
+        handler.Chamadas.Should().Be(1);
+        catalogo.Label("ArmasBrancas").Should().Be("Armas Brancas");
+    }
 }

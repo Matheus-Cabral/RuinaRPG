@@ -11,6 +11,7 @@ namespace RuinaRPG.Client.Services;
 public class PericiaCatalogo(HttpClient http)
 {
     private List<PericiaResponse>? _ativas;
+    private Task? _carregando;
 
     public IReadOnlyList<PericiaResponse> Ativas => _ativas ?? (IReadOnlyList<PericiaResponse>)Array.Empty<PericiaResponse>();
 
@@ -18,20 +19,40 @@ public class PericiaCatalogo(HttpClient http)
     /// Não faz nada se já carregou. Uma resposta de erro não derruba a página que chamou: o catálogo
     /// fica vazio (os rótulos caem na própria Chave) e a próxima chamada tenta de novo.
     /// </summary>
-    public async Task CarregarAsync()
+    public Task CarregarAsync()
     {
         if (_ativas is not null)
-            return;
+            return Task.CompletedTask;
 
-        var response = await http.GetAsync("pericias");
-        if (response.IsSuccessStatusCode)
-            _ativas = await response.Content.ReadFromJsonAsync<List<PericiaResponse>>() ?? new();
+        // Vários componentes inicializam juntos: quem chega durante a requisição espera a mesma.
+        if (_carregando is not null)
+            return _carregando;
+
+        var tarefa = BuscarAsync();
+        // Se terminou de forma síncrona o finally já rodou: não guardar uma tarefa pronta e obsoleta.
+        _carregando = tarefa.IsCompleted ? null : tarefa;
+        return tarefa;
+    }
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            var response = await http.GetAsync("pericias");
+            if (response.IsSuccessStatusCode)
+                _ativas = await response.Content.ReadFromJsonAsync<List<PericiaResponse>>() ?? new();
+        }
+        finally
+        {
+            _carregando = null;
+        }
     }
 
     /// <summary>Recarrega após uma edição na Auditoria.</summary>
     public async Task RecarregarAsync()
     {
         _ativas = null;
+        await (_carregando ?? Task.CompletedTask);
         await CarregarAsync();
     }
 

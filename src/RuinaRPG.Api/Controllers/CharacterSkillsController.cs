@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
 
@@ -28,8 +29,9 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).OrderBy(s => s.PericiaId).ToListAsync();
         var porId = await pericias.PorIdAsync();
+        var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
+        var linhas = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
         var artefatos = await db.CharacterArtifacts
@@ -46,15 +48,19 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
-        return skills
-            .Select(s =>
+        return ativas
+            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
+            .Select(p =>
             {
-                var historicoBonus = HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
-                var modificador = SkillFormulas.Modificador(s.Gasto, historicoBonus);
-                var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, porId[s.PericiaId].Chave))
+                linhas.TryGetValue(p.Id, out var s);
+                var gasto = s?.Gasto ?? 0;
+                var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
+                var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
+                var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
+                var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                     : (int?)null;
-                return new CharacterSkillResponse(porId[s.PericiaId].Chave, s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total, historicoBonus > 0);
+                return new CharacterSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0, p.Nome, p.Descricao);
             })
             .ToList();
     }
@@ -70,7 +76,9 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var gastoBruto = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).SumAsync(s => s.Gasto);
+        var gastoBruto = await db.CharacterSkills
+            .Where(s => s.CharacterSheetId == sheetId && !db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))
+            .SumAsync(s => s.Gasto);
         // Pontos ganhos por Acerto Crítico não vêm do orçamento por Nível — subtraídos do Gasto
         // Total para não acusar "acima do máximo" por um ganho legítimo (2.d).
         var gastoTotal = gastoBruto - sheet.PontosDePericiaBonusCritico;
@@ -94,7 +102,12 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var skill = await db.CharacterSkills.SingleAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id);
+        var skill = await db.CharacterSkills.SingleOrDefaultAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id);
+        if (skill is null)
+        {
+            skill = new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheetId, PericiaId = def.Id };
+            db.CharacterSkills.Add(skill);
+        }
         skill.Gasto = request.Gasto;
         skill.AtributoEscolhido = Enum.TryParse<Atributo>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();

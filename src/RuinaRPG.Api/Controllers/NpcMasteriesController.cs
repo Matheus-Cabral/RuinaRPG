@@ -51,9 +51,10 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var masteries = await db.NpcMasteries.Where(m => m.NpcSheetId == sheetId).ToListAsync();
-
         var porId = await pericias.PorIdAsync();
+        var masteries = (await db.NpcMasteries.Where(m => m.NpcSheetId == sheetId).ToListAsync())
+            .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
+            .ToList();
         var responses = new List<NpcMasteryResponse>();
         foreach (var mastery in masteries)
         {
@@ -85,11 +86,11 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
 
     private async Task<int> ComputeTotalAsync(Guid sheetId, int periciaId, Atributo atributo, int gastoMaestria)
     {
-        var skill = await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheetId && s.PericiaId == periciaId);
+        var skill = await db.NpcSkills.FirstOrDefaultAsync(s => s.NpcSheetId == sheetId && s.PericiaId == periciaId);
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
         var historicoId = await db.NpcSheets.Where(s => s.Id == sheetId).Select(s => s.HistoricoId).SingleAsync();
         var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
-        var bruto = SkillFormulas.Modificador(skill.Gasto, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
+        var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
         var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
         return gastoMaestria + bruto + atributoTotal;
     }

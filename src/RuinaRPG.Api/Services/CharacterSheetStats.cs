@@ -116,7 +116,8 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
         var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheet.Id).ToListAsync();
         var porId = await pericias.PorIdAsync();
-        var totaisDePericia = skills.ToDictionary(s => s.PericiaId, s =>
+        // Só Perícias ativas: um requisito sobre uma Perícia removida é ignorado pelo avaliador.
+        var totaisDePericia = skills.Where(s => porId.TryGetValue(s.PericiaId, out var p) && !p.IsDeleted).ToDictionary(s => s.PericiaId, s =>
         {
             var modificador = SkillFormulas.Modificador(s.Gasto, HistoricoBonusCalculator.For(s.PericiaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
             return s.AtributoEscolhido is { } atributo && atributos.TryGetValue(atributo, out var atributoTotal)

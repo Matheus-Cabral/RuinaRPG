@@ -57,9 +57,10 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var masteries = await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync();
-
         var porId = await pericias.PorIdAsync();
+        var masteries = (await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync())
+            .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
+            .ToList();
         var responses = new List<CreatureMasteryResponse>();
         foreach (var mastery in masteries)
         {
@@ -91,9 +92,9 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
 
     private async Task<int> ComputeTotalAsync(Guid sheetId, int periciaId, AtributoCriatura atributo, int gastoMaestria)
     {
-        var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == periciaId);
+        var skill = await db.CreatureSkills.FirstOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == periciaId);
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        var bruto = SkillFormulas.Modificador(skill.Gasto, 0);
+        var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, 0);
         var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
         return gastoMaestria + bruto + atributoTotal;
     }

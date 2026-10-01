@@ -64,7 +64,8 @@ public static class RequisitosDePassivaMapper
         r.Afinidade?.ToString(), r.Estrela?.ToString(), r.HistoricoId?.ToString(),
         r.Atributos.Select(a => new RequisitoMinimoDto(a.Atributo.ToString(), a.Minimo)).ToList(),
         r.SubAtributos.Select(s => new RequisitoMinimoDto(s.SubAtributo.ToString(), s.Minimo)).ToList(),
-        r.Pericias.Select(p => new RequisitoMinimoDto(porId[p.Pericia].Chave, p.Minimo)).ToList());
+        r.Pericias.Where(p => porId.TryGetValue(p.Pericia, out var def) && !def.IsDeleted)
+            .Select(p => new RequisitoMinimoDto(porId[p.Pericia].Chave, p.Minimo)).ToList());
 
     /// <summary>Nome do Histórico exigido, para a pendência; nulo se não há requisito ou ele foi removido.</summary>
     public static async Task<string?> NomeDoHistoricoAsync(RuinaRpgDbContext db, RequisitosDePassiva? r) =>
