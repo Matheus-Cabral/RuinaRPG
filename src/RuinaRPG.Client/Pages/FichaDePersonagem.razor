@@ -654,7 +654,7 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th></th></tr></thead>
+                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th>Tipo</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var rune in _runes)
                     {
@@ -663,6 +663,7 @@
                             <td>@rune.Nome</td>
                             <td>@rune.Descricao</td>
                             <td>@rune.Grau</td>
+                            <td>@RuneTipoRotulo.De(rune.Tipo)</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -1547,7 +1548,7 @@
 
         var request = _runeForm.DoBanco
             ? new AddCharacterRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
-            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId);
+            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId, Tipo: _runeForm.TipoOuNulo);
 
         var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)

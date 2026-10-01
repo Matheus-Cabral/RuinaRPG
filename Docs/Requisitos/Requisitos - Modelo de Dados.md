@@ -161,6 +161,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Nome | string | |
 | Descricao | text | |
 | Grau | int | |
+| Tipo | enum TipoDeRuna?, nullable | `Arcana` ou `Negra`, guardado como texto; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
 | ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
 
   
@@ -335,6 +336,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nome | string |
 | Descricao | text |
 | Grau | int |
+| Tipo | enum TipoDeRuna?, nullable — `Arcana`/`Negra` como texto; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
 | SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
@@ -478,7 +480,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`.
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets

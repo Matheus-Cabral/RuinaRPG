@@ -92,7 +92,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
         var entries = await query.OrderBy(e => e.Nome).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, entries.Select(e => e.ImageId));
-        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau, e.ImageId?.ToString(), RuneImageAccess.UrlOf(urls, e.ImageId))).ToList();
+        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau, e.ImageId?.ToString(), RuneImageAccess.UrlOf(urls, e.ImageId), RuneTipo.Format(e.Tipo))).ToList();
     }
 
     [HttpGet("available-images")]

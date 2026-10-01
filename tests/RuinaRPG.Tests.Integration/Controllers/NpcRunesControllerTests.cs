@@ -74,9 +74,9 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         return ((await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId, campaignId);
     }
 
-    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau)
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau, string? tipo = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo)));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
@@ -207,6 +207,52 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         created.Grau.Should().Be(3);
         (await BankOfAsync(gmToken)).Should().ContainSingle().Which.Id.Should().Be(entryId); // escolher do banco não duplica (R0003)
         (await SourceBankEntryIdAsync(created.Id)).Should().Be(Guid.Parse(entryId));
+    }
+
+    // ---- Tipo opcional (Arcana / Negra) ----
+
+    [Fact]
+    public async Task A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneTipoGm1", "npcrunetipo1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa Sombria", "Escura.", 2, null, null, "Negra")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Tipo.Should().Be("Negra");
+        (await RunesOfAsync(sheetId, gmToken)).Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra");
+        (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa Sombria" && e.Tipo == "Negra");
+    }
+
+    [Fact]
+    public async Task A_rune_with_an_unknown_tipo_returns_400_and_creates_nothing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneTipoGm2", "npcrunetipo2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa", "D.", 1, null, null, "Branca")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Tipo de Runa desconhecido.");
+        (await RunesOfAsync(sheetId, gmToken)).Should().BeEmpty();
+        (await BankOfAsync(gmToken)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_rune_picked_from_the_bank_copies_the_tipo()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcRuneTipoGm3", "npcrunetipo3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var entryId = await CreateRuneEntryAsync(gmToken, "Runa Arcana da Luz", "Ilumina.", 1, "Arcana");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest(null, null, null, entryId)));
+
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Tipo.Should().Be("Arcana");
+        (await RunesOfAsync(sheetId, gmToken)).Should().ContainSingle(r => r.Tipo == "Arcana");
     }
 
     [Fact]

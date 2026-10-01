@@ -269,6 +269,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .HasForeignKey(e => e.GmId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(e => e.ImageId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(e => e.Tipo).HasConversion<string>();
         });
 
         builder.Entity<Campaign>(entity =>
@@ -348,6 +349,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(r => r.Tipo).HasConversion<string>();
         });
         builder.Entity<CharacterMastery>(entity =>
         {
@@ -506,6 +508,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(r => r.Tipo).HasConversion<string>();
         });
         builder.Entity<NpcMastery>(entity =>
         {

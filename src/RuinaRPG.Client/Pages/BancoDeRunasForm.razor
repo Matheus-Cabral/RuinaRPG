@@ -24,6 +24,16 @@
     <Section Title="Runa">
         <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
         <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+        <div class="d-flex align-center">
+            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
+                <MudSelectItem Value="@("")">Sem tipo</MudSelectItem>
+                <MudSelectItem Value="@("Arcana")">Runa Arcana</MudSelectItem>
+                <MudSelectItem Value="@("Negra")">Runa Negra</MudSelectItem>
+            </MudSelect>
+            <InfoPopup Title="Tipo da Runa">
+                <MudText>Classifica a Runa como Arcana ou Negra. É só uma classificação exibida no Banco de Runas e nas fichas; não muda nenhum cálculo. Runas antigas ficam sem tipo até serem editadas no Banco.</MudText>
+            </InfoPopup>
+        </div>
         <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
         <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
                               SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); return NotifySavedAsync(); })"
@@ -92,6 +102,7 @@
 
         _form.Nome = existing.Nome;
         _form.Grau = existing.Grau;
+        _form.Tipo = existing.Tipo ?? "";
         _form.Descricao = existing.Descricao;
         _form.ImageId = existing.ImageId;
         _imageIds = existing.ImageId is null ? new() : new() { existing.ImageId };
@@ -105,7 +116,7 @@
         if (!_editContext.Validate())
             return;
 
-        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId));
+        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.";
@@ -120,7 +131,7 @@
         if (!_editContext.Validate())
             return false;
 
-        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId));
+        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo));
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
 
@@ -146,5 +157,8 @@
         public int Grau { get; set; }
         public string Descricao { get; set; } = "";
         public string? ImageId { get; set; }
+        // "Arcana", "Negra" ou "" (sem tipo); vai ao servidor como null quando vazio.
+        public string Tipo { get; set; } = "";
+        public string? TipoOuNulo => string.IsNullOrEmpty(Tipo) ? null : Tipo;
     }
 }

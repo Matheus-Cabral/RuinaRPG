@@ -254,6 +254,26 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task Grant_from_an_existing_Npc_copies_the_rune_tipo()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("GrantGmRuneTipo", "grantrunetipo@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerRuneTipo", "grantplayerrunetipo@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Runa Tipo");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sourceId = await CreateNpcSheetAsync(gmToken);
+        var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra")));
+        addRune.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
+        var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
+
+        var runes = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
+            .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
+        runes!.Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra");
+    }
+
+    [Fact]
     public async Task Grant_from_an_existing_Npc_deep_copies_Affinity_ElementoValor_and_SubElementoValor()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("GrantGm2b", "grant2b@teste.com");

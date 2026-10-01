@@ -1,4 +1,7 @@
 using Bunit;
+using Bunit.Rendering;
+using Microsoft.AspNetCore.Components;
+using MudBlazor;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using RuinaRPG.Client.Services;
@@ -22,6 +25,29 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         // registers, so a test whose page needs Perícia names answers GET pericias in its fake handler.
         Services.AddScoped<PericiaCatalogo>();
         JSInterop.Mode = JSRuntimeMode.Loose;
+    }
+
+    /// <summary>
+    /// Renders <typeparamref name="T"/> next to a MudPopoverProvider (a MudSelect's items only exist inside one,
+    /// and only once opened) so a test can read the option labels via <see cref="OpenSelect"/>.
+    /// </summary>
+    protected IRenderedComponent<ContainerFragment> RenderWithPopover<T>(params (string Name, object? Value)[] parameters)
+        where T : IComponent =>
+        Render(builder =>
+        {
+            builder.OpenComponent<MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<T>(1);
+            for (var i = 0; i < parameters.Length; i++)
+                builder.AddAttribute(2 + i, parameters[i].Name, parameters[i].Value);
+            builder.CloseComponent();
+        });
+
+    /// <summary>Opens the MudSelect with this label (same MouseDown its input listens for) and returns its option labels.</summary>
+    protected static List<string> OpenSelect(IRenderedComponent<ContainerFragment> root, string label)
+    {
+        root.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == label).Find(".mud-input-control").MouseDown();
+        return root.FindAll(".mud-list-item").Select(li => li.TextContent.Trim()).ToList();
     }
 
     Task IAsyncLifetime.InitializeAsync() => Task.CompletedTask;

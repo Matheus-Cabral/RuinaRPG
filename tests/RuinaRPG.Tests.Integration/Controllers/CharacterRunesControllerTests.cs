@@ -71,9 +71,9 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
         return ((await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, campaignId);
     }
 
-    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau)
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau, string? tipo = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo)));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
@@ -227,6 +227,85 @@ public class CharacterRunesControllerTests : IClassFixture<PostgresFixture>, IAs
         created.Grau.Should().Be(3);
         (await BankOfAsync(gmToken)).Should().ContainSingle().Which.Id.Should().Be(entryId); // escolher do banco não duplica (R0003)
         (await SourceBankEntryIdAsync(created.Id)).Should().Be(Guid.Parse(entryId));
+    }
+
+    // ---- Tipo opcional (Arcana / Negra) ----
+
+    [Fact]
+    public async Task A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneTipoGm1", "runetipo1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer1", "runetipoplayer1@teste.com");
+        var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa Sombria", "Escura.", 2, null, null, "Negra")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<CharacterRuneResponse>())!.Tipo.Should().Be("Negra");
+        (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra");
+        (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa Sombria" && e.Tipo == "Negra");
+        (await PublicRunesAsync(playerToken, campaignId)).Should().ContainSingle(e => e.Nome == "Runa Sombria" && e.Tipo == "Negra");
+    }
+
+    [Fact]
+    public async Task A_rune_without_tipo_has_a_null_tipo()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneTipoGm2", "runetipo2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer2", "runetipoplayer2@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa Comum", "Sem tipo.", 1, null, null, "")));
+
+        (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.Nome == "Runa Comum" && r.Tipo == null);
+    }
+
+    [Fact]
+    public async Task A_rune_with_an_unknown_tipo_returns_400_and_creates_nothing()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneTipoGm3", "runetipo3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer3", "runetipoplayer3@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest("Runa", "D.", 1, null, null, "Branca")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Tipo de Runa desconhecido.");
+        (await RunesOfAsync(sheetId, playerToken)).Should().BeEmpty();
+        (await BankOfAsync(gmToken)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_rune_picked_from_the_bank_copies_the_tipo()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneTipoGm4", "runetipo4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer4", "runetipoplayer4@teste.com");
+        var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
+        var entryId = await CreateRuneEntryAsync(gmToken, "Runa Arcana da Luz", "Ilumina.", 1, "Arcana");
+        await PublishRuneToCampaignAsync(gmToken, campaignId, entryId);
+
+        var doGm = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+            new AddCharacterRuneRequest(null, null, null, entryId)));
+        var doJogador = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+            new AddCharacterRuneRequest(null, null, null, entryId)));
+
+        (await doGm.Content.ReadFromJsonAsync<CharacterRuneResponse>())!.Tipo.Should().Be("Arcana");
+        (await doJogador.Content.ReadFromJsonAsync<CharacterRuneResponse>())!.Tipo.Should().Be("Arcana");
+        (await RunesOfAsync(sheetId, gmToken)).Should().OnlyContain(r => r.Tipo == "Arcana");
+    }
+
+    [Fact]
+    public async Task Available_runes_for_a_player_include_the_tipo()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneTipoGm5", "runetipo5@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer5", "runetipoplayer5@teste.com");
+        var (_, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
+        var entryId = await CreateRuneEntryAsync(gmToken, "Runa Pública", "D.", 1, "Negra");
+        await PublishRuneToCampaignAsync(gmToken, campaignId, entryId);
+
+        (await PublicRunesAsync(playerToken, campaignId)).Should().ContainSingle(e => e.Id == entryId && e.Tipo == "Negra");
     }
 
     [Fact]

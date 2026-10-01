@@ -167,4 +167,57 @@ public class RuneOrigemFieldsTests : MudBunitContext
     {
         new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "e1", Nome = "" }.Validar().Should().BeNull();
     }
+
+    [Fact]
+    public void From_scratch_shows_the_Tipo_select_with_its_options_and_the_info_popup()
+    {
+        var cut = RenderWithPopover<RuneOrigemFields>(
+            (nameof(RuneOrigemFields.Model), new RuneOrigemModel { Origem = "Zero" }),
+            (nameof(RuneOrigemFields.BankEntries), Entradas));
+
+        OpenSelect(cut, "Tipo").Should().Equal("Sem tipo", "Runa Arcana", "Runa Negra");
+        cut.FindComponents<InfoPopup>().Should().Contain(p => p.Instance.Title == "Tipo da Runa");
+    }
+
+    [Fact]
+    public void From_the_bank_has_no_Tipo_select()
+    {
+        var cut = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Banco" })
+            .Add(x => x.BankEntries, Entradas));
+
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Tipo");
+        cut.FindComponents<InfoPopup>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Choosing_a_Tipo_updates_the_model_and_Limpar_resets_it()
+    {
+        var model = new RuneOrigemModel { Origem = "Zero" };
+        var cut = Render<RuneOrigemFields>(p => p.Add(x => x.Model, model));
+
+        var tipo = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        await cut.InvokeAsync(() => tipo.Instance.ValueChanged.InvokeAsync("Negra"));
+        model.Tipo.Should().Be("Negra");
+        model.TipoOuNulo.Should().Be("Negra");
+
+        model.Limpar();
+        model.Tipo.Should().BeEmpty();
+        model.TipoOuNulo.Should().BeNull();
+    }
+
+    [Fact]
+    public void The_bank_picker_shows_the_Tipo_of_each_entry()
+    {
+        RuneBankEntryResponse[] entradas =
+        [
+            new("e1", "Runa do Fogo", "Queima.", 1, Tipo: "Arcana"),
+            new("e2", "Runa do Gelo", "Congela.", 2),
+        ];
+        var cut = RenderWithPopover<RuneOrigemFields>(
+            (nameof(RuneOrigemFields.Model), new RuneOrigemModel { Origem = "Banco" }),
+            (nameof(RuneOrigemFields.BankEntries), entradas));
+
+        OpenSelect(cut, "Entrada do Banco").Should().Contain(["Runa do Fogo (Grau 1, Runa Arcana)", "Runa do Gelo (Grau 2)"]);
+    }
 }

@@ -17,7 +17,7 @@
         <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
         @foreach (var entry in BankEntries)
         {
-            <MudSelectItem Value="@entry.Id">@entry.Nome (Grau @entry.Grau)</MudSelectItem>
+            <MudSelectItem Value="@entry.Id">@EntryLabel(entry)</MudSelectItem>
         }
     </MudSelect>
     var picked = BankEntries.FirstOrDefault(e => e.Id == Model.SourceBankEntryId);
@@ -31,6 +31,16 @@ else
     <MudTextField T="string" @bind-Value="Model.Nome" Label="Nome" />
     <MudTextField T="string" @bind-Value="Model.Descricao" Label="Descrição" Lines="3" />
     <MudNumericField T="int" @bind-Value="Model.Grau" Label="Grau" />
+    <div class="d-flex align-center">
+        <MudSelect T="string" @bind-Value="Model.Tipo" Label="Tipo">
+            <MudSelectItem Value="@("")">Sem tipo</MudSelectItem>
+            <MudSelectItem Value="@("Arcana")">Runa Arcana</MudSelectItem>
+            <MudSelectItem Value="@("Negra")">Runa Negra</MudSelectItem>
+        </MudSelect>
+        <InfoPopup Title="Tipo da Runa">
+            <MudText>Classifica a Runa como Arcana ou Negra. É só uma classificação exibida no Banco de Runas e nas fichas; não muda nenhum cálculo. Runas antigas ficam sem tipo até serem editadas no Banco.</MudText>
+        </InfoPopup>
+    </div>
     <ImageAttachmentField AvailableImages="AvailableImages" SelectedIds="SelectedImageIds"
                           SelectedIdsChanged="@(ids => Model.ImageId = ids.FirstOrDefault() ?? "")"
                           OnError="OnError" CampaignId="CampaignId" Multiple="false" />
@@ -42,6 +52,10 @@ else
     [Parameter] public List<ImageSummaryResponse> AvailableImages { get; set; } = new();
     [Parameter] public string? CampaignId { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
+
+    // "Runa do Fogo (Grau 1, Runa Arcana)"; sem tipo, só o Grau.
+    private static string EntryLabel(RuneBankEntryResponse entry) =>
+        string.IsNullOrEmpty(entry.Tipo) ? $"{entry.Nome} (Grau {entry.Grau})" : $"{entry.Nome} (Grau {entry.Grau}, {RuneTipoRotulo.De(entry.Tipo)})";
 
     private List<string> SelectedImageIds => string.IsNullOrEmpty(Model.ImageId) ? new() : new() { Model.ImageId };
 }
