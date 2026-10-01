@@ -32,6 +32,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
         ("Perícias", "auditoria/pericias"),
         ("Equipagem", "auditoria/equipagem"),
         ("Durabilidade por Rank", "auditoria/durabilidade-por-rank"),
+        ("Tabela de Níveis", "auditoria/tabela-de-niveis"),
     };
 
     private static HttpClient AuditorHttp() => FakeHttpMessageHandler.CreateClient(_ =>
@@ -101,6 +102,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             Icons.Material.Filled.FormatListBulleted,
             Icons.Material.Filled.Shield,
             Icons.Material.Filled.Build,
+            Icons.Material.Filled.TableChart,
         };
 
         var links = cut.FindComponents<MudNavLink>();

@@ -1,0 +1,231 @@
+@page "/auditoria/tabela-de-niveis"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Shared
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Tabela de Níveis</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Tabela de Níveis">
+        <TitleInfo>
+            <InfoPopup Title="Como funciona a Tabela de Níveis">
+                Cada linha é um nível e cada coluna, um recurso. Colunas Acumulativas (ícone de somatório) somam do nível 1 até o nível do personagem — ex.: Pontos de Atributo. Colunas Por nível (ícone de régua) valem o número da linha do nível atual — ex.: Máx. de Perícia; uma célula vazia repete o valor do nível anterior mais próximo, e se nenhum nível tiver valor não há limite (XP e EAP não repetem: XP vazio no último nível significa nível máximo). Os limites (Máx. de Atributo e Máx. de Perícia — pontos gastos num atributo ou perícia — e Máx. de Passivas por categoria) bloqueiam o salvamento da ficha; uma ficha que já passou do limite continua válida, mas não pode subir mais. Colunas com o ícone de cadeado são do sistema: podem ser renomeadas, não removidas. Colunas criadas por você aparecem na ficha só como informação. "Remover último nível" é recusado se alguma ficha estiver nesse nível.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ViewColumn" OnClick="OpenNovaColuna">+ Coluna</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AddNivelAsync">+ Nível</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.RemoveCircleOutline" OnClick="@(() => _removeNivelOpen = true)">Remover último nível</MudButton>
+            </div>
+
+            <div class="table-responsive">
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th style="position: sticky; left: 0; z-index: 1; background: var(--mud-palette-surface);">Nível</th>
+                            @for (var i = 0; i < _colunas.Count; i++)
+                            {
+                                var index = i;
+                                var c = _colunas[i];
+                                <th @key="(c.Id, _renderGeneration)" style="min-width: 150px;">
+                                    <div class="d-flex align-center">
+                                        <MudTooltip Text="@(c.Tipo == "Acumulativa" ? "Acumulativa" : "Por nível")">
+                                            <MudIcon Icon="@(c.Tipo == "Acumulativa" ? Icons.Material.Filled.Functions : Icons.Material.Filled.Straighten)" Size="Size.Small" />
+                                        </MudTooltip>
+                                        <MudTextField T="string" Value="@c.Nome" Margin="Margin.Dense" Variant="Variant.Text" Class="mx-1"
+                                                      ValueChanged="@(v => RenameAsync(c, v))" />
+                                        @if (c.DoSistema)
+                                        {
+                                            <span data-sistema="true">
+                                                <MudTooltip Text="Coluna do sistema — pode ser renomeada, não removida">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                                                </MudTooltip>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@($"Remover coluna {c.Nome}")" OnClick="@(() => RemoveColunaAsync(c))" />
+                                        }
+                                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Disabled="@(index == 0)" aria-label="@($"Mover coluna {c.Nome} para a esquerda")" OnClick="@(() => MoveAsync(index, -1))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Disabled="@(index == _colunas.Count - 1)" aria-label="@($"Mover coluna {c.Nome} para a direita")" OnClick="@(() => MoveAsync(index, 1))" />
+                                    </div>
+                                </th>
+                            }
+                            <th style="min-width: 220px;">Outros bônus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in _linhas)
+                        {
+                            var linha = l;
+                            <tr @key="(linha.Nivel, _renderGeneration)">
+                                <td style="position: sticky; left: 0; z-index: 1; background: var(--mud-palette-surface);">@linha.Nivel</td>
+                                @foreach (var c in _colunas)
+                                {
+                                    var coluna = c;
+                                    linha.Valores.TryGetValue(coluna.Id, out var valor);
+                                    <td @key="coluna.Id">
+                                        <MudNumericField T="int?" Value="@valor" Min="0" Clearable="true" HideSpinButtons="true" Margin="Margin.Dense" Variant="Variant.Text"
+                                                         aria-label="@($"{coluna.Nome} — nível {linha.Nivel}")"
+                                                         ValueChanged="@(v => SaveValorAsync(linha.Nivel, coluna.Id, v))" />
+                                    </td>
+                                }
+                                <td>
+                                    <MudTextField T="string" Value="@linha.OutrosBonus" Lines="2" Margin="Margin.Dense" Variant="Variant.Text"
+                                                  ValueChanged="@(v => SaveOutrosBonusAsync(linha.Nivel, v))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+        </ChildContent>
+    </Section>
+}
+
+<MudDialog @bind-Visible="_novaColunaOpen">
+    <TitleContent>Nova coluna</TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_novaNome" Label="Nome" />
+        <div class="d-flex align-center mt-2">
+            <MudRadioGroup T="string" @bind-Value="_novoTipo">
+                <MudRadio T="string" Value="@("Acumulativa")">Acumulativa</MudRadio>
+                <MudRadio T="string" Value="@("PorNivel")">Por nível</MudRadio>
+            </MudRadioGroup>
+            <InfoPopup Title="Tipo da coluna">
+                Acumulativa soma os níveis até o atual; Por nível vale o número do nível atual, herdando o anterior quando vazio. O tipo não pode ser mudado depois.
+            </InfoPopup>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _novaColunaOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AddColunaAsync">Adicionar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_removeNivelOpen">
+    <TitleContent>Remover último nível</TitleContent>
+    <DialogContent>
+        Remover o último nível da tabela? Esta ação é recusada se alguma ficha estiver nesse nível.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _removeNivelOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmRemoveNivelAsync">Remover</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Tabela de Níveis"),
+    };
+
+    private List<ColunaDeNivelResponse> _colunas = new();
+    private List<LinhaDeNivelResponse> _linhas = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    // Bumped on a failed write so the reloaded (unchanged) values remount the inputs and drop rejected text.
+    private int _renderGeneration;
+
+    private bool _novaColunaOpen;
+    private string? _novaNome;
+    private string _novoTipo = "Acumulativa";
+    private bool _removeNivelOpen;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("tabela-de-niveis");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a Tabela de Níveis.";
+            return;
+        }
+
+        var tabela = await response.Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        _colunas = (tabela?.Colunas ?? new()).OrderBy(c => c.Ordem).ToList();
+        _linhas = (tabela?.Linhas ?? new()).OrderBy(l => l.Nivel).ToList();
+    }
+
+    private async Task<bool> FinishAsync(HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return false;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            _renderGeneration++;
+            await LoadAsync();
+            return false;
+        }
+
+        await LoadAsync();
+        return true;
+    }
+
+    private async Task SaveValorAsync(int nivel, Guid colunaId, int? valor) =>
+        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/{nivel}/valores/{colunaId}", new AtualizarValorDeNivelRequest(valor)));
+
+    private async Task SaveOutrosBonusAsync(int nivel, string? texto) =>
+        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/{nivel}/outros-bonus",
+            new AtualizarOutrosBonusRequest(string.IsNullOrWhiteSpace(texto) ? null : texto)));
+
+    private async Task RenameAsync(ColunaDeNivelResponse c, string? nome) =>
+        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/colunas/{c.Id}", new RenomearColunaDeNivelRequest(nome ?? "")));
+
+    private async Task RemoveColunaAsync(ColunaDeNivelResponse c) =>
+        await FinishAsync(await Http.DeleteAsync($"tabela-de-niveis/colunas/{c.Id}"));
+
+    private async Task MoveAsync(int index, int delta)
+    {
+        var target = index + delta;
+        if (target < 0 || target >= _colunas.Count)
+            return;
+        var ids = _colunas.Select(c => c.Id).ToList();
+        (ids[index], ids[target]) = (ids[target], ids[index]);
+        await FinishAsync(await Http.PutAsJsonAsync("tabela-de-niveis/colunas/ordem", new ReordenarColunasDeNivelRequest(ids)));
+    }
+
+    private void OpenNovaColuna()
+    {
+        _novaNome = null;
+        _novoTipo = "Acumulativa";
+        _novaColunaOpen = true;
+    }
+
+    private async Task AddColunaAsync()
+    {
+        _novaColunaOpen = false;
+        await FinishAsync(await Http.PostAsJsonAsync("tabela-de-niveis/colunas", new CriarColunaDeNivelRequest(_novaNome ?? "", _novoTipo)));
+    }
+
+    private async Task AddNivelAsync() =>
+        await FinishAsync(await Http.PostAsync("tabela-de-niveis/niveis", null));
+
+    private async Task ConfirmRemoveNivelAsync()
+    {
+        _removeNivelOpen = false;
+        await FinishAsync(await Http.DeleteAsync("tabela-de-niveis/niveis/ultimo"));
+    }
+}
