@@ -339,6 +339,64 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Theory]
+    [InlineData(1000, 150, 120)]
+    [InlineData(149, 22, 17)]
+    public async Task Get_by_the_gm_computes_Abate_and_Assistencia_from_ExperienciaAtual(int xp, int abate, int assistencia)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"NpcGmXp{xp}", $"npcgmxp{xp}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, xp));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        body!.Abate.Should().Be(abate);
+        body.Assistencia.Should().Be(assistencia);
+    }
+
+    [Fact]
+    public async Task Abate_and_Assistencia_follow_ExperienciaAtual_and_Nivel_changes()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmXpChange", "npcgmxpchange@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 1000));
+        var before = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 2000));
+        var after = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/nivel", gmToken, 5));
+        var viaNivel = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        before!.Abate.Should().Be(150);
+        after!.Abate.Should().Be(300);
+        after.Assistencia.Should().Be(240);
+        viaNivel!.ExperienciaAtual.Should().Be(500);
+        viaNivel.Abate.Should().Be(75);
+        viaNivel.Assistencia.Should().Be(60);
+    }
+
+    [Fact]
+    public async Task Get_by_the_player_the_sheet_was_granted_to_hides_Abate_and_Assistencia()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmXpHide", "npcgmxphide@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorXpHide", "npcjogadorxphide@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Xp");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", playerToken, 1000));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        body!.ExperienciaAtual.Should().Be(1000);
+        body.Abate.Should().BeNull();
+        body.Assistencia.Should().BeNull();
+    }
+
     [Fact]
     public async Task UpdateNivel_pulls_ExperienciaAtual_to_that_levels_minimum_XP()
     {

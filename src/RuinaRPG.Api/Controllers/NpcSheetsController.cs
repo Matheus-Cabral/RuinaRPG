@@ -10,6 +10,7 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -532,6 +533,12 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
+        // XP que o NPC concede ao ser derrotado: calculado ao vivo, nunca persistido, e só o GM da
+        // ficha vê (o jogador dono de um NPC concedido recebe null).
+        var ehGm = s.GmId == CurrentUserId();
+        int? abate = ehGm ? XpAwardCalculator.Abate(s.ExperienciaAtual) : null;
+        int? assistencia = ehGm ? XpAwardCalculator.Assistencia(s.ExperienciaAtual) : null;
+
         var vocacao = s.Vocacao ?? Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
@@ -568,7 +575,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
             campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
-            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap));
+            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
+            abate, assistencia);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

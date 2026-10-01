@@ -376,7 +376,7 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task Get_computes_Kill_and_Assistencia_from_ExperienciaAtual()
+    public async Task Get_computes_Abate_and_Assistencia_from_ExperienciaAtual()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmXp1", "criaturaxp1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -386,7 +386,7 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
-        body!.Kill.Should().Be(15);
+        body!.Abate.Should().Be(15);
         body.Assistencia.Should().Be(12);
     }
 

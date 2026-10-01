@@ -108,7 +108,7 @@
             <Section Title="Nível e Progressão">
                 <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifyNivelChangedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
-                <MudText>Abate: @_form.Kill</MudText>
+                <MudText>Abate: @_form.Abate</MudText>
                 <MudText>Assistência: @_form.Assistencia</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifySavedAsync" />
             </Section>
@@ -816,7 +816,7 @@
         _form.Rank = sheet.Rank;
         _form.Nivel = sheet.Nivel;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
-        _form.Kill = sheet.Kill;
+        _form.Abate = sheet.Abate;
         _form.Assistencia = sheet.Assistencia;
         _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
@@ -1253,7 +1253,7 @@
         public int? Nivel { get; set; } = 1;
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
-        public int Kill { get; set; }
+        public int Abate { get; set; }
         public int Assistencia { get; set; }
         [Required(ErrorMessage = "Informe os Pontos de Ignição.")]
         public int? PontosDeIgnicao { get; set; }

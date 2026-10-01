@@ -372,7 +372,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     }
 
     /// <summary>
-    /// Kill/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
+    /// Abate/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
     ///
     /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo mirror NpcSheetsController.ToResponseAsync's
@@ -394,7 +394,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
-        var kill = XpAwardCalculator.Kill(s.ExperienciaAtual);
+        var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
         var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
@@ -415,7 +415,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
             s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade?.ToString(),
-            s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, kill, assistencia,
+            s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, abate, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,
             campaignId?.ToString(), s.ImageId?.ToString());

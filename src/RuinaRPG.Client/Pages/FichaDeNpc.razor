@@ -153,6 +153,14 @@
                     <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
                 }
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
+                @if (_form.Abate is not null && _form.Assistencia is not null)
+                {
+                    <MudText>Abate: @_form.Abate</MudText>
+                    <MudText>Assistência: @_form.Assistencia</MudText>
+                    <InfoPopup Title="@("XP por abate e assistência")">
+                        @("XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.")
+                    </InfoPopup>
+                }
                 <MudNumericField T="int?" @bind-Value="_form.EAPAtual" For="@(() => _form.EAPAtual)" Label="VIS Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" @bind-Value:after="NotifySavedAsync" />
@@ -1009,6 +1017,8 @@
         _form.AfinidadeAdicional = sheet.AfinidadeAdicional;
         _form.VocacaoArcanaMaxima = sheet.VocacaoArcanaMaxima;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
+        _form.Abate = sheet.Abate;
+        _form.Assistencia = sheet.Assistencia;
         _form.EAPAtual = sheet.EAPAtual;
         _form.NucleosRankF = sheet.NucleosRankF;
         _form.NucleosRankE = sheet.NucleosRankE;
@@ -1651,6 +1661,9 @@
         public int VocacaoArcanaMaxima { get; set; }
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
+        // Calculados pela API e só enviados ao GM da ficha; null para o jogador dono de um NPC concedido.
+        public int? Abate { get; set; }
+        public int? Assistencia { get; set; }
         [Required(ErrorMessage = "Informe o VIS Atual.")]
         public int? EAPAtual { get; set; }
         [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]

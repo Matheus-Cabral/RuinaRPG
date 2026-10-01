@@ -27,6 +27,7 @@
 - **Nome**.
 - **Linhagem / Vocação**: Linhagem, Variante, Vocação ou Classe (ver 1.a de "[[Requisitos - Ficha de Personagem]]").
 - **Nível** (ver 1.b de "[[Requisitos - Ficha de Personagem]]").
+- **Experiência dada** *(só GM)*: dois campos calculados, não editáveis — **Abate** e **Assistência** — com as mesmas fórmulas da Criatura (ver "Experiência dada" em "[[Requisitos - Ficha de Criaturas]]"), aplicadas à *Experiência atual* do NPC. Exibidos ao lado de Nível/Experiência atual e atualizados quando um dos dois muda; calculados ao vivo, nunca persistidos. O jogador que recebeu o NPC por concessão não os vê.
 - **Campanha vinculada**: em quais campanhas esse NPC foi anexado (ver "[[Requisitos - Campanha]]", R0006).
 
   

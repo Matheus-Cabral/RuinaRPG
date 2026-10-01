@@ -482,6 +482,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
 - `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
+- Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 
@@ -501,7 +502,7 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 - `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
 - Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
 - `CreatureInventoryItems` → renomeada `CreatureSpoils` (Espólios), ganha coluna `DT` (int) e **perde** `Ciclos` na ficha raiz.
-- Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Kill** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
+- Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
 - `CreatureTraits` diverge de `CharacterTraits`/`NpcTraits`: `TraitId` também **nullable**, e ganha `CreatureExclusiveTraitId` (FK → CreatureExclusiveTraits, nullable) — exatamente uma das duas é setada por linha, mesmo padrão de `EncounterParticipant.SourceCharacterSheetId`/`SourceNpcSheetId`/`SourceCreatureSheetId` (seção 8): dois FKs nullable em vez de um só, porque uma coluna não carrega FK real pra duas tabelas diferentes ao mesmo tempo.
 
 **CreatureExclusiveTraits** — catálogo global e independente de `Traits` (6.1), com as mesmas colunas exceto `IsCustomized`: sem documento-fonte equivalente a `Características.md` pra essa tabela, então não há re-seed do qual proteger uma linha editada manualmente. Só o picker de característica da Ficha de Criatura (`CreatureTraits`) referencia esta tabela — Personagem, NPC e o Compêndio de Regras nunca a leem.

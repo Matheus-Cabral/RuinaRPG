@@ -48,4 +48,6 @@ public record NpcSheetResponse(
     string? Historia,
     int AfinidadeAdicional,
     int VocacaoArcanaGasta,
-    int VocacaoArcanaMaxima);
+    int VocacaoArcanaMaxima,
+    int? Abate,
+    int? Assistencia);
