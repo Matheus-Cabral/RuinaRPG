@@ -39,7 +39,7 @@ public class AuditoriaPericiasTests : MudBunitContext
 
     private record Request(string Method, string Path, string? Body);
 
-    private HttpClient CreateStatefulHttp(List<Row> rows, List<Request> log, string? postError = null)
+    private HttpClient CreateStatefulHttp(List<Row> rows, List<Request> log, string? postError = null, string? putError = null)
         => FakeHttpMessageHandler.CreateClient(request =>
         {
             var path = request.RequestUri!.AbsolutePath;
@@ -79,6 +79,8 @@ public class AuditoriaPericiasTests : MudBunitContext
                 var row = rows.Single(r => r.Id == id);
                 if (request.Method == HttpMethod.Put)
                 {
+                    if (putError is not null)
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(putError) };
                     var req = request.Content!.ReadFromJsonAsync<SalvarPericiaRequest>().GetAwaiter().GetResult()!;
                     row.Nome = req.Nome;
                     row.Descricao = req.Descricao;
@@ -247,5 +249,82 @@ public class AuditoriaPericiasTests : MudBunitContext
         cut.Find("button[title='Como funciona a Auditoria de Perícias']").Click();
 
         cut.Markup.Should().Contain("Atributo sugerido só vem pré-selecionado");
+    }
+
+    private static SalvarPericiaRequest ParseBody(string body) =>
+        System.Text.Json.JsonSerializer.Deserialize<SalvarPericiaRequest>(body,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+
+    [Fact]
+    public async Task A_failed_PUT_shows_the_message_and_reverts_the_Nome_field()
+    {
+        var http = CreateStatefulHttp(SeedRows(), new(), putError: "Já existe uma perícia ativa com esse nome.");
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaPericias>();
+        await Task.Delay(50);
+
+        // Type into the real <input> (Atletismo's Nome) so the text field holds the rejected text,
+        // as in the browser; invoking ValueChanged directly would never touch the field's own state.
+        cut.FindAll("tbody tr")[0].QuerySelector("input")!.Change("Rejeitado");
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Já existe uma perícia ativa com esse nome.");
+        var valores = cut.FindAll("tbody tr input").Select(i => i.GetAttribute("value")).ToList();
+        valores.Should().Contain("Atletismo");
+        valores.Should().NotContain("Rejeitado");
+    }
+
+    [Fact]
+    public async Task Choosing_the_dash_on_a_row_PUTs_a_null_Atributo()
+    {
+        var log = new List<Request>();
+        var http = CreateStatefulHttp(SeedRows(), log);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaPericias>();
+        await Task.Delay(50);
+
+        var selects = cut.FindComponents<MudSelect<string>>(); // [0] form, [1] Atletismo
+        await cut.InvokeAsync(() => selects[1].Instance.ValueChanged.InvokeAsync(""));
+        await Task.Delay(50);
+
+        var put = log.Should().ContainSingle(r => r.Method == "PUT").Subject;
+        put.Path.Should().EndWith("pericias/7");
+        ParseBody(put.Body!).AtributoSugerido.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Adding_with_the_dash_POSTs_a_null_Atributo()
+    {
+        var log = new List<Request>();
+        var http = CreateStatefulHttp(SeedRows(), log);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaPericias>();
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudTextField<string>>()[0];
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Sem Atributo"));
+        cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar")).Click();
+        await Task.Delay(50);
+
+        var post = log.Should().ContainSingle(r => r.Method == "POST").Subject;
+        ParseBody(post.Body!).AtributoSugerido.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task The_Criaturas_checkbox_is_disabled_for_protected_rows_only()
+    {
+        var http = CreateStatefulHttp(SeedRows(), new());
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaPericias>();
+        await Task.Delay(50);
+
+        // [0] form checkbox, [1] Atletismo, [2] Prontidão
+        var boxes = cut.FindComponents<MudCheckBox<bool>>();
+        boxes[1].Instance.Disabled.Should().BeFalse();
+        boxes[2].Instance.Disabled.Should().BeTrue();
     }
 }

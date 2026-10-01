@@ -43,7 +43,7 @@ else
                 <tbody>
                     @foreach (var p in _ativas)
                     {
-                        <tr>
+                        <tr @key="(p.Id, _renderGeneration)">
                             <td><MudTextField T="string" Value="@p.Nome" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(v, p.Descricao, p.AtributoSugerido, p.DisponivelParaCriaturas)))" /></td>
                             <td><MudTextField T="string" Value="@p.Descricao" Lines="2" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(p.Nome, v, p.AtributoSugerido, p.DisponivelParaCriaturas)))" /></td>
                             <td>
@@ -123,6 +123,9 @@ else
     private List<PericiaAuditoriaResponse> _removidas = new();
     private string? _errorMessage;
     private bool _forbidden;
+    // Bumped on a failed write: the reloaded row has the same values as before the edit, so Blazor
+    // would not re-render the inputs and they would keep the rejected text. A new @key remounts them.
+    private int _renderGeneration;
 
     private string? _novaNome;
     private string? _novaDescricao;
@@ -166,6 +169,7 @@ else
         {
             var detail = await response.Content.ReadAsStringAsync();
             _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            _renderGeneration++;
             await LoadAsync();
             return false;
         }
