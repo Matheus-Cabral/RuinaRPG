@@ -86,7 +86,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await Catalogo.CarregarAsync();
+        await Catalogo.RecarregarAsync();
         await LoadAsync();
     }
 
@@ -137,7 +137,8 @@ else
         }
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível salvar a alteração.";
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
             return;
         }
 

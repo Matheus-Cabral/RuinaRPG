@@ -176,17 +176,26 @@ public class RulebookRenderer(RuinaRpgDbContext db) : IRulebookRenderer
             .Where(h => !h.IsDeleted)
             .OrderBy(h => h.Nome)
             .ToListAsync();
-        // Inclui as removidas: um Histórico pode continuar apontando para uma Perícia removida.
-        var pericias = await db.Pericias.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Nome);
+        // Uma Perícia removida some do Livro: o bônus dela deixa de valer, então não é listado.
+        var pericias = await db.Pericias.AsNoTracking().Where(p => !p.IsDeleted).ToDictionaryAsync(p => p.Id, p => p.Nome);
 
         var sections = historicos.Select(h => new RulebookSection(
             Id: Slugify(h.Nome),
             Titulo: h.Nome,
-            Html: WebUtility.HtmlEncode(h.Descricao).Replace("\n", "<br />")
-                + $"<p><em>+6 {WebUtility.HtmlEncode(pericias[h.PericiaMaisSeisId])} / +3 {WebUtility.HtmlEncode(pericias[h.PericiaMaisTresId])}</em></p>"
+            Html: WebUtility.HtmlEncode(h.Descricao).Replace("\n", "<br />") + BonusLine(h, pericias)
         )).ToList();
 
         return new RulebookDocument("historicos", "Históricos", intro, sections);
+    }
+
+    private static string BonusLine(Historico h, IReadOnlyDictionary<int, string> pericias)
+    {
+        var partes = new List<string>();
+        if (pericias.TryGetValue(h.PericiaMaisSeisId, out var seis))
+            partes.Add($"+6 {WebUtility.HtmlEncode(seis)}");
+        if (pericias.TryGetValue(h.PericiaMaisTresId, out var tres))
+            partes.Add($"+3 {WebUtility.HtmlEncode(tres)}");
+        return partes.Count == 0 ? "" : $"<p><em>{string.Join(" / ", partes)}</em></p>";
     }
 
     /// <summary>

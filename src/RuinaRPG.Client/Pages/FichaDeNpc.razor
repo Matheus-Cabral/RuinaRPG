@@ -644,7 +644,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@Pericias.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -662,7 +662,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @Pericias.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -824,6 +824,11 @@
     private List<NpcAttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<NpcSkillResponse> _skills = new();
+
+    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
+    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
+    private string PericiaLabel(string chave) =>
+        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<NpcAffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
     private List<NpcWeaponResponse> _weapons = new();

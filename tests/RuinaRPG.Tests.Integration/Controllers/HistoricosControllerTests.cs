@@ -193,6 +193,36 @@ public class HistoricosControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    private async Task<PericiaAuditoriaResponse> CreatePericiaAsync(string token, string nome) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+            new SalvarPericiaRequest(nome, null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>())!;
+
+    private async Task RemovePericiaAsync(string token, int id) =>
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+    [Fact]
+    public async Task UpdateHistorico_keeping_a_removed_Pericia_is_accepted_but_switching_to_another_removed_one_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm8", "histcrudgm8@teste.com");
+        await GrantRulesAuditorAsync("histcrudgm8@teste.com");
+        var seis = await CreatePericiaAsync(gmToken, "Perícia Seis Removida");
+        var tres = await CreatePericiaAsync(gmToken, "Perícia Três Removida");
+        var outra = await CreatePericiaAsync(gmToken, "Perícia Outra Removida");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+            new CreateHistoricoRequest("Com Removida", "Antes.", seis.Chave, tres.Chave)))).Content.ReadFromJsonAsync<HistoricoResponse>();
+        await RemovePericiaAsync(gmToken, seis.Id);
+        await RemovePericiaAsync(gmToken, tres.Id);
+        await RemovePericiaAsync(gmToken, outra.Id);
+
+        var keep = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
+            new UpdateHistoricoRequest("Com Removida Renomeada", "Depois.", seis.Chave, tres.Chave)));
+        var change = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created.Id}", gmToken,
+            new UpdateHistoricoRequest("Com Removida Renomeada", "Depois.", outra.Chave, tres.Chave)));
+
+        keep.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        change.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task DeleteHistorico_soft_deletes_and_it_no_longer_appears_in_List()
     {

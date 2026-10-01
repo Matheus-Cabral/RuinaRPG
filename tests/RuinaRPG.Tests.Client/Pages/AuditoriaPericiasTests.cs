@@ -295,6 +295,25 @@ public class AuditoriaPericiasTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Adding_a_new_pericia_defaults_DisponivelParaCriaturas_to_false()
+    {
+        var log = new List<Request>();
+        var http = CreateStatefulHttp(SeedRows(), log);
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaPericias>();
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudTextField<string>>()[0];
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Padrão Falso"));
+        cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar")).Click();
+        await Task.Delay(50);
+
+        var post = log.Should().ContainSingle(r => r.Method == "POST").Subject;
+        ParseBody(post.Body!).DisponivelParaCriaturas.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Adding_with_the_dash_POSTs_a_null_Atributo()
     {
         var log = new List<Request>();

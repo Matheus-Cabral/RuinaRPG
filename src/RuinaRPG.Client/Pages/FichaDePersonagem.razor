@@ -676,7 +676,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@Pericias.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -700,7 +700,7 @@
                                 <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
                                     @foreach (var skill in _skills)
                                     {
-                                        <MudSelectItem Value="@skill.Pericia">@Pericias.Label(skill.Pericia)</MudSelectItem>
+                                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                                     }
                                 </MudSelect>
                             </td>
@@ -925,6 +925,11 @@
     private AttributePointBudgetResponse? _attributeBudget;
     private SkillPointBudgetResponse? _skillBudget;
     private List<CharacterSkillResponse> _skills = new();
+
+    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
+    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
+    private string PericiaLabel(string chave) =>
+        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<CharacterAffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
     private List<CharacterWeaponResponse> _weapons = new();

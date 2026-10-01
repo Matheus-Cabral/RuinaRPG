@@ -148,6 +148,42 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
+    public async Task Historicos_omits_the_bonus_of_a_removed_Pericia()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RulebookGmRem", "rulebookrem@teste.com");
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKREM@TESTE.COM");
+            user.IsRulesAuditor = true;
+            await db.SaveChangesAsync();
+        }
+        var seis = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+            new SalvarPericiaRequest("Seis Sumida Livro", null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>();
+        var tres = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+            new SalvarPericiaRequest("Três Sumida Livro", null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+            new CreateHistoricoRequest("Só Seis Some", "Um.", seis!.Chave, "Atletismo")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+            new CreateHistoricoRequest("Os Dois Somem", "Dois.", "Acrobacia", tres!.Chave)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+            new CreateHistoricoRequest("Nenhum Fica", "Três.", seis.Chave, tres.Chave)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{seis.Id}", token));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{tres.Id}", token));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token)))
+            .Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+
+        var sections = body!.Single(d => d.Slug == "historicos").Sections;
+        var soSeis = sections.Single(s => s.Titulo == "Só Seis Some").Html;
+        soSeis.Should().Contain("+3 Atletismo").And.NotContain("+6").And.NotContain("Seis Sumida Livro");
+        var soTres = sections.Single(s => s.Titulo == "Os Dois Somem").Html;
+        soTres.Should().Contain("+6 Acrobacia").And.NotContain("+3").And.NotContain("Três Sumida Livro");
+        var nenhum = sections.Single(s => s.Titulo == "Nenhum Fica").Html;
+        nenhum.Should().NotContain("+6").And.NotContain("+3").And.NotContain("<em>");
+    }
+
+    [Fact]
     public async Task Historicos_reflects_a_catalog_edit_immediately()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookGm6", "rulebook6@teste.com");

@@ -137,7 +137,7 @@
     // Perícias ativas da Auditoria (Chave = valor gravado, Nome = rótulo) — não mais um enum fixo.
     private (string Valor, string Rotulo)[] PericiaOpcoes => Pericias.Ativas.Select(p => (p.Chave, p.Nome)).ToArray();
 
-    protected override async Task OnInitializedAsync() => await Pericias.CarregarAsync();
+    protected override async Task OnInitializedAsync() => await Pericias.RecarregarAsync();
 
     private static bool JaEscolhidoEmOutraLinha(List<RequisitoMinimoLinha> linhas, int index, string valor) =>
         linhas.Where((_, i) => i != index).Any(l => l.Alvo == valor);

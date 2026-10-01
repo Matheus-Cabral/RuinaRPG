@@ -194,7 +194,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Pericias.CarregarAsync();
+        await Pericias.RecarregarAsync();
         var imagesResponse = await Http.GetAsync("images/mine");
         if (imagesResponse.IsSuccessStatusCode)
             _myImages = await imagesResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();

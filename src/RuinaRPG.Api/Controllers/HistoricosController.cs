@@ -83,10 +83,12 @@ public class HistoricosController(RuinaRpgDbContext db, IPericiaCatalogo pericia
         if (string.IsNullOrWhiteSpace(request.Descricao))
             return BadRequest("Descrição é obrigatória.");
 
-        var periciaMaisSeis = await pericias.AtivaPorChaveAsync(request.PericiaMaisSeis);
+        // Uma Chave igual à perícia já gravada na linha é aceita mesmo removida (senão o Histórico
+        // ficaria impossível de editar); só um valor novo exige perícia ativa.
+        var periciaMaisSeis = await ResolveForUpdateAsync(request.PericiaMaisSeis, historico.PericiaMaisSeisId);
         if (periciaMaisSeis is null)
             return BadRequest("PericiaMaisSeis inválida.");
-        var periciaMaisTres = await pericias.AtivaPorChaveAsync(request.PericiaMaisTres);
+        var periciaMaisTres = await ResolveForUpdateAsync(request.PericiaMaisTres, historico.PericiaMaisTresId);
         if (periciaMaisTres is null)
             return BadRequest("PericiaMaisTres inválida.");
         if (periciaMaisSeis.Id == periciaMaisTres.Id)
@@ -126,6 +128,15 @@ public class HistoricosController(RuinaRpgDbContext db, IPericiaCatalogo pericia
         await db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task<PericiaDefinicao?> ResolveForUpdateAsync(string chave, int idAtual)
+    {
+        var todas = await pericias.TodasAsync();
+        var atual = todas.FirstOrDefault(p => p.Id == idAtual);
+        if (atual is not null && atual.Chave == chave)
+            return atual;
+        return await pericias.AtivaPorChaveAsync(chave);
     }
 
     private static HistoricoResponse ToResponse(Historico h, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>

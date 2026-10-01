@@ -255,7 +255,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Bonus | int |
 | TemMaestria | bool |
 
-**CharacterSkills** — 1 linha por Perícia (2.d).
+**CharacterSkills** — linhas criadas sob demanda (2.d): só existe linha para a Perícia que já recebeu pontos ou um Atributo escolhido; a ausência de linha equivale a 0 pontos e ao Atributo sugerido pela Perícia.
 
 | Coluna | Tipo |
 |---|---|
