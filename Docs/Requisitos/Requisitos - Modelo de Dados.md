@@ -644,7 +644,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 |---|---|
 | Id | PK |
 | ArcaEntryId | FK → ArcaEntries (cascade) |
-| Nivel | int, 1 a 50 |
+| Nivel | int, de 1 ao último nível de `NiveisProgressao` |
 | Descricao | text |
 | CriadaEm | timestamptz — desempate entre evoluções do mesmo nível |
 
@@ -675,3 +675,29 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | AtributoSugerido | enum Atributo, nullable |
 | DisponivelParaCriaturas | bool |
 | IsDeleted | bool |
+
+**NiveisProgressao** — uma linha por nível da Tabela de Níveis (Auditoria de Regras R0013). Preenchida uma vez, a partir de "[[Tabela de Níveis]]" e das tabelas de XP/EAP, quando vazia.
+
+| Coluna | Tipo |
+|---|---|
+| Nivel | int, PK |
+| OutrosBonus | text, nullable — linhas livres de bônus do nível |
+
+**ColunasDeNivel** — colunas da tabela (as do sistema e as criadas pelo Auditor).
+
+| Coluna | Tipo |
+|---|---|
+| Id | int, PK |
+| Nome | string |
+| Tipo | enum Acumulativa \| PorNivel (imutável) |
+| ChaveDeSistema | string, nullable, único — preenchida nas colunas do sistema (não removíveis) |
+| Ordem | int |
+| IsDeleted | bool |
+
+**ValoresDeNivel** — valor de uma célula.
+
+| Coluna | Tipo |
+|---|---|
+| Nivel | FK → NiveisProgressao (cascade), parte da PK |
+| ColunaId | FK → ColunasDeNivel (cascade), parte da PK |
+| Valor | int, nullable — vazio = 0 (Acumulativa) ou herda o nível anterior (Por nível, exceto XP e EAP) |

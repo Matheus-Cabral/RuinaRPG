@@ -21,7 +21,7 @@
 - "[[Ruína RPG - Sistema Básico]]"
 - "[[Características]]"
 - "[[GRAUS & CÍRCULOS]]"
-- "[[Tabela de Níveis]]"
+- "[[Tabela de Níveis]]" (aba montada a partir da tabela editada em "[[Requisitos - Auditoria de Regras]]" R0013, não do Markdown)
 - "[[As estrelas alkerianas]]" (aba exibida como **As Estrelas**)
 - "[[Historico]]"
 - "[[Equipagem]]"
@@ -48,7 +48,7 @@
 |---|---|---|
 | Sistema Básico | `##` | 7 (uma por seção numerada do documento) |
 | Graus & Círculos | `#` | 9 (uma por Grau/Círculo; os efeitos de cada Grau, que são `##`, continuam dentro do cartão do próprio Grau) |
-| Tabela de Níveis | — | nenhuma (o documento não tem títulos — é uma única tabela) |
+| Tabela de Níveis | — | nenhuma (gerada da tabela da Auditoria, R0013 — é uma única tabela) |
 | Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
 | As Estrelas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
 | Históricos | — | uma por Histórico (ver R0007 abaixo; vem do catálogo de Históricos — não do Markdown, mesmo tratamento de R0004 para Características) |

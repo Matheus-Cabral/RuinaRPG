@@ -44,5 +44,5 @@
 
 # **R0006** - Cada Arca pode ter evoluções liberadas por nível.
 
-**Descrição**: Cada uma das 18 linhas da tabela de Arcas (R0002) tem uma lista de **evoluções**, cada uma com **Nível** (1 a 50) e **Descrição**. O GM adiciona, edita e remove evoluções na própria linha; pode haver várias no mesmo nível. Uma evolução **soma-se** à descrição da Arca, nunca a substitui. Adicionar uma evolução a um número ainda não preenchido cria a linha da Arca com Nome e Descrição vazios (a ficha continua exibindo "Arca não cadastrada." até o GM dar um Nome). Na Ficha de Personagem/NPC (ver "[[Requisitos - Ficha de Personagem]]" 4.a), só aparecem as evoluções com Nível menor ou igual ao da ficha.
+**Descrição**: Cada uma das 18 linhas da tabela de Arcas (R0002) tem uma lista de **evoluções**, cada uma com **Nível** (de 1 ao último nível da "[[Tabela de Níveis]]") e **Descrição**. O GM adiciona, edita e remove evoluções na própria linha; pode haver várias no mesmo nível. Uma evolução **soma-se** à descrição da Arca, nunca a substitui. Adicionar uma evolução a um número ainda não preenchido cria a linha da Arca com Nome e Descrição vazios (a ficha continua exibindo "Arca não cadastrada." até o GM dar um Nome). Na Ficha de Personagem/NPC (ver "[[Requisitos - Ficha de Personagem]]" 4.a), só aparecem as evoluções com Nível menor ou igual ao da ficha.
 

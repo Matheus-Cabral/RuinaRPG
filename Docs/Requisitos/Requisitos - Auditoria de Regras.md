@@ -14,7 +14,7 @@
 
 # **R0002** - O Auditor de Regras pode editar o texto do Livro de Regras.
 
-**Descrição**: Uma página lista os 3 documentos do "[[Requisitos - Livro de Regras]]" que não são a aba de Características — Sistema Básico, Graus & Círculos, Tabela de Níveis — cada um com o Markdown atual (a sobrescrita salva, ou o texto padrão do arquivo-fonte) em um campo de texto editável, e um botão "Restaurar padrão" que apaga a sobrescrita. A página exibe um aviso fixo: editar aqui só muda o texto exibido nesta página — nenhuma fórmula ou tabela usada nos cálculos das fichas (Vitalidade, Foco, Graduação, XP por nível, etc.) é afetada, essas continuam fixas no sistema.
+**Descrição**: Uma página lista os 2 documentos do "[[Requisitos - Livro de Regras]]" que não são a aba de Características nem a Tabela de Níveis (esta é montada pela tabela de R0013) — Sistema Básico, Graus & Círculos — cada um com o Markdown atual (a sobrescrita salva, ou o texto padrão do arquivo-fonte) em um campo de texto editável, e um botão "Restaurar padrão" que apaga a sobrescrita. A página exibe um aviso fixo: editar aqui só muda o texto exibido nesta página — nenhuma fórmula ou tabela usada nos cálculos das fichas (Vitalidade, Foco, Graduação, XP por nível, etc.) é afetada, essas continuam fixas no sistema.
 
   
 
@@ -82,3 +82,16 @@ Essa tabela é o que resolve a durabilidade máxima de toda Arma, Armadura e Esc
 - **Restaurar** uma perícia removida: ela volta com 0 pontos em todas as fichas. Recusado se já houver uma perícia ativa com o mesmo nome.
 
 **Prontidão**, **Reflexos** e **Fortitude** entram em fórmulas (ver "[[Formulas]]"): podem ser renomeadas e descritas, mas não removidas nem retiradas das Criaturas. Na ficha, a Descrição aparece ao passar o mouse sobre o nome da perícia (desktop) ou ao tocar nele (celular).
+
+# **R0013** - O Auditor edita a Tabela de Níveis.
+
+**Descrição**: A página **Auditoria → Tabela de Níveis** mostra uma linha por nível e uma coluna por recurso, mais um campo de texto livre **Outros bônus** por nível (ex.: "Status de Vida Aprimorado", "Primeira Passiva"). Cada coluna é de um de dois tipos:
+
+- **Acumulativa**: o valor da ficha é a soma dos níveis 1 até o nível atual (célula vazia vale 0). Ex.: Pontos de Atributo, Pontos de Perícia, Espaços de Característica, Pontos de Ignição, Espaços e Pontos de Maestria.
+- **Por nível**: vale o número do nível atual; uma célula vazia repete o valor do nível anterior mais próximo, e sem nenhum valor não há limite. Ex.: Máx. de Atributo, Máx. de Perícia, Máx. de Passivas Livres/Vocacionais/De Classe. **XP para o próximo nível** e **EAP base** também são Por nível, mas nunca repetem valor: XP vazio no último nível significa nível máximo.
+
+As colunas acima são do sistema — podem ser renomeadas, não removidas, e alimentam as fichas. O Auditor pode criar colunas próprias (nome + tipo, o tipo não muda depois), que aparecem na ficha só como informação, e removê-las (a remoção pede confirmação e apaga os valores da coluna). Pode também adicionar um nível ao fim da tabela e remover o último nível, desde que nenhuma ficha esteja nele.
+
+**Limites**: Máx. de Atributo e Máx. de Perícia limitam os pontos gastos (Gasto) num atributo ou numa perícia; Máx. de Passivas limita quantas Passivas de cada categoria a ficha pode ter. Valem para Personagem e NPC: o servidor recusa salvar acima do limite, mas uma ficha que já está acima continua válida e pode baixar o valor. A Criatura não tem limites, mas o Nível de NPC e Criatura é validado entre 1 e o último nível da tabela. O aviso de subida de nível lista os bônus numéricos como "<Nome da coluna>: +N", seguidos das linhas de Outros bônus.
+
+O Livro de Regras monta a aba Tabela de Níveis a partir desta tabela; ela não é mais editada em Auditoria → Livro de Regras. O Compêndio continua indexando os arquivos Markdown. A tabela é preenchida uma única vez, a partir de "[[Tabela de Níveis]]" e "[[Tabelas de XP, Atributos, Características e EAP]]", quando está vazia; depois disso, editar esses arquivos não altera orçamentos nem limites.
