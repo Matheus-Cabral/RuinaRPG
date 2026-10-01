@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -103,6 +104,11 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
+
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var gastoAtual = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
+        if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, request.Gasto, tabela.Limite(ChavesDeNivel.MaxPericia, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+            return BadRequest(erroDeLimite);
 
         var skill = await db.CharacterSkills.SingleOrDefaultAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id);
         if (skill is null)

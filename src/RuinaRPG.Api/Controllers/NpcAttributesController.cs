@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 
@@ -74,6 +75,10 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
             return NotFound();
 
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (LimitesDeNivel.Gasto(atributo.ToString(), attribute.Gasto, request.Gasto, tabela.Limite(ChavesDeNivel.MaxAtributo, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+            return BadRequest(erroDeLimite);
+
         attribute.Gasto = request.Gasto;
         attribute.Bonus = request.Bonus;
         attribute.TemMaestria = request.TemMaestria;

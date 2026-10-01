@@ -7,11 +7,13 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -19,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/spell-abilities")]
-public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterSpellAbilityResponse>> Add(Guid sheetId, AddCharacterSpellAbilityRequest request)
@@ -71,6 +73,14 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
                     await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync()));
                 if (pendencias.Count > 0)
                     return BadRequest("Requisitos não cumpridos: " + string.Join(", ", pendencias));
+
+                if (bankEntry.Categoria is { } cat)
+                {
+                    var jaNaFicha = await db.CharacterSpellAbilities.CountAsync(e => e.CharacterSheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria == cat);
+                    var tabela = await tabelaDeNiveis.ObterAsync();
+                    if (LimitesDeNivel.Passivas(cat, jaNaFicha, tabela.Limite(ChavesDeNivel.MaxPassivas(cat), sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+                        return BadRequest(erroDeLimite);
+                }
             }
             categoria = bankEntry.Categoria; requisitos = bankEntry.Requisitos;
 

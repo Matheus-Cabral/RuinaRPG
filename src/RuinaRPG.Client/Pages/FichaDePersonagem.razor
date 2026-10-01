@@ -1171,7 +1171,7 @@
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         // A Variante change may have just cleared stale racial grants server-side (or made a fresh
@@ -1305,7 +1305,8 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, current.AtributoEscolhido));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 

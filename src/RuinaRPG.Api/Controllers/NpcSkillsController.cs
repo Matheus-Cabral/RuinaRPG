@@ -6,16 +6,18 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/skills")]
-public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId)
@@ -71,6 +73,11 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
+
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var gastoAtual = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
+        if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, request.Gasto, tabela.Limite(ChavesDeNivel.MaxPericia, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+            return BadRequest(erroDeLimite);
 
         var skill = await db.NpcSkills.SingleOrDefaultAsync(s => s.NpcSheetId == sheetId && s.PericiaId == def.Id);
         if (skill is null)

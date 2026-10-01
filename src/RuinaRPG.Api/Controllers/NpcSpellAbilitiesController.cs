@@ -7,11 +7,13 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -19,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/spell-abilities")]
-public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NpcSpellAbilityResponse>> Add(Guid sheetId, AddNpcSpellAbilityRequest request)
@@ -82,6 +84,14 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats sta
                     await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, bankEntry.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync()));
                 if (pendencias.Count > 0)
                     return BadRequest("Requisitos não cumpridos: " + string.Join(", ", pendencias));
+
+                if (bankEntry.Categoria is { } cat)
+                {
+                    var jaNaFicha = await db.NpcSpellAbilities.CountAsync(e => e.NpcSheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria == cat);
+                    var tabela = await tabelaDeNiveis.ObterAsync();
+                    if (LimitesDeNivel.Passivas(cat, jaNaFicha, tabela.Limite(ChavesDeNivel.MaxPassivas(cat), sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+                        return BadRequest(erroDeLimite);
+                }
             }
             categoria = bankEntry.Categoria; requisitos = bankEntry.Requisitos;
 

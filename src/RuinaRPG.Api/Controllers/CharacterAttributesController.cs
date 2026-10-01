@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 
@@ -89,6 +90,8 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
         var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
         if (gastoDosOutros + request.Gasto > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");
+        if (LimitesDeNivel.Gasto(atributo.ToString(), attribute.Gasto, request.Gasto, tabela.Limite(ChavesDeNivel.MaxAtributo, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+            return BadRequest(erroDeLimite);
 
         attribute.Gasto = request.Gasto;
         attribute.Bonus = request.Bonus;

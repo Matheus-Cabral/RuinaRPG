@@ -2,6 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -107,5 +112,187 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
         atributos!.PontosDisponiveis.Should().Be(pontosDeAtributo);
         caracteristicas!.PontosDisponiveis.Should().Be(espacosDeCaracteristica);
+    }
+
+    // ---- Tetos por nível (Máx. de Atributo/Perícia/Passivas) ----
+    // A Tabela de Níveis é global ao banco da classe: cada teste grava o teto no nível 1 (herdado por
+    // todos os níveis) e o remove no finally.
+
+    private async Task<int?> SetLimiteAsync(string chave, int? valor)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var colunaId = await db.ColunasDeNivel.Where(c => c.ChaveDeSistema == chave).Select(c => c.Id).SingleAsync();
+        var celula = await db.ValoresDeNivel.SingleOrDefaultAsync(v => v.ColunaId == colunaId && v.Nivel == 1);
+        var anterior = celula?.Valor;
+        if (celula is null)
+            db.ValoresDeNivel.Add(new RuinaRPG.Infrastructure.Rules.Niveis.ValorDeNivel { ColunaId = colunaId, Nivel = 1, Valor = valor });
+        else
+            celula.Valor = valor;
+        await db.SaveChangesAsync();
+        return anterior;
+    }
+
+    private async Task<string> ReadBodyAsync(HttpResponseMessage response) => await response.Content.ReadAsStringAsync();
+
+    private async Task<(string GmToken, string SheetId, string PlayerToken)> SetUpCharacterAsync(string tag)
+    {
+        var gm = await RegisterGmAndGetTokenAsync($"LimGm{tag}", $"limgm{tag}@teste.com");
+        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gm));
+        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+        var reg = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"LimPl{tag}", $"limpl{tag}@teste.com", "Senha!123", "Senha!123", code));
+        var tokens = (await reg.Content.ReadFromJsonAsync<AuthResponse>())!;
+        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
+        var playerId = (await me.Content.ReadFromJsonAsync<MeResponse>())!.Id;
+        var campaign = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gm, new CreateCampaignRequest("Campanha", "")));
+        var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        var sheet = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gm, new CreateCharacterSheetRequest(playerId)));
+        return (gm, (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, tokens.AccessToken);
+    }
+
+    private Task<HttpResponseMessage> PutCharacterForcaAsync(string token, string sheetId, int gasto) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", token, new UpdateCharacterAttributeRequest(gasto, 0, false)));
+
+    [Fact]
+    public async Task Character_attribute_gasto_above_MaxAtributo_is_rejected_but_lowering_is_allowed()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("A1");
+        var anterior = await SetLimiteAsync("MaxAtributo", 3);
+        try
+        {
+            var acima = await PutCharacterForcaAsync(gm, sheetId, 4);
+            acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(acima)).Should().Contain("não pode passar de 3");
+            (await PutCharacterForcaAsync(gm, sheetId, 3)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            await SetLimiteAsync("MaxAtributo", anterior);
+            (await PutCharacterForcaAsync(gm, sheetId, 5)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            await SetLimiteAsync("MaxAtributo", 3);
+            (await PutCharacterForcaAsync(gm, sheetId, 4)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await PutCharacterForcaAsync(gm, sheetId, 6)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+        finally { await SetLimiteAsync("MaxAtributo", anterior); }
+    }
+
+    [Fact]
+    public async Task Npc_attribute_gasto_above_MaxAtributo_is_rejected()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("LimGmN1", "limgmn1@teste.com");
+        var sheetId = await CreateNpcSheetAsync(gm);
+        var anterior = await SetLimiteAsync("MaxAtributo", 3);
+        try
+        {
+            var acima = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateNpcAttributeRequest(4, 0, false)));
+            acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(acima)).Should().Contain("não pode passar de 3");
+            (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateNpcAttributeRequest(3, 0, false)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+        finally { await SetLimiteAsync("MaxAtributo", anterior); }
+    }
+
+    [Fact]
+    public async Task Character_skill_gasto_above_MaxPericia_is_rejected()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("S1");
+        var anterior = await SetLimiteAsync("MaxPericia", 3);
+        try
+        {
+            var acima = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateCharacterSkillRequest(4, null)));
+            acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(acima)).Should().Contain("Atletismo não pode passar de 3 pontos");
+            (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateCharacterSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+        finally { await SetLimiteAsync("MaxPericia", anterior); }
+    }
+
+    [Fact]
+    public async Task Npc_skill_gasto_above_MaxPericia_is_rejected()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("LimGmN2", "limgmn2@teste.com");
+        var sheetId = await CreateNpcSheetAsync(gm);
+        var anterior = await SetLimiteAsync("MaxPericia", 3);
+        try
+        {
+            var acima = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateNpcSkillRequest(4, null)));
+            acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(acima)).Should().Contain("não pode passar de 3");
+            (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateNpcSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+        finally { await SetLimiteAsync("MaxPericia", anterior); }
+    }
+
+    private async Task<string> CreatePassivaAsync(string gm, string nome, string categoria)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
+            new CreateSpellAbilityEntryRequest(nome, "Passiva", 0, "Descrição.", [], false, categoria, null)));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task Adding_a_passiva_beyond_its_category_cap_is_rejected_other_categories_unaffected()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("P1");
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+        var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
+        var vocacional = await CreatePassivaAsync(gm, "Vocacional Um", "Vocacional");
+        Task<HttpResponseMessage> Add(string id) => _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
+            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+
+        var anterior = await SetLimiteAsync("MaxPassivasLivres", 1);
+        try
+        {
+            (await Add(livre1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            var segunda = await Add(livre2);
+            segunda.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(segunda)).Should().Contain("Livre");
+            (await Add(vocacional)).StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+        finally { await SetLimiteAsync("MaxPassivasLivres", anterior); }
+    }
+
+    [Fact]
+    public async Task Npc_passiva_cap_is_enforced_too()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("LimGmN3", "limgmn3@teste.com");
+        var sheetId = await CreateNpcSheetAsync(gm);
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+        var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
+        Task<HttpResponseMessage> Add(string id) => _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+            new AddNpcSpellAbilityRequest(id, null, null, null, null, null)));
+
+        var anterior = await SetLimiteAsync("MaxPassivasLivres", 1);
+        try
+        {
+            (await Add(livre1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            var segunda = await Add(livre2);
+            segunda.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(segunda)).Should().Contain("Livre");
+        }
+        finally { await SetLimiteAsync("MaxPassivasLivres", anterior); }
+    }
+
+    [Fact]
+    public async Task General_npc_and_creature_put_reject_a_level_above_the_table()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("LimGmL1", "limgml1@teste.com");
+        var npcId = await CreateNpcSheetAsync(gm);
+        var criaturaId = await CreateCreatureSheetAsync(gm);
+
+        var npc = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{npcId}", gm))).Content.ReadFromJsonAsync<NpcSheetResponse>())!;
+        var npcReq = new UpdateNpcSheetRequest(npc.ImageId, npc.Nome, npc.Linhagem, npc.Variante, npc.Vocacao, npc.SubVocacao, npc.Afinidade, npc.Propriedade,
+            51, npc.PossuiCoracaoDeMana, npc.ExperienciaAtual, npc.EAPAtual, 0, 0, 0, 0, 0, 0, 0, 0, 0, npc.VitalidadeAtual, npc.FocoAtual, npc.AdrenalinaAtual, 0,
+            npc.Cobertura, 0, null, npc.Estrela, 0, npc.HistoricoId, null, 0);
+        var npcResp = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gm, npcReq));
+        npcResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ReadBodyAsync(npcResp)).Should().Contain("O nível deve estar entre 1 e 50.");
+
+        var cr = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{criaturaId}", gm))).Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
+        var crReq = new UpdateCreatureSheetRequest(cr.ImageId, cr.Nome, cr.Raca, cr.Arquetipo, cr.SubArquetipo, cr.Afinidade, cr.Rank, 0,
+            cr.ExperienciaAtual, cr.PontosDeIgnicao, cr.VitalidadeAtual, cr.FocoAtual, cr.AdrenalinaAtual, cr.Cobertura);
+        var crResp = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{criaturaId}", gm, crReq));
+        crResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ReadBodyAsync(crResp)).Should().Contain("O nível deve estar entre 1 e 50.");
     }
 }

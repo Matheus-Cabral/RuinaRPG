@@ -70,6 +70,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (request.Nivel < 1 || request.Nivel > tabela.UltimoNivel)
+            return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
+
         if (!TryParseImageId(request.ImageId, out var imageId))
             return BadRequest("ImageId inválido.");
 

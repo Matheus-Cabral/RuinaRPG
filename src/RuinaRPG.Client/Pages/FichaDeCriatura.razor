@@ -844,7 +844,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
@@ -887,7 +887,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/nivel", _form.Nivel.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
@@ -906,7 +906,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/experiencia-atual", _form.ExperienciaAtual.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
