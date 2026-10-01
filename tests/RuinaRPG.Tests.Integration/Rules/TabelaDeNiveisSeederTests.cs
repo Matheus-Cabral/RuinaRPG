@@ -57,6 +57,36 @@ public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
+    public async Task Seeding_migrates_old_passiva_columns_to_additive_keeping_a_custom_name()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        var rules = new RulesDataProvider();
+        var md = RulesDataProvider.ReadResource("Tabela de Níveis.md");
+        await TabelaDeNiveisSeeder.SeedAsync(db, md, rules.XpPorNivel, rules.EapPorNivel);
+
+        // Simula um banco semeado com a definição antiga (PorNivel, "Máx. Passivas ..."); uma coluna foi renomeada pelo Auditor.
+        async Task<ColunaDeNivel> Col(string chave) => await db.ColunasDeNivel.SingleAsync(c => c.ChaveDeSistema == chave);
+        var livres = await Col(ChavesDeNivel.MaxPassivasLivres);
+        var vocacionais = await Col(ChavesDeNivel.MaxPassivasVocacionais);
+        var deClasse = await Col(ChavesDeNivel.MaxPassivasDeClasse);
+        livres.Tipo = vocacionais.Tipo = deClasse.Tipo = TipoDeColunaDeNivel.PorNivel;
+        livres.Nome = "Máx. Passivas Livres";
+        vocacionais.Nome = "Máx. Passivas Vocacionais";
+        deClasse.Nome = "Dons de Classe";
+        await db.SaveChangesAsync();
+
+        await TabelaDeNiveisSeeder.SeedAsync(db, md, rules.XpPorNivel, rules.EapPorNivel);
+
+        await using var verify = NewDb();
+        var colunas = await verify.ColunasDeNivel.Where(c => c.ChaveDeSistema != null).ToDictionaryAsync(c => c.ChaveDeSistema!);
+        colunas[ChavesDeNivel.MaxPassivasLivres].Should().Match<ColunaDeNivel>(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa && c.Nome == "Passivas Livres");
+        colunas[ChavesDeNivel.MaxPassivasVocacionais].Should().Match<ColunaDeNivel>(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa && c.Nome == "Passivas Vocacionais");
+        colunas[ChavesDeNivel.MaxPassivasDeClasse].Should().Match<ColunaDeNivel>(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa && c.Nome == "Dons de Classe");
+        colunas[ChavesDeNivel.MaxPericia].Tipo.Should().Be(TipoDeColunaDeNivel.PorNivel);
+    }
+
+    [Fact]
     public async Task Api_host_starts_with_the_table_seeded()
     {
         await using var factory = new ApiFactory(_fixture.ConnectionString);

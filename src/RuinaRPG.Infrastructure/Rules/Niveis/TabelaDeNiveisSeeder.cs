@@ -12,6 +12,22 @@ namespace RuinaRPG.Infrastructure.Rules.Niveis;
 /// </summary>
 public static class TabelaDeNiveisSeeder
 {
+    // Bancos semeados antes de 2026-10-01 tinham os limites de Passiva como "Por nível" ("Máx. Passivas ...").
+    private static readonly Dictionary<string, string> NomesAntigosDasPassivas = new()
+    {
+        [ChavesDeNivel.MaxPassivasLivres] = "Máx. Passivas Livres",
+        [ChavesDeNivel.MaxPassivasVocacionais] = "Máx. Passivas Vocacionais",
+        [ChavesDeNivel.MaxPassivasDeClasse] = "Máx. Passivas De Classe",
+    };
+
+    /// <summary>Leva uma coluna de Passiva antiga à definição aditiva, preservando um nome dado pelo Auditor.</summary>
+    private static void MigrarPassiva(ColunaDeNivel coluna, ChavesDeNivel.Definicao def)
+    {
+        if (!NomesAntigosDasPassivas.TryGetValue(def.Chave, out var nomeAntigo)) return;
+        coluna.Tipo = def.Tipo;
+        if (coluna.Nome == nomeAntigo) coluna.Nome = def.Nome;
+    }
+
     public static async Task<int> SeedAsync(RuinaRpgDbContext db, string niveisMarkdown,
         IReadOnlyList<XpPorNivel> xp, IReadOnlyList<EapPorNivel> eap)
     {
@@ -19,7 +35,11 @@ public static class TabelaDeNiveisSeeder
         var colunas = await db.ColunasDeNivel.Where(c => c.ChaveDeSistema != null).ToListAsync();
         foreach (var def in ChavesDeNivel.Sistema)
         {
-            if (colunas.Any(c => c.ChaveDeSistema == def.Chave)) continue;
+            if (colunas.FirstOrDefault(c => c.ChaveDeSistema == def.Chave) is { } existente)
+            {
+                MigrarPassiva(existente, def);
+                continue;
+            }
             var nova = new ColunaDeNivel { Id = Guid.NewGuid(), Nome = def.Nome, Tipo = def.Tipo, ChaveDeSistema = def.Chave, Ordem = def.Ordem };
             db.ColunasDeNivel.Add(nova);
             colunas.Add(nova);

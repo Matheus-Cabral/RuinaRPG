@@ -2,6 +2,8 @@
 
 **Status:** approved by user 2026-09-29 (design approved in chat). Part 3 of 3 of version 1.4.1.
 
+**Amended 2026-10-01:** Passiva limits are additive per category (the three columns are now **Acumulativa** "Passivas Livres/Vocacionais/De Classe"; limit = sum of the column from level 1 to the sheet's level; a column that is entirely empty = no limit). Wherever this document says the Passiva caps are Por nível, read this amendment.
+
 ## Overview
 
 The level table stops being free text parsed by regex out of the embedded `Tabela de Níveis.md` and becomes
@@ -15,7 +17,7 @@ Every calculator reads from it.
 |---|---|
 | Scope | A + B + C + D: structured editable table, **caps per level**, add/remove levels, **configurable columns**. |
 | Column types | **Acumulativa** (value = sum of levels 1..N — a budget) and **Por nível** (value = the row for level N — a cap or a per-level value). |
-| Caps | Máx. de Atributo, Máx. de Perícia, and one max-count per Passiva category: **Livre, Vocacional, De Classe**. |
+| Caps | Máx. de Atributo, Máx. de Perícia, and one **additive** Passiva count per category: **Livre, Vocacional, De Classe** (amended 2026-10-01: Acumulativa, not Por nível; empty column = no limit). |
 | Cap enforcement | **Server blocks** (400 with a message). A sheet already above a cap stays valid but cannot go higher. |
 | Empty cell | Acumulativa → 0. Por nível → **inherits** the nearest lower level with a value; none → no cap. Exception: the XP and EAP system columns never inherit (an empty XP on the last level means "nível máximo"). |
 | What a cap limits | The **points spent** (`Gasto`) on one attribute / one perícia — what the player controls. Bônus, Maestria and Artefatos can still push the Total above it. |
@@ -44,9 +46,9 @@ Every calculator reads from it.
 | `PontosDeMaestria` | Pontos de Maestria | Acumulativa | shown |
 | `MaxAtributo` | Máx. de Atributo | PorNivel | new cap |
 | `MaxPericia` | Máx. de Perícia | PorNivel | new cap |
-| `MaxPassivasLivres` | Máx. Passivas Livres | PorNivel | new cap |
-| `MaxPassivasVocacionais` | Máx. Passivas Vocacionais | PorNivel | new cap |
-| `MaxPassivasDeClasse` | Máx. Passivas De Classe | PorNivel | new cap |
+| `MaxPassivasLivres` | Passivas Livres | Acumulativa | additive limit (amended 2026-10-01) |
+| `MaxPassivasVocacionais` | Passivas Vocacionais | Acumulativa | additive limit (amended 2026-10-01) |
+| `MaxPassivasDeClasse` | Passivas De Classe | Acumulativa | additive limit (amended 2026-10-01) |
 | `XpParaProximoNivel` | XP para o próximo nível | PorNivel (no inheritance) | `NivelCalculator` (replaces `XpPorNivel`) |
 | `EapBase` | EAP base | PorNivel (no inheritance) | `EapCalculator` (replaces `EapPorNivel`) |
 
@@ -66,7 +68,7 @@ parsers. Caps start empty (no cap) — nothing changes for existing sheets until
 
 - `PUT .../attributes/{atributo}` — resulting attribute value > `MaxAtributo` at the sheet's level → 400 "Força não pode passar de X no nível N." Allowed if it doesn't increase an already-over-cap value.
 - `PUT .../skills/{periciaId}` — same with `MaxPericia` on the perícia's value.
-- Adding a Passiva (from bank or built) whose `CategoriaDePassiva` count on the sheet would exceed its cap → 400.
+- Adding a Passiva (from bank or built) whose `CategoriaDePassiva` count on the sheet would exceed its additive limit (`LimiteAcumulado`: sum of the column up to the sheet's level; null/no limit while the column is entirely empty) → 400.
 - The sheet's `Nivel` max becomes `UltimoNivel` (was 50): NPC/Criatura `PUT .../nivel` outside 1..UltimoNivel → 400 (no validation existed before). Arca evolution levels (part 1) validate against `UltimoNivel` too.
 
 ## Levels and columns API (auditor-only, `RequireRulesAuditorAsync`)
@@ -90,7 +92,7 @@ parsers. Caps start empty (no cap) — nothing changes for existing sheets until
 Every new UI surface gets the existing `Shared/InfoPopup.razor` (ⓘ via `Section`'s `TitleInfo`), same pattern as
 `AuditoriaDurabilidadePorRank.razor`. Draft texts (refine during implementation):
 
-- **`/auditoria/tabela-de-niveis`, section Tabela de Níveis** — "Cada linha é um nível e cada coluna, um recurso. Colunas Acumulativas (ícone de somatório) somam do nível 1 até o nível do personagem — ex.: Pontos de Atributo. Colunas Por nível valem o número da linha do nível atual — ex.: Máx. de Perícia; uma célula vazia repete o valor do nível anterior mais próximo, e se nenhum nível tiver valor não há limite (XP e EAP não repetem: XP vazio no último nível significa nível máximo). Os limites (Máx. de Atributo e Máx. de Perícia — pontos gastos num atributo ou perícia — e Máx. de Passivas por categoria) bloqueiam o salvamento da ficha; uma ficha que já passou do limite continua válida, mas não pode subir mais. Colunas com o ícone de cadeado são do sistema: podem ser renomeadas, não removidas. Colunas criadas por você aparecem na ficha só como informação. 'Remover último nível' é recusado se alguma ficha estiver nesse nível."
+- **`/auditoria/tabela-de-niveis`, section Tabela de Níveis** — "Cada linha é um nível e cada coluna, um recurso. Colunas Acumulativas (ícone de somatório) somam do nível 1 até o nível do personagem — ex.: Pontos de Atributo. Colunas Por nível valem o número da linha do nível atual — ex.: Máx. de Perícia; uma célula vazia repete o valor do nível anterior mais próximo, e se nenhum nível tiver valor não há limite (XP e EAP não repetem: XP vazio no último nível significa nível máximo). Os limites (Máx. de Atributo e Máx. de Perícia — pontos gastos num atributo ou perícia — e as colunas de Passivas por categoria) bloqueiam o salvamento da ficha; uma ficha que já passou do limite continua válida, mas não pode subir mais. Colunas com o ícone de cadeado são do sistema: podem ser renomeadas, não removidas. Colunas criadas por você aparecem na ficha só como informação. 'Remover último nível' é recusado se alguma ficha estiver nesse nível."
 - **Same page, "+ Coluna" dialog** — short explanation of Acumulativa vs Por nível (the type can't be changed after creation).
 - **Ficha (Personagem/NPC), panel Progressão do nível** — "Saldos e limites do nível atual, definidos na Tabela de Níveis. Totais somam todos os níveis até o atual; limites (máx.) valem para o nível atual e o app não deixa ultrapassá-los."
 

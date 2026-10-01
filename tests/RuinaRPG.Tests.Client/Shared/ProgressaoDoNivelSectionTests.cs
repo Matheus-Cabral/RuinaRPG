@@ -63,6 +63,25 @@ public class ProgressaoDoNivelSectionTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Passiva_columns_show_the_additive_limit_or_sem_limite_when_the_column_is_empty()
+    {
+        var livres = Guid.NewGuid();
+        var vocacionais = Guid.NewGuid();
+        var tabela = new TabelaDeNiveisResponse(
+            [Col(livres, "Passivas Livres", "Acumulativa", ChavesDeNivel.MaxPassivasLivres, 1),
+             Col(vocacionais, "Passivas Vocacionais", "Acumulativa", ChavesDeNivel.MaxPassivasVocacionais, 2)],
+            [Linha(1, (livres, 1), (vocacionais, null)), Linha(2), Linha(3, (livres, null))]);
+
+        var cut = await RenderAsync(tabela, 3);
+
+        cut.Markup.Should().Contain("Passivas Livres").And.Contain("Passivas Vocacionais");
+        var linhas = cut.FindAll("tr").Select(r => r.TextContent.Trim()).ToList();
+        linhas.Should().Contain(l => l.StartsWith("Passivas Livres") && l.EndsWith("1"));
+        linhas.Should().Contain(l => l.StartsWith("Passivas Vocacionais") && l.EndsWith("sem limite"));
+        cut.Markup.Should().NotContain("máx.");
+    }
+
+    [Fact]
     public async Task Hides_xp_and_eap_rows()
     {
         var tabela = new TabelaDeNiveisResponse(

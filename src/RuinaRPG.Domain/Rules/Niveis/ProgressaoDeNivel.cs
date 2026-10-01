@@ -22,6 +22,14 @@ public sealed class ProgressaoDeNivel
 
     public int Acumulado(string chave, int nivel) => Coluna(chave) is { } c ? Soma(c, nivel) : 0;
     public int? Limite(string chave, int nivel) => Coluna(chave) is { } c ? Herdado(c, nivel) : null;
+
+    /// <summary>
+    /// Limite aditivo: soma da coluna do nível 1 até <paramref name="nivel"/>; null (sem limite) enquanto a
+    /// coluna estiver inteiramente vazia ou não existir.
+    /// </summary>
+    public int? LimiteAcumulado(string chave, int nivel) =>
+        Coluna(chave) is { } c && Linhas.Any(l => l.Valores.GetValueOrDefault(c.Id) is not null) ? Soma(c, nivel) : null;
+
     public int? ValorExato(string chave, int nivel) => Coluna(chave) is { } c ? Celula(c, nivel) : null;
 
     public int? Resolver(ColunaDeNivelDef coluna, int nivel) => coluna.Tipo switch

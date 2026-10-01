@@ -99,4 +99,54 @@ public class ProgressaoDeNivelTests
         NivelCalculator.Compute(1_000_000, TabelaComUltimo(null, null).ComoXpPorNivel()).Should().Be(2);
         NivelCalculator.Compute(1_000_000, TabelaComUltimo(150, null).ComoXpPorNivel()).Should().Be(3);
     }
+
+    private static ProgressaoDeNivel Passivas(params (int Nivel, int Valor)[] celulas) =>
+        TabelaDeNiveisDeTeste.Criar(Enumerable.Range(1, 50)
+            .Select(n => TabelaDeNiveisDeTeste.Nivel(n, celulas.Where(c => c.Nivel == n).Select(c => (ChavesDeNivel.MaxPassivasLivres, c.Valor)).ToArray())).ToArray());
+
+    [Fact]
+    public void LimiteAcumulado_is_null_while_the_whole_column_is_empty()
+    {
+        var t = Passivas();
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 1).Should().BeNull();
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 50).Should().BeNull();
+    }
+
+    [Fact]
+    public void LimiteAcumulado_sums_the_column_up_to_the_level_once_any_level_has_a_value()
+    {
+        var t = Passivas((10, 1), (30, 1), (50, 1));
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 9).Should().Be(0);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 10).Should().Be(1);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 29).Should().Be(1);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 30).Should().Be(2);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 49).Should().Be(2);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 50).Should().Be(3);
+    }
+
+    [Fact]
+    public void LimiteAcumulado_treats_a_column_of_only_zeros_as_a_limit_of_zero_and_ignores_empty_cells()
+    {
+        var t = Passivas((2, 0), (5, 2));
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 1).Should().Be(0);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 4).Should().Be(0);
+        t.LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 5).Should().Be(2);
+    }
+
+    [Fact]
+    public void LimiteAcumulado_is_null_when_the_column_does_not_exist()
+    {
+        Tabela().LimiteAcumulado(ChavesDeNivel.MaxPassivasLivres, 3).Should().BeNull();
+    }
+
+    [Fact]
+    public void The_three_passiva_system_columns_are_additive_and_named_Passivas()
+    {
+        var porChave = ChavesDeNivel.Sistema.ToDictionary(d => d.Chave);
+        porChave[ChavesDeNivel.MaxPassivasLivres].Should().Match<ChavesDeNivel.Definicao>(d => d.Tipo == TipoDeColunaDeNivel.Acumulativa && d.Nome == "Passivas Livres");
+        porChave[ChavesDeNivel.MaxPassivasVocacionais].Should().Match<ChavesDeNivel.Definicao>(d => d.Tipo == TipoDeColunaDeNivel.Acumulativa && d.Nome == "Passivas Vocacionais");
+        porChave[ChavesDeNivel.MaxPassivasDeClasse].Should().Match<ChavesDeNivel.Definicao>(d => d.Tipo == TipoDeColunaDeNivel.Acumulativa && d.Nome == "Passivas De Classe");
+        porChave[ChavesDeNivel.MaxAtributo].Tipo.Should().Be(TipoDeColunaDeNivel.PorNivel);
+        porChave[ChavesDeNivel.MaxPericia].Tipo.Should().Be(TipoDeColunaDeNivel.PorNivel);
+    }
 }

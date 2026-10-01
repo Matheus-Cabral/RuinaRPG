@@ -25,9 +25,9 @@ public static class ChavesDeNivel
         new Definicao(PontosDeMaestria, "Pontos de Maestria", TipoDeColunaDeNivel.Acumulativa, 5),
         new Definicao(MaxAtributo, "Máx. de Atributo", TipoDeColunaDeNivel.PorNivel, 6),
         new Definicao(MaxPericia, "Máx. de Perícia", TipoDeColunaDeNivel.PorNivel, 7),
-        new Definicao(MaxPassivasLivres, "Máx. Passivas Livres", TipoDeColunaDeNivel.PorNivel, 8),
-        new Definicao(MaxPassivasVocacionais, "Máx. Passivas Vocacionais", TipoDeColunaDeNivel.PorNivel, 9),
-        new Definicao(MaxPassivasDeClasse, "Máx. Passivas De Classe", TipoDeColunaDeNivel.PorNivel, 10),
+        new Definicao(MaxPassivasLivres, "Passivas Livres", TipoDeColunaDeNivel.Acumulativa, 8),
+        new Definicao(MaxPassivasVocacionais, "Passivas Vocacionais", TipoDeColunaDeNivel.Acumulativa, 9),
+        new Definicao(MaxPassivasDeClasse, "Passivas De Classe", TipoDeColunaDeNivel.Acumulativa, 10),
         new Definicao(XpParaProximoNivel, "XP para o próximo nível", TipoDeColunaDeNivel.PorNivel, 11),
         new Definicao(EapBase, "EAP base", TipoDeColunaDeNivel.PorNivel, 12),
     };

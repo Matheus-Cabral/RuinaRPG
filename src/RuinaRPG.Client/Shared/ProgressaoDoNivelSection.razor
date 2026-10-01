@@ -9,7 +9,7 @@
     <Section Title="Progressão do nível">
         <TitleInfo>
             <InfoPopup Title="Progressão do nível">
-                Saldos e limites do nível atual, definidos na Tabela de Níveis. Totais somam todos os níveis até o atual; limites (máx.) valem para o nível atual e o app não deixa ultrapassá-los.
+                Saldos e limites do nível atual, definidos na Tabela de Níveis. Totais somam todos os níveis até o atual; limites (máx.) valem para o nível atual e o app não deixa ultrapassá-los; em Passivas, o número é o limite total (a soma até o nível atual).
             </InfoPopup>
         </TitleInfo>
         <ChildContent>
@@ -58,8 +58,14 @@
         }
     }
 
+    private static bool EhColunaDePassiva(string? chave) =>
+        chave is ChavesDeNivel.MaxPassivasLivres or ChavesDeNivel.MaxPassivasVocacionais or ChavesDeNivel.MaxPassivasDeClasse;
+
     private string Formatar(ColunaDeNivelDef coluna)
     {
+        // Passivas: soma aditiva até o nível; coluna inteiramente vazia = sem limite.
+        if (EhColunaDePassiva(coluna.ChaveDeSistema))
+            return _progressao!.LimiteAcumulado(coluna.ChaveDeSistema!, Nivel) is { } limite ? $"{limite}" : "sem limite";
         var valor = _progressao!.Resolver(coluna, Nivel);
         if (coluna.Tipo == TipoDeColunaDeNivel.Acumulativa)
             return $"{valor ?? 0}";

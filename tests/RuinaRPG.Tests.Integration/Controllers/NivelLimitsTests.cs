@@ -118,15 +118,15 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     // A Tabela de Níveis é global ao banco da classe: cada teste grava o teto no nível 1 (herdado por
     // todos os níveis) e o remove no finally.
 
-    private async Task<int?> SetLimiteAsync(string chave, int? valor)
+    private async Task<int?> SetLimiteAsync(string chave, int? valor, int nivel = 1)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var colunaId = await db.ColunasDeNivel.Where(c => c.ChaveDeSistema == chave).Select(c => c.Id).SingleAsync();
-        var celula = await db.ValoresDeNivel.SingleOrDefaultAsync(v => v.ColunaId == colunaId && v.Nivel == 1);
+        var celula = await db.ValoresDeNivel.SingleOrDefaultAsync(v => v.ColunaId == colunaId && v.Nivel == nivel);
         var anterior = celula?.Valor;
         if (celula is null)
-            db.ValoresDeNivel.Add(new RuinaRPG.Infrastructure.Rules.Niveis.ValorDeNivel { ColunaId = colunaId, Nivel = 1, Valor = valor });
+            db.ValoresDeNivel.Add(new RuinaRPG.Infrastructure.Rules.Niveis.ValorDeNivel { ColunaId = colunaId, Nivel = nivel, Valor = valor });
         else
             celula.Valor = valor;
         await db.SaveChangesAsync();
@@ -248,7 +248,7 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Adding_a_passiva_beyond_its_category_cap_is_rejected_other_categories_unaffected()
+    public async Task Passiva_limit_is_additive_per_category_and_other_categories_are_unaffected()
     {
         var (gm, sheetId, _) = await SetUpCharacterAsync("P1");
         var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
@@ -267,6 +267,41 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
             (await Add(vocacional)).StatusCode.Should().Be(HttpStatusCode.Created);
         }
         finally { await SetLimiteAsync("MaxPassivasLivres", anterior); }
+    }
+
+    [Fact]
+    public async Task Passiva_column_entirely_empty_means_no_limit()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("P2");
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+        var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
+        Task<HttpResponseMessage> Add(string id) => _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
+            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+
+        var anterior = await SetLimiteAsync("MaxPassivasLivres", null);
+        try
+        {
+            (await Add(livre1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            (await Add(livre2)).StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+        finally { await SetLimiteAsync("MaxPassivasLivres", anterior); }
+    }
+
+    [Fact]
+    public async Task Passiva_granted_only_above_the_sheet_level_means_a_limit_of_zero()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("P3");
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+
+        var anterior = await SetLimiteAsync("MaxPassivasLivres", 1, nivel: 2);
+        try
+        {
+            var resposta = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
+                new AddCharacterSpellAbilityRequest(livre1, null, null, null, null, null)));
+            resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(resposta)).Should().Contain("no máximo 0 Passiva");
+        }
+        finally { await SetLimiteAsync("MaxPassivasLivres", anterior, nivel: 2); }
     }
 
     [Fact]
