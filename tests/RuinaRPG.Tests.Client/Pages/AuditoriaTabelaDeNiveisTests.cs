@@ -39,7 +39,7 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
 
     private static readonly System.Text.Json.JsonSerializerOptions Web = new(System.Text.Json.JsonSerializerDefaults.Web);
 
-    private HttpClient CreateStatefulHttp(State state, List<Request> log, string? deleteUltimoError = null)
+    private HttpClient CreateStatefulHttp(State state, List<Request> log, string? deleteUltimoError = null, string? putError = null)
         => FakeHttpMessageHandler.CreateClient(request =>
         {
             var path = request.RequestUri!.AbsolutePath;
@@ -56,6 +56,15 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
 
             log.Add(new Request(request.Method.Method, path, body));
 
+            if (putError is not null && request.Method == HttpMethod.Put && (rest.Length == 3 || (rest.Length == 2 && rest[0] == "colunas" && rest[1] != "ordem")))
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(putError) };
+            if (request.Method == HttpMethod.Put && rest.Length == 2 && rest[0] == "colunas" && rest[1] != "ordem")
+            {
+                var req = System.Text.Json.JsonSerializer.Deserialize<RenomearColunaDeNivelRequest>(body!, Web)!;
+                var i = state.Colunas.FindIndex(c => c.Id == Guid.Parse(rest[1]));
+                state.Colunas[i] = state.Colunas[i] with { Nome = req.Nome };
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
             if (request.Method == HttpMethod.Put && rest.Length == 3 && rest[1] == "valores")
             {
                 var nivel = int.Parse(rest[0]);
@@ -165,12 +174,10 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
     }
 
     [Fact]
-    public async Task System_columns_show_a_lock_and_no_delete_button_custom_ones_can_be_removed()
+    public async Task System_columns_show_a_lock_and_no_delete_button_custom_ones_can_be_removed_after_confirming()
     {
         var log = new List<Request>();
-        Services.AddScoped(_ => CreateStatefulHttp(new State(), log));
-
-        var cut = Render<AuditoriaTabelaDeNiveis>();
+        var cut = RenderWithDialogProvider(CreateStatefulHttp(new State(), log));
         await Task.Delay(50);
 
         cut.FindAll("button[aria-label='Remover coluna Fama']").Should().HaveCount(1);
@@ -178,11 +185,64 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         cut.FindAll("button[aria-label='Remover coluna Máx. de Perícia']").Should().BeEmpty();
         cut.FindAll("thead [data-sistema='true']").Should().HaveCount(2);
 
+        // Cancel: no DELETE
         cut.Find("button[aria-label='Remover coluna Fama']").Click();
+        cut.Find(".mud-dialog-content").TextContent.Should().Contain("Remover a coluna Fama? Os valores dela em todos os níveis serão apagados.");
+        cut.FindAll(".mud-dialog-actions button").First(b => b.TextContent.Contains("Cancelar")).Click();
+        await Task.Delay(50);
+        log.Should().BeEmpty();
+
+        // Confirm: DELETE
+        cut.Find("button[aria-label='Remover coluna Fama']").Click();
+        cut.FindAll(".mud-dialog-actions button").First(b => b.TextContent.Contains("Remover")).Click();
         await Task.Delay(50);
 
         log.Should().ContainSingle(r => r.Method == "DELETE").Which.Path.Should().EndWith($"tabela-de-niveis/colunas/{FamaId}");
         cut.FindAll("thead th").Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task A_failed_cell_write_shows_the_message_and_reverts_the_input()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), new(), putError: "Valor inválido."));
+
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.FindAll("tbody tr")[1].QuerySelectorAll("input")[2].Change("99");
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Valor inválido.");
+        cut.FindAll("tbody tr")[1].QuerySelectorAll("input")[2].GetAttribute("value").Should().Be("1");
+    }
+
+    [Fact]
+    public async Task A_failed_column_rename_shows_the_message_and_reverts_the_name()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), new(), putError: "Nome já existe."));
+
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.FindAll("thead input")[2].Change("Rejeitado");
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Nome já existe.");
+        var nomes = cut.FindAll("thead input").Select(i => i.GetAttribute("value")).ToList();
+        nomes.Should().Contain("Fama");
+        nomes.Should().NotContain("Rejeitado");
+    }
+
+    [Fact]
+    public async Task The_Nova_coluna_dialog_has_its_own_info_popup()
+    {
+        var cut = RenderWithDialogProvider(CreateStatefulHttp(new State(), new()));
+        await Task.Delay(50);
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Coluna")).Click();
+        cut.Find(".mud-dialog button[title='Tipo da coluna']").Click();
+
+        cut.Markup.Should().Contain("O tipo não pode ser mudado depois");
     }
 
     [Fact]

@@ -28,7 +28,7 @@ else
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.RemoveCircleOutline" OnClick="@(() => _removeNivelOpen = true)">Remover último nível</MudButton>
             </div>
 
-            <div class="table-responsive">
+            <div style="overflow-x:auto;">
                 <MudSimpleTable Dense="true" Hover="true">
                     <thead>
                         <tr>
@@ -42,7 +42,7 @@ else
                                         <MudTooltip Text="@(c.Tipo == "Acumulativa" ? "Acumulativa" : "Por nível")">
                                             <MudIcon Icon="@(c.Tipo == "Acumulativa" ? Icons.Material.Filled.Functions : Icons.Material.Filled.Straighten)" Size="Size.Small" />
                                         </MudTooltip>
-                                        <MudTextField T="string" Value="@c.Nome" Margin="Margin.Dense" Variant="Variant.Text" Class="mx-1"
+                                        <MudTextField T="string" Value="@c.Nome" Margin="Margin.Dense" Variant="Variant.Text" Class="mx-1" UserAttributes="@(new Dictionary<string, object> { ["aria-label"] = $"Nome da coluna {c.Nome}" })"
                                                       ValueChanged="@(v => RenameAsync(c, v))" />
                                         @if (c.DoSistema)
                                         {
@@ -54,7 +54,7 @@ else
                                         }
                                         else
                                         {
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@($"Remover coluna {c.Nome}")" OnClick="@(() => RemoveColunaAsync(c))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@($"Remover coluna {c.Nome}")" OnClick="@(() => AskRemoveColuna(c))" />
                                         }
                                         <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Disabled="@(index == 0)" aria-label="@($"Mover coluna {c.Nome} para a esquerda")" OnClick="@(() => MoveAsync(index, -1))" />
                                         <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Disabled="@(index == _colunas.Count - 1)" aria-label="@($"Mover coluna {c.Nome} para a direita")" OnClick="@(() => MoveAsync(index, 1))" />
@@ -110,6 +110,17 @@ else
     <DialogActions>
         <MudButton OnClick="@(() => _novaColunaOpen = false)">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AddColunaAsync">Adicionar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_removeColunaOpen">
+    <TitleContent>Remover coluna</TitleContent>
+    <DialogContent>
+        Remover a coluna @_pendingColuna?.Nome? Os valores dela em todos os níveis serão apagados.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _removeColunaOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmRemoveColunaAsync">Remover</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -194,8 +205,24 @@ else
     private async Task RenameAsync(ColunaDeNivelResponse c, string? nome) =>
         await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/colunas/{c.Id}", new RenomearColunaDeNivelRequest(nome ?? "")));
 
-    private async Task RemoveColunaAsync(ColunaDeNivelResponse c) =>
+    private bool _removeColunaOpen;
+    private ColunaDeNivelResponse? _pendingColuna;
+
+    private void AskRemoveColuna(ColunaDeNivelResponse c)
+    {
+        _pendingColuna = c;
+        _removeColunaOpen = true;
+    }
+
+    private async Task ConfirmRemoveColunaAsync()
+    {
+        _removeColunaOpen = false;
+        if (_pendingColuna is null)
+            return;
+        var c = _pendingColuna;
+        _pendingColuna = null;
         await FinishAsync(await Http.DeleteAsync($"tabela-de-niveis/colunas/{c.Id}"));
+    }
 
     private async Task MoveAsync(int index, int delta)
     {
