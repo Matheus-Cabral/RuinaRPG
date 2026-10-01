@@ -6,6 +6,7 @@ using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Services;
 
@@ -21,7 +22,7 @@ namespace RuinaRPG.Api.Services;
 /// Redução Mágica); Resistência Física/Arcana and Dano Cortante are explicitly "pendente" — no
 /// formula defined yet, so they're not implemented here.
 /// </summary>
-public class CreatureSheetStats(RuinaRpgDbContext db)
+public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
 {
     /// <summary>
     /// Ego is a Criatura-only attribute — it has no counterpart in Ficha de Personagem's Atributo
@@ -47,13 +48,13 @@ public class CreatureSheetStats(RuinaRpgDbContext db)
         var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca, artefatos);
 
         var brutoSkills = await db.CreatureSkills
-            .Where(s => s.CreatureSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
+            .Where(s => s.CreatureSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
             .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(brutoSkills.Single(s => s.Pericia == pericia).Gasto, 0);
+        int BrutoOf(int periciaId) => SkillFormulas.Modificador(brutoSkills.Single(s => s.PericiaId == periciaId).Gasto, 0);
 
-        var brutoProntidao = BrutoOf(Pericia.Prontidao);
-        var brutoReflexos = BrutoOf(Pericia.Reflexos);
-        var brutoFortitude = BrutoOf(Pericia.Fortitude);
+        var brutoProntidao = BrutoOf(PericiasDeSistema.Prontidao);
+        var brutoReflexos = BrutoOf(PericiasDeSistema.Reflexos);
+        var brutoFortitude = BrutoOf(PericiasDeSistema.Fortitude);
 
         // Natural attacks (ItemId null) carry no weight of their own — only Catálogo-linked
         // weapons/armor/shields contribute to Peso Total Carregado.
@@ -115,12 +116,17 @@ public class CreatureSheetStats(RuinaRpgDbContext db)
             .Where(kv => AtributoCriaturaParaAtributo.ContainsKey(kv.Key))
             .ToDictionary(kv => AtributoCriaturaParaAtributo[kv.Key], kv => kv.Value);
 
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToListAsync();
-        var pericias = skills.ToDictionary(s => s.Pericia, s =>
+        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var porId = await pericias.PorIdAsync();
+        // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
+        // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
+        var totaisDePericia = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToDictionary(p => p.Id, p =>
         {
-            var modificador = SkillFormulas.Modificador(s.Gasto, 0);
-            return s.AtributoEscolhido is { } atributo && atributosCriatura.TryGetValue(atributo, out var atributoTotal)
-                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+            skills.TryGetValue(p.Id, out var s);
+            var modificador = SkillFormulas.Modificador(s?.Gasto ?? 0, 0);
+            var atributo = s?.AtributoEscolhido ?? (p.AtributoSugerido is { } sug && Enum.TryParse<AtributoCriatura>(sug.ToString(), out var sugCriatura) ? sugCriatura : null);
+            return atributo is { } chosen && atributosCriatura.TryGetValue(chosen, out var atributoTotal)
+                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                 : (int?)null;
         });
 
@@ -128,7 +134,7 @@ public class CreatureSheetStats(RuinaRpgDbContext db)
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: false, sheet.Nivel, null, null, null, null, 0, false, sheet.Afinidade, null, null,
-            atributos, CharacterSheetStats.SubAtributosPorEnum(sub), pericias);
+            atributos, CharacterSheetStats.SubAtributosPorEnum(sub), totaisDePericia);
     }
 
     /// <summary>

@@ -1,0 +1,31 @@
+@using MudBlazor
+
+@* Nome de uma perícia na ficha. Com Descrição (Auditoria de Perícias): tooltip ao passar o mouse
+   (desktop) e popup ao tocar/clicar (mobile não tem hover). *@
+@if (string.IsNullOrWhiteSpace(Descricao))
+{
+    <span>@Nome</span>
+}
+else
+{
+    <MudTooltip Text="@Descricao">
+        <button type="button" class="rr-pericia-nome" aria-label="@($"Descrição de {Nome}")" @onclick="@(() => _open = true)">
+            @Nome <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Style="vertical-align:middle;" />
+        </button>
+    </MudTooltip>
+
+    <MudDialog @bind-Visible="_open">
+        <TitleContent>@Nome</TitleContent>
+        <DialogContent>@Descricao</DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Nome { get; set; } = "";
+    [Parameter] public string? Descricao { get; set; }
+
+    private bool _open;
+}

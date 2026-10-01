@@ -5,11 +5,12 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 /// <summary>
 /// Compara os requisitos de uma Passiva com uma ficha. Devolve uma pendência legível por requisito não
 /// cumprido, na ordem dos campos; lista vazia = cumpre tudo. <paramref name="nomeDoHistoricoExigido"/> é o
-/// nome do Histórico do requisito (nulo se ele não existe mais no catálogo).
+/// nome do Histórico do requisito (nulo se ele não existe mais no catálogo); <paramref name="nomeDaPericia"/>
+/// devolve o nome de exibição de uma Perícia a partir do Id (a tabela Pericias vive na Infrastructure).
 /// </summary>
 public static class PassivaRequisitosEvaluator
 {
-    public static IReadOnlyList<string> Pendencias(RequisitosDePassiva? requisitos, FichaParaRequisitos ficha, string? nomeDoHistoricoExigido)
+    public static IReadOnlyList<string> Pendencias(RequisitosDePassiva? requisitos, FichaParaRequisitos ficha, string? nomeDoHistoricoExigido, Func<int, string> nomeDaPericia)
     {
         var pendencias = new List<string>();
         if (requisitos is null)
@@ -56,7 +57,7 @@ public static class PassivaRequisitosEvaluator
 
         foreach (var r in requisitos.Pericias)
             if (ficha.Pericias.TryGetValue(r.Pericia, out var total) && (total is null || total < r.Minimo))
-                pendencias.Add($"{PericiaLabels.Label(r.Pericia)} ≥ {r.Minimo}");
+                pendencias.Add($"{nomeDaPericia(r.Pericia)} ≥ {r.Minimo}");
 
         return pendencias;
     }

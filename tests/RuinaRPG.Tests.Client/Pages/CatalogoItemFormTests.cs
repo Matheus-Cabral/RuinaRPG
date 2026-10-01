@@ -378,24 +378,23 @@ public class CatalogoItemFormTests : MudBunitContext
     [Fact]
     public void AlvoOptionsFor_Atributo_lists_the_8_Atributo_names()
     {
-        var results = CatalogoItemForm.AlvoOptionsFor("Atributo");
+        var results = CatalogoItemForm.AlvoOptionsFor("Atributo", []);
 
         results.Should().BeEquivalentTo(new[] { "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca" });
     }
 
     [Fact]
-    public void AlvoOptionsFor_Pericia_lists_all_39_Pericia_names()
+    public void AlvoOptionsFor_Pericia_lists_the_keys_of_the_active_pericias_it_is_given()
     {
-        var results = CatalogoItemForm.AlvoOptionsFor("Pericia");
+        var results = CatalogoItemForm.AlvoOptionsFor("Pericia", ["ArmasBrancas", "Atletismo", "CartografiaArcana"]);
 
-        results.Should().HaveCount(39);
-        results.Should().Contain("ArmasBrancas");
+        results.Should().Equal("ArmasBrancas", "Atletismo", "CartografiaArcana");
     }
 
     [Fact]
     public void AlvoOptionsFor_SubAtributo_lists_the_7_canonical_names()
     {
-        var results = CatalogoItemForm.AlvoOptionsFor("SubAtributo");
+        var results = CatalogoItemForm.AlvoOptionsFor("SubAtributo", []);
 
         results.Should().BeEquivalentTo(new[]
         {
@@ -407,7 +406,7 @@ public class CatalogoItemFormTests : MudBunitContext
     [Fact]
     public void AlvoOptionsFor_Dano_lists_the_4_damage_types_including_Arcano()
     {
-        var results = CatalogoItemForm.AlvoOptionsFor("Dano");
+        var results = CatalogoItemForm.AlvoOptionsFor("Dano", []);
 
         results.Should().BeEquivalentTo(new[] { "Cortante", "Perfurante", "Contundente", "Arcano" });
     }
@@ -601,10 +600,11 @@ public class CatalogoItemFormTests : MudBunitContext
 
         created.Should().NotBeNull();
         created!.Nome.Should().Be("Poção Nova");
-        // 2, not 1: OnInitializedAsync now also fetches the durabilidades-por-rank table
-        // unconditionally (images/mine + durabilidades-por-rank) — the assertion still proves
-        // CreateAsync/OnCreated doesn't trigger a further GET of its own.
-        getCount.Should().Be(2, "OnCreated deve substituir a navegação, não disparar uma nova busca");
+        // 3, not 1: OnInitializedAsync also fetches the Perícias catalog and the
+        // durabilidades-por-rank table unconditionally (pericias + images/mine +
+        // durabilidades-por-rank) — the assertion still proves CreateAsync/OnCreated doesn't
+        // trigger a further GET of its own.
+        getCount.Should().Be(3, "OnCreated deve substituir a navegação, não disparar uma nova busca");
     }
 
     /// <summary>

@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Runes
+@using RuinaRPG.Client.Shared
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -10,11 +11,19 @@
 
 <Section Title="Filtros">
     <MudGrid Class="mt-3">
-        <MudItem xs="12" md="6">
+        <MudItem xs="12" md="4">
             <MudTextField T="string" @bind-Value="_nomeFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Nome" />
         </MudItem>
-        <MudItem xs="12" md="6">
+        <MudItem xs="12" md="4">
             <MudNumericField T="int?" @bind-Value="_grauFiltro" Immediate="true" @bind-Value:after="DebouncedLoadAsync" Label="Grau" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" @bind-Value="_tipoFiltro" @bind-Value:after="DebouncedLoadAsync" Label="Tipo">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("Arcana")">Runa Arcana</MudSelectItem>
+                <MudSelectItem Value="@("Negra")">Runa Negra</MudSelectItem>
+                <MudSelectItem Value="@("Nenhum")">Sem tipo</MudSelectItem>
+            </MudSelect>
         </MudItem>
     </MudGrid>
 </Section>
@@ -30,6 +39,7 @@
                 <th></th>
                 <th>Nome</th>
                 <th>Grau</th>
+                <th>Tipo</th>
                 <th>Descrição</th>
                 <th></th>
             </tr>
@@ -41,6 +51,7 @@
                     <td>@if (entry.ImageUrl is not null) { <ClickableImage Src="@entry.ImageUrl" Width="40" /> }</td>
                     <td>@entry.Nome</td>
                     <td>@entry.Grau</td>
+                    <td>@RuneTipoRotulo.De(entry.Tipo)</td>
                     <td>@entry.Descricao</td>
                     <td>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-runas/{entry.Id}/editar"))">Editar</MudButton>
@@ -61,6 +72,7 @@
 
     private string _nomeFiltro = "";
     private int? _grauFiltro;
+    private string _tipoFiltro = ""; // "" = Todos; "Arcana", "Negra" ou "Nenhum" (sem tipo)
     private List<RuneBankEntryResponse> _entries = new();
     private string? _errorMessage;
 
@@ -92,6 +104,8 @@
             parametros.Add($"nome={Uri.EscapeDataString(_nomeFiltro)}");
         if (_grauFiltro is not null)
             parametros.Add($"grau={_grauFiltro}");
+        if (!string.IsNullOrEmpty(_tipoFiltro))
+            parametros.Add($"tipo={Uri.EscapeDataString(_tipoFiltro)}");
         var query = parametros.Count == 0 ? "" : "?" + string.Join("&", parametros);
 
         var response = await Http.GetAsync($"rune-bank{query}");

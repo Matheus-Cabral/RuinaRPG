@@ -3,7 +3,7 @@ namespace RuinaRPG.Client.Shared;
 /// <summary>
 /// Maps an Atributo enum's wire identifier (e.g. "Forca", as sent by every attribute/skill/mastery
 /// endpoint via <c>Atributo.ToString()</c> — see RuinaRPG.Domain.CharacterSheets.Atributo) to its
-/// proper Portuguese display name ("Força"), matching the accent-fix precedent in PericiaDisplay.
+/// proper Portuguese display name ("Força"), matching the accent-fix precedent of the Perícia labels.
 /// Display-only: the raw identifier is still what's bound to every dropdown's Value and sent back
 /// on save, so this never touches routing or persistence — only what a human reads on the Fichas
 /// de Personagem/NPC/Criatura pages.

@@ -57,9 +57,9 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         return message;
     }
 
-    private async Task<RuneBankEntryResponse> CreateAsync(string token, string nome, string descricao, int grau)
+    private async Task<RuneBankEntryResponse> CreateAsync(string token, string nome, string descricao, int grau, string? tipo = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest(nome, descricao, grau)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo)));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
     }
@@ -194,6 +194,74 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         put.StatusCode.Should().Be(HttpStatusCode.NotFound);
         delete.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ---- Tipo opcional (Arcana / Negra) ----
+
+    [Fact]
+    public async Task Create_with_a_tipo_returns_it_and_without_one_returns_null()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankTipoGm1", "runebanktipogm1@teste.com");
+
+        var negra = await CreateAsync(token, "Runa Sombria", "Escura.", 2, "Negra");
+        var semTipo = await CreateAsync(token, "Runa Simples", "Comum.", 1);
+        var vazio = await CreateAsync(token, "Runa Vazia", "Tipo vazio.", 1, "");
+
+        negra.Tipo.Should().Be("Negra");
+        semTipo.Tipo.Should().BeNull();
+        vazio.Tipo.Should().BeNull();
+        (await ListAsync(token)).Single(e => e.Id == negra.Id).Tipo.Should().Be("Negra");
+    }
+
+    [Theory]
+    [InlineData("Branca")]
+    [InlineData("arcana")]
+    [InlineData("Runa Arcana")]
+    public async Task Create_and_update_with_an_unknown_tipo_return_400(string tipo)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"RuneBankTipoGm2{tipo.Replace(" ", "")}", $"runebanktipogm2{tipo.Replace(" ", "")}@teste.com");
+        var entry = await CreateAsync(token, "Runa", "D.", 1);
+
+        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("X", "Y", 1, null, tipo)));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("X", "Y", 1, null, tipo)));
+
+        post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await post.Content.ReadAsStringAsync()).Should().Contain("Tipo de Runa desconhecido.");
+        put.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ListAsync(token)).Single(e => e.Id == entry.Id).Nome.Should().Be("Runa");
+    }
+
+    [Fact]
+    public async Task Update_changes_and_clears_the_tipo()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankTipoGm3", "runebanktipogm3@teste.com");
+        var entry = await CreateAsync(token, "Runa", "D.", 1, "Arcana");
+
+        var troca = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, "Negra")));
+        troca.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await ListAsync(token)).Single(e => e.Id == entry.Id).Tipo.Should().Be("Negra");
+
+        var limpa = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, null)));
+        limpa.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await ListAsync(token)).Single(e => e.Id == entry.Id).Tipo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task List_filters_by_tipo_including_the_untyped_ones()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneBankTipoGm4", "runebanktipogm4@teste.com");
+        var arcana = await CreateAsync(token, "Runa A", "A.", 1, "Arcana");
+        var negra = await CreateAsync(token, "Runa N", "N.", 1, "Negra");
+        var nenhuma = await CreateAsync(token, "Runa S", "S.", 2);
+
+        (await ListAsync(token, "?tipo=Arcana")).Select(e => e.Id).Should().BeEquivalentTo([arcana.Id]);
+        (await ListAsync(token, "?tipo=Negra")).Select(e => e.Id).Should().BeEquivalentTo([negra.Id]);
+        (await ListAsync(token, "?tipo=Nenhum")).Select(e => e.Id).Should().BeEquivalentTo([nenhuma.Id]);
+        (await ListAsync(token, "?tipo=Negra&grau=2")).Should().BeEmpty();
+        (await ListAsync(token)).Should().HaveCount(3);
+
+        var invalido = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rune-bank?tipo=Branca", token));
+        invalido.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // ---- Imagem opcional ----

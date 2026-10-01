@@ -1,22 +1,22 @@
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Rules.ReferenceData;
+using RuinaRPG.Domain.Rules.Niveis;
 
 namespace RuinaRPG.Domain.CreatureSheets;
 
 /// <summary>
 /// Ficha de Criaturas R0005 2.a: a Criatura começa com os Pontos de Atributo do seu Rank no lugar
-/// dos "+9 Pontos de Atributo" do Nível 1 da Tabela de Níveis, e dali em diante ganha pontos pela
+/// dos 9 Pontos de Atributo do Nível 1 da Tabela de Níveis, e dali em diante ganha pontos pela
 /// mesma tabela do Personagem/NPC. Sem Rank, vale a tabela pura (mesma conta do NPC).
 /// </summary>
 public static class CreatureAttributePointBudgetCalculator
 {
-    public static int Compute(Rank? rank, int nivel, IReadOnlyList<LevelBonus> niveis)
+    public static int Compute(Rank? rank, int nivel, ProgressaoDeNivel tabela)
     {
-        var pelaTabela = AttributePointBudgetCalculator.Compute(nivel, niveis);
+        var pelaTabela = AttributePointBudgetCalculator.Compute(nivel, tabela);
         if (rank is null)
             return pelaTabela;
 
-        return PontosIniciais(rank.Value) + pelaTabela - AttributePointBudgetCalculator.Compute(nivel: 1, niveis);
+        return PontosIniciais(rank.Value) + pelaTabela - AttributePointBudgetCalculator.Compute(nivel: 1, tabela);
     }
 
     private static int PontosIniciais(Rank rank) => rank switch

@@ -1,6 +1,7 @@
 @page "/criaturas/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
@@ -107,7 +108,7 @@
             <Section Title="Nível e Progressão">
                 <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifyNivelChangedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
-                <MudText>Abate: @_form.Kill</MudText>
+                <MudText>Abate: @_form.Abate</MudText>
                 <MudText>Assistência: @_form.Assistencia</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifySavedAsync" />
             </Section>
@@ -188,7 +189,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
+                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>@skill.Modificador</td>
                             <td>
@@ -503,7 +504,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -521,7 +522,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -630,6 +631,11 @@
     private List<CreatureAttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<CreatureSkillResponse> _skills = new();
+
+    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
+    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
+    private string PericiaLabel(string chave) =>
+        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<CreatureWeaponResponse> _weapons = new();
     private readonly WeaponFormModel _weaponForm = new();
     private List<CreatureArmorSlotResponse> _armorSlots = new();
@@ -716,6 +722,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         _isGmCaller = authState.User.IsInRole("GM");
 
@@ -809,7 +816,7 @@
         _form.Rank = sheet.Rank;
         _form.Nivel = sheet.Nivel;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
-        _form.Kill = sheet.Kill;
+        _form.Abate = sheet.Abate;
         _form.Assistencia = sheet.Assistencia;
         _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
@@ -837,7 +844,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
@@ -880,7 +887,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/nivel", _form.Nivel.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
@@ -899,7 +906,7 @@
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/experiencia-atual", _form.ExperienciaAtual.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
@@ -1246,7 +1253,7 @@
         public int? Nivel { get; set; } = 1;
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
-        public int Kill { get; set; }
+        public int Abate { get; set; }
         public int Assistencia { get; set; }
         [Required(ErrorMessage = "Informe os Pontos de Ignição.")]
         public int? PontosDeIgnicao { get; set; }

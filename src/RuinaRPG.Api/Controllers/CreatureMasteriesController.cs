@@ -8,13 +8,14 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/masteries")]
-public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
+public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CreatureMasteryResponse>> Add(Guid sheetId, AddCreatureMasteryRequest request)
@@ -26,22 +27,24 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        if (!Enum.TryParse<Pericia>(request.Pericia, out var pericia) || !Enum.IsDefined(pericia))
+        var pericia = await pericias.AtivaPorChaveAsync(request.Pericia);
+        if (pericia is null)
             return BadRequest("Perícia ou Atributo desconhecido.");
         if (!Enum.TryParse<AtributoCriatura>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
             return BadRequest("Perícia ou Atributo desconhecido.");
-        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values have a seeded
-        // CreatureSkill row; without this check a valid-but-disallowed Pericia (e.g. Alquimia)
-        // would pass Enum.IsDefined above and then 500 in ComputeTotalAsync's SingleAsync.
-        if (!CreatureSkillAllowList.IsAllowed(pericia))
+        // R0005's "lista fixa mais curta" — only Perícias flagged DisponivelParaCriaturas have a seeded
+        // CreatureSkill row; without this check a valid-but-disallowed Perícia (e.g. Alquimia)
+        // would pass the lookup above and then 500 in ComputeTotalAsync's SingleAsync.
+        if (!pericia.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
-        var mastery = new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheetId, Nome = request.Nome, Pericia = pericia, Atributo = atributo, GastoMaestria = request.GastoMaestria };
+        var mastery = new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
         db.CreatureMasteries.Add(mastery);
         await db.SaveChangesAsync();
 
-        var total = await ComputeTotalAsync(sheetId, pericia, atributo, mastery.GastoMaestria);
-        return Created(string.Empty, ToResponse(mastery, total));
+        var porId = await pericias.PorIdAsync();
+        var total = await ComputeTotalAsync(sheetId, pericia.Id, atributo, mastery.GastoMaestria);
+        return Created(string.Empty, ToResponse(mastery, total, porId));
     }
 
     [HttpGet]
@@ -54,13 +57,15 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var masteries = await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync();
-
+        var porId = await pericias.PorIdAsync();
+        var masteries = (await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync())
+            .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
+            .ToList();
         var responses = new List<CreatureMasteryResponse>();
         foreach (var mastery in masteries)
         {
-            var total = await ComputeTotalAsync(sheetId, mastery.Pericia, mastery.Atributo, mastery.GastoMaestria);
-            responses.Add(ToResponse(mastery, total));
+            var total = await ComputeTotalAsync(sheetId, mastery.PericiaId, mastery.Atributo, mastery.GastoMaestria);
+            responses.Add(ToResponse(mastery, total, porId));
         }
 
         return responses;
@@ -85,17 +90,17 @@ public class CreatureMasteriesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private async Task<int> ComputeTotalAsync(Guid sheetId, Pericia pericia, AtributoCriatura atributo, int gastoMaestria)
+    private async Task<int> ComputeTotalAsync(Guid sheetId, int periciaId, AtributoCriatura atributo, int gastoMaestria)
     {
-        var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.Pericia == pericia);
+        var skill = await db.CreatureSkills.FirstOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == periciaId);
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        var bruto = SkillFormulas.Modificador(skill.Gasto, 0);
+        var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, 0);
         var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
         return gastoMaestria + bruto + atributoTotal;
     }
 
-    private static CreatureMasteryResponse ToResponse(CreatureMastery m, int total) =>
-        new(m.Id.ToString(), m.Nome, m.Pericia.ToString(), m.Atributo.ToString(), m.GastoMaestria, total);
+    private static CreatureMasteryResponse ToResponse(CreatureMastery m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>
+        new(m.Id.ToString(), m.Nome, porId[m.PericiaId].Chave, m.Atributo.ToString(), m.GastoMaestria, total);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

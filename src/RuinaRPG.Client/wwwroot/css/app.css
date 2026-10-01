@@ -103,3 +103,15 @@ code {
 .rr-sina-rating .mud-rating-item .mud-icon-root {
     color: #F9A825;
 }
+
+/* Nome de perícia com descrição (PericiaNome): botão que parece texto. button.rr-pericia-nome
+   (0,1,1) vence qualquer regra genérica de button. */
+button.rr-pericia-nome {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: help;
+    text-align: left;
+}

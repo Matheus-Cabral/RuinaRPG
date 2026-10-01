@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,8 @@ using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -20,7 +23,7 @@ namespace RuinaRPG.Api.Controllers;
 // api/campaigns/{campaignId}/character-sheets and api/character-sheets/{id}.
 [ApiController]
 [Authorize]
-public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats) : ControllerBase
+public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpPost("api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
@@ -43,8 +46,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         foreach (var atributo in Enum.GetValues<Atributo>())
             db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = atributo });
-        foreach (var pericia in Enum.GetValues<Pericia>())
-            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Pericia = pericia });
+        foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
+            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
             db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = slot });
 
@@ -147,7 +150,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null, null, null, null);
+            return new RacialAbilityResponse(null, null, null, null, null, new());
 
         var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == sheet.Variante.Value);
         var (nome, descricao) = over is not null
@@ -156,14 +159,20 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         string? arcaNome = null;
         string? arcaDescricao = null;
+        var arcaEvolucoes = new List<ArcaEvolucaoResponse>();
         if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null)
         {
-            var arca = await db.ArcaEntries.FirstOrDefaultAsync(a => a.GmId == campaignGmId && a.Roll == sheet.ArcaRolada.Value);
-            arcaNome = arca?.Nome;
-            arcaDescricao = arca?.Descricao;
+            var arca = await db.ArcaEntries.Include(a => a.Evolucoes)
+                .FirstOrDefaultAsync(a => a.GmId == campaignGmId && a.Roll == sheet.ArcaRolada.Value);
+            // An Arca row created only to hold evoluções has an empty Nome — the sheet treats it as not registered.
+            arcaNome = string.IsNullOrEmpty(arca?.Nome) ? null : arca.Nome;
+            arcaDescricao = string.IsNullOrEmpty(arca?.Descricao) ? null : arca.Descricao;
+            if (arca is not null)
+                arcaEvolucoes = ArcaEvolucaoRules.Desbloqueadas(arca.Evolucoes, e => e.Nivel, e => e.CriadaEm, sheet.Nivel)
+                    .Select(e => new ArcaEvolucaoResponse(e.Id, e.Nivel, e.Descricao)).ToList();
         }
 
-        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao);
+        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao, arcaEvolucoes);
     }
 
     [HttpGet("api/character-sheets/{id}/variantes-liberadas")]
@@ -245,7 +254,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.HistoricoId = historicoId;
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
-        var nivel = NivelCalculator.Compute(request.ExperienciaAtual, rules.XpPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var nivel = NivelCalculator.Compute(request.ExperienciaAtual, tabela.ComoXpPorNivel());
         sheet.Nivel = nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
@@ -356,7 +366,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, tabela.ComoLevelBonus());
         return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
     }
 
@@ -513,7 +524,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // EAPAtual is no longer a stored/editable value — same treatment already given to
         // Círculo/Grau, which became a pure function instead of a directly-set column. "Segue a
         // tabela [XP/EAP por Nível] e é somado pelo resultado de Âmbares Absorvidos" (1.b).
-        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, rules.EapPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, tabela.ComoEapPorNivel());
 
         var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
@@ -525,8 +537,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
         var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
-        var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, rules.XpPorNivel);
-        var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, rules.Niveis);
+        var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, tabela.ComoXpPorNivel());
+        var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, tabela);
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
@@ -554,8 +566,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var artefatos = await GetArtifactBonusInputsAsync(sheetId);
         var vigorTotal = await GetAttributeTotalAsync(sheetId, Atributo.Vigor, artefatos);
         var astuciaTotal = await GetAttributeTotalAsync(sheetId, Atributo.Astucia, artefatos);
-        var statusVida = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = vocacao is not null ? rules.Vocacoes.Where(v => v.Vocacao == VocacaoTabelaName(vocacao.Value) && v.Nivel == nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var (statusVida, statusFoco) = vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(vocacao.Value), nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         return (

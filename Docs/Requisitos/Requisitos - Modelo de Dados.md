@@ -107,7 +107,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Penalidade | string, nullable | Armadura, Escudo |
 | RequisitoVigor | int, nullable | Armadura, Escudo |
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
-| Alvo | string, nullable | Artefato |
+| Alvo | string, nullable (para TipoDeAlvo = Pericia, é a `Chave` de `Pericias`) | Artefato |
 | Valor | int, nullable | Artefato |
 
 **DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
@@ -161,6 +161,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Nome | string | |
 | Descricao | text | |
 | Grau | int | |
+| Tipo | enum TipoDeRuna?, nullable | `Arcana` ou `Negra`, guardado como texto; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
 | ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
 
   
@@ -255,13 +256,13 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Bonus | int |
 | TemMaestria | bool |
 
-**CharacterSkills** — 1 linha por Perícia (2.d).
+**CharacterSkills** — linhas criadas sob demanda (2.d): só existe linha para a Perícia que já recebeu pontos ou um Atributo escolhido; a ausência de linha equivale a 0 pontos e ao Atributo sugerido pela Perícia.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| Pericia | enum |
+| PericiaId | FK → Pericias |
 | Gasto | int |
 
 *(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
@@ -335,6 +336,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nome | string |
 | Descricao | text |
 | Grau | int |
+| Tipo | enum TipoDeRuna?, nullable — `Arcana`/`Negra` como texto; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
 | SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
@@ -345,7 +347,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | CharacterSheetId | FK |
 | Nome | string |
-| Pericia | enum |
+| PericiaId | FK → Pericias |
 | Atributo | enum |
 | GastoMaestria | int |
 
@@ -409,8 +411,8 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | Nome | string |
 | Descricao | text |
-| PericiaMaisSeis | enum Pericia |
-| PericiaMaisTres | enum Pericia |
+| PericiaMaisSeisId | FK → Pericias |
+| PericiaMaisTresId | FK → Pericias |
 | IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Historico.md |
 | IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
 | UpdatedByUserId | FK → Users, nullable |
@@ -478,8 +480,9 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`.
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
+- Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 
@@ -494,12 +497,12 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 - `PontosDeIgnicao`: **um único int**, não par atual/total.
 - Sem `EstresseAtual`.
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
-- `CreatureSkills.Pericia` só permite o subconjunto ~20 de Perícias listado em R0005 (restrição de aplicação, não de schema, já que reaproveita o enum `Pericia` completo).
+- `CreatureSkills.PericiaId` só permite as Perícias com `DisponivelParaCriaturas` (R0005 e Auditoria de Regras R0012) — restrição de aplicação, não de schema.
 - Sem `CharacterAffinities` equivalente (não existe aba de Afinidades pra Criatura).
 - `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
 - Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
 - `CreatureInventoryItems` → renomeada `CreatureSpoils` (Espólios), ganha coluna `DT` (int) e **perde** `Ciclos` na ficha raiz.
-- Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Kill** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
+- Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
 - `CreatureTraits` diverge de `CharacterTraits`/`NpcTraits`: `TraitId` também **nullable**, e ganha `CreatureExclusiveTraitId` (FK → CreatureExclusiveTraits, nullable) — exatamente uma das duas é setada por linha, mesmo padrão de `EncounterParticipant.SourceCharacterSheetId`/`SourceNpcSheetId`/`SourceCreatureSheetId` (seção 8): dois FKs nullable em vez de um só, porque uma coluna não carrega FK real pra duas tabelas diferentes ao mesmo tempo.
 
 **CreatureExclusiveTraits** — catálogo global e independente de `Traits` (6.1), com as mesmas colunas exceto `IsCustomized`: sem documento-fonte equivalente a `Características.md` pra essa tabela, então não há re-seed do qual proteger uma linha editada manualmente. Só o picker de característica da Ficha de Criatura (`CreatureTraits`) referencia esta tabela — Personagem, NPC e o Compêndio de Regras nunca a leem.
@@ -638,6 +641,16 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Nome | string |
 | Descricao | text |
 
+**ArcaEvolucoes** — evoluções de uma Arca liberadas por nível (Habilidades Raciais R0006). Apagar a Arca apaga suas evoluções.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| ArcaEntryId | FK → ArcaEntries (cascade) |
+| Nivel | int, de 1 ao último nível de `NiveisProgressao` |
+| Descricao | text |
+| CriadaEm | timestamptz — desempate entre evoluções do mesmo nível |
+
   
 
 # 11. Auditoria de Regras
@@ -653,3 +666,41 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | MarkdownText | text |
 | UpdatedByUserId | FK → Users, NULL = escrita do sistema (ex.: a sincronização de Efeitos na inicialização do servidor — [[Requisitos - Auditoria de Regras]] R0006) |
 | UpdatedAt | DateTime |
+
+**Pericias** — perícias do sistema (Auditoria de Regras R0012). Nunca apagadas de verdade.
+
+| Coluna | Tipo |
+|---|---|
+| Id | int, PK (0–38 = perícias iniciais; novas = maior Id + 1) |
+| Chave | string, único, imutável — identificador usado pela API e pelo Alvo de Artefatos |
+| Nome | string, único entre as não removidas |
+| Descricao | text, nullable |
+| AtributoSugerido | enum Atributo, nullable |
+| DisponivelParaCriaturas | bool |
+| IsDeleted | bool |
+
+**NiveisProgressao** — uma linha por nível da Tabela de Níveis (Auditoria de Regras R0013). Preenchida uma vez, a partir de "[[Tabela de Níveis]]" e das tabelas de XP/EAP, quando vazia.
+
+| Coluna | Tipo |
+|---|---|
+| Nivel | int, PK |
+| OutrosBonus | text, nullable — linhas livres de bônus do nível |
+
+**ColunasDeNivel** — colunas da tabela (as do sistema e as criadas pelo Auditor).
+
+| Coluna | Tipo |
+|---|---|
+| Id | Guid (uuid), PK |
+| Nome | string |
+| Tipo | enum Acumulativa \| PorNivel (imutável) |
+| ChaveDeSistema | string, nullable, único — preenchida nas colunas do sistema (não removíveis) |
+| Ordem | int |
+| IsDeleted | bool — reservado, não usado: remover uma coluna é exclusão física (apaga também os valores) |
+
+**ValoresDeNivel** — valor de uma célula.
+
+| Coluna | Tipo |
+|---|---|
+| Nivel | FK → NiveisProgressao (cascade), parte da PK |
+| ColunaId | FK → ColunasDeNivel (cascade), parte da PK |
+| Valor | int, nullable — vazio = 0 (Acumulativa) ou herda o nível anterior (Por nível, exceto XP e EAP) |

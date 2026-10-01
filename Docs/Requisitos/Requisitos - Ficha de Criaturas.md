@@ -43,7 +43,7 @@
 **1.b Nível e Progressão** — diferenças:
 
 - *Nível* e *Experiência atual*: ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela), aqui os dois campos continuam editáveis diretamente pelo GM — mas editar um deles recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem (1.b). Os dois campos nunca ficam inconsistentes entre si.
-- *Experiência dada*: dois campos calculados, não editáveis, nesta ordem — **Kill** e **Assistência** — quanto de XP a Criatura concede aos jogadores ao ser derrotada, conforme o papel de cada jogador na derrota. `Kill = piso(Experiência atual × 0,15)`; `Assistência = piso(Experiência atual × 0,12)` (arredondados para baixo; *Experiência atual* é o campo da própria Criatura, acima). Campo novo, sem equivalente no Personagem.
+- *Experiência dada*: dois campos calculados, não editáveis, nesta ordem — **Abate** e **Assistência** — quanto de XP a Criatura concede aos jogadores ao ser derrotada, conforme o papel de cada jogador na derrota. `Abate = piso(Experiência atual × 0,15)`; `Assistência = piso(Experiência atual × 0,12)` (arredondados para baixo; *Experiência atual* é o campo da própria Criatura, acima). Campo novo, sem equivalente no Personagem.
 - *Graduação* (Círculo/Grau), *VIS atual*, *Para o próximo* e *Âmbares Absorvidos* não existem na Ficha de Criatura — substituídos pelo campo único *Rank* (1.a).
 - *Pontos de Ignição*: campo numérico inteiro simples (não é um par atual/total como no Personagem) — o total de PI disponível para montar as Magias/Habilidades da Criatura (ver R0007).
 
@@ -73,7 +73,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesm
 
 **2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
 
-**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. Mesma estrutura Gasto/Modificador/Atributo/Total do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
+**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. Mesma estrutura Gasto/Modificador/Atributo/Total do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). A lista passa a ser as perícias marcadas como *Disponível para Criaturas* na Auditoria de Perícias ("[[Requisitos - Auditoria de Regras]]" R0012); a lista acima é a inicial.
 
   
 

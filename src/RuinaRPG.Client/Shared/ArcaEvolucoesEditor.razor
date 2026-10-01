@@ -1,0 +1,68 @@
+@inject HttpClient Http
+@using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
+
+@* Evoluções de uma linha da Tabela de Arcas (Requisitos - Habilidades Raciais R0006). As existentes
+   salvam ao editar; a linha em branco no fim cria uma nova. *@
+<DismissibleAlert @bind-Message="_errorMessage" />
+@foreach (var ev in Evolucoes)
+{
+    <MudStack @key="(ev.Id, _renderGeneration)" Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+        <MudNumericField T="int" Value="@ev.Nivel" ValueChanged="@(v => UpdateAsync(ev, v, ev.Descricao))" Label="Nível" Min="1" Style="width:6em;" />
+        <MudTextField T="string" Value="@ev.Descricao" ValueChanged="@(v => UpdateAsync(ev, ev.Nivel, v))" Label="Evolução" Lines="2" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                       aria-label="@($"Remover evolução do nível {ev.Nivel}")" title="Remover evolução"
+                       OnClick="@(() => DeleteAsync(ev))" />
+    </MudStack>
+}
+<MudStack Row="true" AlignItems="AlignItems.Center">
+    <MudNumericField T="int" @bind-Value="_novoNivel" Label="Nível" Min="1" Style="width:6em;" />
+    <MudTextField T="string" @bind-Value="_novaDescricao" Label="Nova evolução" Lines="2" />
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+               Disabled="@string.IsNullOrWhiteSpace(_novaDescricao)" OnClick="AddAsync">Adicionar evolução</MudButton>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public int Roll { get; set; }
+    [Parameter, EditorRequired] public List<ArcaEvolucaoResponse> Evolucoes { get; set; } = new();
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _novoNivel = 1;
+    private string _novaDescricao = "";
+    private string? _errorMessage;
+    // Bumped after a rejected save so the rows are re-created and show the server value again
+    // (the reload hands back equal parameters, so MudBlazor would keep the rejected text).
+    private int _renderGeneration;
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"arcas/{Roll}/evolucoes", new ArcaEvolucaoRequest(_novoNivel, _novaDescricao));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadAsStringAsync();
+            return;
+        }
+        _novaDescricao = "";
+        _novoNivel = 1;
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task UpdateAsync(ArcaEvolucaoResponse ev, int nivel, string descricao)
+    {
+        var response = await Http.PutAsJsonAsync($"arcas/{Roll}/evolucoes/{ev.Id}", new ArcaEvolucaoRequest(nivel, descricao));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadAsStringAsync();
+            _renderGeneration++;
+        }
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task DeleteAsync(ArcaEvolucaoResponse ev)
+    {
+        var response = await Http.DeleteAsync($"arcas/{Roll}/evolucoes/{ev.Id}");
+        if (!response.IsSuccessStatusCode)
+            _errorMessage = "Não foi possível remover a evolução.";
+        await OnChanged.InvokeAsync();
+    }
+}

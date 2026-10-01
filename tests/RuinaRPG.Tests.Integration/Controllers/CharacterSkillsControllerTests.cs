@@ -120,6 +120,19 @@ public class CharacterSkillsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Update_an_unknown_Pericia_key_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SkillGmUnknown", "skillunknown@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayerUnknown", "skillplayerunknown@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Inexistente", playerToken,
+            new UpdateCharacterSkillRequest(9, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task List_adds_the_sheets_Historico_bonus_to_the_matching_Pericias_Modificador()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SkillHistGm1", "skillhistgm1@teste.com");

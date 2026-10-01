@@ -37,7 +37,7 @@ public class CharacterRuneAndMasteryMigrationTests : IClassFixture<PostgresFixtu
         await db.SaveChangesAsync();
 
         db.CharacterRunes.Add(new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
-        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Maestria em Pontaria", Pericia = Pericia.Pontaria, Atributo = Atributo.Destreza, GastoMaestria = 3 });
+        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
         await db.SaveChangesAsync();
 
         (await db.CharacterRunes.CountAsync()).Should().Be(1);

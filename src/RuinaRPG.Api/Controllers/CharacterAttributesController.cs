@@ -7,14 +7,16 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/attributes")]
-public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterAttributeResponse>>> List(Guid sheetId)
@@ -60,7 +62,8 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
             return Forbid();
 
         var gastoTotal = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).SumAsync(a => a.Gasto);
-        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
         return new AttributePointBudgetResponse(gastoTotal, pontosDisponiveis);
     }
 
@@ -78,14 +81,20 @@ public class CharacterAttributesController(RuinaRpgDbContext db, IRulesDataProvi
         var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
 
         // "A soma de Gasto de todos os 8 atributos ... não pode ultrapassar o total de pontos que
-        // o personagem já recebeu (criação + níveis)" (2.a). Rejected rather than clamped —
-        // unlike Atual/Máximo, this budget only ever grows (levels/creation), so there's no
-        // legitimate scenario where a previously-valid Gasto becomes invalid out from under the
-        // player; the only way to exceed it is trying to spend more than they have.
-        var gastoDosOutros = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
-        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, rules.Niveis);
-        if (gastoDosOutros + request.Gasto > pontosDisponiveis)
-            return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");
+        // o personagem já recebeu (criação + níveis)" (2.a). Rejected rather than clamped. O
+        // Auditor pode reduzir o orçamento da Tabela de Níveis, deixando uma ficha acima dele; por
+        // isso a checagem vale só ao SUBIR o Gasto — baixar ou manter (e editar Bônus/Maestria)
+        // é sempre permitido.
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (request.Gasto > attribute.Gasto)
+        {
+            var gastoDosOutros = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
+            var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
+            if (gastoDosOutros + request.Gasto > pontosDisponiveis)
+                return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");
+        }
+        if (LimitesDeNivel.Gasto(atributo.ToString(), attribute.Gasto, request.Gasto, tabela.Limite(ChavesDeNivel.MaxAtributo, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+            return BadRequest(erroDeLimite);
 
         attribute.Gasto = request.Gasto;
         attribute.Bonus = request.Bonus;

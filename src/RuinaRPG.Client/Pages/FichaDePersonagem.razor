@@ -1,6 +1,7 @@
 @page "/fichas/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
@@ -225,6 +226,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
+        <ProgressaoDoNivelSection Nivel="@_form.Nivel" />
         <Section Title="Atributos">
             @if (_attributeBudget is not null)
             {
@@ -269,7 +271,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
+                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>
                                 @if (skill.ContaHistorico)
@@ -590,6 +592,7 @@
                     {
                         <MudText>@_racialAbility.ArcaDescricao</MudText>
                     }
+                    <ArcaEvolucoesButton Evolucoes="@_racialAbility.ArcaEvolucoes" />
                 }
             }
         </Section>
@@ -651,7 +654,7 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th></th></tr></thead>
+                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th>Tipo</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var rune in _runes)
                     {
@@ -660,6 +663,7 @@
                             <td>@rune.Nome</td>
                             <td>@rune.Descricao</td>
                             <td>@rune.Grau</td>
+                            <td>@RuneTipoRotulo.De(rune.Tipo)</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -674,7 +678,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -698,7 +702,7 @@
                                 <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
                                     @foreach (var skill in _skills)
                                     {
-                                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
+                                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                                     }
                                 </MudSelect>
                             </td>
@@ -923,6 +927,11 @@
     private AttributePointBudgetResponse? _attributeBudget;
     private SkillPointBudgetResponse? _skillBudget;
     private List<CharacterSkillResponse> _skills = new();
+
+    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
+    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
+    private string PericiaLabel(string chave) =>
+        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<CharacterAffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
     private List<CharacterWeaponResponse> _weapons = new();
@@ -998,6 +1007,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         _isGmCaller = authState.User.IsInRole("GM");
 
@@ -1163,7 +1173,7 @@
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         // A Variante change may have just cleared stale racial grants server-side (or made a fresh
@@ -1175,6 +1185,8 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
+        // Evoluções de Arca unlocked depend on Nível.
+        await LoadRacialAbilityAsync();
         return true;
     }
 
@@ -1295,7 +1307,8 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/skills/{pericia}", new UpdateCharacterSkillRequest(gasto, current.AtributoEscolhido));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 
@@ -1535,7 +1548,7 @@
 
         var request = _runeForm.DoBanco
             ? new AddCharacterRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
-            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId);
+            : new AddCharacterRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId, Tipo: _runeForm.TipoOuNulo);
 
         var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)

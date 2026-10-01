@@ -55,8 +55,8 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         await db.SaveChangesAsync();
 
         db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = AtributoCriatura.Forca, Gasto = 3 });
-        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Pericia = Pericia.Atletismo, Gasto = 6 });
-        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Nome = "Maestria em Pontaria", Pericia = Pericia.Pontaria, Atributo = AtributoCriatura.Destreza, GastoMaestria = 3 });
+        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
+        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = AtributoCriatura.Destreza, GastoMaestria = 3 });
         db.CreatureWeapons.Add(new CreatureWeapon { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
         db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
         db.CreatureShields.Add(new CreatureShield { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });

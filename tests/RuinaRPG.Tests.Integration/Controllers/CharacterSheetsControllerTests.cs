@@ -544,8 +544,10 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         // each on its own line instead of a raw "<br>" showing up as literal text.
         body!.BonusTexts.Should().HaveCount(10);
         body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
-        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
-        body.BonusTexts.Should().Contain("+1 Ponto de Atributo");
+        // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
+        // (column names are free text the Auditor can edit, so they can't be singularized).
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
     }
 
     [Fact]
@@ -1268,6 +1270,32 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body!.ArcaRolada.Should().Be(7);
         body.ArcaNome.Should().Be("A Chama Eterna");
         body.ArcaDescricao.Should().Be("Resistência ao fogo por 1 cena.");
+    }
+
+    [Fact]
+    public async Task RacialAbility_lists_only_Arca_evolucoes_unlocked_by_the_character_level()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmArcaEvo1", "sheetarcaevo1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerArcaEvo1", "sheetplayerarcaevo1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Arca Evo 1");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/7", gmToken, new UpdateArcaEntryRequest("A Chama Eterna", "Resistência ao fogo.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/7/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "nível um")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/7/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "nível dois")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Sinir", ArcaRolada = 7, ExperienciaAtual = 0 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("nível um");
+
+        // XP 50 is the Nível 2 threshold (NivelCalculator) — the level-2 evolução unlocks after this save.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Sinir", ArcaRolada = 7, ExperienciaAtual = 50 }));
+        var atLevel2 = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        atLevel2!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("nível um", "nível dois");
     }
 
     [Fact]

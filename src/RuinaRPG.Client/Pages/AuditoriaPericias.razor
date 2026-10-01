@@ -1,0 +1,216 @@
+@page "/auditoria/pericias"
+@inject HttpClient Http
+@inject PericiaCatalogo Catalogo
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Shared
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Perícias</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Perícias">
+        <TitleInfo>
+            <InfoPopup Title="Como funciona a Auditoria de Perícias">
+                Aqui você adiciona, edita e remove as perícias usadas em todas as fichas. O Atributo sugerido só vem pré-selecionado numa ficha nova — o jogador pode trocar a qualquer momento, pois o GM pode pedir uma perícia com outro atributo numa ação específica. A Descrição aparece ao passar o mouse sobre o nome da perícia na ficha (no celular, ao tocar no nome). "Disponível para Criaturas" controla se a perícia aparece nas fichas de Criatura. Prontidão, Reflexos e Fortitude (ícone de cadeado) entram em fórmulas: não podem ser removidas nem retiradas das Criaturas, mas podem ser renomeadas.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+            <MudText Typo="Typo.subtitle1">Nova perícia</MudText>
+            <MudTextField T="string" @bind-Value="_novaNome" Label="Nome" />
+            <MudTextField T="string" @bind-Value="_novaDescricao" Label="Descrição" Lines="2" />
+            <MudSelect T="string" @bind-Value="_novoAtributo" Label="Atributo sugerido">
+                <MudSelectItem T="string" Value="@("")">—</MudSelectItem>
+                @foreach (var atributo in Atributos)
+                {
+                    <MudSelectItem T="string" Value="@atributo">@AtributoDisplay.Label(atributo)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudCheckBox T="bool" @bind-Value="_novaCriaturas" Label="Disponível para Criaturas" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">Adicionar</MudButton>
+
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-4">
+                <thead>
+                    <tr><th>Nome</th><th>Descrição</th><th>Atributo sugerido</th><th>Criaturas</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _ativas)
+                    {
+                        <tr @key="(p.Id, _renderGeneration)">
+                            <td><MudTextField T="string" Value="@p.Nome" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(v, p.Descricao, p.AtributoSugerido, p.DisponivelParaCriaturas)))" /></td>
+                            <td><MudTextField T="string" Value="@p.Descricao" Lines="2" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(p.Nome, v, p.AtributoSugerido, p.DisponivelParaCriaturas)))" /></td>
+                            <td>
+                                <MudSelect T="string" Value="@(p.AtributoSugerido ?? "")" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(p.Nome, p.Descricao, string.IsNullOrEmpty(v) ? null : v, p.DisponivelParaCriaturas)))">
+                                    <MudSelectItem T="string" Value="@("")">—</MudSelectItem>
+                                    @foreach (var atributo in Atributos)
+                                    {
+                                        <MudSelectItem T="string" Value="@atributo">@AtributoDisplay.Label(atributo)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td><MudCheckBox T="bool" Value="@p.DisponivelParaCriaturas" Disabled="@p.Protegida" ValueChanged="@(v => SaveAsync(p, new SalvarPericiaRequest(p.Nome, p.Descricao, p.AtributoSugerido, v)))" /></td>
+                            <td>
+                                @if (p.Protegida)
+                                {
+                                    <span title="Usada em fórmulas — não pode ser removida"><MudIcon Icon="@Icons.Material.Filled.Lock" /></span>
+                                }
+                                else
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" aria-label="@($"Remover {p.Nome}")" OnClick="@(() => AskRemove(p))" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </ChildContent>
+    </Section>
+
+    @if (_removidas.Count > 0)
+    {
+        <Section Title="Removidas">
+            <TitleInfo>
+                <InfoPopup Title="Sobre as perícias removidas">
+                    Remover uma perícia devolve os pontos gastos nela ao saldo de Pontos de Perícia de todas as fichas, para serem redistribuídos. Enquanto removida, ela some das fichas, e os bônus de Histórico, requisitos de Passiva e Maestrias ligados a ela deixam de valer. Ao restaurar, ela volta zerada em todas as fichas.
+                </InfoPopup>
+            </TitleInfo>
+            <ChildContent>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <tbody>
+                        @foreach (var p in _removidas)
+                        {
+                            <tr>
+                                <td>@p.Nome</td>
+                                <td><MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Restore" OnClick="@(() => RestoreAsync(p))">Restaurar</MudButton></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </ChildContent>
+        </Section>
+    }
+}
+
+<MudDialog @bind-Visible="_removeDialogOpen">
+    <TitleContent>Remover perícia</TitleContent>
+    <DialogContent>
+        Remover @_pendingRemove?.Nome? Os pontos gastos nesta perícia serão devolvidos em todas as fichas.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _removeDialogOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmRemoveAsync">Remover</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly string[] Atributos =
+        { "Instinto", "Vontade", "Vigor", "Influencia", "Agilidade", "Destreza", "Astucia", "Forca" };
+
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Perícias"),
+    };
+
+    private List<PericiaAuditoriaResponse> _ativas = new();
+    private List<PericiaAuditoriaResponse> _removidas = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    // Bumped on a failed write: the reloaded row has the same values as before the edit, so Blazor
+    // would not re-render the inputs and they would keep the rejected text. A new @key remounts them.
+    private int _renderGeneration;
+
+    private string? _novaNome;
+    private string? _novaDescricao;
+    private string _novoAtributo = "";
+    private bool _novaCriaturas = false;
+
+    private bool _removeDialogOpen;
+    private PericiaAuditoriaResponse? _pendingRemove;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("pericias/auditoria");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar as Perícias.";
+            return;
+        }
+
+        var todas = await response.Content.ReadFromJsonAsync<List<PericiaAuditoriaResponse>>() ?? new();
+        _ativas = todas.Where(p => !p.IsDeleted).ToList();
+        _removidas = todas.Where(p => p.IsDeleted).ToList();
+    }
+
+    // Common tail of every write: a non-success shows the API's text and reloads so edited fields
+    // revert; a success refreshes the shared catalog so the rest of the app sees the change.
+    private async Task<bool> FinishAsync(HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return false;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            _renderGeneration++;
+            await LoadAsync();
+            return false;
+        }
+
+        await LoadAsync();
+        await Catalogo.RecarregarAsync();
+        return true;
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("pericias",
+            new SalvarPericiaRequest(_novaNome ?? "", _novaDescricao, string.IsNullOrEmpty(_novoAtributo) ? null : _novoAtributo, _novaCriaturas));
+        if (await FinishAsync(response))
+        {
+            _novaNome = null;
+            _novaDescricao = null;
+            _novoAtributo = "";
+            _novaCriaturas = false;
+        }
+    }
+
+    private async Task SaveAsync(PericiaAuditoriaResponse p, SalvarPericiaRequest body) =>
+        await FinishAsync(await Http.PutAsJsonAsync($"pericias/{p.Id}", body));
+
+    private void AskRemove(PericiaAuditoriaResponse p)
+    {
+        _pendingRemove = p;
+        _removeDialogOpen = true;
+    }
+
+    private async Task ConfirmRemoveAsync()
+    {
+        _removeDialogOpen = false;
+        if (_pendingRemove is null)
+            return;
+        var p = _pendingRemove;
+        _pendingRemove = null;
+        await FinishAsync(await Http.DeleteAsync($"pericias/{p.Id}"));
+    }
+
+    private async Task RestoreAsync(PericiaAuditoriaResponse p) =>
+        await FinishAsync(await Http.PostAsync($"pericias/{p.Id}/restaurar", null));
+}

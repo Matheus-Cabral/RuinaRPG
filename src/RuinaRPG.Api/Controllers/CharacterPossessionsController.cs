@@ -10,13 +10,14 @@ using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}")]
-public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProvider rules) : ControllerBase
+public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost("inventory")]
     public async Task<ActionResult<CharacterInventoryItemResponse>> AddInventoryItem(Guid sheetId, AddCharacterInventoryItemRequest request)
@@ -227,7 +228,8 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         // not exceed it, and Negativas total (magnitude; Custo is stored negative) may not exceed it
         // either. Mirrors CharacterAttributesController's Atributos enforcement (2.a).
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
         // Racial grants (IsRacial) are excluded — they cost 0 and never count toward this budget,
         // no matter what the underlying Trait's own Custo is (Requisitos - Ficha de Personagem 5.d).
         var existingTotal = await db.CharacterTraits
@@ -268,7 +270,8 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, IRulesDataProv
         var positivas = rows.Where(r => r.Polaridade == "Positiva").ToList();
         var negativas = rows.Where(r => r.Polaridade == "Negativa").ToList();
         var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
         return new CharacterTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
     }
 

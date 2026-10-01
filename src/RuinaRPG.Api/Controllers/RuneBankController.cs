@@ -31,6 +31,9 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
         if (imageId is not null && !await RuneImageAccess.CanUseAsync(db, imageId.Value, gmId, gmId, null))
             return BadRequest("Imagem não encontrada.");
 
+        if (!RuneTipo.TryParse(request.Tipo, out var tipo))
+            return BadRequest(RuneTipo.UnknownMessage);
+
         var entry = new RuneBankEntry
         {
             Id = Guid.NewGuid(),
@@ -38,6 +41,7 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
             Nome = request.Nome,
             Descricao = request.Descricao,
             Grau = request.Grau,
+            Tipo = tipo,
             ImageId = imageId
         };
         db.RuneBankEntries.Add(entry);
@@ -48,7 +52,7 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<RuneBankEntryResponse>>> List([FromQuery] string? nome, [FromQuery] int? grau)
+    public async Task<ActionResult<List<RuneBankEntryResponse>>> List([FromQuery] string? nome, [FromQuery] int? grau, [FromQuery] string? tipo)
     {
         var gmId = CurrentUserId();
         var query = db.RuneBankEntries.Where(e => e.GmId == gmId);
@@ -58,6 +62,16 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
 
         if (grau is not null)
             query = query.Where(e => e.Grau == grau);
+
+        // "Nenhum" filtra as Runas sem tipo; "Arcana"/"Negra" filtram pelo tipo; vazio não filtra.
+        if (tipo == "Nenhum")
+            query = query.Where(e => e.Tipo == null);
+        else if (!string.IsNullOrEmpty(tipo))
+        {
+            if (!RuneTipo.TryParse(tipo, out var tipoFiltro))
+                return BadRequest(RuneTipo.UnknownMessage);
+            query = query.Where(e => e.Tipo == tipoFiltro);
+        }
 
         var entries = await query.OrderBy(e => e.Nome).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, entries.Select(e => e.ImageId));
@@ -80,9 +94,13 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
         if (imageId is not null && imageId != entry.ImageId && !await RuneImageAccess.CanUseAsync(db, imageId.Value, gmId, gmId, null))
             return BadRequest("Imagem não encontrada.");
 
+        if (!RuneTipo.TryParse(request.Tipo, out var tipo))
+            return BadRequest(RuneTipo.UnknownMessage);
+
         entry.Nome = request.Nome;
         entry.Descricao = request.Descricao;
         entry.Grau = request.Grau;
+        entry.Tipo = tipo;
         entry.ImageId = imageId;
         await db.SaveChangesAsync();
 
@@ -103,7 +121,7 @@ public class RuneBankController(RuinaRpgDbContext db) : ControllerBase
     }
 
     private static RuneBankEntryResponse ToResponse(RuneBankEntry entry, Dictionary<Guid, string> imageUrls) =>
-        new(entry.Id.ToString(), entry.Nome, entry.Descricao, entry.Grau, entry.ImageId?.ToString(), RuneImageAccess.UrlOf(imageUrls, entry.ImageId));
+        new(entry.Id.ToString(), entry.Nome, entry.Descricao, entry.Grau, entry.ImageId?.ToString(), RuneImageAccess.UrlOf(imageUrls, entry.ImageId), RuneTipo.Format(entry.Tipo));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

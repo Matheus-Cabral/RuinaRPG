@@ -302,4 +302,134 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task AddEvolucao_on_an_unfilled_roll_creates_the_Arca_row_and_List_returns_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm1", "arcaevo1@teste.com");
+
+        var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/4/evolucoes", gmToken,
+            new ArcaEvolucaoRequest(5, "A chama queima mais forte.")));
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await create.Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+        created!.Nivel.Should().Be(5);
+
+        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", gmToken)))
+            .Content.ReadFromJsonAsync<List<ArcaEntryResponse>>();
+        var row = list!.Single(a => a.Roll == 4);
+        row.Nome.Should().Be("");
+        row.Evolucoes.Should().ContainSingle().Which.Descricao.Should().Be("A chama queima mais forte.");
+        list!.Single(a => a.Roll == 5).Evolucoes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task List_returns_evolucoes_ordered_by_level_then_creation()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm2", "arcaevo2@teste.com");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/2/evolucoes", gmToken, new ArcaEvolucaoRequest(10, "dez")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/2/evolucoes", gmToken, new ArcaEvolucaoRequest(3, "tres-a")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/2/evolucoes", gmToken, new ArcaEvolucaoRequest(3, "tres-b")));
+
+        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", gmToken)))
+            .Content.ReadFromJsonAsync<List<ArcaEntryResponse>>();
+
+        list!.Single(a => a.Roll == 2).Evolucoes.Select(e => e.Descricao).Should().Equal("tres-a", "tres-b", "dez");
+    }
+
+    [Fact]
+    public async Task UpdateEvolucao_changes_level_and_text()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm3", "arcaevo3@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/1/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "antes"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+
+        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/arcas/1/evolucoes/{created!.Id}", gmToken, new ArcaEvolucaoRequest(7, "depois")));
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", gmToken)))
+            .Content.ReadFromJsonAsync<List<ArcaEntryResponse>>();
+        var ev = list!.Single(a => a.Roll == 1).Evolucoes.Single();
+        ev.Nivel.Should().Be(7);
+        ev.Descricao.Should().Be("depois");
+    }
+
+    [Fact]
+    public async Task DeleteEvolucao_removes_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm4", "arcaevo4@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/9/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "x"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+
+        var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/arcas/9/evolucoes/{created!.Id}", gmToken));
+
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", gmToken)))
+            .Content.ReadFromJsonAsync<List<ArcaEntryResponse>>();
+        list!.Single(a => a.Roll == 9).Evolucoes.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(0, 1, "texto")]
+    [InlineData(19, 1, "texto")]
+    [InlineData(1, 0, "texto")]
+    [InlineData(1, 51, "texto")]
+    [InlineData(1, 5, "   ")]
+    public async Task AddEvolucao_with_invalid_input_returns_400(int roll, int nivel, string descricao)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"ArcaEvoGmV{roll}{nivel}{descricao.Length}", $"arcaevov{roll}{nivel}{descricao.Length}@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/arcas/{roll}/evolucoes", gmToken, new ArcaEvolucaoRequest(nivel, descricao)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateEvolucao_with_invalid_level_returns_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm5", "arcaevo5@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/1/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "x"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/arcas/1/evolucoes/{created!.Id}", gmToken, new ArcaEvolucaoRequest(51, "x")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_or_delete_of_another_gms_evolucao_returns_404()
+    {
+        var ownerToken = await RegisterGmAndGetTokenAsync("ArcaEvoOwner", "arcaevoowner@teste.com");
+        var otherToken = await RegisterGmAndGetTokenAsync("ArcaEvoOther", "arcaevoother@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", ownerToken, new ArcaEvolucaoRequest(2, "x"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/arcas/3/evolucoes/{created!.Id}", otherToken, new ArcaEvolucaoRequest(2, "y"))))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/arcas/3/evolucoes/{created.Id}", otherToken)))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Update_of_an_evolucao_through_the_wrong_roll_returns_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm6", "arcaevo6@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "x"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/arcas/4/evolucoes/{created!.Id}", gmToken, new ArcaEvolucaoRequest(2, "y")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AddEvolucao_by_a_jogador_returns_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaEvoGm7", "arcaevo7@teste.com");
+        var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "ArcaEvoJog7", "arcaevojog7@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", jogadorToken, new ArcaEvolucaoRequest(2, "x")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

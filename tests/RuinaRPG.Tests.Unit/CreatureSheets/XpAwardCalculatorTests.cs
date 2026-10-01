@@ -6,11 +6,11 @@ namespace RuinaRPG.Tests.Unit.CreatureSheets;
 public class XpAwardCalculatorTests
 {
     [Fact]
-    public void Kill_is_15_percent_of_experiencia_atual_rounded_down()
+    public void Abate_is_15_percent_of_experiencia_atual_rounded_down()
     {
-        // "Kill = piso(Experiência atual × 0,15)" — Ficha de Criaturas R0004.
-        XpAwardCalculator.Kill(experienciaAtual: 100).Should().Be(15);
-        XpAwardCalculator.Kill(experienciaAtual: 97).Should().Be(14); // 14.55 -> 14
+        // "Abate = piso(Experiência atual × 0,15)" — Ficha de Criaturas R0004.
+        XpAwardCalculator.Abate(experienciaAtual: 100).Should().Be(15);
+        XpAwardCalculator.Abate(experienciaAtual: 97).Should().Be(14); // 14.55 -> 14
     }
 
     [Fact]

@@ -11,6 +11,7 @@ using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/campaigns/{campaignId}/grants")]
-public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
+public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Grant(Guid campaignId, GrantSheetRequest request)
@@ -48,7 +49,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             if (sourceSheetId is null)
             {
                 newSheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
-                SeedBlankNpcChildren(newSheet.Id);
+                await SeedBlankNpcChildrenAsync(newSheet.Id);
             }
             else
             {
@@ -71,7 +72,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
             if (sourceSheetId is null)
             {
                 newSheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
-                SeedBlankCreatureChildren(newSheet.Id);
+                await SeedBlankCreatureChildrenAsync(newSheet.Id);
             }
             else
             {
@@ -132,26 +133,26 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
     /// sheet created directly, and downstream reads (e.g. NpcSheetsController.Get) assume every
     /// Atributo/Pericia has exactly one row.
     /// </summary>
-    private void SeedBlankNpcChildren(Guid npcSheetId)
+    private async Task SeedBlankNpcChildrenAsync(Guid npcSheetId)
     {
         foreach (var atributo in Enum.GetValues<Atributo>())
             db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Atributo = atributo });
-        foreach (var pericia in Enum.GetValues<Pericia>())
-            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Pericia = pericia });
+        foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
+            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
             db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Slot = slot });
     }
 
     /// <summary>
     /// Mirrors CreatureSheetsController.Create's child-row seeding exactly, including the
-    /// shorter CreatureSkillAllowList (R0005's fixed shorter list) instead of every Pericia.
+    /// shorter list of Perícias flagged DisponivelParaCriaturas (R0005) instead of every Perícia.
     /// </summary>
-    private void SeedBlankCreatureChildren(Guid creatureSheetId)
+    private async Task SeedBlankCreatureChildrenAsync(Guid creatureSheetId)
     {
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
             db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Atributo = atributo });
-        foreach (var pericia in CreatureSkillAllowList.AllowedPericias)
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Pericia = pericia });
+        foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
             db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Slot = slot });
     }
@@ -223,13 +224,13 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in await db.NpcAttributes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcAttributes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
         foreach (var s in await db.NpcSkills.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcSkills.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Pericia = s.Pericia, Gasto = s.Gasto });
+            db.NpcSkills.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
         foreach (var a in await db.NpcAffinities.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Elemento = a.Elemento, ElementoValor = a.ElementoValor, SubElemento = a.SubElemento, SubElementoValor = a.SubElementoValor, SegundaEssencia = a.SegundaEssencia, SegundaEssenciaValor = a.SegundaEssenciaValor, Experiencia = a.Experiencia });
         foreach (var r in await db.NpcRunes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcRunes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau, ImageId = r.ImageId });
+            db.NpcRunes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau, Tipo = r.Tipo, ImageId = r.ImageId });
         foreach (var m in await db.NpcMasteries.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcMasteries.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = m.Nome, Pericia = m.Pericia, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
+            db.NpcMasteries.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
         foreach (var w in await db.NpcWeapons.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcWeapons.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ItemId = w.ItemId, IsEquipped = w.IsEquipped, DurabilidadeAtual = w.DurabilidadeAtual });
         foreach (var slot in await db.NpcArmorSlots.Where(x => x.NpcSheetId == sourceId).ToListAsync())
@@ -282,9 +283,9 @@ public class CampaignGrantsController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in await db.CreatureAttributes.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
             db.CreatureAttributes.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
         foreach (var s in await db.CreatureSkills.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureSkills.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Pericia = s.Pericia, Gasto = s.Gasto });
+            db.CreatureSkills.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
         foreach (var m in await db.CreatureMasteries.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureMasteries.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Nome = m.Nome, Pericia = m.Pericia, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
+            db.CreatureMasteries.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
         foreach (var w in await db.CreatureWeapons.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
             db.CreatureWeapons.Add(new()
             {

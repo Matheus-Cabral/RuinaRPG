@@ -272,8 +272,10 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         body!.BonusTexts.Should().HaveCount(10);
         body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
-        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
-        body.BonusTexts.Should().Contain("+1 Ponto de Atributo");
+        // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
+        // (column names are free text the Auditor can edit, so they can't be singularized).
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
     }
 
     [Fact]
@@ -367,14 +369,14 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         // The R0005 allow-list has 20 members (not all 39 Pericia values, unlike Ficha de NPCs).
         skills.Should().HaveCount(20);
         skills.Should().OnlyContain(s => s.Gasto == 0);
-        skills.Select(s => s.Pericia).Should().BeEquivalentTo(CreatureSkillAllowList.AllowedPericias);
+        skills.Select(s => s.PericiaId).Should().BeEquivalentTo(RuinaRPG.Domain.CharacterSheets.PericiasIniciais.Todas.Where(p => p.DisponivelParaCriaturas).Select(p => p.Id));
         // ArmorSlotType has 3 members (Capacete, Superior, Inferior) — not 6.
         armorSlots.Should().HaveCount(3);
         armorSlots.Should().OnlyContain(a => a.ItemId == null);
     }
 
     [Fact]
-    public async Task Get_computes_Kill_and_Assistencia_from_ExperienciaAtual()
+    public async Task Get_computes_Abate_and_Assistencia_from_ExperienciaAtual()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmXp1", "criaturaxp1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -384,7 +386,7 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
-        body!.Kill.Should().Be(15);
+        body!.Abate.Should().Be(15);
         body.Assistencia.Should().Be(12);
     }
 

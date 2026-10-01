@@ -7,14 +7,16 @@ using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
+public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
@@ -26,7 +28,9 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).OrderBy(s => s.Pericia).ToListAsync();
+        var porId = await pericias.PorIdAsync();
+        var ativas = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToList();
+        var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         var artefatos = await GetArtifactBonusInputsAsync(sheetId);
 
@@ -35,21 +39,30 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
-        return skills
-            .Select(s =>
+        return ativas
+            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
+            .Select(p =>
             {
-                var modificador = SkillFormulas.Modificador(s.Gasto, 0);
-                var total = s.AtributoEscolhido is not null && attributeTotals.TryGetValue(s.AtributoEscolhido.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+                linhas.TryGetValue(p.Id, out var s);
+                var gasto = s?.Gasto ?? 0;
+                var atributo = s?.AtributoEscolhido ?? SugeridoParaCriatura(p);
+                var modificador = SkillFormulas.Modificador(gasto, 0);
+                var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
+                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                     : (int?)null;
-                return new CreatureSkillResponse(s.Pericia.ToString(), s.Gasto, modificador, s.AtributoEscolhido?.ToString(), total);
+                return new CreatureSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, p.Nome, p.Descricao);
             })
             .ToList();
     }
 
     [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, Pericia pericia, UpdateCreatureSkillRequest request)
+    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateCreatureSkillRequest request)
     {
+        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
+        var def = await pericias.AtivaPorChaveAsync(pericia);
+        if (def is null)
+            return NotFound();
+
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         if (sheet is null)
             return NotFound();
@@ -57,13 +70,16 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values have a seeded
-        // CreatureSkill row. Checked before the SingleAsync below so a disallowed-but-real Pericia
-        // (e.g. Alquimia) 400s instead of 500ing on a row that was never seeded.
-        if (!CreatureSkillAllowList.IsAllowed(pericia))
+        // R0005's "lista fixa mais curta" — só Perícias com DisponivelParaCriaturas aparecem na Criatura.
+        if (!def.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
-        var skill = await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheetId && s.Pericia == pericia);
+        var skill = await db.CreatureSkills.SingleOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == def.Id);
+        if (skill is null)
+        {
+            skill = new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheetId, PericiaId = def.Id };
+            db.CreatureSkills.Add(skill);
+        }
         skill.Gasto = request.Gasto;
         skill.AtributoEscolhido = Enum.TryParse<AtributoCriatura>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
         await db.SaveChangesAsync();
@@ -83,6 +99,10 @@ public class CreatureSkillsController(RuinaRpgDbContext db) : ControllerBase
             .Where(i => i.TipoDeAlvo != null)
             .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
             .ToListAsync();
+
+    /// <summary>Atributo sugerido como Atributo de Criatura; nulo se a Criatura não tem esse Atributo.</summary>
+    private static AtributoCriatura? SugeridoParaCriatura(PericiaDefinicao p) =>
+        p.AtributoSugerido is { } a && Enum.TryParse<AtributoCriatura>(a.ToString(), out var c) ? c : null;
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

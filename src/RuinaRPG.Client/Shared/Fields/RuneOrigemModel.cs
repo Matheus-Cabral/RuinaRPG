@@ -13,6 +13,11 @@ public class RuneOrigemModel
     public int Grau { get; set; }
     /// <summary>Imagem opcional (só na origem "do zero"); vazio = sem imagem.</summary>
     public string ImageId { get; set; } = "";
+    /// <summary>"Arcana", "Negra" ou "" (sem tipo). Só vale na origem "do zero"; do banco o tipo vem da entrada.</summary>
+    public string Tipo { get; set; } = "";
+
+    /// <summary>O Tipo no formato do contrato: null quando sem tipo.</summary>
+    public string? TipoOuNulo => string.IsNullOrEmpty(Tipo) ? null : Tipo;
 
     public bool DoBanco => Origem == "Banco";
 
@@ -33,5 +38,6 @@ public class RuneOrigemModel
         Descricao = "";
         Grau = 0;
         ImageId = "";
+        Tipo = "";
     }
 }

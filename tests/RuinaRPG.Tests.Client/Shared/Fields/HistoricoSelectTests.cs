@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Shared.Fields;
+using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -14,8 +15,18 @@ namespace RuinaRPG.Tests.Client.Shared.Fields;
 
 public class HistoricoSelectTests : MudBunitContext
 {
-    private static HttpClient ClientWithHistoricos() => FakeHttpMessageHandler.CreateClient(request =>
-        new HttpResponseMessage(HttpStatusCode.OK)
+    // HistoricoSelect também carrega o PericiaCatalogo (GET pericias) para nomear o +6/+3.
+    private static HttpClient ClientWithHistoricos(string periciaMaisSeis = "ArmasBrancas") => FakeHttpMessageHandler.CreateClient(request =>
+        request.RequestUri!.AbsolutePath.EndsWith("pericias")
+            ? new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new List<PericiaResponse>
+                {
+                    new(4, "ArmasBrancas", "Armas Brancas", null, null, false, false),
+                    new(38, "Sobrevivencia", "Sobrevivência", null, null, true, false),
+                }),
+            }
+            : new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(new[]
             {
@@ -24,7 +35,7 @@ public class HistoricoSelectTests : MudBunitContext
                     Id = "hist-1",
                     Nome = "Órfão de Guerra",
                     Descricao = "Cresceu entre ruínas e perdas.",
-                    PericiaMaisSeis = "ArmasBrancas",
+                    PericiaMaisSeis = periciaMaisSeis,
                     PericiaMaisTres = "Sobrevivencia",
                     IsCustomized = false,
                 },
@@ -69,7 +80,21 @@ public class HistoricoSelectTests : MudBunitContext
 
         cut.Markup.Should().Contain("Órfão de Guerra");
         cut.Markup.Should().Contain("Cresceu entre ruínas e perdas.");
-        cut.Markup.Should().Contain("+6");
-        cut.Markup.Should().Contain("+3");
+        cut.Markup.Should().Contain("+6 Armas Brancas");
+        cut.Markup.Should().Contain("+3 Sobrevivência");
+    }
+
+    [Fact]
+    public async Task A_removed_Pericia_is_left_out_of_the_bonus_line_instead_of_showing_its_Chave()
+    {
+        Services.AddScoped(_ => ClientWithHistoricos("PericiaRemovida"));
+
+        var cut = RenderSelect("hist-1");
+        await Task.Delay(50);
+        cut.Find("button").Click();
+
+        cut.Markup.Should().NotContain("PericiaRemovida");
+        cut.Markup.Should().NotContain("+6");
+        cut.Markup.Should().Contain("+3 Sobrevivência");
     }
 }

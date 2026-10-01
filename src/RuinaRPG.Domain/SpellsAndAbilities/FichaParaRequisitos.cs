@@ -7,7 +7,8 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 /// <para><see cref="TemIdentidadeDePersonagem"/> é falso na Criatura, que não tem Vocação, Classe, Linhagem,
 /// Variante, Grau/Círculo, Coração de Mana, Estrela nem Histórico — requisitos nesses campos são ignorados.
 /// Nos dicionários, só entram as chaves que aquele tipo de ficha tem: uma chave ausente é ignorada; um
-/// valor presente mas nulo (Perícia sem atributo escolhido, sem Total) não cumpre.</para>
+/// valor presente mas nulo (Perícia sem atributo escolhido, sem Total) não cumpre. As Perícias são chaveadas pelo Id
+/// da tabela Pericias.</para>
 /// </summary>
 public sealed record FichaParaRequisitos(
     bool TemIdentidadeDePersonagem,
@@ -23,4 +24,4 @@ public sealed record FichaParaRequisitos(
     Guid? HistoricoId,
     IReadOnlyDictionary<Atributo, int> Atributos,
     IReadOnlyDictionary<SubAtributo, int> SubAtributos,
-    IReadOnlyDictionary<Pericia, int?> Pericias);
+    IReadOnlyDictionary<int, int?> Pericias);

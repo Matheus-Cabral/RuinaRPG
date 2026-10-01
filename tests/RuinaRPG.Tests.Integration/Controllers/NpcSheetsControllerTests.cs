@@ -339,6 +339,64 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Theory]
+    [InlineData(1000, 150, 120)]
+    [InlineData(149, 22, 17)]
+    public async Task Get_by_the_gm_computes_Abate_and_Assistencia_from_ExperienciaAtual(int xp, int abate, int assistencia)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"NpcGmXp{xp}", $"npcgmxp{xp}@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, xp));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        body!.Abate.Should().Be(abate);
+        body.Assistencia.Should().Be(assistencia);
+    }
+
+    [Fact]
+    public async Task Abate_and_Assistencia_follow_ExperienciaAtual_and_Nivel_changes()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmXpChange", "npcgmxpchange@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 1000));
+        var before = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 2000));
+        var after = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/nivel", gmToken, 5));
+        var viaNivel = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        before!.Abate.Should().Be(150);
+        after!.Abate.Should().Be(300);
+        after.Assistencia.Should().Be(240);
+        viaNivel!.ExperienciaAtual.Should().Be(500);
+        viaNivel.Abate.Should().Be(75);
+        viaNivel.Assistencia.Should().Be(60);
+    }
+
+    [Fact]
+    public async Task Get_by_the_player_the_sheet_was_granted_to_hides_Abate_and_Assistencia()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmXpHide", "npcgmxphide@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorXpHide", "npcjogadorxphide@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Xp");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", playerToken, 1000));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken)))
+            .Content.ReadFromJsonAsync<NpcSheetResponse>();
+
+        body!.ExperienciaAtual.Should().Be(1000);
+        body.Abate.Should().BeNull();
+        body.Assistencia.Should().BeNull();
+    }
+
     [Fact]
     public async Task UpdateNivel_pulls_ExperienciaAtual_to_that_levels_minimum_XP()
     {
@@ -400,8 +458,10 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         body!.BonusTexts.Should().HaveCount(10);
         body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
-        body.BonusTexts.Should().Contain("+9 Pontos de Atributo");
-        body.BonusTexts.Should().Contain("+1 Ponto de Atributo");
+        // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
+        // (column names are free text the Auditor can edit, so they can't be singularized).
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
+        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
     }
 
     [Fact]
@@ -690,6 +750,54 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var body = await response.Content.ReadFromJsonAsync<RacialAbilityResponse>();
         body!.ArcaRolada.Should().Be(3);
         body.ArcaNome.Should().Be("Sombra Fugaz");
+    }
+
+    [Fact]
+    public async Task RacialAbility_lists_only_Arca_evolucoes_unlocked_by_the_npc_level()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo1", "npcarcaevo1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/3", gmToken, new UpdateArcaEntryRequest("Sombra Fugaz", "Some por 1 turno.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(5, "cinco")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "dois")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(6, "seis")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 3, Nivel = 5 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("dois", "cinco");
+    }
+
+    [Fact]
+    public async Task RacialAbility_has_no_Arca_evolucoes_when_the_npc_is_not_Humano()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo2", "npcarcaevo2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "um")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 3, Nivel = 5 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos", ArcaRolada = 3, Nivel = 5 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaEvolucoes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RacialAbility_treats_an_Arca_created_only_by_an_evolucao_as_not_registered_but_lists_the_evolucao()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaEvo3", "npcarcaevo3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/8/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "um")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = 8, Nivel = 1 }));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.ArcaNome.Should().BeNull();
+        body.ArcaDescricao.Should().BeNull();
+        body.ArcaEvolucoes.Select(e => e.Descricao).Should().Equal("um");
     }
 
     [Fact]

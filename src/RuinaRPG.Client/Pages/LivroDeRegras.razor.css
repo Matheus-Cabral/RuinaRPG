@@ -112,3 +112,9 @@
     border-radius: var(--rr-radius-sm);
     padding: 0 4px;
 }
+
+/* Tabelas largas (ex.: Tabela de Níveis gerada, 14+ colunas) rolam na horizontal dentro do conteúdo em vez de estourar a página. */
+.rulebook-content {
+    overflow-x: auto;
+    min-width: 0;
+}

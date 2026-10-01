@@ -2,6 +2,7 @@
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Client.Shared
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 
 @* R0001 1.a — dropdown dos Históricos do catálogo + ícone de descrição, mesma ideia de popup que
    EstrelaSelect.razor usa — mas as opções vêm do catálogo ao vivo (GET api/historicos) em vez de
@@ -18,9 +19,11 @@
     {
         <InfoPopup Title="@Selecionado.Nome">
             <MudText>@Selecionado.Descricao</MudText>
-            <MudText Typo="Typo.body2" Class="mt-2">
-                <em>+6 @PericiaDisplay.Label(Selecionado.PericiaMaisSeis) / +3 @PericiaDisplay.Label(Selecionado.PericiaMaisTres)</em>
-            </MudText>
+            @* Uma Perícia removida não está no catálogo ativo: o bônus dela deixou de valer e não é listado. *@
+            @if (BonusLine is not null)
+            {
+                <MudText Typo="Typo.body2" Class="mt-2"><em>@BonusLine</em></MudText>
+            }
         </InfoPopup>
     }
 </div>
@@ -33,8 +36,24 @@
 
     private HistoricoResponse? Selecionado => _historicos.FirstOrDefault(h => h.Id == Value);
 
+    private string? BonusLine
+    {
+        get
+        {
+            if (Selecionado is null)
+                return null;
+            var partes = new List<string>();
+            if (Pericias.Ativas.Any(p => p.Chave == Selecionado.PericiaMaisSeis))
+                partes.Add($"+6 {Pericias.Label(Selecionado.PericiaMaisSeis)}");
+            if (Pericias.Ativas.Any(p => p.Chave == Selecionado.PericiaMaisTres))
+                partes.Add($"+3 {Pericias.Label(Selecionado.PericiaMaisTres)}");
+            return partes.Count == 0 ? null : string.Join(" / ", partes);
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.RecarregarAsync();
         var response = await Http.GetAsync("historicos");
         if (response.IsSuccessStatusCode)
             _historicos = await response.Content.ReadFromJsonAsync<List<HistoricoResponse>>() ?? new();

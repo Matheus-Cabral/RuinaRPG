@@ -6,6 +6,7 @@ using RuinaRPG.Domain.Rules;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Services;
 
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Services;
 /// of NpcSheetsController so both /sub-attributes (unchanged response) and the Passiva requisitos
 /// check (Task 5) share one live computation. Read-only, everything derived live.
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias)
 {
     public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet)
     {
@@ -28,15 +29,15 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
         var brutoSkills = await db.NpcSkills
-            .Where(s => s.NpcSheetId == id && (s.Pericia == Pericia.Prontidao || s.Pericia == Pericia.Reflexos || s.Pericia == Pericia.Fortitude))
+            .Where(s => s.NpcSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
             .ToListAsync();
-        int BrutoOf(Pericia pericia) => SkillFormulas.Modificador(
-            brutoSkills.Single(s => s.Pericia == pericia).Gasto,
-            HistoricoBonusCalculator.For(pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
+        int BrutoOf(int periciaId) => SkillFormulas.Modificador(
+            brutoSkills.Single(s => s.PericiaId == periciaId).Gasto,
+            HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
 
-        var brutoProntidao = BrutoOf(Pericia.Prontidao);
-        var brutoReflexos = BrutoOf(Pericia.Reflexos);
-        var brutoFortitude = BrutoOf(Pericia.Fortitude);
+        var brutoProntidao = BrutoOf(PericiasDeSistema.Prontidao);
+        var brutoReflexos = BrutoOf(PericiasDeSistema.Reflexos);
+        var brutoFortitude = BrutoOf(PericiasDeSistema.Fortitude);
 
         var weapons = await db.NpcWeapons.Where(w => w.NpcSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
         var shields = await db.NpcShields.Where(s => s.NpcSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
@@ -103,12 +104,17 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToListAsync();
-        var pericias = skills.ToDictionary(s => s.Pericia, s =>
+        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var porId = await pericias.PorIdAsync();
+        // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
+        // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
+        var totaisDePericia = porId.Values.Where(p => !p.IsDeleted).ToDictionary(p => p.Id, p =>
         {
-            var modificador = SkillFormulas.Modificador(s.Gasto, HistoricoBonusCalculator.For(s.Pericia, historico?.PericiaMaisSeis, historico?.PericiaMaisTres));
-            return s.AtributoEscolhido is { } atributo && atributos.TryGetValue(atributo, out var atributoTotal)
-                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, s.Pericia.ToString()))
+            skills.TryGetValue(p.Id, out var s);
+            var modificador = SkillFormulas.Modificador(s?.Gasto ?? 0, HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
+            var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
+            return atributo is { } chosen && atributos.TryGetValue(chosen, out var atributoTotal)
+                ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
                 : (int?)null;
         });
 
@@ -119,7 +125,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules)
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: true, sheet.Nivel, sheet.Vocacao, sheet.SubVocacao, sheet.Linhagem, sheet.Variante,
             graduacao, sheet.PossuiCoracaoDeMana, sheet.Afinidade, sheet.Estrela, sheet.HistoricoId,
-            atributos, CharacterSheetStats.SubAtributosPorEnum(sub), pericias);
+            atributos, CharacterSheetStats.SubAtributosPorEnum(sub), totaisDePericia);
     }
 
     /// <summary>

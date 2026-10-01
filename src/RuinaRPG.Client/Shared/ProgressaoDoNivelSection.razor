@@ -1,0 +1,77 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Rules.Niveis
+
+@if (_progressao is not null)
+{
+    <Section Title="Progressão do nível">
+        <TitleInfo>
+            <InfoPopup Title="Progressão do nível">
+                Saldos e limites do nível atual, definidos na Tabela de Níveis. Totais somam todos os níveis até o atual; limites (máx.) valem para o nível atual e o app não deixa ultrapassá-los; em Passivas, o número é o limite total (a soma até o nível atual).
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+            <MudSimpleTable Dense="true">
+                <tbody>
+                    @foreach (var coluna in _progressao.Colunas.Where(c => c.ChaveDeSistema != ChavesDeNivel.XpParaProximoNivel && c.ChaveDeSistema != ChavesDeNivel.EapBase))
+                    {
+                        <tr>
+                            <td>@coluna.Nome</td>
+                            <td>@Formatar(coluna)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </ChildContent>
+    </Section>
+}
+
+@code {
+    [Parameter] public int Nivel { get; set; }
+
+    private ProgressaoDeNivel? _progressao;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The table is fetched once; a Nivel change only re-resolves values against it.
+        if (_loaded) return;
+        _loaded = true;
+        try
+        {
+            var response = await Http.GetAsync("tabela-de-niveis");
+            if (!response.IsSuccessStatusCode) return;
+            var tabela = await response.Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+            if (tabela is null) return;
+            var colunas = tabela.Colunas
+                .Where(c => Enum.TryParse<TipoDeColunaDeNivel>(c.Tipo, out _))
+                .Select(c => new ColunaDeNivelDef(c.Id, c.Nome, Enum.Parse<TipoDeColunaDeNivel>(c.Tipo), c.ChaveDeSistema, c.Ordem)).ToList();
+            var linhas = tabela.Linhas
+                .Select(l => new LinhaDeNivel(l.Nivel, l.OutrosBonus, l.Valores.ToDictionary(v => v.Key, v => v.Value))).ToList();
+            _progressao = new ProgressaoDeNivel(colunas, linhas);
+        }
+        catch (Exception)
+        {
+            // Informational panel: a failed load renders nothing.
+        }
+    }
+
+    private static bool EhColunaDePassiva(string? chave) =>
+        chave is ChavesDeNivel.MaxPassivasLivres or ChavesDeNivel.MaxPassivasVocacionais or ChavesDeNivel.MaxPassivasDeClasse;
+
+    private string Formatar(ColunaDeNivelDef coluna)
+    {
+        // Passivas: soma aditiva até o nível; coluna inteiramente vazia = sem limite.
+        if (EhColunaDePassiva(coluna.ChaveDeSistema))
+            return _progressao!.LimiteAcumulado(coluna.ChaveDeSistema!, Nivel) is { } limite ? $"{limite}" : "sem limite";
+        var valor = _progressao!.Resolver(coluna, Nivel);
+        if (coluna.Tipo == TipoDeColunaDeNivel.Acumulativa)
+            return $"{valor ?? 0}";
+        // Coluna criada pelo Auditor é só informação: não é um teto aplicado pelo app.
+        if (coluna.ChaveDeSistema is null)
+            return valor?.ToString() ?? "—";
+        return valor is null ? "sem limite" : $"máx. {valor}";
+    }
+}

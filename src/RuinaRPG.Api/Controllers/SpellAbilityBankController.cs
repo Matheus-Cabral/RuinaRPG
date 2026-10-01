@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -13,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/spell-ability-bank")]
 [Authorize(Roles = "GM")]
-public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
+public class SpellAbilityBankController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
 {
     // The whole Banco is GM-only — curating and browsing. A Jogador never reads the GM's private bank:
     // to pick a Magia/Habilidade for their sheet they use CampaignCatalogController's
@@ -58,7 +59,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         db.SpellAbilityBankEntries.Add(entry);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(entry));
+        return Created(string.Empty, ToResponse(entry, await pericias.PorIdAsync()));
     }
 
     [HttpGet]
@@ -87,7 +88,8 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
             query = query.Where(e => e.DeCriatura == deCriatura);
 
         var entries = await query.ToListAsync();
-        return entries.Select(ToResponse).ToList();
+        var porId = await pericias.PorIdAsync();
+        return entries.Select(e => ToResponse(e, porId)).ToList();
     }
 
     [HttpPut("{id}")]
@@ -172,7 +174,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
             return "Uma Passiva não tem Grau nem Efeitos.";
         if (!Enum.TryParse<CategoriaDePassiva>(categoriaRaw, out var categoria) || !Enum.IsDefined(categoria))
             return "Categoria desconhecida. Use Livre, Vocacional ou DeClasse.";
-        if (!RequisitosDePassivaMapper.TryParse(requisitosDto, out var requisitos, out var erro))
+        if (!RequisitosDePassivaMapper.TryParse(requisitosDto, await pericias.TodasAsync(), out var requisitos, out var erro))
             return erro;
         if (requisitos?.HistoricoId is { } historicoId && !await db.Historicos.AnyAsync(h => h.Id == historicoId))
             return "Histórico não encontrado.";
@@ -181,10 +183,10 @@ public class SpellAbilityBankController(RuinaRpgDbContext db) : ControllerBase
         return null;
     }
 
-    private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry) => new(
+    private static SpellAbilityEntryResponse ToResponse(SpellAbilityBankEntry entry, IReadOnlyDictionary<int, PericiaDefinicao> porId) => new(
         entry.Id.ToString(), entry.Nome, entry.Tipo.ToString(), entry.Grau, entry.GastoEmPI, entry.Custo, entry.Descricao,
         entry.Efeitos.Select(e => new SpellAbilityEffectResponse(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList(), entry.DeCriatura,
-        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos));
+        entry.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(entry.Requisitos, porId));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

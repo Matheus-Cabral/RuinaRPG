@@ -50,7 +50,7 @@
 
   
 
-- *Nível*: campo **calculado**, de 1 a 50 — não é mais editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo os limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]"; com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
+- *Nível*: campo **calculado**, de 1 ao último nível da "[[Tabela de Níveis]]" (ver "[[Requisitos - Auditoria de Regras]]" R0013) — não é mais editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo a coluna "XP para o próximo nível" da "[[Tabela de Níveis]]" mantida pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0013); com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
 
 - *Graduação*: campo numérico de 0 a 9, calculado a partir do VIS atual segundo a tabela em "[[Tabela de Circulo e Grau por EAP]]". Se a Vocação for **Campeão** ou **Caçador**, o campo é rotulado **Grau**, não editável, e sempre calculado normalmente pelo VIS. Se a Vocação for qualquer outra, o campo é rotulado **Círculo** e depende de um checkbox "Possui coração de mana?" (ver §1 de "[[GRAUS & CÍRCULOS]]"), exibido **só** quando a Vocação é Feiticeiro, Adepto ou Bruxo — com Vocação marcial ou vazia o checkbox some, mas o valor salvo é mantido: marcado, o Círculo é calculado normalmente pelo VIS; desmarcado, o Círculo é exibido como **0** independentemente do VIS acumulado (o personagem pode perder um coração de mana em jogo, desmarcando o checkbox). Quando NULL, o checkbox assume **desmarcado** e o valor assume **0**.
 
@@ -92,11 +92,13 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
 ### 2.a) Atributos
 
+> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). As colunas de Passivas mostram "Nome: N" (o limite acumulado) ou "Nome: sem limite" quando a coluna está toda vazia. Ver "[[Requisitos - Auditoria de Regras]]" R0013.
+
   
 
 Os 8 atributos (ver §1 de "[[Ruína RPG - Sistema Básico]]" para a definição de cada um) são exibidos em bloco nesta ordem — Força, Vigor, Agilidade, Destreza, Astúcia, Instinto, Influência e Vontade —, cada um com os campos:
 
-- *Gasto*: campo numérico ≥ 0, editável pelo jogador. Acumula os pontos alocados manualmente no atributo: os 9 pontos de distribuição inicial da criação de personagem mais os "Pontos de Atributo" recebidos ao subir de nível (ver "[[Tabela de Níveis]]"). Quando NULL, assume **0**. A soma de Gasto de todos os 8 atributos deve ser exibida e não pode ultrapassar o total de pontos que o personagem já recebeu (criação + níveis).
+- *Gasto*: campo numérico ≥ 0, editável pelo jogador. Acumula os pontos alocados manualmente no atributo: os 9 pontos de distribuição inicial da criação de personagem mais os "Pontos de Atributo" recebidos ao subir de nível (ver "[[Tabela de Níveis]]"). Quando NULL, assume **0**. O Gasto de cada atributo não pode ultrapassar o Máx. de Atributo do nível (R0013 da Auditoria; o servidor recusa, mas uma ficha já acima do limite continua válida e pode baixar o valor). A soma de Gasto de todos os 8 atributos deve ser exibida e não pode ultrapassar o total de pontos que o personagem já recebeu (criação + níveis).
 - *Bônus*: campo numérico ≥ 0, editável pelo jogador. Acumula bônus recebidos de outras fontes que não a alocação manual: o bônus racial de Linhagem/Variante (ver §7 de "[[Ruína RPG - Sistema Básico]]") e pontos de atributo comprados com Pontos de Ignição (ver "[[GRAUS & CÍRCULOS]]", efeito "Pontos de Atributo"). Quando NULL, assume **0**.
 - *Maestria*: checkbox. Marcado, indica que o jogador investiu um Ponto de Maestria (recurso concedido pela "[[Tabela de Níveis]]") naquele atributo — poço separado do de Maestrias de Perícia (ver 4.e); aqui o checkbox só precisa registrar o estado marcado/desmarcado por atributo e alimentar o cálculo de *Total* abaixo.
 - *Total*: campo calculado, não editável. Sem Maestria marcada: `Total = Gasto + (Bônus / 2) + Artefatos`. Com Maestria marcada: `Total = Gasto + Bônus + Artefatos` (ver "[[Formulas]]"). *Artefatos* refere-se à soma dos Valores de Artefatos equipados (ver 5.b) cujo Tipo é Atributo e cujo Alvo é este atributo.
@@ -165,9 +167,9 @@ Os Valores das linhas consomem pontos de **Vocação Arcana**, e o total é limi
 
   
 
-A ficha exibe uma lista fixa das Perícias do sistema: Acrobacia, Alquimia, Arcano, Armadilhas, Armas Brancas, Artefatos Mágicos, Artístico, Atletismo, Avaliação, Biblioteca, Brigar, Condução, Conhecimentos, Crime, Empatia c/ Animais, Enganação, Força de Vontade, Fortitude, Furtividade, Herborismo, Intimidação, Intuição, Investigação, Lábia, Liderança, Linguística, Medicina, Navegação, Ocultismo, Ofício, Percepção, Pontaria, Prontidão, Reflexos, Religião, Saquear, Sedução, Senso Comum e Sobrevivência. Cada linha tem:
+A ficha exibe todas as Perícias ativas, mantidas pelo Auditor (ver "[[Requisitos - Auditoria de Regras]]" R0012), em ordem alfabética; a lista inicial é: Acrobacia, Alquimia, Arcano, Armadilhas, Armas Brancas, Artefatos Mágicos, Artístico, Atletismo, Avaliação, Biblioteca, Brigar, Condução, Conhecimentos, Crime, Empatia c/ Animais, Enganação, Força de Vontade, Fortitude, Furtividade, Herborismo, Intimidação, Intuição, Investigação, Lábia, Liderança, Linguística, Medicina, Navegação, Ocultismo, Ofício, Percepção, Pontaria, Prontidão, Reflexos, Religião, Saquear, Sedução, Senso Comum e Sobrevivência. O nome de uma perícia com Descrição mostra o texto ao passar o mouse (ou ao tocar, no celular). Uma perícia nova começa com o Atributo sugerido já escolhido. Cada linha tem:
 
-- *Gasto*: campo numérico ≥ 0, editável pelo jogador — pontos investidos naquela Perícia (ver "[[Tabela de Níveis]]" para os Pontos de Perícia concedidos por nível, e §2 de "[[Ruína RPG - Sistema Básico]]" para o ganho de pontos por Acerto Crítico em teste). Quando NULL, assume **0**. A soma do Gasto de todas as Perícias é exibida ao lado do total de Pontos de Perícia concedidos por nível (conforme a "[[Tabela de Níveis]]"), só como referência — diferente do orçamento de Atributos (2.a), não bloqueia o Gasto acima do valor da tabela.
+- *Gasto*: campo numérico ≥ 0, editável pelo jogador — pontos investidos naquela Perícia (ver "[[Tabela de Níveis]]" para os Pontos de Perícia concedidos por nível, e §2 de "[[Ruína RPG - Sistema Básico]]" para o ganho de pontos por Acerto Crítico em teste). Quando NULL, assume **0**. A soma do Gasto de todas as Perícias é exibida ao lado do total de Pontos de Perícia concedidos por nível (conforme a "[[Tabela de Níveis]]"), só como referência — diferente do orçamento de Atributos (2.a), não bloqueia o Gasto acima do valor da tabela. O Gasto de cada perícia, porém, não pode ultrapassar o Máx. de Perícia do nível (mesma regra de limite de 2.a).
 
 Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da tabela de níveis, então a soma acima eventualmente fica acima do máximo por um motivo legítimo), um campo dedicado permite adicionar ou subtrair a quantidade de pontos ganhos dessa forma (mesmo padrão do campo de XP em "Experiência atual", 1.b); esse valor é subtraído da soma de Gasto antes de compará-la ao total da tabela.
 - *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]". Se esta Perícia for uma das duas bonificadas pelo Histórico escolhido (aba Antecedentes, ver R0006), o bônus (+6 ou +3) entra somado ao Gasto antes da divisão — `Modificador = (Gasto + bônus de Histórico) ÷ 3` — e o valor é exibido em **negrito**.
@@ -260,7 +262,7 @@ Uma entrada fixa, não removível, pré-preenchida a partir da Linhagem/Variante
 - *Gasto em PI*: fixo em **N/A** — a Habilidade Racial não é comprada com Pontos de Ignição.
 - *Custo*: valor em Foco para conjurar. O valor numérico específico de cada Habilidade Racial ainda não está definido nas regras — campo previsto porém não implementado até a regra existir.
 - *Descrição*: preenchida a partir do texto do Racial correspondente (ver §7 de "[[Ruína RPG - Sistema Básico]]"), mesma sobrescrita do GM que *Nome* acima.
-- *Número rolado (1d18)*: campo numérico, exclusivo de personagens de Linhagem **Humano** (Sinir ou Laonir) — o jogador registra o resultado do 1d18 exigido pelo Racial "Role 1d18 na tabela de Arcas". A ficha então exibe a Arca correspondente (Nome/Descrição) definida pelo GM (ver "[[Requisitos - Habilidades Raciais]]" R0002); exibe "Arca não cadastrada." se o GM ainda não preencheu aquele número.
+- *Número rolado (1d18)*: campo numérico, exclusivo de personagens de Linhagem **Humano** (Sinir ou Laonir) — o jogador registra o resultado do 1d18 exigido pelo Racial "Role 1d18 na tabela de Arcas". A ficha então exibe a Arca correspondente (Nome/Descrição) definida pelo GM (ver "[[Requisitos - Habilidades Raciais]]" R0002); exibe "Arca não cadastrada." se o GM ainda não preencheu aquele número. Abaixo da Arca, um botão **Evoluções da Arca (N)** abre um popup listando, em ordem de nível, as evoluções dessa Arca já liberadas pelo Nível da ficha (ver "[[Requisitos - Habilidades Raciais]]" R0006); desabilitado quando N = 0.
 
   
 
@@ -299,9 +301,10 @@ Runas são um encantamento das vocações não mágicas (Campeão e Caçador). L
 - *Nome da Runa*: text input.
 - *Descrição*: texto livre.
 - *Grau*: campo numérico, limitado ao Grau atual do personagem (ver 1.b).
+- *Tipo*: opcional — select com "Sem tipo" (padrão), "Runa Arcana" e "Runa Negra", só ao montar do zero; ao partir de uma entrada do banco o tipo vem da entrada (ver "[[Requisitos - Banco de Runas]]" R0009). É apenas uma classificação exibida na lista de Runas; não muda nenhum cálculo.
 - *Imagem*: opcional — upload do próprio jogador ou uma imagem que o GM liberou como pública na campanha (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 para o comportamento da imagem). Ao partir de uma entrada do banco, a imagem vem da entrada e não pode ser trocada.
 
-A Runa na lista é somente leitura: o jogador só pode adicionar e remover — para mudar uma Runa, remove e adiciona de novo. Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Como a Runa da ficha não é editável, o que pode mudar depois é só a cópia do banco (editada pelo GM), que não altera a Runa da ficha.
+A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—"). A Runa na lista é somente leitura: o jogador só pode adicionar e remover — para mudar uma Runa, remove e adiciona de novo. Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Como a Runa da ficha não é editável, o que pode mudar depois é só a cópia do banco (editada pelo GM), que não altera a Runa da ficha.
 
   
 
@@ -332,7 +335,7 @@ Lista incremental. Uma Passiva nunca é montada do zero na ficha: o jogador (ou 
 - *Descrição*.
 - *Aviso*: se a ficha deixou de cumprir os Requisitos da Passiva depois de recebê-la, a entrada mostra "⚠ Requisitos não cumpridos" com o que falta (R0008).
 
-Uma Passiva pode ser removida a qualquer momento.
+A ficha não pode ter mais Passivas de uma Categoria do que o limite de Passivas permite (colunas Passivas Livres, Vocacionais e De Classe da Tabela de Níveis, somadas do nível 1 até o nível da ficha; coluna toda vazia = sem limite; R0013 da Auditoria; mesma regra de limite de 2.a). Uma Passiva pode ser removida a qualquer momento.
 
 5. **Posses**: inventário, artefatos, afeições e características (positivas/negativas). Composta pelos subgrupos abaixo.
 

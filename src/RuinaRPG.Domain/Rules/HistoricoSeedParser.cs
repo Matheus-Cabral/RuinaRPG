@@ -7,10 +7,9 @@ namespace RuinaRPG.Domain.Rules;
 public static partial class HistoricoSeedParser
 {
     // Historico.md spells out each Perícia's proper Portuguese label (e.g. "Empatia c/ Animais"),
-    // not the Pericia enum's unaccented member name — inverted from the canonical
-    // PericiaLabels map (same project, single source of truth).
-    private static readonly Dictionary<string, Pericia> PericiaPorRotulo =
-        Enum.GetValues<Pericia>().ToDictionary(p => PericiaLabels.Label(p));
+    // not the unaccented Chave — so the lookup is by the original Nome of the seeded Perícias.
+    private static readonly Dictionary<string, int> PericiaPorRotulo =
+        PericiasIniciais.Todas.ToDictionary(p => p.Nome, p => p.Id);
 
     public static IReadOnlyList<HistoricoSeed> Parse(string markdown)
     {

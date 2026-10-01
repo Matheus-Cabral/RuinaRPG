@@ -30,7 +30,7 @@
 
 # **R0004** - O banco deve ser listado com filtros.
 
-**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome** (contém, sem diferenciar maiúsculas de minúsculas) e **Grau** (igual).
+**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome** (contém, sem diferenciar maiúsculas de minúsculas), **Grau** (igual) e **Tipo** (R0009: Todos, Runa Arcana, Runa Negra ou Sem tipo). A lista mostra também o Tipo de cada entrada.
 
   
 
@@ -57,3 +57,9 @@ Cada entrada tem ainda uma **Imagem**: opcional, uma só por entrada, com o mesm
 # **R0008** - O banco em si é visível apenas ao GM.
 
 **Descrição**: Diferente do "[[Requisitos - Banco de Magias e Habilidades]]" (cuja lista um jogador vinculado consegue ler por inteiro), o Banco de Runas é GM-only — listar, criar, editar e excluir entradas. O jogador nunca lê o banco privado do GM: ele só enxerga as entradas anexadas como públicas a uma campanha da qual é membro (ver "[[Requisitos - Campanha]]" R0008 e R0009).
+
+  
+
+# **R0009** - Tipo opcional da Runa: Arcana ou Negra.
+
+**Descrição**: Cada Runa — entrada do banco e Runa de ficha (Personagem ou NPC) — tem um **Tipo** opcional: **Runa Arcana**, **Runa Negra** ou nenhum ("Sem tipo", o padrão). É só uma classificação exibida no banco, nas fichas e nas listas de Runas liberadas a um jogador; **não altera nenhum cálculo**. No formulário do banco (criar/editar) e ao montar uma Runa do zero em 4.d ("[[Requisitos - Ficha de Personagem]]"), um select **Tipo** oferece "Sem tipo", "Runa Arcana" e "Runa Negra", acompanhado de um popup de ajuda ⓘ ("Tipo da Runa"). Ao partir de uma entrada do banco (R0003), a Runa da ficha copia o Tipo da entrada, como copia Nome, Grau e Imagem; a cópia automática de R0001 leva o Tipo junto; conceder/copiar uma ficha de NPC também o preserva. Runas que já existiam antes deste campo ficam **sem tipo** até o GM editá-las no banco (a Runa de ficha continua não editável). No fio, o Tipo é o texto "Arcana" ou "Negra" (ou vazio/ausente = sem tipo); qualquer outro valor é rejeitado com 400 ("Tipo de Runa desconhecido."). A listagem do banco aceita o filtro de Tipo ("Arcana", "Negra" ou "Nenhum" para as sem tipo).

@@ -37,7 +37,7 @@ public class CharacterAttributeAndSkillMigrationTests : IClassFixture<PostgresFi
         await db.SaveChangesAsync();
 
         db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
-        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Pericia = Pericia.Atletismo, Gasto = 6 });
+        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAttributes.CountAsync()).Should().Be(1);

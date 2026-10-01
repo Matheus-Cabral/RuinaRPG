@@ -42,8 +42,8 @@ public class HistoricoSeedParserTests
 
         var estudoAcademico = result.Should().ContainSingle(h => h.Nome == "Estudo Acadêmico").Subject;
         estudoAcademico.Descricao.Should().Be("O personagem passou anos cercado por livros, mestres e estudos.");
-        estudoAcademico.PericiaMaisSeis.Should().Be(Pericia.Arcano);
-        estudoAcademico.PericiaMaisTres.Should().Be(Pericia.Biblioteca);
+        estudoAcademico.PericiaMaisSeisId.Should().Be(2 /* Arcano */);
+        estudoAcademico.PericiaMaisTresId.Should().Be(9 /* Biblioteca */);
     }
 
     [Fact]
@@ -60,8 +60,8 @@ public class HistoricoSeedParserTests
         var result = HistoricoSeedParser.Parse(Markdown);
 
         var afinidadeAnimal = result.Should().ContainSingle(h => h.Nome == "Afinidade Animal").Subject;
-        afinidadeAnimal.PericiaMaisSeis.Should().Be(Pericia.EmpatiaComAnimais);
-        afinidadeAnimal.PericiaMaisTres.Should().Be(Pericia.Sobrevivencia);
+        afinidadeAnimal.PericiaMaisSeisId.Should().Be(14 /* EmpatiaComAnimais */);
+        afinidadeAnimal.PericiaMaisTresId.Should().Be(38 /* Sobrevivencia */);
     }
 
     [Fact]

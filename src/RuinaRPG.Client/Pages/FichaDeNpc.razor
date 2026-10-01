@@ -1,6 +1,7 @@
 @page "/npcs/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
@@ -152,6 +153,14 @@
                     <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
                 }
                 <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
+                @if (_form.Abate is not null && _form.Assistencia is not null)
+                {
+                    <MudText>Abate: @_form.Abate</MudText>
+                    <MudText>Assistência: @_form.Assistencia</MudText>
+                    <InfoPopup Title="@("XP por abate e assistência")">
+                        @("XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.")
+                    </InfoPopup>
+                }
                 <MudNumericField T="int?" @bind-Value="_form.EAPAtual" For="@(() => _form.EAPAtual)" Label="VIS Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" @bind-Value:after="NotifySavedAsync" />
@@ -211,6 +220,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
+        <ProgressaoDoNivelSection Nivel="@(_form.Nivel ?? 1)" />
         <Section Title="Atributos">
             @if (_attributeBudget is not null)
             {
@@ -243,7 +253,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@PericiaDisplay.Label(skill.Pericia)</td>
+                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>
                                 @if (skill.ContaHistorico)
@@ -561,6 +571,7 @@
                     {
                         <MudText>@_racialAbility.ArcaDescricao</MudText>
                     }
+                    <ArcaEvolucoesButton Evolucoes="@_racialAbility.ArcaEvolucoes" />
                 }
             }
         </Section>
@@ -627,7 +638,7 @@
                     {
                         <tr>
                             <td>@if (rune.ImageUrl is not null) { <ClickableImage Src="@rune.ImageUrl" Width="60" /> }</td>
-                            <td>@rune.Nome (Grau @rune.Grau) — @rune.Descricao</td>
+                            <td>@rune.Nome (Grau @rune.Grau@(rune.Tipo is null ? "" : ", " + RuneTipoRotulo.De(rune.Tipo))) — @rune.Descricao</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -642,7 +653,7 @@
                     <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
                     @foreach (var skill in _skills)
                     {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaDisplay.Label(skill.Pericia)</MudSelectItem>
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
@@ -660,7 +671,7 @@
                     @foreach (var mastery in _masteries)
                     {
                         <tr>
-                            <td>@mastery.Nome — @PericiaDisplay.Label(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
@@ -822,6 +833,11 @@
     private List<NpcAttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<NpcSkillResponse> _skills = new();
+
+    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
+    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
+    private string PericiaLabel(string chave) =>
+        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<NpcAffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
     private List<NpcWeaponResponse> _weapons = new();
@@ -892,6 +908,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Pericias.CarregarAsync();
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         _isGmCaller = authState.User.IsInRole("GM");
 
@@ -1000,6 +1017,8 @@
         _form.AfinidadeAdicional = sheet.AfinidadeAdicional;
         _form.VocacaoArcanaMaxima = sheet.VocacaoArcanaMaxima;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
+        _form.Abate = sheet.Abate;
+        _form.Assistencia = sheet.Assistencia;
         _form.EAPAtual = sheet.EAPAtual;
         _form.NucleosRankF = sheet.NucleosRankF;
         _form.NucleosRankE = sheet.NucleosRankE;
@@ -1044,7 +1063,7 @@
 
         var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         // A Variante change may have just cleared stale racial grants server-side (or made a fresh
@@ -1053,6 +1072,8 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
+        // Evoluções de Arca unlocked depend on Nível.
+        await LoadRacialAbilityAsync();
         return true;
     }
 
@@ -1089,12 +1110,14 @@
 
         var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/nivel", _form.Nivel.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
+        // Evoluções de Arca unlocked depend on Nível.
+        await LoadRacialAbilityAsync();
         return true;
     }
 
@@ -1108,12 +1131,14 @@
 
         var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/experiencia-atual", _form.ExperienciaAtual.Value);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Não foi possível salvar a ficha.");
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         await LoadTraitsAsync();
+        // Evoluções de Arca unlocked depend on Nível.
+        await LoadRacialAbilityAsync();
         return true;
     }
 
@@ -1176,7 +1201,8 @@
         var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateNpcAttributeRequest(gasto, bonus, temMaestria));
+        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateNpcAttributeRequest(gasto, bonus, temMaestria));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 
@@ -1184,7 +1210,8 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, current.AtributoEscolhido));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
 
@@ -1418,7 +1445,7 @@
 
         var request = _runeForm.DoBanco
             ? new AddNpcRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
-            : new AddNpcRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId);
+            : new AddNpcRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId, Tipo: _runeForm.TipoOuNulo);
 
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)
@@ -1634,6 +1661,9 @@
         public int VocacaoArcanaMaxima { get; set; }
         [Required(ErrorMessage = "Informe a Experiência Atual.")]
         public int? ExperienciaAtual { get; set; }
+        // Calculados pela API e só enviados ao GM da ficha; null para o jogador dono de um NPC concedido.
+        public int? Abate { get; set; }
+        public int? Assistencia { get; set; }
         [Required(ErrorMessage = "Informe o VIS Atual.")]
         public int? EAPAtual { get; set; }
         [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]

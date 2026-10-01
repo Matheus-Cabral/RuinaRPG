@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -14,13 +15,15 @@ using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -35,10 +38,11 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
             db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = atributo });
-        // R0005's "lista fixa mais curta" — only the 20 allowed Pericia values, not all 39
-        // (unlike Ficha de NPCs' Enum.GetValues<Pericia>()).
-        foreach (var pericia in CreatureSkillAllowList.AllowedPericias)
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Pericia = pericia });
+        // R0005's "lista fixa mais curta" — only the Perícias flagged DisponivelParaCriaturas, not
+        // every active one (unlike Ficha de NPCs). The suggested Atributo only applies when the
+        // Criatura has it (AtributoCriatura is a shorter enum).
+        foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
             db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = slot });
 
@@ -69,6 +73,10 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (request.Nivel < 1 || request.Nivel > tabela.UltimoNivel)
+            return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
 
         if (!TryParseImageId(request.ImageId, out var imageId))
             return BadRequest("ImageId inválido.");
@@ -124,8 +132,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        if (nivel < 1 || nivel > tabela.UltimoNivel)
+            return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
+
         sheet.Nivel = nivel;
-        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, rules.XpPorNivel);
+        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 
@@ -143,7 +155,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
         sheet.ExperienciaAtual = experienciaAtual;
-        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, rules.XpPorNivel);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 
@@ -160,7 +173,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, rules.Niveis);
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, tabela.ComoLevelBonus());
         return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
     }
 
@@ -358,7 +372,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     }
 
     /// <summary>
-    /// Kill/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
+    /// Abate/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
     ///
     /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo mirror NpcSheetsController.ToResponseAsync's
@@ -380,14 +394,13 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
-        var kill = XpAwardCalculator.Kill(s.ExperienciaAtual);
+        var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
         var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos);
-        var statusVida = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Vida).FirstOrDefault() : 0;
-        var statusFoco = s.Arquetipo is not null ? rules.Arquetipos.Where(v => v.Arquetipo == s.Arquetipo.Value.ToString() && v.Nivel == s.Nivel).Select(v => v.Arcana).FirstOrDefault() : 0;
+        var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
         var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
@@ -402,7 +415,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
             s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade?.ToString(),
-            s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, kill, assistencia,
+            s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, abate, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,
             campaignId?.ToString(), s.ImageId?.ToString());
