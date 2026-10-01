@@ -3,15 +3,16 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.4.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.4.1 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Habilidades Passivas:</b> novo tipo de habilidade no Banco de Magias, com Categoria (Passiva Livre, Vocacional ou de Classe) e Requisitos: Nível, Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Afinidade, Estrela, Histórico, e listas de Atributos, Sub-Atributos e Perícias. As fichas ganharam a seção "Habilidades Passivas", e uma Passiva só entra na ficha se ela cumprir os requisitos. Se a ficha deixar de cumpri-los depois, aparece um aviso.</li>
-            <li><b>Durabilidade por Rank:</b> Armas, Armaduras e Escudos agora têm Rank (F a SS), e a durabilidade vem dele: F 20, E 45, D 80, C 125, B 180, A 245, S e SS inquebráveis. O antigo "Tier" das Armas passou a se chamar Rank, e itens inquebráveis aparecem como "Inquebrável" nas fichas.</li>
-            <li><b>Antecedentes:</b> a aba História passou a se chamar Antecedentes, e o seletor de Estrela mostra os títulos do Livro de Regras.</li>
-            <li><b>Vocação Arcana:</b> os pontos distribuídos nas Afinidades respeitam o limite da Vocação Arcana, e o Coração de Mana só aparece para vocações mágicas.</li>
-            <li><b>Banco de Magias:</b> entradas podem ser marcadas como Magia/Habilidade de Criatura, com filtro e o ícone do Bestiário. Conceder um NPC ou Criatura não duplica mais as magias no banco, e escolher uma Runa do banco não duplica a entrada.</li>
-            <li><b>Livro de Regras:</b> a aba Graus &amp; Círculos passa a mostrar todos os Efeitos cadastrados, inclusive os novos.</li>
-            <li><b>Página inicial:</b> o card dos Ecônos mostra a variante solar, Veûna.</li>
+            <li><b>Evoluções de Arca:</b> cada Arca da tabela de Habilidades Raciais pode ter evoluções liberadas por nível. Na ficha de um Humano (Personagem ou NPC), o botão "Evoluções da Arca" mostra as que o nível já liberou.</li>
+            <li><b>Runas:</b> uma Runa pode ser marcada como Runa Arcana ou Runa Negra, no Banco de Runas e ao montar uma Runa na ficha. O Banco ganhou filtro por tipo.</li>
+            <li><b>Perícias:</b> o nome de uma perícia com descrição mostra o texto ao passar o mouse (ou ao tocar, no celular). Perícias novas ou removidas pelo Auditor de Regras passam a refletir em todas as fichas. Ao remover uma perícia, os pontos gastos nela voltam para redistribuição.</li>
+            <li><b>Progressão do nível:</b> as fichas de Personagem e NPC ganharam um painel com os saldos e limites do nível atual. Os limites de pontos por atributo e por perícia, e a quantidade de Passivas por categoria, quando definidos na Tabela de Níveis, são aplicados ao salvar.</li>
+            <li><b>Aviso de subida de nível:</b> os bônus numéricos aparecem como "Pontos de Atributo: +1".</li>
+            <li><b>Ficha de NPC:</b> o GM passa a ver o XP que o NPC concede por Abate e por Assistência, calculado a partir da Experiência atual, como já acontece na ficha de Criatura. Na Criatura, "Kill" passou a se chamar "Abate".</li>
+            <li><b>Livro de Regras:</b> a aba Tabela de Níveis é montada a partir da tabela mantida pelo Auditor.</li>
+            <li><b>Correção no Banco de Magias:</b> nos requisitos de uma Passiva, a lista de Classe voltou a aparecer, e os campos não mostram mais textos como "Model.Vocacao".</li>
         </ul>
     </DialogContent>
     <DialogActions>
