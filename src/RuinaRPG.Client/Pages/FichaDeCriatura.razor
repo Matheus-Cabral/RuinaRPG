@@ -189,7 +189,7 @@
                     @foreach (var skill in _skills)
                     {
                         <tr>
-                            <td>@Pericias.Label(skill.Pericia)</td>
+                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
                             <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
                             <td>@skill.Modificador</td>
                             <td>
