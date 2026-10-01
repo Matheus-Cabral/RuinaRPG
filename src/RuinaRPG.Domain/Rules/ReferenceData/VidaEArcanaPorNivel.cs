@@ -15,7 +15,7 @@ public static class VidaEArcanaPorNivel
 
     private static (int Vida, int Arcana) Escolher(IEnumerable<(int Nivel, int Vida, int Arcana)> linhas, int nivel)
     {
-        var linha = linhas.Where(l => l.Nivel <= nivel).OrderByDescending(l => l.Nivel).Cast<(int Nivel, int Vida, int Arcana)?>().FirstOrDefault();
+        var linha = linhas.Where(l => l.Nivel <= nivel).OrderByDescending(l => l.Nivel).Select(l => ((int Nivel, int Vida, int Arcana)?)l).FirstOrDefault();
         return linha is { } l ? (l.Vida, l.Arcana) : (0, 0);
     }
 }
