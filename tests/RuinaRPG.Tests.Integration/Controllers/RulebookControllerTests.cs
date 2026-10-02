@@ -252,6 +252,33 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         r.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    private async Task SetMostrarLimitesAsync(string token, bool valor)
+    {
+        var r = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/tabela-de-niveis/config", token,
+            new AtualizarConfigDaTabelaDeNiveisRequest(valor)));
+        r.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task TabelaDeNiveis_hides_the_limits_table_by_default_and_shows_it_when_the_auditor_turns_it_on()
+    {
+        var token = await RegisterAuditorAsync("RulebookGmTabela5", "rulebookgmtabela5@teste.com");
+        try
+        {
+            (await TabelaDeNiveisHtmlAsync(token)).Should().Contain("<th>Nível</th><th>Bônus</th>").And.NotContain("Limites e progressão");
+
+            await SetMostrarLimitesAsync(token, true);
+            (await TabelaDeNiveisHtmlAsync(token)).Should().Contain("<h3>Limites e progressão</h3>");
+
+            await SetMostrarLimitesAsync(token, false);
+            (await TabelaDeNiveisHtmlAsync(token)).Should().NotContain("Limites e progressão");
+        }
+        finally
+        {
+            await SetMostrarLimitesAsync(token, false);
+        }
+    }
+
     [Fact]
     public async Task TabelaDeNiveis_main_table_lists_the_bonuses_of_each_level_one_per_line()
     {
@@ -270,13 +297,20 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     public async Task TabelaDeNiveis_limits_table_lists_only_Por_nivel_columns_that_have_values()
     {
         var token = await RegisterAuditorAsync("RulebookGmTabela2", "rulebookgmtabela2@teste.com");
+        await SetMostrarLimitesAsync(token, true);
+        try
+        {
+            var html = await TabelaDeNiveisHtmlAsync(token);
 
-        var html = await TabelaDeNiveisHtmlAsync(token);
-
-        var limites = html[html.IndexOf("<h3>Limites e progressão</h3>", StringComparison.Ordinal)..];
-        limites.Should().Contain("<th>XP para o próximo nível</th>").And.Contain("<th>EAP base</th>");
-        limites.Should().MatchRegex("<tr><td>1</td><td>\\d+</td><td>\\d+</td></tr>");
-        limites.Should().NotContain("Máx. de Atributo");
+            var limites = html[html.IndexOf("<h3>Limites e progressão</h3>", StringComparison.Ordinal)..];
+            limites.Should().Contain("<th>XP para o próximo nível</th>").And.Contain("<th>EAP base</th>");
+            limites.Should().MatchRegex("<tr><td>1</td><td>\\d+</td><td>\\d+</td></tr>");
+            limites.Should().NotContain("Máx. de Atributo");
+        }
+        finally
+        {
+            await SetMostrarLimitesAsync(token, false);
+        }
     }
 
     [Fact]
@@ -285,6 +319,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var token = await RegisterAuditorAsync("RulebookGmTabela3", "rulebookgmtabela3@teste.com");
         var fama = await CriarColunaAsync(token, "Pontos de Fama", "Acumulativa");
         var teto = await CriarColunaAsync(token, "Teto de Fama", "PorNivel");
+        await SetMostrarLimitesAsync(token, true);
         try
         {
             (await TabelaDeNiveisHtmlAsync(token)).Should().NotContain("Pontos de Fama").And.NotContain("Teto de Fama");
@@ -300,6 +335,7 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         }
         finally
         {
+            await SetMostrarLimitesAsync(token, false);
             await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{fama.Id}", token));
             await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{teto.Id}", token));
         }

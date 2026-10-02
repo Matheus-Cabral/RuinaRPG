@@ -17,6 +17,18 @@
     /// <summary>Fired after HtmlChanged for every change the editor reports (debounced ~1s in JS, flushed on blur/destroy).</summary>
     [Parameter] public EventCallback<string?> OnCommit { get; set; }
 
+    /// <summary>
+    /// When set, the toolbar gets an "Inserir imagem" button: the picked file comes here as (bytes, file name)
+    /// and the handler uploads it and returns the app's image URL to put in the text ("/images/…"), or null
+    /// when the upload failed (the handler reports why). The upload stays in .NET on purpose — it goes through
+    /// the same authenticated HttpClient as everything else, so the JS never sees a token.
+    /// </summary>
+    [Parameter] public Func<Stream, string, Task<string?>>? UploadImage { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    /// <summary>Same cap as every other upload in the app (ImagesController's RequestSizeLimit / nginx).</summary>
+    public const int MaxUploadBytes = 20_000_000;
+
     private ElementReference _host;
     private DotNetObjectReference<RichTextEditor>? _selfRef;
     private bool _created;
@@ -31,7 +43,7 @@
         _selfRef = DotNetObjectReference.Create(this);
         try
         {
-            await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "");
+            await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "", new { imagens = UploadImage is not null });
         }
         catch (JSException)
         {
@@ -56,6 +68,23 @@
         Html = html;
         await HtmlChanged.InvokeAsync(html);
         await OnCommit.InvokeAsync(html);
+    }
+
+    /// <summary>Called by richTextEditor.js with the file picked through "Inserir imagem"; returns the URL to insert, or null.</summary>
+    [JSInvokable]
+    public async Task<string?> UploadImageFromJs(IJSStreamReference file, string fileName)
+    {
+        if (UploadImage is null)
+            return null;
+
+        if (file.Length > MaxUploadBytes)
+        {
+            await OnError.InvokeAsync("A imagem excede o tamanho máximo permitido.");
+            return null;
+        }
+
+        await using var stream = await file.OpenReadStreamAsync(MaxUploadBytes);
+        return await UploadImage(stream, fileName);
     }
 
     public async ValueTask DisposeAsync()

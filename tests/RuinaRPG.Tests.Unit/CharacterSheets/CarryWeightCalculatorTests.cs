@@ -15,6 +15,31 @@ public class CarryWeightCalculatorTests
     }
 
     [Fact]
+    public void PesoMaximo_adds_a_positive_campaign_bonus()
+    {
+        CarryWeightCalculator.PesoMaximo(forca: 5, vigor: 4, capacidadeExtraTotal: 10m, bonusDeCarga: 6m).Should().Be(20m);
+    }
+
+    [Fact]
+    public void PesoMaximo_subtracts_a_negative_campaign_bonus()
+    {
+        CarryWeightCalculator.PesoMaximo(forca: 5, vigor: 4, capacidadeExtraTotal: 0m, bonusDeCarga: -3m).Should().Be(1m);
+    }
+
+    [Fact]
+    public void PesoMaximo_never_goes_below_zero()
+    {
+        CarryWeightCalculator.PesoMaximo(forca: 5, vigor: 4, capacidadeExtraTotal: 0m, bonusDeCarga: -100m).Should().Be(0m);
+    }
+
+    [Fact]
+    public void PesoMaximo_without_a_bonus_keeps_the_previous_result()
+    {
+        CarryWeightCalculator.PesoMaximo(forca: 5, vigor: 4, capacidadeExtraTotal: 2m, bonusDeCarga: 0m).Should().Be(6m);
+        CarryWeightCalculator.PesoMaximo(forca: 5, vigor: 4, capacidadeExtraTotal: 2m).Should().Be(6m);
+    }
+
+    [Fact]
     public void CountsTowardPesoAtual_is_true_when_CapacidadeExtra_is_null()
     {
         CarryWeightCalculator.CountsTowardPesoAtual(null).Should().BeTrue();

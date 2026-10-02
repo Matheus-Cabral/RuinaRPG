@@ -9,6 +9,7 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -270,12 +271,20 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/level-up-notice", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().HaveCount(10);
-        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
         // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized).
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
+        // (column names are free text the Auditor can edit, so they can't be singularized), and
+        // the same column across the levels gained at once is summed into a single line.
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
+        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
+    }
+
+
+    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
+    {
+        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
+        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
     }
 
     [Fact]

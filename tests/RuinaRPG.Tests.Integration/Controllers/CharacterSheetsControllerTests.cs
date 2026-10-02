@@ -392,6 +392,24 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Get_gives_a_fresh_Campeao_at_zero_XP_Grau_1()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad3", "sheetgrad3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerGrad3", "sheetplayergrad3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Graduacao 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 0 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.EAPAtual.Should().Be(0);
+        body.Graduacao.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Get_labels_Graduacao_as_Circulo_for_a_magic_vocacao()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad2", "sheetgrad2@teste.com");
@@ -538,16 +556,38 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        // Tabela de Níveis.md packs each level's several bonuses into one markdown-table cell
-        // separated by literal "<br>" (Nível 1 has 7, Nível 2 has 3) — BonusTexts flattens that
-        // into one entry per individual bonus, not one blob per level, so the client can render
-        // each on its own line instead of a raw "<br>" showing up as literal text.
-        body!.BonusTexts.Should().HaveCount(10);
-        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
         // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized).
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
+        // (column names are free text the Auditor can edit, so they can't be singularized), and
+        // the same column across the levels gained at once is summed into a single line.
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
+        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
+    }
+
+    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
+    {
+        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
+        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
+    }
+
+    [Fact]
+    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp4", "sheetlevelup4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp4", "sheetplayerlevelup4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 4");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
+
+        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
+        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
     }
 
     [Fact]
@@ -1136,6 +1176,76 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.PesoAtual.Should().Be(0m);
+    }
+
+    private async Task<(string SheetId, string PlayerToken, string CampaignId, string GmToken)> NewSheetWithForcaVigorAsync(string tag, int forcaVigor)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"SheetGmBc{tag}", $"sheetbc{tag}@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"SheetPlayerBc{tag}", $"sheetplayerbc{tag}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Bc {tag}");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
+        return (sheetId, playerToken, campaignId, gmToken);
+    }
+
+    private async Task SetBonusDeCargaAsync(string gmToken, string campaignId, decimal bonus)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", gmToken, new UpdateCampaignRequest($"Campanha Bc", "", null, bonus)));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    private async Task<SubAttributesResponse> GetSubAttributesAsync(string sheetId, string token)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", token));
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<SubAttributesResponse>())!;
+    }
+
+    [Fact]
+    public async Task SubAttributes_campaign_BonusDeCarga_is_added_to_PesoMaximo_and_reported()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("1", 4);
+        (await GetSubAttributesAsync(sheetId, playerToken)).PesoMaximo.Should().Be(4m); // floor((4+4)/2)
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, 10m);
+
+        var body = await GetSubAttributesAsync(sheetId, playerToken);
+        body.PesoMaximo.Should().Be(14m);
+        body.BonusDeCargaDaCampanha.Should().Be(10m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_negative_campaign_BonusDeCarga_lowers_PesoMaximo_but_never_below_zero()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("2", 4);
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, -3m);
+        var lowered = await GetSubAttributesAsync(sheetId, playerToken);
+        lowered.PesoMaximo.Should().Be(1m);
+        lowered.BonusDeCargaDaCampanha.Should().Be(-3m);
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, -50m);
+        (await GetSubAttributesAsync(sheetId, playerToken)).PesoMaximo.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_Movimentacao_overweight_penalty_follows_the_campaign_BonusDeCarga()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("3", 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+        var itemId = await CreateItemGeralAsync(gmToken, "Pedra", peso: 4m, capacidadeExtra: null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+
+        var overweight = await GetSubAttributesAsync(sheetId, playerToken); // max 2, carrying 4 -> sobrepeso 2
+        overweight.Movimentacao.Should().Be(6); // 4*2 - 2 sobrepeso
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, 2m); // max 4 -> no penalty
+
+        var withBonus = await GetSubAttributesAsync(sheetId, playerToken);
+        withBonus.PesoMaximo.Should().Be(4m);
+        withBonus.Movimentacao.Should().Be(8);
     }
 
     [Fact]

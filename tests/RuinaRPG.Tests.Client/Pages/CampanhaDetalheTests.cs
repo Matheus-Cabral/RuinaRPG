@@ -20,7 +20,7 @@ public class CampanhaDetalheTests : MudBunitContext
 {
     private const string CampaignId = "campaign-1";
 
-    private IRenderedComponent<CampanhaDetalhe> RenderDetalhesTab(Func<HttpRequestMessage, HttpResponseMessage> respond)
+    private IRenderedComponent<CampanhaDetalhe> RenderDetalhesTab(Func<HttpRequestMessage, HttpResponseMessage> respond, decimal bonusDeCarga = 0m)
     {
         var authContext = this.AddAuthorization();
         authContext.SetAuthorized("gm-user");
@@ -32,7 +32,7 @@ public class CampanhaDetalheTests : MudBunitContext
             {
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) })
+                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null, bonusDeCarga) })
                 };
             }
 
@@ -156,5 +156,40 @@ public class CampanhaDetalheTests : MudBunitContext
         await Task.Delay(700);
 
         putCalled.Should().BeTrue("a non-empty Nome passes validation and the field blur must trigger the auto-save PUT");
+    }
+
+    [Fact]
+    public async Task Detalhes_tab_shows_the_loaded_BonusDeCarga_with_its_info_popup()
+    {
+        var cut = RenderDetalhesTab(_ => new HttpResponseMessage(HttpStatusCode.OK), bonusDeCarga: -4m);
+        await Task.Delay(100);
+
+        GoToDetalhesTab(cut);
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Bônus de carga dos personagens");
+        cut.FindAll("input").Select(i => i.GetAttribute("value")).Should().Contain("-4");
+        cut.FindAll("button[title='Bônus de carga']").Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Editing_the_BonusDeCarga_autosaves_with_the_new_value()
+    {
+        string? body = null;
+        var cut = RenderDetalhesTab(request =>
+        {
+            body = request.Content!.ReadAsStringAsync().Result;
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+        await Task.Delay(100);
+        GoToDetalhesTab(cut);
+        await Task.Delay(50);
+
+        var field = cut.FindComponents<MudBlazor.MudNumericField<decimal>>().Single(c => c.Instance.Label == "Bônus de carga dos personagens");
+        await cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync(12.5m));
+        await Task.Delay(700);
+
+        body.Should().NotBeNull("changing the bonus must trigger the autosave PUT");
+        body.Should().Contain("\"bonusDeCarga\":12.5");
     }
 }

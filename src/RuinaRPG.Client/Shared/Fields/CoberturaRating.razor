@@ -1,0 +1,37 @@
+@using MudBlazor
+
+@* Cobertura como uma "nota" de dois escudos: 0 acesos = Nenhuma (sem cobertura), 1 = Parcial (+5),
+   2 = Completa (+10). Clicar no escudo que já é o valor atual limpa para Nenhuma. Os valores
+   guardados continuam sendo as strings "Nenhuma" / "Parcial" / "Completa".
+   São dois MudIconButton (e não um MudRating) porque o MudRating não deixa nomear/dar tooltip a cada
+   item — os rótulos dele são "1 rating"/"2 rating" — e aqui cada escudo precisa de nome acessível. *@
+<div class="d-flex align-center gap-2 cobertura-rating" role="group" aria-label="Cobertura">
+    <MudText Typo="Typo.body1">Cobertura</MudText>
+    <div class="d-flex align-center">
+        @for (var i = 1; i <= 2; i++)
+        {
+            var nota = i;
+            var acesa = Nota >= nota;
+            var nome = nota == 1 ? "Cobertura parcial (+5)" : "Cobertura completa (+10)";
+            <MudTooltip Text="@nome">
+                <MudIconButton Icon="@(acesa ? Icons.Material.Filled.Shield : Icons.Material.Outlined.Shield)"
+                               Color="@(acesa ? Color.Primary : Color.Default)" Size="Size.Medium"
+                               aria-label="@nome" aria-pressed="@(acesa ? "true" : "false")"
+                               OnClick="@(() => ClicarAsync(nota))" />
+            </MudTooltip>
+        }
+    </div>
+    <MudText Typo="Typo.body2" Class="cobertura-rating-estado">@Estado</MudText>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private int Nota => Value switch { "Parcial" => 1, "Completa" => 2, _ => 0 };
+    private string Estado => Nota switch { 1 => "Parcial (+5)", 2 => "Completa (+10)", _ => "Sem cobertura" };
+
+    // Clicar no escudo que já é o valor atual limpa a cobertura.
+    private Task ClicarAsync(int nota) =>
+        ValueChanged.InvokeAsync((nota == Nota ? 0 : nota) switch { 1 => "Parcial", 2 => "Completa", _ => "Nenhuma" });
+}

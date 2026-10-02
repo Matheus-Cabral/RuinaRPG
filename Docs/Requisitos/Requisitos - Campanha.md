@@ -102,3 +102,9 @@ Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos
 > Exceção equivalente à de R0012, mas do lado do GM: quando uma Ficha de Personagem ou uma Ficha de NPC concedida escolhe um kit de Equipagem inicial, cada Item que o kit concede (fixo ou de slot de escolha) é anexado à campanha correspondente e marcado **público** automaticamente — sem passar pelo fluxo manual de anexar-e-depois-publicar de R0006/R0008. A justificativa é que Itens de Equipagem são "de conhecimento geral": não há razão para o GM escondê-los dos demais jogadores só porque vieram de um kit em vez de terem sido anexados manualmente.
 >
 > Isso vale apenas para o Item em si (fica público na aba de Anexos da campanha); não altera nada sobre a ficha que recebeu a Equipagem, nem sobre outros anexos já existentes.
+
+# **R0014** - A aba Detalhes deve permitir ao GM definir um Bônus de carga para os personagens da campanha.
+
+> Na aba "Detalhes", seção "Editar Campanha", o GM edita o campo numérico **Bônus de carga dos personagens** (decimal, passo 1, **pode ser negativo**; padrão 0; limitado a −1000..1000, com erro 400 e mensagem em português fora disso), salvo pelo mesmo autosave de Nome e Descrição. Um ⓘ explica: o valor é somado ao Peso Máximo do inventário de todos os personagens da campanha, um número negativo reduz a capacidade, e NPCs e Criaturas não são afetados.
+>
+> O bônus é somado ao Peso Máximo de toda Ficha de Personagem da campanha (ver "[[Requisitos - Ficha de Personagem]]" 2.b, Movimentação) — tanto no Peso exibido na aba "Posses" quanto na penalidade de sobrepeso da Movimentação —, e o Peso Máximo resultante nunca fica abaixo de 0. Quando o bônus é diferente de 0, a ficha mostra a legenda "inclui +N da campanha" (ou "inclui −N da campanha") ao lado do Peso. Só o GM dono da campanha pode alterá-lo.

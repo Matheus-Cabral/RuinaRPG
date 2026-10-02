@@ -7,4 +7,7 @@ public class Campaign
     public required string Nome { get; set; }
     public required string Descricao { get; set; }
     public Guid? ImageId { get; set; }
+
+    /// <summary>Somado ao Peso máximo de todas as fichas de Personagem da campanha; pode ser negativo.</summary>
+    public decimal BonusDeCarga { get; set; }
 }

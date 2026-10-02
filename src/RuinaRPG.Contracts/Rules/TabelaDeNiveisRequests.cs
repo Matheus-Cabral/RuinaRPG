@@ -9,3 +9,5 @@ public record CriarColunaDeNivelRequest(string Nome, string Tipo);
 public record RenomearColunaDeNivelRequest(string Nome);
 
 public record ReordenarColunasDeNivelRequest(List<Guid> Ids);
+
+public record AtualizarConfigDaTabelaDeNiveisRequest(bool MostrarLimitesNoLivro);

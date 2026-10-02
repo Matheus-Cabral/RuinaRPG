@@ -30,7 +30,23 @@ public class TabelaDeNiveisController(RuinaRpgDbContext db) : ControllerBase
         return new TabelaDeNiveisResponse(
             colunas.Select(ToResponse).ToList(),
             niveis.Select(n => new LinhaDeNivelResponse(n.Nivel, n.OutrosBonus,
-                valores[n.Nivel].ToDictionary(v => v.ColunaId, v => v.Valor))).ToList());
+                valores[n.Nivel].ToDictionary(v => v.ColunaId, v => v.Valor))).ToList(),
+            await db.TabelaDeNiveisConfigs.AsNoTracking().Where(c => c.Id == TabelaDeNiveisConfig.IdUnico).Select(c => c.MostrarLimitesNoLivro).SingleOrDefaultAsync());
+    }
+
+    [HttpPut("config")]
+    public async Task<IActionResult> AtualizarConfig(AtualizarConfigDaTabelaDeNiveisRequest request)
+    {
+        var authError = await RequireRulesAuditorAsync();
+        if (authError is not null) return authError;
+
+        var config = await db.TabelaDeNiveisConfigs.SingleOrDefaultAsync(c => c.Id == TabelaDeNiveisConfig.IdUnico);
+        if (config is null)
+            db.TabelaDeNiveisConfigs.Add(new TabelaDeNiveisConfig { MostrarLimitesNoLivro = request.MostrarLimitesNoLivro });
+        else
+            config.MostrarLimitesNoLivro = request.MostrarLimitesNoLivro;
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpPut("{nivel:int}/valores/{colunaId:guid}")]

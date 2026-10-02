@@ -232,13 +232,13 @@ public class RulebookRenderer(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNive
 
     /// <summary>
     /// Montada ao vivo a partir da Tabela de Níveis da Auditoria (ITabelaDeNiveis): tabela "Nível | Bônus"
-    /// e tabela "Limites e progressão" (ver <see cref="TabelaDeNiveisHtml"/>). Sem
+    /// e, se a Auditoria marcar, a tabela "Limites e progressão" (ver <see cref="TabelaDeNiveisHtml"/>). Sem
     /// seções — a tabela inteira vai no IntroHtml. Não há override em Markdown para este documento.
     /// </summary>
     private async Task<RulebookDocument> BuildTabelaDeNiveisAsync()
     {
         var tabela = await tabelaDeNiveis.ObterAsync();
-        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", TabelaDeNiveisHtml.Montar(tabela), []);
+        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", TabelaDeNiveisHtml.Montar(tabela, await tabelaDeNiveis.MostrarLimitesNoLivroAsync()), []);
     }
 
     /// <summary>

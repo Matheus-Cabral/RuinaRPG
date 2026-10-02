@@ -4,4 +4,4 @@ public record ColunaDeNivelResponse(Guid Id, string Nome, string Tipo, string? C
 
 public record LinhaDeNivelResponse(int Nivel, string? OutrosBonus, Dictionary<Guid, int?> Valores);
 
-public record TabelaDeNiveisResponse(List<ColunaDeNivelResponse> Colunas, List<LinhaDeNivelResponse> Linhas);
+public record TabelaDeNiveisResponse(List<ColunaDeNivelResponse> Colunas, List<LinhaDeNivelResponse> Linhas, bool MostrarLimitesNoLivro = false);

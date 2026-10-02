@@ -29,6 +29,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NivelProgressao> NiveisProgressao => Set<NivelProgressao>();
     public DbSet<ColunaDeNivel> ColunasDeNivel => Set<ColunaDeNivel>();
     public DbSet<ValorDeNivel> ValoresDeNivel => Set<ValorDeNivel>();
+    public DbSet<TabelaDeNiveisConfig> TabelaDeNiveisConfigs => Set<TabelaDeNiveisConfig>();
     public DbSet<PericiaDefinicao> Pericias => Set<PericiaDefinicao>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
@@ -49,6 +50,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterArtifact> CharacterArtifacts => Set<CharacterArtifact>();
     public DbSet<CharacterSpellAbility> CharacterSpellAbilities => Set<CharacterSpellAbility>();
     public DbSet<CharacterSpellAbilityEffect> CharacterSpellAbilityEffects => Set<CharacterSpellAbilityEffect>();
+    public DbSet<CharacterSheetHistoriaImage> CharacterSheetHistoriaImages => Set<CharacterSheetHistoriaImage>();
+    public DbSet<NpcSheetHistoriaImage> NpcSheetHistoriaImages => Set<NpcSheetHistoriaImage>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -191,6 +194,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             e.HasOne<NivelProgressao>().WithMany().HasForeignKey(v => v.Nivel).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<ColunaDeNivel>().WithMany().HasForeignKey(v => v.ColunaId).OnDelete(DeleteBehavior.Cascade);
         });
+        builder.Entity<TabelaDeNiveisConfig>(e => { e.ToTable("TabelaDeNiveisConfig"); e.HasKey(c => c.Id); e.Property(c => c.Id).ValueGeneratedNever(); });
         builder.Entity<Historico>(entity =>
         {
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(h => h.PericiaMaisSeisId).OnDelete(DeleteBehavior.Restrict);
@@ -444,6 +448,20 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(d => d.CharacterSheetId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Aba História — galeria de imagens. Apagar a ficha ou a imagem leva a linha junto (mesmo que DiaryEntryImages).
+        builder.Entity<CharacterSheetHistoriaImage>(entity =>
+        {
+            entity.HasKey(i => new { i.CharacterSheetId, i.ImageId });
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<NpcSheetHistoriaImage>(entity =>
+        {
+            entity.HasKey(i => new { i.NpcSheetId, i.ImageId });
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<DiaryEntryImage>(entity =>

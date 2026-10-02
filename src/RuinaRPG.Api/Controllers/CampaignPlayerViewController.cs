@@ -153,7 +153,7 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
-        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl);
+        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl, c.BonusDeCarga);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

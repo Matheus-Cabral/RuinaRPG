@@ -380,11 +380,7 @@
                 <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
                 <MudText>Eficiência Elemental: @_subAttributes.EficienciaElemental</MudText>
                 <MudText>Dano Elemental: @_subAttributes.DanoElemental</MudText>
-                <MudSelect T="string" Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" Label="Cobertura">
-                    <MudSelectItem Value="@("Nenhuma")">Nenhuma (+0)</MudSelectItem>
-                    <MudSelectItem Value="@("Parcial")">Parcial (+5)</MudSelectItem>
-                    <MudSelectItem Value="@("Completa")">Completa (+10)</MudSelectItem>
-                </MudSelect>
+                <CoberturaRating Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" />
             </Section>
         }
 
@@ -734,6 +730,10 @@
             @if (_subAttributes?.PesoAtual is not null && _subAttributes.PesoMaximo is not null)
             {
                 <MudText>Peso: @_subAttributes.PesoAtual?.ToString("0.##") / @_subAttributes.PesoMaximo?.ToString("0.##")</MudText>
+                @if (_subAttributes.BonusDeCargaDaCampanha != 0m)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">inclui @(_subAttributes.BonusDeCargaDaCampanha > 0 ? "+" : "−")@(Math.Abs(_subAttributes.BonusDeCargaDaCampanha).ToString("0.##")) da campanha</MudText>
+                }
                 @if (_subAttributes.PesoAtual > _subAttributes.PesoMaximo)
                 {
                     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
@@ -822,7 +822,8 @@
         <Section>
             @if (_historiaLoaded)
             {
-                <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)" />
+                <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)"
+                                AvailableImages="_myImages" CampaignId="@(_isGmCaller ? null : _campaignId)" />
             }
             else
             {

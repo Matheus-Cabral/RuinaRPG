@@ -6,7 +6,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 /// <summary>
 /// HTML do Livro de Regras para a Tabela de Níveis (Auditoria): uma tabela "Nível | Bônus" (o que cada
 /// nível concede, um item por linha, exatamente <see cref="ProgressaoDeNivel.LinhasDeBonus"/>) e, abaixo,
-/// "Limites e progressão" com só as colunas "Por nível" que têm algum valor. Nomes de coluna e texto livre
+/// "Limites e progressão" (só quando o Auditor liga a opção) com só as colunas "Por nível" que têm algum valor. Nomes de coluna e texto livre
 /// vêm do Auditor, então tudo é codificado em HTML.
 /// </summary>
 public static class TabelaDeNiveisHtml
@@ -17,7 +17,7 @@ public static class TabelaDeNiveisHtml
     private static string Codificar(string texto) => texto
         .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
-    public static string Montar(ProgressaoDeNivel tabela)
+    public static string Montar(ProgressaoDeNivel tabela, bool mostrarLimites)
     {
         var html = new StringBuilder("<table class=\"tabela-de-niveis tabela-de-niveis-bonus\"><thead><tr><th>Nível</th><th>Bônus</th></tr></thead><tbody>");
         foreach (var linha in tabela.Linhas)
@@ -28,6 +28,9 @@ public static class TabelaDeNiveisHtml
                 .Append("</td></tr>");
         }
         html.Append("</tbody></table>");
+
+        if (!mostrarLimites)
+            return html.ToString();
 
         var limites = tabela.Colunas
             .Where(c => c.Tipo == TipoDeColunaDeNivel.PorNivel && tabela.Linhas.Any(l => l.Valores.GetValueOrDefault(c.Id) is not null))

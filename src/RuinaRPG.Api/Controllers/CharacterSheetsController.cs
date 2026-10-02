@@ -354,13 +354,72 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (request.Historia is { Length: > HistoriaSanitizer.MaxRawLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
-        var clean = HistoriaSanitizer.Sanitize(request.Historia);
+        // Imagens dentro do texto: só as do app que quem salva pode usar (ou que a História já trazia) —
+        // qualquer outro <img> é removido, sem erro (HistoriaSanitizer / HistoriaImageAccess).
+        var imagens = await HistoriaImageAccess.AllowedInlineFilesAsync(db, request.Historia, sheet.Historia, CurrentUserId(), campaignGmId, sheet.CampaignId);
+        var clean = HistoriaSanitizer.Sanitize(request.Historia, imagens);
         if (clean is { Length: > HistoriaSanitizer.MaxLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
         sheet.Historia = clean;
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    /// <summary>Aba História — a galeria de imagens anexadas, na ordem em que aparecem. Quem pode abrir a ficha pode ver.</summary>
+    [HttpGet("api/character-sheets/{id}/historia/imagens")]
+    public async Task<ActionResult<List<HistoriaImagemResponse>>> HistoriaImagens(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return NotFound(); // NotFound rather than Forbid — same as Get
+
+        var ids = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
+        return await HistoriaImageAccess.ToResponseAsync(db, ids);
+    }
+
+    /// <summary>
+    /// Aba História — substitui a galeria pela lista recebida (anexar, remover e reordenar são o mesmo PUT).
+    /// Mesma autorização de UpdateHistoria; uma imagem nova na galeria precisa ser de quem salva
+    /// (HistoriaImageAccess), senão 400 e nada muda.
+    /// </summary>
+    [HttpPut("api/character-sheets/{id}/historia/imagens")]
+    public async Task<ActionResult<List<HistoriaImagemResponse>>> UpdateHistoriaImagens(Guid id, UpdateHistoriaImagensRequest request)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        if (!HistoriaImageAccess.TryParseIds(request.ImageIds, out var ids))
+            return BadRequest(HistoriaImageAccess.InvalidIdMessage);
+        if (ids.Count > HistoriaImageAccess.MaxImagens)
+            return BadRequest(HistoriaImageAccess.MaxImagensMessage);
+
+        var existing = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).ToListAsync();
+        var novas = ids.Where(imageId => existing.All(e => e.ImageId != imageId)).ToList();
+        if ((await HistoriaImageAccess.UsableAsync(db, novas, CurrentUserId(), campaignGmId, sheet.CampaignId)).Count != novas.Count)
+            return BadRequest(HistoriaImageAccess.NotFoundMessage);
+
+        db.CharacterSheetHistoriaImages.RemoveRange(existing.Where(e => !ids.Contains(e.ImageId)));
+        for (var ordem = 0; ordem < ids.Count; ordem++)
+        {
+            var imageId = ids[ordem];
+            if (existing.FirstOrDefault(e => e.ImageId == imageId) is { } row)
+                row.Ordem = ordem;
+            else
+                db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { CharacterSheetId = id, ImageId = imageId, Ordem = ordem });
+        }
+        await db.SaveChangesAsync();
+
+        return await HistoriaImageAccess.ToResponseAsync(db, ids);
     }
 
     [HttpGet("api/character-sheets/{id}/level-up-notice")]
@@ -375,8 +434,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return Forbid();
 
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var pending = LevelUpNoticeCalculator.PendingBonuses(sheet.LastDismissedLevelUpLevel, sheet.Nivel, tabela.ComoLevelBonus());
-        return new LevelUpNoticeResponse(LevelUpNoticeCalculator.FlattenBonusLines(pending));
+        return new LevelUpNoticeResponse(tabela.LinhasDeBonusAcumuladas(sheet.LastDismissedLevelUpLevel ?? 0, sheet.Nivel).ToList());
     }
 
     [HttpPost("api/character-sheets/{id}/dismiss-level-up-notice")]

@@ -24,7 +24,7 @@ public class TabelaDeNiveisHtmlTests
     [Fact]
     public void Main_table_lists_one_bonus_per_line_and_a_dash_for_levels_that_grant_nothing()
     {
-        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama));
+        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama), mostrarLimites: false);
 
         html.Should().Contain("<th>Nível</th><th>Bônus</th>");
         html.Should().Contain("<td>1</td><td>Pontos de Atributo: +9<br />Fama: +2<br />Status de Vida<br />Status de Foco</td>");
@@ -33,9 +33,27 @@ public class TabelaDeNiveisHtmlTests
     }
 
     [Fact]
+    public void Limits_table_is_omitted_when_the_flag_is_off_even_if_Por_nivel_columns_have_values()
+    {
+        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama), mostrarLimites: false);
+
+        html.Should().NotContain("Limites e progressão").And.NotContain("XP para o próximo nível");
+        html.Split("<table").Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void Limits_table_is_present_when_the_flag_is_on_and_a_Por_nivel_column_has_values()
+    {
+        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama), mostrarLimites: true);
+
+        html.Should().Contain("<h3>Limites e progressão</h3>");
+        html.Split("<table").Length.Should().Be(3);
+    }
+
+    [Fact]
     public void Limits_table_only_has_Por_nivel_columns_with_a_value_and_dashes_for_empty_cells()
     {
-        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama));
+        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama), mostrarLimites: true);
 
         html.Should().Contain("<h3>Limites e progressão</h3>");
         html.Should().Contain("<th>Nível</th><th>XP para o próximo nível</th>");
@@ -47,7 +65,7 @@ public class TabelaDeNiveisHtmlTests
     [Fact]
     public void Limits_heading_and_table_are_omitted_when_no_Por_nivel_column_has_values()
     {
-        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo));
+        var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo), mostrarLimites: true);
 
         html.Should().NotContain("Limites e progressão");
         html.Split("<table").Length.Should().Be(2);
@@ -63,7 +81,7 @@ public class TabelaDeNiveisHtmlTests
             new LinhaDeNivel(1, "<script>a</script>", new Dictionary<Guid, int?> { [evil.Id] = 1, [porNivel.Id] = 3 }),
         });
 
-        var html = TabelaDeNiveisHtml.Montar(t);
+        var html = TabelaDeNiveisHtml.Montar(t, mostrarLimites: true);
 
         html.Should().Contain("&lt;b&gt;x&lt;/b&gt;: +1").And.Contain("&lt;script&gt;a&lt;/script&gt;").And.Contain("<th>&lt;i&gt;y&lt;/i&gt;</th>");
         html.Should().NotContain("<b>").And.NotContain("<script>").And.NotContain("<i>");

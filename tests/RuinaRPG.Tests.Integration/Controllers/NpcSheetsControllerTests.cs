@@ -456,12 +456,36 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().HaveCount(10);
-        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
         // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized).
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
+        // (column names are free text the Auditor can edit, so they can't be singularized), and
+        // the same column across the levels gained at once is summed into a single line.
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
+        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
+    }
+
+
+    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
+    {
+        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
+        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
+    }
+
+    [Fact]
+    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp4", "npclevelup4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
+
+        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 150));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
+        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
     }
 
     [Fact]
@@ -632,6 +656,21 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task Graduacao_of_a_Cacador_at_Nivel_1_is_Grau_1_and_a_Feiticeiro_without_coracao_stays_0()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrau1", "npcgrau1@teste.com");
+        var cacadorId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{cacadorId}", gmToken, ValidUpdate() with { Vocacao = "Cacador", Nivel = 1 }));
+        var cacador = await GetNpcAsync(gmToken, cacadorId);
+        cacador.EAPAtual.Should().Be(0);
+        cacador.Graduacao.Should().Be(1);
+
+        var feiticeiroId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{feiticeiroId}", gmToken, ValidUpdate() with { Vocacao = "Feiticeiro", Nivel = 1, PossuiCoracaoDeMana = false }));
+        (await GetNpcAsync(gmToken, feiticeiroId)).Graduacao.Should().Be(0);
+    }
+
+    [Fact]
     public async Task EAPAtual_is_the_level_base_ignoring_the_EAPAtual_sent()
     {
         // Mesma regra da Ficha de Personagem: base do Nível (Nível 5 = 120 na tabela de EAP) + Âmbares.
@@ -675,7 +714,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, EAPAtual = 99999 }));
         var abaixo = await GetNpcAsync(gmToken, sheetId);
         abaixo.EAPAtual.Should().Be(30);
-        abaixo.Graduacao.Should().Be(0);
+        abaixo.Graduacao.Should().Be(1); // piso das vocações marciais, não o Grau do 99999
 
         // Âmbares Rank C (120) levam o VIS calculado a 150 >= 100: Grau 1.
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, NucleosRankC = 1 }));
@@ -1158,6 +1197,25 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.PesoAtual.Should().Be(0m);
         body.PesoMaximo.Should().Be(24m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_PesoMaximo_ignores_the_BonusDeCarga_of_the_gms_campaigns()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPesoBc", "npcpesobc@teste.com");
+        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new RuinaRPG.Contracts.Campaigns.CreateCampaignRequest("Campanha Bônus", "")));
+        var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignResponse>())!.Id;
+        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", gmToken, new RuinaRPG.Contracts.Campaigns.UpdateCampaignRequest("Campanha Bônus", "", null, 25m)));
+        update.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoMaximo.Should().Be(4m);
+        body.BonusDeCargaDaCampanha.Should().Be(0m);
     }
 
     [Fact]
