@@ -68,7 +68,7 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
         body!.Should().HaveCount(8);
         body!.Should().OnlyContain(e => e.IsDefault);
         body!.Single(e => e.Variante == "Sinir").Nome.Should().Be("Racial (Arca)");
-        body!.Single(e => e.Variante == "Sinir").Descricao.Should().Be("Role 1d18 na tabela de Arcas.");
+        body!.Single(e => e.Variante == "Sinir").Descricao.Should().Be("Role 1d20 na tabela de Arcas.");
         body!.Single(e => e.Variante == "Alora").Nome.Should().Be("Racial (Amplificador Místico)");
     }
 
@@ -173,15 +173,15 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
-    public async Task ListArcas_returns_18_entries_with_null_fields_when_unset()
+    public async Task ListArcas_returns_20_entries_with_null_fields_when_unset()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RacialGm9", "racial9@teste.com");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<ArcaEntryResponse>>();
-        body!.Should().HaveCount(18);
-        body!.Select(a => a.Roll).Should().BeEquivalentTo(Enumerable.Range(1, 18));
+        body!.Should().HaveCount(20);
+        body!.Select(a => a.Roll).Should().BeEquivalentTo(Enumerable.Range(1, 20));
         body!.Should().OnlyContain(a => a.Nome == null && a.Descricao == null);
     }
 
@@ -203,8 +203,8 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
     [Theory]
     [InlineData(0)]
-    [InlineData(19)]
-    public async Task UpdateArca_with_a_roll_outside_1_to_18_returns_400(int invalidRoll)
+    [InlineData(21)]
+    public async Task UpdateArca_with_a_roll_outside_1_to_20_returns_400(int invalidRoll)
     {
         var gmToken = await RegisterGmAndGetTokenAsync($"RacialGmRoll{invalidRoll}", $"racialroll{invalidRoll}@teste.com");
 
@@ -371,7 +371,7 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
 
     [Theory]
     [InlineData(0, 1, "texto")]
-    [InlineData(19, 1, "texto")]
+    [InlineData(21, 1, "texto")]
     [InlineData(1, 0, "texto")]
     [InlineData(1, 51, "texto")]
     [InlineData(1, 5, "   ")]
@@ -431,5 +431,142 @@ public class RacialAbilitiesControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/3/evolucoes", jogadorToken, new ArcaEvolucaoRequest(2, "x")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    private async Task SetDadoAsync(string token, int dado) =>
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", token, new ArcaDadoRequest(dado))))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+    private async Task<List<ArcaEntryResponse>> ListArcasAsync(string token) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas", token))).Content.ReadFromJsonAsync<List<ArcaEntryResponse>>())!;
+
+    [Fact]
+    public async Task GetDado_defaults_to_20_when_the_GM_never_chose()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm1", "arcadado1@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas/dado", gmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<ArcaDadoResponse>())!.Dado.Should().Be(20);
+    }
+
+    [Theory]
+    [InlineData(6)]
+    [InlineData(8)]
+    [InlineData(10)]
+    [InlineData(12)]
+    [InlineData(20)]
+    [InlineData(100)]
+    public async Task SetDado_resizes_the_table_to_one_row_per_face(int dado)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"ArcaDadoGmS{dado}", $"arcadados{dado}@teste.com");
+
+        await SetDadoAsync(gmToken, dado);
+
+        var dadoBody = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas/dado", gmToken))).Content.ReadFromJsonAsync<ArcaDadoResponse>();
+        dadoBody!.Dado.Should().Be(dado);
+        (await ListArcasAsync(gmToken)).Select(a => a.Roll).Should().Equal(Enumerable.Range(1, dado));
+    }
+
+    [Theory]
+    [InlineData(18)]
+    [InlineData(7)]
+    [InlineData(0)]
+    public async Task SetDado_with_an_invalid_die_returns_400_and_keeps_the_current_one(int dado)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"ArcaDadoGmI{dado}", $"arcadadoi{dado}@teste.com");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new ArcaDadoRequest(dado)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Dado inválido. Use D6, D8, D10, D12, D20 ou D100.");
+        (await ListArcasAsync(gmToken)).Should().HaveCount(20);
+    }
+
+    [Fact]
+    public async Task Shrinking_the_die_only_hides_the_Arcas_and_growing_it_again_brings_them_back_intact()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm2", "arcadado2@teste.com");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/15", gmToken, new UpdateArcaEntryRequest("Arca Alta", "Descrição alta.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/15/evolucoes", gmToken, new ArcaEvolucaoRequest(3, "evolução alta")));
+
+        await SetDadoAsync(gmToken, 12);
+        var shrunk = await ListArcasAsync(gmToken);
+        shrunk.Should().HaveCount(12);
+        shrunk.Should().NotContain(a => a.Roll == 15);
+
+        await SetDadoAsync(gmToken, 20);
+        var grown = await ListArcasAsync(gmToken);
+        var arca15 = grown.Single(a => a.Roll == 15);
+        arca15.Nome.Should().Be("Arca Alta");
+        arca15.Descricao.Should().Be("Descrição alta.");
+        arca15.Evolucoes.Should().ContainSingle().Which.Descricao.Should().Be("evolução alta");
+    }
+
+    [Fact]
+    public async Task UpdateArca_above_the_chosen_die_returns_400_naming_the_die()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm3", "arcadado3@teste.com");
+        await SetDadoAsync(gmToken, 12);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/15", gmToken, new UpdateArcaEntryRequest("X", "Y")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Roll deve estar entre 1 e 12.");
+    }
+
+    [Fact]
+    public async Task Evolucao_routes_above_the_chosen_die_return_400()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm4", "arcadado4@teste.com");
+        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/15/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "x"))))
+            .Content.ReadFromJsonAsync<ArcaEvolucaoResponse>();
+        await SetDadoAsync(gmToken, 12);
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/15/evolucoes", gmToken, new ArcaEvolucaoRequest(2, "y"))))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/arcas/15/evolucoes/{created!.Id}", gmToken, new ArcaEvolucaoRequest(2, "z"))))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Each_GMs_die_is_independent()
+    {
+        var gmA = await RegisterGmAndGetTokenAsync("ArcaDadoGmA", "arcadadoa@teste.com");
+        var gmB = await RegisterGmAndGetTokenAsync("ArcaDadoGmB", "arcadadob@teste.com");
+
+        await SetDadoAsync(gmA, 6);
+
+        (await ListArcasAsync(gmA)).Should().HaveCount(6);
+        (await ListArcasAsync(gmB)).Should().HaveCount(20);
+    }
+
+    [Fact]
+    public async Task Dado_endpoints_by_a_jogador_return_403()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm5", "arcadado5@teste.com");
+        var playerToken = await RegisterJogadorTokenAsync(gmToken, "ArcaDadoPlayer5", "arcadadoplayer5@teste.com");
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/arcas/dado", playerToken))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", playerToken, new ArcaDadoRequest(6)))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task The_default_Arca_description_follows_the_die_but_an_override_is_left_alone()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("ArcaDadoGm6", "arcadado6@teste.com");
+        await SetDadoAsync(gmToken, 6);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/racial-abilities/Laonir", gmToken, new UpdateRacialAbilityRequest("Racial (Arca)", "Role 1d18 na tabela de Arcas.")));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/racial-abilities", gmToken)))
+            .Content.ReadFromJsonAsync<List<RacialAbilityEntryResponse>>();
+
+        var sinir = body!.Single(e => e.Variante == "Sinir");
+        sinir.IsDefault.Should().BeTrue();
+        sinir.Descricao.Should().Be("Role 1d6 na tabela de Arcas.");
+        var laonir = body!.Single(e => e.Variante == "Laonir");
+        laonir.IsDefault.Should().BeFalse();
+        laonir.Descricao.Should().Be("Role 1d18 na tabela de Arcas.");
     }
 }

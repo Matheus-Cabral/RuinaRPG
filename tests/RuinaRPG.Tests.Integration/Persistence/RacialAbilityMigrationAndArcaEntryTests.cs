@@ -54,4 +54,26 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<PostgresFix
         (await db.CharacterSheets.SingleAsync(s => s.Id == sheet.Id)).ArcaRolada.Should().Be(7);
         (await db.NpcSheets.SingleAsync(s => s.Id == npcSheet.Id)).ArcaRolada.Should().Be(3);
     }
+
+    [Fact]
+    public async Task Migrate_creates_the_ArcaTabela_table_and_a_GM_without_a_row_has_no_chosen_die()
+    {
+        var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        await using var db = new RuinaRpgDbContext(options);
+        await db.Database.MigrateAsync();
+
+        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddDadoDaTabelaDeArcas"));
+
+        var gmSemLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm1@arcadado.com", Email = "gm1@arcadado.com", Nickname = "ArcaDadoMigGm1", Role = UserRole.GM };
+        var gmComLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm2@arcadado.com", Email = "gm2@arcadado.com", Nickname = "ArcaDadoMigGm2", Role = UserRole.GM };
+        db.Users.AddRange(gmSemLinha, gmComLinha);
+        await db.SaveChangesAsync();
+        db.ArcaTabelas.Add(new ArcaTabela { GmId = gmComLinha.Id, Dado = 100 });
+        await db.SaveChangesAsync();
+
+        (await db.ArcaTabelas.SingleAsync(t => t.GmId == gmComLinha.Id)).Dado.Should().Be(100);
+        (await db.ArcaTabelas.AnyAsync(t => t.GmId == gmSemLinha.Id)).Should().BeFalse();
+        var dadoEfetivo = (await db.ArcaTabelas.Where(t => t.GmId == gmSemLinha.Id).Select(t => (int?)t.Dado).FirstOrDefaultAsync()) ?? DadoDeArca.Padrao;
+        dadoEfetivo.Should().Be(20);
+    }
 }

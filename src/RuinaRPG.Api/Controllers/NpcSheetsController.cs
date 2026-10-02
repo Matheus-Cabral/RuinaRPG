@@ -147,8 +147,14 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.FocoAtual = request.FocoAtual;
         sheet.AdrenalinaAtual = request.AdrenalinaAtual;
         sheet.EstresseAtual = request.EstresseAtual;
-        if (request.ArcaRolada is < 1 or > 18)
-            return BadRequest("ArcaRolada deve estar entre 1 e 18.");
+        // Só rejeita quando o valor MUDA para fora da tabela: se o GM diminuiu o dado depois da rolagem,
+        // a ficha continua podendo salvar os outros campos mantendo a mesma ArcaRolada.
+        if (request.ArcaRolada != sheet.ArcaRolada)
+        {
+            var arcaDado = await db.DadoDeArcaDoGmAsync(sheet.GmId);
+            if (request.ArcaRolada < 1 || request.ArcaRolada > arcaDado)
+                return BadRequest($"ArcaRolada deve estar entre 1 e {arcaDado}.");
+        }
 
         sheet.Cobertura = cobertura;
         sheet.Ciclos = request.Ciclos;
@@ -336,15 +342,17 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (sheet.Variante is null)
             return new RacialAbilityResponse(null, null, null, null, null, new());
 
+        var arcaDado = await db.DadoDeArcaDoGmAsync(sheet.GmId);
         var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == sheet.GmId && o.Variante == sheet.Variante.Value);
         var (nome, descricao) = over is not null
             ? (over.Nome, over.Descricao)
-            : (RacialAbilityLookup.For(sheet.Variante.Value).Nome, RacialAbilityLookup.For(sheet.Variante.Value).Descricao);
+            : (RacialAbilityLookup.For(sheet.Variante.Value, arcaDado).Nome, RacialAbilityLookup.For(sheet.Variante.Value, arcaDado).Descricao);
 
         string? arcaNome = null;
         string? arcaDescricao = null;
         var arcaEvolucoes = new List<ArcaEvolucaoResponse>();
-        if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null)
+        var arcaForaDaTabela = sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada > arcaDado;
+        if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null && !arcaForaDaTabela)
         {
             var arca = await db.ArcaEntries.Include(a => a.Evolucoes)
                 .FirstOrDefaultAsync(a => a.GmId == sheet.GmId && a.Roll == sheet.ArcaRolada.Value);
@@ -356,7 +364,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
                     .Select(e => new ArcaEvolucaoResponse(e.Id, e.Nivel, e.Descricao)).ToList();
         }
 
-        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao, arcaEvolucoes);
+        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao, arcaEvolucoes, arcaDado, arcaForaDaTabela);
     }
 
     /// <summary>

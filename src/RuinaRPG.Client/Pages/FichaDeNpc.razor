@@ -563,10 +563,10 @@
             <MudText>@(_racialAbility?.Descricao ?? "—")</MudText>
             @if (_form.Linhagem == "Humano")
             {
-                <MudNumericField T="int?" Value="@_form.ArcaRolada" ValueChanged="@(v => UpdateArcaRoladaAsync(v))" Label="Número rolado (1d18)" Min="1" Max="18" Style="width:12em;" Class="mt-2" />
+                <MudNumericField T="int?" Value="@_form.ArcaRolada" ValueChanged="@(v => UpdateArcaRoladaAsync(v))" Label="@($"Número rolado (1d{ArcaDado})")" Min="1" Max="@ArcaDado" Style="width:12em;" Class="mt-2" />
                 @if (_racialAbility?.ArcaRolada is not null)
                 {
-                    <MudText Class="mt-1">@(_racialAbility.ArcaNome ?? "Arca não cadastrada.")</MudText>
+                    <MudText Class="mt-1">@(_racialAbility.ArcaForaDaTabela ? $"Arca fora da tabela (o dado atual é D{_racialAbility.ArcaDado}). Role de novo." : _racialAbility.ArcaNome ?? "Arca não cadastrada.")</MudText>
                     @if (_racialAbility.ArcaDescricao is not null)
                     {
                         <MudText>@_racialAbility.ArcaDescricao</MudText>
@@ -1378,6 +1378,9 @@
     {
         _racialAbility = await Http.GetFromJsonAsync<RacialAbilityResponse>($"npc-sheets/{SheetId}/racial-ability");
     }
+
+    // Dado da Tabela de Arcas do GM (vem da habilidade racial); D20 até carregar.
+    private int ArcaDado => _racialAbility?.ArcaDado ?? 20;
 
     private async Task UpdateArcaRoladaAsync(int? value)
     {

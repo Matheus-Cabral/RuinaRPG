@@ -15,7 +15,7 @@ namespace RuinaRPG.Api.Controllers;
 /// <summary>
 /// GM-editable overrides for RacialAbilityLookup's hardcoded defaults (Ruína RPG - Sistema
 /// Básico.md §7), plus the "tabela de Arcas" that Sinir/Laonir's (Humano) racial ability
-/// references by name ("Role 1d18 na tabela de Arcas") but that no doc actually defines — it's
+/// references by name ("Role 1d{dado} na tabela de Arcas") but that no doc actually defines — it's
 /// free-form GM content, not a fixed system rule. Both curating and browsing this page are
 /// GM-only — a Jogador never reaches these endpoints directly; they only see the already-resolved
 /// Nome/Descrição/Arca on their own sheet, which CharacterSheetsController/NpcSheetsController
@@ -30,6 +30,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tab
     {
         var gmId = CurrentUserId();
         var overrides = await db.RacialAbilityOverrides.Where(o => o.GmId == gmId).ToListAsync();
+        var dado = await db.DadoDeArcaDoGmAsync(gmId);
 
         var responses = new List<RacialAbilityEntryResponse>();
         foreach (var variante in Enum.GetValues<Variante>())
@@ -41,7 +42,7 @@ public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tab
             }
             else
             {
-                var def = RacialAbilityLookup.For(variante);
+                var def = RacialAbilityLookup.For(variante, dado);
                 responses.Add(new RacialAbilityEntryResponse(variante.ToString(), def.Nome, def.Descricao, true));
             }
         }
@@ -117,14 +118,40 @@ public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tab
         return NoContent();
     }
 
+    [HttpGet("api/arcas/dado")]
+    public async Task<ActionResult<ArcaDadoResponse>> GetDado() =>
+        new ArcaDadoResponse(await db.DadoDeArcaDoGmAsync(CurrentUserId()));
+
+    /// <summary>
+    /// Escolhe o dado da Tabela de Arcas do GM. Diminuir o dado só ESCONDE as Arcas acima dele (e as
+    /// suas evoluções): nada é apagado, e elas voltam se o GM escolher um dado maior de novo.
+    /// </summary>
+    [HttpPut("api/arcas/dado")]
+    public async Task<IActionResult> SetDado(ArcaDadoRequest request)
+    {
+        if (!DadoDeArca.EhValido(request.Dado))
+            return BadRequest("Dado inválido. Use D6, D8, D10, D12, D20 ou D100.");
+
+        var gmId = CurrentUserId();
+        var existing = await db.ArcaTabelas.FirstOrDefaultAsync(t => t.GmId == gmId);
+        if (existing is null)
+            db.ArcaTabelas.Add(new ArcaTabela { GmId = gmId, Dado = request.Dado });
+        else
+            existing.Dado = request.Dado;
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("api/arcas")]
     public async Task<ActionResult<List<ArcaEntryResponse>>> ListArcas()
     {
         var gmId = CurrentUserId();
-        var entries = await db.ArcaEntries.Include(a => a.Evolucoes).Where(a => a.GmId == gmId).ToListAsync();
+        var dado = await db.DadoDeArcaDoGmAsync(gmId);
+        var entries = await db.ArcaEntries.Include(a => a.Evolucoes).Where(a => a.GmId == gmId && a.Roll <= dado).ToListAsync();
 
         var responses = new List<ArcaEntryResponse>();
-        for (var roll = 1; roll <= 18; roll++)
+        for (var roll = 1; roll <= dado; roll++)
         {
             var entry = entries.FirstOrDefault(a => a.Roll == roll);
             var evolucoes = entry is null
@@ -138,10 +165,10 @@ public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tab
     [HttpPut("api/arcas/{roll:int}")]
     public async Task<IActionResult> UpdateArca(int roll, UpdateArcaEntryRequest request)
     {
-        if (roll is < 1 or > 18)
-            return BadRequest("Roll deve estar entre 1 e 18.");
-
         var gmId = CurrentUserId();
+        if (await ValidateRollAsync(roll) is { } invalidRoll)
+            return invalidRoll;
+
         var existing = await db.ArcaEntries.FirstOrDefaultAsync(a => a.GmId == gmId && a.Roll == roll);
         if (existing is null)
         {
@@ -205,10 +232,16 @@ public class RacialAbilitiesController(RuinaRpgDbContext db, ITabelaDeNiveis tab
         return NoContent();
     }
 
+    private async Task<ActionResult?> ValidateRollAsync(int roll)
+    {
+        var dado = await db.DadoDeArcaDoGmAsync(CurrentUserId());
+        return roll < 1 || roll > dado ? BadRequest($"Roll deve estar entre 1 e {dado}.") : null;
+    }
+
     private async Task<ActionResult?> ValidateEvolucaoAsync(int roll, ArcaEvolucaoRequest request)
     {
-        if (roll is < 1 or > 18)
-            return BadRequest("Roll deve estar entre 1 e 18.");
+        if (await ValidateRollAsync(roll) is { } invalidRoll)
+            return invalidRoll;
         var ultimo = (await tabelaDeNiveis.ObterAsync()).UltimoNivel;
         if (!ArcaEvolucaoRules.NivelValido(request.Nivel, ultimo))
             return BadRequest($"O nível da evolução deve estar entre 1 e {ultimo}.");

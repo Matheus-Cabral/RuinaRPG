@@ -805,6 +805,55 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         body.ArcaNome.Should().Be("Sombra Fugaz");
     }
 
+    private Task<HttpResponseMessage> PutNpcArcaAsync(string token, string sheetId, int arca, int vitalidadeAtual = 0) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", token,
+            ValidUpdate() with { Linhagem = "Humano", Variante = "Laonir", ArcaRolada = arca, VitalidadeAtual = vitalidadeAtual }));
+
+    [Fact]
+    public async Task Update_accepts_ArcaRolada_20_and_rejects_21_under_the_default_die()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaDado1", "npcarcadado1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        (await PutNpcArcaAsync(gmToken, sheetId, 20)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var rejected = await PutNpcArcaAsync(gmToken, sheetId, 21);
+        rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await rejected.Content.ReadAsStringAsync()).Should().Contain("ArcaRolada deve estar entre 1 e 20.");
+    }
+
+    [Fact]
+    public async Task Update_rejects_ArcaRolada_7_under_D6()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaDado2", "npcarcadado2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new RuinaRPG.Contracts.CharacterSheets.ArcaDadoRequest(6)));
+
+        (await PutNpcArcaAsync(gmToken, sheetId, 7)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task A_stored_ArcaRolada_above_a_shrunken_die_is_reported_out_of_the_table_and_does_not_block_saving_other_fields()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmArcaDado3", "npcarcadado3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/15", gmToken, new RuinaRPG.Contracts.CharacterSheets.UpdateArcaEntryRequest("Arca Alta", "Descrição.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/15/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "evo")));
+        (await PutNpcArcaAsync(gmToken, sheetId, 15)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new RuinaRPG.Contracts.CharacterSheets.ArcaDadoRequest(12)));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.ArcaDado.Should().Be(12);
+        body.ArcaForaDaTabela.Should().BeTrue();
+        body.ArcaNome.Should().BeNull();
+        body.ArcaDescricao.Should().BeNull();
+        body.ArcaEvolucoes.Should().BeEmpty();
+
+        (await PutNpcArcaAsync(gmToken, sheetId, 15, vitalidadeAtual: 1)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await PutNpcArcaAsync(gmToken, sheetId, 14)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await PutNpcArcaAsync(gmToken, sheetId, 12)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
     [Fact]
     public async Task RacialAbility_lists_only_Arca_evolucoes_unlocked_by_the_npc_level()
     {

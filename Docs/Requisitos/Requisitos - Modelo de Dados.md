@@ -632,13 +632,20 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | GratuitaOptionsJson | text (JSON) |
 | ObrigatoriaOptionsJson | text (JSON) |
 
-**ArcaEntries** — a "tabela de Arcas" (1d18) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 a 18) já preenchido; ausência de linha para um Roll = "não cadastrada".
+**ArcaTabelas** — o dado escolhido pelo GM para a sua tabela de Arcas (Habilidades Raciais R0002). Ausência de linha = D20.
+
+| Coluna | Tipo |
+|---|---|
+| GmId | PK, FK → Users (cascade) |
+| Dado | int — uma das faces D6, D8, D10, D12, D20 ou D100 (6, 8, 10, 12, 20, 100) |
+
+**ArcaEntries** — a "tabela de Arcas" (1d{dado}) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 até a face do dado) já preenchido; ausência de linha para um Roll = "não cadastrada". Reduzir o dado só esconde as linhas com Roll acima dele: elas não são apagadas e voltam se o dado aumentar.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | GmId | FK → Users |
-| Roll | int, 1 a 18 |
+| Roll | int, 1 a 100 (o máximo depende do dado do GM em `ArcaTabelas`; linhas acima do dado atual ficam escondidas, não apagadas) |
 | Nome | string |
 | Descricao | text |
 

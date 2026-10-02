@@ -16,4 +16,16 @@ public static class RacialAbilityLookup
     };
 
     public static RacialAbility For(Variante variante) => Abilities[variante];
+
+    /// <summary>
+    /// Igual a <see cref="For(Variante)"/>, mas o texto padrão da Arca segue o dado que o GM escolheu
+    /// para a Tabela de Arcas ("Role 1d{dado} na tabela de Arcas.").
+    /// </summary>
+    public static RacialAbility For(Variante variante, int dadoDeArca)
+    {
+        var ability = Abilities[variante];
+        return variante is Variante.Sinir or Variante.Laonir
+            ? ability with { Descricao = $"Role 1d{dadoDeArca} na tabela de Arcas." }
+            : ability;
+    }
 }
