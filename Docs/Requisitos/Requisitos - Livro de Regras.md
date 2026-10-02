@@ -48,7 +48,7 @@
 |---|---|---|
 | Sistema Básico | `##` | 7 (uma por seção numerada do documento) |
 | Graus & Círculos | `#` | 9 (uma por Grau/Círculo; os efeitos de cada Grau, que são `##`, continuam dentro do cartão do próprio Grau) |
-| Tabela de Níveis | — | nenhuma (gerada da tabela da Auditoria, R0013 — duas tabelas: "Nível \| Bônus", com os bônus de cada nível um por linha e "—" para nível sem bônus, e "Limites e progressão", só com as colunas Por nível que têm algum valor) |
+| Tabela de Níveis | — | nenhuma (gerada da tabela da Auditoria, R0013 — "Nível \| Bônus", com os bônus de cada nível um por linha e "—" para nível sem bônus; e, só se o Auditor marcar a opção em R0013 (padrão: desmarcada), uma segunda tabela, "Limites e progressão", só com as colunas Por nível que têm algum valor) |
 | Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
 | As Estrelas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
 | Históricos | — | uma por Histórico (ver R0007 abaixo; vem do catálogo de Históricos — não do Markdown, mesmo tratamento de R0004 para Características) |

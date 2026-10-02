@@ -705,6 +705,13 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Ordem | int |
 | IsDeleted | bool — reservado, não usado: remover uma coluna é exclusão física (apaga também os valores) |
 
+**TabelaDeNiveisConfig** — configuração da Tabela de Níveis, linha única (Auditoria de Regras R0013). Sem linha = padrão (tudo falso).
+
+| Coluna | Tipo |
+|---|---|
+| Id | int, PK — sempre 1 |
+| MostrarLimitesNoLivro | bool — se o Livro de Regras mostra a tabela "Limites e progressão" (padrão false) |
+
 **ValoresDeNivel** — valor de uma célula.
 
 | Coluna | Tipo |

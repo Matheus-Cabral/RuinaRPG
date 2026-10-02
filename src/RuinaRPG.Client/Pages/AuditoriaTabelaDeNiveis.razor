@@ -27,6 +27,12 @@ else
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AddNivelAsync">+ Nível</MudButton>
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.RemoveCircleOutline" OnClick="@(() => _removeNivelOpen = true)">Remover último nível</MudButton>
             </div>
+            <div class="d-flex align-center mb-3">
+                <MudCheckBox @key="_renderGeneration" T="bool" Value="@_mostrarLimites" ValueChanged="SaveMostrarLimitesAsync" Label="@RotuloMostrarLimites" />
+                <InfoPopup Title="Limites e progressão no Livro">
+                    Marcado, o Livro de Regras mostra, abaixo da tabela de bônus por nível, a tabela "Limites e progressão" (XP para o próximo nível, EAP base e os limites preenchidos). Desmarcado, o Livro mostra só os bônus de cada nível.
+                </InfoPopup>
+            </div>
 
             <div class="tn-grid">
                 <MudSimpleTable Dense="true" Hover="true">
@@ -148,6 +154,8 @@ else
     private List<LinhaDeNivelResponse> _linhas = new();
     private string? _errorMessage;
     private bool _forbidden;
+    private bool _mostrarLimites;
+    private const string RotuloMostrarLimites = "Mostrar a tabela \"Limites e progressão\" no Livro de Regras";
     // Bumped on a failed write so the reloaded (unchanged) values remount the inputs and drop rejected text.
     private int _renderGeneration;
 
@@ -175,6 +183,7 @@ else
         var tabela = await response.Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
         _colunas = (tabela?.Colunas ?? new()).OrderBy(c => c.Ordem).ToList();
         _linhas = (tabela?.Linhas ?? new()).OrderBy(l => l.Nivel).ToList();
+        _mostrarLimites = tabela?.MostrarLimitesNoLivro ?? false;
     }
 
     private async Task<bool> FinishAsync(HttpResponseMessage response)
@@ -195,6 +204,13 @@ else
 
         await LoadAsync();
         return true;
+    }
+
+    private async Task SaveMostrarLimitesAsync(bool valor)
+    {
+        _mostrarLimites = valor;
+        // Em falha, FinishAsync recarrega o valor salvo e remonta o checkbox (_renderGeneration), revertendo-o.
+        await FinishAsync(await Http.PutAsJsonAsync("tabela-de-niveis/config", new AtualizarConfigDaTabelaDeNiveisRequest(valor)));
     }
 
     private async Task SaveValorAsync(int nivel, Guid colunaId, int? valor) =>

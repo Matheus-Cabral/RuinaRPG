@@ -7,6 +7,9 @@ namespace RuinaRPG.Infrastructure.Rules.Niveis;
 public interface ITabelaDeNiveis
 {
     Task<ProgressaoDeNivel> ObterAsync();
+
+    /// <summary>Se o Livro de Regras mostra a tabela "Limites e progressão" (padrão: não).</summary>
+    Task<bool> MostrarLimitesNoLivroAsync();
 }
 
 /// <summary>Carrega a Tabela de Níveis (ignorando colunas excluídas) uma vez por requisição.</summary>
@@ -30,4 +33,7 @@ public class TabelaDeNiveis(RuinaRpgDbContext db) : ITabelaDeNiveis
 
         return _cache = new ProgressaoDeNivel(defs, linhas);
     }
+
+    public async Task<bool> MostrarLimitesNoLivroAsync() =>
+        await db.TabelaDeNiveisConfigs.AsNoTracking().Where(c => c.Id == TabelaDeNiveisConfig.IdUnico).Select(c => c.MostrarLimitesNoLivro).SingleOrDefaultAsync();
 }

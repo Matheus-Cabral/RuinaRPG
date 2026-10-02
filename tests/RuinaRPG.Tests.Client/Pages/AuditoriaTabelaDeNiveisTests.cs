@@ -23,6 +23,7 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
 
     private class State
     {
+        public bool MostrarLimites { get; set; }
         public List<ColunaDeNivelResponse> Colunas { get; set; } = new()
         {
             new(PontosId, "Pontos de Atributo", "Acumulativa", "PontosDeAtributo", true, 0),
@@ -39,7 +40,7 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
 
     private static readonly System.Text.Json.JsonSerializerOptions Web = new(System.Text.Json.JsonSerializerDefaults.Web);
 
-    private HttpClient CreateStatefulHttp(State state, List<Request> log, string? deleteUltimoError = null, string? putError = null)
+    private HttpClient CreateStatefulHttp(State state, List<Request> log, string? deleteUltimoError = null, string? putError = null, string? configError = null)
         => FakeHttpMessageHandler.CreateClient(request =>
         {
             var path = request.RequestUri!.AbsolutePath;
@@ -51,11 +52,18 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
             if (request.Method == HttpMethod.Get && rest.Length == 0)
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = JsonContent.Create(new TabelaDeNiveisResponse(state.Colunas.ToList(), state.Linhas.ToList()))
+                    Content = JsonContent.Create(new TabelaDeNiveisResponse(state.Colunas.ToList(), state.Linhas.ToList(), state.MostrarLimites))
                 };
 
             log.Add(new Request(request.Method.Method, path, body));
 
+            if (request.Method == HttpMethod.Put && rest.Length == 1 && rest[0] == "config")
+            {
+                if (configError is not null)
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(configError) };
+                state.MostrarLimites = System.Text.Json.JsonSerializer.Deserialize<AtualizarConfigDaTabelaDeNiveisRequest>(body!, Web)!.MostrarLimitesNoLivro;
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
             if (putError is not null && request.Method == HttpMethod.Put && (rest.Length == 3 || (rest.Length == 2 && rest[0] == "colunas" && rest[1] != "ordem")))
                 return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(putError) };
             if (request.Method == HttpMethod.Put && rest.Length == 2 && rest[0] == "colunas" && rest[1] != "ordem")
@@ -203,6 +211,69 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         await Task.Delay(50);
 
         log.Should().Contain(r => r.Method == "PUT" && r.Body!.Contains("Fama Nova") && !r.Body.Contains("\\n"));
+    }
+
+    private const string RotuloMostrarLimites = "Mostrar a tabela \"Limites e progressão\" no Livro de Regras";
+
+    [Fact]
+    public async Task The_Limites_checkbox_is_unchecked_by_default_and_reflects_the_saved_flag()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), new()));
+        var unchecked_ = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        unchecked_.Find(".mud-checkbox").TextContent.Should().Contain(RotuloMostrarLimites);
+        unchecked_.Find("input[type=checkbox]").HasAttribute("checked").Should().BeFalse();
+        unchecked_.Markup.Should().Contain("Limites e progressão no Livro"); // InfoPopup title
+    }
+
+    [Fact]
+    public async Task The_Limites_checkbox_starts_checked_when_the_api_says_so()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State { MostrarLimites = true }, new()));
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.Find("input[type=checkbox]").HasAttribute("checked").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Toggling_the_Limites_checkbox_puts_the_new_value_and_keeps_it()
+    {
+        var log = new List<Request>();
+        var state = new State();
+        Services.AddScoped(_ => CreateStatefulHttp(state, log));
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.Find("input[type=checkbox]").Change(true);
+        await Task.Delay(50);
+
+        var put = log.Should().ContainSingle(r => r.Method == "PUT").Subject;
+        put.Path.Should().EndWith("tabela-de-niveis/config");
+        System.Text.Json.JsonSerializer.Deserialize<AtualizarConfigDaTabelaDeNiveisRequest>(put.Body!, Web)!.MostrarLimitesNoLivro.Should().BeTrue();
+        cut.Find("input[type=checkbox]").HasAttribute("checked").Should().BeTrue();
+
+        log.Clear();
+        cut.Find("input[type=checkbox]").Change(false);
+        await Task.Delay(50);
+
+        System.Text.Json.JsonSerializer.Deserialize<AtualizarConfigDaTabelaDeNiveisRequest>(log.Single().Body!, Web)!.MostrarLimitesNoLivro.Should().BeFalse();
+        state.MostrarLimites.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_failed_Limites_save_reverts_the_checkbox_and_shows_the_api_message()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), new(), configError: "Falha ao salvar a opção."));
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.Find("input[type=checkbox]").Change(true);
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Falha ao salvar a opção.");
+        cut.Find("input[type=checkbox]").HasAttribute("checked").Should().BeFalse();
     }
 
     [Fact]

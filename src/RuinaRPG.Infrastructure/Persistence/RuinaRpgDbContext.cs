@@ -29,6 +29,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NivelProgressao> NiveisProgressao => Set<NivelProgressao>();
     public DbSet<ColunaDeNivel> ColunasDeNivel => Set<ColunaDeNivel>();
     public DbSet<ValorDeNivel> ValoresDeNivel => Set<ValorDeNivel>();
+    public DbSet<TabelaDeNiveisConfig> TabelaDeNiveisConfigs => Set<TabelaDeNiveisConfig>();
     public DbSet<PericiaDefinicao> Pericias => Set<PericiaDefinicao>();
     public DbSet<SpellAbilityBankEntry> SpellAbilityBankEntries => Set<SpellAbilityBankEntry>();
     public DbSet<SpellAbilityBankEffect> SpellAbilityBankEffects => Set<SpellAbilityBankEffect>();
@@ -191,6 +192,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             e.HasOne<NivelProgressao>().WithMany().HasForeignKey(v => v.Nivel).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<ColunaDeNivel>().WithMany().HasForeignKey(v => v.ColunaId).OnDelete(DeleteBehavior.Cascade);
         });
+        builder.Entity<TabelaDeNiveisConfig>(e => { e.ToTable("TabelaDeNiveisConfig"); e.HasKey(c => c.Id); e.Property(c => c.Id).ValueGeneratedNever(); });
         builder.Entity<Historico>(entity =>
         {
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(h => h.PericiaMaisSeisId).OnDelete(DeleteBehavior.Restrict);

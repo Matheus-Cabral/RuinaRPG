@@ -102,6 +102,36 @@ public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
+    public async Task Get_exposes_MostrarLimitesNoLivro_defaulting_to_false_and_the_auditor_can_round_trip_it()
+    {
+        var auditor = await RegisterAuditorAsync("TabNivAud11", "tabniv11@teste.com");
+        try
+        {
+            (await GetTabelaAsync(auditor)).MostrarLimitesNoLivro.Should().BeFalse();
+
+            (await SendAsync(HttpMethod.Put, "/api/tabela-de-niveis/config", auditor, new AtualizarConfigDaTabelaDeNiveisRequest(true))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await GetTabelaAsync(auditor)).MostrarLimitesNoLivro.Should().BeTrue();
+
+            (await SendAsync(HttpMethod.Put, "/api/tabela-de-niveis/config", auditor, new AtualizarConfigDaTabelaDeNiveisRequest(false))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await GetTabelaAsync(auditor)).MostrarLimitesNoLivro.Should().BeFalse();
+        }
+        finally
+        {
+            await SendAsync(HttpMethod.Put, "/api/tabela-de-niveis/config", auditor, new AtualizarConfigDaTabelaDeNiveisRequest(false));
+        }
+    }
+
+    [Fact]
+    public async Task Config_write_returns_403_for_a_non_auditor_and_leaves_the_flag_untouched()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("TabNivGm12", "tabniv12@teste.com");
+
+        (await SendAsync(HttpMethod.Put, "/api/tabela-de-niveis/config", gm, new AtualizarConfigDaTabelaDeNiveisRequest(true))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        (await GetTabelaAsync(gm)).MostrarLimitesNoLivro.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Writes_return_403_for_a_non_auditor()
     {
         var gm = await RegisterGmAndGetTokenAsync("TabNivGm2", "tabniv2@teste.com");
