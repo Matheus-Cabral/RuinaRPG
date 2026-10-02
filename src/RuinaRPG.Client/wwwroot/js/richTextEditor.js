@@ -73,6 +73,22 @@ window.ruinaRichText = {
         input.click();
     },
 
+    // Only "Inserir imagem" may add an image. A dropped file, or an image file pasted from the clipboard, would
+    // otherwise be inserted by the browser itself (blob:/data: src) or sent to Jodit's unconfigured uploader.
+    // Runs in the capture phase so it wins over Jodit's handlers; text and HTML paste/drag pass untouched.
+    _blockFileInsertion: function (editor) {
+        var hasFiles = function (dt) { return !!dt && ((dt.files && dt.files.length > 0) || Array.prototype.some.call(dt.items || [], function (i) { return i.kind === 'file'; })); };
+        var block = function (e) { e.preventDefault(); e.stopImmediatePropagation(); };
+        editor.editor.addEventListener('drop', function (e) { if (hasFiles(e.dataTransfer)) block(e); }, true);
+        editor.editor.addEventListener('dragover', function (e) { if (hasFiles(e.dataTransfer)) block(e); }, true);
+        editor.editor.addEventListener('paste', function (e) {
+            var dt = e.clipboardData;
+            // A clipboard that also carries text/html (copied from a page or Word) is a normal paste: Jodit
+            // sanitizes the markup, and the server drops any foreign image. Only a files-only clipboard is blocked.
+            if (hasFiles(dt) && !dt.getData('text/html') && !dt.getData('text/plain')) block(e);
+        }, true);
+    },
+
     create: async function (element, dotNetRef, initialHtml, options) {
         await this._ensureLoaded();
         var self = this;
@@ -104,6 +120,9 @@ window.ruinaRichText = {
             },
             // Jodit's own image plugins stay off: they insert by URL (any site) or as base64, and the server
             // only keeps images hosted by the app. Our button above is the one way to add an image.
+            // Dropping a file: with this off Jodit cancels the drop instead of handing the file to its uploader
+            // (which has no URL configured here). Pasted files are cancelled by blockFileInsertion below.
+            enableDragAndDropFileToEditor: false,
             disablePlugins: ['image', 'image-properties', 'image-processor', 'video', 'file', 'media', 'source', 'print', 'about', 'speech-recognize', 'ai-assistant'],
             buttons: [
                 'undo', 'redo', '|',
@@ -116,6 +135,7 @@ window.ruinaRichText = {
             ])
         });
         editor.value = initialHtml || '';
+        this._blockFileInsertion(editor);
 
         state.editor = editor;
 
