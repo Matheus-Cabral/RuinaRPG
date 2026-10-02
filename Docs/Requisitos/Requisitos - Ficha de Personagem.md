@@ -430,7 +430,7 @@ O jogador dono pode editar ou excluir qualquer entrada já publicada. Diferente 
 
 # **R0002** - Ao subir de Nível, a ficha deve avisar o que foi recebido.
 
-**Descrição**: Toda vez que o campo *Nível* (1.b) aumenta — pela Experiência Atual cruzando um novo limiar em "[[Tabelas de XP, Atributos, Características e EAP]]" — uma caixa de aviso aparece no topo da página, listando os bônus daquele novo Nível conforme a "[[Tabela de Níveis]]" (ex: "+9 Pontos de Atributo, +Status de Vida Aprimorado, +10 Pontos de Ignição..."). Se o personagem subir mais de um Nível de uma vez, a caixa lista os bônus de todos os Níveis ganhos, em ordem.
+**Descrição**: Toda vez que o campo *Nível* (1.b) aumenta — pela Experiência Atual cruzando um novo limiar em "[[Tabelas de XP, Atributos, Características e EAP]]" — uma caixa de aviso aparece no topo da página, listando os bônus daquele novo Nível conforme a "[[Tabela de Níveis]]" (ex: "+9 Pontos de Atributo, +Status de Vida Aprimorado, +10 Pontos de Ignição..."). Se o personagem subir mais de um Nível de uma vez, a caixa lista os bônus de todos os Níveis ganhos: os ganhos numéricos são somados por recurso (ex: "Pontos de Atributo: +10", na ordem das colunas da tabela; soma zero não aparece) e os textos livres repetidos aparecem uma vez, com a contagem (ex: "Status de Vocação de Vida/Foco (×3)").
 
 A caixa tem um botão de fechar; uma vez fechada pelo jogador, não reaparece — o estado "fechada" persiste (sobrevive a recarregar a página ou sair e voltar a entrar na ficha).
 

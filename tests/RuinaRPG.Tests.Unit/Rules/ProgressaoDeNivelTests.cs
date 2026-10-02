@@ -71,7 +71,53 @@ public class ProgressaoDeNivelTests
         var t = Tabela();
         t.LinhasDeBonus(1).Should().Equal("Pontos de Atributo: +9", "Fama: +1", "Status de Vida Aprimorado", "Status de Foco Aprimorado");
         t.LinhasDeBonus(2).Should().BeEmpty();
-        t.ComoLevelBonus().Single(b => b.Nivel == 3).BonusText.Should().Be("Pontos de Atributo: +2<br>Terceira linha");
+        t.LinhasDeBonus(3).Should().Equal("Pontos de Atributo: +2", "Terceira linha");
+    }
+
+    private static ProgressaoDeNivel TabelaAcumulada(params (int Nivel, string? Outros, int? Atributo, int? Fama)[] linhas) => new(
+        new[] { Fama, Atributo },
+        linhas.Select(l => new LinhaDeNivel(l.Nivel, l.Outros, new Dictionary<Guid, int?> { [Atributo.Id] = l.Atributo, [Fama.Id] = l.Fama })).ToList());
+
+    [Fact]
+    public void LinhasDeBonusAcumuladas_sums_the_same_column_across_levels_into_one_line()
+    {
+        var t = TabelaAcumulada((1, null, 9, null), (2, null, 9, null), (3, null, 1, null));
+        t.LinhasDeBonusAcumuladas(1, 3).Should().Equal("Pontos de Atributo: +10");
+    }
+
+    [Fact]
+    public void LinhasDeBonusAcumuladas_keeps_column_order_and_omits_zero_sums()
+    {
+        var t = TabelaAcumulada((1, null, 2, 1), (2, null, 3, -1), (3, null, null, null));
+        t.LinhasDeBonusAcumuladas(0, 3).Should().Equal("Pontos de Atributo: +5");
+        t.LinhasDeBonusAcumuladas(0, 1).Should().Equal("Pontos de Atributo: +2", "Fama: +1");
+    }
+
+    [Fact]
+    public void LinhasDeBonusAcumuladas_shows_repeated_free_text_once_with_the_count_after_the_numeric_lines()
+    {
+        var t = TabelaAcumulada(
+            (1, "Status de Vocação de Vida/Foco\nOutro", 1, null),
+            (2, "Status de Vocação de Vida/Foco", null, null),
+            (3, "  Status de Vocação de Vida/Foco \nUnico", 1, null));
+        t.LinhasDeBonusAcumuladas(0, 3).Should().Equal(
+            "Pontos de Atributo: +2", "Status de Vocação de Vida/Foco (×3)", "Outro", "Unico");
+    }
+
+    [Fact]
+    public void LinhasDeBonusAcumuladas_keeps_distinct_texts_in_first_appearance_order_and_is_case_sensitive()
+    {
+        var t = TabelaAcumulada((1, "B", null, null), (2, "A\nB", null, null), (3, "a", null, null));
+        t.LinhasDeBonusAcumuladas(0, 3).Should().Equal("B (×2)", "A", "a");
+    }
+
+    [Fact]
+    public void LinhasDeBonusAcumuladas_for_a_single_level_equals_LinhasDeBonus_and_excludes_the_lower_bound()
+    {
+        var t = Tabela();
+        t.LinhasDeBonusAcumuladas(0, 1).Should().Equal(t.LinhasDeBonus(1));
+        t.LinhasDeBonusAcumuladas(2, 3).Should().Equal(t.LinhasDeBonus(3));
+        t.LinhasDeBonusAcumuladas(3, 3).Should().BeEmpty();
     }
 
     private static ProgressaoDeNivel TabelaComUltimo(int? xpDoPenultimo, int? xpDoUltimo)

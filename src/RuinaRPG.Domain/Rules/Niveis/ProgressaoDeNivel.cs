@@ -44,11 +44,42 @@ public sealed class ProgressaoDeNivel
         var linhas = Colunas.Where(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa)
             .Select(c => (c, v: Celula(c, nivel) ?? 0)).Where(x => x.v != 0)
             .Select(x => $"{x.c.Nome}: +{x.v}").ToList();
-        var outros = Linhas.FirstOrDefault(l => l.Nivel == nivel)?.OutrosBonus;
-        if (!string.IsNullOrWhiteSpace(outros))
-            linhas.AddRange(outros.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+        linhas.AddRange(TextosLivres(Linhas.FirstOrDefault(l => l.Nivel == nivel)));
         return linhas;
     }
+
+    /// <summary>
+    /// Ganhos dos níveis em (<paramref name="doNivelExclusivo"/>, <paramref name="ateNivel"/>]: os valores
+    /// numéricos de cada coluna acumulativa são somados numa única linha "Nome: +N" (ordem das colunas; soma 0
+    /// é omitida), seguidos dos textos livres, em que linhas idênticas aparecem uma vez com "(×N)".
+    /// </summary>
+    public IReadOnlyList<string> LinhasDeBonusAcumuladas(int doNivelExclusivo, int ateNivel)
+    {
+        var niveis = Linhas.Where(l => l.Nivel > doNivelExclusivo && l.Nivel <= ateNivel).ToList();
+        var resultado = Colunas.Where(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa)
+            .Select(c => (c, soma: niveis.Sum(l => l.Valores.GetValueOrDefault(c.Id) ?? 0))).Where(x => x.soma != 0)
+            .Select(x => $"{x.c.Nome}: +{x.soma}").ToList();
+
+        var contagem = new Dictionary<string, int>(StringComparer.Ordinal);
+        var ordem = new List<string>();
+        foreach (var texto in niveis.SelectMany(TextosLivres))
+        {
+            if (contagem.TryGetValue(texto, out var n))
+                contagem[texto] = n + 1;
+            else
+            {
+                contagem[texto] = 1;
+                ordem.Add(texto);
+            }
+        }
+        resultado.AddRange(ordem.Select(t => contagem[t] > 1 ? $"{t} (×{contagem[t]})" : t));
+        return resultado;
+    }
+
+    private static IEnumerable<string> TextosLivres(LinhaDeNivel? linha) =>
+        string.IsNullOrWhiteSpace(linha?.OutrosBonus)
+            ? []
+            : linha.OutrosBonus.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>O último nível é sempre "Lvl. Max", seja qual for o XP gravado nele (não há próximo nível).</summary>
     public IReadOnlyList<XpPorNivel> ComoXpPorNivel() =>
@@ -56,9 +87,6 @@ public sealed class ProgressaoDeNivel
 
     public IReadOnlyList<EapPorNivel> ComoEapPorNivel() =>
         Linhas.Select(l => new EapPorNivel(l.Nivel, ValorExato(ChavesDeNivel.EapBase, l.Nivel) ?? 0)).ToList();
-
-    public IReadOnlyList<LevelBonus> ComoLevelBonus() =>
-        Linhas.Select(l => new LevelBonus(l.Nivel, string.Join("<br>", LinhasDeBonus(l.Nivel)))).ToList();
 
     private int? Celula(ColunaDeNivelDef c, int nivel) =>
         Linhas.FirstOrDefault(l => l.Nivel == nivel)?.Valores.GetValueOrDefault(c.Id);

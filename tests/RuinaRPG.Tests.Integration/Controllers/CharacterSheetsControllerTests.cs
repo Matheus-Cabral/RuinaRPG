@@ -556,16 +556,38 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        // Tabela de Níveis.md packs each level's several bonuses into one markdown-table cell
-        // separated by literal "<br>" (Nível 1 has 7, Nível 2 has 3) — BonusTexts flattens that
-        // into one entry per individual bonus, not one blob per level, so the client can render
-        // each on its own line instead of a raw "<br>" showing up as literal text.
-        body!.BonusTexts.Should().HaveCount(10);
-        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
         // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized).
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
+        // (column names are free text the Auditor can edit, so they can't be singularized), and
+        // the same column across the levels gained at once is summed into a single line.
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
+        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
+    }
+
+    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
+    {
+        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
+        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
+    }
+
+    [Fact]
+    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp4", "sheetlevelup4@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp4", "sheetplayerlevelup4@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 4");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
+
+        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
+        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
     }
 
     [Fact]

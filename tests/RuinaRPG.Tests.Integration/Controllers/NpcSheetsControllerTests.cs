@@ -456,12 +456,36 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().HaveCount(10);
-        body.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
+        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
         // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized).
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +9");
-        body.BonusTexts.Should().Contain("Pontos de Atributo: +1");
+        // (column names are free text the Auditor can edit, so they can't be singularized), and
+        // the same column across the levels gained at once is summed into a single line.
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
+        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
+    }
+
+
+    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
+    {
+        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
+        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
+    }
+
+    [Fact]
+    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp4", "npclevelup4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
+
+        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 150));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
+        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
+        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
     }
 
     [Fact]
