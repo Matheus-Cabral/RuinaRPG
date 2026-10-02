@@ -1,0 +1,58 @@
+/* A grade rola dentro do próprio contêiner (altura limitada), para que o cabeçalho (sticky top) e a
+   coluna "Nível" (sticky left) funcionem juntos. O MudSimpleTable não rola sozinho. */
+.tn-grid ::deep .mud-table-container {
+    max-height: 75vh;
+    overflow: auto;
+}
+
+.tn-grid ::deep table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tn-th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--mud-palette-surface);
+    vertical-align: top;
+}
+
+.tn-col,
+.tn-cell {
+    min-width: 200px;
+}
+
+.tn-outros {
+    min-width: 260px;
+}
+
+.tn-corner,
+.tn-first {
+    position: sticky;
+    left: 0;
+    background: var(--mud-palette-surface);
+}
+
+.tn-first {
+    z-index: 1;
+}
+
+.tn-corner {
+    z-index: 3;
+}
+
+.tn-grid ::deep .tn-nome {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.tn-acoes {
+    margin-top: 2px;
+}
+
+/* Nome da coluna: 2 linhas por padrão; navegadores com field-sizing ajustam a altura ao texto. */
+.tn-grid ::deep .tn-nome textarea {
+    field-sizing: content;
+    min-height: 2.6em;
+}

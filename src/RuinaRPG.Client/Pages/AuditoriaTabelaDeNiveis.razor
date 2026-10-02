@@ -28,22 +28,24 @@ else
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.RemoveCircleOutline" OnClick="@(() => _removeNivelOpen = true)">Remover último nível</MudButton>
             </div>
 
-            <div style="overflow-x:auto;">
+            <div class="tn-grid">
                 <MudSimpleTable Dense="true" Hover="true">
                     <thead>
                         <tr>
-                            <th style="position: sticky; left: 0; z-index: 1; background: var(--mud-palette-surface);">Nível</th>
+                            <th class="tn-th tn-corner">Nível</th>
                             @for (var i = 0; i < _colunas.Count; i++)
                             {
                                 var index = i;
                                 var c = _colunas[i];
-                                <th @key="(c.Id, _renderGeneration)" style="min-width: 150px;">
-                                    <div class="d-flex align-center">
+                                <th @key="(c.Id, _renderGeneration)" class="tn-th tn-col">
+                                    <div class="d-flex align-start">
                                         <MudTooltip Text="@(c.Tipo == "Acumulativa" ? "Acumulativa" : "Por nível")">
-                                            <MudIcon Icon="@(c.Tipo == "Acumulativa" ? Icons.Material.Filled.Functions : Icons.Material.Filled.Straighten)" Size="Size.Small" />
+                                            <MudIcon Icon="@(c.Tipo == "Acumulativa" ? Icons.Material.Filled.Functions : Icons.Material.Filled.Straighten)" Size="Size.Small" Class="mt-2" />
                                         </MudTooltip>
-                                        <MudTextField T="string" Value="@c.Nome" Margin="Margin.Dense" Variant="Variant.Text" Class="mx-1" UserAttributes="@(new Dictionary<string, object> { ["aria-label"] = $"Nome da coluna {c.Nome}" })"
+                                        <MudTextField T="string" Value="@c.Nome" Lines="2" MaxLines="4" Margin="Margin.Dense" Variant="Variant.Text" Class="mx-1 tn-nome" UserAttributes="@(new Dictionary<string, object> { ["aria-label"] = $"Nome da coluna {c.Nome}" })"
                                                       ValueChanged="@(v => RenameAsync(c, v))" />
+                                    </div>
+                                    <div class="d-flex align-center justify-end tn-acoes">
                                         @if (c.DoSistema)
                                         {
                                             <span data-sistema="true">
@@ -61,7 +63,7 @@ else
                                     </div>
                                 </th>
                             }
-                            <th style="min-width: 220px;">Outros bônus</th>
+                            <th class="tn-th tn-outros">Outros bônus</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,12 +71,12 @@ else
                         {
                             var linha = l;
                             <tr @key="(linha.Nivel, _renderGeneration)">
-                                <td style="position: sticky; left: 0; z-index: 1; background: var(--mud-palette-surface);">@linha.Nivel</td>
+                                <td class="tn-first">@linha.Nivel</td>
                                 @foreach (var c in _colunas)
                                 {
                                     var coluna = c;
                                     linha.Valores.TryGetValue(coluna.Id, out var valor);
-                                    <td @key="coluna.Id">
+                                    <td @key="coluna.Id" class="tn-cell">
                                         <MudNumericField T="int?" Value="@valor" Min="0" Clearable="true" HideSpinButtons="true" Margin="Margin.Dense" Variant="Variant.Text"
                                                          aria-label="@($"{coluna.Nome} — nível {linha.Nivel}")"
                                                          ValueChanged="@(v => SaveValorAsync(linha.Nivel, coluna.Id, v))" />
@@ -203,7 +205,10 @@ else
             new AtualizarOutrosBonusRequest(string.IsNullOrWhiteSpace(texto) ? null : texto)));
 
     private async Task RenameAsync(ColunaDeNivelResponse c, string? nome) =>
-        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/colunas/{c.Id}", new RenomearColunaDeNivelRequest(nome ?? "")));
+        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-niveis/colunas/{c.Id}", new RenomearColunaDeNivelRequest(NomeEmUmaLinha(nome))));
+
+    // O campo do nome é multilinha só para quebrar nomes longos; Enter não cria quebra de linha no nome.
+    private static string NomeEmUmaLinha(string? nome) => string.Join(' ', (nome ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
 
     private bool _removeColunaOpen;
     private ColunaDeNivelResponse? _pendingColuna;

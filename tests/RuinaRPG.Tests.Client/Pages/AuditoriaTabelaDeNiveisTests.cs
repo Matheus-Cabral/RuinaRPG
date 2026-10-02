@@ -139,12 +139,70 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         // thead: Nível + 3 colunas + Outros bônus
         cut.FindAll("thead th").Should().HaveCount(5);
         cut.Markup.Should().Contain("Outros bônus");
-        var headerNames = cut.FindAll("thead input").Select(i => i.GetAttribute("value")).ToList();
+        var headerNames = cut.FindAll("thead textarea").Select(i => i.GetAttribute("value")).ToList();
         headerNames.Should().Equal("Pontos de Atributo", "Máx. de Perícia", "Fama");
         // Row 2: 3 numeric cells + outros bônus textarea
         var row2 = cut.FindAll("tbody tr")[1];
         row2.QuerySelectorAll("input").Select(i => i.GetAttribute("value")).Should().Equal("2", null, "1");
         row2.QuerySelector("textarea")!.TextContent.Should().Contain("Bônus do nível 2");
+    }
+
+    [Fact]
+    public async Task Header_cell_has_the_name_field_on_line_one_and_the_actions_on_line_two()
+    {
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), new()));
+
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.Find(".tn-grid").Should().NotBeNull();
+        var colunas = cut.FindAll("thead th.tn-col");
+        colunas.Should().HaveCount(3);
+        foreach (var th in colunas)
+        {
+            th.ClassList.Should().Contain("tn-th"); // sticky top (scoped css)
+            var linhas = th.Children.Where(c => c.TagName == "DIV").ToList();
+            linhas.Should().HaveCount(2);
+            linhas[0].QuerySelector("textarea.mud-input-slot, textarea")!.Should().NotBeNull(); // multi-line name field
+            linhas[0].QuerySelector("svg").Should().NotBeNull(); // type icon
+            linhas[0].QuerySelector("button").Should().BeNull();
+            linhas[1].ClassList.Should().Contain("tn-acoes");
+            linhas[1].QuerySelectorAll("button").Length.Should().BeGreaterThanOrEqualTo(2); // move arrows (+ delete when custom)
+        }
+        colunas[0].QuerySelector("[data-sistema='true']").Should().NotBeNull();
+        colunas[2].QuerySelector("button[aria-label='Remover coluna Fama']").Should().NotBeNull();
+        cut.FindAll("tbody td.tn-cell").Should().NotBeEmpty();
+        cut.Find("thead th.tn-corner").TextContent.Should().Be("Nível");
+        cut.FindAll("tbody td.tn-first").Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task A_long_column_name_is_rendered_in_full_in_its_field()
+    {
+        var state = new State();
+        state.Colunas[2] = new(FamaId, "Máx. Passivas De Classe Com Nome Muito Comprido", "PorNivel", null, false, 2);
+        Services.AddScoped(_ => CreateStatefulHttp(state, new()));
+
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.Find("textarea[aria-label='Nome da coluna Máx. Passivas De Classe Com Nome Muito Comprido']")
+            .GetAttribute("value").Should().Be("Máx. Passivas De Classe Com Nome Muito Comprido");
+    }
+
+    [Fact]
+    public async Task Renaming_a_column_never_sends_line_breaks()
+    {
+        var log = new List<Request>();
+        Services.AddScoped(_ => CreateStatefulHttp(new State(), log));
+
+        var cut = Render<AuditoriaTabelaDeNiveis>();
+        await Task.Delay(50);
+
+        cut.FindAll("thead textarea")[2].Change("Fama\nNova");
+        await Task.Delay(50);
+
+        log.Should().Contain(r => r.Method == "PUT" && r.Body!.Contains("Fama Nova") && !r.Body.Contains("\\n"));
     }
 
     [Fact]
@@ -224,11 +282,11 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         var cut = Render<AuditoriaTabelaDeNiveis>();
         await Task.Delay(50);
 
-        cut.FindAll("thead input")[2].Change("Rejeitado");
+        cut.FindAll("thead textarea")[2].Change("Rejeitado");
         await Task.Delay(50);
 
         cut.Markup.Should().Contain("Nome já existe.");
-        var nomes = cut.FindAll("thead input").Select(i => i.GetAttribute("value")).ToList();
+        var nomes = cut.FindAll("thead textarea").Select(i => i.GetAttribute("value")).ToList();
         nomes.Should().Contain("Fama");
         nomes.Should().NotContain("Rejeitado");
     }
@@ -261,7 +319,7 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         put.Path.Should().EndWith("tabela-de-niveis/colunas/ordem");
         System.Text.Json.JsonSerializer.Deserialize<ReordenarColunasDeNivelRequest>(put.Body!, Web)!.Ids
             .Should().Equal(MaxPericiaId, PontosId, FamaId);
-        cut.FindAll("thead input").Select(i => i.GetAttribute("value")).Should().Equal("Máx. de Perícia", "Pontos de Atributo", "Fama");
+        cut.FindAll("thead textarea").Select(i => i.GetAttribute("value")).Should().Equal("Máx. de Perícia", "Pontos de Atributo", "Fama");
     }
 
     [Fact]
@@ -282,7 +340,7 @@ public class AuditoriaTabelaDeNiveisTests : MudBunitContext
         var body = System.Text.Json.JsonSerializer.Deserialize<CriarColunaDeNivelRequest>(post.Body!, Web)!;
         body.Nome.Should().Be("Renome");
         body.Tipo.Should().Be("PorNivel");
-        cut.FindAll("thead input").Select(i => i.GetAttribute("value")).Should().Contain("Renome");
+        cut.FindAll("thead textarea").Select(i => i.GetAttribute("value")).Should().Contain("Renome");
     }
 
     [Fact]
