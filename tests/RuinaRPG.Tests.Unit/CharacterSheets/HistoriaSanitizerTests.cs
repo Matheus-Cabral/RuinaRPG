@@ -350,4 +350,193 @@ public class HistoriaSanitizerTests
     {
         HistoriaSanitizer.ImageFiles(html).Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("//evil.com/x")]
+    [InlineData("/api/auth/logout")]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    [InlineData("../x")]
+    [InlineData("relativo.html")]
+    [InlineData("?q=1")]
+    [InlineData("#ancora")]
+    [InlineData("\\\\evil.com\\x")]
+    [InlineData("http:evil.com")]
+    [InlineData("ftp://evil.com/x")]
+    public void A_link_without_an_absolute_http_https_or_mailto_href_loses_the_href_but_keeps_its_text(string href)
+    {
+        var result = HistoriaSanitizer.Sanitize($"<p>antes <a href=\"{System.Net.WebUtility.HtmlEncode(href)}\">o texto</a> depois</p>");
+
+        result.Should().Contain("o texto").And.NotContain("href").And.NotContain("evil").And.NotContain("/api");
+    }
+
+    [Theory]
+    [InlineData("http://exemplo.com/a")]
+    [InlineData("https://exemplo.com/a?b=1#c")]
+    [InlineData("HTTPS://EXEMPLO.COM")]
+    [InlineData("mailto:mestre@exemplo.com")]
+    public void A_link_with_an_absolute_http_https_or_mailto_href_is_kept(string href)
+    {
+        HistoriaSanitizer.Sanitize($"<p><a href=\"{href}\">x</a></p>").Should().Contain("href=").And.Contain("rel=\"noopener noreferrer\"");
+    }
+
+    [Fact]
+    public void An_app_image_inside_a_link_with_a_relative_href_stays_and_the_href_goes()
+    {
+        var result = HistoriaSanitizer.Sanitize($"<p><a href=\"/api/auth/logout\"><img src=\"{AppImage}\"></a></p>", Permitidas);
+
+        result.Should().Contain($"<img src=\"{AppImage}\">").And.NotContain("href").And.NotContain("logout");
+    }
+
+    // --- Pins: casos verificados à mão na revisão de segurança ---
+
+    [Theory]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e&#46;png")]
+    [InlineData("&#47;images&#47;0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    [InlineData("&sol;images&sol;0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    public void An_entity_encoded_src_is_kept_only_in_its_canonical_decoded_form(string rawSrc)
+    {
+        var result = HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{rawSrc}\">", Permitidas);
+
+        result.Should().Contain($"<img src=\"{AppImage}\">").And.NotContain("&");
+    }
+
+    [Theory]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e.p&#110;g&#47;..&#47;x")]
+    [InlineData("&#106;avascript:alert(1)")]
+    [InlineData("&#x2F;&#x2F;mal.com/p.png")]
+    public void An_entity_encoded_src_that_decodes_to_something_else_is_dropped(string rawSrc)
+    {
+        HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{rawSrc}\">", Permitidas).Should().Contain("oi").And.NotContain("<img");
+    }
+
+    [Fact]
+    public void With_duplicate_src_attributes_the_first_wins_and_is_validated()
+    {
+        const string alheia = "/images/11111111-2222-3333-4444-555555555555.png";
+
+        var bom = HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{AppImage}\" src=\"http://mal.com/p.png\">", Permitidas);
+        var ruim = HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"http://mal.com/p.png\" src=\"{AppImage}\">", Permitidas);
+        var alheiaPrimeiro = HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{alheia}\" src=\"{AppImage}\">", Permitidas);
+
+        bom.Should().Contain($"<img src=\"{AppImage}\">").And.NotContain("mal.com");
+        ruim.Should().NotContain("<img").And.NotContain("mal.com");
+        alheiaPrimeiro.Should().NotContain("<img");
+    }
+
+    [Fact]
+    public void With_duplicate_width_attributes_the_first_wins_and_is_validated()
+    {
+        var bom = HistoriaSanitizer.Sanitize($"<p><img src=\"{AppImage}\" width=\"120\" width=\"expression(1)\"></p>", Permitidas);
+        var ruim = HistoriaSanitizer.Sanitize($"<p><img src=\"{AppImage}\" width=\"100%\" width=\"120\"></p>", Permitidas);
+
+        bom.Should().Contain("width=\"120\"").And.NotContain("expression");
+        ruim.Should().Contain($"<img src=\"{AppImage}\">").And.NotContain("width").And.NotContain("%");
+    }
+
+    [Theory]
+    [InlineData("\t")]
+    [InlineData("\r")]
+    [InlineData("\n")]
+    [InlineData("\0")]
+    [InlineData("&#9;")]
+    [InlineData("&#10;")]
+    [InlineData("&#13;")]
+    [InlineData("&#0;")]
+    public void Control_characters_around_or_inside_the_src_drop_the_image(string control)
+    {
+        var meio = AppImage.Insert(10, control);
+
+        foreach (var src in new[] { control + AppImage, AppImage + control, control + AppImage + control, meio })
+            HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{src}\">", Permitidas).Should().Contain("oi").And.NotContain("<img", $"src com {control.Replace("\0", "NUL")}");
+    }
+
+    [Theory]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-7086772895\u0665e.png")] // 5 arábico-índico
+    [InlineData("/images/\uff10f8fad5b-d9cb-469f-a165-70867728950e.png")] // 0 de largura total
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950\uff45.png")] // e de largura total
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e.p\u0578g")]
+    [InlineData("/\u0456mages/0f8fad5b-d9cb-469f-a165-70867728950e.png")] // i cirílico
+    public void Unicode_lookalike_digits_and_letters_drop_the_image(string src)
+    {
+        HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{src}\">", Permitidas).Should().Contain("oi").And.NotContain("<img");
+    }
+
+    [Theory]
+    [InlineData("/images%2f0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    [InlineData("%2fimages/0f8fad5b-d9cb-469f-a165-70867728950e.png")]
+    [InlineData("/images/0f8fad5b-d9cb-469f-a165-70867728950e%2epng")]
+    public void Percent_encoded_src_is_dropped(string src)
+    {
+        HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{src}\">", Permitidas).Should().Contain("oi").And.NotContain("<img");
+    }
+
+    [Fact]
+    public void A_100_kb_src_is_dropped()
+    {
+        var gigante = AppImage + new string('a', 100 * 1024);
+
+        HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"{gigante}\">", Permitidas).Should().Contain("oi").And.NotContain("<img");
+        HistoriaSanitizer.Sanitize($"<p>oi</p><img src=\"/images/{new string('a', 100 * 1024)}.png\">", Permitidas).Should().Contain("oi").And.NotContain("<img");
+    }
+
+    [Fact]
+    public void The_image_alias_tag_never_survives_as_image_and_is_validated_like_img()
+    {
+        // O parser HTML (como o do navegador) trata <image> como <img>: o que sai é um <img> normal, validado
+        // pela mesma regra de src. Nunca sai a tag <image>, e um src externo não passa.
+        var result = HistoriaSanitizer.Sanitize($"<p>oi</p><image src=\"{AppImage}\"><image src=\"http://mal.com/p.png\">", Permitidas);
+
+        result.Should().Be($"<p>oi</p><img src=\"{AppImage}\">");
+        HistoriaSanitizer.Sanitize("<p>oi</p><image src=\"/images/11111111-2222-3333-4444-555555555555.png\">", Permitidas).Should().NotContain("<img").And.NotContain("<image");
+    }
+
+    [Theory]
+    [InlineData("svg")]
+    [InlineData("math")]
+    [InlineData("noscript")]
+    [InlineData("template")]
+    public void An_img_inside_a_non_html_or_inert_container_leaves_nothing_dangerous(string container)
+    {
+        var markup = $"<p>oi</p><{container}><img src=\"http://mal.com/p.png\" onerror=\"alert(1)\"><img src=\"javascript:alert(1)\"><a href=\"javascript:alert(1)\">x</a></{container}>";
+
+        var result = HistoriaSanitizer.Sanitize(markup, Permitidas);
+
+        result.Should().Contain("oi").And.NotContain("mal.com").And.NotContain("onerror").And.NotContain("javascript").And.NotContain("<img").And.NotContain("href");
+    }
+
+    [Theory]
+    [InlineData("<table background=\"http://mal.com/p.png\"><tr><td>x</td></tr></table>")]
+    [InlineData("<table><tr><td background=\"/images/0f8fad5b-d9cb-469f-a165-70867728950e.png\">x</td></tr></table>")]
+    [InlineData("<table><tr><th background=\"http://mal.com/p.png\">x</th></tr></table>")]
+    [InlineData("<body background=\"http://mal.com/p.png\"><p>x</p></body>")]
+    public void The_background_attribute_is_dropped(string markup)
+    {
+        var result = HistoriaSanitizer.Sanitize(markup, Permitidas);
+
+        result.Should().Contain("x").And.NotContain("background=").And.NotContain("mal.com");
+    }
+
+    [Fact]
+    public void Layout_escaping_and_url_css_are_stripped_from_an_img_style()
+    {
+        var result = HistoriaSanitizer.Sanitize(
+            $"<p><img src=\"{AppImage}\" style=\"position: fixed; z-index: 9999; top: 0; left: 0; background: url(http://mal.com/p.png); width: 100%\"></p>", Permitidas);
+
+        result.Should().Contain("<img").And.NotContain("position").And.NotContain("z-index").And.NotContain("url(").And.NotContain("mal.com").And.NotContain("top").And.NotContain("left");
+    }
+
+    [Fact]
+    public void Sanitizing_a_valid_document_twice_gives_the_same_output()
+    {
+        var html = "<h2>Origem</h2><p style=\"color: red; text-align: center\"><strong>Nasceu</strong> em <em>Alkeria</em> &amp; <a href=\"https://exemplo.com/a?b=1&amp;c=2\">site</a> " +
+                   $"<a href=\"mailto:a@b.com\">mail</a></p><p><img src=\"{AppImage}\" width=\"120\" height=\"80\" alt=\"Retrato\"></p>" +
+                   "<table><tbody><tr><td colspan=\"2\" style=\"background-color: yellow\">x</td></tr></tbody></table><ul><li>um</li><li>dois</li></ul><hr><p>fim</p>";
+
+        var uma = HistoriaSanitizer.Sanitize(html, Permitidas);
+        var duas = HistoriaSanitizer.Sanitize(uma, Permitidas);
+
+        uma.Should().Contain($"<img src=\"{AppImage}\"").And.Contain("href=\"https://exemplo.com/a?b=1&amp;c=2\"");
+        duas.Should().Be(uma);
+    }
 }

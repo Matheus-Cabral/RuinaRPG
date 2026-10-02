@@ -117,8 +117,18 @@ public static partial class HistoriaSanitizer
 
             if (element.NodeName == "A")
             {
-                element.SetAttribute("target", "_blank");
-                element.SetAttribute("rel", "noopener noreferrer");
+                // Só http, https e mailto ABSOLUTOS: o filtro de esquemas da biblioteca deixa passar href relativo
+                // e protocol-relative ("//evil/x", "/api/auth/logout"), que seriam links do app/de terceiros no
+                // contexto do leitor. Sem href válido o <a> fica só com o texto (e as imagens dentro dele).
+                if (element.GetAttribute("href") is not { } href || !AbsoluteLinkRegex().IsMatch(href))
+                {
+                    element.RemoveAttribute("href");
+                }
+                else
+                {
+                    element.SetAttribute("target", "_blank");
+                    element.SetAttribute("rel", "noopener noreferrer");
+                }
             }
 
             if (element.NodeName != "IMG")
@@ -155,6 +165,9 @@ public static partial class HistoriaSanitizer
     // ImageFormat.ToFileExtension. \z, not $: $ would also accept a trailing newline.
     [GeneratedRegex(@"\A/images/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg|gif|webp))\z", RegexOptions.CultureInvariant)]
     private static partial Regex AppImageUrlRegex();
+
+    [GeneratedRegex(@"\A(?:https?://|mailto:)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex AbsoluteLinkRegex();
 
     [GeneratedRegex(@"\A[1-9][0-9]{0,3}\z", RegexOptions.CultureInvariant)]
     private static partial Regex PixelSizeRegex();
