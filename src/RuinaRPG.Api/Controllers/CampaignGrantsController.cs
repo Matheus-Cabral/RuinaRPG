@@ -221,6 +221,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
         };
 
         // Deep-copy every child table — mechanical, one loop per table, same shape each time.
+        foreach (var i in await db.NpcSheetHistoriaImages.Where(x => x.NpcSheetId == sourceId).ToListAsync())
+            db.NpcSheetHistoriaImages.Add(new() { NpcSheetId = copy.Id, ImageId = i.ImageId, Ordem = i.Ordem });
         foreach (var a in await db.NpcAttributes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
             db.NpcAttributes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
         foreach (var s in await db.NpcSkills.Where(x => x.NpcSheetId == sourceId).ToListAsync())

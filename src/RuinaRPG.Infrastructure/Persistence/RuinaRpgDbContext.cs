@@ -50,6 +50,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterArtifact> CharacterArtifacts => Set<CharacterArtifact>();
     public DbSet<CharacterSpellAbility> CharacterSpellAbilities => Set<CharacterSpellAbility>();
     public DbSet<CharacterSpellAbilityEffect> CharacterSpellAbilityEffects => Set<CharacterSpellAbilityEffect>();
+    public DbSet<CharacterSheetHistoriaImage> CharacterSheetHistoriaImages => Set<CharacterSheetHistoriaImage>();
+    public DbSet<NpcSheetHistoriaImage> NpcSheetHistoriaImages => Set<NpcSheetHistoriaImage>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryEntryImage> DiaryEntryImages => Set<DiaryEntryImage>();
     public DbSet<DiaryEntryRecipient> DiaryEntryRecipients => Set<DiaryEntryRecipient>();
@@ -446,6 +448,20 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .WithMany()
                 .HasForeignKey(d => d.CharacterSheetId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Aba História — galeria de imagens. Apagar a ficha ou a imagem leva a linha junto (mesmo que DiaryEntryImages).
+        builder.Entity<CharacterSheetHistoriaImage>(entity =>
+        {
+            entity.HasKey(i => new { i.CharacterSheetId, i.ImageId });
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<NpcSheetHistoriaImage>(entity =>
+        {
+            entity.HasKey(i => new { i.NpcSheetId, i.ImageId });
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<DiaryEntryImage>(entity =>

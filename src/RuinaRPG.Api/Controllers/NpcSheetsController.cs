@@ -191,13 +191,85 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (request.Historia is { Length: > HistoriaSanitizer.MaxRawLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
-        var clean = HistoriaSanitizer.Sanitize(request.Historia);
+        // Imagens dentro do texto: só as do app que quem salva pode usar (ou que a História já trazia) —
+        // qualquer outro <img> é removido, sem erro (HistoriaSanitizer / HistoriaImageAccess).
+        var imagens = await HistoriaImageAccess.AllowedInlineFilesAsync(db, request.Historia, sheet.Historia, CurrentUserId(), sheet.GmId, await CampaignIdForImagesAsync(sheet));
+        var clean = HistoriaSanitizer.Sanitize(request.Historia, imagens);
         if (clean is { Length: > HistoriaSanitizer.MaxLength })
             return BadRequest(HistoriaSanitizer.MaxLengthMessage);
 
         sheet.Historia = clean;
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    /// <summary>Aba História — a galeria de imagens anexadas, na ordem em que aparecem. Quem pode abrir a ficha pode ver.</summary>
+    [HttpGet("{id}/historia/imagens")]
+    public async Task<ActionResult<List<HistoriaImagemResponse>>> HistoriaImagens(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        var ids = await db.NpcSheetHistoriaImages.Where(i => i.NpcSheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
+        return await HistoriaImageAccess.ToResponseAsync(db, ids);
+    }
+
+    /// <summary>
+    /// Aba História — substitui a galeria pela lista recebida (anexar, remover e reordenar são o mesmo PUT).
+    /// Mesma autorização de UpdateHistoria; uma imagem nova na galeria precisa ser de quem salva
+    /// (HistoriaImageAccess), senão 400 e nada muda.
+    /// </summary>
+    [HttpPut("{id}/historia/imagens")]
+    public async Task<ActionResult<List<HistoriaImagemResponse>>> UpdateHistoriaImagens(Guid id, UpdateHistoriaImagensRequest request)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (!HistoriaImageAccess.TryParseIds(request.ImageIds, out var ids))
+            return BadRequest(HistoriaImageAccess.InvalidIdMessage);
+        if (ids.Count > HistoriaImageAccess.MaxImagens)
+            return BadRequest(HistoriaImageAccess.MaxImagensMessage);
+
+        var existing = await db.NpcSheetHistoriaImages.Where(i => i.NpcSheetId == id).ToListAsync();
+        var novas = ids.Where(imageId => existing.All(e => e.ImageId != imageId)).ToList();
+        if ((await HistoriaImageAccess.UsableAsync(db, novas, CurrentUserId(), sheet.GmId, await CampaignIdForImagesAsync(sheet))).Count != novas.Count)
+            return BadRequest(HistoriaImageAccess.NotFoundMessage);
+
+        db.NpcSheetHistoriaImages.RemoveRange(existing.Where(e => !ids.Contains(e.ImageId)));
+        for (var ordem = 0; ordem < ids.Count; ordem++)
+        {
+            var imageId = ids[ordem];
+            if (existing.FirstOrDefault(e => e.ImageId == imageId) is { } row)
+                row.Ordem = ordem;
+            else
+                db.NpcSheetHistoriaImages.Add(new NpcSheetHistoriaImage { NpcSheetId = id, ImageId = imageId, Ordem = ordem });
+        }
+        await db.SaveChangesAsync();
+
+        return await HistoriaImageAccess.ToResponseAsync(db, ids);
+    }
+
+    /// <summary>
+    /// A campanha em que o NPC foi concedido ao jogador — só interessa quando quem chama é o jogador (é o que
+    /// libera as imagens públicas daquela campanha para ele, como em NpcRunesController); null para o GM.
+    /// </summary>
+    private async Task<Guid?> CampaignIdForImagesAsync(NpcSheet sheet)
+    {
+        if (CurrentUserId() == sheet.GmId)
+            return null;
+
+        return await db.CampaignAttachments
+            .Where(a => a.NpcSheetId == sheet.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
+            .Select(a => (Guid?)a.CampaignId)
+            .FirstOrDefaultAsync();
     }
 
     // NPCs (unlike Ficha de Personagem, where Nível is calculated-only from Experiência Atual)
