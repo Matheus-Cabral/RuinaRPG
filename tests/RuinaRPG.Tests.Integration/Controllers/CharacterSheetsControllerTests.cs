@@ -1178,6 +1178,76 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body!.PesoAtual.Should().Be(0m);
     }
 
+    private async Task<(string SheetId, string PlayerToken, string CampaignId, string GmToken)> NewSheetWithForcaVigorAsync(string tag, int forcaVigor)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync($"SheetGmBc{tag}", $"sheetbc{tag}@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"SheetPlayerBc{tag}", $"sheetplayerbc{tag}@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Bc {tag}");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
+        return (sheetId, playerToken, campaignId, gmToken);
+    }
+
+    private async Task SetBonusDeCargaAsync(string gmToken, string campaignId, decimal bonus)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", gmToken, new UpdateCampaignRequest($"Campanha Bc", "", null, bonus)));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    private async Task<SubAttributesResponse> GetSubAttributesAsync(string sheetId, string token)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", token));
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<SubAttributesResponse>())!;
+    }
+
+    [Fact]
+    public async Task SubAttributes_campaign_BonusDeCarga_is_added_to_PesoMaximo_and_reported()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("1", 4);
+        (await GetSubAttributesAsync(sheetId, playerToken)).PesoMaximo.Should().Be(4m); // floor((4+4)/2)
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, 10m);
+
+        var body = await GetSubAttributesAsync(sheetId, playerToken);
+        body.PesoMaximo.Should().Be(14m);
+        body.BonusDeCargaDaCampanha.Should().Be(10m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_negative_campaign_BonusDeCarga_lowers_PesoMaximo_but_never_below_zero()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("2", 4);
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, -3m);
+        var lowered = await GetSubAttributesAsync(sheetId, playerToken);
+        lowered.PesoMaximo.Should().Be(1m);
+        lowered.BonusDeCargaDaCampanha.Should().Be(-3m);
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, -50m);
+        (await GetSubAttributesAsync(sheetId, playerToken)).PesoMaximo.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task SubAttributes_Movimentacao_overweight_penalty_follows_the_campaign_BonusDeCarga()
+    {
+        var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("3", 2);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+        var itemId = await CreateItemGeralAsync(gmToken, "Pedra", peso: 4m, capacidadeExtra: null);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+
+        var overweight = await GetSubAttributesAsync(sheetId, playerToken); // max 2, carrying 4 -> sobrepeso 2
+        overweight.Movimentacao.Should().Be(6); // 4*2 - 2 sobrepeso
+
+        await SetBonusDeCargaAsync(gmToken, campaignId, 2m); // max 4 -> no penalty
+
+        var withBonus = await GetSubAttributesAsync(sheetId, playerToken);
+        withBonus.PesoMaximo.Should().Be(4m);
+        withBonus.Movimentacao.Should().Be(8);
+    }
+
     [Fact]
     public async Task SubAttributes_Capacidade_Extra_raises_PesoMaximo_and_its_own_Peso_is_excluded_from_PesoAtual()
     {

@@ -549,4 +549,80 @@ public class CampaignsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var note = (await listResponse.Content.ReadFromJsonAsync<List<SecretNoteResponse>>())!.Single(n => n.Id == noteId);
         note.ImageUrls.Should().ContainSingle();
     }
+
+    private async Task<CampaignResponse> GetCampaignAsync(string token, string campaignId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/campaigns", token));
+        return (await response.Content.ReadFromJsonAsync<List<CampaignResponse>>())!.Single(c => c.Id == campaignId);
+    }
+
+    [Fact]
+    public async Task A_new_campaign_has_BonusDeCarga_zero()
+    {
+        var token = await RegisterGmAndGetTokenAsync("CampGmBonus0", "campbonus0@teste.com");
+        var campaignId = await CreateCampaignAsync(token, "Campanha Bônus 0");
+
+        (await GetCampaignAsync(token, campaignId)).BonusDeCarga.Should().Be(0m);
+    }
+
+    [Theory]
+    [InlineData(10.5)]
+    [InlineData(-4)]
+    [InlineData(1000)]
+    [InlineData(-1000)]
+    public async Task Update_with_a_BonusDeCarga_in_range_is_returned_by_the_list(double bonus)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"CampGmBonusOk{bonus}".Replace(".", "").Replace("-", "N"), $"campbonusok{bonus}@teste.com".Replace(".", "p").Replace("-", "n"));
+        var campaignId = await CreateCampaignAsync(token, "Campanha Bônus");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", token,
+            new UpdateCampaignRequest("Campanha Bônus", "", null, (decimal)bonus)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetCampaignAsync(token, campaignId)).BonusDeCarga.Should().Be((decimal)bonus);
+    }
+
+    [Theory]
+    [InlineData(1000.5)]
+    [InlineData(-1001)]
+    public async Task Update_with_a_BonusDeCarga_out_of_range_returns_400_and_changes_nothing(double bonus)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"CampGmBonusBad{bonus}".Replace(".", "").Replace("-", "N"), $"campbonusbad{bonus}@teste.com".Replace(".", "p").Replace("-", "n"));
+        var campaignId = await CreateCampaignAsync(token, "Campanha Bônus Ruim");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", token,
+            new UpdateCampaignRequest("Outro Nome", "", null, (decimal)bonus)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Bônus de carga");
+        var campaign = await GetCampaignAsync(token, campaignId);
+        campaign.BonusDeCarga.Should().Be(0m);
+        campaign.Nome.Should().Be("Campanha Bônus Ruim");
+    }
+
+    [Fact]
+    public async Task Update_without_BonusDeCarga_in_the_body_sets_it_back_to_zero()
+    {
+        var token = await RegisterGmAndGetTokenAsync("CampGmBonusDef", "campbonusdef@teste.com");
+        var campaignId = await CreateCampaignAsync(token, "Campanha Bônus Padrão");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", token, new UpdateCampaignRequest("Campanha Bônus Padrão", "", null, 7m)));
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", token, new UpdateCampaignRequest("Campanha Bônus Padrão", "", null)));
+
+        (await GetCampaignAsync(token, campaignId)).BonusDeCarga.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Another_gm_cannot_change_the_BonusDeCarga()
+    {
+        var owner = await RegisterGmAndGetTokenAsync("CampGmBonusOwn", "campbonusown@teste.com");
+        var other = await RegisterGmAndGetTokenAsync("CampGmBonusOth", "campbonusoth@teste.com");
+        var campaignId = await CreateCampaignAsync(owner, "Campanha Alheia");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", other,
+            new UpdateCampaignRequest("Campanha Alheia", "", null, 50m)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetCampaignAsync(owner, campaignId)).BonusDeCarga.Should().Be(0m);
+    }
 }

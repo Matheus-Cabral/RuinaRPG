@@ -334,6 +334,12 @@
                 <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
                 <MudTextField T="string" @bind-Value="_detailsForm.Nome" For="@(() => _detailsForm.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <MudTextField T="string" @bind-Value="_detailsForm.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
+                <div class="d-flex align-center" style="gap:4px">
+                    <MudNumericField T="decimal" @bind-Value="_detailsForm.BonusDeCarga" Label="Bônus de carga dos personagens" Step="1m" Min="-1000m" Max="1000m" @bind-Value:after="NotifySavedAsync" />
+                    <InfoPopup Title="Bônus de carga">
+                        Valor somado ao peso máximo do inventário de todos os personagens desta campanha. Use um número negativo para reduzir a capacidade. Não afeta NPCs nem Criaturas.
+                    </InfoPopup>
+                </div>
 
                 <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_detailsImageIds"
                                       SelectedIdsChanged="@(v => { _detailsImageIds = v; _detailsForm.ImageId = v.FirstOrDefault(); NotifySavedAsync(); })"
@@ -531,6 +537,7 @@
         {
             _detailsForm.Nome = _campaign.Nome;
             _detailsForm.Descricao = _campaign.Descricao;
+            _detailsForm.BonusDeCarga = _campaign.BonusDeCarga;
             _detailsForm.ImageId = _myImages.FirstOrDefault(i => i.Url == _campaign.ImageUrl)?.Id;
             _detailsImageIds = _detailsForm.ImageId is null ? new() : new() { _detailsForm.ImageId };
         }
@@ -541,7 +548,7 @@
         if (!_editContext.Validate())
             return false;
 
-        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}", new UpdateCampaignRequest(_detailsForm.Nome, _detailsForm.Descricao, _detailsForm.ImageId));
+        var response = await Http.PutAsJsonAsync($"campaigns/{CampaignId}", new UpdateCampaignRequest(_detailsForm.Nome, _detailsForm.Descricao, _detailsForm.ImageId, _detailsForm.BonusDeCarga));
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException("Não foi possível salvar a campanha.");
 
@@ -955,6 +962,7 @@
         public string Nome { get; set; } = "";
         public string Descricao { get; set; } = "";
         public string? ImageId { get; set; }
+        public decimal BonusDeCarga { get; set; }
     }
 
     private record NpcVisibilityBody(bool NomePublico, bool ImagemPublica);

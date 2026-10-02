@@ -54,9 +54,13 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (imageId is not null && !await OwnsImageAsync(imageId.Value, gmId))
             return BadRequest("Imagem não encontrada.");
 
+        if (request.BonusDeCarga is < -1000m or > 1000m)
+            return BadRequest("Bônus de carga deve estar entre -1000 e 1000.");
+
         campaign.Nome = request.Nome;
         campaign.Descricao = request.Descricao;
         campaign.ImageId = imageId;
+        campaign.BonusDeCarga = request.BonusDeCarga;
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -399,7 +403,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             imageUrl = image is not null ? $"/images/{image.Path}" : null;
         }
 
-        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl);
+        return new CampaignResponse(c.Id.ToString(), c.Nome, c.Descricao, imageUrl, c.BonusDeCarga);
     }
 
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

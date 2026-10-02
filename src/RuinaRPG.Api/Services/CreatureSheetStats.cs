@@ -81,7 +81,7 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
 
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m)),
+            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m, bonusDeCarga: 0m)),
             // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
             // in the Catálogo (e.g. "-1 Furtividade"), not a number — same real, still-open gap as
             // the Ficha de NPCs version.

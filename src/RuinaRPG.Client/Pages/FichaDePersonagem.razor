@@ -730,6 +730,10 @@
             @if (_subAttributes?.PesoAtual is not null && _subAttributes.PesoMaximo is not null)
             {
                 <MudText>Peso: @_subAttributes.PesoAtual?.ToString("0.##") / @_subAttributes.PesoMaximo?.ToString("0.##")</MudText>
+                @if (_subAttributes.BonusDeCargaDaCampanha != 0m)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">inclui @(_subAttributes.BonusDeCargaDaCampanha > 0 ? "+" : "−")@(Math.Abs(_subAttributes.BonusDeCargaDaCampanha).ToString("0.##")) da campanha</MudText>
+                }
                 @if (_subAttributes.PesoAtual > _subAttributes.PesoMaximo)
                 {
                     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>

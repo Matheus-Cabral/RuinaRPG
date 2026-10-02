@@ -61,7 +61,9 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
             + weapons.Where(w => !w.IsEquipped).Sum(w => w.Peso)
             + shields.Where(s => !s.IsEquipped).Sum(s => s.Peso);
         var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
-        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal);
+        // Bônus de carga da Campanha (Requisitos - Campanha): only Personagem sheets belong to one.
+        var bonusDeCarga = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
+        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga);
 
         var equippedShield = await db.CharacterShields
             .Where(s => s.CharacterSheetId == id && s.IsEquipped)
@@ -97,7 +99,8 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo,
             EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade),
-            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade));
+            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade),
+            BonusDeCargaDaCampanha: bonusDeCarga);
     }
 
     /// <summary>

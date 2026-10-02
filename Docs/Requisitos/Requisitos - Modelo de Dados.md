@@ -178,6 +178,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | GmId | FK → Users |
 | Nome | string |
 | Descricao | text |
+| BonusDeCarga | decimal, padrão 0 (pode ser negativo) — somado ao Peso Máximo das fichas de Personagem da campanha (Campanha R0014) |
 
 **CampaignMembers**
 

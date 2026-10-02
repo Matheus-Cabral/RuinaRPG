@@ -64,7 +64,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
             + weapons.Where(w => !w.IsEquipped).Sum(w => w.Peso)
             + shields.Where(s => !s.IsEquipped).Sum(s => s.Peso);
         var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
-        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal);
+        var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga: 0m);
 
         var equippedShield = await db.NpcShields
             .Where(s => s.NpcSheetId == id && s.IsEquipped)

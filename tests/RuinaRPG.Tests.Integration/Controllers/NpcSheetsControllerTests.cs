@@ -1200,6 +1200,25 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task SubAttributes_PesoMaximo_ignores_the_BonusDeCarga_of_the_gms_campaigns()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPesoBc", "npcpesobc@teste.com");
+        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new RuinaRPG.Contracts.Campaigns.CreateCampaignRequest("Campanha Bônus", "")));
+        var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Campaigns.CampaignResponse>())!.Id;
+        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", gmToken, new RuinaRPG.Contracts.Campaigns.UpdateCampaignRequest("Campanha Bônus", "", null, 25m)));
+        update.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var sheetId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
+
+        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+        body!.PesoMaximo.Should().Be(4m);
+        body.BonusDeCargaDaCampanha.Should().Be(0m);
+    }
+
+    [Fact]
     public async Task SubAttributes_by_a_different_gm_returns_404()
     {
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwnerSub3", "npcownersub3@teste.com");
