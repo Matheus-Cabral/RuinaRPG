@@ -62,7 +62,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
 # **R0009** - A aba Antecedentes do NPC é a última aba.
 
-**Descrição**: A aba Antecedentes segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático e a mesma limpeza de HTML). Como a Ficha de NPC não tem Diário, a aba Antecedentes é a última. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto.
+**Descrição**: A aba Antecedentes segue "[[Requisitos - Ficha de Personagem]]" R0006 sem alteração (Estrela, Histórico e a história em texto formatado, com o mesmo salvamento automático, a mesma limpeza de HTML, as mesmas imagens dentro do texto e a mesma galeria de imagens — aqui editadas pelo GM e, numa ficha concedida, também pelo jogador que a recebeu). Como a Ficha de NPC não tem Diário, a aba Antecedentes é a última. Quando o GM concede a um jogador a cópia de um NPC existente ("[[Requisitos - Campanha]]" R0010), a História é copiada junto, com as imagens do texto e a galeria.
 
   
 

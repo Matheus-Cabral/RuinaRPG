@@ -230,7 +230,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Afinidade | enum (Elemento \| Sub-Elemento), nullable | 1.a |
 | Propriedade | string, nullable | 1.a |
 | HistoricoId | FK → Historicos, nullable | referência ao vivo (ver legenda) — nenhum campo é copiado para a ficha |
-| Historia | text, nullable | História — HTML do texto rico, sanitizado no servidor por uma allowlist antes de gravar; NULL = vazio (ver "[[Requisitos - Ficha de Personagem]]", aba Antecedentes) |
+| Historia | text, nullable | História — HTML do texto rico, sanitizado no servidor por uma allowlist antes de gravar; NULL = vazio (ver "[[Requisitos - Ficha de Personagem]]", aba Antecedentes). Uma imagem dentro do texto só é mantida quando o `src` é exatamente o endereço de uma `Image` do app (`/images/{Path}`) que quem salva pode usar ou que a História já continha; não há FK para essas imagens — o vínculo é o endereço no HTML. A galeria fica em `CharacterSheetHistoriaImages` (abaixo). |
 | Nivel | int | 1.b |
 | Circulo | int | 1.b — colunas vestigiais: mantidas no schema mas não mais atualizadas pela aplicação; a Graduação exibida (`GraduacaoLabel`/`Graduacao` na response) é hoje **computada em tempo de leitura** a partir de `EAPAtual`/`Vocacao`, não lida daqui. Mesma situação em NpcSheets (6.2), que herda esta tabela sem diferença nesses dois campos. |
 | Grau | int | 1.b — ver nota de `Circulo` acima. |
@@ -245,6 +245,14 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Ciclos | int | 5.a |
 | ArcaRolada | int, nullable | 4.a — só relevante quando `Linhagem` = Humano; resolvida contra `ArcaEntries` (seção 10). Mesma coluna existe em NpcSheets (6.2), sem diferença. |
 | LastDismissedLevelUpLevel | int, nullable | R0002 — até qual Nível a caixa de aviso já foi fechada |
+
+**CharacterSheetHistoriaImages** (aba Antecedentes — galeria de imagens da História; join como `DiaryEntryImages`, seção 7) — a linha some junto com a ficha ou com a imagem (cascade nas duas FKs).
+
+| Coluna | Tipo | Observação |
+|---|---|---|
+| CharacterSheetId | FK → CharacterSheets | PK composta com `ImageId` — a mesma imagem entra uma única vez na galeria de uma ficha |
+| ImageId | FK → Images | |
+| Ordem | int | posição na galeria (0, 1, 2…), regravada a cada alteração |
 
 **CharacterAttributes** — 1 linha por atributo (8 por ficha).
 
@@ -483,6 +491,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
 - `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
+- `NpcSheetHistoriaImages` (`NpcSheetId` FK → NpcSheets, `ImageId` FK → Images, `Ordem` int; PK composta, cascade nas duas FKs): espelho de `CharacterSheetHistoriaImages`. Ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
 - `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).
 - Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
