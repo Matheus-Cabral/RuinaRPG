@@ -236,7 +236,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | PossuiCoracaoDeMana | bool | 1.b |
 | AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura, não gravados. Mesma coluna existe em NpcSheets (6.2), sem diferença. |
 | ExperienciaAtual | int | 1.b |
-| EAPAtual | int | 1.b |
+| EAPAtual | int | 1.b — coluna vestigial: mantida no schema mas não mais lida nem gravada pela aplicação; o VIS Atual exibido (`EAPAtual` na response) é **computado em tempo de leitura** (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank). `request.EAPAtual` é aceito mas ignorado. Mesma situação em NpcSheets (6.2), que herda esta coluna sem diferença. |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
 | PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b |
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
@@ -482,6 +482,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
 - `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
+- `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).
 - Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
@@ -631,13 +632,20 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | GratuitaOptionsJson | text (JSON) |
 | ObrigatoriaOptionsJson | text (JSON) |
 
-**ArcaEntries** — a "tabela de Arcas" (1d18) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 a 18) já preenchido; ausência de linha para um Roll = "não cadastrada".
+**ArcaTabelas** — o dado escolhido pelo GM para a sua tabela de Arcas (Habilidades Raciais R0002). Ausência de linha = D20.
+
+| Coluna | Tipo |
+|---|---|
+| GmId | PK, FK → Users (cascade) |
+| Dado | int — uma das faces D6, D8, D10, D12, D20 ou D100 (6, 8, 10, 12, 20, 100) |
+
+**ArcaEntries** — a "tabela de Arcas" (1d{dado}) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 até a face do dado) já preenchido; ausência de linha para um Roll = "não cadastrada". Reduzir o dado só esconde as linhas com Roll acima dele: elas não são apagadas e voltam se o dado aumentar.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | GmId | FK → Users |
-| Roll | int, 1 a 18 |
+| Roll | int, 1 a 100 (o máximo depende do dado do GM em `ArcaTabelas`; linhas acima do dado atual ficam escondidas, não apagadas) |
 | Nome | string |
 | Descricao | text |
 

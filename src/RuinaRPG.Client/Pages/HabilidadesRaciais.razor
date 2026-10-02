@@ -1,6 +1,8 @@
 @page "/habilidades-raciais"
 @inject HttpClient Http
+@inject IDialogService DialogService
 @using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
 
@@ -57,12 +59,19 @@
 <Section Title="Tabela de Arcas">
     <TitleInfo>
         <InfoPopup Title="Como funcionam as Arcas e suas evoluções">
-            Cada número de 1 a 18 é uma Arca, usada pelo Racial de Sinir/Laonir (Humano). Cada Arca pode ter evoluções, cada uma liberada a partir de um nível.
+            Cada número da tabela é uma Arca, usada pelo Racial de Sinir/Laonir (Humano). Cada Arca pode ter evoluções, cada uma liberada a partir de um nível.
             As evoluções somam-se à descrição da Arca, não a substituem, e pode haver mais de uma no mesmo nível.
             Na ficha de um Humano, o botão "Evoluções da Arca" mostra todas as evoluções que o nível do personagem ou NPC já liberou; as futuras não aparecem.
+            O dado define quantas Arcas a tabela tem (D6, D8, D10, D12, D20 ou D100). Ao escolher um dado menor, as Arcas acima dele ficam escondidas, não apagadas.
         </InfoPopup>
     </TitleInfo>
     <ChildContent>
+    <MudSelect @key="_dadoGeneration" T="int" Label="Dado da tabela" Value="@_dado" ValueChanged="@OnDadoChangedAsync" Style="max-width:14em;" Class="mt-2">
+        @foreach (var faces in DadoDeArca.Faces)
+        {
+            <MudSelectItem T="int" Value="@faces">@($"D{faces}")</MudSelectItem>
+        }
+    </MudSelect>
     <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
         <thead>
             <tr><th>Roll</th><th>Nome</th><th>Descrição</th></tr>
@@ -79,8 +88,14 @@
                     <td></td>
                     <td colspan="2">
                         <MudExpansionPanels Elevation="0">
-                            <MudExpansionPanel Text="@($"Evoluções ({arca.Evolucoes.Count})")">
-                                <ArcaEvolucoesEditor Roll="@arca.Roll" Evolucoes="@arca.Evolucoes" OnChanged="LoadArcasAsync" />
+                            <MudExpansionPanel Text="@($"Evoluções ({arca.Evolucoes.Count})")"
+                                               Expanded="@_expandidas.Contains(arca.Roll)"
+                                               ExpandedChanged="@(aberto => SetExpandida(arca.Roll, aberto))">
+                                @* Com D100 são 100 linhas: o editor só é montado enquanto o painel está aberto. *@
+                                @if (_expandidas.Contains(arca.Roll))
+                                {
+                                    <ArcaEvolucoesEditor Roll="@arca.Roll" Evolucoes="@arca.Evolucoes" OnChanged="LoadArcasAsync" />
+                                }
                             </MudExpansionPanel>
                         </MudExpansionPanels>
                     </td>
@@ -102,6 +117,10 @@
     private List<RacialTraitSlotsEntryResponse> _traitEntries = new();
     private List<ArcaEntryResponse> _arcas = new();
     private string? _errorMessage;
+    private int _dado = DadoDeArca.Padrao;
+    private readonly HashSet<int> _expandidas = new();
+    // Bumped when a die change is cancelled or rejected, so the MudSelect is re-created showing the current die again.
+    private int _dadoGeneration;
 
     private static readonly Dictionary<string, string> Labels = LinhagemVarianteFields.VariantesPorLinhagem
         .SelectMany(kv => kv.Value)
@@ -113,7 +132,54 @@
     {
         await LoadRacialAbilitiesAsync();
         await LoadRacialTraitsAsync();
+        await LoadDadoAsync();
         await LoadArcasAsync();
+    }
+
+    private async Task LoadDadoAsync()
+    {
+        var resposta = await Http.GetFromJsonAsync<ArcaDadoResponse>("arcas/dado");
+        _dado = resposta?.Dado ?? DadoDeArca.Padrao;
+    }
+
+    private void SetExpandida(int roll, bool aberto)
+    {
+        if (aberto)
+            _expandidas.Add(roll);
+        else
+            _expandidas.Remove(roll);
+    }
+
+    private async Task OnDadoChangedAsync(int novo)
+    {
+        if (novo == _dado)
+            return;
+
+        if (novo < _dado)
+        {
+            var confirmou = await DialogService.ShowMessageBoxAsync(
+                "Mudar o dado da tabela",
+                $"Mudar para D{novo}? As Arcas acima de {novo} somem da tabela, mas ficam guardadas com suas evoluções e voltam se você escolher um dado maior.",
+                yesText: "Mudar", cancelText: "Cancelar");
+            if (confirmou != true)
+            {
+                _dadoGeneration++;
+                return;
+            }
+        }
+
+        var response = await Http.PutAsJsonAsync("arcas/dado", new ArcaDadoRequest(novo));
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível mudar o dado da tabela.";
+            _dadoGeneration++;
+            return;
+        }
+
+        _dado = novo;
+        _dadoGeneration++;
+        await LoadArcasAsync();
+        await LoadRacialAbilitiesAsync(); // o texto padrão do Racial de Sinir/Laonir segue o dado
     }
 
     private async Task LoadRacialAbilitiesAsync()

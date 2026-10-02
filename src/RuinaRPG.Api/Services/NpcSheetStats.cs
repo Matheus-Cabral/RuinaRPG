@@ -7,6 +7,7 @@ using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Services;
 
@@ -16,8 +17,18 @@ namespace RuinaRPG.Api.Services;
 /// of NpcSheetsController so both /sub-attributes (unchanged response) and the Passiva requisitos
 /// check (Task 5) share one live computation. Read-only, everything derived live.
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis)
 {
+    /// <summary>
+    /// VIS/EAP Atual do NPC: base do Nível + Âmbares Absorvidos, exatamente como na Ficha de Personagem.
+    /// Único ponto de cálculo (resposta, Graduação, requisitos de Passiva); NpcSheet.EAPAtual é vestigial.
+    /// </summary>
+    public async Task<int> EapAtualAsync(NpcSheet sheet)
+    {
+        var tabela = await tabelaDeNiveis.ObterAsync();
+        return EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
+    }
+
     public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet)
     {
         var id = sheet.Id;
@@ -92,9 +103,8 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     }
 
     /// <summary>
-    /// Graduação uses the stored EAPAtual directly — exactly like
-    /// NpcSheetsController.ToResponseAsync (unlike Ficha de Personagem, where EAPAtual is a pure
-    /// function of Nível/Núcleos).
+    /// Graduação usa o VIS calculado (EapAtualAsync) — o mesmo de
+    /// NpcSheetsController.ToResponseAsync e da Ficha de Personagem.
     /// </summary>
     public async Task<FichaParaRequisitos> FichaParaRequisitosAsync(NpcSheet sheet)
     {
@@ -120,7 +130,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
 
         var sub = await SubAtributosAsync(sheet);
 
-        var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, sheet.EAPAtual, sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
+        var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, await EapAtualAsync(sheet), sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: true, sheet.Nivel, sheet.Vocacao, sheet.SubVocacao, sheet.Linhagem, sheet.Variante,

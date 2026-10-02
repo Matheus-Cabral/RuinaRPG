@@ -231,28 +231,14 @@ public class RulebookRenderer(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNive
     }
 
     /// <summary>
-    /// Montada ao vivo a partir da Tabela de Níveis da Auditoria (ITabelaDeNiveis): uma tabela com
-    /// Nível, uma coluna por coluna da Auditoria (valores como armazenados) e Outros bônus. Sem
+    /// Montada ao vivo a partir da Tabela de Níveis da Auditoria (ITabelaDeNiveis): tabela "Nível | Bônus"
+    /// e tabela "Limites e progressão" (ver <see cref="TabelaDeNiveisHtml"/>). Sem
     /// seções — a tabela inteira vai no IntroHtml. Não há override em Markdown para este documento.
     /// </summary>
     private async Task<RulebookDocument> BuildTabelaDeNiveisAsync()
     {
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var colunas = tabela.Colunas;
-        var html = new StringBuilder("<table><thead><tr><th>Nível</th>");
-        foreach (var c in colunas)
-            html.Append("<th>").Append(WebUtility.HtmlEncode(c.Nome)).Append("</th>");
-        html.Append("<th>Outros bônus</th></tr></thead><tbody>");
-        foreach (var linha in tabela.Linhas)
-        {
-            html.Append("<tr><td>").Append(linha.Nivel).Append("</td>");
-            foreach (var c in colunas)
-                html.Append("<td>").Append(linha.Valores.GetValueOrDefault(c.Id)?.ToString() ?? "").Append("</td>");
-            var outros = WebUtility.HtmlEncode(linha.OutrosBonus ?? "").Replace("\n", "<br />");
-            html.Append("<td>").Append(outros).Append("</td></tr>");
-        }
-        html.Append("</tbody></table>");
-        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", html.ToString(), []);
+        return new RulebookDocument("tabela-de-niveis", "Tabela de Níveis", TabelaDeNiveisHtml.Montar(tabela), []);
     }
 
     /// <summary>

@@ -118,3 +118,17 @@
     overflow-x: auto;
     min-width: 0;
 }
+
+/* Tabela de Níveis gerada: coluna do Nível estreita; na tabela de bônus a coluna "Bônus" ocupa o resto
+   (um item por linha) e, na de limites, os números ficam centralizados. Escopo: só as tabelas com a classe. */
+.rulebook-content ::deep table.tabela-de-niveis th:first-child,
+.rulebook-content ::deep table.tabela-de-niveis td:first-child {
+    width: 1%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.rulebook-content ::deep table.tabela-de-niveis-limites th:not(:first-child),
+.rulebook-content ::deep table.tabela-de-niveis-limites td:not(:first-child) {
+    text-align: center;
+}

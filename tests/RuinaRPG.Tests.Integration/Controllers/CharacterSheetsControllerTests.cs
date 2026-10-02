@@ -1316,6 +1316,84 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
         body.ArcaDescricao.Should().BeNull();
     }
 
+    private async Task<(string GmToken, string PlayerToken, string SheetId)> CreateArcaSheetAsync(string nickname)
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync(nickname + "Gm", nickname + "gm@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, nickname + "Pl", nickname + "pl@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha " + nickname);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        return (gmToken, playerToken, sheetId);
+    }
+
+    private Task<HttpResponseMessage> PutArcaAsync(string token, string sheetId, int arca, int vitalidadeAtual = 0) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", token,
+            ValidUpdate() with { Linhagem = "Humano", Variante = "Sinir", ArcaRolada = arca, VitalidadeAtual = vitalidadeAtual }));
+
+    [Fact]
+    public async Task Update_accepts_ArcaRolada_20_and_rejects_21_under_the_default_die()
+    {
+        var (_, playerToken, sheetId) = await CreateArcaSheetAsync("ArcaDadoSheetA");
+
+        (await PutArcaAsync(playerToken, sheetId, 20)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var rejected = await PutArcaAsync(playerToken, sheetId, 21);
+        rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await rejected.Content.ReadAsStringAsync()).Should().Contain("ArcaRolada deve estar entre 1 e 20.");
+    }
+
+    [Fact]
+    public async Task Update_rejects_ArcaRolada_7_under_D6()
+    {
+        var (gmToken, playerToken, sheetId) = await CreateArcaSheetAsync("ArcaDadoSheetB");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new ArcaDadoRequest(6)));
+
+        var response = await PutArcaAsync(playerToken, sheetId, 7);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("ArcaRolada deve estar entre 1 e 6.");
+    }
+
+    [Fact]
+    public async Task A_stored_ArcaRolada_above_a_shrunken_die_is_reported_out_of_the_table_and_does_not_block_saving_other_fields()
+    {
+        var (gmToken, playerToken, sheetId) = await CreateArcaSheetAsync("ArcaDadoSheetC");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/15", gmToken, new UpdateArcaEntryRequest("Arca Alta", "Descrição.")));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/arcas/15/evolucoes", gmToken, new ArcaEvolucaoRequest(1, "evo")));
+        (await PutArcaAsync(playerToken, sheetId, 15)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new ArcaDadoRequest(12)));
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        body!.ArcaDado.Should().Be(12);
+        body.ArcaForaDaTabela.Should().BeTrue();
+        body.ArcaRolada.Should().Be(15);
+        body.ArcaNome.Should().BeNull();
+        body.ArcaDescricao.Should().BeNull();
+        body.ArcaEvolucoes.Should().BeEmpty();
+
+        (await PutArcaAsync(playerToken, sheetId, 15, vitalidadeAtual: 1)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await PutArcaAsync(playerToken, sheetId, 14)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await PutArcaAsync(playerToken, sheetId, 12)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var after = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+        after!.ArcaForaDaTabela.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RacialAbility_default_text_follows_the_GMs_die()
+    {
+        var (gmToken, playerToken, sheetId) = await CreateArcaSheetAsync("ArcaDadoSheetD");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/arcas/dado", gmToken, new ArcaDadoRequest(10)));
+        await PutArcaAsync(playerToken, sheetId, 3);
+
+        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken)))
+            .Content.ReadFromJsonAsync<RacialAbilityResponse>();
+
+        body!.Descricao.Should().Be("Role 1d10 na tabela de Arcas.");
+        body.ArcaDado.Should().Be(10);
+        body.ArcaForaDaTabela.Should().BeFalse();
+    }
+
     [Fact]
     public async Task ListMine_returns_the_players_own_sheets_across_every_campaign_with_the_campaigns_name()
     {
