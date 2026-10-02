@@ -339,10 +339,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null, null, null, null, new());
-
         var arcaDado = await db.DadoDeArcaDoGmAsync(sheet.GmId);
+        if (sheet.Variante is null)
+            return new RacialAbilityResponse(null, null, null, null, null, new(), arcaDado);
+
         var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == sheet.GmId && o.Variante == sheet.Variante.Value);
         var (nome, descricao) = over is not null
             ? (over.Nome, over.Descricao)

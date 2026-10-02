@@ -88,8 +88,8 @@ public class CharacterSheet
     public Cobertura Cobertura { get; set; }
     public int Ciclos { get; set; }
 
-    // 1-18, matches "the tabela de Arcas" (Ruína RPG - Sistema Básico.md §7, Sinir/Laonir's
-    // "Role 1d18 na tabela de Arcas") — only meaningful when Linhagem is Humano, but not
+    // 1 to the GM's die (DadoDeArca, default D20), matches "the tabela de Arcas" (Ruína RPG - Sistema Básico.md §7, Sinir/Laonir's
+    // "Role 1d{dado} na tabela de Arcas") — only meaningful when Linhagem is Humano, but not
     // restricted at the schema level (the GM/racial-ability endpoint enforces that).
     public int? ArcaRolada { get; set; }
 

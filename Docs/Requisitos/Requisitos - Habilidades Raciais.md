@@ -24,7 +24,7 @@
 
 # **R0003** - O app nunca rola dados automaticamente.
 
-**Descrição**: Esta página e o campo "Número rolado" da Ficha (4.a) são só cadastro/referência — o app não simula a rolagem do 1d18 em nenhum momento. O jogador rola fisicamente (ou por qualquer outro meio fora do app) e digita o resultado na própria ficha.
+**Descrição**: Esta página e o campo "Número rolado" da Ficha (4.a) são só cadastro/referência — o app não simula a rolagem do dado da tabela de Arcas em nenhum momento. O jogador rola fisicamente (ou por qualquer outro meio fora do app) e digita o resultado na própria ficha.
 
   
 

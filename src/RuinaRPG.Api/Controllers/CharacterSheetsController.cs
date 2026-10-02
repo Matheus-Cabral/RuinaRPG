@@ -149,10 +149,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null, null, null, null, new());
-
         var arcaDado = await db.DadoDeArcaDoGmAsync(campaignGmId);
+        if (sheet.Variante is null)
+            return new RacialAbilityResponse(null, null, null, null, null, new(), arcaDado);
+
         var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == sheet.Variante.Value);
         var (nome, descricao) = over is not null
             ? (over.Nome, over.Descricao)
