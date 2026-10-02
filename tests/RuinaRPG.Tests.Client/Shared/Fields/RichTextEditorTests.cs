@@ -85,4 +85,81 @@ public class RichTextEditorTests : MudBunitContext
 
         JSInterop.VerifyInvoke("ruinaRichText.destroy");
     }
+
+    // ---------------------------------------------------------------- Inserir imagem
+
+    private sealed class FakeJsStream(int length) : IJSStreamReference
+    {
+        public long Length => length;
+        public long? MaxAllowedSizeAsked { get; private set; }
+        public ValueTask<Stream> OpenReadStreamAsync(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
+        {
+            MaxAllowedSizeAsked = maxAllowedSize;
+            return ValueTask.FromResult<Stream>(new MemoryStream(new byte[Math.Min(length, 16)]));
+        }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public void Without_an_UploadImage_handler_the_editor_is_created_without_the_image_button()
+    {
+        Render<RichTextEditor>(p => p.Add(x => x.Html, "<p>a</p>"));
+
+        JSInterop.VerifyInvoke("ruinaRichText.create").Arguments[3].Should().BeEquivalentTo(new { imagens = false });
+    }
+
+    [Fact]
+    public void With_an_UploadImage_handler_the_editor_is_created_with_the_image_button()
+    {
+        Render<RichTextEditor>(p => p.Add(x => x.UploadImage, (_, _) => Task.FromResult<string?>(null)));
+
+        JSInterop.VerifyInvoke("ruinaRichText.create").Arguments[3].Should().BeEquivalentTo(new { imagens = true });
+    }
+
+    [Fact]
+    public async Task A_file_picked_in_js_is_handed_to_UploadImage_and_its_url_is_returned_to_js()
+    {
+        string? receivedName = null;
+        long receivedLength = -1;
+        var cut = Render<RichTextEditor>(p => p.Add(x => x.UploadImage, (stream, name) =>
+        {
+            receivedName = name;
+            receivedLength = stream.Length;
+            return Task.FromResult<string?>("/images/abc.png");
+        }));
+        var file = new FakeJsStream(10);
+
+        var url = await cut.InvokeAsync(() => cut.Instance.UploadImageFromJs(file, "mapa.png"));
+
+        url.Should().Be("/images/abc.png");
+        receivedName.Should().Be("mapa.png");
+        receivedLength.Should().Be(10);
+        file.MaxAllowedSizeAsked.Should().Be(RichTextEditor.MaxUploadBytes);
+    }
+
+    [Fact]
+    public async Task A_file_larger_than_the_upload_cap_is_refused_with_a_message_and_never_read()
+    {
+        string? error = null;
+        var called = false;
+        var cut = Render<RichTextEditor>(p => p
+            .Add(x => x.UploadImage, (_, _) => { called = true; return Task.FromResult<string?>("/images/abc.png"); })
+            .Add(x => x.OnError, (string e) => error = e));
+        var file = new FakeJsStream(RichTextEditor.MaxUploadBytes + 1);
+
+        var url = await cut.InvokeAsync(() => cut.Instance.UploadImageFromJs(file, "enorme.png"));
+
+        url.Should().BeNull();
+        called.Should().BeFalse();
+        file.MaxAllowedSizeAsked.Should().BeNull();
+        error.Should().Be("A imagem excede o tamanho máximo permitido.");
+    }
+
+    [Fact]
+    public async Task Without_an_UploadImage_handler_a_file_from_js_is_ignored()
+    {
+        var cut = Render<RichTextEditor>();
+
+        (await cut.InvokeAsync(() => cut.Instance.UploadImageFromJs(new FakeJsStream(10), "x.png"))).Should().BeNull();
+    }
 }

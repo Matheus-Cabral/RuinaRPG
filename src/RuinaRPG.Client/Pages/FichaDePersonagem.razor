@@ -822,7 +822,8 @@
         <Section>
             @if (_historiaLoaded)
             {
-                <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)" />
+                <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)"
+                                AvailableImages="_myImages" CampaignId="@(_isGmCaller ? null : _campaignId)" />
             }
             else
             {

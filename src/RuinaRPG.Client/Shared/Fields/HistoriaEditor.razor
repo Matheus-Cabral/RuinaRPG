@@ -2,30 +2,161 @@
 @using MudBlazor
 @using RuinaRPG.Client.Services
 @using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Contracts.Images
 @inject HttpClient Http
 @implements IDisposable
 
 @* Aba Antecedentes (Personagem e NPC): the rich-text editor plus its own autosave — the História has a
-   dedicated endpoint (PUT …/historia), so it doesn't ride the sheet's general autosave. *@
+   dedicated endpoint (PUT …/historia), so it doesn't ride the sheet's general autosave. Below the text,
+   the gallery of attached images ({SaveUrl}/imagens), saved on every change. *@
 <div class="d-flex align-center justify-space-between mb-2">
-    <MudText Typo="Typo.h6">História do personagem</MudText>
+    <div class="d-flex align-center">
+        <MudText Typo="Typo.h6">História do personagem</MudText>
+        <InfoPopup Title="Imagens na História">
+            <MudText Typo="Typo.body2">@ImagesHelp</MudText>
+        </InfoPopup>
+    </div>
     <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
 </div>
-<RichTextEditor Html="@Html" HtmlChanged="OnHtmlChangedAsync" OnCommit="OnCommit" />
+<RichTextEditor Html="@Html" HtmlChanged="OnHtmlChangedAsync" OnCommit="OnCommit" UploadImage="UploadInlineImageAsync" OnError="OnError" />
+
+<MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Galeria de imagens</MudText>
+<ImageAttachmentField AvailableImages="_pool" SelectedIds="_galleryIds" SelectedIdsChanged="OnGalleryChangedAsync"
+                      CampaignId="@CampaignId" OnError="OnError" />
 
 @code {
+    public const string ImagesHelp = "Você pode inserir imagens dentro do texto (botão Inserir imagem) ou anexá-las na galeria abaixo. " +
+        "Só são aceitas imagens enviadas para o app; imagens coladas de outros sites são removidas ao salvar.";
+
     [Parameter, EditorRequired] public string SaveUrl { get; set; } = "";
     [Parameter] public string? Html { get; set; }
     [Parameter] public EventCallback<string?> HtmlChanged { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
 
+    /// <summary>The page's image pool ("minhas imagens" for the GM, the campaign's public images for a player).</summary>
+    [Parameter] public List<ImageSummaryResponse> AvailableImages { get; set; } = new();
+
+    /// <summary>Forwarded to every upload made here (gallery and in-text), exactly like the sheet's other
+    /// image fields: set for a player, so the upload joins the campaign's images; null for the GM.</summary>
+    [Parameter] public string? CampaignId { get; set; }
+
     private readonly AutoSaveCoordinator _autoSave = new();
+
+    // What ImageAttachmentField picks from and resolves thumbnails with: the page's pool plus the gallery
+    // images that aren't in it (the ones the other party — GM or player — attached to this same sheet).
+    private List<ImageSummaryResponse> _pool = new();
+    private List<ImageSummaryResponse>? _poolSource;
+    private readonly Dictionary<string, ImageSummaryResponse> _galleryOnly = new();
+    private List<string> _galleryIds = new();
+    private readonly SemaphoreSlim _gallerySave = new(1, 1);
+
+    private string GalleryUrl => $"{SaveUrl}/imagens";
 
     protected override void OnInitialized() => _autoSave.StateChanged += Refresh;
 
+    protected override async Task OnInitializedAsync() => await LoadGalleryAsync();
+
+    protected override void OnParametersSet()
+    {
+        // The page may hand over its pool only after its own load finishes (a new list instance).
+        if (!ReferenceEquals(_poolSource, AvailableImages))
+            RebuildPool();
+    }
+
     private void Refresh() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => _autoSave.StateChanged -= Refresh;
+    public void Dispose()
+    {
+        _autoSave.StateChanged -= Refresh;
+        _gallerySave.Dispose();
+    }
+
+    private void RebuildPool()
+    {
+        _poolSource = AvailableImages;
+        _pool = AvailableImages.Concat(_galleryOnly.Values.Where(g => AvailableImages.All(a => a.Id != g.Id))).ToList();
+    }
+
+    private async Task LoadGalleryAsync()
+    {
+        List<HistoriaImagemResponse>? gallery = null;
+        try
+        {
+            var response = await Http.GetAsync(GalleryUrl);
+            if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                gallery = await response.Content.ReadFromJsonAsync<List<HistoriaImagemResponse>>();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or NotSupportedException)
+        {
+            // Leave the gallery empty; the text editor above still works.
+        }
+
+        ShowGallery(gallery ?? new());
+    }
+
+    private void ShowGallery(List<HistoriaImagemResponse> gallery)
+    {
+        foreach (var image in gallery)
+            _galleryOnly[image.ImageId] = new ImageSummaryResponse(image.ImageId, image.Url, DateTime.UtcNow);
+        _galleryIds = gallery.Select(i => i.ImageId).ToList();
+        RebuildPool();
+    }
+
+    private async Task OnGalleryChangedAsync(List<string> ids)
+    {
+        // An upload made through the field was inserted into _pool only — remember it across pool rebuilds.
+        foreach (var image in _pool.Where(i => ids.Contains(i.Id)))
+            _galleryOnly.TryAdd(image.Id, image);
+
+        var snapshot = ids.ToList();
+        await _gallerySave.WaitAsync();
+        try
+        {
+            var response = await Http.PutAsJsonAsync(GalleryUrl, new UpdateHistoriaImagensRequest(snapshot));
+            if (response.IsSuccessStatusCode)
+                return;
+
+            var message = response.StatusCode == HttpStatusCode.BadRequest
+                ? await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a galeria da História."
+                : "Não foi possível salvar a galeria da História.";
+            await OnError.InvokeAsync(message);
+            // Show what is really stored instead of a selection the server refused.
+            await LoadGalleryAsync();
+        }
+        finally
+        {
+            _gallerySave.Release();
+        }
+    }
+
+    /// <summary>"Inserir imagem" in the editor: uploads the picked file and returns its app URL ("/images/…").</summary>
+    private async Task<string?> UploadInlineImageAsync(Stream file, string fileName)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(file), "file", fileName);
+        if (CampaignId is not null)
+            content.Add(new StringContent(CampaignId), "campaignId");
+
+        var response = await Http.PostAsync("images", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = response.StatusCode switch
+            {
+                // The API's own words: "A imagem excede o tamanho máximo de N MB." / "Formato de imagem não suportado. …"
+                HttpStatusCode.BadRequest => await response.Content.ReadErrorMessageAsync() ?? "Não foi possível enviar a imagem.",
+                HttpStatusCode.RequestEntityTooLarge => "A imagem excede o tamanho máximo permitido.",
+                _ => "Não foi possível enviar a imagem.",
+            };
+            await OnError.InvokeAsync(message);
+            return null;
+        }
+
+        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
+        var image = new ImageSummaryResponse(body!.Id, body.Url, DateTime.UtcNow);
+        AvailableImages.Insert(0, image);
+        _pool.Insert(0, image);
+        return body.Url;
+    }
 
     private async Task OnHtmlChangedAsync(string? html)
     {
