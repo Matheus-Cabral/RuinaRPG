@@ -32,8 +32,8 @@ public class AfinidadeSegundaEssenciaMigrationTests : IClassFixture<PostgresFixt
         db.Users.AddRange(gm, player);
         await db.SaveChangesAsync();
         var campaign = new Campaign { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Teste", Descricao = "" };
-        db.Campaigns.Add(campaign);
-        await db.SaveChangesAsync();
+        // Campanha por SQL cru: a entidade já tem colunas de migrations posteriores (ex: BonusDeCarga).
+        await SchemaInsert.AtCurrentSchemaAsync(db, "Campaigns", new() { ["Id"] = campaign.Id, ["GmId"] = gm.Id, ["Nome"] = campaign.Nome, ["Descricao"] = campaign.Descricao });
         // Fichas também via SQL cru: a entidade ganha colunas em migrations posteriores (ex:
         // AfinidadeAdicional) que ainda não existem neste ponto do schema.
         var sheet = new { Id = Guid.NewGuid() };

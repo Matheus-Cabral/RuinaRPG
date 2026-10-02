@@ -32,8 +32,8 @@ public class PericiasComoTabelaMigrationTests : IClassFixture<PostgresFixture>
         db.Users.AddRange(gm, player);
         await db.SaveChangesAsync();
         var campaign = new Campaign { Id = Guid.NewGuid(), GmId = gm.Id, Nome = "Teste", Descricao = "" };
-        db.Campaigns.Add(campaign);
-        await db.SaveChangesAsync();
+        // Campanha por SQL cru: a entidade já tem colunas de migrations posteriores (ex: BonusDeCarga).
+        await SchemaInsert.AtCurrentSchemaAsync(db, "Campaigns", new() { ["Id"] = campaign.Id, ["GmId"] = gm.Id, ["Nome"] = campaign.Nome, ["Descricao"] = campaign.Descricao });
 
         var sheetId = Guid.NewGuid();
         await SchemaInsert.AtCurrentSchemaAsync(db, "CharacterSheets", new() { ["Id"] = sheetId, ["CampaignId"] = campaign.Id, ["OwnerId"] = player.Id });
