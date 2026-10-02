@@ -219,38 +219,107 @@ public class RulebookControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         equipagem.Sections.Should().Contain(s => s.Titulo == "Viajante");
     }
 
-    [Fact]
-    public async Task TabelaDeNiveis_is_generated_from_the_level_table_including_custom_columns()
+    private async Task<string> RegisterAuditorAsync(string username, string email)
     {
-        var token = await RegisterGmAndGetTokenAsync("RulebookGmTabela1", "rulebookgmtabela1@teste.com");
+        var token = await RegisterGmAndGetTokenAsync(username, email);
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMTABELA1@TESTE.COM");
+        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
         user.IsRulesAuditor = true;
         await db.SaveChangesAsync();
+        return token;
+    }
 
-        var html = async () =>
-        {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
-            var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
-            return body!.Single(d => d.Slug == "tabela-de-niveis").IntroHtml ?? "";
-        };
+    private async Task<string> TabelaDeNiveisHtmlAsync(string token)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
+        return body!.Single(d => d.Slug == "tabela-de-niveis").IntroHtml ?? "";
+    }
 
-        var padrao = await html();
-        padrao.Should().Contain("<table").And.Contain("<th>Nível</th>").And.Contain("<th>Pontos de Atributo</th>").And.Contain("<th>Outros bônus</th>");
-        padrao.Should().NotContain("Pontos de Fama");
-
+    private async Task<ColunaDeNivelResponse> CriarColunaAsync(string token, string nome, string tipo)
+    {
         var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/tabela-de-niveis/colunas", token,
-            new CriarColunaDeNivelRequest("Pontos de Fama", "Acumulativa")));
+            new CriarColunaDeNivelRequest(nome, tipo)));
         created.StatusCode.Should().Be(HttpStatusCode.Created);
-        var coluna = await created.Content.ReadFromJsonAsync<ColunaDeNivelResponse>();
+        return (await created.Content.ReadFromJsonAsync<ColunaDeNivelResponse>())!;
+    }
+
+    private async Task SetValorAsync(string token, int nivel, Guid colunaId, int? valor)
+    {
+        var r = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/tabela-de-niveis/{nivel}/valores/{colunaId}", token,
+            new AtualizarValorDeNivelRequest(valor)));
+        r.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task TabelaDeNiveis_main_table_lists_the_bonuses_of_each_level_one_per_line()
+    {
+        var token = await RegisterAuditorAsync("RulebookGmTabela1", "rulebookgmtabela1@teste.com");
+
+        var html = await TabelaDeNiveisHtmlAsync(token);
+
+        html.Should().Contain("<th>Nível</th><th>Bônus</th>").And.NotContain("Outros bônus");
+        var linha1 = System.Text.RegularExpressions.Regex.Match(html, "<tr><td>1</td><td>(.*?)</td></tr>").Groups[1].Value;
+        linha1.Should().Contain("Pontos de Atributo: +9").And.Contain("<br />");
+        linha1.Should().Contain("Status de Vida");
+        html.Should().NotContain("<td></td>");
+    }
+
+    [Fact]
+    public async Task TabelaDeNiveis_limits_table_lists_only_Por_nivel_columns_that_have_values()
+    {
+        var token = await RegisterAuditorAsync("RulebookGmTabela2", "rulebookgmtabela2@teste.com");
+
+        var html = await TabelaDeNiveisHtmlAsync(token);
+
+        var limites = html[html.IndexOf("<h3>Limites e progressão</h3>", StringComparison.Ordinal)..];
+        limites.Should().Contain("<th>XP para o próximo nível</th>").And.Contain("<th>EAP base</th>");
+        limites.Should().MatchRegex("<tr><td>1</td><td>\\d+</td><td>\\d+</td></tr>");
+        limites.Should().NotContain("Máx. de Atributo");
+    }
+
+    [Fact]
+    public async Task TabelaDeNiveis_custom_columns_show_in_the_bonus_list_or_the_limits_table_by_type()
+    {
+        var token = await RegisterAuditorAsync("RulebookGmTabela3", "rulebookgmtabela3@teste.com");
+        var fama = await CriarColunaAsync(token, "Pontos de Fama", "Acumulativa");
+        var teto = await CriarColunaAsync(token, "Teto de Fama", "PorNivel");
         try
         {
-            (await html()).Should().Contain("<th>Pontos de Fama</th>");
+            (await TabelaDeNiveisHtmlAsync(token)).Should().NotContain("Pontos de Fama").And.NotContain("Teto de Fama");
+
+            await SetValorAsync(token, 1, fama.Id, 7);
+            await SetValorAsync(token, 1, teto.Id, 33);
+
+            var html = await TabelaDeNiveisHtmlAsync(token);
+            var bonus = html[..html.IndexOf("<h3>", StringComparison.Ordinal)];
+            bonus.Should().Contain("Pontos de Fama: +7").And.NotContain("Teto de Fama");
+            var limites = html[html.IndexOf("<h3>", StringComparison.Ordinal)..];
+            limites.Should().Contain("<th>Teto de Fama</th>").And.Contain("<td>33</td>").And.NotContain("Pontos de Fama");
         }
         finally
         {
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{coluna!.Id}", token));
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{fama.Id}", token));
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{teto.Id}", token));
+        }
+    }
+
+    [Fact]
+    public async Task TabelaDeNiveis_html_encodes_auditor_supplied_column_names()
+    {
+        var token = await RegisterAuditorAsync("RulebookGmTabela4", "rulebookgmtabela4@teste.com");
+        var coluna = await CriarColunaAsync(token, "<b>x</b>", "Acumulativa");
+        try
+        {
+            await SetValorAsync(token, 1, coluna.Id, 2);
+
+            var html = await TabelaDeNiveisHtmlAsync(token);
+            html.Should().Contain("&lt;b&gt;x&lt;/b&gt;: +2").And.NotContain("<b>x</b>");
+        }
+        finally
+        {
+            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{coluna.Id}", token));
         }
     }
 
