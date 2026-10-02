@@ -6,8 +6,8 @@ public static class GraduacaoCalculator
 {
     public static int Compute(Vocacao vocacao, int eapAtual, bool possuiCoracaoDeMana, IReadOnlyList<CirculoGrauPorEap> tabela)
     {
-        var usaGraumSempre = vocacao is Vocacao.Campeao or Vocacao.Cacador;
-        if (!usaGraumSempre && !possuiCoracaoDeMana)
+        var marcial = vocacao is Vocacao.Campeao or Vocacao.Cacador;
+        if (!marcial && !possuiCoracaoDeMana)
             return 0;
 
         var highestMet = 0;
@@ -20,6 +20,7 @@ public static class GraduacaoCalculator
                 highestMet = row.CirculoOuGrau;
         }
 
-        return highestMet;
+        // Vocações marciais nunca ficam abaixo do Grau 1, mesmo com a EAP abaixo do primeiro limiar.
+        return marcial ? Math.Max(highestMet, 1) : highestMet;
     }
 }

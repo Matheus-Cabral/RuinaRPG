@@ -632,6 +632,21 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     }
 
     [Fact]
+    public async Task Graduacao_of_a_Cacador_at_Nivel_1_is_Grau_1_and_a_Feiticeiro_without_coracao_stays_0()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrau1", "npcgrau1@teste.com");
+        var cacadorId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{cacadorId}", gmToken, ValidUpdate() with { Vocacao = "Cacador", Nivel = 1 }));
+        var cacador = await GetNpcAsync(gmToken, cacadorId);
+        cacador.EAPAtual.Should().Be(0);
+        cacador.Graduacao.Should().Be(1);
+
+        var feiticeiroId = await CreateSheetAsync(gmToken);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{feiticeiroId}", gmToken, ValidUpdate() with { Vocacao = "Feiticeiro", Nivel = 1, PossuiCoracaoDeMana = false }));
+        (await GetNpcAsync(gmToken, feiticeiroId)).Graduacao.Should().Be(0);
+    }
+
+    [Fact]
     public async Task EAPAtual_is_the_level_base_ignoring_the_EAPAtual_sent()
     {
         // Mesma regra da Ficha de Personagem: base do Nível (Nível 5 = 120 na tabela de EAP) + Âmbares.
@@ -675,7 +690,7 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, EAPAtual = 99999 }));
         var abaixo = await GetNpcAsync(gmToken, sheetId);
         abaixo.EAPAtual.Should().Be(30);
-        abaixo.Graduacao.Should().Be(0);
+        abaixo.Graduacao.Should().Be(1); // piso das vocações marciais, não o Grau do 99999
 
         // Âmbares Rank C (120) levam o VIS calculado a 150 >= 100: Grau 1.
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, NucleosRankC = 1 }));

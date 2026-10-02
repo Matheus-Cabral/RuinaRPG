@@ -392,6 +392,24 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     }
 
     [Fact]
+    public async Task Get_gives_a_fresh_Campeao_at_zero_XP_Grau_1()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad3", "sheetgrad3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerGrad3", "sheetplayergrad3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Graduacao 3");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+
+        var update = ValidUpdate() with { Vocacao = "Campeao", ExperienciaAtual = 0 };
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
+        var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        body!.EAPAtual.Should().Be(0);
+        body.Graduacao.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Get_labels_Graduacao_as_Circulo_for_a_magic_vocacao()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmGrad2", "sheetgrad2@teste.com");
