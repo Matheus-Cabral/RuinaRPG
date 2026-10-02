@@ -622,13 +622,66 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGm11", "npc11@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var update = ValidUpdate() with { Vocacao = "Campeao", EAPAtual = 150 };
+        var update = ValidUpdate() with { Vocacao = "Campeao" }; // Nível 5 = 120 EAP
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
         body!.GraduacaoLabel.Should().Be("Grau");
-        body.Graduacao.Should().Be(1); // 150 EAP >= the real Tabela's Grau 1 threshold (100)
+        body.Graduacao.Should().Be(1); // 120 EAP (Nível 5) >= the real Tabela's Grau 1 threshold (100)
+    }
+
+    [Fact]
+    public async Task EAPAtual_is_the_level_base_ignoring_the_EAPAtual_sent()
+    {
+        // Mesma regra da Ficha de Personagem: base do Nível (Nível 5 = 120 na tabela de EAP) + Âmbares.
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEap1", "npceap1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Nivel = 5, EAPAtual = 99999 }));
+
+        (await GetNpcAsync(gmToken, sheetId)).EAPAtual.Should().Be(120);
+    }
+
+    [Fact]
+    public async Task EAPAtual_adds_the_Ambares_by_Rank()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEap2", "npceap2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Nivel = 5, NucleosRankF = 2 }));
+
+        (await GetNpcAsync(gmToken, sheetId)).EAPAtual.Should().Be(130); // 120 + 2*5
+    }
+
+    [Fact]
+    public async Task UpdateNivel_changes_the_computed_EAPAtual()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEap3", "npceap3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/nivel", gmToken, 6));
+
+        (await GetNpcAsync(gmToken, sheetId)).EAPAtual.Should().Be(150);
+    }
+
+    [Fact]
+    public async Task Graduacao_follows_the_computed_EAP_not_the_EAPAtual_sent()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEap4", "npceap4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        // Nível 2 = 30 EAP, abaixo do limiar do Grau 1 (100): o 99999 enviado não pode subir o Grau.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, EAPAtual = 99999 }));
+        var abaixo = await GetNpcAsync(gmToken, sheetId);
+        abaixo.EAPAtual.Should().Be(30);
+        abaixo.Graduacao.Should().Be(0);
+
+        // Âmbares Rank C (120) levam o VIS calculado a 150 >= 100: Grau 1.
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Vocacao = "Campeao", Nivel = 2, NucleosRankC = 1 }));
+        var acima = await GetNpcAsync(gmToken, sheetId);
+        acima.EAPAtual.Should().Be(150);
+        acima.Graduacao.Should().Be(1);
     }
 
     [Fact]

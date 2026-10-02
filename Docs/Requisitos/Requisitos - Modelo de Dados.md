@@ -236,7 +236,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | PossuiCoracaoDeMana | bool | 1.b |
 | AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura, não gravados. Mesma coluna existe em NpcSheets (6.2), sem diferença. |
 | ExperienciaAtual | int | 1.b |
-| EAPAtual | int | 1.b |
+| EAPAtual | int | 1.b — coluna vestigial: mantida no schema mas não mais lida nem gravada pela aplicação; o VIS Atual exibido (`EAPAtual` na response) é **computado em tempo de leitura** (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank). `request.EAPAtual` é aceito mas ignorado. Mesma situação em NpcSheets (6.2), que herda esta coluna sem diferença. |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
 | PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b |
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
@@ -482,6 +482,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
 - `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
+- `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).
 - Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets

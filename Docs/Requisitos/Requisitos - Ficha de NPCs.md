@@ -75,3 +75,9 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0011** - O NPC também recebe Habilidades Passivas.
 
 **Descrição**: A seção 4.f (Habilidades Passivas) segue "[[Requisitos - Ficha de Personagem]]" 4.f e R0008 sem alteração: a Passiva só vem do "[[Requisitos - Banco de Magias e Habilidades]]", os Requisitos são conferidos contra os valores do NPC e bloqueiam também o GM — ao contrário dos contadores de R0007 e R0010, aqui não há exceção para o GM. No NPC concedido a um jogador (R0001, exceção), o jogador só escolhe entre as Passivas públicas da campanha da concessão, e a concessão copia as Passivas do NPC de origem com Categoria e Requisitos.
+
+  
+
+# **R0012** - O VIS Atual do NPC é calculado, não editável.
+
+**Descrição**: Como no Personagem (ver 1.b de "[[Requisitos - Ficha de Personagem]]"), o *VIS Atual* da Ficha de NPC é somente leitura e sempre calculado: o valor da coluna EAP, para o *Nível* da ficha, na tabela de "[[Tabelas de XP, Atributos, Características e EAP]]" somado ao resultado de *Âmbares Absorvidos* (valor por Rank definido em 1.b da ficha de Personagem). Portanto muda quando o *Nível*, a *Experiência atual* (R0005) ou os contadores de Âmbares mudam. É esse valor que determina a *Graduação* (Grau/Círculo, segundo "[[Tabela de Circulo e Grau por EAP]]"), o máximo de Vocação Arcana e os Requisitos de Habilidades Passivas (R0011) — nenhum deles lê mais um número digitado à mão. Isto substitui a edição manual do VIS Atual que a Ficha de NPC permitia antes.

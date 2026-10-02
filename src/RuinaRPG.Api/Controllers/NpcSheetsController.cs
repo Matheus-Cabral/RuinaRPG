@@ -132,7 +132,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
-        sheet.EAPAtual = request.EAPAtual;
+        // EAPAtual (VIS) é calculado por Nível + Âmbares (NpcSheetStats.EapAtualAsync), como na Ficha de
+        // Personagem: request.EAPAtual é aceito mas ignorado e a coluna NpcSheet.EAPAtual não é mais usada.
         sheet.NucleosRankF = request.NucleosRankF;
         sheet.NucleosRankE = request.NucleosRankE;
         sheet.NucleosRankD = request.NucleosRankD;
@@ -540,7 +541,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         int? assistencia = ehGm ? XpAwardCalculator.Assistencia(s.ExperienciaAtual) : null;
 
         var vocacao = s.Vocacao ?? Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
-        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, s.EAPAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
+        var eapAtual = await stats.EapAtualAsync(s);
+        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
         var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == s.Id)
@@ -567,7 +569,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         return new NpcSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
             s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
-            s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, s.EAPAtual,
+            s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,

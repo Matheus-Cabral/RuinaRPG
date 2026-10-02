@@ -161,7 +161,7 @@
                         @("XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.")
                     </InfoPopup>
                 }
-                <MudNumericField T="int?" @bind-Value="_form.EAPAtual" For="@(() => _form.EAPAtual)" Label="VIS Atual" @bind-Value:after="NotifySavedAsync" />
+                <MudText>VIS Atual: @_form.EAPAtual</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoTotal" For="@(() => _form.PontosDeIgnicaoTotal)" Label="Pontos de Ignição Total" @bind-Value:after="NotifySavedAsync" />
             </Section>
@@ -1045,7 +1045,7 @@
 
     private async Task<bool> SaveIfValidAsync()
     {
-        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.EAPAtual is null
+        if (_form.Nivel is null || _form.ExperienciaAtual is null
             || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
             || _form.NucleosRankC is null || _form.NucleosRankB is null || _form.NucleosRankA is null || _form.NucleosRankS is null
             || _form.PontosDeIgnicaoAtual is null || _form.PontosDeIgnicaoTotal is null
@@ -1055,8 +1055,9 @@
             return false;
         }
 
+        // EAPAtual vai só por compatibilidade: o servidor ignora e calcula o VIS por Nível + Âmbares.
         var request = new UpdateNpcSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
-            _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual!.Value,
+            _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual ?? 0,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal!.Value, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
             _form.Cobertura, _form.Ciclos, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional);
