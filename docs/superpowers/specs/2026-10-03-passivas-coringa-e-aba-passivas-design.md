@@ -19,7 +19,7 @@ Two independent changes shipped together as 1.4.2:
 | Empty Coringa column | **0 slots** (not "no limit"), so nothing changes for a table that never fills it. |
 | Category with an entirely empty column | Still unlimited, and never consumes a wildcard slot. |
 | Sheets covered | Personagem and NPC. Criatura keeps having no limits. |
-| How the wildcard is named to players | In the Livro's Tabela de Níveis tab and in the level-up dialog it reads just **"Habilidade Passiva"**. The three specific columns keep being named by their type (the column name). |
+| How the Passiva columns are named to players | **Amended 2026-10-03:** on every page that is not an Auditoria page, the wildcard reads just **"Habilidade Passiva"** and the three specific ones read **"Passiva Livre"**, **"Passiva Vocacional"**, **"Passiva de Classe"**. The column names ("Passivas Coringa", "Passivas Livres", …) are shown only on the Auditoria. |
 | Which Passivas the Livro tab shows | **Per campaign, logged-in only.** GM: their whole bank. Jogador: the Passivas attached as public to the chosen campaign. Anonymous visitors do not see the tab. |
 | Jogador in several campaigns | **Campaign selector** at the top of the tab, shown only when the Jogador has more than one campaign. |
 | Tab position | Right after **Graus & Círculos**. |
@@ -63,14 +63,30 @@ estão em uso."
 
 ### Where it shows
 
-- **Auditoria → Tabela de Níveis**: a regular column, header = column name ("Passivas Coringa").
-- **Painel Progressão do nível** (sheet): "Passivas Coringa: N" (accumulated; an empty column shows 0, not
-  "sem limite" — unlike the three category columns).
-- **Level-up dialog** and **Livro de Regras → Tabela de Níveis**: the bonus line reads
-  **"Habilidade Passiva: +N"**, a fixed label independent of the column name. Implemented in
-  `ProgressaoDeNivel.LinhasDeBonus`/`LinhasDeBonusAcumuladas` (the single source for both places). The three
-  category columns keep using their column name ("Passivas Livres: +1", …).
-- **Habilidades Passivas section** of the sheet: unchanged; no per-Passiva "coringa" mark.
+The four Passiva columns have a **fixed player-facing label**, independent of the column name (so an
+Auditor rename of one of these four columns only changes the Auditoria grid):
+
+| System key | Auditoria (column name, default) | Everywhere else |
+|---|---|---|
+| `MaxPassivasCoringa` | Passivas Coringa | **Habilidade Passiva** |
+| `MaxPassivasLivres` | Passivas Livres | **Passiva Livre** |
+| `MaxPassivasVocacionais` | Passivas Vocacionais | **Passiva Vocacional** |
+| `MaxPassivasDeClasse` | Passivas De Classe | **Passiva de Classe** |
+
+The label is defined once in the Domain (next to `ChavesDeNivel`; the three category labels are the ones
+`RequisitoLabels.Categoria` already produces) and used by:
+
+- **Level-up dialog** and **Livro de Regras → Tabela de Níveis** — the bonus lines from
+  `ProgressaoDeNivel.LinhasDeBonus`/`LinhasDeBonusAcumuladas`: "Habilidade Passiva: +1", "Passiva Livre: +1", …
+- **Painel Progressão do nível** (sheet): "Habilidade Passiva: N" (accumulated; an empty Coringa column
+  shows 0, not "sem limite" — unlike the three category columns), "Passiva Livre: N", …
+- **Livro de Regras → "Limites e progressão"** table, should one of these columns ever appear there.
+
+Unchanged:
+
+- **Auditoria → Tabela de Níveis**: regular columns, header = column name.
+- **Habilidades Passivas section** of the sheet: no per-Passiva "coringa" mark.
+- The 400 limit messages keep their current wording for the categories.
 
 ## 2. Aba Habilidades Passivas (Livro de Regras)
 
@@ -111,7 +127,7 @@ where to place it and whether the user is authenticated.
 ## 3. Requisitos (Docs/)
 
 - `Requisitos - Auditoria de Regras.md` R0013: the fourth Passiva column, the wildcard rule, the fixed
-  "Habilidade Passiva" label in the bonus lines.
+  player-facing labels of the four Passiva columns outside the Auditoria.
 - `Requisitos - Ficha de Personagem.md`: 4.f limit paragraph and the Painel Progressão do nível note.
 - `Requisitos - Livro de Regras.md`: new **R0010** for the tab (content per role, selector, layout,
   position) and a note in the access-model preamble that this one tab requires login.
@@ -121,14 +137,14 @@ where to place it and whether the user is authenticated.
 
 - **Unit**: the wildcard rule in `LimitesDeNivel` (within category limit; exceeds with a free wildcard;
   wildcards used up; wildcard column empty; unlimited category; sheet already above the limit);
-  the "Habilidade Passiva" label in `LinhasDeBonus`/`LinhasDeBonusAcumuladas`; the seeder creating the
+  the fixed labels of the four Passiva columns in `LinhasDeBonus`/`LinhasDeBonusAcumuladas`; the seeder creating the
   column and keeping the order on an already-seeded table.
 - **Integration**: add-Passiva on Personagem and NPC (accepted through a wildcard, refused when used up,
   unchanged behaviour with an empty Coringa column); the new campaign endpoint (member sees only public
   Passivas, non-member refused, non-Passiva entries excluded).
 - **Client (bUnit)**: tab hidden for anonymous; GM list; Jogador with one campaign (no selector) and with
   several (selector switches the list); search filter; tab position after Graus & Círculos; Progressão
-  panel showing the Coringa count.
+  panel showing the four Passiva columns with their fixed labels.
 
 ## 5. Release
 
