@@ -11,6 +11,7 @@ public static class ChavesDeNivel
         EspacosDeMaestria = "EspacosDeMaestria", PontosDeMaestria = "PontosDeMaestria",
         MaxAtributo = "MaxAtributo", MaxPericia = "MaxPericia",
         MaxPassivasLivres = "MaxPassivasLivres", MaxPassivasVocacionais = "MaxPassivasVocacionais", MaxPassivasDeClasse = "MaxPassivasDeClasse",
+        MaxPassivasCoringa = "MaxPassivasCoringa",
         XpParaProximoNivel = "XpParaProximoNivel", EapBase = "EapBase";
 
     public sealed record Definicao(string Chave, string Nome, TipoDeColunaDeNivel Tipo, int Ordem);
@@ -28,8 +29,9 @@ public static class ChavesDeNivel
         new Definicao(MaxPassivasLivres, "Passivas Livres", TipoDeColunaDeNivel.Acumulativa, 8),
         new Definicao(MaxPassivasVocacionais, "Passivas Vocacionais", TipoDeColunaDeNivel.Acumulativa, 9),
         new Definicao(MaxPassivasDeClasse, "Passivas De Classe", TipoDeColunaDeNivel.Acumulativa, 10),
-        new Definicao(XpParaProximoNivel, "XP para o próximo nível", TipoDeColunaDeNivel.PorNivel, 11),
-        new Definicao(EapBase, "EAP base", TipoDeColunaDeNivel.PorNivel, 12),
+        new Definicao(MaxPassivasCoringa, "Passivas Coringa", TipoDeColunaDeNivel.Acumulativa, 11),
+        new Definicao(XpParaProximoNivel, "XP para o próximo nível", TipoDeColunaDeNivel.PorNivel, 12),
+        new Definicao(EapBase, "EAP base", TipoDeColunaDeNivel.PorNivel, 13),
     };
 
     public static bool SemHeranca(string? chave) => chave is XpParaProximoNivel or EapBase;
@@ -40,5 +42,18 @@ public static class ChavesDeNivel
         CategoriaDePassiva.Vocacional => MaxPassivasVocacionais,
         CategoriaDePassiva.DeClasse => MaxPassivasDeClasse,
         _ => throw new ArgumentOutOfRangeException(nameof(categoria)),
+    };
+
+    /// <summary>
+    /// Nome da coluna fora da Auditoria (ficha, aviso de subida de nível, Livro de Regras). As quatro colunas
+    /// de Passiva têm rótulo fixo — a Coringa é só "Habilidade Passiva" —; as demais usam o nome da coluna.
+    /// </summary>
+    public static string RotuloParaJogador(string? chaveDeSistema, string nomeDaColuna) => chaveDeSistema switch
+    {
+        MaxPassivasCoringa => "Habilidade Passiva",
+        MaxPassivasLivres => RequisitoLabels.Categoria(CategoriaDePassiva.Livre),
+        MaxPassivasVocacionais => RequisitoLabels.Categoria(CategoriaDePassiva.Vocacional),
+        MaxPassivasDeClasse => RequisitoLabels.Categoria(CategoriaDePassiva.DeClasse),
+        _ => nomeDaColuna,
     };
 }

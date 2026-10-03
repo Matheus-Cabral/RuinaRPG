@@ -43,7 +43,7 @@ public sealed class ProgressaoDeNivel
     {
         var linhas = Colunas.Where(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa)
             .Select(c => (c, v: Celula(c, nivel) ?? 0)).Where(x => x.v != 0)
-            .Select(x => $"{x.c.Nome}: +{x.v}").ToList();
+            .Select(x => $"{ChavesDeNivel.RotuloParaJogador(x.c.ChaveDeSistema, x.c.Nome)}: +{x.v}").ToList();
         linhas.AddRange(TextosLivres(Linhas.FirstOrDefault(l => l.Nivel == nivel)));
         return linhas;
     }
@@ -58,7 +58,7 @@ public sealed class ProgressaoDeNivel
         var niveis = Linhas.Where(l => l.Nivel > doNivelExclusivo && l.Nivel <= ateNivel).ToList();
         var resultado = Colunas.Where(c => c.Tipo == TipoDeColunaDeNivel.Acumulativa)
             .Select(c => (c, soma: niveis.Sum(l => l.Valores.GetValueOrDefault(c.Id) ?? 0))).Where(x => x.soma != 0)
-            .Select(x => $"{x.c.Nome}: +{x.soma}").ToList();
+            .Select(x => $"{ChavesDeNivel.RotuloParaJogador(x.c.ChaveDeSistema, x.c.Nome)}: +{x.soma}").ToList();
 
         var contagem = new Dictionary<string, int>(StringComparer.Ordinal);
         var ordem = new List<string>();

@@ -64,4 +64,45 @@ public class LivroDeRegrasTests : MudBunitContext
 
         cut.FindComponent<MudBlazor.MudScrollToTop>();
     }
+
+    private void ServeRulebook() =>
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(request.RequestUri!.AbsolutePath.EndsWith("/rulebook")
+                ? """
+                  [{"slug":"sistema-basico","titulo":"Sistema Básico","introHtml":"<p>a</p>","sections":[]},
+                   {"slug":"graus-e-circulos","titulo":"Graus & Círculos","introHtml":"<p>b</p>","sections":[]},
+                   {"slug":"tabela-de-niveis","titulo":"Tabela de Níveis","introHtml":"<p>c</p>","sections":[]}]
+                  """
+                : "[]", Encoding.UTF8, "application/json"),
+        }));
+
+    private List<string> TabTitles(IRenderedComponent<CascadingAuthenticationState> cut) =>
+        cut.FindAll(".mud-tab").Select(t => t.TextContent.Trim()).ToList();
+
+    [Fact]
+    public async Task Logged_in_user_gets_the_Habilidades_Passivas_tab_right_after_Graus_e_Circulos()
+    {
+        ServeRulebook();
+        var auth = AddAuthorization();
+        auth.SetAuthorized("Teste");
+        auth.SetRoles("Jogador");
+
+        var cut = Render<CascadingAuthenticationState>(p => p.AddChildContent<LivroDeRegras>());
+        await Task.Delay(50);
+
+        TabTitles(cut).Should().Equal("Sistema Básico", "Graus & Círculos", "Habilidades Passivas", "Tabela de Níveis");
+    }
+
+    [Fact]
+    public async Task Anonymous_visitor_does_not_get_the_Habilidades_Passivas_tab()
+    {
+        ServeRulebook();
+        AddAuthorization().SetNotAuthorized();
+
+        var cut = Render<CascadingAuthenticationState>(p => p.AddChildContent<LivroDeRegras>());
+        await Task.Delay(50);
+
+        TabTitles(cut).Should().Equal("Sistema Básico", "Graus & Círculos", "Tabela de Níveis");
+    }
 }

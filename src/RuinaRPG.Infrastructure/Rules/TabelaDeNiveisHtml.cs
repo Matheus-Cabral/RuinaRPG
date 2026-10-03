@@ -40,7 +40,7 @@ public static class TabelaDeNiveisHtml
 
         html.Append("<h3>Limites e progressão</h3><table class=\"tabela-de-niveis tabela-de-niveis-limites\"><thead><tr><th>Nível</th>");
         foreach (var c in limites)
-            html.Append("<th>").Append(Codificar(c.Nome)).Append("</th>");
+            html.Append("<th>").Append(Codificar(ChavesDeNivel.RotuloParaJogador(c.ChaveDeSistema, c.Nome))).Append("</th>");
         html.Append("</tr></thead><tbody>");
         foreach (var linha in tabela.Linhas)
         {

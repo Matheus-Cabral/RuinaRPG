@@ -9,6 +9,7 @@ namespace RuinaRPG.Infrastructure.Rules.Niveis;
 /// <summary>
 /// Garante as colunas de sistema e, só com a tabela vazia, semeia as linhas a partir do Markdown da
 /// Tabela de Níveis e das tabelas de XP/EAP. Nunca sobrescreve: o Auditor de Regras passa a ser o dono.
+/// Uma coluna de sistema nova entra logo depois da anterior da lista, deslocando as seguintes.
 /// </summary>
 public static class TabelaDeNiveisSeeder
 {
@@ -32,17 +33,28 @@ public static class TabelaDeNiveisSeeder
         IReadOnlyList<XpPorNivel> xp, IReadOnlyList<EapPorNivel> eap)
     {
         var criadas = 0;
-        var colunas = await db.ColunasDeNivel.Where(c => c.ChaveDeSistema != null).ToListAsync();
+        // Todas, não só as de sistema: inserir uma coluna de sistema no meio desloca também as do Auditor.
+        var todas = await db.ColunasDeNivel.ToListAsync();
+        var colunas = todas.Where(c => c.ChaveDeSistema != null).ToList();
+        ColunaDeNivel? anterior = null;
         foreach (var def in ChavesDeNivel.Sistema)
         {
             if (colunas.FirstOrDefault(c => c.ChaveDeSistema == def.Chave) is { } existente)
             {
                 MigrarPassiva(existente, def);
+                anterior = existente;
                 continue;
             }
-            var nova = new ColunaDeNivel { Id = Guid.NewGuid(), Nome = def.Nome, Tipo = def.Tipo, ChaveDeSistema = def.Chave, Ordem = def.Ordem };
+            // Logo depois da coluna de sistema anterior (o Auditor pode ter reordenado a tabela); numa
+            // tabela nova isso é a própria def.Ordem e não há nada a deslocar.
+            var ordem = anterior is null ? def.Ordem : anterior.Ordem + 1;
+            foreach (var deslocada in todas.Where(c => c.Ordem >= ordem))
+                deslocada.Ordem++;
+            var nova = new ColunaDeNivel { Id = Guid.NewGuid(), Nome = def.Nome, Tipo = def.Tipo, ChaveDeSistema = def.Chave, Ordem = ordem };
             db.ColunasDeNivel.Add(nova);
+            todas.Add(nova);
             colunas.Add(nova);
+            anterior = nova;
             criadas++;
         }
         await db.SaveChangesAsync();

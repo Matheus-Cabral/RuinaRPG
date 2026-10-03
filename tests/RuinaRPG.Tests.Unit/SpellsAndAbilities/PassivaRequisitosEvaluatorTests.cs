@@ -150,4 +150,36 @@ public class PassivaRequisitosEvaluatorTests
     [InlineData(CategoriaDePassiva.DeClasse, "Passiva de Classe")]
     public void Categoria_labels(CategoriaDePassiva categoria, string label) =>
         RequisitoLabels.Categoria(categoria).Should().Be(label);
+
+    [Fact]
+    public void Descrever_is_empty_without_requisitos()
+    {
+        PassivaRequisitosEvaluator.Descrever(null, null, _ => "x").Should().BeEmpty();
+        PassivaRequisitosEvaluator.Descrever(new RequisitosDePassiva(), null, _ => "x").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Descrever_lists_every_filled_requisito_in_field_order_with_the_sheet_labels()
+    {
+        var requisitos = new RequisitosDePassiva
+        {
+            Nivel = 10, Vocacao = Vocacao.Campeao, Classe = " Paladino ", Linhagem = Linhagem.Econos, Graduacao = 3, CoracaoDeMana = true,
+            Afinidade = AfinidadeElemental.Agua, HistoricoId = Guid.NewGuid(),
+            Atributos = [new RequisitoDeAtributo(Atributo.Forca, 4)],
+            SubAtributos = [new RequisitoDeSubAtributo(SubAtributo.Movimentacao, 6)],
+            Pericias = [new RequisitoDePericia(7, 2)],
+        };
+
+        PassivaRequisitosEvaluator.Descrever(requisitos, "Nobre", id => id == 7 ? "Atletismo" : null).Should().Equal(
+            "Nível 10", "Vocação: Campeão", "Classe: Paladino", "Linhagem: Ecônos", "Grau/Círculo 3", "Coração de Mana",
+            "Afinidade: Água", "Histórico: Nobre", "Força ≥ 4", "Movimentação ≥ 6", "Atletismo ≥ 2");
+    }
+
+    [Fact]
+    public void Descrever_omits_a_removed_pericia_and_flags_a_removed_historico()
+    {
+        var requisitos = new RequisitosDePassiva { HistoricoId = Guid.NewGuid(), CoracaoDeMana = false, Pericias = [new RequisitoDePericia(7, 2)] };
+
+        PassivaRequisitosEvaluator.Descrever(requisitos, null, _ => null).Should().Equal("Histórico: (removido)");
+    }
 }

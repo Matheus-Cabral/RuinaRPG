@@ -96,4 +96,47 @@ public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
 
         tabela.UltimoNivel.Should().Be(50);
     }
+
+    [Fact]
+    public async Task A_new_system_column_lands_after_its_predecessor_on_an_already_seeded_table()
+    {
+        await using var db = NewDb();
+        await db.Database.MigrateAsync();
+        var rules = new RulesDataProvider();
+        var md = RulesDataProvider.ReadResource("Tabela de Níveis.md");
+        await TabelaDeNiveisSeeder.SeedAsync(db, md, rules.XpPorNivel, rules.EapPorNivel);
+
+        // Simula um banco de antes da 1.4.2: sem a Coringa, com XP/EAP logo depois de De Classe e uma coluna do Auditor no fim.
+        var original = await db.ColunasDeNivel.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Ordem);
+        var custom = new ColunaDeNivel { Id = Guid.NewGuid(), Nome = "Fama", Tipo = TipoDeColunaDeNivel.Acumulativa, Ordem = 99 };
+        try
+        {
+            db.ColunasDeNivel.Remove(await db.ColunasDeNivel.SingleAsync(c => c.ChaveDeSistema == ChavesDeNivel.MaxPassivasCoringa));
+            var deClasse = await db.ColunasDeNivel.SingleAsync(c => c.ChaveDeSistema == ChavesDeNivel.MaxPassivasDeClasse);
+            (await db.ColunasDeNivel.SingleAsync(c => c.ChaveDeSistema == ChavesDeNivel.XpParaProximoNivel)).Ordem = deClasse.Ordem + 1;
+            (await db.ColunasDeNivel.SingleAsync(c => c.ChaveDeSistema == ChavesDeNivel.EapBase)).Ordem = deClasse.Ordem + 2;
+            custom.Ordem = deClasse.Ordem + 3;
+            db.ColunasDeNivel.Add(custom);
+            await db.SaveChangesAsync();
+
+            (await TabelaDeNiveisSeeder.SeedAsync(db, md, rules.XpPorNivel, rules.EapPorNivel)).Should().Be(1);
+
+            await using var verify = NewDb();
+            var ordem = (await verify.ColunasDeNivel.OrderBy(c => c.Ordem).ToListAsync()).Select(c => c.ChaveDeSistema ?? c.Nome).ToList();
+            ordem.Should().OnlyHaveUniqueItems();
+            ordem.SkipWhile(c => c != ChavesDeNivel.MaxPassivasDeClasse).Should().Equal(
+                ChavesDeNivel.MaxPassivasDeClasse, ChavesDeNivel.MaxPassivasCoringa, ChavesDeNivel.XpParaProximoNivel, ChavesDeNivel.EapBase, "Fama");
+            (await verify.ColunasDeNivel.Select(c => c.Ordem).ToListAsync()).Should().OnlyHaveUniqueItems();
+        }
+        finally
+        {
+            // A tabela é compartilhada com as outras classes de teste: devolve o estado semeado.
+            await using var restore = NewDb();
+            restore.ColunasDeNivel.RemoveRange(restore.ColunasDeNivel.Where(c => c.Id == custom.Id));
+            foreach (var coluna in await restore.ColunasDeNivel.ToListAsync())
+                if (original.TryGetValue(coluna.Id, out var o)) coluna.Ordem = o;
+            await restore.SaveChangesAsync();
+            await TabelaDeNiveisSeeder.SeedAsync(restore, md, rules.XpPorNivel, rules.EapPorNivel);
+        }
+    }
 }

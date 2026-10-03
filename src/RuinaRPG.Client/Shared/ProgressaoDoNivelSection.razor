@@ -18,7 +18,7 @@
                     @foreach (var coluna in _progressao.Colunas.Where(c => c.ChaveDeSistema != ChavesDeNivel.XpParaProximoNivel && c.ChaveDeSistema != ChavesDeNivel.EapBase))
                     {
                         <tr>
-                            <td>@coluna.Nome</td>
+                            <td>@ChavesDeNivel.RotuloParaJogador(coluna.ChaveDeSistema, coluna.Nome)</td>
                             <td>@Formatar(coluna)</td>
                         </tr>
                     }
@@ -58,6 +58,7 @@
         }
     }
 
+    // Só as três de categoria: a Coringa é um saldo (vazia = 0), não um limite que pode ser "sem limite".
     private static bool EhColunaDePassiva(string? chave) =>
         chave is ChavesDeNivel.MaxPassivasLivres or ChavesDeNivel.MaxPassivasVocacionais or ChavesDeNivel.MaxPassivasDeClasse;
 

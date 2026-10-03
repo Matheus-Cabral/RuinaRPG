@@ -61,4 +61,44 @@ public static class PassivaRequisitosEvaluator
 
         return pendencias;
     }
+
+    /// <summary>
+    /// Os requisitos por extenso, na ordem dos campos e com os mesmos rótulos de <see cref="Pendencias"/> —
+    /// para o Livro de Regras, que não tem ficha para comparar. Uma Perícia sem nome (removida) é omitida.
+    /// </summary>
+    public static IReadOnlyList<string> Descrever(RequisitosDePassiva? requisitos, string? nomeDoHistoricoExigido, Func<int, string?> nomeDaPericia)
+    {
+        var itens = new List<string>();
+        if (requisitos is null)
+            return itens;
+
+        if (requisitos.Nivel is { } nivel)
+            itens.Add($"Nível {nivel}");
+        if (requisitos.Vocacao is { } vocacao)
+            itens.Add($"Vocação: {RequisitoLabels.Vocacao(vocacao)}");
+        if (!string.IsNullOrWhiteSpace(requisitos.Classe))
+            itens.Add($"Classe: {requisitos.Classe.Trim()}");
+        if (requisitos.Linhagem is { } linhagem)
+            itens.Add($"Linhagem: {RequisitoLabels.Linhagem(linhagem)}");
+        if (requisitos.Variante is { } variante)
+            itens.Add($"Variante: {RequisitoLabels.Variante(variante)}");
+        if (requisitos.Graduacao is { } graduacao)
+            itens.Add($"Grau/Círculo {graduacao}");
+        if (requisitos.CoracaoDeMana == true)
+            itens.Add("Coração de Mana");
+        if (requisitos.Afinidade is { } afinidade)
+            itens.Add($"Afinidade: {RequisitoLabels.Afinidade(afinidade)}");
+        if (requisitos.Estrela is { } estrela)
+            itens.Add($"Estrela: {estrela}");
+        if (requisitos.HistoricoId is not null)
+            itens.Add($"Histórico: {nomeDoHistoricoExigido ?? "(removido)"}");
+
+        itens.AddRange(requisitos.Atributos.Select(r => $"{RequisitoLabels.Atributo(r.Atributo)} ≥ {r.Minimo}"));
+        itens.AddRange(requisitos.SubAtributos.Select(r => $"{RequisitoLabels.SubAtributo(r.SubAtributo)} ≥ {r.Minimo}"));
+        foreach (var r in requisitos.Pericias)
+            if (nomeDaPericia(r.Pericia) is { } nome)
+                itens.Add($"{nome} ≥ {r.Minimo}");
+
+        return itens;
+    }
 }

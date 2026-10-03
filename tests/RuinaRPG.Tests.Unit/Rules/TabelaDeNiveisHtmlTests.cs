@@ -51,6 +51,20 @@ public class TabelaDeNiveisHtmlTests
     }
 
     [Fact]
+    public void Limits_table_header_uses_the_fixed_player_label_for_Passiva_columns()
+    {
+        var coringa = new ColunaDeNivelDef(Guid.NewGuid(), "Passivas Coringa", TipoDeColunaDeNivel.PorNivel, ChavesDeNivel.MaxPassivasCoringa, 4);
+        var tabela = new ProgressaoDeNivel(
+            new[] { coringa },
+            new[] { new LinhaDeNivel(1, null, new Dictionary<Guid, int?> { [coringa.Id] = 2 }) });
+
+        var html = TabelaDeNiveisHtml.Montar(tabela, mostrarLimites: true);
+
+        html.Should().Contain("<th>Nível</th><th>Habilidade Passiva</th>");
+        html.Should().NotContain("Passivas Coringa");
+    }
+
+    [Fact]
     public void Limits_table_only_has_Por_nivel_columns_with_a_value_and_dashes_for_empty_cells()
     {
         var html = TabelaDeNiveisHtml.Montar(Tabela(Atributo, MaxAtributo, Xp, Fama), mostrarLimites: true);

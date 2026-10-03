@@ -326,6 +326,61 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Wildcard_slot_accepts_any_category_and_runs_out()
+    {
+        var (gm, sheetId, _) = await SetUpCharacterAsync("W1");
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+        var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
+        var vocacional = await CreatePassivaAsync(gm, "Vocacional Um", "Vocacional");
+        Task<HttpResponseMessage> Add(string id) => _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
+            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+
+        var livres = await SetLimiteAsync("MaxPassivasLivres", 1);
+        var vocacionais = await SetLimiteAsync("MaxPassivasVocacionais", 0);
+        var coringas = await SetLimiteAsync("MaxPassivasCoringa", 1);
+        try
+        {
+            (await Add(livre1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            (await Add(vocacional)).StatusCode.Should().Be(HttpStatusCode.Created); // ocupa a vaga coringa
+            var terceira = await Add(livre2);
+            terceira.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await ReadBodyAsync(terceira)).Should().Contain("vaga(s) de Habilidade Passiva já estão em uso");
+        }
+        finally
+        {
+            await SetLimiteAsync("MaxPassivasLivres", livres);
+            await SetLimiteAsync("MaxPassivasVocacionais", vocacionais);
+            await SetLimiteAsync("MaxPassivasCoringa", coringas);
+        }
+    }
+
+    [Fact]
+    public async Task Npc_wildcard_slot_is_honoured_too()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("LimGmW2", "limgmw2@teste.com");
+        var sheetId = await CreateNpcSheetAsync(gm);
+        var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
+        var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
+        var livre3 = await CreatePassivaAsync(gm, "Livre Três", "Livre");
+        Task<HttpResponseMessage> Add(string id) => _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+            new AddNpcSpellAbilityRequest(id, null, null, null, null, null)));
+
+        var livres = await SetLimiteAsync("MaxPassivasLivres", 1);
+        var coringas = await SetLimiteAsync("MaxPassivasCoringa", 1);
+        try
+        {
+            (await Add(livre1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            (await Add(livre2)).StatusCode.Should().Be(HttpStatusCode.Created);
+            (await Add(livre3)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+        finally
+        {
+            await SetLimiteAsync("MaxPassivasLivres", livres);
+            await SetLimiteAsync("MaxPassivasCoringa", coringas);
+        }
+    }
+
+    [Fact]
     public async Task General_npc_and_creature_put_reject_a_level_above_the_table()
     {
         var gm = await RegisterGmAndGetTokenAsync("LimGmL1", "limgml1@teste.com");

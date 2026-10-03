@@ -12,10 +12,28 @@ public static class LimitesDeNivel
             ? null
             : $"{rotulo} não pode passar de {limite} pontos no nível {nivel}.";
 
-    public static string? Passivas(CategoriaDePassiva categoria, int jaNaFicha, int? limite, int nivel) =>
-        limite is null || jaNaFicha < limite
-            ? null
-            : $"O nível {nivel} permite no máximo {limite} Passiva(s) {Rotulo(categoria)}.";
+    /// <summary>
+    /// Limite de Passivas ao adicionar uma de <paramref name="categoria"/>. Cada categoria tem o próprio limite
+    /// (coluna inteiramente vazia = sem limite); o que passa dele ocupa vagas da coluna Passivas Coringa, que
+    /// servem a qualquer categoria. Nada é marcado na Passiva: a conta é refeita a cada adição.
+    /// </summary>
+    public static string? Passivas(CategoriaDePassiva categoria, IReadOnlyCollection<CategoriaDePassiva> naFicha, ProgressaoDeNivel tabela, int nivel)
+    {
+        int? Limite(CategoriaDePassiva c) => tabela.LimiteAcumulado(ChavesDeNivel.MaxPassivas(c), nivel);
+
+        // Sem limite na categoria, ou ainda dentro dele: não precisa de coringa.
+        if (Limite(categoria) is not { } limite || naFicha.Count(c => c == categoria) < limite)
+            return null;
+
+        var coringas = tabela.LimiteAcumulado(ChavesDeNivel.MaxPassivasCoringa, nivel) ?? 0;
+        var emUso = Enum.GetValues<CategoriaDePassiva>()
+            .Sum(c => Limite(c) is { } l ? Math.Max(0, naFicha.Count(x => x == c) - l) : 0);
+        if (emUso < coringas)
+            return null;
+
+        var daCategoria = $"O nível {nivel} permite no máximo {limite} Passiva(s) {Rotulo(categoria)}";
+        return coringas == 0 ? daCategoria + "." : $"{daCategoria}, e as {coringas} vaga(s) de Habilidade Passiva já estão em uso.";
+    }
 
     private static string Rotulo(CategoriaDePassiva categoria) => categoria switch
     {
