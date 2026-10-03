@@ -112,14 +112,17 @@ Same pattern as the Características tab:
 
 ### API
 
-The tab is **not** part of `GET /api/rulebook` (anonymous, identical for everyone). The client builds it
-from authenticated endpoints:
+The tab is **not** part of `GET /api/rulebook` (anonymous, identical for everyone).
 
-- GM: the existing bank listing (`SpellAbilityBankController`), filtered to `Tipo = Passiva`.
-- Jogador: new `GET /api/campaigns/{campaignId}/passivas` on `CampaignCatalogController`, with the same
-  membership check and public-attachment filter as `available-spell-abilities`, restricted to
-  `Tipo = Passiva`. Returns `SpellAbilityEntryResponse` (already carries Categoria and Requisitos).
-- The Jogador's campaign list comes from the endpoint Minhas Campanhas already uses.
+**Amended 2026-10-03 (planning):** one endpoint instead of two, returning ready-to-render rows.
+
+- `GET /api/rulebook/passivas?campaignId={id}` (`RulebookPassivasController`, `[Authorize]`), returning
+  `PassivaDoLivroResponse(Id, Nome, Categoria, Descricao, Requisitos)` with the Requisitos already written
+  out by `PassivaRequisitosEvaluator.Descrever` (same labels as the sheet's pendências). The client would
+  otherwise need the Histórico and Perícia catalogs just to print names.
+- GM: their own bank's Passivas; `campaignId` ignored. Jogador: `campaignId` required (400), unknown
+  campaign 404, non-member 403, otherwise the Passivas attached as public to it.
+- The Jogador's campaign list comes from `GET /api/campaigns/mine`, which Minhas Campanhas already uses.
 
 The tab is its own component (e.g. `Shared/PassivasDoLivro.razor`) so `LivroDeRegras.razor` only decides
 where to place it and whether the user is authenticated.
