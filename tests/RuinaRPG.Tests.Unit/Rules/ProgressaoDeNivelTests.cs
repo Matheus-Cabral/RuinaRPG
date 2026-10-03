@@ -195,4 +195,42 @@ public class ProgressaoDeNivelTests
         porChave[ChavesDeNivel.MaxAtributo].Tipo.Should().Be(TipoDeColunaDeNivel.PorNivel);
         porChave[ChavesDeNivel.MaxPericia].Tipo.Should().Be(TipoDeColunaDeNivel.PorNivel);
     }
+
+    [Fact]
+    public void The_wildcard_passiva_column_is_additive_and_sits_right_after_De_Classe()
+    {
+        var sistema = ChavesDeNivel.Sistema.OrderBy(d => d.Ordem).Select(d => d.Chave).ToList();
+        var coringa = ChavesDeNivel.Sistema.Single(d => d.Chave == ChavesDeNivel.MaxPassivasCoringa);
+
+        coringa.Should().Match<ChavesDeNivel.Definicao>(d => d.Tipo == TipoDeColunaDeNivel.Acumulativa && d.Nome == "Passivas Coringa");
+        sistema.IndexOf(ChavesDeNivel.MaxPassivasCoringa).Should().Be(sistema.IndexOf(ChavesDeNivel.MaxPassivasDeClasse) + 1);
+        sistema.Should().EndWith(new[] { ChavesDeNivel.XpParaProximoNivel, ChavesDeNivel.EapBase });
+        ChavesDeNivel.Sistema.Select(d => d.Ordem).Should().OnlyHaveUniqueItems();
+    }
+
+    [Theory]
+    [InlineData(ChavesDeNivel.MaxPassivasCoringa, "Habilidade Passiva")]
+    [InlineData(ChavesDeNivel.MaxPassivasLivres, "Passiva Livre")]
+    [InlineData(ChavesDeNivel.MaxPassivasVocacionais, "Passiva Vocacional")]
+    [InlineData(ChavesDeNivel.MaxPassivasDeClasse, "Passiva de Classe")]
+    public void RotuloParaJogador_is_fixed_for_the_passiva_columns_whatever_the_column_name(string chave, string rotulo) =>
+        ChavesDeNivel.RotuloParaJogador(chave, "Nome dado pelo Auditor").Should().Be(rotulo);
+
+    [Theory]
+    [InlineData(ChavesDeNivel.PontosDeAtributo)]
+    [InlineData(null)]
+    public void RotuloParaJogador_is_the_column_name_for_every_other_column(string? chave) =>
+        ChavesDeNivel.RotuloParaJogador(chave, "Nome dado pelo Auditor").Should().Be("Nome dado pelo Auditor");
+
+    [Fact]
+    public void Bonus_lines_use_the_fixed_passiva_labels_not_the_column_names()
+    {
+        var t = TabelaDeNiveisDeTeste.Criar(
+            TabelaDeNiveisDeTeste.Nivel(1, (ChavesDeNivel.MaxPassivasLivres, 1)),
+            TabelaDeNiveisDeTeste.Nivel(2, (ChavesDeNivel.MaxPassivasCoringa, 1), (ChavesDeNivel.MaxPassivasDeClasse, 1)));
+
+        t.LinhasDeBonus(1).Should().Equal("Passiva Livre: +1");
+        t.LinhasDeBonus(2).Should().Equal("Passiva de Classe: +1", "Habilidade Passiva: +1");
+        t.LinhasDeBonusAcumuladas(0, 2).Should().Equal("Passiva Livre: +1", "Passiva de Classe: +1", "Habilidade Passiva: +1");
+    }
 }

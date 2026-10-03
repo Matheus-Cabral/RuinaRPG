@@ -74,11 +74,40 @@ public class ProgressaoDoNivelSectionTests : MudBunitContext
 
         var cut = await RenderAsync(tabela, 3);
 
-        cut.Markup.Should().Contain("Passivas Livres").And.Contain("Passivas Vocacionais");
         var linhas = cut.FindAll("tr").Select(r => r.TextContent.Trim()).ToList();
-        linhas.Should().Contain(l => l.StartsWith("Passivas Livres") && l.EndsWith("1"));
-        linhas.Should().Contain(l => l.StartsWith("Passivas Vocacionais") && l.EndsWith("sem limite"));
+        linhas.Should().Contain(l => l.StartsWith("Passiva Livre") && l.EndsWith("1"));
+        linhas.Should().Contain(l => l.StartsWith("Passiva Vocacional") && l.EndsWith("sem limite"));
+        cut.Markup.Should().NotContain("Passivas Livres").And.NotContain("Passivas Vocacionais");
         cut.Markup.Should().NotContain("máx.");
+    }
+
+    [Fact]
+    public async Task Wildcard_column_shows_as_Habilidade_Passiva_with_the_accumulated_count_and_zero_when_empty()
+    {
+        var coringa = Guid.NewGuid();
+        var comValor = new TabelaDeNiveisResponse(
+            [Col(coringa, "Passivas Coringa", "Acumulativa", ChavesDeNivel.MaxPassivasCoringa, 1)],
+            [Linha(1, (coringa, 1)), Linha(2, (coringa, 1))]);
+
+        var cut = await RenderAsync(comValor, 2);
+
+        var linhas = cut.FindAll("tr").Select(r => r.TextContent.Trim()).ToList();
+        linhas.Should().ContainSingle(l => l.StartsWith("Habilidade Passiva") && l.EndsWith("2"));
+        cut.Markup.Should().NotContain("Passivas Coringa").And.NotContain("sem limite");
+    }
+
+    [Fact]
+    public async Task Empty_wildcard_column_shows_zero_not_sem_limite()
+    {
+        var coringa = Guid.NewGuid();
+        var vazia = new TabelaDeNiveisResponse(
+            [Col(coringa, "Passivas Coringa", "Acumulativa", ChavesDeNivel.MaxPassivasCoringa, 1)],
+            [Linha(1), Linha(2)]);
+
+        var cut = await RenderAsync(vazia, 2);
+
+        cut.FindAll("tr").Select(r => r.TextContent.Trim()).Should().ContainSingle(l => l.StartsWith("Habilidade Passiva") && l.EndsWith("0"));
+        cut.Markup.Should().NotContain("sem limite");
     }
 
     [Fact]
