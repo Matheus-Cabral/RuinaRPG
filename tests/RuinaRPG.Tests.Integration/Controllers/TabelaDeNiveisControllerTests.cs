@@ -15,7 +15,7 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>
 /// Auditoria da Tabela de Níveis. A tabela é global ao banco da classe: todo teste que a edita
-/// restaura o que mudou no finally, para os demais continuarem vendo 50 níveis e 13 colunas de sistema.
+/// restaura o que mudou no finally, para os demais continuarem vendo 50 níveis e todas as colunas de sistema.
 /// </summary>
 public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
@@ -88,14 +88,14 @@ public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task Get_returns_the_13_system_columns_and_50_levels_for_any_user()
+    public async Task Get_returns_the_system_columns_and_50_levels_for_any_user()
     {
         var gm = await RegisterGmAndGetTokenAsync("TabNivGm1", "tabniv1@teste.com");
         var jogador = await RegisterJogadorTokenAsync(gm, "TabNivJog1", "tabnivjog1@teste.com");
 
         var tabela = await GetTabelaAsync(jogador);
 
-        tabela.Colunas.Count(c => c.DoSistema).Should().Be(13);
+        tabela.Colunas.Count(c => c.DoSistema).Should().Be(ChavesDeNivel.Sistema.Count);
         tabela.Linhas.Should().HaveCount(50);
         var nivel1 = tabela.Linhas.Single(l => l.Nivel == 1);
         nivel1.Valores[ColunaDe(tabela, ChavesDeNivel.PontosDeAtributo)].Should().Be(9);
@@ -290,7 +290,7 @@ public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAs
 
             (await SendAsync(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{id}", auditor)).StatusCode.Should().Be(HttpStatusCode.NoContent);
             id = null;
-            (await GetTabelaAsync(auditor)).Colunas.Should().HaveCount(13);
+            (await GetTabelaAsync(auditor)).Colunas.Should().HaveCount(ChavesDeNivel.Sistema.Count);
         }
         finally
         {
@@ -314,7 +314,7 @@ public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAs
         (await SendAsync(HttpMethod.Post, "/api/tabela-de-niveis/colunas", auditor, new CriarColunaDeNivelRequest("X", "Inexistente"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await SendAsync(HttpMethod.Post, "/api/tabela-de-niveis/colunas", auditor, new CriarColunaDeNivelRequest("X", "1"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await SendAsync(HttpMethod.Post, "/api/tabela-de-niveis/colunas", auditor, new CriarColunaDeNivelRequest("  ", "Acumulativa"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await GetTabelaAsync(auditor)).Colunas.Should().HaveCount(13);
+        (await GetTabelaAsync(auditor)).Colunas.Should().HaveCount(ChavesDeNivel.Sistema.Count);
     }
 
     [Fact]
