@@ -76,9 +76,10 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
 
                 if (bankEntry.Categoria is { } cat)
                 {
-                    var jaNaFicha = await db.CharacterSpellAbilities.CountAsync(e => e.CharacterSheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria == cat);
-                    var tabela = await tabelaDeNiveis.ObterAsync();
-                    if (LimitesDeNivel.Passivas(cat, jaNaFicha, tabela.LimiteAcumulado(ChavesDeNivel.MaxPassivas(cat), sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
+                    var naFicha = await db.CharacterSpellAbilities
+                        .Where(e => e.CharacterSheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria != null)
+                        .Select(e => e.Categoria!.Value).ToListAsync();
+                    if (LimitesDeNivel.Passivas(cat, naFicha, await tabelaDeNiveis.ObterAsync(), sheet.Nivel) is { } erroDeLimite)
                         return BadRequest(erroDeLimite);
                 }
             }
