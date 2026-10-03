@@ -123,5 +123,57 @@ public class PassivasDoLivroTests : MudBunitContext
         await Task.Delay(50);
 
         cut.Markup.Should().Contain("Não foi possível carregar as Habilidades Passivas.");
+        cut.Markup.Should().NotContain("Nenhuma Habilidade Passiva disponível.")
+            .And.NotContain("Você ainda não participa de nenhuma campanha.");
+    }
+
+    [Fact]
+    public async Task Jogador_whose_campaigns_request_fails_sees_the_error_and_no_empty_state()
+    {
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+
+        var cut = Render<PassivasDoLivro>(p => p.Add(x => x.IsGm, false));
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Não foi possível carregar as Habilidades Passivas.");
+        cut.Markup.Should().NotContain("Nenhuma Habilidade Passiva disponível.")
+            .And.NotContain("Você ainda não participa de nenhuma campanha.");
+    }
+
+    [Fact]
+    public async Task A_failed_campaign_switch_drops_the_previous_list_and_a_later_success_shows_the_new_one()
+    {
+        var falhar = true;
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("campaigns/mine"))
+                return Json(new List<CampaignResponse> { Campanha("c1", "Campanha Um"), Campanha("c2", "Campanha Dois") });
+            if (request.RequestUri.Query.Contains("c2"))
+                return falhar ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : Json(new List<PassivaDoLivroResponse> { Passiva("Da Dois", "Livre") });
+            return Json(new List<PassivaDoLivroResponse> { Passiva("Da Um", "Livre") });
+        }));
+
+        var root = RenderWithPopover<PassivasDoLivro>((nameof(PassivasDoLivro.IsGm), false));
+        await Task.Delay(50);
+        root.Markup.Should().Contain("Da Um");
+
+        OpenSelect(root, "Campanha");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Campanha Dois").Click();
+        await Task.Delay(50);
+
+        root.Markup.Should().Contain("Não foi possível carregar as Habilidades Passivas.");
+        root.Markup.Should().NotContain("Da Um")
+            .And.NotContain("Nenhuma Habilidade Passiva disponível.")
+            .And.NotContain("Você ainda não participa de nenhuma campanha.");
+
+        falhar = false;
+        OpenSelect(root, "Campanha");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Campanha Um").Click();
+        await Task.Delay(50);
+        OpenSelect(root, "Campanha");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Campanha Dois").Click();
+        await Task.Delay(50);
+
+        root.Markup.Should().Contain("Da Dois");
     }
 }

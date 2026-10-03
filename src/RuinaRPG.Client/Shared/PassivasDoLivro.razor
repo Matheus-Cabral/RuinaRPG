@@ -19,7 +19,7 @@
     </MudSelect>
 }
 
-@if (_carregado && _errorMessage is null)
+@if (_carregado && !_falhou)
 {
     @if (!IsGm && _campanhas.Count == 0)
     {
@@ -64,10 +64,12 @@
     private string _filtro = "";
     private string? _errorMessage;
     private bool _carregado;
+    // O DismissibleAlert zera _errorMessage ao ser dispensado; o estado de falha não pode depender dele.
+    private bool _falhou;
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        await TentarCarregarAsync(async () =>
         {
             if (!IsGm)
             {
@@ -75,23 +77,28 @@
                 _campanhaId = _campanhas.FirstOrDefault()?.Id;
             }
             await CarregarPassivasAsync();
-        }
-        catch (Exception)
-        {
-            _errorMessage = "Não foi possível carregar as Habilidades Passivas.";
-        }
+        });
         _carregado = true;
     }
 
     private async Task OnCampanhaChangedAsync(string? campanhaId)
     {
         _campanhaId = campanhaId;
+        await TentarCarregarAsync(CarregarPassivasAsync);
+    }
+
+    private async Task TentarCarregarAsync(Func<Task> carregar)
+    {
+        _falhou = false;
+        _errorMessage = null;
         try
         {
-            await CarregarPassivasAsync();
+            await carregar();
         }
         catch (Exception)
         {
+            _falhou = true;
+            _passivas = new();
             _errorMessage = "Não foi possível carregar as Habilidades Passivas.";
         }
     }

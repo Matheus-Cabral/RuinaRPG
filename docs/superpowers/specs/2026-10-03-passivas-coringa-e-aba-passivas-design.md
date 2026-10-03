@@ -31,7 +31,9 @@ Two independent changes shipped together as 1.4.2:
 - New system key `ChavesDeNivel.MaxPassivasCoringa = "MaxPassivasCoringa"`, default name **"Passivas Coringa"**,
   `TipoDeColunaDeNivel.Acumulativa`, ordered right after "Passivas De Classe" (XP and EAP shift one position).
 - Like every system column it can be renamed by the Auditor, not removed.
-- No schema migration: `TabelaDeNiveisSeeder` already creates any missing system column on startup. It must
+- No schema migration: `TabelaDeNiveisSeeder` already creates any missing system column, at startup in
+  Development; in Production only through `make migrate` (the `--migrate` branch of `Program.cs`), which is
+  therefore a mandatory step of the 1.4.2 deploy even though there is no schema migration. It must
   additionally keep the system columns in `ChavesDeNivel.Sistema` order on databases seeded before 1.4.2, so
   the new column does not land after XP/EAP: when the Coringa column is created on an existing database, the
   system columns that come after it in `Sistema` (XP, EAP) get their `Ordem` shifted. Auditor-created columns
@@ -58,8 +60,8 @@ per-category limits and the wildcard total; the controllers only gather the numb
 
 **Message**: with `coringas == 0` the current text is kept
 ("O nível N permite no máximo L Passiva(s) Livre(s)."). With `coringas > 0` it adds that the wildcard
-slots are also used up, e.g. "O nível N permite no máximo L Passiva(s) Livre(s), e as K vaga(s) coringa já
-estão em uso."
+slots are also used up, e.g. "O nível N permite no máximo L Passiva(s) Livre(s), e as K vaga(s) de Habilidade
+Passiva já estão em uso." (on the sheet the wildcard reads "Habilidade Passiva", never "coringa").
 
 ### Where it shows
 

@@ -95,5 +95,5 @@ public class LimitesDeNivelTests
     [Fact]
     public void Passivas_message_with_wildcards_says_they_are_used_up() =>
         LimitesDeNivel.Passivas(Livre, [Livre, Livre], Tabela(livres: 1, coringas: 1), 1)
-            .Should().Be("O nível 1 permite no máximo 1 Passiva(s) Livre(s), e as 1 vaga(s) coringa já estão em uso.");
+            .Should().Be("O nível 1 permite no máximo 1 Passiva(s) Livre(s), e as 1 vaga(s) de Habilidade Passiva já estão em uso.");
 }

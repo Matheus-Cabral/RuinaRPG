@@ -32,7 +32,7 @@ public static class LimitesDeNivel
             return null;
 
         var daCategoria = $"O nível {nivel} permite no máximo {limite} Passiva(s) {Rotulo(categoria)}";
-        return coringas == 0 ? daCategoria + "." : $"{daCategoria}, e as {coringas} vaga(s) coringa já estão em uso.";
+        return coringas == 0 ? daCategoria + "." : $"{daCategoria}, e as {coringas} vaga(s) de Habilidade Passiva já estão em uso.";
     }
 
     private static string Rotulo(CategoriaDePassiva categoria) => categoria switch

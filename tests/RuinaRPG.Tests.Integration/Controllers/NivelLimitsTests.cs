@@ -344,7 +344,7 @@ public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
             (await Add(vocacional)).StatusCode.Should().Be(HttpStatusCode.Created); // ocupa a vaga coringa
             var terceira = await Add(livre2);
             terceira.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-            (await ReadBodyAsync(terceira)).Should().Contain("vaga(s) coringa já estão em uso");
+            (await ReadBodyAsync(terceira)).Should().Contain("vaga(s) de Habilidade Passiva já estão em uso");
         }
         finally
         {
