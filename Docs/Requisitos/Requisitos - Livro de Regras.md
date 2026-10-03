@@ -10,13 +10,13 @@
 
   
 
-> **Modelo de acesso**: GM e jogadores têm acesso de leitura — e, ao contrário do Compêndio, também visitantes não autenticados (ver "[[Requisitos - Login e Cadastro]]"), pelo menu lateral ou por um botão em destaque na Landing Page.
+> **Modelo de acesso**: GM e jogadores têm acesso de leitura — e, ao contrário do Compêndio, também visitantes não autenticados (ver "[[Requisitos - Login e Cadastro]]"), pelo menu lateral ou por um botão em destaque na Landing Page. A exceção é a aba Habilidades Passivas (R0010), disponível só para usuários autenticados.
 
   
 
 # **R0001** - O Livro de Regras deve exibir, em abas, o conteúdo completo de sete documentos do sistema.
 
-**Descrição**: Cada aba renderiza o Markdown de um documento inteiro (não um trecho, ao contrário do Compêndio) como HTML formatado, nesta ordem (a primeira aba, Sistema Básico, é a que abre por padrão):
+**Descrição**: Cada aba renderiza o Markdown de um documento inteiro (não um trecho, ao contrário do Compêndio) como HTML formatado, nesta ordem (a primeira aba, Sistema Básico, é a que abre por padrão). Para usuários autenticados, uma oitava aba, Habilidades Passivas (R0010), aparece logo depois de Graus & Círculos:
 
 - "[[Ruína RPG - Sistema Básico]]"
 - "[[Características]]"
@@ -85,3 +85,11 @@ Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas), um
 # **R0009** - O Livro de Regras deve ter um botão para voltar ao topo da página.
 
 **Descrição**: Como as abas são longas (ver R0004), um botão flutuante no canto inferior direito aparece assim que a página é rolada para baixo e, ao ser clicado, rola de volta ao topo — onde ficam as abas. Some novamente quando a página já está no topo.
+
+  
+
+# **R0010** - A aba Habilidades Passivas lista as Passivas que o usuário logado pode consultar.
+
+**Descrição**: A aba **Habilidades Passivas** fica logo depois de Graus & Círculos e só existe para usuários autenticados; um visitante vê o Livro como antes. O conteúdo depende do papel: o **GM** vê todas as Passivas do próprio banco; o **Jogador** vê as Passivas anexadas como públicas à campanha escolhida (ver "[[Requisitos - Campanha]]" R0008 e R0009). O seletor de campanha aparece só quando o Jogador participa de mais de uma; com uma, a lista carrega direto, e sem nenhuma a aba mostra uma mensagem de estado vazio. Uma lista vazia (GM sem Passivas, campanha sem Passivas públicas) também mostra mensagem.
+
+O layout segue o de R0005: campo de busca por nome no topo, Passivas agrupadas em Passiva Livre, Passiva Vocacional e Passiva de Classe (grupo sem resultado some) e um cartão por Passiva, com a descrição e os requisitos por extenso, ou "Sem requisitos". O conteúdo vem em tempo real do "[[Requisitos - Banco de Magias e Habilidades]]" R0009, não de Markdown, e é somente leitura aqui (R0003).

@@ -51,23 +51,18 @@ public class ChangelogDialogTests : MudBunitContext
         var cut = RenderDialog("9.9.9", EventCallback.Factory.Create(this, () => { }));
 
         cut.Markup.Should().Contain("Novidades da Versão 9.9.9");
-        cut.Markup.Should().NotContain("1.4.1");
+        cut.Markup.Should().NotContain("1.4.2");
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_1_4_1_and_does_not_contain_Auditoria()
+    public void Rendered_list_contains_the_section_labels_of_1_4_2_and_does_not_contain_Auditoria()
     {
-        var cut = RenderDialog("1.4.1", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.4.2", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Evoluções de Arca");
-        cut.Markup.Should().Contain("Runas");
-        cut.Markup.Should().Contain("Perícias");
-        cut.Markup.Should().Contain("Progressão do nível");
-        cut.Markup.Should().Contain("Aviso de subida de nível");
-        cut.Markup.Should().Contain("Ficha de NPC");
+        cut.Markup.Should().Contain("Habilidade Passiva de qualquer categoria");
         cut.Markup.Should().Contain("Livro de Regras");
-        cut.Markup.Should().Contain("Correção no Banco de Magias");
-        cut.Markup.Should().NotContain("Durabilidade por Rank"); // item da 1.4.0 — a lista é só da versão atual
+        cut.Markup.Should().Contain("Habilidades Passivas");
+        cut.Markup.Should().NotContain("Evoluções de Arca"); // item da 1.4.1 — a lista é só da versão atual
         cut.Markup.Should().NotContain("Auditoria");
     }
 }

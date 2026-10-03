@@ -3,16 +3,11 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.4.1 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.4.2 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Evoluções de Arca:</b> cada Arca da tabela de Habilidades Raciais pode ter evoluções liberadas por nível. Na ficha de um Humano (Personagem ou NPC), o botão "Evoluções da Arca" mostra as que o nível já liberou.</li>
-            <li><b>Runas:</b> uma Runa pode ser marcada como Runa Arcana ou Runa Negra, no Banco de Runas e ao montar uma Runa na ficha. O Banco ganhou filtro por tipo.</li>
-            <li><b>Perícias:</b> o nome de uma perícia com descrição mostra o texto ao passar o mouse (ou ao tocar, no celular). Perícias novas ou removidas pelo Auditor de Regras passam a refletir em todas as fichas. Ao remover uma perícia, os pontos gastos nela voltam para redistribuição.</li>
-            <li><b>Progressão do nível:</b> as fichas de Personagem e NPC ganharam um painel com os saldos e limites do nível atual. Os limites de pontos por atributo e por perícia, e a quantidade de Passivas por categoria, quando definidos na Tabela de Níveis, são aplicados ao salvar.</li>
-            <li><b>Aviso de subida de nível:</b> os bônus numéricos aparecem como "Pontos de Atributo: +1".</li>
-            <li><b>Ficha de NPC:</b> o GM passa a ver o XP que o NPC concede por Abate e por Assistência, calculado a partir da Experiência atual, como já acontece na ficha de Criatura. Na Criatura, "Kill" passou a se chamar "Abate".</li>
-            <li><b>Livro de Regras:</b> a aba Tabela de Níveis é montada a partir da tabela mantida pelo Auditor.</li>
-            <li><b>Correção no Banco de Magias:</b> nos requisitos de uma Passiva, a lista de Classe voltou a aparecer, e os campos não mostram mais textos como "Model.Vocacao".</li>
+            <li><b>Habilidade Passiva de qualquer categoria:</b> a Tabela de Níveis pode conceder vagas de Habilidade Passiva que aceitam uma Passiva Livre, Vocacional ou de Classe, além das vagas de cada categoria. As fichas de Personagem e NPC passam a aceitar a Passiva quando a categoria está cheia mas ainda há uma dessas vagas.</li>
+            <li><b>Progressão do nível e aviso de subida de nível:</b> as vagas de Passiva aparecem como "Habilidade Passiva", "Passiva Livre", "Passiva Vocacional" e "Passiva de Classe".</li>
+            <li><b>Livro de Regras:</b> nova aba Habilidades Passivas, depois de Graus &amp; Círculos, para quem está logado. O GM vê as Passivas do próprio banco; o jogador, as que o GM tornou públicas na campanha, com um seletor quando participa de mais de uma. A aba tem busca por nome e mostra os requisitos de cada Passiva.</li>
         </ul>
     </DialogContent>
     <DialogActions>

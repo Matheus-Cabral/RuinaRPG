@@ -92,7 +92,7 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
 ### 2.a) Atributos
 
-> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). As colunas de Passivas mostram "Nome: N" (o limite acumulado) ou "Nome: sem limite" quando a coluna está toda vazia. Ver "[[Requisitos - Auditoria de Regras]]" R0013.
+> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). As linhas de Passiva usam rótulos fixos ("Passiva Livre", "Passiva Vocacional", "Passiva de Classe", "Habilidade Passiva"): as três de categoria mostram o limite acumulado ou "sem limite" quando a coluna está toda vazia, e "Habilidade Passiva" mostra as vagas coringa acumuladas (0 quando a coluna está vazia). Ver "[[Requisitos - Auditoria de Regras]]" R0013.
 
   
 
@@ -335,7 +335,7 @@ Lista incremental. Uma Passiva nunca é montada do zero na ficha: o jogador (ou 
 - *Descrição*.
 - *Aviso*: se a ficha deixou de cumprir os Requisitos da Passiva depois de recebê-la, a entrada mostra "⚠ Requisitos não cumpridos" com o que falta (R0008).
 
-A ficha não pode ter mais Passivas de uma Categoria do que o limite de Passivas permite (colunas Passivas Livres, Vocacionais e De Classe da Tabela de Níveis, somadas do nível 1 até o nível da ficha; coluna toda vazia = sem limite; R0013 da Auditoria; mesma regra de limite de 2.a). Uma Passiva pode ser removida a qualquer momento.
+A ficha não pode ter mais Passivas de uma Categoria do que o limite de Passivas permite (colunas Passivas Livres, Vocacionais e De Classe da Tabela de Níveis, somadas do nível 1 até o nível da ficha; coluna toda vazia = sem limite; R0013 da Auditoria; mesma regra de limite de 2.a). Uma Passiva além do limite da própria Categoria é aceita enquanto houver vaga coringa livre (coluna Passivas Coringa, R0013 da Auditoria); a ficha não marca qual Passiva ocupa a vaga. Uma Passiva pode ser removida a qualquer momento.
 
 5. **Posses**: inventário, artefatos, afeições e características (positivas/negativas). Composta pelos subgrupos abaixo.
 
