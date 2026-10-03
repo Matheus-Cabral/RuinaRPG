@@ -83,6 +83,13 @@
                     </MudGrid>
                 }
             </MudTabPanel>
+            @* R0010: a aba de Passivas não vem do GET rulebook (anônimo) — só existe para quem está logado. *@
+            @if (_autenticado && document.Slug == "graus-e-circulos")
+            {
+                <MudTabPanel Text="Habilidades Passivas">
+                    <PassivasDoLivro IsGm="@_ehGm" />
+                </MudTabPanel>
+            }
         }
     </MudTabs>
 }
@@ -107,11 +114,15 @@
     private List<RulebookDocumentResponse> _documents = new();
     private string? _errorMessage;
     private string _caracteristicasFilter = "";
+    private bool _autenticado;
+    private bool _ehGm;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = AuthState is null ? null : await AuthState;
-        if (authState?.User.Identity?.IsAuthenticated != true)
+        _autenticado = authState?.User.Identity?.IsAuthenticated == true;
+        _ehGm = authState?.User.IsInRole("GM") == true;
+        if (!_autenticado)
         {
             Crumbs = new()
             {

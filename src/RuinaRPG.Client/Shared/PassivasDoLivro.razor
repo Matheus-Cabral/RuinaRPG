@@ -1,0 +1,110 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.SpellsAndAbilities
+
+@* Livro de Regras R0010: as Passivas ao alcance de quem está logado — o GM vê o próprio banco; o
+   Jogador, as públicas da campanha escolhida (seletor só com mais de uma campanha). *@
+<DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+
+@if (!IsGm && _campanhas.Count > 1)
+{
+    <MudSelect T="string" Value="_campanhaId" ValueChanged="OnCampanhaChangedAsync" Label="Campanha" Class="mb-4">
+        @foreach (var campanha in _campanhas)
+        {
+            <MudSelectItem Value="@campanha.Id">@campanha.Nome</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@if (_carregado && _errorMessage is null)
+{
+    @if (!IsGm && _campanhas.Count == 0)
+    {
+        <MudText>Você ainda não participa de nenhuma campanha.</MudText>
+    }
+    else if (_passivas.Count == 0)
+    {
+        <MudText>Nenhuma Habilidade Passiva disponível.</MudText>
+    }
+    else
+    {
+        <MudTextField T="string" @bind-Value="_filtro" Label="Buscar passiva..." Immediate="true" Class="mb-4" />
+        @foreach (var categoria in Enum.GetValues<CategoriaDePassiva>())
+        {
+            var doGrupo = _passivas
+                .Where(p => p.Categoria == categoria.ToString()
+                    && (string.IsNullOrWhiteSpace(_filtro) || p.Nome.Contains(_filtro, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            @if (doGrupo.Count > 0)
+            {
+                <MudText Typo="Typo.h5" Class="mt-4">@RequisitoLabels.Categoria(categoria)</MudText>
+                @foreach (var passiva in doGrupo)
+                {
+                    <Section Title="@passiva.Nome">
+                        <MudText Style="white-space: pre-wrap">@passiva.Descricao</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            <b>Requisitos:</b> @(passiva.Requisitos.Count > 0 ? string.Join(", ", passiva.Requisitos) : "Sem requisitos")
+                        </MudText>
+                    </Section>
+                }
+            }
+        }
+    }
+}
+
+@code {
+    [Parameter] public bool IsGm { get; set; }
+
+    private List<CampaignResponse> _campanhas = new();
+    private List<PassivaDoLivroResponse> _passivas = new();
+    private string? _campanhaId;
+    private string _filtro = "";
+    private string? _errorMessage;
+    private bool _carregado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!IsGm)
+            {
+                _campanhas = await Http.GetFromJsonAsync<List<CampaignResponse>>("campaigns/mine") ?? new();
+                _campanhaId = _campanhas.FirstOrDefault()?.Id;
+            }
+            await CarregarPassivasAsync();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Não foi possível carregar as Habilidades Passivas.";
+        }
+        _carregado = true;
+    }
+
+    private async Task OnCampanhaChangedAsync(string? campanhaId)
+    {
+        _campanhaId = campanhaId;
+        try
+        {
+            await CarregarPassivasAsync();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Não foi possível carregar as Habilidades Passivas.";
+        }
+    }
+
+    private async Task CarregarPassivasAsync()
+    {
+        // Jogador sem campanha: não há o que pedir (o endpoint exige campaignId).
+        if (!IsGm && _campanhaId is null)
+        {
+            _passivas = new();
+            return;
+        }
+        var url = IsGm ? "rulebook/passivas" : $"rulebook/passivas?campaignId={_campanhaId}";
+        _passivas = await Http.GetFromJsonAsync<List<PassivaDoLivroResponse>>(url) ?? new();
+    }
+}
