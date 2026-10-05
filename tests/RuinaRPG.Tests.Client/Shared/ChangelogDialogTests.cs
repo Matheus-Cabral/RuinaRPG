@@ -13,7 +13,7 @@ public class ChangelogDialogTests : MudBunitContext
     // ChangelogDialog's inline <MudDialog> only renders its content through a MudDialogProvider
     // present elsewhere in the render tree (the real app has one in MainLayout) — bUnit's TestContext
     // starts with none, so every test renders one alongside the dialog via this composite fragment.
-    private IRenderedComponent<ContainerFragment> RenderDialog(string version, EventCallback onDismissed) =>
+    private IRenderedComponent<ContainerFragment> RenderDialog(string version, EventCallback onDismissed, bool isRulesAuditor = false) =>
         Render(builder =>
         {
             builder.OpenComponent<MudDialogProvider>(0);
@@ -21,6 +21,7 @@ public class ChangelogDialogTests : MudBunitContext
             builder.OpenComponent<ChangelogDialog>(1);
             builder.AddAttribute(2, nameof(ChangelogDialog.Version), version);
             builder.AddAttribute(3, nameof(ChangelogDialog.OnDismissed), onDismissed);
+            builder.AddAttribute(4, nameof(ChangelogDialog.IsRulesAuditor), isRulesAuditor);
             builder.CloseComponent();
         });
 
@@ -51,18 +52,33 @@ public class ChangelogDialogTests : MudBunitContext
         var cut = RenderDialog("9.9.9", EventCallback.Factory.Create(this, () => { }));
 
         cut.Markup.Should().Contain("Novidades da Versão 9.9.9");
-        cut.Markup.Should().NotContain("1.4.2");
+        cut.Markup.Should().NotContain("1.4.3");
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_1_4_2_and_does_not_contain_Auditoria()
+    public void Rendered_list_contains_the_section_labels_of_1_4_3()
     {
-        var cut = RenderDialog("1.4.2", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Habilidade Passiva de qualquer categoria");
-        cut.Markup.Should().Contain("Livro de Regras");
-        cut.Markup.Should().Contain("Habilidades Passivas");
-        cut.Markup.Should().NotContain("Evoluções de Arca"); // item da 1.4.1 — a lista é só da versão atual
-        cut.Markup.Should().NotContain("Auditoria");
+        cut.Markup.Should().Contain("Runas:").And.Contain("Requisitos de equipamento:").And.Contain("Kits de Equipagem:")
+            .And.Contain("Livro de Regras:").And.Contain("Progressão do nível:");
+    }
+
+    [Fact]
+    public void A_user_who_is_not_an_auditor_does_not_see_the_auditor_block()
+    {
+        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }));
+
+        cut.Markup.Should().NotContain("Para Auditores").And.NotContain("Auditoria de Equipagem");
+    }
+
+    [Fact]
+    public void An_auditor_sees_the_auditor_block_after_the_general_list()
+    {
+        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+
+        var texto = cut.Markup;
+        texto.Should().Contain("Para Auditores").And.Contain("Auditoria de Equipagem").And.Contain("base de itens fixos");
+        texto.IndexOf("Progressão do nível:").Should().BeLessThan(texto.IndexOf("Para Auditores"));
     }
 }
