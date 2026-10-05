@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -49,9 +50,10 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
         var items = await query.ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
+        var porId = await pericias.PorIdAsync();
         var responses = new List<ItemResponse>();
         foreach (var item in items)
-            responses.Add(await ToItemResponseAsync(item, tabela));
+            responses.Add(await ToItemResponseAsync(item, tabela, porId));
         return responses;
     }
 
@@ -128,7 +130,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
     // Mirrors ItemsController.ToResponseAsync exactly (see its comment for why this isn't
     // factored into a shared helper — every controller in this codebase owns its own mapping).
-    private async Task<ItemResponse> ToItemResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
+    private async Task<ItemResponse> ToItemResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela, IReadOnlyDictionary<int, PericiaDefinicao> porId)
     {
         string? imageUrl = null;
         if (item.ImageId is not null)
@@ -140,7 +142,9 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
         var rank = item switch { Arma a => a.Rank, Armadura ar => ar.Rank, Escudo e => e.Rank, _ => null };
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, tabela);
 
-        return item switch
+        string? NomeDaPericia(int id) => porId.TryGetValue(id, out var p) && !p.IsDeleted ? p.Nome : null;
+
+        var resposta = item switch
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
                 g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
@@ -158,6 +162,14 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
                 ar.Subcategoria, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
+        };
+
+        return resposta with
+        {
+            Requisitos = RequisitosDePassivaMapper.ToDto(item.Requisitos, porId),
+            PenalidadeDeRequisitos = EquipamentoRequisitosMapper.ToDto(item.PenalidadeDeRequisitos, porId),
+            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia).ToList(),
+            PenalidadePorExtenso = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, NomeDaPericia).ToList(),
         };
     }
 

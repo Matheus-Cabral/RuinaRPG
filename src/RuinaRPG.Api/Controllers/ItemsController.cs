@@ -7,13 +7,15 @@ using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Route("api/items")]
 [Authorize]
-public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades) : ControllerBase
+public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias) : ControllerBase
 {
     // Curating the Catálogo (create/edit/delete) stays GM-only; browsing it (List, below) doesn't
     // — a player needs to see their own GM's catalog to pick a weapon/item for their own sheet.
@@ -27,7 +29,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         // Rank só vale para Arma/Armadura/Escudo (define a durabilidade pela Tabela de Durabilidade
         // por Rank); nos outros Tipos é ignorado, como qualquer outro campo específico de Tipo.
         RankDeItem? rank = null;
-        if (TemRank(tipo) && !TryParseRank(request.Rank, out rank))
+        if (ItemFactory.TemRank(tipo) && !ItemFactory.TryParseRank(request.Rank, out rank))
             return BadRequest($"Rank inválido: \"{request.Rank}\".");
 
         var gmId = CurrentUserId();
@@ -38,66 +40,19 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         if (imageId is not null && !await OwnsImageAsync(imageId.Value, gmId))
             return BadRequest("Imagem não encontrada.");
 
-        Item item = tipo switch
-        {
-            ItemTipo.ItemGeral => new ItemGeral { Nome = request.Nome, Subcategoria = request.Subcategoria, CapacidadeExtra = request.CapacidadeExtra },
-            ItemTipo.Arma => new Arma
-            {
-                Nome = request.Nome,
-                Subcategoria = request.Subcategoria,
-                Rank = rank,
-                Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura),
-                Dados = request.Dados,
-                Dano = request.Dano,
-                Critico = request.Critico,
-                Alcance = request.Alcance,
-                TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano),
-                RequisitoAtributo = request.RequisitoAtributo
-            },
-            ItemTipo.Armadura => new Armadura
-            {
-                Nome = request.Nome,
-                Subcategoria = request.Subcategoria,
-                Rank = rank,
-                Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
-                Defesa = request.Defesa,
-                RF = request.RF,
-                RM = request.RM,
-                Penalidade = request.Penalidade,
-                RequisitoVigor = request.RequisitoVigor
-            },
-            ItemTipo.Escudo => new Escudo
-            {
-                Nome = request.Nome,
-                Subcategoria = request.Subcategoria,
-                Rank = rank,
-                Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
-                BonusDefesa = request.BonusDefesa,
-                Penalidade = request.Penalidade,
-                RequisitoVigor = request.RequisitoVigor
-            },
-            ItemTipo.Artefato => new Artefato
-            {
-                Nome = request.Nome,
-                Subcategoria = request.Subcategoria,
-                TipoDeAlvo = ParseEnum<TipoDeAlvo>(request.TipoDeAlvo),
-                Alvo = request.Alvo,
-                Valor = request.Valor
-            },
-            _ => throw new InvalidOperationException("Unreachable — Tipo already validated above.")
-        };
+        var porId = await pericias.PorIdAsync();
+        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), out var requisitos, out var penalidade, out var erro))
+            return BadRequest(erro);
 
+        var item = ItemFactory.Criar(tipo, request, rank, requisitos, penalidade);
         item.Id = Guid.NewGuid();
         item.GmId = gmId;
-        item.Peso = request.Peso;
-        item.Preco = request.Preco;
         item.ImageId = imageId;
-        item.Descricao = request.Descricao;
 
         db.Items.Add(item);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, await ToResponseAsync(item, await durabilidades.TabelaAsync()));
+        return Created(string.Empty, await ToResponseAsync(item, await durabilidades.TabelaAsync(), porId));
     }
 
     [HttpGet]
@@ -123,9 +78,10 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         var items = await query.ToListAsync();
 
         var tabela = await durabilidades.TabelaAsync();
+        var porId = await pericias.PorIdAsync();
         var responses = new List<ItemResponse>();
         foreach (var item in items)
-            responses.Add(await ToResponseAsync(item, tabela));
+            responses.Add(await ToResponseAsync(item, tabela, porId));
 
         return responses
             .Where(r => subcategoria is null || r.Subcategoria == subcategoria)
@@ -134,27 +90,6 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
             .Where(r => tipoDeDano is null || r.TipoDeDano == tipoDeDano)
             .ToList();
     }
-
-    private static bool TemRank(ItemTipo tipo) => tipo is ItemTipo.Arma or ItemTipo.Armadura or ItemTipo.Escudo;
-
-    /// <summary>
-    /// Vazio = sem Rank (sem durabilidade). Qualquer outro valor tem de ser exatamente um nome de
-    /// <see cref="RankDeItem"/> (F..SS) — um Rank desconhecido é rejeitado em vez de virar NULL em
-    /// silêncio, já que apagaria a durabilidade do item.
-    /// </summary>
-    private static bool TryParseRank(string? raw, out RankDeItem? rank)
-    {
-        rank = null;
-        if (string.IsNullOrWhiteSpace(raw))
-            return true;
-        if (!Enum.GetNames<RankDeItem>().Contains(raw) || !Enum.TryParse<RankDeItem>(raw, out var parsed))
-            return false;
-        rank = parsed;
-        return true;
-    }
-
-    private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
-        value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
 
     /// <summary>
     /// Treats null, empty, or whitespace-only as "no image" (returns true with imageId null).
@@ -181,7 +116,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
     private Task<bool> OwnsImageAsync(Guid imageId, Guid gmId) =>
         db.Images.AnyAsync(i => i.Id == imageId && i.UploadedByUserId == gmId);
 
-    private async Task<ItemResponse> ToResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
+    private async Task<ItemResponse> ToResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela, IReadOnlyDictionary<int, PericiaDefinicao> porId)
     {
         string? imageUrl = null;
         if (item.ImageId is not null)
@@ -193,7 +128,9 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         var rank = item switch { Arma a => a.Rank, Armadura ar => ar.Rank, Escudo e => e.Rank, _ => null };
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, tabela);
 
-        return item switch
+        string? NomeDaPericia(int id) => porId.TryGetValue(id, out var p) && !p.IsDeleted ? p.Nome : null;
+
+        var resposta = item switch
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
                 g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
@@ -211,6 +148,14 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
                 ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
+        };
+
+        return resposta with
+        {
+            Requisitos = RequisitosDePassivaMapper.ToDto(item.Requisitos, porId),
+            PenalidadeDeRequisitos = EquipamentoRequisitosMapper.ToDto(item.PenalidadeDeRequisitos, porId),
+            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia).ToList(),
+            PenalidadePorExtenso = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, NomeDaPericia).ToList(),
         };
     }
 
@@ -230,57 +175,16 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
             return BadRequest("Imagem não encontrada.");
 
         RankDeItem? rank = null;
-        if (item is Arma or Armadura or Escudo && !TryParseRank(request.Rank, out rank))
+        if (item is Arma or Armadura or Escudo && !ItemFactory.TryParseRank(request.Rank, out rank))
             return BadRequest($"Rank inválido: \"{request.Rank}\".");
 
-        item.Nome = request.Nome;
-        item.Peso = request.Peso;
-        item.Preco = request.Preco;
-        item.ImageId = imageId;
-        item.Descricao = request.Descricao;
+        var tipo = ItemFactory.TipoDe(item);
+        var porId = await pericias.PorIdAsync();
+        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), out var requisitos, out var penalidade, out var erro))
+            return BadRequest(erro);
 
-        switch (item)
-        {
-            case ItemGeral g:
-                g.Subcategoria = request.Subcategoria;
-                g.CapacidadeExtra = request.CapacidadeExtra;
-                break;
-            case Arma a:
-                a.Subcategoria = request.Subcategoria;
-                a.Rank = rank;
-                a.Empunhadura = ParseEnum<Empunhadura>(request.Empunhadura);
-                a.Dados = request.Dados;
-                a.Dano = request.Dano;
-                a.Critico = request.Critico;
-                a.Alcance = request.Alcance;
-                a.TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano);
-                a.RequisitoAtributo = request.RequisitoAtributo;
-                break;
-            case Armadura ar:
-                ar.Subcategoria = request.Subcategoria;
-                ar.Rank = rank;
-                ar.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
-                ar.Defesa = request.Defesa;
-                ar.RF = request.RF;
-                ar.RM = request.RM;
-                ar.Penalidade = request.Penalidade;
-                ar.RequisitoVigor = request.RequisitoVigor;
-                break;
-            case Escudo e:
-                e.Subcategoria = request.Subcategoria;
-                e.Rank = rank;
-                e.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
-                e.BonusDefesa = request.BonusDefesa;
-                e.Penalidade = request.Penalidade;
-                e.RequisitoVigor = request.RequisitoVigor;
-                break;
-            case Artefato art:
-                art.Subcategoria = request.Subcategoria;
-                art.TipoDeAlvo = ParseEnum<TipoDeAlvo>(request.TipoDeAlvo);
-                art.Alvo = request.Alvo;
-                art.Valor = request.Valor;
-                break;
-        }
+        ItemFactory.Aplicar(item, request, rank, requisitos, penalidade);
+        item.ImageId = imageId;
 
         await db.SaveChangesAsync();
         return NoContent();

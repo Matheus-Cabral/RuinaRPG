@@ -154,6 +154,10 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .HasValue<Armadura>("Armadura")
                 .HasValue<Escudo>("Escudo")
                 .HasValue<Artefato>("Artefato");
+            entity.Property(i => i.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
+            entity.Property(i => i.PenalidadeDeRequisitos).HasColumnType("jsonb")
+                .HasConversion(PenalidadeDeEquipamentoJson.Converter, PenalidadeDeEquipamentoJson.Comparer);
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(i => i.GmId)

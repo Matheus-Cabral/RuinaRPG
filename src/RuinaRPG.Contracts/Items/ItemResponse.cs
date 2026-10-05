@@ -1,3 +1,5 @@
+using RuinaRPG.Contracts.SpellsAndAbilities;
+
 namespace RuinaRPG.Contracts.Items;
 
 public record ItemResponse(
@@ -29,4 +31,8 @@ public record ItemResponse(
     string? Alvo,
     int? Valor,
     decimal? CapacidadeExtra,
-    bool Inquebravel = false);
+    bool Inquebravel = false,
+    RequisitosDePassivaDto? Requisitos = null,
+    PenalidadeDeEquipamentoDto? PenalidadeDeRequisitos = null,
+    List<string>? RequisitosPorExtenso = null,
+    List<string>? PenalidadePorExtenso = null);
