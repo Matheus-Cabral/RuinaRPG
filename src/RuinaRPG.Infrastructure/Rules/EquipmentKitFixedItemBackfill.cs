@@ -10,7 +10,8 @@ namespace RuinaRPG.Infrastructure.Rules;
 /// Conversão da 1.4.3: os itens fixos dos kits deixam de ser um par Nome+Tipo e passam a apontar para a
 /// base global EquipmentKitFixedItems. Para cada Nome+Tipo ainda sem vínculo, cria (uma vez) o item fixo
 /// — com os dados completos do catálogo padrão quando existe um item padrão de mesmo nome e tipo, senão
-/// só com o nome e marcado DetalhesIncompletos — e liga as linhas. Idempotente; roda com os outros
+/// só com o nome e marcado DetalhesIncompletos — e liga as linhas. Linhas de kits excluídos (soft delete) são ignoradas: o Delete do item fixo solta o vínculo delas mas
+/// mantém o Nome, e recriar o item apagado seria um retorno indevido. Idempotente; roda com os outros
 /// seeders (Development no startup, Production em --migrate).
 /// </summary>
 public static class EquipmentKitFixedItemBackfill
@@ -19,11 +20,13 @@ public static class EquipmentKitFixedItemBackfill
     {
         var antes = await db.EquipmentKitFixedItems.CountAsync();
 
-        var itens = await db.EquipmentKitItems.Where(i => i.FixedItemId == null && i.Nome != null).ToListAsync();
+        var itens = await db.EquipmentKitItems.Where(i => i.FixedItemId == null && i.Nome != null
+            && !db.EquipmentKits.Any(k => k.Id == i.KitId && k.IsDeleted)).ToListAsync();
         foreach (var item in itens)
             item.FixedItemId = (await ObterOuCriarAsync(db, item.Nome!, item.Tipo, item.SubcategoriaHint)).Id;
 
-        var slots = await db.EquipmentKitChoiceSlots.Where(s => s.BonusFixedItemId == null && s.BonusNome != null).ToListAsync();
+        var slots = await db.EquipmentKitChoiceSlots.Where(s => s.BonusFixedItemId == null && s.BonusNome != null
+            && !db.EquipmentKits.Any(k => k.Id == s.KitId && k.IsDeleted)).ToListAsync();
         foreach (var slot in slots)
             slot.BonusFixedItemId = (await ObterOuCriarAsync(db, slot.BonusNome!, ItemTipo.ItemGeral, null)).Id;
 

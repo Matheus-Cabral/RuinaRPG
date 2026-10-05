@@ -384,5 +384,13 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<PostgresFixtu
         else
             (await db2.EquipmentKitItems.AsNoTracking().SingleAsync(i => i.KitId == kitId)).FixedItemId.Should().BeNull();
         (await db2.EquipmentKitFixedItems.AnyAsync(f => f.Id == Guid.Parse(fixo.Id))).Should().BeFalse();
+
+        // O backfill (make migrate / startup em Development) não pode recriar o item apagado a partir do Nome que a linha do kit excluído guarda.
+        await RuinaRPG.Infrastructure.Rules.EquipmentKitFixedItemBackfill.RunAsync(db2);
+        (await db2.EquipmentKitFixedItems.AnyAsync(f => f.Nome == fixo.Nome)).Should().BeFalse();
+        if (comoBonus)
+            (await db2.EquipmentKitChoiceSlots.AsNoTracking().SingleAsync(s => s.KitId == kitId)).BonusFixedItemId.Should().BeNull();
+        else
+            (await db2.EquipmentKitItems.AsNoTracking().SingleAsync(i => i.KitId == kitId)).FixedItemId.Should().BeNull();
     }
 }

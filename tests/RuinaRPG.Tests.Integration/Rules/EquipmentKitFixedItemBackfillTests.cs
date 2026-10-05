@@ -126,4 +126,20 @@ public class EquipmentKitFixedItemBackfillTests : IClassFixture<PostgresFixture>
         depois.Descricao.Should().Be("Editada pelo Auditor");
         depois.Preco.Should().Be(77);
     }
+
+    [Fact]
+    public async Task Rows_of_a_soft_deleted_kit_are_skipped_and_stay_unlinked()
+    {
+        await using var db = await NovoDbAsync();
+        var kit = await KitLegadoAsync(db, "Kit Excluído", [("Mochila", ItemTipo.ItemGeral)], bonus: "Flecha");
+        kit.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        var criados = await EquipmentKitFixedItemBackfill.RunAsync(db);
+
+        criados.Should().Be(0);
+        (await db.EquipmentKitFixedItems.CountAsync()).Should().Be(0);
+        (await db.EquipmentKitItems.AsNoTracking().SingleAsync(i => i.KitId == kit.Id)).FixedItemId.Should().BeNull();
+        (await db.EquipmentKitChoiceSlots.AsNoTracking().SingleAsync(s => s.KitId == kit.Id)).BonusFixedItemId.Should().BeNull();
+    }
 }
