@@ -333,4 +333,56 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<PostgresFixtu
 
         listado.Kits.Should().Equal(new[] { kitA, kitB }.OrderBy(n => n));
     }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData(" Arma")]
+    [InlineData("Arma ")]
+    [InlineData("arma")]
+    public async Task A_tipo_that_is_not_the_exact_enum_name_returns_400_on_post_put_and_get(string tipo)
+    {
+        var token = await RegisterAuditorAsync($"FixosAuditorTipo{Guid.NewGuid():N}");
+        var existente = await CriarAsync(token, ItemGeral(Unico("Existente")));
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, Arma(Unico("X")) with { Tipo = tipo }))).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{existente.Id}", token, ItemGeral(existente.Nome) with { Tipo = tipo }))).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Url}?tipo={Uri.EscapeDataString(tipo)}", token))).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Delete_of_an_item_held_only_by_a_soft_deleted_kit_returns_204_and_clears_that_rows_link(bool comoBonus)
+    {
+        var token = await RegisterAuditorAsync($"FixosAuditorDel{Guid.NewGuid():N}");
+        var fixo = await CriarAsync(token, ItemGeral(Unico("Preso")));
+        var kit = comoBonus
+            ? await CriarKitAsync(token, Unico("Kit Excluido"), [new EquipmentKitItemInput((await CriarAsync(token, ItemGeral(Unico("Outro")))).Id, 1)],
+                [new EquipmentKitChoiceSlotInput("Arma", "Arma", ["Arcos"], "F", 1, "Arcos", fixo.Id, 5, null)])
+            : await CriarKitAsync(token, Unico("Kit Excluido"), [new EquipmentKitItemInput(fixo.Id, 1)]);
+
+        // Enquanto o kit está vivo, a referência continua dando 409.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.EquipmentKitItems.CountAsync(i => i.FixedItemId == Guid.Parse(fixo.Id))
+                + await db.EquipmentKitChoiceSlots.CountAsync(s => s.BonusFixedItemId == Guid.Parse(fixo.Id))).Should().Be(1);
+        }
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/equipment-kits/{kit.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        await using var scope2 = _factory.Services.CreateAsyncScope();
+        var db2 = scope2.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var kitId = Guid.Parse(kit.Id);
+        if (comoBonus)
+            (await db2.EquipmentKitChoiceSlots.AsNoTracking().SingleAsync(s => s.KitId == kitId)).BonusFixedItemId.Should().BeNull();
+        else
+            (await db2.EquipmentKitItems.AsNoTracking().SingleAsync(i => i.KitId == kitId)).FixedItemId.Should().BeNull();
+        (await db2.EquipmentKitFixedItems.AnyAsync(f => f.Id == Guid.Parse(fixo.Id))).Should().BeFalse();
+    }
 }

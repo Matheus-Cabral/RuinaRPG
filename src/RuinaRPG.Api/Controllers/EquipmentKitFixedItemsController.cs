@@ -10,6 +10,7 @@ using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using static RuinaRPG.Api.Controllers.EnumParsing;
 
 namespace RuinaRPG.Api.Controllers;
 
@@ -32,7 +33,7 @@ public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCata
         var query = db.EquipmentKitFixedItems.AsQueryable();
         if (!string.IsNullOrEmpty(tipo))
         {
-            if (!Enum.TryParse<ItemTipo>(tipo, out var tipoFiltro) || !Enum.IsDefined(tipoFiltro))
+            if (!TryParseExact<ItemTipo>(tipo, out var tipoFiltro))
                 return BadRequest("Tipo de item desconhecido.");
             query = query.Where(f => f.Tipo == tipoFiltro);
         }
@@ -50,7 +51,7 @@ public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCata
     {
         if (await RequireRulesAuditorAsync() is { } authError)
             return authError;
-        if (!Enum.TryParse<ItemTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
+        if (!TryParseExact<ItemTipo>(request.Tipo, out var tipo))
             return BadRequest("Tipo de item desconhecido.");
 
         var (erro, requisitos, penalidade) = await ValidarAsync(tipo, request);
@@ -81,7 +82,7 @@ public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCata
         var fixo = await db.EquipmentKitFixedItems.FirstOrDefaultAsync(f => f.Id == id);
         if (fixo is null)
             return NotFound();
-        if (!Enum.TryParse<ItemTipo>(request.Tipo, out var tipo) || !Enum.IsDefined(tipo))
+        if (!TryParseExact<ItemTipo>(request.Tipo, out var tipo))
             return BadRequest("Tipo de item desconhecido.");
         if (tipo != fixo.Tipo)
             return BadRequest("O Tipo de um item fixo não pode ser alterado.");
@@ -118,10 +119,10 @@ public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCata
             return Conflict($"Este item fixo é usado nos kits: {string.Join(", ", nomes)}.");
 
         // Kits excluídos (soft delete) ainda guardam a linha; soltar o vínculo evita a violação da FK Restrict.
-        var linhasDeKitsExcluidos = await db.EquipmentKitItems.Where(i => i.FixedItemId == id).ToListAsync();
+        var linhasDeKitsExcluidos = await db.EquipmentKitItems.Where(i => i.FixedItemId == id && db.EquipmentKits.Any(k => k.Id == i.KitId && k.IsDeleted)).ToListAsync();
         foreach (var linha in linhasDeKitsExcluidos)
             linha.FixedItemId = null;
-        var bonusDeKitsExcluidos = await db.EquipmentKitChoiceSlots.Where(s => s.BonusFixedItemId == id).ToListAsync();
+        var bonusDeKitsExcluidos = await db.EquipmentKitChoiceSlots.Where(s => s.BonusFixedItemId == id && db.EquipmentKits.Any(k => k.Id == s.KitId && k.IsDeleted)).ToListAsync();
         foreach (var slot in bonusDeKitsExcluidos)
             slot.BonusFixedItemId = null;
 

@@ -380,4 +380,40 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
         superior.DurabilidadeAtual.Should().Be(0);
         superior.DurabilidadeMaxima.Should().BeNull();
     }
+
+    [Fact]
+    public async Task Choose_a_kit_that_would_CREATE_an_Artefato_past_the_cap_of_3_returns_400_and_persists_nothing()
+    {
+        // O Artefato fixo não está no catálogo do GM: a aplicação o criaria. O teto de 3 por TipoDeAlvo
+        // tem de valer também para o item que ainda só existe no change tracker.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemCapGmN", "equipagemcapgmn@teste.com");
+        await GrantRulesAuditorAsync("equipagemcapgmn@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        foreach (var (nome, alvo) in new[] { ("Anel Npc Teto 1", "Vigor"), ("Anel Npc Teto 2", "Forca"), ("Anel Npc Teto 3", "Agilidade") })
+        {
+            var id = await CreateArtefatoItemAsync(gmToken, nome, "Atributo", alvo, 1);
+            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(id)));
+        }
+
+        var fixoNome = "Anel Npc Teto Novo " + Guid.NewGuid().ToString("N");
+        var fixoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", gmToken,
+            new CreateItemRequest("Artefato", fixoNome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "Atributo", "Astucia", 1, null)));
+        fixoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var fixo = (await fixoResponse.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
+        var kit = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
+            new CreateEquipmentKitRequest("Kit Teto Criando " + Guid.NewGuid().ToString("N"), "D", 0, [new EquipmentKitItemInput(fixo.Id, 1)], []))))
+            .Content.ReadFromJsonAsync<EquipmentKitResponse>())!;
+
+        var choose = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(kit.Id, [])));
+
+        choose.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await choose.Content.ReadAsStringAsync()).Should().Contain("Limite de 3 Artefatos do tipo Atributo já atingido.");
+        var artifacts = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken))).Content.ReadFromJsonAsync<List<NpcArtifactResponse>>();
+        artifacts!.Should().HaveCount(3);
+        var gmId = Guid.Parse((await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken))).Content.ReadFromJsonAsync<MeResponse>())!.Id);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        (await db.Items.CountAsync(i => i.GmId == gmId && i.Nome == fixoNome)).Should().Be(0);
+    }
 }

@@ -177,10 +177,14 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
         if (artifactGrantItemIds.Count == 0)
             return null;
 
-        var grantedTipos = await db.Set<Artefato>()
+        // Um Artefato que a aplicação do kit está CRIANDO só existe no change tracker (ainda não foi salvo):
+        // os que já estão no banco vêm da consulta, os pendentes do Local.
+        var grantedTipos = await db.Set<Artefato>().AsNoTracking()
             .Where(a => artifactGrantItemIds.Contains(a.Id))
             .Select(a => a.TipoDeAlvo)
             .ToListAsync();
+        var pendentes = db.Set<Artefato>().Local.Where(a => artifactGrantItemIds.Contains(a.Id) && db.Entry(a).State == EntityState.Added).Select(a => a.TipoDeAlvo);
+        grantedTipos.AddRange(pendentes);
 
         foreach (var group in grantedTipos.GroupBy(t => t))
         {
