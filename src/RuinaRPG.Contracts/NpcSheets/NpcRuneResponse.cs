@@ -1,3 +1,3 @@
 namespace RuinaRPG.Contracts.NpcSheets;
 
-public record NpcRuneResponse(string Id, string Nome, string Descricao, int Grau, string? ImageUrl = null, string? Tipo = null);
+public record NpcRuneResponse(string Id, string Nome, string Descricao, int Grau, string? ImageUrl = null, string? Tipo = null, string? Disciplina = null);

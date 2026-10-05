@@ -408,7 +408,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
-            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId)));
+            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId, Disciplina: "Adicao")));
         add.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var bankCopy = (await ListAsync(gmToken)).Single(e => e.Nome == "Runa do Jogador");
