@@ -98,17 +98,18 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Critico | string, nullable | Arma |
 | Alcance | int, nullable | Arma |
 | TipoDeDano | enum, nullable | Arma |
-| RequisitoAtributo | string, nullable | Arma |
 | Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura, Escudo |
 | Defesa | int, nullable | Armadura |
 | RF | int, nullable | Armadura |
 | RM | int, nullable | Armadura |
 | BonusDefesa | int, nullable | Escudo |
-| Penalidade | string, nullable | Armadura, Escudo |
-| RequisitoVigor | int, nullable | Armadura, Escudo |
+| Requisitos | jsonb, nullable | Arma, Armadura, Escudo, Artefato |
+| PenalidadeDeRequisitos | jsonb, nullable | Arma, Armadura, Escudo, Artefato |
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
 | Alvo | string, nullable (para TipoDeAlvo = Pericia, é a `Chave` de `Pericias`) | Artefato |
 | Valor | int, nullable | Artefato |
+
+`Requisitos` guarda o que a ficha precisa ter para usar o item sem penalidade (Vocação, Classe, Atributo, Perícia, Sub-Atributo, Afinidade, Estrela); `PenalidadeDeRequisitos` guarda a penalidade aplicada enquanto eles não são cumpridos (linhas sobre Atributo/Perícia/Sub-Atributo mais o texto "Outras penalidades"). Ambos são NULL em item sem "Possui requisitos" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.
 
 **DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
 

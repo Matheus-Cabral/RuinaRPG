@@ -125,3 +125,7 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 **5.c Afeições**: sem alteração em relação ao Personagem.
 
 **5.d Características**: mesmo comportamento do Personagem, mais uma diferença — o seletor de característica também lista o catálogo exclusivo de criatura de "[[Requisitos - Auditoria de Regras]]" R0005, junto com o catálogo normal. Uma característica concedida desse catálogo conta no mesmo orçamento de pontos (Positivas/Negativas) que uma característica normal.
+
+# **R0009** - Requisitos e Penalidades de equipamento seguem o Personagem, com exceções.
+
+**Descrição**: Os Requisitos e a Penalidade dos equipamentos funcionam na Ficha de Criatura como na Ficha de Personagem (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]"): aviso nas linhas de equipamento, alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate e subtração automática dos Totais. Exceções: os Requisitos de **Vocação**, **Classe** e **Estrela** são ignorados, pois a Criatura não os tem; um Requisito ou uma Penalidade sobre um atributo que a Criatura não possui (Instinto, Vontade, Influência) não tem efeito; e um ataque natural (preenchido manualmente, sem vínculo com o Catálogo) não tem Requisitos.

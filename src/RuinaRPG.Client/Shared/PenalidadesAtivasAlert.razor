@@ -1,0 +1,46 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Contracts.Items
+
+@* Explica totais reduzidos: os equipamentos em uso cujos Requisitos a ficha não cumpre e a penalidade
+   de cada um. Recarrega quando Versao muda (a ficha a incrementa ao mexer em equipamento ou atributo). *@
+@if (_ativas.Count > 0)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-3" Icon="@Icons.Material.Filled.Warning">
+        <MudText Typo="Typo.subtitle2">Penalidades de equipamento ativas</MudText>
+        <ul>
+            @foreach (var ativa in _ativas)
+            {
+                <li>
+                    <b>@ativa.ItemNome</b> — falta @string.Join(", ", ativa.RequisitosPendentes):
+                    @(ativa.Penalidade.Count > 0 ? string.Join(", ", ativa.Penalidade) : "sem penalidade definida")
+                </li>
+            }
+        </ul>
+    </MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Url { get; set; } = "";
+    [Parameter] public int Versao { get; set; }
+
+    private List<PenalidadeAtivaResponse> _ativas = new();
+    private (string Url, int Versao)? _carregado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_carregado == (Url, Versao))
+            return;
+        _carregado = (Url, Versao);
+        try
+        {
+            _ativas = await Http.GetFromJsonAsync<List<PenalidadeAtivaResponse>>(Url) ?? new();
+        }
+        catch (Exception)
+        {
+            // O alerta é informativo: uma falha aqui não pode derrubar a ficha.
+            _ativas = new();
+        }
+    }
+}

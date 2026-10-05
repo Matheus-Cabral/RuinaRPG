@@ -1,0 +1,27 @@
+@using MudBlazor
+
+@* Linha de um equipamento na ficha (Arma, Armadura, Escudo, Artefato): os Requisitos do item e, se a
+   ficha não os cumpre, o aviso com o que falta e a penalidade aplicada. Nada é bloqueado. *@
+@if (Requisitos is { Count: > 0 })
+{
+    @if (Pendentes is { Count: > 0 })
+    {
+        <div class="d-flex align-start" style="gap:4px">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+            <MudText Typo="Typo.body2">
+                <b>Requisitos não cumpridos.</b> Falta: @string.Join(", ", Pendentes).
+                @(Penalidade is { Count: > 0 } ? $"Penalidade: {string.Join(", ", Penalidade)}." : "Sem penalidade definida.")
+            </MudText>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">Requisitos: @string.Join(", ", Requisitos)</MudText>
+    }
+}
+
+@code {
+    [Parameter] public List<string>? Requisitos { get; set; }
+    [Parameter] public List<string>? Pendentes { get; set; }
+    [Parameter] public List<string>? Penalidade { get; set; }
+}
