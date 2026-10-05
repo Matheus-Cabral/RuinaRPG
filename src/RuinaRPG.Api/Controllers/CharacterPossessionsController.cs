@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}")]
-public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades, CharacterSheetStats stats) : ControllerBase
 {
     [HttpPost("inventory")]
     public async Task<ActionResult<CharacterInventoryItemResponse>> AddInventoryItem(Guid sheetId, AddCharacterInventoryItemRequest request)
@@ -398,11 +399,19 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         return new CharacterInventoryItemResponse(inventoryItem.Id.ToString(), item.Id.ToString(), item.Nome, item.Peso, inventoryItem.Qtd, item.Peso * inventoryItem.Qtd, imageUrl, item.Descricao);
     }
 
+    // O retrato da ficha SEM penalidades é calculado uma vez por requisição, e só se algum Artefato tiver Requisitos.
+    private Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos>? _fichaSemPenalidades;
+
+    private async Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos> CalcularFichaAsync(Guid sheetId) =>
+        await stats.FichaParaRequisitosAsync((await db.CharacterSheets.FindAsync(sheetId))!);
+
     private async Task<CharacterArtifactResponse> ToArtifactResponseAsync(CharacterArtifact artifact)
     {
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        return new CharacterArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+        var resposta = new CharacterArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CharacterSheetId));
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

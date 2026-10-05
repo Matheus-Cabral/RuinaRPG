@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -23,7 +24,7 @@ namespace RuinaRPG.Api.Controllers;
 // api/campaigns/{campaignId}/character-sheets and api/character-sheets/{id}.
 [ApiController]
 [Authorize]
-public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades) : ControllerBase
 {
     [HttpPost("api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
@@ -282,7 +283,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than
         // rejected, since a Máximo can legitimately shrink (e.g. unequipping an Artefato) out
         // from under an Atual that was valid a moment ago.
-        var maximos = await ComputeResourceMaximumsAsync(id, vocacao, nivel);
+        var maximos = await ComputeResourceMaximumsAsync(sheet, vocacao, nivel);
         sheet.VitalidadeAtual = Math.Min(request.VitalidadeAtual, maximos.Vitalidade);
         sheet.FocoAtual = Math.Min(request.FocoAtual, maximos.Foco);
         sheet.AdrenalinaAtual = Math.Min(request.AdrenalinaAtual, maximos.Adrenalina);
@@ -472,6 +473,21 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         return await stats.SubAtributosAsync(sheet);
     }
 
+    /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
+    [HttpGet("api/character-sheets/{id}/equipment-penalties")]
+    public async Task<ActionResult<List<PenalidadeAtivaResponse>>> EquipmentPenalties(Guid id)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+    }
+
     /// <summary>
     /// Ficha de Personagem 3.f: one read-only value per Tipo de Dano, each the sum of equipped
     /// Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano — mirrors
@@ -488,37 +504,12 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var artefatos = await GetArtifactBonusInputsAsync(id);
+        var artefatos = await stats.ModificadoresAsync(sheet);
         return new ModificadorDeDanoResponse(
             Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
             Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
             Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
             Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
-    }
-
-    /// <summary>
-    /// Every CharacterArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b
-    /// has no separate equip/unequip toggle for Artefatos, so being on the sheet is being "equipped".
-    /// Loaded once per top-level action and threaded through, rather than re-querying per formula term.
-    /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
-        await db.CharacterArtifacts
-            .Where(a => a.CharacterSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
-
-    /// <summary>
-    /// Used by the máximo computation (vigorTotal/astuciaTotal) in ToResponseAsync — a single-row
-    /// lookup + AttributeTotalCalculator.Total. SubAttributes no longer calls this: that formula was
-    /// extracted into CharacterSheetStats, shared with the Passiva requisitos snapshot.
-    /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
-    {
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
-        var artefatoBonus = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString());
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: artefatoBonus);
     }
 
     /// <summary>
@@ -602,7 +593,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
-        var maximos = await ComputeResourceMaximumsAsync(s.Id, s.Vocacao, s.Nivel);
+        var maximos = await ComputeResourceMaximumsAsync(s, s.Vocacao, s.Nivel);
         var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, tabela.ComoXpPorNivel());
         var pontosDeIgnicaoTotal = PontosDeIgnicaoCalculator.ComputeTotal(s.Nivel, s.PontosDeIgnicaoBonusManual, tabela);
 
@@ -627,11 +618,18 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     /// as "Classe"), so vocacao (not SubVocacao) is the lookup key — an accepted approximation (see plan's
     /// Explicitly out of scope).
     /// </summary>
-    private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(Guid sheetId, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)
+    private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(CharacterSheet sheet, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)
     {
-        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
-        var vigorTotal = await GetAttributeTotalAsync(sheetId, Atributo.Vigor, artefatos);
-        var astuciaTotal = await GetAttributeTotalAsync(sheetId, Atributo.Astucia, artefatos);
+        // Totais exibidos: Artefatos + penalidades de equipamento ativas.
+        var artefatos = await stats.ModificadoresAsync(sheet);
+        var atributos = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheet.Id && (a.Atributo == Atributo.Vigor || a.Atributo == Atributo.Astucia)).ToListAsync();
+        int TotalDe(Atributo atributo)
+        {
+            var a = atributos.Single(x => x.Atributo == atributo);
+            return AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        }
+        var vigorTotal = TotalDe(Atributo.Vigor);
+        var astuciaTotal = TotalDe(Atributo.Astucia);
         var (statusVida, statusFoco) = vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(vocacao.Value), nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 

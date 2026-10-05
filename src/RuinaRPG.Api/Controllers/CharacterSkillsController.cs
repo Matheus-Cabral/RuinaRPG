@@ -18,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
@@ -35,13 +35,8 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
         var linhas = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
-        // Posses 5.b has no equip/unequip toggle for Artefatos — being on the sheet counts as equipped.
-        var artefatos = await db.CharacterArtifacts
-            .Where(a => a.CharacterSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
+        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
+        var artefatos = await stats.ModificadoresAsync(sheet);
 
         var attributeTotals = await db.CharacterAttributes
             .Where(a => a.CharacterSheetId == sheetId)
