@@ -9,9 +9,13 @@
    Variante, Afinidade, Estrela e Histórico reaproveitam os componentes de campo já usados nas
    fichas — nenhum deles tem uma opção "em branco" no próprio dropdown, então cada um ganha aqui um
    botão "Limpar" que zera o(s) campo(s) do Model diretamente, sem alterar o componente reaproveitado
-   nem o comportamento dele nas fichas. *@
+   nem o comportamento dele nas fichas. Com ModoEquipamento (Arma, Armadura, Escudo, Artefato) só
+   aparecem Vocação/Classe, Afinidade, Estrela e as três listas de mínimos. *@
 
-<MudNumericField T="int?" @bind-Value="Model.Nivel" Label="Nível mínimo" Clearable="true" @bind-Value:after="OnChangedAsync" />
+@if (!ModoEquipamento)
+{
+    <MudNumericField T="int?" @bind-Value="Model.Nivel" Label="Nível mínimo" Clearable="true" @bind-Value:after="OnChangedAsync" />
+}
 
 <div class="d-flex align-center" style="gap:4px">
     <div style="flex:1">
@@ -21,17 +25,26 @@
     <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparVocacaoAsync" title="Limpar Vocação/Classe" aria-label="Limpar Vocação/Classe" />
 </div>
 
-<div class="d-flex align-center" style="gap:4px">
-    <div style="flex:1">
-        <LinhagemVarianteFields Linhagem="@Model.Linhagem" LinhagemChanged="OnLinhagemChangedAsync"
-                                 Variante="@Model.Variante" VarianteChanged="OnVarianteChangedAsync" />
+@if (!ModoEquipamento)
+{
+    <div class="d-flex align-center" style="gap:4px">
+        <div style="flex:1">
+            <LinhagemVarianteFields Linhagem="@Model.Linhagem" LinhagemChanged="OnLinhagemChangedAsync"
+                                     Variante="@Model.Variante" VarianteChanged="OnVarianteChangedAsync" />
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparLinhagemAsync" title="Limpar Linhagem/Variante" aria-label="Limpar Linhagem/Variante" />
     </div>
-    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparLinhagemAsync" title="Limpar Linhagem/Variante" aria-label="Limpar Linhagem/Variante" />
-</div>
+}
 
-<MudNumericField T="int?" @bind-Value="Model.Graduacao" Label="Grau/Círculo mínimo" Min="0" Max="9" Clearable="true" @bind-Value:after="OnChangedAsync" />
+@if (!ModoEquipamento)
+{
+    <MudNumericField T="int?" @bind-Value="Model.Graduacao" Label="Grau/Círculo mínimo" Min="0" Max="9" Clearable="true" @bind-Value:after="OnChangedAsync" />
+}
 
-<MudCheckBox T="bool" @bind-Value="Model.CoracaoDeMana" Label="Exige Coração de Mana" @bind-Value:after="OnChangedAsync" />
+@if (!ModoEquipamento)
+{
+    <MudCheckBox T="bool" @bind-Value="Model.CoracaoDeMana" Label="Exige Coração de Mana" @bind-Value:after="OnChangedAsync" />
+}
 
 <div class="d-flex align-center" style="gap:4px">
     <div style="flex:1">
@@ -47,12 +60,15 @@
     <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparEstrelaAsync" title="Limpar Estrela" aria-label="Limpar Estrela" />
 </div>
 
-<div class="d-flex align-center" style="gap:4px">
-    <div style="flex:1">
-        <HistoricoSelect Value="@Model.HistoricoId" ValueChanged="OnHistoricoChangedAsync" />
+@if (!ModoEquipamento)
+{
+    <div class="d-flex align-center" style="gap:4px">
+        <div style="flex:1">
+            <HistoricoSelect Value="@Model.HistoricoId" ValueChanged="OnHistoricoChangedAsync" />
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparHistoricoAsync" title="Limpar Histórico" aria-label="Limpar Histórico" />
     </div>
-    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparHistoricoAsync" title="Limpar Histórico" aria-label="Limpar Histórico" />
-</div>
+}
 
 <MudText Typo="Typo.subtitle2" Class="mt-3">Atributos</MudText>
 <table>
@@ -129,6 +145,8 @@
 @code {
     [Parameter, EditorRequired] public RequisitosFormModel Model { get; set; } = null!;
     [Parameter] public EventCallback OnChanged { get; set; }
+    /// <summary>Equipamento (Arma, Armadura, Escudo, Artefato): só Vocação/Classe, Afinidade, Estrela, Atributos, Sub-Atributos e Perícias.</summary>
+    [Parameter] public bool ModoEquipamento { get; set; }
 
     private static readonly (string Valor, string Rotulo)[] AtributoOpcoes =
         Enum.GetValues<Atributo>().Select(a => (a.ToString(), AtributoDisplay.Label(a.ToString()))).ToArray();

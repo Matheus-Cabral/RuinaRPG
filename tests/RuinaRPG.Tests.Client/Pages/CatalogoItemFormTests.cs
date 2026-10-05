@@ -607,6 +607,174 @@ public class CatalogoItemFormTests : MudBunitContext
         getCount.Should().Be(3, "OnCreated deve substituir a navegação, não disparar uma nova busca");
     }
 
+    // ---- Task 10 (1.4.3): "Possui requisitos" + Requisitos/Penalidade de equipamento ----
+
+    private static RuinaRPG.Contracts.Items.ItemResponse ItemComRequisitos(string tipo = "Arma") => new(
+        "item-1", tipo, "Espada", 1m, 10, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, false,
+        new RuinaRPG.Contracts.SpellsAndAbilities.RequisitosDePassivaDto(
+            Atributos: [new RuinaRPG.Contracts.SpellsAndAbilities.RequisitoMinimoDto("Vigor", 8)]),
+        new RuinaRPG.Contracts.Items.PenalidadeDeEquipamentoDto([new("Forca", 2)], null, null, "Barulhenta"),
+        ["Vigor ≥ 8"], ["Força −2"]);
+
+    // Serves images/mine, durabilidades-por-rank and pericias with empty lists, GET items with the
+    // given list, and captures the body of every PUT/POST.
+    private HttpClient CreateEquipmentClient(List<RuinaRPG.Contracts.Items.ItemResponse> items, List<string> bodies)
+    {
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("items"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(items) };
+            // EstrelaSelect (dentro do editor de requisitos) busca o documento das estrelas ao montar.
+            if (request.RequestUri!.AbsolutePath.EndsWith("estrelas-alkerianas"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new RuinaRPG.Contracts.Rules.RulebookDocumentResponse("estrelas-alkerianas", "As Estrelas", null, [])),
+                };
+            if (request.Method == HttpMethod.Put || request.Method == HttpMethod.Post)
+            {
+                bodies.Add(request.Content!.ReadAsStringAsync().Result);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(items.FirstOrDefault()) };
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+        return http;
+    }
+
+    private static MudBlazor.MudCheckBox<bool>? PossuiRequisitos(IRenderedComponent<CatalogoItemForm> cut) =>
+        cut.FindComponents<MudBlazor.MudCheckBox<bool>>().SingleOrDefault(c => c.Instance.Label == "Possui requisitos")?.Instance;
+
+    [Theory]
+    [InlineData("Arma")]
+    [InlineData("Armadura")]
+    [InlineData("Escudo")]
+    [InlineData("Artefato")]
+    public async Task Equipment_types_offer_Possui_requisitos_and_show_the_two_sections_when_checked(string tipo)
+    {
+        CreateEquipmentClient([], []);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, tipo));
+        await Task.Delay(50);
+
+        var checkbox = PossuiRequisitos(cut);
+        checkbox.Should().NotBeNull();
+        cut.Markup.Should().NotContain("Adicionar Atributo");
+
+        await cut.InvokeAsync(() => checkbox!.ValueChanged.InvokeAsync(true));
+
+        cut.Markup.Should().Contain("Adicionar Atributo");
+        var titulos = cut.FindComponents<RuinaRPG.Client.Shared.Section>().Select(s => s.Instance.Title).ToList();
+        titulos.Should().Contain("Requisitos").And.Contain("Penalidade");
+    }
+
+    [Fact]
+    public async Task Item_geral_does_not_offer_Possui_requisitos()
+    {
+        CreateEquipmentClient([], []);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.FixedTipo, "ItemGeral"));
+        await Task.Delay(50);
+
+        PossuiRequisitos(cut).Should().BeNull();
+        cut.Markup.Should().NotContain("Possui requisitos");
+    }
+
+    [Fact]
+    public async Task Editing_an_item_that_has_requirements_starts_checked_with_the_values_loaded()
+    {
+        CreateEquipmentClient([ItemComRequisitos()], []);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.ItemId, "item-1"));
+        await Task.Delay(100);
+
+        PossuiRequisitos(cut)!.Value.Should().BeTrue();
+        cut.Markup.Should().Contain("Adicionar Atributo");
+        cut.FindComponents<MudBlazor.MudNumericField<int>>().Select(c => c.Instance.Label).Should().Contain("Penalidade");
+        cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Outras penalidades")
+            .Instance.Value.Should().Be("Barulhenta");
+    }
+
+    [Fact]
+    public async Task Editing_an_unrelated_field_sends_the_loaded_requirements_and_penalty_back_unchanged()
+    {
+        var bodies = new List<string>();
+        CreateEquipmentClient([ItemComRequisitos()], bodies);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.ItemId, "item-1"));
+        await Task.Delay(100);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Espada Longa"));
+        await Task.Delay(700); // past the 400ms debounce
+
+        var body = bodies.Should().ContainSingle().Subject;
+        using var json = System.Text.Json.JsonDocument.Parse(body);
+        json.RootElement.GetProperty("nome").GetString().Should().Be("Espada Longa");
+        var requisitos = json.RootElement.GetProperty("requisitos");
+        var atributo = requisitos.GetProperty("atributos").EnumerateArray().Should().ContainSingle().Subject;
+        atributo.GetProperty("alvo").GetString().Should().Be("Vigor");
+        atributo.GetProperty("minimo").GetInt32().Should().Be(8);
+        var penalidade = json.RootElement.GetProperty("penalidadeDeRequisitos");
+        var linha = penalidade.GetProperty("atributos").EnumerateArray().Should().ContainSingle().Subject;
+        linha.GetProperty("alvo").GetString().Should().Be("Forca");
+        linha.GetProperty("valor").GetInt32().Should().Be(2);
+        penalidade.GetProperty("texto").GetString().Should().Be("Barulhenta");
+    }
+
+    [Fact]
+    public async Task Unchecking_Possui_requisitos_saves_the_item_with_null_requirements_and_penalty()
+    {
+        var bodies = new List<string>();
+        CreateEquipmentClient([ItemComRequisitos()], bodies);
+
+        var cut = Render<CatalogoItemForm>(p => p.Add(x => x.ItemId, "item-1"));
+        await Task.Delay(100);
+
+        var checkbox = PossuiRequisitos(cut)!;
+        await cut.InvokeAsync(() => checkbox.ValueChanged.InvokeAsync(false));
+        await Task.Delay(700);
+
+        var body = bodies.Should().ContainSingle().Subject;
+        body.Should().Contain("\"requisitos\":null").And.Contain("\"penalidadeDeRequisitos\":null");
+    }
+
+    [Fact]
+    public async Task A_filled_requirement_and_penalty_are_sent_on_create()
+    {
+        var bodies = new List<string>();
+        CreateEquipmentClient([ItemComRequisitos()], bodies);
+
+        var cut = Render<CatalogoItemForm>(p => p
+            .Add(x => x.FixedTipo, "Arma")
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<RuinaRPG.Contracts.Items.ItemResponse>(this, _ => { })));
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Espada"));
+        await cut.InvokeAsync(() => PossuiRequisitos(cut)!.ValueChanged.InvokeAsync(true));
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar Atributo")).Click(); // requisito
+        cut.FindAll("button").Last(b => b.TextContent.Contains("Adicionar Atributo")).Click();  // penalidade
+        var selects = cut.FindComponents<MudBlazor.MudSelect<string>>().Where(c => c.Instance.Label is null).ToList();
+        selects.Should().HaveCount(2);
+        await cut.InvokeAsync(() => selects[0].Instance.ValueChanged.InvokeAsync("Vigor"));
+        await cut.InvokeAsync(() => selects[1].Instance.ValueChanged.InvokeAsync("Forca"));
+        var texto = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Outras penalidades");
+        await cut.InvokeAsync(() => texto.Instance.ValueChanged.InvokeAsync("Pesada"));
+
+        await cut.InvokeAsync(() => cut.Instance.CreateForTestsAsync());
+
+        var body = bodies.Should().ContainSingle().Subject;
+        using var json = System.Text.Json.JsonDocument.Parse(body);
+        json.RootElement.GetProperty("requisitos").GetProperty("atributos").EnumerateArray()
+            .Should().ContainSingle().Which.GetProperty("alvo").GetString().Should().Be("Vigor");
+        var penalidade = json.RootElement.GetProperty("penalidadeDeRequisitos");
+        penalidade.GetProperty("atributos").EnumerateArray()
+            .Should().ContainSingle().Which.GetProperty("alvo").GetString().Should().Be("Forca");
+        penalidade.GetProperty("texto").GetString().Should().Be("Pesada");
+    }
+
     /// <summary>
     /// Unlike <see cref="FakeHttpMessageHandler"/>, actually yields before responding, so awaits
     /// on it do not resolve synchronously — reproducing the timing of a real HTTP round trip.

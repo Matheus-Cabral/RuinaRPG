@@ -64,7 +64,17 @@
             @foreach (var item in _items)
             {
                 <tr>
-                    <td>@item.Nome</td>
+                    <td>
+                        @item.Nome
+                        @if (item.RequisitosPorExtenso is { Count: > 0 })
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary"><b>Requisitos:</b> @string.Join(", ", item.RequisitosPorExtenso)</MudText>
+                        }
+                        @if (item.PenalidadePorExtenso is { Count: > 0 })
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary"><b>Penalidade:</b> @string.Join(", ", item.PenalidadePorExtenso)</MudText>
+                        }
+                    </td>
                     <td>@item.Tipo</td>
                     <td>@(item.Subcategoria ?? "—")</td>
                     <td>@item.Peso</td>

@@ -12,6 +12,7 @@
 @using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.Items
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Client.Shared.Fields
 
 @if (!OnCreated.HasDelegate)
 {
@@ -121,6 +122,25 @@
         </Section>
     }
 
+    @if (_form.Tipo is "Arma" or "Armadura" or "Escudo" or "Artefato")
+    {
+        <div class="d-flex align-center mt-3">
+            <MudCheckBox T="bool" @bind-Value="_possuiRequisitos" Label="Possui requisitos" @bind-Value:after="NotifySavedAsync" />
+            <InfoPopup Title="Requisitos do equipamento">
+                <MudText>Enquanto a ficha não cumprir os requisitos, o equipamento continua podendo ser usado, mas a ficha avisa o que falta e aplica a penalidade abaixo nos cálculos. Desmarcar apaga os requisitos e a penalidade deste item.</MudText>
+            </InfoPopup>
+        </div>
+        @if (_possuiRequisitos)
+        {
+            <Section Title="Requisitos">
+                <RequisitosDePassivaEditor Model="_requisitos" ModoEquipamento="true" OnChanged="NotifySavedAsync" />
+            </Section>
+            <Section Title="Penalidade" Subtitle="Aplicada enquanto os requisitos não forem cumpridos.">
+                <PenalidadeDeEquipamentoEditor Model="_penalidade" OnChanged="NotifySavedAsync" />
+            </Section>
+        }
+    }
+
     @if (ItemId is null)
     {
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateAsync">Salvar</MudButton>
@@ -152,6 +172,9 @@
     private Dictionary<RankDeItem, DurabilidadeDeRank> _durabilidadesPorRank = new();
     private string _durabilidadeHint = "Sem durabilidade";
     private bool _durabilidadesPorRankIndisponivel;
+    private bool _possuiRequisitos;
+    private RequisitosFormModel _requisitos = new();
+    private PenalidadeFormModel _penalidade = new();
 
     // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
     // Rank page and the DurabilidadesPorRankController both work off of.
@@ -234,6 +257,9 @@
         _form.TipoDeAlvo = existing.TipoDeAlvo;
         _form.Alvo = existing.Alvo;
         _form.Valor = existing.Valor;
+        _requisitos = RequisitosFormModel.FromDto(existing.Requisitos);
+        _penalidade = PenalidadeFormModel.FromDto(existing.PenalidadeDeRequisitos);
+        _possuiRequisitos = existing.Requisitos is not null || existing.PenalidadeDeRequisitos is not null;
         RecomputeDurabilidadeHint();
     }
 
@@ -280,7 +306,9 @@
             _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
             _form.Critico, _form.Alcance, _form.TipoDeDano,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra,
+            Requisitos: _possuiRequisitos ? RequisitosOuNulo() : null,
+            PenalidadeDeRequisitos: _possuiRequisitos ? _penalidade.ToDto() : null);
         var response = await Http.PostAsJsonAsync("items", request);
 
         if (!response.IsSuccessStatusCode)
@@ -304,6 +332,9 @@
         Navigation.NavigateTo("/catalogo");
     }
 
+    // O servidor grava um Requisitos vazio como nulo.
+    private RuinaRPG.Contracts.SpellsAndAbilities.RequisitosDePassivaDto? RequisitosOuNulo() => _requisitos.ToDto();
+
     private async Task<bool> SaveIfValidAsync()
     {
         if (!_editContext.Validate())
@@ -313,7 +344,9 @@
             _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
             _form.Critico, _form.Alcance, _form.TipoDeDano,
             _form.Categoria, _form.Defesa, _form.RF, _form.RM,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
+            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra,
+            Requisitos: _possuiRequisitos ? RequisitosOuNulo() : null,
+            PenalidadeDeRequisitos: _possuiRequisitos ? _penalidade.ToDto() : null);
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
 
         if (!response.IsSuccessStatusCode)
