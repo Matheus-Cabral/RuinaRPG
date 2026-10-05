@@ -440,16 +440,28 @@ Catálogo global (não por GM) de kits de equipamento inicial, cadastrado a part
 - `Ciclos` (int — moeda concedida ao escolher o kit)
 - `IsDeleted` (bool — soft delete)
 
+**EquipmentKitFixedItems**
+
+Base global (não por GM) de itens fixos dos kits, mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0014). Cada linha é um item completo, com os campos do formulário do catálogo de "[[Requisitos - Catálogo de Itens e Equipamentos]]" por Tipo, sem imagem. Único por `Nome` + `Tipo`.
+
+- `Id` (PK)
+- `Nome` (string, obrigatório)
+- `Tipo` (enum ItemTipo — ItemGeral, Arma, Armadura, Escudo ou Artefato; não muda depois de criado)
+- `Dados` (jsonb — os campos do item que variam por Tipo, os mesmos de `CreateItemRequest`)
+- `Requisitos` (jsonb?, opcional — requisitos para equipar)
+- `PenalidadeDeRequisitos` (jsonb?, opcional — penalidade por não cumprir os requisitos)
+- `DetalhesIncompletos` (bool — true nos itens que a conversão da versão 1.4.3 só conseguiu criar com o nome; deixa de valer quando o Auditor os edita)
+
 **EquipmentKitItems**
 
-Linhas fixas de um `EquipmentKit` — referenciam um Item do catálogo do GM por **Nome + Tipo**, nunca por Id (cada GM tem sua própria cópia do catálogo de Itens).
+Linhas fixas de um `EquipmentKit` — referenciam um item da base `EquipmentKitFixedItems`. Ao aplicar o kit, o item é copiado para o catálogo do GM quando ele ainda não tem um de mesmo Nome e Tipo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0012).
 
 - `Id` (PK)
 - `KitId` (FK → EquipmentKits, cascade)
-- `Nome` (string — Nome do Item alvo no catálogo do GM)
-- `Tipo` (enum ItemTipo — ItemGeral, Arma, Escudo ou Artefato; nunca Armadura)
+- `FixedItemId` (FK → EquipmentKitFixedItems, Restrict — um item usado por um kit não pode ser excluído)
+- `ArmorSlot` (enum ArmorSlotType?, opcional — obrigatório quando o item fixo é Armadura; vazio nos demais Tipos)
 - `Qtd` (int)
-- `SubcategoriaHint` (string?, opcional — usado só quando o Item precisa ser criado automaticamente no catálogo do GM por não existir ainda)
+- `Nome`, `Tipo`, `SubcategoriaHint` — **legados**, a serem removidos: eram a referência por Nome + Tipo anterior à base; a conversão da versão 1.4.3 os transformou em `FixedItemId`.
 
 **EquipmentKitChoiceSlots**
 
@@ -463,7 +475,8 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `Rank` (enum RankDeItem?, opcional — NULL = qualquer Rank)
 - `Qtd` (int)
 - `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
-- `BonusNome` (string?, opcional — Item concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusFixedItemId` (FK → EquipmentKitFixedItems, Restrict, opcional — item da base, do tipo Item Geral, concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusNome` (string?, **legado**, a ser removido — substituído por `BonusFixedItemId`)
 - `BonusQtd` (int?, opcional)
 
 ### SubcategoriaOptions
