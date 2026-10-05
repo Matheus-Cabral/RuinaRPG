@@ -175,4 +175,41 @@ public class ProgressaoDoNivelSectionTests : MudBunitContext
 
         cut.Markup.Should().Contain("Pontos de Atributo").And.NotContain("Coluna Estranha");
     }
+
+    [Fact]
+    public async Task The_table_lives_in_an_expansion_panel_that_starts_collapsed()
+    {
+        var tabela = new TabelaDeNiveisResponse(
+            [Col(Pontos, "Pontos de Atributo", "Acumulativa", ChavesDeNivel.PontosDeAtributo, 1)],
+            [Linha(1, (Pontos, 9))]);
+
+        var cut = await RenderAsync(tabela, 1);
+
+        var painel = cut.Find(".mud-expand-panel");
+        painel.ClassList.Should().NotContain("mud-panel-expanded");
+        painel.TextContent.Should().Contain("Ver saldos e limites do nível");
+        cut.Markup.Should().Contain("Pontos de Atributo");
+    }
+
+    [Fact]
+    public async Task The_section_title_and_its_info_popup_stay_outside_the_panel()
+    {
+        var tabela = new TabelaDeNiveisResponse([Col(Pontos, "Pontos de Atributo", "Acumulativa", ChavesDeNivel.PontosDeAtributo, 1)], [Linha(1, (Pontos, 9))]);
+
+        var cut = await RenderAsync(tabela, 1);
+
+        cut.Find(".rr-section-title").TextContent.Should().Contain("Progressão do nível");
+        cut.Find(".mud-expand-panel").QuerySelectorAll(".rr-section-title").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Clicking_the_header_expands_it()
+    {
+        var tabela = new TabelaDeNiveisResponse([Col(Pontos, "Pontos de Atributo", "Acumulativa", ChavesDeNivel.PontosDeAtributo, 1)], [Linha(1, (Pontos, 9))]);
+        var cut = await RenderAsync(tabela, 1);
+
+        cut.Find(".mud-expand-panel-header").Click();
+
+        cut.Find(".mud-expand-panel").ClassList.Should().Contain("mud-panel-expanded");
+    }
 }

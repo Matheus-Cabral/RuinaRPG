@@ -96,7 +96,7 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
   
 
-> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). As linhas de Passiva usam rótulos fixos ("Passiva Livre", "Passiva Vocacional", "Passiva de Classe", "Habilidade Passiva"): as três de categoria mostram o limite acumulado ou "sem limite" quando a coluna está toda vazia, e "Habilidade Passiva" mostra as vagas coringa acumuladas (0 quando a coluna está vazia). Ver "[[Requisitos - Auditoria de Regras]]" R0013.
+> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). O conteúdo fica num painel expansível, recolhido por padrão; o título e o popup de ajuda ficam sempre visíveis. As linhas de Passiva usam rótulos fixos ("Passiva Livre", "Passiva Vocacional", "Passiva de Classe", "Habilidade Passiva"): as três de categoria mostram o limite acumulado ou "sem limite" quando a coluna está toda vazia, e "Habilidade Passiva" mostra as vagas coringa acumuladas (0 quando a coluna está vazia). Ver "[[Requisitos - Auditoria de Regras]]" R0013.
 
   
 
