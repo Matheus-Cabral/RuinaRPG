@@ -1,0 +1,86 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
+@inject IDialogService Dialogs
+@*
+    Edita uma linha de item fixo de um kit: "Editar detalhes" altera o item compartilhado da base (vale
+    para todos os kits que o usam); "Substituir item" troca a linha por outro item da base. Fecha com um
+    ItemFixoEditado; quem abriu é quem salva o kit.
+*@
+<MudDialog>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+        <MudText Class="mb-2">@Linha.Nome (@Linha.Tipo@(Linha.ArmorSlot is null ? "" : $", {Linha.ArmorSlot}"))</MudText>
+        <div class="d-flex" style="gap:8px">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Disabled="@(string.IsNullOrEmpty(Linha.FixedItemId))" OnClick="EditarDetalhesAsync">Editar detalhes</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.SwapHoriz" OnClick="@(() => _substituindo = true)">Substituir item</MudButton>
+        </div>
+        @if (string.IsNullOrEmpty(Linha.FixedItemId))
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">Este item ainda não foi convertido para a base de itens fixos: substitua-o por um item da base.</MudText>
+        }
+
+        @if (_substituindo)
+        {
+            <div class="mt-3">
+                <FixedItemPicker TiposPermitidos="@Tipos" @bind-Tipo="_tipo" @bind-Value="_escolhido" />
+                @if (_escolhido?.Tipo == "Armadura")
+                {
+                    <MudSelect T="string" @bind-Value="_slot" Label="Slot de Armadura">
+                        <MudSelectItem Value="@("Capacete")">Capacete</MudSelectItem>
+                        <MudSelectItem Value="@("Superior")">Superior</MudSelectItem>
+                        <MudSelectItem Value="@("Inferior")">Inferior</MudSelectItem>
+                    </MudSelect>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        @if (_substituindo)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!PodeConfirmar)" OnClick="Confirmar">Confirmar</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly string[] Tipos = ["ItemGeral", "Arma", "Armadura", "Escudo", "Artefato"];
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public EquipmentKitItemResponse Linha { get; set; } = default!;
+
+    private bool _substituindo;
+    private string _tipo = "ItemGeral";
+    private EquipmentKitFixedItemResponse? _escolhido;
+    private string? _slot;
+    private string? _errorMessage;
+
+    protected override void OnInitialized() => _tipo = Linha.Tipo;
+
+    private bool PodeConfirmar => _escolhido is not null && (_escolhido.Tipo != "Armadura" || !string.IsNullOrEmpty(_slot));
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private void Confirmar() =>
+        MudDialog.Close(DialogResult.Ok(new ItemFixoEditado(_escolhido!.Id, _escolhido.Tipo == "Armadura" ? _slot : null, false)));
+
+    private async Task EditarDetalhesAsync()
+    {
+        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>(
+            $"equipment-kit-fixed-items?tipo={Linha.Tipo}&q={Uri.EscapeDataString(Linha.Nome)}");
+        var item = itens?.FirstOrDefault(i => i.Id == Linha.FixedItemId);
+        if (item is null)
+        {
+            _errorMessage = "Não foi possível carregar o item fixo.";
+            return;
+        }
+
+        var dialog = await Dialogs.ShowAsync<FixedItemDialog>("Editar item fixo",
+            new DialogParameters<FixedItemDialog> { { x => x.Tipo, item.Tipo }, { x => x.Existente, item } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(new ItemFixoEditado(Linha.FixedItemId, Linha.ArmorSlot, true)));
+    }
+}

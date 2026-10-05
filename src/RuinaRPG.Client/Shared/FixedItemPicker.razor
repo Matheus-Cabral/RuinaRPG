@@ -1,0 +1,84 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
+@inject IDialogService Dialogs
+@*
+    Escolhe um item da base global de itens fixos dos kits: Tipo + pesquisa por nome. Quando a pesquisa
+    não acha nada e há texto, oferece "Cadastrar novo item" (abre o FixedItemDialog com o Tipo e o nome
+    preenchidos e seleciona o item criado). A ação fica num botão ao lado do campo, e não dentro do
+    NoItemsTemplate do MudAutocomplete: o template só existe com o popover aberto e some assim que o
+    campo perde o foco, o que deixaria o clique no botão inalcançável.
+*@
+<div class="d-flex" style="gap:8px; align-items:flex-start">
+    <MudSelect T="string" Value="@Tipo" ValueChanged="OnTipoChangedAsync" Label="@RotuloTipo" Style="max-width:180px">
+        @foreach (var (valor, rotulo) in Tipos.Where(t => TiposPermitidos.Contains(t.Valor)))
+        {
+            <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+        }
+    </MudSelect>
+    <MudAutocomplete T="EquipmentKitFixedItemResponse" Value="@Value" ValueChanged="OnPickedAsync" Label="@RotuloItem"
+                     SearchFunc="BuscarAsync" ToStringFunc="@(i => i?.Nome ?? "")" DebounceInterval="250"
+                     ResetValueOnEmptyText="true" CoerceText="false" MaxItems="null" Clearable="true" />
+    @if (_semResultados && !string.IsNullOrWhiteSpace(_ultimoTexto))
+    {
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Outlined" OnClick="CadastrarAsync" Class="mt-3">Cadastrar novo item</MudButton>
+    }
+</div>
+
+@code {
+    private static readonly (string Valor, string Rotulo)[] Tipos =
+        [("ItemGeral", "Item Geral"), ("Arma", "Arma"), ("Armadura", "Armadura"), ("Escudo", "Escudo"), ("Artefato", "Artefato")];
+
+    [Parameter] public string[] TiposPermitidos { get; set; } = ["ItemGeral", "Arma", "Armadura", "Escudo", "Artefato"];
+    [Parameter] public string Tipo { get; set; } = "ItemGeral";
+    [Parameter] public EventCallback<string> TipoChanged { get; set; }
+    [Parameter] public EquipmentKitFixedItemResponse? Value { get; set; }
+    [Parameter] public EventCallback<EquipmentKitFixedItemResponse?> ValueChanged { get; set; }
+    [Parameter] public string RotuloTipo { get; set; } = "Tipo";
+    [Parameter] public string RotuloItem { get; set; } = "Item fixo";
+
+    private string _ultimoTexto = "";
+    private bool _semResultados;
+
+    private async Task<IEnumerable<EquipmentKitFixedItemResponse>> BuscarAsync(string? texto, CancellationToken token)
+    {
+        var encontrados = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>(
+            $"equipment-kit-fixed-items?tipo={Tipo}&q={Uri.EscapeDataString(texto ?? "")}", token) ?? [];
+        _ultimoTexto = texto ?? "";
+        _semResultados = encontrados.Count == 0;
+        await InvokeAsync(StateHasChanged);
+        return encontrados;
+    }
+
+    private async Task OnTipoChangedAsync(string tipo)
+    {
+        Tipo = tipo;
+        _semResultados = false;
+        await TipoChanged.InvokeAsync(tipo);
+        if (Value is not null)
+        {
+            Value = null;
+            await ValueChanged.InvokeAsync(null);
+        }
+    }
+
+    private async Task OnPickedAsync(EquipmentKitFixedItemResponse? item)
+    {
+        Value = item;
+        _semResultados = false;
+        await ValueChanged.InvokeAsync(item);
+    }
+
+    private async Task CadastrarAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<FixedItemDialog>("Novo item fixo",
+            new DialogParameters<FixedItemDialog> { { x => x.Tipo, Tipo }, { x => x.NomeInicial, _ultimoTexto.Trim() } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false, Data: EquipmentKitFixedItemResponse criado })
+            await OnPickedAsync(criado);
+    }
+
+    // Test-only seam: o MudAutocomplete controla o próprio debounce e o popover, que o bUnit não consegue
+    // acionar de forma confiável (mesma justificativa do EntityPicker).
+    internal Task<IEnumerable<EquipmentKitFixedItemResponse>> BuscarParaTestesAsync(string texto) => BuscarAsync(texto, CancellationToken.None);
+}
