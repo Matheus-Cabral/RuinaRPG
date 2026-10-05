@@ -218,9 +218,14 @@ public class RulebookRenderer(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNive
             var items = await db.EquipmentKitItems.Where(i => i.KitId == kit.Id).ToListAsync();
             var slots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kit.Id).ToListAsync();
 
+            // O nome vem do item fixo ligado; a linha legada (sem FixedItemId) cai no Nome antigo.
+            var fixoIds = items.Select(i => i.FixedItemId).Concat(slots.Select(s => s.BonusFixedItemId)).OfType<Guid>().ToList();
+            var nomesDosFixos = await db.EquipmentKitFixedItems.Where(f => fixoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nome);
+            string NomeDe(Guid? fixoId, string? legado) => fixoId is { } id && nomesDosFixos.TryGetValue(id, out var nome) ? nome : legado ?? "";
+
             var html = WebUtility.HtmlEncode(kit.Descricao).Replace("\n", "<br />") + "<ul>"
-                + string.Join("", items.Select(i => $"<li>{WebUtility.HtmlEncode(i.Nome)} x{i.Qtd}</li>"))
-                + string.Join("", slots.Select(s => $"<li>{WebUtility.HtmlEncode(s.Label)} (escolha){(s.BonusNome is not null ? $" — +{s.BonusQtd} {WebUtility.HtmlEncode(s.BonusNome)} se escolher da subcategoria {WebUtility.HtmlEncode(s.BonusSubcategoria)}" : "")}</li>"))
+                + string.Join("", items.Select(i => $"<li>{WebUtility.HtmlEncode(NomeDe(i.FixedItemId, i.Nome))} x{i.Qtd}</li>"))
+                + string.Join("", slots.Select(s => $"<li>{WebUtility.HtmlEncode(s.Label)} (escolha){(s.BonusFixedItemId is not null || s.BonusNome is not null ? $" — +{s.BonusQtd} {WebUtility.HtmlEncode(NomeDe(s.BonusFixedItemId, s.BonusNome))} se escolher da subcategoria {WebUtility.HtmlEncode(s.BonusSubcategoria)}" : "")}</li>"))
                 + "</ul>"
                 + (kit.Ciclos > 0 ? $"<p><em>+{kit.Ciclos} Ciclos</em></p>" : "");
 

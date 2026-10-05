@@ -14,6 +14,10 @@ public record EquipmentGrantPlanItem(ItemTipo Tipo, Guid ItemId, int Qtd, int? D
 /// <summary>
 /// Resolves an EquipmentKit's fixed items and choice slots against one specific GM's own Item
 /// catalog (Item.GmId is the partition key — a kit definition is global, but Items are per-GM).
+/// A fixed item comes from the global EquipmentKitFixedItems base as a complete item: if the GM
+/// already has an item of the same Nome+Tipo it is reused as is, otherwise a full independent copy
+/// is created for THAT GM — applying a kit never fails for a missing item and never touches
+/// another GM's catalog.
 /// Shared by CharacterEquipagemController/NpcEquipagemController, which each own the actual
 /// per-Tipo insert into CharacterWeapon/NpcWeapon etc. — this service only resolves/validates and
 /// upserts the campaign-visibility side effect (Requisitos - Campanha's "itens de conhecimento
@@ -71,10 +75,10 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
 
         foreach (var kitItem in fixedItems)
         {
-            var resolved = await ResolveOrCreateFixedItemAsync(kitItem, gmId);
+            var resolved = await ResolveOrCreateFixedItemAsync(kitItem.FixedItemId, gmId);
             if (resolved is null)
-                return (null, $"O item \"{kitItem.Nome}\" não está cadastrado no catálogo deste GM.");
-            grants.Add(new EquipmentGrantPlanItem(kitItem.Tipo, resolved.Value.Id, kitItem.Qtd, resolved.Value.DurabilidadeMaxima, null));
+                return (null, "O kit ainda não foi convertido para a base de itens fixos. Rode `make migrate`.");
+            grants.Add(new EquipmentGrantPlanItem(resolved.Value.Tipo, resolved.Value.Id, kitItem.Qtd, resolved.Value.DurabilidadeMaxima, kitItem.ArmorSlot));
         }
 
         foreach (var slot in choiceSlots)
@@ -115,12 +119,11 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
             var selectedDurabilidade = (await durabilidades.ResolverAsync(selectedRank)).Maxima;
             grants.Add(new EquipmentGrantPlanItem(slot.Tipo, selectedItemId, slot.Qtd, selectedDurabilidade, slot.ArmorSlot));
 
-            var bonusMatches = slot.BonusNome is not null && (selectedSubcategoria == slot.BonusSubcategoria
+            var bonusMatches = slot.BonusFixedItemId is not null && (selectedSubcategoria == slot.BonusSubcategoria
                 || (SubcategoriaBuilder.TryParse(selectedSubcategoria, out var selectedTipo, out _, out var selectedFamilia) && selectedTipo == slot.Tipo && selectedFamilia == slot.BonusSubcategoria));
             if (bonusMatches)
             {
-                var bonusResolved = await ResolveOrCreateFixedItemAsync(
-                    new EquipmentKitItem { Nome = slot.BonusNome!, Tipo = ItemTipo.ItemGeral, Qtd = slot.BonusQtd ?? 1 }, gmId);
+                var bonusResolved = await ResolveOrCreateFixedItemAsync(slot.BonusFixedItemId, gmId);
                 if (bonusResolved is not null)
                     grants.Add(new EquipmentGrantPlanItem(ItemTipo.ItemGeral, bonusResolved.Value.Id, slot.BonusQtd ?? 1, null, null));
             }
@@ -129,34 +132,35 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
         return (new EquipmentGrantPlan(grants, kit.Ciclos), null);
     }
 
-    private async Task<(Guid Id, int? DurabilidadeMaxima)?> ResolveOrCreateFixedItemAsync(EquipmentKitItem kitItem, Guid gmId)
+    /// <summary>
+    /// O item do catálogo do GM que corresponde a um item fixo: o de mesmo Nome+Tipo que o GM já tem (ou que já foi
+    /// criado nesta aplicação) é reaproveitado como está; senão cria-se uma cópia completa, sempre com GmId = gmId.
+    /// Null só quando não há item fixo (linha legada ainda não convertida).
+    /// </summary>
+    private async Task<(Guid Id, ItemTipo Tipo, int? DurabilidadeMaxima)?> ResolveOrCreateFixedItemAsync(Guid? fixedItemId, Guid gmId)
     {
-        switch (kitItem.Tipo)
+        if (fixedItemId is null)
+            return null;
+        var fixo = await db.EquipmentKitFixedItems.AsNoTracking().FirstOrDefaultAsync(f => f.Id == fixedItemId);
+        if (fixo is null)
+            return null;
+
+        var discriminador = fixo.Tipo.ToString();
+        var existente = db.Items.Local.FirstOrDefault(i => i.GmId == gmId && i.Nome == fixo.Nome && ItemFactory.TipoDe(i) == fixo.Tipo)
+            ?? await db.Items.FirstOrDefaultAsync(i => i.GmId == gmId && i.Nome == fixo.Nome && EF.Property<string>(i, "Tipo") == discriminador);
+
+        if (existente is null)
         {
-            case ItemTipo.ItemGeral:
-                var existing = await db.Set<ItemGeral>().FirstOrDefaultAsync(i => i.GmId == gmId && i.Nome == kitItem.Nome);
-                if (existing is not null)
-                    return (existing.Id, null);
-                var created = new ItemGeral
-                {
-                    Id = Guid.NewGuid(), GmId = gmId, Nome = kitItem.Nome ?? "",
-                    Subcategoria = kitItem.SubcategoriaHint ?? "Equipamentos de Aventura",
-                    Peso = 0, Preco = 0,
-                };
-                db.Add(created);
-                return (created.Id, null);
-            case ItemTipo.Arma:
-                var arma = await db.Set<Arma>().FirstOrDefaultAsync(a => a.GmId == gmId && a.Nome == kitItem.Nome);
-                return arma is null ? null : (arma.Id, (await durabilidades.ResolverAsync(arma.Rank)).Maxima);
-            case ItemTipo.Escudo:
-                var escudo = await db.Set<Escudo>().FirstOrDefaultAsync(e => e.GmId == gmId && e.Nome == kitItem.Nome);
-                return escudo is null ? null : (escudo.Id, (await durabilidades.ResolverAsync(escudo.Rank)).Maxima);
-            case ItemTipo.Artefato:
-                var artefato = await db.Set<Artefato>().FirstOrDefaultAsync(a => a.GmId == gmId && a.Nome == kitItem.Nome);
-                return artefato is null ? null : (artefato.Id, (int?)null);
-            default:
-                return null;
+            var request = ItemFactory.Desserializar(fixo.Dados);
+            ItemFactory.TryParseRank(request.Rank, out var rank);
+            existente = ItemFactory.Criar(fixo.Tipo, request, rank, fixo.Requisitos, fixo.PenalidadeDeRequisitos);
+            existente.Id = Guid.NewGuid();
+            existente.GmId = gmId;
+            db.Items.Add(existente);
         }
+
+        var rankDoItem = existente switch { Arma a => a.Rank, Armadura ar => ar.Rank, Escudo e => e.Rank, _ => null };
+        return (existente.Id, fixo.Tipo, rankDoItem is null ? null : (await durabilidades.ResolverAsync(rankDoItem)).Maxima);
     }
 
     /// <summary>

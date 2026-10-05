@@ -51,7 +51,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
             {
                 Id = "slot-1", Label = "Armadura inicial", Tipo = "Armadura",
                 Subcategorias = (List<string>?)null, Rank = (string?)null, Qtd = 1,
-                BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusQtd = (int?)null,
+                BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusFixedItemId = (string?)null, BonusQtd = (int?)null,
                 ArmorSlot = "Superior",
             },
         },
@@ -188,11 +188,11 @@ public class AuditoriaEquipagemTests : MudBunitContext
         await Task.Delay(50);
 
         // With 1 kit rendered: the "Construtor de Subcategoria" section's "Tipo" select renders
-        // first (it's now the top section on the page), then item-form's "Tipo" select, then
-        // slot-form's "Tipo" select — in that document order.
+        // first (it's now the top section on the page), then slot-form's "Tipo" select (the typed-name
+        // item form is gone since 1.4.3 — Task 15 rebuilds it as a picker) — in that document order.
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
-        tipoSelects.Should().HaveCount(3);
-        var slotTipo = tipoSelects[2];
+        tipoSelects.Should().HaveCount(2);
+        var slotTipo = tipoSelects[1];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
         await Task.Delay(50);
 
@@ -270,7 +270,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         cut.FindComponents<MudSelect<string>>().Should().Contain(c => c.Instance.Label == "Rank (vazio = qualquer)");
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
-        var slotTipo = tipoSelects[2];
+        var slotTipo = tipoSelects[1];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Armadura"));
         await Task.Delay(50);
 
@@ -310,7 +310,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         await cut.InvokeAsync(() => slotRank.Instance.ValueChanged.InvokeAsync("F"));
 
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
-        var slotTipo = tipoSelects[2];
+        var slotTipo = tipoSelects[1];
         await cut.InvokeAsync(() => slotTipo.Instance.ValueChanged.InvokeAsync("Escudo"));
         await Task.Delay(50);
 
@@ -521,7 +521,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
         content.Should().Be(TextNormalization.Collapse(string.Join(" ",
             "Um kit é o equipamento inicial que o jogador escolhe uma única vez na aba Posses da ficha. Os Ciclos são somados ao dinheiro da ficha.",
-            "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.",
+            "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Cada um vem da base de itens fixos e, ao aplicar o kit, vira uma cópia completa no catálogo do GM da campanha.",
             "Slots de escolha: o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Rank. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.",
             "Excluir um kit já escolhido em alguma ficha é bloqueado.")));
     }
@@ -531,8 +531,8 @@ public class AuditoriaEquipagemTests : MudBunitContext
     private record UpdateEquipmentKitRequestCapture(string Nome, string Descricao, int Ciclos,
         List<EquipmentKitItemInputCapture> Items, List<EquipmentKitChoiceSlotInputCapture> ChoiceSlots);
 
-    private record EquipmentKitItemInputCapture(string Nome, string Tipo, int Qtd, string? SubcategoriaHint);
+    private record EquipmentKitItemInputCapture(string FixedItemId, int Qtd, string? ArmorSlot);
 
     private record EquipmentKitChoiceSlotInputCapture(string Label, string Tipo, List<string>? Subcategorias,
-        string? Rank, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd, string? ArmorSlot);
+        string? Rank, int Qtd, string? BonusSubcategoria, string? BonusFixedItemId, int? BonusQtd, string? ArmorSlot);
 }

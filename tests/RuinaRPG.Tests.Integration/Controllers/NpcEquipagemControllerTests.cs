@@ -260,8 +260,13 @@ public class NpcEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyn
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact2)));
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact3)));
 
+        var artifact4FixoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", gmToken,
+            new CreateItemRequest("Artefato", artifact4Nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "Atributo", "Astucia", 1, null)));
+        artifact4FixoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var artifact4Fixo = (await artifact4FixoResponse.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
+
         var kitRequest = new CreateEquipmentKitRequest("Kit Npc com Artefato", "Kit de teste com Artefato", 0,
-            [new EquipmentKitItemInput(artifact4Nome, "Artefato", 1, null)], []);
+            [new EquipmentKitItemInput(artifact4Fixo.Id, 1)], []);
         var kitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, kitRequest));
         var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
