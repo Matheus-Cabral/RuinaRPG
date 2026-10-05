@@ -191,27 +191,12 @@
         return true;
     }
 
-    private Task OnTipoDeAlvoChangedAsync()
-    {
-        _form.Alvo = null;
-        return NotifySavedAsync();
-    }
-
     private Task OnImagesChanged(List<string> ids)
     {
         _imageIds = ids;
         _form.ImageId = ids.FirstOrDefault();
         return ItemId is not null ? NotifySavedAsync() : Task.CompletedTask;
     }
-
-    // Test-only seam: exercises the clear-on-change behavior without needing a real MudSelect
-    // interaction driven through bUnit.
-    internal Task OnTipoDeAlvoChangedForTestsAsync(string? previousAlvo)
-    {
-        _form.Alvo = previousAlvo;
-        return OnTipoDeAlvoChangedAsync();
-    }
-    internal string? AlvoForTests => _form.Alvo;
 
     internal Task CreateForTestsAsync() => CreateAsync();
 

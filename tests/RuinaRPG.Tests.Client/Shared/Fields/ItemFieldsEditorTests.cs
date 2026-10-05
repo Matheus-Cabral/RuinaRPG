@@ -41,8 +41,7 @@ public class ItemFieldsEditorTests : MudBunitContext
     {
         var cut = RenderEditor(new ItemFormModel { Tipo = tipo });
 
-        cut.Markup.Should().Contain(campo);
-        cut.Markup.Should().Contain("Nome");
+        cut.FindAll("label").Select(l => l.TextContent.Trim()).Should().Contain(campo).And.Contain("Nome");
     }
 
     [Fact]
@@ -85,5 +84,55 @@ public class ItemFieldsEditorTests : MudBunitContext
 
         model.Nome.Should().Be("Poção");
         changed.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Changing_TipoDeAlvo_clears_the_Alvo_and_raises_OnChanged()
+    {
+        var changed = 0;
+        var model = new ItemFormModel { Tipo = "Artefato", TipoDeAlvo = "Atributo", Alvo = "Forca" };
+        var cut = RenderEditor(model, onChanged: EventCallback.Factory.Create(this, () => changed++));
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo de Alvo");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Dano"));
+
+        model.TipoDeAlvo.Should().Be("Dano");
+        model.Alvo.Should().BeNull();
+        changed.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Changing_the_Tipo_clears_a_Subcategoria_composed_for_the_previous_Tipo()
+    {
+        var model = new ItemFormModel
+        {
+            Tipo = "Arma",
+            Subcategoria = RuinaRPG.Domain.Items.SubcategoriaBuilder.Compose(RuinaRPG.Domain.Items.ItemTipo.Arma, "Duas Mãos", "Espadas"),
+        };
+        var cut = RenderEditor(model);
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Armadura"));
+
+        model.Tipo.Should().Be("Armadura");
+        model.Subcategoria.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Changing_the_Rank_raises_OnRankChanged_before_OnChanged()
+    {
+        var order = new List<string>();
+        RegisterStubs();
+        var cut = Render<ItemFieldsEditor>(p =>
+        {
+            p.Add(x => x.Model, new ItemFormModel { Tipo = "Arma" });
+            p.Add(x => x.OnRankChanged, EventCallback.Factory.Create(this, () => order.Add("rank")));
+            p.Add(x => x.OnChanged, EventCallback.Factory.Create(this, () => order.Add("changed")));
+        });
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Rank");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("B"));
+
+        order.Should().Equal("rank", "changed");
     }
 }

@@ -411,16 +411,6 @@ public class CatalogoItemFormTests : MudBunitContext
         results.Should().BeEquivalentTo(new[] { "Cortante", "Perfurante", "Contundente", "Arcano" });
     }
 
-    [Fact]
-    public async Task Changing_TipoDeAlvo_clears_the_previously_chosen_Alvo()
-    {
-        var form = RenderNewItemForm();
-
-        await form.OnTipoDeAlvoChangedForTestsAsync("Forca");
-
-        form.AlvoForTests.Should().BeNull();
-    }
-
     [Theory]
     [InlineData("Arma")]
     [InlineData("Armadura")]
