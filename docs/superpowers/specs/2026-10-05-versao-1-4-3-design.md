@@ -137,8 +137,8 @@ the requirements and the penalty spelled out (`PassivaRequisitosEvaluator.Descre
   snapshot, so their behavior does not change.
 - An unmet Artefato keeps granting its own bonus; only its penalty is added.
 - The Atributos & Perícias and Combate tabs show an alert **"Penalidades de equipamento ativas"** listing
-  item → penalty, so the reduced totals are explained. Where a breakdown shows an "Artefatos" term, the
-  penalty is reported in its own "Penalidade" term rather than folded into it.
+  item → penalty, so the reduced totals are explained. (The sheet responses expose only totals, with no
+  per-term breakdown, so the alert is where the penalty is made visible.)
 
 ### Legacy fields
 
@@ -168,10 +168,12 @@ Modelo de Dados (`Items`).
 
 ### Data
 
-- New global table **`EquipmentKitFixedItems`**: `Id`, `Nome`, `Tipo` (`ItemTipo`), `Dados` (`jsonb`).
-  `Dados` is the item's full field set in the shape of the catalog's create request (every per-type field,
-  including the item-2 Requisitos and Penalidade), minus the image — images belong to a user. Unique on
-  (`Nome`, `Tipo`).
+- New global table **`EquipmentKitFixedItems`**: `Id`, `Nome`, `Tipo` (`ItemTipo`), `Dados` (`jsonb`),
+  `Requisitos` (`jsonb`), `PenalidadeDeRequisitos` (`jsonb`), `DetalhesIncompletos` (bool). `Dados` is the
+  item's per-type field set in the shape of the catalog's create request, minus the image — images belong
+  to a user; the item-2 Requisitos and Penalidade are stored beside it in their domain form, so applying a
+  kit needs no re-validation. `DetalhesIncompletos` marks an item the backfill created with only a name;
+  the first edit by the Auditor clears it. Unique on (`Nome`, `Tipo`).
 - `EquipmentKitItems` gains `FixedItemId` (FK, `Restrict`) and `ArmorSlot` (nullable, required when the
   fixed item is an Armadura). `EquipmentKitChoiceSlots` gains `BonusFixedItemId` (FK, `Restrict`).
 - **Backfill** (`EquipmentKitFixedItemBackfill`, run with the other seeders: at startup in Development, in
@@ -226,10 +228,10 @@ and by this dialog, so the two forms cannot drift.
 ### API
 
 `equipment-kit-fixed-items`, Auditor-only: `GET ?tipo=&q=`, `POST`, `PUT {id}`, `DELETE {id}`. The kit
-item and choice-slot requests take `FixedItemId` / `BonusFixedItemId` instead of names; the kit item gains
-an update endpoint (`FixedItemId`, `Qtd`, `ArmorSlot`), which today does not exist — rows can only be
-added and deleted. The kit responses return the fixed item's Id, Nome, Tipo and whether its details are
-incomplete. The player-facing kit listing (`EscolherEquipagemDialog`, Livro
+item and choice-slot requests take `FixedItemId` / `BonusFixedItemId` instead of names (a kit item also
+takes `ArmorSlot`). Editing a row needs no new endpoint: the existing kit `PUT` already replaces the whole
+list of items and slots, so changing a row's item, Quantidade or Slot is that same call. The kit responses
+return the fixed item's Id, Nome, Tipo and whether its details are incomplete. The player-facing kit listing (`EscolherEquipagemDialog`, Livro
 de Regras rendering) keeps showing names and quantities.
 
 ### Docs
