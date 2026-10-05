@@ -33,16 +33,17 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     """);
 
             // 3) Requisito de Atributo da Arma ("10 Dex" / "Dex 10") -> requisito estruturado, uma UPDATE por
-            //    abreviação conhecida (as mesmas de RequisitoAtributoLegado). O padrão é ancorado, então
+            //    abreviação conhecida (as mesmas de RequisitoAtributoLegado). O padrão é ancorado e limita o número a 9 dígitos (cabe em int; acima disso vai para o passo 4), então
             //    "Dex 10 ou For 12" não casa. Limitação conhecida: um texto com pontuação, como "Dex.",
             //    também não é reconhecido e vai para o texto livre no passo 4.
+            const string numero = @"\d{1,9}";
             foreach (var (abreviacao, atributo) in RequisitoAtributoLegado.Abreviacoes)
                 migrationBuilder.Sql($"""
                     UPDATE "Items" SET "Requisitos" = jsonb_build_object('Atributos', jsonb_build_array(jsonb_build_object(
                         'Atributo', {(int)atributo},
-                        'Minimo', (substring("RequisitoAtributo" from '\d+'))::int)))
+                        'Minimo', (substring("RequisitoAtributo" from '{numero}'))::int)))
                     WHERE "Requisitos" IS NULL AND "RequisitoAtributo" IS NOT NULL
-                      AND ("RequisitoAtributo" ~* '^\s*\d+\s+{abreviacao}\s*$' OR "RequisitoAtributo" ~* '^\s*{abreviacao}\s+\d+\s*$');
+                      AND ("RequisitoAtributo" ~* '^\s*{numero}\s+{abreviacao}\s*$' OR "RequisitoAtributo" ~* '^\s*{abreviacao}\s+{numero}\s*$');
                     """);
 
             // 4) O que sobrou em texto vai para o texto livre, para o GM revisar.

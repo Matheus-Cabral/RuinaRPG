@@ -6,7 +6,8 @@ namespace RuinaRPG.Domain.Items;
 
 /// <summary>
 /// Lê o antigo "Requisito de Atributo" de uma Arma — texto livre como "10 Dex" — para a migration que o
-/// converte em requisito estruturado. Só entende um número não negativo e um atributo, em qualquer ordem.
+/// converte em requisito estruturado. As <see cref="Abreviacoes"/> estão congeladas: a migration
+/// ConverteRequisitosLegadosDeEquipamento as usa; não as altere. Só entende um número não negativo e um atributo, em qualquer ordem.
 /// </summary>
 public static partial class RequisitoAtributoLegado
 {

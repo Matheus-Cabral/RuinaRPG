@@ -35,6 +35,7 @@ public class RequisitosLegadosMigrationTests : IClassFixture<PostgresFixture>
         var armaInvertida = await InserirAsync(db, gmId, "Arma", new() { ["RequisitoAtributo"] = "For 8" });
         var armaLivre = await InserirAsync(db, gmId, "Arma", new() { ["RequisitoAtributo"] = "Dex 10 ou For 12" });
         var armaBranco = await InserirAsync(db, gmId, "Arma", new() { ["RequisitoAtributo"] = "   " });
+        var armaGigante = await InserirAsync(db, gmId, "Arma", new() { ["RequisitoAtributo"] = "99999999999 Dex" });
         var armaNula = await InserirAsync(db, gmId, "Arma", new());
         var armadura = await InserirAsync(db, gmId, "Armadura", new() { ["Armadura_RequisitoVigor"] = 12, ["Armadura_Penalidade"] = "-10 Reflexo" });
         var armaduraSoPenalidade = await InserirAsync(db, gmId, "Armadura", new() { ["Armadura_Penalidade"] = "Barulhenta" });
@@ -52,6 +53,8 @@ public class RequisitosLegadosMigrationTests : IClassFixture<PostgresFixture>
         itens[armaLivre].PenalidadeDeRequisitos!.Texto.Should().Be("Requisito: Dex 10 ou For 12");
         itens[armaBranco].Requisitos.Should().BeNull();
         itens[armaBranco].PenalidadeDeRequisitos.Should().BeNull();
+        itens[armaGigante].Requisitos.Should().BeNull();
+        itens[armaGigante].PenalidadeDeRequisitos!.Texto.Should().Be("Requisito: 99999999999 Dex");
         itens[armaNula].Requisitos.Should().BeNull();
         itens[armadura].Requisitos!.Atributos.Should().Equal(new RequisitoDeAtributo(Atributo.Vigor, 12));
         itens[armadura].PenalidadeDeRequisitos!.Texto.Should().Be("-10 Reflexo");
