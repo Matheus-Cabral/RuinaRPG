@@ -753,6 +753,41 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         (await response.Content.ReadAsStringAsync()).Should().Contain(mensagem);
     }
 
+    [Theory]
+    [InlineData("Atributos", "3", "Atributo desconhecido(a): 3.")]
+    [InlineData("SubAtributos", "3", "Sub-Atributo desconhecido(a): 3.")]
+    [InlineData("Atributos", "forca", "Atributo desconhecido(a): forca.")]
+    public async Task A_penalty_target_that_is_not_an_exact_enum_name_returns_400(string lista, string alvo, string mensagem)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"ItemReqGm5x{lista}{alvo}", $"itemreqgm5x{lista}{alvo}@teste.com");
+        var penalidade = lista == "Atributos"
+            ? new PenalidadeDeEquipamentoDto(Atributos: [new(alvo, 1)])
+            : new PenalidadeDeEquipamentoDto(SubAtributos: [new(alvo, 1)]);
+
+        var response = await PostItemAsync(token, Arma("Erro", penalidade: penalidade));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(mensagem);
+    }
+
+    [Theory]
+    [InlineData("""{"atributos":[null]}""")]
+    [InlineData("""{"subAtributos":[null]}""")]
+    [InlineData("""{"pericias":[null]}""")]
+    [InlineData("""{"atributos":[{"alvo":null,"valor":1}]}""")]
+    public async Task A_null_penalty_line_or_target_returns_400_instead_of_failing(string penalidadeJson)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"ItemReqGm5n{Guid.NewGuid():N}"[..28], $"itemreqgm5n{Guid.NewGuid():N}@teste.com");
+        var corpo = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(Arma("Erro"), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))!;
+        corpo["penalidadeDeRequisitos"] = System.Text.Json.Nodes.JsonNode.Parse(penalidadeJson);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = new StringContent(corpo.ToJsonString(), System.Text.Encoding.UTF8, "application/json") };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task A_repeated_penalty_target_returns_400()
     {

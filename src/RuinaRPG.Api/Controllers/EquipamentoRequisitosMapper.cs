@@ -64,7 +64,9 @@ public static class EquipamentoRequisitosMapper
         erro = null;
         foreach (var item in items ?? [])
         {
-            if (!Enum.TryParse<T>(item.Alvo, out var alvo) || !Enum.IsDefined(alvo))
+            if (item is null)
+                return Fail($"Linha de penalidade de {campo} inválida.", out erro);
+            if (!EnumParsing.TryParseExact<T>(item.Alvo, out var alvo))
                 return Fail($"{campo} desconhecido(a): {item.Alvo}.", out erro);
             if (item.Valor < 1)
                 return Fail($"A penalidade de {campo} deve ser pelo menos 1.", out erro);
@@ -82,6 +84,8 @@ public static class EquipamentoRequisitosMapper
         erro = null;
         foreach (var item in items ?? [])
         {
+            if (item is null)
+                return Fail($"Linha de penalidade de {campo} inválida.", out erro);
             var pericia = pericias.FirstOrDefault(p => !p.IsDeleted && p.Chave == item.Alvo);
             if (pericia is null)
                 return Fail($"{campo} desconhecido(a): {item.Alvo}.", out erro);

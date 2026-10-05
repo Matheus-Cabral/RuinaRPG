@@ -92,7 +92,7 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
 ### 2.a) Atributos
 
-> **Alerta de penalidades**: no topo das abas Atributos & Perícias e Combate (Personagem, NPC e Criatura), um alerta "Penalidades de equipamento ativas" lista cada equipamento em uso cujos Requisitos a ficha não cumpre, o que falta e a Penalidade de cada um. Explica por que os Totais estão reduzidos; não aparece quando nenhuma Penalidade está ativa e é atualizado ao mexer em equipamentos ou atributos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
+> **Alerta de penalidades**: no topo das abas Atributos & Perícias e Combate (Personagem, NPC e Criatura), um alerta "Penalidades de equipamento ativas" lista cada equipamento em uso cujos Requisitos a ficha não cumpre, o que falta e a penalidade **aplicada** (as linhas numéricas da Penalidade). Se o item tem o texto livre "Outras penalidades", ele aparece junto, marcado como **não aplicado automaticamente**. Explica por que os Totais estão reduzidos; não aparece quando nenhuma Penalidade está ativa e é atualizado ao mexer em equipamentos ou atributos. A linha de cada equipamento (Arma, Armadura, Escudo, Artefato) mostra **sempre** a Penalidade do item como informação — com ou sem Requisitos, cumpridos ou não —, mas as linhas numéricas só são subtraídas enquanto falta algum Requisito (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
   
 
@@ -117,15 +117,15 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
 - *Iniciativa*: `Agilidade + Bruto Prontidão + Artefato ou item`.
 - *Movimentação*: `(Agilidade × 2) + Artefato − Sobrepeso`, com mínimo absoluto de **1**. *Sobrepeso* = `max(0, Peso Atual − Peso Máximo)`, onde *Peso Máximo* = `max(0, piso((Força + Vigor) / 2) + Capacidade Extra + Bônus de carga da Campanha)` (o Bônus de carga é definido pelo GM, pode ser negativo e vale só para fichas de Personagem — ver "[[Requisitos - Campanha]]" R0014; NPCs e Criaturas usam 0) e *Peso Atual* é a soma do campo Peso (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todos os itens do Inventário que não tiverem Capacidade Extra (ver 5.a) mais as Armas e Escudos **não equipados** do arsenal (ver 3.a/3.c) — Armaduras nunca entram nessa soma, pois todo slot preenchido está sempre equipado, sem estado "desequipado" (ver 3.b). *Capacidade Extra* é a soma do campo homônimo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todo item do Inventário que o tiver, multiplicada pela Qtd da linha. Peso Atual/Máximo e um aviso de sobrepeso são exibidos na aba "Posses" (ver 5.a).
-- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`.
-
-Os Sub-Atributos também refletem as Penalidades de equipamento ativas (R0014 do Catálogo): uma Penalidade sobre um Sub-Atributo é subtraída do valor exibido, e uma sobre Atributo ou Perícia chega a eles pelas fórmulas acima.
+- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`. (Esse termo vale sempre 0: a penalidade de uma armadura agora vem da Penalidade do próprio equipamento, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.)
 - *Defesa Natural*: `Vigor + Bruto Fortitude + Escudo + Artefatos + Cobertura`.
 - *Cobertura*: uma "nota" de dois escudos (ícones), ao lado do rótulo "Cobertura" e do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima; os valores guardados continuam Nenhuma/Parcial/Completa.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
 - *Eficiência Elemental* e *Dano Elemental*: campos calculados, iguais entre si — ambos assumem o *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida em 1.a. Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
 - *Dano de Briga*: campo previsto porém sem fórmula definida ainda. Não implementar até a regra existir.
+
+Os Sub-Atributos também refletem as Penalidades de equipamento ativas (R0014 do Catálogo): uma Penalidade sobre um Sub-Atributo é subtraída do valor exibido, e uma sobre Atributo ou Perícia chega a eles pelas fórmulas acima.
 
   
 
@@ -209,7 +209,7 @@ Uma linha pode ser removida pelo jogador a qualquer momento.
 Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**. Cada slot:
 
 - *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
-- *Requisitos*: se o item tem Requisitos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014), eles aparecem sob o nome da armadura. Se a ficha não os cumpre, a linha mostra um ícone de aviso, "Requisitos não cumpridos", o que falta e a Penalidade aplicada. Nada é bloqueado.
+- *Requisitos*: se o item tem Requisitos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014), eles aparecem sob o nome da armadura. Se a ficha não os cumpre, a linha mostra um ícone de aviso, "Requisitos não cumpridos", o que falta e a Penalidade aplicada. A Penalidade do item (linhas numéricas e "Outras penalidades", esta marcada como não aplicada automaticamente) aparece sempre na linha, com ou sem Requisitos. Nada é bloqueado.
 - *Peso*: herdado do item (somente leitura) de cada slot preenchido. **Não** soma ao Peso Atual (ver 2.b, Movimentação) — todo slot preenchido está sempre equipado (não há estado "desequipado" para Armadura), então seu peso é sempre considerado "no corpo".
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0005, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquele slot. Rank inquebrável: o slot mostra apenas "Inquebrável".
 
