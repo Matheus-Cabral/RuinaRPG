@@ -141,6 +141,29 @@ public static class ItemFactory
         item.PenalidadeDeRequisitos = aceita ? penalidade : null;
     }
 
+    private static readonly System.Text.Json.JsonSerializerOptions DadosJson = new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    /// <summary>Os campos de um Item como pedido de criação, sem imagem nem Requisitos/Penalidade (guardados à parte no item fixo).</summary>
+    public static CreateItemRequest ParaRequest(Item item) => item switch
+    {
+        ItemGeral g => Base(g, "ItemGeral") with { Subcategoria = g.Subcategoria, CapacidadeExtra = g.CapacidadeExtra },
+        Arma a => Base(a, "Arma") with { Subcategoria = a.Subcategoria, Rank = a.Rank?.ToString(), Empunhadura = a.Empunhadura?.ToString(), Dados = a.Dados, Dano = a.Dano, Critico = a.Critico, Alcance = a.Alcance, TipoDeDano = a.TipoDeDano?.ToString() },
+        Armadura ar => Base(ar, "Armadura") with { Subcategoria = ar.Subcategoria, Rank = ar.Rank?.ToString(), Categoria = ar.Categoria?.ToString(), Defesa = ar.Defesa, RF = ar.RF, RM = ar.RM },
+        Escudo e => Base(e, "Escudo") with { Subcategoria = e.Subcategoria, Rank = e.Rank?.ToString(), Categoria = e.Categoria?.ToString(), BonusDefesa = e.BonusDefesa },
+        Artefato art => Base(art, "Artefato") with { Subcategoria = art.Subcategoria, TipoDeAlvo = art.TipoDeAlvo?.ToString(), Alvo = art.Alvo, Valor = art.Valor },
+        _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
+    };
+
+    public static string Serializar(CreateItemRequest request) =>
+        System.Text.Json.JsonSerializer.Serialize(request with { ImageId = null, Requisitos = null, PenalidadeDeRequisitos = null }, DadosJson);
+
+    public static CreateItemRequest Desserializar(string dados) => System.Text.Json.JsonSerializer.Deserialize<CreateItemRequest>(dados, DadosJson)!;
+
+    private static CreateItemRequest Base(Item item, string tipo) => new(
+        Tipo: tipo, Nome: item.Nome, Peso: item.Peso, Preco: item.Preco, ImageId: null, Subcategoria: null, Descricao: item.Descricao,
+        Rank: null, Empunhadura: null, Dados: null, Dano: null, Critico: null, Alcance: null, TipoDeDano: null, Categoria: null,
+        Defesa: null, RF: null, RM: null, BonusDefesa: null, TipoDeAlvo: null, Alvo: null, Valor: null, CapacidadeExtra: null);
+
     private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
         value is not null && Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
 }

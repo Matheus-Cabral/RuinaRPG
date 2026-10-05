@@ -139,7 +139,7 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
                     return (existing.Id, null);
                 var created = new ItemGeral
                 {
-                    Id = Guid.NewGuid(), GmId = gmId, Nome = kitItem.Nome,
+                    Id = Guid.NewGuid(), GmId = gmId, Nome = kitItem.Nome ?? "",
                     Subcategoria = kitItem.SubcategoriaHint ?? "Equipamentos de Aventura",
                     Peso = 0, Preco = 0,
                 };

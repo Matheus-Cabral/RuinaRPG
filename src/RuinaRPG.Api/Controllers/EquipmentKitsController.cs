@@ -215,7 +215,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         var slots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kit.Id).ToListAsync();
 
         return new EquipmentKitResponse(kit.Id.ToString(), kit.Nome, kit.Descricao, kit.Ciclos,
-            items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome, i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
+            items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome ?? "", i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
             slots.Select(s => new EquipmentKitChoiceSlotResponse(s.Id.ToString(), s.Label, s.Tipo.ToString(),
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 s.Rank?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());

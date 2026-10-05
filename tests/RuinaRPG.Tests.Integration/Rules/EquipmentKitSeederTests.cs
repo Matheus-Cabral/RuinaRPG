@@ -25,6 +25,7 @@ public class EquipmentKitSeederTests : IClassFixture<PostgresFixture>
         // (see the AddEquipmentKitsAndSheetEquipmentKitId migration), so deleting EquipmentKits
         // alone clears all three tables.
         await db.EquipmentKits.ExecuteDeleteAsync();
+        await db.EquipmentKitFixedItems.ExecuteDeleteAsync();
 
         return db;
     }
@@ -58,5 +59,20 @@ public class EquipmentKitSeederTests : IClassFixture<PostgresFixture>
         secondRun.Should().Be(0);
         (await db.EquipmentKits.CountAsync()).Should().Be(12);
         (await db.EquipmentKits.SingleAsync(k => k.Nome == "Viajante")).Descricao.Should().Be("Editado pelo Auditor");
+    }
+
+    [Fact]
+    public async Task SeedAsync_links_every_item_and_slot_bonus_to_a_fixed_item_without_duplicates()
+    {
+        await using var db = await NewDbAsync();
+
+        await EquipmentKitSeeder.SeedAsync(db);
+
+        (await db.EquipmentKitItems.CountAsync(i => i.FixedItemId == null)).Should().Be(0);
+        (await db.EquipmentKitChoiceSlots.CountAsync(s => s.BonusNome != null && s.BonusFixedItemId == null)).Should().Be(0);
+        (await db.EquipmentKitChoiceSlots.CountAsync(s => s.BonusNome != null)).Should().BeGreaterThan(0);
+        var fixos = await db.EquipmentKitFixedItems.Select(f => new { f.Nome, f.Tipo }).ToListAsync();
+        fixos.Should().NotBeEmpty();
+        fixos.Should().OnlyHaveUniqueItems();
     }
 }

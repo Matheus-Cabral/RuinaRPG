@@ -230,6 +230,9 @@ if (args.Contains("--migrate"))
     var migrateEquipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(migrateDb);
     app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", migrateEquipmentKitSeedResult);
 
+    var migrateFixedItemBackfillResult = await EquipmentKitFixedItemBackfill.RunAsync(migrateDb);
+    app.Logger.LogInformation("EquipmentKit fixed-item backfill: {CreatedCount} fixed item(s) created", migrateFixedItemBackfillResult);
+
     var migrateDurabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
     var migrateDurabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(migrateDb, migrateDurabilidadeMarkdown);
     app.Logger.LogInformation("DurabilidadePorRank seed: {InsertedCount} new row(s) inserted", migrateDurabilidadeSeedResult);
@@ -309,6 +312,9 @@ if (app.Environment.IsDevelopment())
 
     var equipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(db);
     app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", equipmentKitSeedResult);
+
+    var fixedItemBackfillResult = await EquipmentKitFixedItemBackfill.RunAsync(db);
+    app.Logger.LogInformation("EquipmentKit fixed-item backfill: {CreatedCount} fixed item(s) created", fixedItemBackfillResult);
 
     var durabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
     var durabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(db, durabilidadeMarkdown);
