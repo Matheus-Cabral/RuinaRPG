@@ -288,19 +288,19 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
     private async Task<NpcWeaponResponse> ComAvaliacaoAsync(NpcWeaponResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     private async Task<NpcArmorSlotResponse> ComAvaliacaoAsync(NpcArmorSlotResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     private async Task<NpcShieldResponse> ComAvaliacaoAsync(NpcShieldResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     private async Task<NpcWeaponResponse> ToWeaponResponseAsync(NpcWeapon weapon, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)

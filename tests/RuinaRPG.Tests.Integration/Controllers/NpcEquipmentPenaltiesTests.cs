@@ -167,7 +167,8 @@ public class NpcEquipmentPenaltiesTests : IClassFixture<PostgresFixture>, IAsync
         var linha = (await ListarArmasAsync(ctx)).Single();
         linha.Requisitos.Should().Equal("Vigor ≥ 99");
         linha.RequisitosPendentes.Should().Equal("Vigor ≥ 99");
-        linha.Penalidade.Should().Equal("Lenta");
+        linha.Penalidade.Should().BeEmpty();
+        linha.OutrasPenalidades.Should().Be("Lenta");
     }
 
     [Fact]
@@ -212,5 +213,39 @@ public class NpcEquipmentPenaltiesTests : IClassFixture<PostgresFixture>, IAsync
         armasJogador.Single().RequisitosPendentes.Should().Equal("Vigor ≥ 99");
         armasJogador.Single().RequisitosPendentes.Should().Equal(armasGm.Single().RequisitosPendentes);
         armasJogador.Single().Penalidade.Should().Equal(armasGm.Single().Penalidade);
+    }
+
+    [Fact]
+    public async Task An_item_without_requirements_reports_its_penalty_on_the_line_and_penalizes_nothing()
+    {
+        var ctx = await NovoNpcAsync("PenNpcXA");
+        var antes = await TotalDoAtributoAsync(ctx, "Forca");
+        var arma = await CriarItemAsync(ctx, Arma("Clava", null, new(Atributos: [new("Forca", 2)], Texto: "Lenta")));
+        await EquiparArmaAsync(ctx, (await AdicionarArmaAsync(ctx, arma.Id)).Id, true);
+
+        var linha = (await ListarArmasAsync(ctx)).Single();
+        linha.Requisitos.Should().BeEmpty();
+        linha.RequisitosPendentes.Should().BeEmpty();
+        linha.Penalidade.Should().Equal("Força −2");
+        linha.OutrasPenalidades.Should().Be("Lenta");
+        (await TotalDoAtributoAsync(ctx, "Forca")).Should().Be(antes);
+        (await PenalidadesAtivasAsync(ctx)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task An_item_whose_requirements_are_met_still_reports_its_penalty_on_the_line()
+    {
+        var ctx = await NovoNpcAsync("PenNpcXB");
+        var antes = await TotalDoAtributoAsync(ctx, "Forca");
+        var arma = await CriarItemAsync(ctx, Arma("Clava", new(Atributos: [new("Vigor", 0)]), new(Atributos: [new("Forca", 2)], Texto: "Lenta")));
+        await EquiparArmaAsync(ctx, (await AdicionarArmaAsync(ctx, arma.Id)).Id, true);
+
+        var linha = (await ListarArmasAsync(ctx)).Single();
+        linha.Requisitos.Should().NotBeEmpty();
+        linha.RequisitosPendentes.Should().BeEmpty();
+        linha.Penalidade.Should().Equal("Força −2");
+        linha.OutrasPenalidades.Should().Be("Lenta");
+        (await TotalDoAtributoAsync(ctx, "Forca")).Should().Be(antes);
+        (await PenalidadesAtivasAsync(ctx)).Should().BeEmpty();
     }
 }

@@ -47,7 +47,7 @@ public static class PenalidadesDeEquipamento
         return modificadores;
     }
 
-    /// <summary>A penalidade por extenso: linhas numéricas na ordem dos campos, depois o texto livre.</summary>
+    /// <summary>A penalidade por extenso: só as linhas numéricas, na ordem dos campos (o texto livre vai por TextoLivre).</summary>
     public static IReadOnlyList<string> Descrever(PenalidadeDeEquipamento? penalidade, Func<int, string?> nomeDaPericia)
     {
         var itens = new List<string>();
@@ -59,10 +59,12 @@ public static class PenalidadesDeEquipamento
         foreach (var p in penalidade.Pericias)
             if (nomeDaPericia(p.Pericia) is { } nome)
                 itens.Add($"{nome} −{p.Valor}");
-        if (!string.IsNullOrWhiteSpace(penalidade.Texto))
-            itens.Add(penalidade.Texto.Trim());
         return itens;
     }
+
+    /// <summary>O texto livre da penalidade, só para exibição (nunca é aplicado), ou nulo quando em branco.</summary>
+    public static string? TextoLivre(PenalidadeDeEquipamento? penalidade) =>
+        string.IsNullOrWhiteSpace(penalidade?.Texto) ? null : penalidade.Texto.Trim();
 
     private static string AlvoDe(SubAtributo subAtributo) => subAtributo switch
     {

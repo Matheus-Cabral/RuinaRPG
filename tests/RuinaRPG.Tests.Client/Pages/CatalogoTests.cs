@@ -99,4 +99,17 @@ public class CatalogoTests : MudBunitContext
         linhas[0].TextContent.Should().Contain("Requisitos: Vigor ≥ 8").And.Contain("Penalidade: Força −2");
         linhas[1].TextContent.Should().NotContain("Requisitos:").And.NotContain("Penalidade:");
     }
+
+    [Fact]
+    public async Task The_free_text_penalty_is_shown_apart_as_Outras_penalidades()
+    {
+        var comTexto = Item("a", "Cota", null, ["Força −2"]) with { PenalidadeDeRequisitos = new(Texto: "-10 Reflexo") };
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { comTexto }) });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<Catalogo>();
+        await Task.Delay(50);
+
+        cut.Find("tbody tr").TextContent.Should().Contain("Penalidade: Força −2").And.Contain("Outras penalidades: -10 Reflexo");
+    }
 }

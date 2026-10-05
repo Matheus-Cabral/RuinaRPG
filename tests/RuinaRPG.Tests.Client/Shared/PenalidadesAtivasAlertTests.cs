@@ -41,6 +41,17 @@ public class PenalidadesAtivasAlertTests : MudBunitContext
     }
 
     [Fact]
+    public async Task An_item_with_free_text_lists_it_after_the_applied_penalty_as_not_applied()
+    {
+        Serve([new("Cota", ["Vigor ≥ 12"], ["Reflexos −10"], "Barulhenta"), new("Elmo", ["Vigor ≥ 9"], [], "Aperta")]);
+        var cut = Render<PenalidadesAtivasAlert>(p => p.Add(x => x.Url, "character-sheets/1/equipment-penalties"));
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Reflexos −10; outras penalidades (não aplicadas automaticamente): Barulhenta")
+            .And.Contain("sem penalidade definida; outras penalidades (não aplicadas automaticamente): Aperta");
+    }
+
+    [Fact]
     public async Task Reloads_when_Versao_changes()
     {
         var requests = new List<string>();

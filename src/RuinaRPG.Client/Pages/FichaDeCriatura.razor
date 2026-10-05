@@ -290,7 +290,7 @@
                         <tr>
                             <td>
                                 <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" />
-                                <RequisitosDeEquipamentoAviso Requisitos="@weapon.Requisitos" Pendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@weapon.Requisitos" Pendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" />
                             </td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
@@ -347,7 +347,7 @@
                                 @if (slot.Nome is not null)
                                 {
                                     <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" />
-                                    <RequisitosDeEquipamentoAviso Requisitos="@slot.Requisitos" Pendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" />
+                                    <RequisitosDeEquipamentoAviso Requisitos="@slot.Requisitos" Pendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" />
                                 }
                                 else
                                 {
@@ -415,7 +415,7 @@
                         <tr>
                             <td>
                                 <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" />
-                                <RequisitosDeEquipamentoAviso Requisitos="@shield.Requisitos" Pendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@shield.Requisitos" Pendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" />
                             </td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
@@ -577,7 +577,7 @@
                         {
                             <tr>
                                 <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
-                                    <RequisitosDeEquipamentoAviso Requisitos="@artifact.Requisitos" Pendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" />
+                                    <RequisitosDeEquipamentoAviso Requisitos="@artifact.Requisitos" Pendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" />
                                 </td>
                                 <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
                             </tr>

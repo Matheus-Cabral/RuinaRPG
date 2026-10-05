@@ -698,7 +698,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         created.Requisitos.Atributos.Should().Equal(new RequisitoMinimoDto("Vigor", 8));
         created.PenalidadeDeRequisitos!.Atributos.Should().Equal(new PenalidadeLinhaDto("Forca", 2));
         created.RequisitosPorExtenso.Should().Equal("Vocação: Campeão", "Vigor ≥ 8");
-        created.PenalidadePorExtenso.Should().Equal("Força −2", "Movimentação −1", "Desvantagem em furtividade");
+        created.PenalidadePorExtenso.Should().Equal("Força −2", "Movimentação −1");
+        created.PenalidadeDeRequisitos.Texto.Should().Be("Desvantagem em furtividade");
         (await ListItemsAsync(token)).Single(i => i.Id == created.Id).Requisitos!.Atributos.Should().HaveCount(1);
     }
 

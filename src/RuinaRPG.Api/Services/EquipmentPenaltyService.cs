@@ -11,8 +11,8 @@ namespace RuinaRPG.Api.Services;
 /// <summary>Um equipamento presente na ficha. EmUso: Arma/Escudo equipados, Armadura num slot, Artefato na lista.</summary>
 public record EquipamentoDaFicha(Guid ItemId, bool EmUso);
 
-/// <summary>O que a linha de um equipamento mostra: requisitos, o que falta e a penalidade, por extenso.</summary>
-public record AvaliacaoDeEquipamento(List<string> Requisitos, List<string> RequisitosPendentes, List<string> Penalidade);
+/// <summary>O que a linha de um equipamento mostra: requisitos, o que falta, as linhas numéricas da penalidade e o texto livre (só exibido).</summary>
+public record AvaliacaoDeEquipamento(List<string> Requisitos, List<string> RequisitosPendentes, List<string> Penalidade, string? OutrasPenalidades);
 
 /// <summary>
 /// Avalia os Requisitos dos equipamentos de uma ficha (Personagem, NPC ou Criatura) e devolve as
@@ -48,19 +48,23 @@ public class EquipmentPenaltyService(RuinaRpgDbContext db, IPericiaCatalogo peri
     public async Task<List<PenalidadeAtivaResponse>> ComoRespostaAsync(IEnumerable<PenalidadeAtiva> ativas)
     {
         var nome = await NomeOuNuloAsync();
-        return ativas.Select(a => new PenalidadeAtivaResponse(a.Nome, a.Pendencias.ToList(), PenalidadesDeEquipamento.Descrever(a.Penalidade, nome).ToList())).ToList();
+        return ativas.Select(a => new PenalidadeAtivaResponse(a.Nome, a.Pendencias.ToList(), PenalidadesDeEquipamento.Descrever(a.Penalidade, nome).ToList(), PenalidadesDeEquipamento.TextoLivre(a.Penalidade))).ToList();
     }
 
     /// <summary>Requisitos, pendências e penalidade por extenso de um item, para a linha da ficha.</summary>
     public async Task<AvaliacaoDeEquipamento> AvaliarAsync(Item item, Func<Task<FichaParaRequisitos>> fichaSemPenalidades)
     {
-        if (item.Requisitos is null)
-            return new([], [], []);
         var nome = await NomeOuNuloAsync();
+        var penalidade = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, nome).ToList();
+        var outras = PenalidadesDeEquipamento.TextoLivre(item.PenalidadeDeRequisitos);
+        // Sem requisitos não há o que avaliar (e a ficha não é calculada), mas a penalidade do item aparece.
+        if (item.Requisitos is null)
+            return new([], [], penalidade, outras);
         return new(
             PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, nome).ToList(),
             PassivaRequisitosEvaluator.Pendencias(item.Requisitos, await fichaSemPenalidades(), null, await NomeDaPericiaAsync()).ToList(),
-            PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, nome).ToList());
+            penalidade,
+            outras);
     }
 
     private async Task<Func<int, string>> NomeDaPericiaAsync()

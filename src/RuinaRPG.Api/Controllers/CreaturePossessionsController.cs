@@ -335,7 +335,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
         var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CreatureSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade };
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

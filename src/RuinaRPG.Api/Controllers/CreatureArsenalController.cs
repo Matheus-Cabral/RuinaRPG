@@ -317,19 +317,19 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
     private async Task<CreatureWeaponResponse> ComAvaliacaoAsync(CreatureWeaponResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     private async Task<CreatureArmorSlotResponse> ComAvaliacaoAsync(CreatureArmorSlotResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     private async Task<CreatureShieldResponse> ComAvaliacaoAsync(CreatureShieldResponse r, Item item, Guid sheetId)
     {
         var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
     }
 
     /// <summary>

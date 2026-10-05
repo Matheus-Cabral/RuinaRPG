@@ -83,7 +83,7 @@ public class PenalidadesDeEquipamentoTests
         PenalidadesDeEquipamento.ComoModificadores([new PenalidadeAtiva("A", ["x"], null)], _ => null).Should().BeEmpty();
 
     [Fact]
-    public void Descrever_spells_the_lines_then_the_free_text_and_skips_removed_pericias()
+    public void Descrever_spells_only_the_numeric_lines_and_skips_removed_pericias()
     {
         var penalidade = new PenalidadeDeEquipamento
         {
@@ -94,7 +94,16 @@ public class PenalidadesDeEquipamentoTests
         };
 
         PenalidadesDeEquipamento.Descrever(penalidade, id => id == 7 ? "Reflexos" : null)
-            .Should().Equal("Força −2", "Redução Física −1", "Reflexos −4", "Desvantagem em furtividade");
+            .Should().Equal("Força −2", "Redução Física −1", "Reflexos −4");
+    }
+
+    [Fact]
+    public void TextoLivre_is_the_trimmed_text_or_null_when_blank()
+    {
+        PenalidadesDeEquipamento.TextoLivre(new PenalidadeDeEquipamento { Texto = "  Desvantagem em furtividade  " }).Should().Be("Desvantagem em furtividade");
+        PenalidadesDeEquipamento.TextoLivre(new PenalidadeDeEquipamento { Texto = "   " }).Should().BeNull();
+        PenalidadesDeEquipamento.TextoLivre(new PenalidadeDeEquipamento()).Should().BeNull();
+        PenalidadesDeEquipamento.TextoLivre(null).Should().BeNull();
     }
 
     [Fact]

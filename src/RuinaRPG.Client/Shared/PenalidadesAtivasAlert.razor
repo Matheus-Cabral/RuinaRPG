@@ -4,7 +4,7 @@
 @using RuinaRPG.Contracts.Items
 
 @* Explica totais reduzidos: os equipamentos em uso cujos Requisitos a ficha não cumpre e a penalidade
-   de cada um. Recarrega quando Versao muda (a ficha a incrementa ao mexer em equipamento ou atributo). *@
+   aplicada (linhas numéricas) de cada um e, à parte, o texto livre não aplicado. Recarrega quando Versao muda (a ficha a incrementa ao mexer em equipamento ou atributo). *@
 @if (_ativas.Count > 0)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-3" Icon="@Icons.Material.Filled.Warning">
@@ -14,7 +14,7 @@
             {
                 <li>
                     <b>@ativa.ItemNome</b> — falta @string.Join(", ", ativa.RequisitosPendentes):
-                    @(ativa.Penalidade.Count > 0 ? string.Join(", ", ativa.Penalidade) : "sem penalidade definida")
+                    @(ativa.Penalidade.Count > 0 ? string.Join(", ", ativa.Penalidade) : "sem penalidade definida")@(string.IsNullOrWhiteSpace(ativa.OutrasPenalidades) ? "" : $"; outras penalidades (não aplicadas automaticamente): {ativa.OutrasPenalidades}")
                 </li>
             }
         </ul>
