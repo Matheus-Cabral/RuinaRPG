@@ -12,6 +12,12 @@ namespace RuinaRPG.Tests.Client.Pages;
 
 public class BancoDeRunasFormTests : MudBunitContext
 {
+    private static async Task EscolherDisciplinaAsync(IRenderedComponent<BancoDeRunasForm> cut, string valor)
+    {
+        var select = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Disciplina");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(valor));
+    }
+
     [Fact]
     public async Task Clearing_the_required_Nome_field_blocks_the_save_call_in_edit_mode()
     {
@@ -21,7 +27,7 @@ public class BancoDeRunasFormTests : MudBunitContext
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
-                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1 }
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Disciplina = "Adicao" }
                 }) };
             if (request.Method == HttpMethod.Put)
             {
@@ -53,7 +59,7 @@ public class BancoDeRunasFormTests : MudBunitContext
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
-                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1 }
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Disciplina = "Adicao" }
                 }) };
             if (request.Method == HttpMethod.Put)
             {
@@ -88,7 +94,7 @@ public class BancoDeRunasFormTests : MudBunitContext
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
-                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, ImageId = "img-7", ImageUrl = "/img/7.png" }
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Disciplina = "Adicao", ImageId = "img-7", ImageUrl = "/img/7.png" }
                 }) };
             if (request.Method == HttpMethod.Put)
             {
@@ -134,6 +140,7 @@ public class BancoDeRunasFormTests : MudBunitContext
         await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo"));
         await cut.InvokeAsync(() => cut.FindComponent<ImageAttachmentField>().Instance.SelectedIdsChanged.InvokeAsync(new List<string> { "img-3" }));
 
+        await EscolherDisciplinaAsync(cut, "Adicao");
         var salvar = cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar"));
         await cut.InvokeAsync(() => salvar.Click());
 
@@ -158,6 +165,7 @@ public class BancoDeRunasFormTests : MudBunitContext
         var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
         await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo"));
 
+        await EscolherDisciplinaAsync(cut, "Adicao");
         var salvar = cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar"));
         await cut.InvokeAsync(() => salvar.Click());
 
@@ -217,6 +225,7 @@ public class BancoDeRunasFormTests : MudBunitContext
                 var select = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
                 await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(tipo));
             }
+            await EscolherDisciplinaAsync(cut, "Adicao");
             await cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar")).Click());
         }
 
@@ -236,7 +245,7 @@ public class BancoDeRunasFormTests : MudBunitContext
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
-                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Tipo = "Arcana" }
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Disciplina = "Adicao", Tipo = "Arcana" }
                 }) };
             if (request.Method == HttpMethod.Put)
             {
@@ -268,7 +277,7 @@ public class BancoDeRunasFormTests : MudBunitContext
             if (request.Method == HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
                 {
-                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Tipo = "Negra" }
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1, Disciplina = "Adicao", Tipo = "Negra" }
                 }) };
             if (request.Method == HttpMethod.Put)
             {
@@ -287,5 +296,95 @@ public class BancoDeRunasFormTests : MudBunitContext
         await Task.Delay(700);
 
         putBody.Should().Contain("\"tipo\":null");
+    }
+
+    [Fact]
+    public async Task Creating_without_a_disciplina_shows_the_required_message_and_posts_nothing()
+    {
+        var posts = new List<string>();
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Post)
+            {
+                posts.Add(request.Content!.ReadAsStringAsync().Result);
+                return new HttpResponseMessage(HttpStatusCode.Created);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeRunasForm>();
+        await Task.Delay(50);
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo"));
+
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar")).Click());
+
+        posts.Should().BeEmpty();
+        cut.Markup.Should().Contain("Escolha a Disciplina");
+    }
+
+    [Fact]
+    public async Task Create_posts_the_chosen_Disciplina()
+    {
+        string? postBody = null;
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Post)
+            {
+                postBody = request.Content!.ReadAsStringAsync().Result;
+                return new HttpResponseMessage(HttpStatusCode.Created);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeRunasForm>();
+        await Task.Delay(50);
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo"));
+        var select = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Disciplina");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Emissao"));
+
+        await cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Contains("Salvar")).Click());
+
+        postBody.Should().Contain("\"disciplina\":\"Emissao\"");
+    }
+
+    [Fact]
+    public async Task Editing_a_legacy_entry_without_disciplina_does_not_autosave_until_one_is_chosen()
+    {
+        var puts = new List<string>();
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[]
+                {
+                    new { Id = "entry-1", Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1 }
+                }) };
+            if (request.Method == HttpMethod.Put)
+            {
+                puts.Add(request.Content!.ReadAsStringAsync().Result);
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<BancoDeRunasForm>(p => p.Add(x => x.EntryId, "entry-1"));
+        await Task.Delay(50);
+
+        var nome = cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Nome");
+        await cut.InvokeAsync(() => nome.Instance.ValueChanged.InvokeAsync("Runa do Fogo Maior"));
+        await Task.Delay(700);
+
+        puts.Should().BeEmpty();
+        cut.Markup.Should().Contain("Escolha a Disciplina");
+
+        var select = cut.FindComponents<MudBlazor.MudSelect<string>>().Single(c => c.Instance.Label == "Disciplina");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Adicao"));
+        await Task.Delay(700);
+
+        puts.Should().ContainSingle().Which.Should().Contain("\"disciplina\":\"Adicao\"");
     }
 }

@@ -162,6 +162,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Descricao | text | |
 | Grau | int | |
 | Tipo | enum TipoDeRuna?, nullable | `Arcana` ou `Negra`, guardado como texto; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
+| Disciplina | enum DisciplinaDeRuna?, nullable | `Adicao`/`Alteracao`/`Emissao`/`Manifestacao` como texto; obrigatória na API ao criar/editar, NULL só em entradas antigas — ver R0010 do Banco de Runas |
 | ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
 
   
@@ -346,6 +347,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Grau | int |
 | Tipo | enum TipoDeRuna?, nullable — `Arcana`/`Negra` como texto; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
+| Disciplina | enum DisciplinaDeRuna?, nullable — cópia da Disciplina da entrada quando a Runa parte do banco; obrigatória ao montar do zero. NULL em Runas antigas |
 | SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
@@ -489,7 +491,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable) e `Disciplina` (enum DisciplinaDeRuna?, nullable), iguais a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
 - `NpcSheetHistoriaImages` (`NpcSheetId` FK → NpcSheets, `ImageId` FK → Images, `Ordem` int; PK composta, cascade nas duas FKs): espelho de `CharacterSheetHistoriaImages`. Ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
 - `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).

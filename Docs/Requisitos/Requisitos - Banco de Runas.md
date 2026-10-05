@@ -30,13 +30,13 @@
 
 # **R0004** - O banco deve ser listado com filtros.
 
-**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome** (contém, sem diferenciar maiúsculas de minúsculas), **Grau** (igual) e **Tipo** (R0009: Todos, Runa Arcana, Runa Negra ou Sem tipo). A lista mostra também o Tipo de cada entrada.
+**Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome** (contém, sem diferenciar maiúsculas de minúsculas), **Grau** (igual) e **Tipo** (R0009: Todos, Runa Arcana, Runa Negra ou Sem tipo) e **Disciplina** (R0010: Todas, uma das quatro ou Sem disciplina). A lista mostra também o Tipo e a Disciplina de cada entrada (travessão quando não tem).
 
   
 
 # **R0005** - Campos de uma entrada do banco.
 
-**Descrição**: Os mesmos campos de uma Runa em "[[Requisitos - Ficha de Personagem]]" 4.d: **Nome** (texto), **Descrição** (texto livre) e **Grau** (número inteiro). Nenhum campo é calculado. Uma entrada do banco não pertence a nenhuma ficha, então o limite de Grau de "[[Requisitos - Ficha de Personagem]]" 4.d não se aplica a ela.
+**Descrição**: Os mesmos campos de uma Runa em "[[Requisitos - Ficha de Personagem]]" 4.d: **Nome** (texto), **Descrição** (texto livre) e **Grau** (número inteiro) e **Disciplina** (R0010, obrigatória). Nenhum campo é calculado. Uma entrada do banco não pertence a nenhuma ficha, então o limite de Grau de "[[Requisitos - Ficha de Personagem]]" 4.d não se aplica a ela.
 
 Cada entrada tem ainda uma **Imagem**: opcional, uma só por entrada, com o mesmo comportamento da Imagem de "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 (formatos e tamanho máximo iguais); no banco, o GM só usa imagens que ele mesmo enviou. Ao partir de uma entrada do banco, a Runa da ficha herda a imagem da entrada (não é possível escolher outra) e a cópia automática (R0001) a leva junto. Ao montar uma Runa do zero numa ficha, a imagem opcional pode ser um upload do próprio usuário ou, para o jogador, uma imagem que o GM liberou como pública na campanha.
 
@@ -63,3 +63,16 @@ Cada entrada tem ainda uma **Imagem**: opcional, uma só por entrada, com o mesm
 # **R0009** - Tipo opcional da Runa: Arcana ou Negra.
 
 **Descrição**: Cada Runa — entrada do banco e Runa de ficha (Personagem ou NPC) — tem um **Tipo** opcional: **Runa Arcana**, **Runa Negra** ou nenhum ("Sem tipo", o padrão). É só uma classificação exibida no banco, nas fichas e nas listas de Runas liberadas a um jogador; **não altera nenhum cálculo**. No formulário do banco (criar/editar) e ao montar uma Runa do zero em 4.d ("[[Requisitos - Ficha de Personagem]]"), um select **Tipo** oferece "Sem tipo", "Runa Arcana" e "Runa Negra", acompanhado de um popup de ajuda ⓘ ("Tipo da Runa"). Ao partir de uma entrada do banco (R0003), a Runa da ficha copia o Tipo da entrada, como copia Nome, Grau e Imagem; a cópia automática de R0001 leva o Tipo junto; conceder/copiar uma ficha de NPC também o preserva. Runas que já existiam antes deste campo ficam **sem tipo** até o GM editá-las no banco (a Runa de ficha continua não editável). No fio, o Tipo é o texto "Arcana" ou "Negra" (ou vazio/ausente = sem tipo); qualquer outro valor é rejeitado com 400 ("Tipo de Runa desconhecido."). A listagem do banco aceita o filtro de Tipo ("Arcana", "Negra" ou "Nenhum" para as sem tipo).
+
+  
+
+# **R0010** - Disciplina obrigatória da Runa.
+
+**Descrição**: Cada Runa — entrada do banco e Runa de ficha (Personagem ou NPC) — tem uma **Disciplina**, que diz o que a Runa influencia. São quatro, sem opção em branco:
+
+- **Adição**: influencia o corpo do usuário.
+- **Alteração**: influencia objetos inanimados.
+- **Emissão**: influencia alvos inanimados.
+- **Manifestação**: manifesta a aura do usuário.
+
+O formulário do banco (criar/editar) e a montagem de uma Runa do zero em 4.d ("[[Requisitos - Ficha de Personagem]]") oferecem um select **Disciplina**, obrigatório, acompanhado de um popup de ajuda ⓘ ("Disciplina da Runa") que lista as quatro com suas descrições. Criar ou editar sem escolher uma Disciplina mostra "Escolha a Disciplina da runa." e **não** envia nada ao servidor (a edição não é salva automaticamente até uma ser escolhida); o servidor também rejeita com 400 ("Disciplina é obrigatória."). Ao partir de uma entrada do banco (R0003), a Runa da ficha copia a Disciplina da entrada, como copia Nome, Grau, Tipo e Imagem; a cópia automática de R0001 a leva junto. **Runas antigas**, anteriores a este campo, ficam **sem Disciplina** (travessão nas listas) até o GM editá-las no banco — ao editar uma, o GM precisa escolher uma Disciplina para o salvamento voltar a funcionar —, e uma entrada antiga sem Disciplina ainda pode ser escolhida numa ficha (a Runa herda "sem Disciplina"). No fio, a Disciplina é o nome do valor ("Adicao", "Alteracao", "Emissao" ou "Manifestacao"); qualquer outro valor é rejeitado com 400. A listagem do banco aceita o filtro de Disciplina (um dos quatro nomes ou "Nenhuma" para as sem disciplina).

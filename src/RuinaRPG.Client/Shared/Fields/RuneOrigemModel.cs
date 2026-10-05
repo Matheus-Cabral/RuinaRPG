@@ -15,6 +15,8 @@ public class RuneOrigemModel
     public string ImageId { get; set; } = "";
     /// <summary>"Arcana", "Negra" ou "" (sem tipo). Só vale na origem "do zero"; do banco o tipo vem da entrada.</summary>
     public string Tipo { get; set; } = "";
+    /// <summary>Nome do enum DisciplinaDeRuna ("Adicao"...) ou "" (não escolhida). Obrigatória na origem "do zero".</summary>
+    public string Disciplina { get; set; } = "";
 
     /// <summary>O Tipo no formato do contrato: null quando sem tipo.</summary>
     public string? TipoOuNulo => string.IsNullOrEmpty(Tipo) ? null : Tipo;
@@ -27,7 +29,10 @@ public class RuneOrigemModel
         if (DoBanco)
             return string.IsNullOrWhiteSpace(SourceBankEntryId) ? "Escolha uma entrada do Banco de Runas." : null;
 
-        return string.IsNullOrWhiteSpace(Nome) ? "Informe o nome da runa." : null;
+        if (string.IsNullOrWhiteSpace(Nome))
+            return "Informe o nome da runa.";
+
+        return string.IsNullOrEmpty(Disciplina) ? "Escolha a Disciplina da runa." : null;
     }
 
     public void Limpar()
@@ -39,5 +44,6 @@ public class RuneOrigemModel
         Grau = 0;
         ImageId = "";
         Tipo = "";
+        Disciplina = "";
     }
 }

@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.Runes
 @using RuinaRPG.Client.Shared
+@using RuinaRPG.Domain.Runes
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -25,6 +26,16 @@
                 <MudSelectItem Value="@("Nenhum")">Sem tipo</MudSelectItem>
             </MudSelect>
         </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" @bind-Value="_disciplinaFiltro" @bind-Value:after="DebouncedLoadAsync" Label="Disciplina">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var disciplina in DisciplinaDeRunaInfo.Todas)
+                {
+                    <MudSelectItem Value="@disciplina.ToString()">@DisciplinaDeRunaInfo.Rotulo(disciplina)</MudSelectItem>
+                }
+                <MudSelectItem Value="@("Nenhuma")">Sem disciplina</MudSelectItem>
+            </MudSelect>
+        </MudItem>
     </MudGrid>
 </Section>
 
@@ -40,6 +51,7 @@
                 <th>Nome</th>
                 <th>Grau</th>
                 <th>Tipo</th>
+                <th>Disciplina</th>
                 <th>Descrição</th>
                 <th></th>
             </tr>
@@ -52,6 +64,7 @@
                     <td>@entry.Nome</td>
                     <td>@entry.Grau</td>
                     <td>@RuneTipoRotulo.De(entry.Tipo)</td>
+                    <td>@RuneDisciplinaRotulo.De(entry.Disciplina)</td>
                     <td>@entry.Descricao</td>
                     <td>
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Navigation.NavigateTo($"/banco-de-runas/{entry.Id}/editar"))">Editar</MudButton>
@@ -73,6 +86,7 @@
     private string _nomeFiltro = "";
     private int? _grauFiltro;
     private string _tipoFiltro = ""; // "" = Todos; "Arcana", "Negra" ou "Nenhum" (sem tipo)
+    private string _disciplinaFiltro = ""; // "" = Todas; nome da Disciplina ou "Nenhuma" (sem disciplina)
     private List<RuneBankEntryResponse> _entries = new();
     private string? _errorMessage;
 
@@ -106,6 +120,8 @@
             parametros.Add($"grau={_grauFiltro}");
         if (!string.IsNullOrEmpty(_tipoFiltro))
             parametros.Add($"tipo={Uri.EscapeDataString(_tipoFiltro)}");
+        if (!string.IsNullOrEmpty(_disciplinaFiltro))
+            parametros.Add($"disciplina={Uri.EscapeDataString(_disciplinaFiltro)}");
         var query = parametros.Count == 0 ? "" : "?" + string.Join("&", parametros);
 
         var response = await Http.GetAsync($"rune-bank{query}");

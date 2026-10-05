@@ -31,6 +31,7 @@ else
     <MudTextField T="string" @bind-Value="Model.Nome" Label="Nome" />
     <MudTextField T="string" @bind-Value="Model.Descricao" Label="Descrição" Lines="3" />
     <MudNumericField T="int" @bind-Value="Model.Grau" Label="Grau" />
+    <DisciplinaDeRunaSelect @bind-Value="Model.Disciplina" />
     <div class="d-flex align-center">
         <MudSelect T="string" @bind-Value="Model.Tipo" Label="Tipo">
             <MudSelectItem Value="@("")">Sem tipo</MudSelectItem>
@@ -53,9 +54,16 @@ else
     [Parameter] public string? CampaignId { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
 
-    // "Runa do Fogo (Grau 1, Runa Arcana)"; sem tipo, só o Grau.
-    private static string EntryLabel(RuneBankEntryResponse entry) =>
-        string.IsNullOrEmpty(entry.Tipo) ? $"{entry.Nome} (Grau {entry.Grau})" : $"{entry.Nome} (Grau {entry.Grau}, {RuneTipoRotulo.De(entry.Tipo)})";
+    // "Runa do Fogo (Grau 1, Emissão, Runa Arcana)"; Disciplina e Tipo só aparecem quando existem.
+    private static string EntryLabel(RuneBankEntryResponse entry)
+    {
+        var partes = new List<string> { $"Grau {entry.Grau}" };
+        if (!string.IsNullOrEmpty(entry.Disciplina))
+            partes.Add(RuneDisciplinaRotulo.De(entry.Disciplina));
+        if (!string.IsNullOrEmpty(entry.Tipo))
+            partes.Add(RuneTipoRotulo.De(entry.Tipo));
+        return $"{entry.Nome} ({string.Join(", ", partes)})";
+    }
 
     private List<string> SelectedImageIds => string.IsNullOrEmpty(Model.ImageId) ? new() : new() { Model.ImageId };
 }
