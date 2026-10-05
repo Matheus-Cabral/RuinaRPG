@@ -688,11 +688,12 @@ public class CatalogoItemFormTests : MudBunitContext
         var cut = Render<CatalogoItemForm>(p => p.Add(x => x.ItemId, "item-1"));
         await Task.Delay(100);
 
-        PossuiRequisitos(cut)!.Value.Should().BeTrue();
+        cut.FindComponents<MudBlazor.MudCheckBox<bool>>().Single(c => c.Instance.Label == "Possui requisitos")
+            .Find("input").HasAttribute("checked").Should().BeTrue();
         cut.Markup.Should().Contain("Adicionar Atributo");
         cut.FindComponents<MudBlazor.MudNumericField<int>>().Select(c => c.Instance.Label).Should().Contain("Penalidade");
         cut.FindComponents<MudBlazor.MudTextField<string>>().Single(c => c.Instance.Label == "Outras penalidades")
-            .Instance.Value.Should().Be("Barulhenta");
+            .Find("input,textarea").GetAttribute("value").Should().Be("Barulhenta");
     }
 
     [Fact]

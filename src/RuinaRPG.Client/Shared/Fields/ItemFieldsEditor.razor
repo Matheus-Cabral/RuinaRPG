@@ -1,0 +1,213 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared
+@using RuinaRPG.Contracts.Images
+@using RuinaRPG.Domain.CharacterSheets
+@using RuinaRPG.Domain.Items
+@inject PericiaCatalogo Pericias
+
+    <Section Title="Geral">
+        @if (!OcultarTipo)
+        {
+            <MudSelect T="string" @bind-Value="Model.Tipo" Label="Tipo" Disabled="TipoBloqueado" @bind-Value:after="OnTipoChanged">
+                <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
+                <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
+                <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
+                <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
+                <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
+            </MudSelect>
+        }
+
+        <MudTextField T="string" @bind-Value="Model.Nome" Label="Nome" @bind-Value:after="OnChangedAsync" />
+        <MudNumericField T="decimal" @bind-Value="Model.Peso" For="@(() => Model.Peso)" Label="Peso" @bind-Value:after="OnChangedAsync" />
+        <MudNumericField T="int" @bind-Value="Model.Preco" For="@(() => Model.Preco)" Label="Preço (Ciclos)" @bind-Value:after="OnChangedAsync" />
+        <MudTextField T="string" @bind-Value="Model.Descricao" Label="Descrição" Lines="3" @bind-Value:after="OnChangedAsync" />
+
+        @if (MostrarImagem)
+        {
+            <ImageAttachmentField AvailableImages="ImagensDisponiveis" SelectedIds="ImagemIds"
+                                  SelectedIdsChanged="ImagemIdsChanged"
+                                  OnError="OnImageError" Multiple="false" />
+        }
+    </Section>
+
+    @if (Model.Tipo == "ItemGeral")
+    {
+        <Section Title="Item Geral">
+            <MudTextField T="string" @bind-Value="Model.Subcategoria" Label="Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <MudNumericField T="decimal?" @bind-Value="Model.CapacidadeExtra" For="@(() => Model.CapacidadeExtra)" Label="Capacidade Extra" @bind-Value:after="OnChangedAsync" />
+        </Section>
+    }
+    else if (Model.Tipo == "Arma")
+    {
+        <Section Title="Arma">
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <MudSelect T="string" @bind-Value="Model.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
+                @foreach (var rank in RankOptions)
+                {
+                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
+                }
+            </MudSelect>
+            @if (DurabilidadeHint is not null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@DurabilidadeHint</MudText>
+            }
+            <MudTextField T="string" @bind-Value="Model.Empunhadura" Label="Empunhadura" @bind-Value:after="OnChangedAsync" />
+            <MudTextField T="string" @bind-Value="Model.Dados" Label="Dados" @bind-Value:after="OnChangedAsync" />
+            <MudNumericField T="int?" @bind-Value="Model.Dano" Label="Dano" @bind-Value:after="OnChangedAsync" />
+            <MudTextField T="string" @bind-Value="Model.Critico" Label="Crítico" @bind-Value:after="OnChangedAsync" />
+            <MudNumericField T="int?" @bind-Value="Model.Alcance" Label="Alcance" @bind-Value:after="OnChangedAsync" />
+            <MudTextField T="string" @bind-Value="Model.TipoDeDano" Label="Tipo de Dano" @bind-Value:after="OnChangedAsync" />
+        </Section>
+    }
+    else if (Model.Tipo is "Armadura" or "Escudo")
+    {
+        <Section Title="@(Model.Tipo == "Armadura" ? "Armadura" : "Escudo")">
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <MudTextField T="string" @bind-Value="Model.Categoria" Label="Categoria" @bind-Value:after="OnChangedAsync" />
+            @if (Model.Tipo == "Armadura")
+            {
+                <MudNumericField T="int?" @bind-Value="Model.Defesa" Label="Defesa" @bind-Value:after="OnChangedAsync" />
+                <MudNumericField T="int?" @bind-Value="Model.RF" Label="RF" @bind-Value:after="OnChangedAsync" />
+                <MudNumericField T="int?" @bind-Value="Model.RM" Label="RM" @bind-Value:after="OnChangedAsync" />
+            }
+            else
+            {
+                <MudNumericField T="int?" @bind-Value="Model.BonusDefesa" Label="Bônus de Defesa" @bind-Value:after="OnChangedAsync" />
+            }
+            <MudSelect T="string" @bind-Value="Model.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
+                @foreach (var rank in RankOptions)
+                {
+                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
+                }
+            </MudSelect>
+            @if (DurabilidadeHint is not null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@DurabilidadeHint</MudText>
+            }
+        </Section>
+    }
+    else if (Model.Tipo == "Artefato")
+    {
+        <Section Title="Artefato">
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <MudSelect T="string" @bind-Value="Model.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync" Label="Tipo de Alvo">
+                @foreach (var option in TipoDeAlvoOptions)
+                {
+                    <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="Model.Alvo" @bind-Value:after="OnChangedAsync" Label="Alvo"
+                       Disabled="@string.IsNullOrEmpty(Model.TipoDeAlvo)">
+                @foreach (var option in AlvoOptionsFor(Model.TipoDeAlvo, Pericias.Ativas.Select(p => p.Chave)))
+                {
+                    <MudSelectItem Value="@option">@(Model.TipoDeAlvo == "Pericia" ? Pericias.Label(option) : option)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int?" @bind-Value="Model.Valor" Label="Valor" @bind-Value:after="OnChangedAsync" />
+        </Section>
+    }
+
+    @if (Model.Tipo is "Arma" or "Armadura" or "Escudo" or "Artefato")
+    {
+        <div class="d-flex align-center mt-3">
+            <MudCheckBox T="bool" @bind-Value="Model.PossuiRequisitos" Label="Possui requisitos" @bind-Value:after="OnChangedAsync" />
+            <InfoPopup Title="Requisitos do equipamento">
+                <MudText>Enquanto a ficha não cumprir os requisitos, o equipamento continua podendo ser usado, mas a ficha avisa o que falta e aplica a penalidade abaixo nos cálculos. Desmarcar apaga os requisitos e a penalidade deste item.</MudText>
+            </InfoPopup>
+        </div>
+        @if (Model.PossuiRequisitos)
+        {
+            <Section Title="Requisitos">
+                <RequisitosDePassivaEditor Model="Model.Requisitos" ModoEquipamento="true" OnChanged="OnChangedAsync" />
+            </Section>
+            <Section Title="Penalidade" Subtitle="Aplicada enquanto os requisitos não forem cumpridos.">
+                <PenalidadeDeEquipamentoEditor Model="Model.Penalidade" OnChanged="OnChangedAsync" />
+            </Section>
+        }
+    }
+
+@code {
+    [Parameter, EditorRequired] public ItemFormModel Model { get; set; } = default!;
+    /// <summary>Desabilita o seletor de Tipo (o tipo de um item já criado não muda).</summary>
+    [Parameter] public bool TipoBloqueado { get; set; }
+    /// <summary>Esconde o seletor de Tipo por completo (a página do catálogo o omite ao editar ou com FixedTipo).</summary>
+    [Parameter] public bool OcultarTipo { get; set; }
+    [Parameter] public bool MostrarImagem { get; set; } = true;
+    [Parameter] public List<ImageSummaryResponse> ImagensDisponiveis { get; set; } = new();
+    [Parameter] public List<string> ImagemIds { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> ImagemIdsChanged { get; set; }
+    [Parameter] public EventCallback<string> OnImageError { get; set; }
+    /// <summary>Texto sob o Rank (durabilidade resolvida por quem hospeda o editor); nulo não renderiza nada.</summary>
+    [Parameter] public string? DurabilidadeHint { get; set; }
+    /// <summary>Disparado quando o Rank muda, antes de OnChanged, para quem hospeda recalcular o DurabilidadeHint.</summary>
+    [Parameter] public EventCallback OnRankChanged { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
+    // Rank page and the DurabilidadesPorRankController both work off of.
+    internal static readonly string[] RankOptions = Enum.GetNames<RankDeItem>();
+
+    // The 4 fixed Tipo de Alvo values, keyed by the raw enum member name the server expects
+    // (ItemsController parses this with Enum.TryParse<TipoDeAlvo>) — the label is only for display.
+    // Fixed, closed set (no search) — a plain MudSelect, not an autocomplete.
+    internal static readonly (string Value, string Label)[] TipoDeAlvoOptions =
+    [
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Atributo.ToString(), "Atributo"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Pericia.ToString(), "Perícia"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.SubAtributo.ToString(), "Sub-Atributo"),
+        (RuinaRPG.Domain.Items.TipoDeAlvo.Dano.ToString(), "Dano"),
+    ];
+
+    // Canonical Alvo strings for Tipo de Alvo = Sub-Atributo (ver SubAtributoAlvo) — the only one
+    // of the 4 groups with no backing enum of its own.
+    private static readonly string[] SubAtributoAlvoOptions =
+    [
+        SubAtributoAlvo.Iniciativa, SubAtributoAlvo.Movimentacao, SubAtributoAlvo.EsquivaNatural,
+        SubAtributoAlvo.DefesaNatural, SubAtributoAlvo.ReducaoFisica, SubAtributoAlvo.ReducaoMagica,
+        SubAtributoAlvo.Adrenalina,
+    ];
+
+    // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — the value is always
+    // the stable identifier ("Atributo"/"Dano" enum-member spelling, a Perícia's Chave), so a value
+    // picked here round-trips identically through ArtifactBonusCalculator's string comparison
+    // elsewhere. The Perícia group comes from the Auditoria de Perícias catalog (its active Chaves)
+    // instead of a fixed enum. Small closed sets — a plain MudSelect, not an autocomplete.
+    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo, IEnumerable<string> pericias) => tipoDeAlvo switch
+    {
+        "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
+        "Pericia" => pericias,
+        "SubAtributo" => SubAtributoAlvoOptions,
+        "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
+        _ => Enumerable.Empty<string>(),
+    };
+
+    private Task OnChangedAsync() => OnChanged.InvokeAsync();
+
+    private async Task OnRankChangedAsync()
+    {
+        await OnRankChanged.InvokeAsync();
+        await OnChanged.InvokeAsync();
+    }
+
+    // Finding 8 of the final review: Arma and Armadura/Escudo/Artefato each render their own
+    // ItemInicialSubcategoriaField instance in a different @if branch (only Armadura and Escudo
+    // share one), so switching the top-level Tipo away from Arma unmounts that field entirely and
+    // mounts a brand-new instance for the new branch — one with no memory of "the old Tipo" to
+    // detect the mismatch itself. Model.Subcategoria is owned here, not by the field, so a
+    // composed value built for the OLD Tipo must be cleared here when Tipo changes, the same way
+    // ItemInicialSubcategoriaField already clears it when Armadura<->Escudo reuse the same instance.
+    private void OnTipoChanged()
+    {
+        if (RuinaRPG.Domain.Items.SubcategoriaBuilder.TryParse(Model.Subcategoria, out var parsedTipo, out _, out _) && parsedTipo.ToString() != Model.Tipo)
+            Model.Subcategoria = null;
+    }
+
+    private async Task OnTipoDeAlvoChangedAsync()
+    {
+        // Alvo's options are tied to Tipo de Alvo — a value from the old group makes no sense
+        // under the new one (and might not even be a valid Alvo for it), so it's cleared rather
+        // than left stale.
+        Model.Alvo = null;
+        await OnChanged.InvokeAsync();
+    }
+}

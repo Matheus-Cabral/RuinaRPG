@@ -29,117 +29,11 @@
     {
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
     }
-    <Section Title="Geral">
-        @if (ItemId is null && FixedTipo is null)
-        {
-            <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="OnTipoChanged">
-                <MudSelectItem Value="@("ItemGeral")">Item Geral</MudSelectItem>
-                <MudSelectItem Value="@("Arma")">Arma</MudSelectItem>
-                <MudSelectItem Value="@("Armadura")">Armadura</MudSelectItem>
-                <MudSelectItem Value="@("Escudo")">Escudo</MudSelectItem>
-                <MudSelectItem Value="@("Artefato")">Artefato</MudSelectItem>
-            </MudSelect>
-        }
-
-        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-        <MudNumericField T="decimal" @bind-Value="_form.Peso" For="@(() => _form.Peso)" Label="Peso" @bind-Value:after="NotifySavedAsync" />
-        <MudNumericField T="int" @bind-Value="_form.Preco" For="@(() => _form.Preco)" Label="Preço (Ciclos)" @bind-Value:after="NotifySavedAsync" />
-        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" @bind-Value:after="NotifySavedAsync" />
-
-        <ImageAttachmentField AvailableImages="_myImages" SelectedIds="_imageIds"
-                              SelectedIdsChanged="@(v => { _imageIds = v; _form.ImageId = v.FirstOrDefault(); if (ItemId is not null) NotifySavedAsync(); })"
-                              OnError="@(e => _errorMessage = e)" Multiple="false" />
-    </Section>
-
-    @if (_form.Tipo == "ItemGeral")
-    {
-        <Section Title="Item Geral">
-            <MudTextField T="string" @bind-Value="_form.Subcategoria" Label="Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="decimal?" @bind-Value="_form.CapacidadeExtra" For="@(() => _form.CapacidadeExtra)" Label="Capacidade Extra" @bind-Value:after="NotifySavedAsync" />
-        </Section>
-    }
-    else if (_form.Tipo == "Arma")
-    {
-        <Section Title="Arma">
-            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
-                @foreach (var rank in RankOptions)
-                {
-                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
-                }
-            </MudSelect>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@_durabilidadeHint</MudText>
-            <MudTextField T="string" @bind-Value="_form.Empunhadura" Label="Empunhadura" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Dados" Label="Dados" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.Dano" Label="Dano" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Critico" Label="Crítico" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" @bind-Value:after="NotifySavedAsync" />
-        </Section>
-    }
-    else if (_form.Tipo is "Armadura" or "Escudo")
-    {
-        <Section Title="@(_form.Tipo == "Armadura" ? "Armadura" : "Escudo")">
-            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.Categoria" Label="Categoria" @bind-Value:after="NotifySavedAsync" />
-            @if (_form.Tipo == "Armadura")
-            {
-                <MudNumericField T="int?" @bind-Value="_form.Defesa" Label="Defesa" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.RF" Label="RF" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.RM" Label="RM" @bind-Value:after="NotifySavedAsync" />
-            }
-            else
-            {
-                <MudNumericField T="int?" @bind-Value="_form.BonusDefesa" Label="Bônus de Defesa" @bind-Value:after="NotifySavedAsync" />
-            }
-            <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
-                @foreach (var rank in RankOptions)
-                {
-                    <MudSelectItem Value="@rank">@rank</MudSelectItem>
-                }
-            </MudSelect>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@_durabilidadeHint</MudText>
-        </Section>
-    }
-    else if (_form.Tipo == "Artefato")
-    {
-        <Section Title="Artefato">
-            <ItemInicialSubcategoriaField Tipo="@_form.Tipo" @bind-Value="_form.Subcategoria" @bind-Value:after="NotifySavedAsync" />
-            <MudSelect T="string" @bind-Value="_form.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync" Label="Tipo de Alvo">
-                @foreach (var option in TipoDeAlvoOptions)
-                {
-                    <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
-                }
-            </MudSelect>
-            <MudSelect T="string" @bind-Value="_form.Alvo" @bind-Value:after="NotifySavedAsync" Label="Alvo"
-                       Disabled="@string.IsNullOrEmpty(_form.TipoDeAlvo)">
-                @foreach (var option in AlvoOptionsFor(_form.TipoDeAlvo, Pericias.Ativas.Select(p => p.Chave)))
-                {
-                    <MudSelectItem Value="@option">@(_form.TipoDeAlvo == "Pericia" ? Pericias.Label(option) : option)</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int?" @bind-Value="_form.Valor" Label="Valor" @bind-Value:after="NotifySavedAsync" />
-        </Section>
-    }
-
-    @if (_form.Tipo is "Arma" or "Armadura" or "Escudo" or "Artefato")
-    {
-        <div class="d-flex align-center mt-3">
-            <MudCheckBox T="bool" @bind-Value="_possuiRequisitos" Label="Possui requisitos" @bind-Value:after="NotifySavedAsync" />
-            <InfoPopup Title="Requisitos do equipamento">
-                <MudText>Enquanto a ficha não cumprir os requisitos, o equipamento continua podendo ser usado, mas a ficha avisa o que falta e aplica a penalidade abaixo nos cálculos. Desmarcar apaga os requisitos e a penalidade deste item.</MudText>
-            </InfoPopup>
-        </div>
-        @if (_possuiRequisitos)
-        {
-            <Section Title="Requisitos">
-                <RequisitosDePassivaEditor Model="_requisitos" ModoEquipamento="true" OnChanged="NotifySavedAsync" />
-            </Section>
-            <Section Title="Penalidade" Subtitle="Aplicada enquanto os requisitos não forem cumpridos.">
-                <PenalidadeDeEquipamentoEditor Model="_penalidade" OnChanged="NotifySavedAsync" />
-            </Section>
-        }
-    }
+    <ItemFieldsEditor Model="_form" TipoBloqueado="@(ItemId is not null || FixedTipo is not null)"
+                      OcultarTipo="@(ItemId is not null || FixedTipo is not null)" MostrarImagem="true"
+                      ImagensDisponiveis="_myImages" ImagemIds="_imageIds" ImagemIdsChanged="OnImagesChanged"
+                      OnImageError="@(e => _errorMessage = e)" DurabilidadeHint="@_durabilidadeHint"
+                      OnRankChanged="RecomputeDurabilidadeHint" OnChanged="NotifySavedAsync" />
 
     @if (ItemId is null)
     {
@@ -172,13 +66,13 @@
     private Dictionary<RankDeItem, DurabilidadeDeRank> _durabilidadesPorRank = new();
     private string _durabilidadeHint = "Sem durabilidade";
     private bool _durabilidadesPorRankIndisponivel;
-    private bool _possuiRequisitos;
-    private RequisitosFormModel _requisitos = new();
-    private PenalidadeFormModel _penalidade = new();
 
-    // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
-    // Rank page and the DurabilidadesPorRankController both work off of.
-    internal static readonly string[] RankOptions = Enum.GetNames<RankDeItem>();
+    // Kept as forwards: the lists and Alvo options now live in ItemFieldsEditor (shared with the
+    // fixed items of the Equipagem kits), and the existing tests still reach them through the page.
+    internal static string[] RankOptions => ItemFieldsEditor.RankOptions;
+    internal static (string Value, string Label)[] TipoDeAlvoOptions => ItemFieldsEditor.TipoDeAlvoOptions;
+    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo, IEnumerable<string> pericias) =>
+        ItemFieldsEditor.AlvoOptionsFor(tipoDeAlvo, pericias);
 
     public CatalogoItemForm()
     {
@@ -193,19 +87,6 @@
     }
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
-
-    // Finding 8 of the final review: Arma and Armadura/Escudo/Artefato each render their own
-    // ItemInicialSubcategoriaField instance in a different @if branch (only Armadura and Escudo
-    // share one), so switching the top-level Tipo away from Arma unmounts that field entirely and
-    // mounts a brand-new instance for the new branch — one with no memory of "the old Tipo" to
-    // detect the mismatch itself. _form.Subcategoria is owned here, not by the field, so a
-    // composed value built for the OLD Tipo must be cleared here when Tipo changes, the same way
-    // ItemInicialSubcategoriaField already clears it when Armadura<->Escudo reuse the same instance.
-    private void OnTipoChanged()
-    {
-        if (RuinaRPG.Domain.Items.SubcategoriaBuilder.TryParse(_form.Subcategoria, out var parsedTipo, out _, out _) && parsedTipo.ToString() != _form.Tipo)
-            _form.Subcategoria = null;
-    }
 
     public void Dispose()
     {
@@ -233,33 +114,9 @@
             return;
         }
 
-        _form.Tipo = existing.Tipo;
-        _form.Nome = existing.Nome;
+        _form.Apply(existing);
         _form.ImageId = _myImages.FirstOrDefault(i => i.Url == existing.ImageUrl)?.Id;
         _imageIds = _form.ImageId is null ? new() : new() { _form.ImageId };
-        _form.Peso = existing.Peso;
-        _form.Preco = existing.Preco;
-        _form.Subcategoria = existing.Subcategoria;
-        _form.Descricao = existing.Descricao;
-        _form.CapacidadeExtra = existing.CapacidadeExtra;
-        _form.Rank = existing.Rank;
-        _form.Empunhadura = existing.Empunhadura;
-        _form.Dados = existing.Dados;
-        _form.Dano = existing.Dano;
-        _form.Critico = existing.Critico;
-        _form.Alcance = existing.Alcance;
-        _form.TipoDeDano = existing.TipoDeDano;
-        _form.Categoria = existing.Categoria;
-        _form.Defesa = existing.Defesa;
-        _form.RF = existing.RF;
-        _form.RM = existing.RM;
-        _form.BonusDefesa = existing.BonusDefesa;
-        _form.TipoDeAlvo = existing.TipoDeAlvo;
-        _form.Alvo = existing.Alvo;
-        _form.Valor = existing.Valor;
-        _requisitos = RequisitosFormModel.FromDto(existing.Requisitos);
-        _penalidade = PenalidadeFormModel.FromDto(existing.PenalidadeDeRequisitos);
-        _possuiRequisitos = existing.Requisitos is not null || existing.PenalidadeDeRequisitos is not null;
         RecomputeDurabilidadeHint();
     }
 
@@ -279,12 +136,6 @@
             .ToDictionary(l => Enum.Parse<RankDeItem>(l.Rank), l => new DurabilidadeDeRank(Enum.Parse<RankDeItem>(l.Rank), l.Durabilidade, l.Inquebravel));
     }
 
-    private Task OnRankChangedAsync()
-    {
-        RecomputeDurabilidadeHint();
-        return NotifySavedAsync();
-    }
-
     private void RecomputeDurabilidadeHint()
     {
         RankDeItem? rank = Enum.TryParse<RankDeItem>(_form.Rank, out var parsed) ? parsed : null;
@@ -302,13 +153,7 @@
         if (!_editContext.Validate())
             return;
 
-        var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-            _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano,
-            _form.Categoria, _form.Defesa, _form.RF, _form.RM,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra,
-            Requisitos: _possuiRequisitos ? RequisitosOuNulo() : null,
-            PenalidadeDeRequisitos: _possuiRequisitos ? _penalidade.ToDto() : null);
+        var request = _form.ToCreateRequest();
         var response = await Http.PostAsJsonAsync("items", request);
 
         if (!response.IsSuccessStatusCode)
@@ -332,21 +177,12 @@
         Navigation.NavigateTo("/catalogo");
     }
 
-    // O servidor grava um Requisitos vazio como nulo.
-    private RuinaRPG.Contracts.SpellsAndAbilities.RequisitosDePassivaDto? RequisitosOuNulo() => _requisitos.ToDto();
-
     private async Task<bool> SaveIfValidAsync()
     {
         if (!_editContext.Validate())
             return false;
 
-        var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
-            _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano,
-            _form.Categoria, _form.Defesa, _form.RF, _form.RM,
-            _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra,
-            Requisitos: _possuiRequisitos ? RequisitosOuNulo() : null,
-            PenalidadeDeRequisitos: _possuiRequisitos ? _penalidade.ToDto() : null);
+        var request = _form.ToUpdateRequest();
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
 
         if (!response.IsSuccessStatusCode)
@@ -355,47 +191,17 @@
         return true;
     }
 
-    // The 4 fixed Tipo de Alvo values, keyed by the raw enum member name the server expects
-    // (ItemsController parses this with Enum.TryParse<TipoDeAlvo>) — the label is only for display.
-    // Fixed, closed set (no search) — a plain MudSelect, not an autocomplete.
-    internal static readonly (string Value, string Label)[] TipoDeAlvoOptions =
-    [
-        (RuinaRPG.Domain.Items.TipoDeAlvo.Atributo.ToString(), "Atributo"),
-        (RuinaRPG.Domain.Items.TipoDeAlvo.Pericia.ToString(), "Perícia"),
-        (RuinaRPG.Domain.Items.TipoDeAlvo.SubAtributo.ToString(), "Sub-Atributo"),
-        (RuinaRPG.Domain.Items.TipoDeAlvo.Dano.ToString(), "Dano"),
-    ];
-
-    // Canonical Alvo strings for Tipo de Alvo = Sub-Atributo (ver SubAtributoAlvo) — the only one
-    // of the 4 groups with no backing enum of its own.
-    private static readonly string[] SubAtributoAlvoOptions =
-    [
-        SubAtributoAlvo.Iniciativa, SubAtributoAlvo.Movimentacao, SubAtributoAlvo.EsquivaNatural,
-        SubAtributoAlvo.DefesaNatural, SubAtributoAlvo.ReducaoFisica, SubAtributoAlvo.ReducaoMagica,
-        SubAtributoAlvo.Adrenalina,
-    ];
-
-    // Alvo's own options depend on whichever Tipo de Alvo is currently chosen — the value is always
-    // the stable identifier ("Atributo"/"Dano" enum-member spelling, a Perícia's Chave), so a value
-    // picked here round-trips identically through ArtifactBonusCalculator's string comparison
-    // elsewhere. The Perícia group comes from the Auditoria de Perícias catalog (its active Chaves)
-    // instead of a fixed enum. Small closed sets — a plain MudSelect, not an autocomplete.
-    internal static IEnumerable<string> AlvoOptionsFor(string? tipoDeAlvo, IEnumerable<string> pericias) => tipoDeAlvo switch
-    {
-        "Atributo" => Enum.GetValues<Atributo>().Select(a => a.ToString()),
-        "Pericia" => pericias,
-        "SubAtributo" => SubAtributoAlvoOptions,
-        "Dano" => Enum.GetValues<TipoDeDano>().Select(t => t.ToString()),
-        _ => Enumerable.Empty<string>(),
-    };
-
     private Task OnTipoDeAlvoChangedAsync()
     {
-        // Alvo's options are tied to Tipo de Alvo — a value from the old group makes no sense
-        // under the new one (and might not even be a valid Alvo for it), so it's cleared rather
-        // than left stale.
         _form.Alvo = null;
         return NotifySavedAsync();
+    }
+
+    private Task OnImagesChanged(List<string> ids)
+    {
+        _imageIds = ids;
+        _form.ImageId = ids.FirstOrDefault();
+        return ItemId is not null ? NotifySavedAsync() : Task.CompletedTask;
     }
 
     // Test-only seam: exercises the clear-on-change behavior without needing a real MudSelect
@@ -419,35 +225,5 @@
         if (ItemId is not null)
             _autoSave.NotifyChanged(SaveIfValidAsync);
         return Task.CompletedTask;
-    }
-
-    private class ItemFormModel
-    {
-        public string Tipo { get; set; } = "ItemGeral";
-        public string Nome { get; set; } = "";
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
-        public decimal Peso { get; set; }
-        [Range(0, int.MaxValue)]
-        public int Preco { get; set; }
-        public string? ImageId { get; set; }
-        public string? Subcategoria { get; set; }
-        public string? Descricao { get; set; }
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
-        public decimal? CapacidadeExtra { get; set; }
-        public string? Rank { get; set; }
-        public string? Empunhadura { get; set; }
-        public string? Dados { get; set; }
-        public int? Dano { get; set; }
-        public string? Critico { get; set; }
-        public int? Alcance { get; set; }
-        public string? TipoDeDano { get; set; }
-        public string? Categoria { get; set; }
-        public int? Defesa { get; set; }
-        public int? RF { get; set; }
-        public int? RM { get; set; }
-        public int? BonusDefesa { get; set; }
-        public string? TipoDeAlvo { get; set; }
-        public string? Alvo { get; set; }
-        public int? Valor { get; set; }
     }
 }
