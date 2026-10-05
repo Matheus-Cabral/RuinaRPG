@@ -51,7 +51,9 @@ public class RulebookPassivasController(RuinaRpgDbContext db, IPericiaCatalogo p
         return entries.Select(e => new PassivaDoLivroResponse(
             e.Id.ToString(), e.Nome, e.Categoria!.Value.ToString(), e.Descricao,
             PassivaRequisitosEvaluator.Descrever(e.Requisitos,
-                e.Requisitos?.HistoricoId is { } h ? historicos.GetValueOrDefault(h) : null, NomeDaPericia).ToList())).ToList();
+                e.Requisitos?.HistoricoId is { } h ? historicos.GetValueOrDefault(h) : null, NomeDaPericia).ToList(),
+            e.Requisitos?.Vocacao is { } vocacao ? RequisitoLabels.Vocacao(vocacao) : null,
+            string.IsNullOrWhiteSpace(e.Requisitos?.Classe) ? null : e.Requisitos!.Classe!.Trim())).ToList();
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

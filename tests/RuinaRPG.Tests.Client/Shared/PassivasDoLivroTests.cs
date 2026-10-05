@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.Rendering;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -17,6 +18,9 @@ public class PassivasDoLivroTests : MudBunitContext
 
     private static PassivaDoLivroResponse Passiva(string nome, string categoria, params string[] requisitos) =>
         new(Guid.NewGuid().ToString(), nome, categoria, $"Desc {nome}", requisitos.ToList());
+
+    private static PassivaDoLivroResponse PassivaDe(string nome, string categoria, string? vocacao, string? classe = null) =>
+        new(Guid.NewGuid().ToString(), nome, categoria, $"Desc {nome}", [], vocacao, classe);
 
     private static HttpResponseMessage Json(object body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
 
@@ -39,10 +43,10 @@ public class PassivasDoLivroTests : MudBunitContext
         await Task.Delay(50);
 
         _requests.Should().Equal("/api/rulebook/passivas");
-        cut.FindComponents<MudSelect<string>>().Should().BeEmpty();
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Campanha");
         var texto = cut.Markup;
-        texto.IndexOf("Passiva Livre").Should().BeLessThan(texto.IndexOf("Passiva Vocacional"));
-        texto.IndexOf("Passiva Vocacional").Should().BeLessThan(texto.IndexOf("Passiva de Classe"));
+        texto.IndexOf("Passivas Livres").Should().BeLessThan(texto.IndexOf("Passivas Vocacionais"));
+        texto.IndexOf("Passivas Vocacionais").Should().BeLessThan(texto.IndexOf("Passivas de Classe"));
         texto.Should().Contain("Ardor").And.Contain("Desc Ardor").And.Contain("Nível 10, Força ≥ 4");
         texto.Should().Contain("Sem requisitos");
     }
@@ -56,7 +60,7 @@ public class PassivasDoLivroTests : MudBunitContext
         await Task.Delay(50);
 
         _requests.Should().Equal("/api/campaigns/mine", "/api/rulebook/passivas?campaignId=c1");
-        cut.FindComponents<MudSelect<string>>().Should().BeEmpty();
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Campanha");
         cut.Markup.Should().Contain("Ardor");
     }
 
@@ -111,7 +115,7 @@ public class PassivasDoLivroTests : MudBunitContext
         cut.FindComponent<MudTextField<string>>().Find("input").Input("PELE");
 
         cut.Markup.Should().Contain("Pele de Pedra").And.NotContain("Ardor");
-        cut.Markup.Should().NotContain("Passiva Livre");
+        cut.Markup.Should().NotContain("Passivas Livres");
     }
 
     [Fact]
@@ -175,5 +179,98 @@ public class PassivasDoLivroTests : MudBunitContext
         await Task.Delay(50);
 
         root.Markup.Should().Contain("Da Dois");
+    }
+
+    private IRenderedComponent<ContainerFragment> RenderGm(params PassivaDoLivroResponse[] passivas)
+    {
+        Serve([], _ => passivas.ToList());
+        return RenderWithPopover<PassivasDoLivro>((nameof(PassivasDoLivro.IsGm), true));
+    }
+
+    [Fact]
+    public async Task Each_group_title_shows_how_many_passivas_it_has()
+    {
+        var root = RenderGm(Passiva("A", "Livre"), Passiva("B", "Livre"), Passiva("C", "Vocacional"));
+        await Task.Delay(50);
+
+        root.Markup.Should().Contain("Passivas Livres (2)").And.Contain("Passivas Vocacionais (1)").And.NotContain("Passivas de Classe");
+    }
+
+    [Fact]
+    public async Task The_three_filters_are_offered_with_Todas_first_and_the_values_present()
+    {
+        var root = RenderGm(PassivaDe("A", "Livre", "Campeão", "Duelista"), PassivaDe("B", "Vocacional", "Caçador"));
+        await Task.Delay(50);
+
+        OpenSelect(root, "Categoria").Should().Equal("Todas", "Passiva Livre", "Passiva Vocacional", "Passiva de Classe");
+        // Os popovers abertos antes continuam no markup; cada seletor acrescenta suas opções ao fim.
+        OpenSelect(root, "Vocação").TakeLast(3).Should().Equal("Todas", "Caçador", "Campeão");
+        OpenSelect(root, "Classe").TakeLast(2).Should().Equal("Todas", "Duelista");
+    }
+
+    [Fact]
+    public async Task Choosing_a_category_leaves_only_that_group()
+    {
+        var root = RenderGm(Passiva("Ardor", "Livre"), Passiva("Brio", "Vocacional"));
+        await Task.Delay(50);
+
+        OpenSelect(root, "Categoria");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Passiva Vocacional").Click();
+        await Task.Delay(50);
+
+        root.Markup.Should().Contain("Passivas Vocacionais (1)").And.Contain("Brio");
+        root.Markup.Should().NotContain("Passivas Livres").And.NotContain("Ardor");
+    }
+
+    [Fact]
+    public async Task Each_passiva_is_a_collapsed_panel_whose_header_shows_name_and_requirements()
+    {
+        var root = RenderGm(Passiva("Ardor", "Livre", "Nível 10", "Força ≥ 4"), Passiva("Brio", "Livre"));
+        await Task.Delay(50);
+
+        var paineis = root.FindAll(".mud-expand-panel");
+        paineis.Should().HaveCount(2);
+        paineis.Should().OnlyContain(p => !p.ClassList.Contains("mud-panel-expanded"));
+        var cabecalhos = root.FindAll(".mud-expand-panel-header").Select(h => h.TextContent).ToList();
+        cabecalhos[0].Should().Contain("Ardor").And.Contain("Nível 10, Força ≥ 4");
+        cabecalhos[1].Should().Contain("Brio").And.Contain("Sem requisitos");
+    }
+
+    [Fact]
+    public async Task Filters_that_match_nothing_show_their_own_message_distinct_from_the_empty_bank()
+    {
+        var root = RenderGm(Passiva("Ardor", "Livre"));
+        await Task.Delay(50);
+
+        root.FindComponent<MudTextField<string>>().Find("input").Input("zzz");
+
+        root.Markup.Should().Contain("Nenhuma Habilidade Passiva corresponde aos filtros.")
+            .And.NotContain("Nenhuma Habilidade Passiva disponível.");
+    }
+
+    [Fact]
+    public async Task Switching_campaign_keeps_the_filters_but_drops_a_vocacao_that_no_longer_exists()
+    {
+        Serve([Campanha("c1", "Campanha Um"), Campanha("c2", "Campanha Dois")],
+            query => query.Contains("c2")
+                ? [PassivaDe("Dois A", "Livre", "Caçador"), PassivaDe("Dois B", "Vocacional", "Caçador")]
+                : [PassivaDe("Um A", "Livre", "Campeão"), PassivaDe("Um B", "Vocacional", "Campeão")]);
+        var root = RenderWithPopover<PassivasDoLivro>((nameof(PassivasDoLivro.IsGm), false));
+        await Task.Delay(50);
+
+        OpenSelect(root, "Categoria");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Passiva Livre").Click();
+        await Task.Delay(50);
+        OpenSelect(root, "Vocação");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Campeão").Click();
+        await Task.Delay(50);
+        root.Markup.Should().Contain("Um A").And.NotContain("Um B");
+
+        OpenSelect(root, "Campanha");
+        root.FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Campanha Dois").Click();
+        await Task.Delay(50);
+
+        // Categoria continua em Livre; a Vocação "Campeão" não existe mais e foi descartada.
+        root.Markup.Should().Contain("Dois A").And.NotContain("Dois B").And.NotContain("corresponde aos filtros");
     }
 }
