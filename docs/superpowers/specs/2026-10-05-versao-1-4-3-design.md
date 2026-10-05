@@ -11,7 +11,7 @@ Six independent changes shipped together as 1.4.3:
    Arma, Armadura, Escudo and Artefato, replacing three legacy fields.
 3. **Base de itens fixos** — a global catalog of complete items behind the fixed items of the Equipagem
    kits, with search-and-pick instead of a typed name.
-4. **Passivas no Livro de Regras** — filters by Categoria, Vocação and Classe, sub-groups, collapsible entries.
+4. **Passivas no Livro de Regras** — filters by Categoria, Vocação and Classe, alphabetical groups, collapsible entries.
 5. **Novidades para Auditores** — an auditor-only section in the version changelog dialog.
 6. **Progressão do nível recolhível** — the section's content moves into an expansion panel.
 
@@ -34,7 +34,8 @@ Schema migrations exist in items 1, 2 and 3, so `make migrate` is a mandatory st
 | Is the penalty applied? | **Automatically**, while the requirements are unmet. The free text is display only. |
 | Legacy fields (`RequisitoAtributo`, `RequisitoVigor`, `Penalidade`) | **Migrated and removed.** |
 | What the fixed-item base stores | The **complete item**. Applying a kit copies it into the GM's own catalog; the copy then belongs to the GM. |
-| Passivas organization | Filters by name, Categoria, Vocação, Classe; sub-groups by Vocação / Classe; ordered by minimum level then name; count per group; collapsible entries. |
+| Passivas organization | **Amended 2026-10-05:** always the three groups Passivas Livres, Passivas Vocacionais, Passivas de Classe, **alphabetical** inside each, no sub-groups. Filters by name, Categoria, Vocação, Classe; count per group; collapsible entries. |
+| Editing an existing fixed-item row of a kit | **Added 2026-10-05:** the row has an edit action opening a popup to complete the item's missing details or to pick another item that replaces it. |
 | "Atualizações de auditoria para auditores" | Auditor-only **release notes** in the changelog dialog. Not an edit history. |
 | Progressão do nível | Expansion panel, **collapsed by default**, on Personagem and NPC. |
 
@@ -204,6 +205,16 @@ rule choice slots already use for an occupied slot.
   When the search has no match, the list offers **"Cadastrar novo item"**, which opens a dialog with the
   full form of the selected Tipo, the name pre-filled; saving adds the item to the base and selects it.
 - **Quantidade** (and Slot) are editable on an existing row.
+- **Edit action on an existing row:** a button on every fixed-item row opens a popup with two choices:
+  - **"Editar detalhes"** — the full form of the row's fixed item, to fill in what is missing (the
+    backfill leaves name-only items for anything absent from the default catalog). It saves to the base,
+    so the change applies to **every kit that uses that fixed item**; the popup says so and lists those kits.
+  - **"Substituir item"** — the same Tipo select + name autocomplete used to add a row (including
+    "Cadastrar novo item"); picking an item points this row at it, keeping the Quantidade. The Tipo may
+    change; switching to Armadura asks for the Slot, switching away clears it. The item that was replaced
+    stays in the base.
+  Rows whose fixed item still has only a name are flagged "Detalhes incompletos" in the table, so the
+  Auditor can see which ones need the popup.
 - **Choice-slot bonus:** the bonus item is picked from the base with the same autocomplete (Item Geral
   only, as today).
 - **New section "Itens fixos":** lists the base with a Tipo filter and name search, with edit (same dialog)
@@ -215,8 +226,10 @@ and by this dialog, so the two forms cannot drift.
 ### API
 
 `equipment-kit-fixed-items`, Auditor-only: `GET ?tipo=&q=`, `POST`, `PUT {id}`, `DELETE {id}`. The kit
-item and choice-slot requests take `FixedItemId` / `BonusFixedItemId` instead of names; the kit responses
-return the fixed item's Id, Nome and Tipo. The player-facing kit listing (`EscolherEquipagemDialog`, Livro
+item and choice-slot requests take `FixedItemId` / `BonusFixedItemId` instead of names; the kit item gains
+an update endpoint (`FixedItemId`, `Qtd`, `ArmorSlot`), which today does not exist — rows can only be
+added and deleted. The kit responses return the fixed item's Id, Nome, Tipo and whether its details are
+incomplete. The player-facing kit listing (`EscolherEquipagemDialog`, Livro
 de Regras rendering) keeps showing names and quantities.
 
 ### Docs
@@ -226,19 +239,18 @@ any type is now created automatically), Modelo de Dados (new table, changed colu
 
 ## 4. Passivas no Livro de Regras
 
-- `PassivaDoLivroResponse` gains `Vocacao` (display label or null), `Classe` (or null) and `NivelMinimo`
-  (or null), taken from the Passiva's Requisitos. Filtering and grouping stay client-side, on the list
-  already loaded.
+- `PassivaDoLivroResponse` gains `Vocacao` (display label or null) and `Classe` (or null), taken from the
+  Passiva's Requisitos. Filtering and grouping stay client-side, on the list already loaded.
 - **Filters**, side by side above the list and all combinable:
   - name search (as today);
   - **Categoria**: Todas, Passiva Livre, Passiva Vocacional, Passiva de Classe;
   - **Vocação** and **Classe**: "Todas" plus the distinct values present in the loaded list. Choosing a
     value shows only the Passivas that require exactly it.
-- **Grouping:** category heading (Livre, Vocacional, De Classe), then sub-groups — Vocacional by Vocação,
-  De Classe by Classe; Passivas lacking that requirement go under **"Geral"**, listed last. Passiva Livre has
-  no sub-groups. Empty groups and sub-groups disappear.
-- **Order** inside a group: minimum level ascending (no level first), then name.
-- **Count:** every heading and sub-heading shows the number of Passivas under it after filtering.
+- **Grouping:** always the three groups, in this order and with these headings: **Passivas Livres**,
+  **Passivas Vocacionais**, **Passivas de Classe**. There are no sub-groups. The filters narrow what is
+  inside the groups; they never change the grouping. A group with no Passiva after filtering disappears.
+- **Order** inside a group: alphabetical by name, ignoring case and accents (`pt-BR` comparison).
+- **Count:** each heading shows the number of Passivas under it after filtering.
 - **Entries:** each Passiva is a `MudExpansionPanel` (multi-expansion, all collapsed initially). The header
   shows the name and the requirements summary; the body shows the description and the full requirements.
 - The empty state distinguishes "no Passiva available" from "no Passiva matches the filters".
@@ -278,14 +290,16 @@ TDD throughout (Técnico R0011).
 
 - **Unit:** `DisciplinaDeRunaInfo` labels; the legacy `RequisitoAtributo` parser (matching and
   non-matching inputs); penalty activation and the no-cascade rule (requirements evaluated without
-  penalties); the penalty describer; Passivas grouping/ordering/filtering extracted into a testable class.
+  penalties); the penalty describer; Passivas grouping/alphabetical ordering/filtering extracted into a
+  testable class.
 - **Integration:** Disciplina required on create/update/from-scratch and copied from a bank entry; legacy
   Runa without Disciplina; equipment requirements and penalties round-tripping through the catalog; a sheet
   whose attribute, skill and sub-attribute totals drop while a requirement is unmet and recover when it is
   met, for Personagem, NPC and Criatura, and for each of the four equipment types; an unequipped Arma not
-  penalizing; the data migration of the three legacy fields; fixed-item CRUD and the `409` on delete; kit
+  penalizing; the data migration of the three legacy fields; fixed-item CRUD and the `409` on delete; updating a kit row (replace item, change Quantidade, Armadura
+  slot rules); kit
   application creating a complete item in an empty GM catalog and reusing an existing one; the backfill on
-  a database seeded before 1.4.3; `rulebook/passivas` returning the three new fields.
+  a database seeded before 1.4.3; `rulebook/passivas` returning the two new fields.
 - Build stays at 0 warnings.
 
 ## Out of scope
