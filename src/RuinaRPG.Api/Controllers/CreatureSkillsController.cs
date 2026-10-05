@@ -16,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
@@ -32,7 +32,7 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
         var ativas = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToList();
         var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
-        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+        var artefatos = await stats.ModificadoresAsync(sheet);
 
         var attributeTotals = await db.CreatureAttributes
             .Where(a => a.CreatureSheetId == sheetId)
@@ -86,19 +86,6 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
 
         return NoContent();
     }
-
-    /// <summary>
-    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses
-    /// 5.b has no equip/unequip toggle for Artefatos, so simply being on the sheet counts as
-    /// equipped. Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
-    /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
-        await db.CreatureArtifacts
-            .Where(a => a.CreatureSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
 
     /// <summary>Atributo sugerido como Atributo de Criatura; nulo se a Criatura não tem esse Atributo.</summary>
     private static AtributoCriatura? SugeridoParaCriatura(PericiaDefinicao p) =>

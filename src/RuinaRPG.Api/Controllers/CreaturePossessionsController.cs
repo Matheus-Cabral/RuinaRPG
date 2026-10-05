@@ -18,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
 {
     /// <summary>
     /// R0006 3.d: Butim (Spoils), not the plain inventory the Personagem/NPC sheet has — Custo and
@@ -323,11 +323,19 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         return new CreatureSpoilResponse(spoil.Id.ToString(), item.Id.ToString(), item.Nome, item.Preco, spoil.Qtd, item.Preco * spoil.Qtd, spoil.DT, imageUrl, item.Descricao);
     }
 
+    // O retrato da ficha SEM penalidades é calculado uma vez por requisição, e só se algum Artefato tiver Requisitos.
+    private Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos>? _fichaSemPenalidades;
+
+    private async Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos> CalcularFichaAsync(Guid sheetId) =>
+        await stats.FichaParaRequisitosAsync((await db.CreatureSheets.FindAsync(sheetId))!);
+
     private async Task<CreatureArtifactResponse> ToArtifactResponseAsync(CreatureArtifact artifact)
     {
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        return new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+        var resposta = new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
+        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CreatureSheetId));
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

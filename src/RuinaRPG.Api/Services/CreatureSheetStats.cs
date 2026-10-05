@@ -22,7 +22,7 @@ namespace RuinaRPG.Api.Services;
 /// Redução Mágica); Resistência Física/Arcana and Dano Cortante are explicitly "pendente" — no
 /// formula defined yet, so they're not implemented here.
 /// </summary>
-public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
+public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
 {
     /// <summary>
     /// Ego is a Criatura-only attribute — it has no counterpart in Ficha de Personagem's Atributo
@@ -39,10 +39,12 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
         [AtributoCriatura.Astucia] = Atributo.Astucia,
     };
 
-    public async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet)
+    public async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+
+    private async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var id = sheet.Id;
-        var artefatos = await GetArtifactBonusInputsAsync(id);
         var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade, artefatos);
         var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor, artefatos);
         var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca, artefatos);
@@ -105,7 +107,8 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
     /// </summary>
     public async Task<FichaParaRequisitos> FichaParaRequisitosAsync(CreatureSheet sheet)
     {
-        var artefatos = await GetArtifactBonusInputsAsync(sheet.Id);
+        // Sempre SEM penalidades de equipamento: é contra este retrato que os Requisitos são avaliados.
+        var artefatos = await ArtefatosAsync(sheet.Id);
         var atributosCriatura = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
@@ -128,7 +131,7 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet);
+        var sub = await SubAtributosAsync(sheet, artefatos);
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: false, sheet.Nivel, null, null, null, null, 0, false, sheet.Afinidade, null, null,
@@ -136,18 +139,39 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias)
     }
 
     /// <summary>
-    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor). Moved here
-    /// from CreatureSheetsController; that controller keeps its own copy too since
-    /// ModificadorDeDano/ToResponseAsync still need it independently of SubAttributes/
-    /// FichaParaRequisitos.
+    /// Every CreatureArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses
+    /// 5.b has no equip/unequip toggle for Artefatos, so simply being on the sheet counts as
+    /// equipped. Só Artefatos: o que as telas exibem soma também as penalidades (<see cref="ModificadoresAsync"/>).
     /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId) =>
         await db.CreatureArtifacts
             .Where(a => a.CreatureSheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
             .Where(i => i.TipoDeAlvo != null)
             .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
             .ToListAsync();
+
+    /// <summary>Os equipamentos da ficha e se estão em uso (Requisitos - Catálogo de Itens, Requisitos/Penalidade).</summary>
+    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId)
+    {
+        // Ataque natural (ItemId nulo) não é item de catálogo: não tem Requisitos nem Penalidade.
+        var armas = await db.CreatureWeapons.Where(w => w.CreatureSheetId == sheetId && w.ItemId != null).Select(w => new EquipamentoDaFicha(w.ItemId!.Value, w.IsEquipped)).ToListAsync();
+        var escudos = await db.CreatureShields.Where(s => s.CreatureSheetId == sheetId).Select(s => new EquipamentoDaFicha(s.ItemId, s.IsEquipped)).ToListAsync();
+        var armaduras = await db.CreatureArmorSlots.Where(a => a.CreatureSheetId == sheetId && a.ItemId != null).Select(a => new EquipamentoDaFicha(a.ItemId!.Value, true)).ToListAsync();
+        var artefatos = await db.CreatureArtifacts.Where(a => a.CreatureSheetId == sheetId).Select(a => new EquipamentoDaFicha(a.ArtifactItemId, true)).ToListAsync();
+        return [.. armas, .. escudos, .. armaduras, .. artefatos];
+    }
+
+    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(CreatureSheet sheet) =>
+        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id), () => FichaParaRequisitosAsync(sheet));
+
+    /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
+    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(CreatureSheet sheet)
+    {
+        var modificadores = await ArtefatosAsync(sheet.Id);
+        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet)));
+        return modificadores;
+    }
 
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {

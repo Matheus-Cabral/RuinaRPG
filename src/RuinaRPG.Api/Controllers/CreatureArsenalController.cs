@@ -15,7 +15,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades) : ControllerBase
+public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
 {
     /// <summary>
     /// R0006 3.a: a Criatura weapon is EITHER a Catálogo-linked Arma (ItemId) OR a natural attack
@@ -305,6 +305,33 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         return null;
     }
 
+    // O retrato da ficha SEM penalidades é calculado uma vez por requisição, e só se algum item tiver Requisitos.
+    private Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos>? _fichaSemPenalidades;
+
+    private Func<Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos>> FichaSemPenalidades(Guid sheetId) =>
+        () => _fichaSemPenalidades ??= CalcularFichaAsync(sheetId);
+
+    private async Task<RuinaRPG.Domain.SpellsAndAbilities.FichaParaRequisitos> CalcularFichaAsync(Guid sheetId) =>
+        await stats.FichaParaRequisitosAsync((await db.CreatureSheets.FindAsync(sheetId))!);
+
+    private async Task<CreatureWeaponResponse> ComAvaliacaoAsync(CreatureWeaponResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+    }
+
+    private async Task<CreatureArmorSlotResponse> ComAvaliacaoAsync(CreatureArmorSlotResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+    }
+
+    private async Task<CreatureShieldResponse> ComAvaliacaoAsync(CreatureShieldResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade };
+    }
+
     /// <summary>
     /// A Catálogo-linked weapon reads its display fields live from the Arma; a natural attack
     /// (ItemId null) has no catalog row to join, so it reads its own Manual* fields instead and
@@ -317,7 +344,8 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
             var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
             var imageUrl = await ResolveImageUrlAsync(item.ImageId);
             var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-            return new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Rank?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+            var resposta = new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Rank?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+            return await ComAvaliacaoAsync(resposta, item, weapon.CreatureSheetId);
         }
 
         // A manual (natural attack) weapon has no catalog Item to read an ImageUrl/Descricao from.
@@ -332,7 +360,8 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         var item = await db.Set<Armadura>().SingleAsync(a => a.Id == slot.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        return new CreatureArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+        var resposta = new CreatureArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+        return await ComAvaliacaoAsync(resposta, item, slot.CreatureSheetId);
     }
 
     private async Task<CreatureShieldResponse> ToShieldResponseAsync(CreatureShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -340,7 +369,8 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        return new CreatureShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        var resposta = new CreatureShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        return await ComAvaliacaoAsync(resposta, item, shield.CreatureSheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
