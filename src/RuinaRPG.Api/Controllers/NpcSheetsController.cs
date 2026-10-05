@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
@@ -24,7 +25,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades) : ControllerBase
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
     // granted one already does — same reasoning as List below.
@@ -469,6 +470,20 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
     }
 
+    /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
+    [HttpGet("{id}/equipment-penalties")]
+    public async Task<ActionResult<List<PenalidadeAtivaResponse>>> EquipmentPenalties(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+    }
+
     /// <summary>
     /// Ficha de Personagem 3.f (inherited by NPC): one read-only value per Tipo de Dano, each the
     /// sum of equipped Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano.
@@ -484,26 +499,13 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var artefatos = await GetArtifactBonusInputsAsync(id);
+        var artefatos = await stats.ModificadoresAsync(sheet);
         return new ModificadorDeDanoResponse(
             Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
             Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
             Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
             Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
     }
-
-    /// <summary>
-    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
-    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
-    /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
-    /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
-        await db.NpcArtifacts
-            .Where(a => a.NpcSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
 
     // The GM's whole NPC roster/library, not scoped to any one player — GM-only, same reasoning as Create.
     [HttpGet]
@@ -629,7 +631,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
-        var artefatosParaMaximos = await GetArtifactBonusInputsAsync(s.Id);
+        // Totais exibidos: Artefatos + penalidades de equipamento ativas.
+        var artefatosParaMaximos = await stats.ModificadoresAsync(s);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos);
         var (statusVida, statusFoco) = s.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(s.Vocacao.Value), s.Nivel) : (0, 0);

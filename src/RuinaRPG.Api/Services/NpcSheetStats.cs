@@ -17,7 +17,7 @@ namespace RuinaRPG.Api.Services;
 /// of NpcSheetsController so both /sub-attributes (unchanged response) and the Passiva requisitos
 /// check (Task 5) share one live computation. Read-only, everything derived live.
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades)
 {
     /// <summary>
     /// VIS/EAP Atual do NPC: base do Nível + Âmbares Absorvidos, exatamente como na Ficha de Personagem.
@@ -29,10 +29,12 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         return EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
     }
 
-    public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet)
+    public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+
+    private async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var id = sheet.Id;
-        var artefatos = await GetArtifactBonusInputsAsync(id);
         var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
         var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
         var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
@@ -107,7 +109,8 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     /// </summary>
     public async Task<FichaParaRequisitos> FichaParaRequisitosAsync(NpcSheet sheet)
     {
-        var artefatos = await GetArtifactBonusInputsAsync(sheet.Id);
+        // Sempre SEM penalidades de equipamento: é contra este retrato que os Requisitos são avaliados.
+        var artefatos = await ArtefatosAsync(sheet.Id);
         var atributos = await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
@@ -127,7 +130,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet);
+        var sub = await SubAtributosAsync(sheet, artefatos);
 
         var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, await EapAtualAsync(sheet), sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
 
@@ -138,17 +141,38 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     }
 
     /// <summary>
-    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor). Moved here from
-    /// NpcSheetsController; that controller keeps its own copy too since ModificadorDeDano/
-    /// ToResponseAsync still need it independently of SubAttributes/FichaParaRequisitos.
+    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
+    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
+    /// Só Artefatos: o que as telas exibem soma também as penalidades (<see cref="ModificadoresAsync"/>).
     /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId) =>
         await db.NpcArtifacts
             .Where(a => a.NpcSheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
             .Where(i => i.TipoDeAlvo != null)
             .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
             .ToListAsync();
+
+    /// <summary>Os equipamentos da ficha e se estão em uso (Requisitos - Catálogo de Itens, Requisitos/Penalidade).</summary>
+    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId)
+    {
+        var armas = await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId).Select(w => new EquipamentoDaFicha(w.ItemId, w.IsEquipped)).ToListAsync();
+        var escudos = await db.NpcShields.Where(s => s.NpcSheetId == sheetId).Select(s => new EquipamentoDaFicha(s.ItemId, s.IsEquipped)).ToListAsync();
+        var armaduras = await db.NpcArmorSlots.Where(a => a.NpcSheetId == sheetId && a.ItemId != null).Select(a => new EquipamentoDaFicha(a.ItemId!.Value, true)).ToListAsync();
+        var artefatos = await db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId).Select(a => new EquipamentoDaFicha(a.ArtifactItemId, true)).ToListAsync();
+        return [.. armas, .. escudos, .. armaduras, .. artefatos];
+    }
+
+    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(NpcSheet sheet) =>
+        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id), () => FichaParaRequisitosAsync(sheet));
+
+    /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
+    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(NpcSheet sheet)
+    {
+        var modificadores = await ArtefatosAsync(sheet.Id);
+        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet)));
+        return modificadores;
+    }
 
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
