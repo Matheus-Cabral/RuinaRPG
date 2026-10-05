@@ -458,7 +458,7 @@ Linhas fixas de um `EquipmentKit` — referenciam um item da base `EquipmentKitF
 
 - `Id` (PK)
 - `KitId` (FK → EquipmentKits, cascade)
-- `FixedItemId` (FK → EquipmentKitFixedItems, Restrict — um item usado por um kit não pode ser excluído)
+- `FixedItemId` (FK → EquipmentKitFixedItems, Restrict, **anulável** — um item usado por um kit não excluído não pode ser excluído; fica NULL nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado)
 - `ArmorSlot` (enum ArmorSlotType?, opcional — obrigatório quando o item fixo é Armadura; vazio nos demais Tipos)
 - `Qtd` (int)
 - `Nome`, `Tipo`, `SubcategoriaHint` — **legados**, a serem removidos: eram a referência por Nome + Tipo anterior à base; a conversão da versão 1.4.3 os transformou em `FixedItemId`.
@@ -475,7 +475,7 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `Rank` (enum RankDeItem?, opcional — NULL = qualquer Rank)
 - `Qtd` (int)
 - `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
-- `BonusFixedItemId` (FK → EquipmentKitFixedItems, Restrict, opcional — item da base, do tipo Item Geral, concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusFixedItemId` (FK → EquipmentKitFixedItems, Restrict, anulável — NULL quando não há bônus, nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado; item da base, do tipo Item Geral, concedido além da escolha, só se `BonusSubcategoria` bater)
 - `BonusNome` (string?, **legado**, a ser removido — substituído por `BonusFixedItemId`)
 - `BonusQtd` (int?, opcional)
 

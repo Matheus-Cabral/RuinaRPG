@@ -105,7 +105,17 @@ else
                                         <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Warning">Detalhes incompletos</MudChip>
                                     }
                                 </td>
-                                <td>@item.Tipo@(item.ArmorSlot is null ? "" : $" ({item.ArmorSlot})")</td>
+                                <td>
+                                    @item.Tipo
+                                    @if (item.Tipo == "Armadura")
+                                    {
+                                        <MudSelect T="string" Value="@item.ArmorSlot" ValueChanged="@(v => UpdateItemSlotAsync(kit, item, v))" Label="Slot do item" Dense="true" Style="max-width:150px">
+                                            <MudSelectItem Value="@("Capacete")">Capacete</MudSelectItem>
+                                            <MudSelectItem Value="@("Superior")">Superior</MudSelectItem>
+                                            <MudSelectItem Value="@("Inferior")">Inferior</MudSelectItem>
+                                        </MudSelect>
+                                    }
+                                </td>
                                 <td>
                                     <MudNumericField T="int" Value="@item.Qtd" ValueChanged="@(v => UpdateItemAsync(kit, item, v))" Label="Qtd do item" Min="1" Style="max-width:90px" />
                                 </td>
@@ -422,6 +432,9 @@ else
 
     private Task UpdateItemAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item, int qtd) =>
         SalvarItensAsync(kit, kit.Items.Select(i => i.Id == item.Id ? new EquipmentKitItemInput(i.FixedItemId, qtd, i.ArmorSlot) : ParaInput(i)).ToList());
+
+    private Task UpdateItemSlotAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item, string slot) =>
+        SalvarItensAsync(kit, kit.Items.Select(i => i.Id == item.Id ? new EquipmentKitItemInput(i.FixedItemId, i.Qtd, slot) : ParaInput(i)).ToList());
 
     private Task RemoveItemAsync(EquipmentKitResponse kit, EquipmentKitItemResponse item) =>
         SalvarItensAsync(kit, kit.Items.Where(i => i.Id != item.Id).Select(ParaInput).ToList());

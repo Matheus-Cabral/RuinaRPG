@@ -546,6 +546,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         public List<object> Kits { get; set; } = new();
         public List<EquipmentKitFixedItemResponse> Base { get; set; } = new();
         public HttpResponseMessage? RespostaDelete { get; set; }
+        public HttpResponseMessage? RespostaPutKit { get; set; }
         public int KitGets => Requests.Count(r => r == "GET /api/equipment-kits");
     }
 
@@ -567,7 +568,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
             if (request.Method == HttpMethod.Put && path.Contains("/equipment-kits/"))
             {
                 e.KitPut = request.Content!.ReadFromJsonAsync<UpdateEquipmentKitRequestCapture>().GetAwaiter().GetResult();
-                return new HttpResponseMessage(HttpStatusCode.NoContent);
+                return e.RespostaPutKit ?? new HttpResponseMessage(HttpStatusCode.NoContent);
             }
             if (request.Method == HttpMethod.Put && path.Contains("/equipment-kit-fixed-items/"))
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
@@ -720,6 +721,59 @@ public class AuditoriaEquipagemTests : MudBunitContext
 
         cut.WaitForAssertion(() => e.KitGets.Should().BeGreaterThan(antes));
         e.KitPut.Should().BeNull("editar detalhes altera o item da base, não o kit");
+    }
+
+    [Fact]
+    public async Task Changing_the_slot_of_an_Armadura_row_puts_the_kit_with_the_new_ArmorSlot_and_everything_else_unchanged()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { new
+        {
+            Id = "kit-1", Nome = "Viajante", Descricao = "Kit", Ciclos = 3,
+            Items = new List<object>
+            {
+                ItemRow("row-1", "fi-elmo", "Elmo", "Armadura", 2, "Capacete"),
+                ItemRow("row-2", "fi-corda", "Corda", "ItemGeral", 1),
+            },
+            ChoiceSlots = new object[]
+            {
+                new { Id = "slot-1", Label = "Armadura inicial", Tipo = "Armadura", Subcategorias = (List<string>?)null, Rank = (string?)null, Qtd = 1,
+                      BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusFixedItemId = (string?)null, BonusQtd = (int?)null, ArmorSlot = "Superior" },
+            },
+        } });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Slot do item");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Inferior"));
+        await Task.Delay(50);
+
+        e.KitPut!.Items.Should().Equal(new EquipmentKitItemInputCapture("fi-elmo", 2, "Inferior"), new EquipmentKitItemInputCapture("fi-corda", 1, null));
+        e.KitPut.ChoiceSlots.Single().ArmorSlot.Should().Be("Superior");
+    }
+
+    [Fact]
+    public async Task A_non_Armadura_row_renders_no_slot_select()
+    {
+        RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 1)) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Slot do item");
+    }
+
+    [Fact]
+    public async Task A_server_400_when_changing_a_rows_slot_shows_the_servers_message()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-elmo", "Elmo", "Armadura", 1, "Capacete")) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+        e.RespostaPutKit = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("O Slot Inferior ja esta em uso por outra Armadura do kit.") };
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Slot do item");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Inferior"));
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("O Slot Inferior ja esta em uso por outra Armadura do kit.");
     }
 
     [Fact]

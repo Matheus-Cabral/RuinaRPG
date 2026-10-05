@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.Rendering;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -117,5 +118,72 @@ public class FixedItemPickerTests : MudBunitContext
         var cut = RenderWithPopover<FixedItemPicker>(("TiposPermitidos", new[] { "ItemGeral" }), ("Tipo", "ItemGeral"));
 
         OpenSelect(cut, "Tipo").Should().Equal("Item Geral");
+    }
+
+    private IRenderedComponent<ContainerFragment> RenderPickerWithDialogs(Action<EquipmentKitFixedItemResponse?> onValue) =>
+        Render(builder =>
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<FixedItemPicker>(1);
+            builder.AddAttribute(2, nameof(FixedItemPicker.TiposPermitidos), Todos);
+            builder.AddAttribute(3, nameof(FixedItemPicker.Tipo), "Arma");
+            builder.AddAttribute(4, nameof(FixedItemPicker.ValueChanged),
+                Microsoft.AspNetCore.Components.EventCallback.Factory.Create<EquipmentKitFixedItemResponse?>(this, onValue));
+            builder.CloseComponent();
+        });
+
+    private void RegisterHttpForCadastro(EquipmentKitFixedItemResponse criado) =>
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            _requests.Add(Rota(request));
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method == HttpMethod.Post)
+                return Json(HttpStatusCode.Created, criado);
+            if (path.EndsWith("pericias") || path.EndsWith("subcategoria-options"))
+                return Json(HttpStatusCode.OK, new List<object>());
+            return Json(HttpStatusCode.OK, new List<EquipmentKitFixedItemResponse>());
+        }));
+
+    [Fact]
+    public async Task Cadastrar_novo_item_opens_the_dialog_with_the_locked_tipo_and_the_trimmed_name_and_selects_the_created_item()
+    {
+        var criado = Item("fi-9", "Espada Nova", "Arma");
+        RegisterHttpForCadastro(criado);
+        var recebidos = new List<EquipmentKitFixedItemResponse?>();
+        var cut = RenderPickerWithDialogs(recebidos.Add);
+        var picker = cut.FindComponent<FixedItemPicker>();
+
+        await cut.InvokeAsync(() => picker.Instance.BuscarParaTestesAsync("  Espada Nova  "));
+        // o clique só termina quando o diálogo fecha: não aguardar
+        _ = cut.InvokeAsync(() => cut.FindComponents<MudButton>().Single(b => b.Markup.Contains("Cadastrar novo item")).Instance.OnClick.InvokeAsync());
+        cut.WaitForAssertion(() => cut.Find("button:contains('Salvar')"));
+
+        cut.FindComponent<FixedItemDialog>().FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo").Instance.Disabled.Should().BeTrue();
+        cut.FindComponent<FixedItemDialog>().FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Nome").Markup.Should().Contain("value=\"Espada Nova\"");
+
+        cut.Find("button:contains('Salvar')").Click();
+
+        cut.WaitForAssertion(() => recebidos.Should().ContainSingle());
+        recebidos[0]!.Id.Should().Be("fi-9");
+        _requests.Should().Contain("POST /api/equipment-kit-fixed-items");
+    }
+
+    [Fact]
+    public async Task Cancelling_the_Cadastrar_novo_item_dialog_raises_no_ValueChanged()
+    {
+        RegisterHttpForCadastro(Item("fi-9", "Espada Nova", "Arma"));
+        var recebidos = new List<EquipmentKitFixedItemResponse?>();
+        var cut = RenderPickerWithDialogs(recebidos.Add);
+        var picker = cut.FindComponent<FixedItemPicker>();
+
+        await cut.InvokeAsync(() => picker.Instance.BuscarParaTestesAsync("Espada Nova"));
+        _ = cut.InvokeAsync(() => cut.FindComponents<MudButton>().Single(b => b.Markup.Contains("Cadastrar novo item")).Instance.OnClick.InvokeAsync());
+        cut.WaitForAssertion(() => cut.Find("button:contains('Cancelar')"));
+        cut.Find("button:contains('Cancelar')").Click();
+        await Task.Delay(100);
+
+        recebidos.Should().BeEmpty();
+        cut.Markup.Should().NotContain("Salvar");
     }
 }

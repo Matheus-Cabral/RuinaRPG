@@ -76,7 +76,7 @@ public class FixedItemDialogTests : MudBunitContext
         var resultado = await dialog.Result;
 
         _requests.Should().Contain("PUT /api/equipment-kit-fixed-items/fi-1");
-        _requests.Should().Contain(r => r.StartsWith("GET /api/equipment-kit-fixed-items?tipo=Arma&q=Espada"));
+        _requests.Should().Contain("GET /api/equipment-kit-fixed-items?tipo=Arma");
         _corpo!.Nome.Should().Be("Espada Longa");
         ((EquipmentKitFixedItemResponse)resultado!.Data!).Id.Should().Be("fi-1");
     }
@@ -103,6 +103,30 @@ public class FixedItemDialogTests : MudBunitContext
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Ja existe um item fixo com esse nome e tipo."));
 
         dialog.Result.IsCompleted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Saving_a_name_with_surrounding_spaces_rereads_by_id_and_closes_Ok_with_the_trimmed_item()
+    {
+        // O servidor apara o nome ao salvar, mas o filtro q da busca casa o texto sem aparar: reler pelo
+        // nome digitado não acharia o item. A releitura não pode depender do nome.
+        var salvo = Item("fi-1", "Espada Longa", "Arma");
+        var existente = Item("fi-1", "Espada Longa ", "Arma");
+        RegisterHttp(r =>
+        {
+            if (r.Method == HttpMethod.Put)
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            var q = System.Web.HttpUtility.ParseQueryString(r.RequestUri!.Query)["q"] ?? "";
+            return Json(HttpStatusCode.OK, salvo.Nome.Contains(q, StringComparison.OrdinalIgnoreCase)
+                ? new List<EquipmentKitFixedItemResponse> { salvo } : new List<EquipmentKitFixedItemResponse>());
+        });
+
+        var (cut, dialog) = await AbrirAsync("Arma", "", existente);
+        ClicarSalvar(cut);
+        var resultado = await dialog.Result.WaitAsync(TimeSpan.FromSeconds(3));
+
+        resultado!.Canceled.Should().BeFalse();
+        ((EquipmentKitFixedItemResponse)resultado.Data!).Nome.Should().Be("Espada Longa");
     }
 
     [Fact]

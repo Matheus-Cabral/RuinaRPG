@@ -58,7 +58,7 @@
 
             var salvo = Existente is null
                 ? await response.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>()
-                : await RelerAsync(Existente.Id, corpo.Tipo, corpo.Nome);
+                : await RelerAsync(Existente.Id, corpo.Tipo);
             if (salvo is null)
             {
                 _errorMessage = "O item foi salvo, mas não foi possível relê-lo.";
@@ -73,10 +73,11 @@
         }
     }
 
-    private async Task<EquipmentKitFixedItemResponse?> RelerAsync(string id, string tipo, string nome)
+    // Sem filtro de nome: o servidor apara o nome ao salvar e o filtro q casa o texto sem aparar, então
+    // reler pelo nome digitado falharia com espaços nas pontas (ou "\"). O item é achado pelo Id.
+    private async Task<EquipmentKitFixedItemResponse?> RelerAsync(string id, string tipo)
     {
-        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>(
-            $"equipment-kit-fixed-items?tipo={tipo}&q={Uri.EscapeDataString(nome)}");
+        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>($"equipment-kit-fixed-items?tipo={tipo}");
         return itens?.FirstOrDefault(i => i.Id == id);
     }
 }
