@@ -213,8 +213,8 @@ public class PericiasSheetBehaviourTests : IClassFixture<PostgresFixture>, IAsyn
         // Same CreateItemRequest shape as CharacterSheetsControllerTests.CreateDanoArtefatoItemAsync,
         // with TipoDeAlvo "Pericia" and Alvo "ArmasBrancas" (the legacy enum name = seeded Chave).
         var item = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", auditor,
-            new CreateItemRequest("Artefato", "Anel do Duelista", 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, "Pericia", "ArmasBrancas", 2, null)))).Content.ReadFromJsonAsync<ItemResponse>();
+            new CreateItemRequest("Artefato", "Anel do Duelista", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, "Pericia", "ArmasBrancas", 2, null)))).Content.ReadFromJsonAsync<ItemResponse>();
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", token, new AddCharacterArtifactRequest(item!.Id)));
 
         var depois = (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == "ArmasBrancas").Total;

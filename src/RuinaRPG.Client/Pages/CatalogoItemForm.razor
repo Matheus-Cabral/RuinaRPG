@@ -74,7 +74,6 @@
             <MudTextField T="string" @bind-Value="_form.Critico" Label="Crítico" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="int?" @bind-Value="_form.Alcance" Label="Alcance" @bind-Value:after="NotifySavedAsync" />
             <MudTextField T="string" @bind-Value="_form.TipoDeDano" Label="Tipo de Dano" @bind-Value:after="NotifySavedAsync" />
-            <MudTextField T="string" @bind-Value="_form.RequisitoAtributo" Label="Requisito de Atributo" @bind-Value:after="NotifySavedAsync" />
         </Section>
     }
     else if (_form.Tipo is "Armadura" or "Escudo")
@@ -92,8 +91,6 @@
             {
                 <MudNumericField T="int?" @bind-Value="_form.BonusDefesa" Label="Bônus de Defesa" @bind-Value:after="NotifySavedAsync" />
             }
-            <MudTextField T="string" @bind-Value="_form.Penalidade" Label="Penalidade" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.RequisitoVigor" Label="Requisito de Vigor" @bind-Value:after="NotifySavedAsync" />
             <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
                 @foreach (var rank in RankOptions)
                 {
@@ -229,13 +226,10 @@
         _form.Critico = existing.Critico;
         _form.Alcance = existing.Alcance;
         _form.TipoDeDano = existing.TipoDeDano;
-        _form.RequisitoAtributo = existing.RequisitoAtributo;
         _form.Categoria = existing.Categoria;
         _form.Defesa = existing.Defesa;
         _form.RF = existing.RF;
         _form.RM = existing.RM;
-        _form.Penalidade = existing.Penalidade;
-        _form.RequisitoVigor = existing.RequisitoVigor;
         _form.BonusDefesa = existing.BonusDefesa;
         _form.TipoDeAlvo = existing.TipoDeAlvo;
         _form.Alvo = existing.Alvo;
@@ -284,8 +278,8 @@
 
         var request = new CreateItemRequest(_form.Tipo, _form.Nome, _form.Peso, _form.Preco, _form.ImageId,
             _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
-            _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+            _form.Critico, _form.Alcance, _form.TipoDeDano,
+            _form.Categoria, _form.Defesa, _form.RF, _form.RM,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PostAsJsonAsync("items", request);
 
@@ -317,8 +311,8 @@
 
         var request = new UpdateItemRequest(_form.Nome, _form.Peso, _form.Preco, _form.ImageId,
             _form.Subcategoria, _form.Descricao, _form.Rank, _form.Empunhadura, _form.Dados, _form.Dano,
-            _form.Critico, _form.Alcance, _form.TipoDeDano, _form.RequisitoAtributo,
-            _form.Categoria, _form.Defesa, _form.RF, _form.RM, _form.Penalidade, _form.RequisitoVigor,
+            _form.Critico, _form.Alcance, _form.TipoDeDano,
+            _form.Categoria, _form.Defesa, _form.RF, _form.RM,
             _form.BonusDefesa, _form.TipoDeAlvo, _form.Alvo, _form.Valor, _form.CapacidadeExtra);
         var response = await Http.PutAsJsonAsync($"items/{ItemId}", request);
 
@@ -414,13 +408,10 @@
         public string? Critico { get; set; }
         public int? Alcance { get; set; }
         public string? TipoDeDano { get; set; }
-        public string? RequisitoAtributo { get; set; }
         public string? Categoria { get; set; }
         public int? Defesa { get; set; }
         public int? RF { get; set; }
         public int? RM { get; set; }
-        public string? Penalidade { get; set; }
-        public int? RequisitoVigor { get; set; }
         public int? BonusDefesa { get; set; }
         public string? TipoDeAlvo { get; set; }
         public string? Alvo { get; set; }

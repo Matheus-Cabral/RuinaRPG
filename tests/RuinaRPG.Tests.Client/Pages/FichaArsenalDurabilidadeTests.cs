@@ -100,7 +100,7 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
     private static object ArmorSlot(bool inquebravel, string slot = "Superior") => new
     {
         Slot = slot, ItemId = "item-2", Nome = "Cota de Malha", Categoria = "Média", Defesa = (int?)2,
-        RF = (int?)1, RM = (int?)0, Penalidade = (string?)null, RequisitoVigor = (int?)null, Peso = (decimal?)8m,
+        RF = (int?)1, RM = (int?)0, Peso = (decimal?)8m,
         DurabilidadeAtual = inquebravel ? 0 : 30, DurabilidadeMaxima = inquebravel ? 0 : 60,
         ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
     };
@@ -108,7 +108,7 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
     private static object CreatureArmorSlot(bool inquebravel, string slot = "Superior") => new
     {
         Slot = slot, ItemId = "item-2", Nome = "Cota de Malha", Categoria = "Média", Defesa = (int?)2,
-        RF = (int?)1, RM = (int?)0, Penalidade = (string?)null, RequisitoVigor = (int?)null, Peso = (decimal?)8m,
+        RF = (int?)1, RM = (int?)0, Peso = (decimal?)8m,
         DurabilidadeAtual = inquebravel ? 0 : 30, DurabilidadeMaximo = inquebravel ? 0 : 60,
         ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
     };
@@ -116,7 +116,7 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
     private static object Shield(bool inquebravel, string id = "shield-1") => new
     {
         Id = id, ItemId = "item-3", Nome = "Broquel", Categoria = "Leve", BonusDefesa = (int?)1,
-        Penalidade = (string?)null, RequisitoVigor = (int?)null, Peso = 2m, IsEquipped = false,
+        Peso = 2m, IsEquipped = false,
         DurabilidadeAtual = inquebravel ? 0 : 15, DurabilidadeMaxima = inquebravel ? 0 : 30,
         ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
     };

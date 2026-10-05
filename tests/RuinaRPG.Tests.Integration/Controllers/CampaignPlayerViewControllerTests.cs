@@ -74,8 +74,8 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
 
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private async Task<string> CreateItemAsync(string gmToken, string nome)

@@ -55,32 +55,32 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArma(string nome) =>
         new("Arma", nome, 1.5m, 50, null, "Espadas", "Uma lâmina curta e leve.",
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArmadura(string nome) =>
         new("Armadura", nome, 8m, 100, null, null, "Placas forjadas em aço temperado.",
-            "D", null, null, null, null, null, null, null,
-            "Pesada", 5, 2, 1, null, 12,
+            "D", null, null, null, null, null, null,
+            "Pesada", 5, 2, 1,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalEscudo(string nome) =>
         new("Escudo", nome, 4m, 60, null, null, "Um pequeno broquel de madeira.",
-            "F", null, null, null, null, null, null, null,
-            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            "F", null, null, null, null, null, null,
+            "Leve", null, null, null,
             3, null, null, null, null);
 
     private static CreateItemRequest MinimalArtefato(string nome) =>
         new("Artefato", nome, 0.2m, 200, null, null, "Um anel gravado com runas antigas.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, "Atributo", "Força", 2, null);
 
     [Fact]
@@ -171,8 +171,6 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body!.Tipo.Should().Be("Escudo");
         body.Categoria.Should().Be("Leve");
         body.BonusDefesa.Should().Be(3);
-        body.Penalidade.Should().Be("Desvantagem em Furtividade");
-        body.RequisitoVigor.Should().Be(8);
         body.DurabilidadeMaxima.Should().Be(20); // Rank F
         body.Descricao.Should().Be("Um pequeno broquel de madeira.");
     }
@@ -305,8 +303,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Corda Reforçada", 0.6m, 8, null, "Equipamentos de Aventura", "Mais resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -328,8 +326,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra1", "itemcapextra1@teste.com");
 
         var request = new CreateItemRequest("ItemGeral", "Mochila de Couro", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, 10m);
         var response = await PostItemAsync(token, request);
 
@@ -347,8 +345,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra2", "itemcapextra2@teste.com");
 
         var request = new CreateItemRequest("Arma", "Espada Estranha", 1.5m, 50, null, "Espadas", null,
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, 10m);
         var response = await PostItemAsync(token, request);
 
@@ -365,8 +363,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Mochila", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, 8m);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -391,8 +389,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Espada Curta", 1.5m, 50, null, "Espadas", "Agora com o fio recém-afiado.",
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -415,7 +413,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var createResponse = await PostItemAsync(tokenOwner, MinimalItemGeral("Corda"));
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
-        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenOther);
 
@@ -613,8 +611,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Peitoral de Placas", 8m, 100, null,
             "Equipamento inicial - Armadura - Pesada - Placas", "Placas forjadas em aço temperado.",
-            null, null, null, null, null, null, null, null,
-            "Pesada", 5, 2, 1, null, 12,
+            null, null, null, null, null, null, null,
+            "Pesada", 5, 2, 1,
             null, null, null, null, null);
         var updateResponse = await PutItemAsync(token, armadura.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -635,8 +633,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Broquel", 4m, 60, null,
             "Equipamento inicial - Escudo - Pesada - Aço", "Um pequeno broquel de madeira.",
-            null, null, null, null, null, null, null, null,
-            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            null, null, null, null, null, null, null,
+            "Leve", null, null, null,
             3, null, null, null, null);
         var updateResponse = await PutItemAsync(token, escudo.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -657,8 +655,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Anel do Vigor", 0.2m, 200, null,
             "Equipamento inicial - Artefato - Amuleto - Atributo", "Um anel gravado com runas antigas.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, "Atributo", "Força", 2, null);
         var updateResponse = await PutItemAsync(token, artefato.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -682,8 +680,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
     private static UpdateItemRequest UpdateDe(ItemResponse i) => new(
         Nome: i.Nome, Peso: i.Peso, Preco: i.Preco, ImageId: null, Subcategoria: i.Subcategoria, Descricao: i.Descricao,
         Rank: i.Rank, Empunhadura: i.Empunhadura, Dados: i.Dados, Dano: i.Dano, Critico: i.Critico, Alcance: i.Alcance,
-        TipoDeDano: i.TipoDeDano, RequisitoAtributo: i.RequisitoAtributo, Categoria: i.Categoria, Defesa: i.Defesa,
-        RF: i.RF, RM: i.RM, Penalidade: i.Penalidade, RequisitoVigor: i.RequisitoVigor, BonusDefesa: i.BonusDefesa,
+        TipoDeDano: i.TipoDeDano, Categoria: i.Categoria, Defesa: i.Defesa,
+        RF: i.RF, RM: i.RM, BonusDefesa: i.BonusDefesa,
         TipoDeAlvo: i.TipoDeAlvo, Alvo: i.Alvo, Valor: i.Valor, CapacidadeExtra: i.CapacidadeExtra,
         Requisitos: i.Requisitos, PenalidadeDeRequisitos: i.PenalidadeDeRequisitos);
 

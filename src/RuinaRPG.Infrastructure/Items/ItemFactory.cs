@@ -51,8 +51,7 @@ public static class ItemFactory
                 Dano = request.Dano,
                 Critico = request.Critico,
                 Alcance = request.Alcance,
-                TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano),
-                RequisitoAtributo = request.RequisitoAtributo
+                TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano)
             },
             ItemTipo.Armadura => new Armadura
             {
@@ -62,9 +61,7 @@ public static class ItemFactory
                 Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
                 Defesa = request.Defesa,
                 RF = request.RF,
-                RM = request.RM,
-                Penalidade = request.Penalidade,
-                RequisitoVigor = request.RequisitoVigor
+                RM = request.RM
             },
             ItemTipo.Escudo => new Escudo
             {
@@ -72,9 +69,7 @@ public static class ItemFactory
                 Subcategoria = request.Subcategoria,
                 Rank = rank,
                 Categoria = ParseEnum<CategoriaProtecao>(request.Categoria),
-                BonusDefesa = request.BonusDefesa,
-                Penalidade = request.Penalidade,
-                RequisitoVigor = request.RequisitoVigor
+                BonusDefesa = request.BonusDefesa
             },
             ItemTipo.Artefato => new Artefato
             {
@@ -117,7 +112,6 @@ public static class ItemFactory
                 a.Critico = request.Critico;
                 a.Alcance = request.Alcance;
                 a.TipoDeDano = ParseEnum<TipoDeDano>(request.TipoDeDano);
-                a.RequisitoAtributo = request.RequisitoAtributo;
                 break;
             case Armadura ar:
                 ar.Subcategoria = request.Subcategoria;
@@ -126,16 +120,12 @@ public static class ItemFactory
                 ar.Defesa = request.Defesa;
                 ar.RF = request.RF;
                 ar.RM = request.RM;
-                ar.Penalidade = request.Penalidade;
-                ar.RequisitoVigor = request.RequisitoVigor;
                 break;
             case Escudo e:
                 e.Subcategoria = request.Subcategoria;
                 e.Rank = rank;
                 e.Categoria = ParseEnum<CategoriaProtecao>(request.Categoria);
                 e.BonusDefesa = request.BonusDefesa;
-                e.Penalidade = request.Penalidade;
-                e.RequisitoVigor = request.RequisitoVigor;
                 break;
             case Artefato art:
                 art.Subcategoria = request.Subcategoria;

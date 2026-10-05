@@ -459,8 +459,6 @@
                         <th>Defesa</th>
                         <th>RF</th>
                         <th>RM</th>
-                        <th>Penalidade</th>
-                        <th>Requisito de Vigor</th>
                         <th>Peso</th>
                         <th>Durabilidade</th>
                         <th></th>
@@ -485,8 +483,6 @@
                             <td>@(slot.Defesa?.ToString() ?? "—")</td>
                             <td>@(slot.RF?.ToString() ?? "—")</td>
                             <td>@(slot.RM?.ToString() ?? "—")</td>
-                            <td>@(slot.Penalidade ?? "—")</td>
-                            <td>@(slot.RequisitoVigor?.ToString() ?? "—")</td>
                             <td>@(slot.Peso?.ToString() ?? "—")</td>
                             <td>
                                 @if (slot.ItemId is not null)
@@ -532,8 +528,6 @@
                         <th>Nome</th>
                         <th>Categoria</th>
                         <th>Bônus de Defesa</th>
-                        <th>Penalidade</th>
-                        <th>Requisito de Vigor</th>
                         <th>Peso</th>
                         <th>Durabilidade</th>
                         <th>Equipado</th>
@@ -547,8 +541,6 @@
                             <td><ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" /></td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
-                            <td>@(shield.Penalidade ?? "—")</td>
-                            <td>@(shield.RequisitoVigor?.ToString() ?? "—")</td>
                             <td>@shield.Peso</td>
                             <td>
                                 @if (shield.Inquebravel)

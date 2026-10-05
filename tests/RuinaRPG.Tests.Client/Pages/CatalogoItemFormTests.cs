@@ -26,8 +26,8 @@ public class CatalogoItemFormTests : MudBunitContext
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
                           Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
-                          RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
-                          RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                          DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
+                          RF = (int?)null, RM = (int?)null, BonusDefesa = (int?)null,
                           TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null }
                 }) };
             if (request.Method == HttpMethod.Put)
@@ -67,8 +67,8 @@ public class CatalogoItemFormTests : MudBunitContext
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
                           Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
-                          RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
-                          RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                          DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
+                          RF = (int?)null, RM = (int?)null, BonusDefesa = (int?)null,
                           TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null }
                 }) };
             if (request.Method == HttpMethod.Put)
@@ -164,8 +164,8 @@ public class CatalogoItemFormTests : MudBunitContext
                     new { Id = "item-1", Tipo = "ItemGeral", Nome = "Poção", ImageUrl = (string?)null, Peso = 1m, Preco = 10,
                           Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null, Empunhadura = (string?)null,
                           Dados = (string?)null, Dano = (int?)null, Critico = (string?)null, Alcance = (int?)null, TipoDeDano = (string?)null,
-                          RequisitoAtributo = (string?)null, DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
-                          RF = (int?)null, RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                          DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null,
+                          RF = (int?)null, RM = (int?)null, BonusDefesa = (int?)null,
                           TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null }
                 }) };
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -340,9 +340,9 @@ public class CatalogoItemFormTests : MudBunitContext
                 Id = "item-new", Tipo = "Arma", Nome = "Espada", Peso = 1m, Preco = 5,
                 ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Rank = "D",
                 Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
-                Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
+                Alcance = (int?)null, TipoDeDano = (string?)null,
                 DurabilidadeMaxima = (int?)80, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,
-                RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                RM = (int?)null, BonusDefesa = (int?)null,
                 TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null, CapacidadeExtra = (decimal?)null,
             }) };
         });
@@ -364,8 +364,8 @@ public class CatalogoItemFormTests : MudBunitContext
 
     private record CreateEquipmentRequestCapture(string Tipo, string Nome, decimal Peso, int Preco, string? ImageId,
         string? Subcategoria, string? Descricao, string? Rank, string? Empunhadura, string? Dados, int? Dano,
-        string? Critico, int? Alcance, string? TipoDeDano, string? RequisitoAtributo, string? Categoria, int? Defesa,
-        int? RF, int? RM, string? Penalidade, int? RequisitoVigor, int? BonusDefesa, string? TipoDeAlvo, string? Alvo,
+        string? Critico, int? Alcance, string? TipoDeDano, string? Categoria, int? Defesa,
+        int? RF, int? RM, int? BonusDefesa, string? TipoDeAlvo, string? Alvo,
         int? Valor, decimal? CapacidadeExtra);
 
     [Fact]
@@ -582,9 +582,9 @@ public class CatalogoItemFormTests : MudBunitContext
                 Id = "item-new", Tipo = "ItemGeral", Nome = "Poção Nova", Peso = 1m, Preco = 5,
                 ImageUrl = (string?)null, Subcategoria = (string?)null, Descricao = (string?)null, Rank = (string?)null,
                 Empunhadura = (string?)null, Dados = (string?)null, Dano = (int?)null, Critico = (string?)null,
-                Alcance = (int?)null, TipoDeDano = (string?)null, RequisitoAtributo = (string?)null,
+                Alcance = (int?)null, TipoDeDano = (string?)null,
                 DurabilidadeMaxima = (int?)null, Categoria = (string?)null, Defesa = (int?)null, RF = (int?)null,
-                RM = (int?)null, Penalidade = (string?)null, RequisitoVigor = (int?)null, BonusDefesa = (int?)null,
+                RM = (int?)null, BonusDefesa = (int?)null,
                 TipoDeAlvo = (string?)null, Alvo = (string?)null, Valor = (int?)null, CapacidadeExtra = (decimal?)null,
             }) };
         });

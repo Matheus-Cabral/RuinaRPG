@@ -133,20 +133,20 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         var resposta = item switch
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
-                g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
+                g.Subcategoria, g.Descricao, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
-                a.Subcategoria, a.Descricao, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
-                maxima, null, null, null, null, null, null, null, null, null, null, null, inquebravel),
+                a.Subcategoria, a.Descricao, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(),
+                maxima, null, null, null, null, null, null, null, null, null, inquebravel),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                ar.Subcategoria, ar.Descricao, ar.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
-                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null, inquebravel),
+                ar.Subcategoria, ar.Descricao, ar.Rank?.ToString(), null, null, null, null, null, null, maxima,
+                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, null, null, null, null, null, inquebravel),
             Escudo e => new ItemResponse(e.Id.ToString(), "Escudo", e.Nome, e.Peso, e.Preco, imageUrl,
-                e.Subcategoria, e.Descricao, e.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
-                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null, inquebravel),
+                e.Subcategoria, e.Descricao, e.Rank?.ToString(), null, null, null, null, null, null, maxima,
+                e.Categoria?.ToString(), null, null, null, e.BonusDefesa, null, null, null, null, inquebravel),
             Artefato ar => new ItemResponse(ar.Id.ToString(), "Artefato", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
+                ar.Subcategoria, ar.Descricao, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
         };
 
