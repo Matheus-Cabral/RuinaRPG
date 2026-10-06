@@ -49,6 +49,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         string nome, descricao;
         int grau;
         TipoDeRuna? tipo;
+        DisciplinaDeRuna? disciplina;
         Guid? sourceBankEntryId = null;
         Guid? imageId = null;
 
@@ -72,6 +73,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
                 return BadRequest("Ao escolher do banco, a imagem vem da entrada.");
 
             nome = bankEntry.Nome; descricao = bankEntry.Descricao; grau = bankEntry.Grau; tipo = bankEntry.Tipo;
+            disciplina = bankEntry.Disciplina;
             sourceBankEntryId = bankEntryId;
             imageId = bankEntry.ImageId;
         }
@@ -79,6 +81,11 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         {
             if (!RuneTipo.TryParse(request.Tipo, out tipo))
                 return BadRequest(RuneTipo.UnknownMessage);
+
+            if (!RuneDisciplina.TryParse(request.Disciplina, out disciplina))
+                return BadRequest(RuneDisciplina.UnknownMessage);
+            if (disciplina is null)
+                return BadRequest(RuneDisciplina.RequiredMessage);
 
             if (!RuneImageAccess.TryParseImageId(request.ImageId, out imageId))
                 return BadRequest("ImageId inválido.");
@@ -89,7 +96,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
             nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
         }
 
-        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
+        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.NpcRunes.Add(rune);
 
         // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
@@ -97,7 +104,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
         // copia para a ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
         if (!fromBank)
         {
-            var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, ImageId = imageId };
+            var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, ImageId = imageId };
             db.RuneBankEntries.Add(bankCopy);
             rune.SourceBankEntryId = bankCopy.Id;
 
@@ -152,7 +159,7 @@ public class NpcRunesController(RuinaRpgDbContext db) : ControllerBase
     }
 
     private static NpcRuneResponse ToResponse(NpcRune r, Dictionary<Guid, string> imageUrls) =>
-        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo));
+        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

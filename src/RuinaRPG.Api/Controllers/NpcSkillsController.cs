@@ -17,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/skills")]
-public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId)
@@ -33,7 +33,8 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
         var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
-        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
+        var artefatos = await stats.ModificadoresAsync(sheet);
 
         var attributeTotals = await db.NpcAttributes
             .Where(a => a.NpcSheetId == sheetId)
@@ -91,19 +92,6 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
 
         return NoContent();
     }
-
-    /// <summary>
-    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
-    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
-    /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
-    /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
-        await db.NpcArtifacts
-            .Where(a => a.NpcSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

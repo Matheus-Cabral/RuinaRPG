@@ -157,6 +157,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
+        <PenalidadesAtivasAlert Url="@($"creature-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
         <Section Title="Atributos">
             @if (_attributeBudget is not null)
             {
@@ -210,6 +211,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
+        <PenalidadesAtivasAlert Url="@($"creature-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
         <Section>
             <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
@@ -286,7 +288,10 @@
                     @foreach (var weapon in _weapons)
                     {
                         <tr>
-                            <td><ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" /></td>
+                            <td>
+                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@weapon.Requisitos" Pendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" />
+                            </td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
                             <td>@(weapon.Dados ?? "—")</td>
@@ -328,8 +333,6 @@
                         <th>Defesa</th>
                         <th>RF</th>
                         <th>RM</th>
-                        <th>Penalidade</th>
-                        <th>Requisito de Vigor</th>
                         <th>Peso</th>
                         <th>Durabilidade</th>
                         <th></th>
@@ -344,6 +347,7 @@
                                 @if (slot.Nome is not null)
                                 {
                                     <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" />
+                                    <RequisitosDeEquipamentoAviso Requisitos="@slot.Requisitos" Pendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" />
                                 }
                                 else
                                 {
@@ -354,8 +358,6 @@
                             <td>@(slot.Defesa?.ToString() ?? "—")</td>
                             <td>@(slot.RF?.ToString() ?? "—")</td>
                             <td>@(slot.RM?.ToString() ?? "—")</td>
-                            <td>@(slot.Penalidade ?? "—")</td>
-                            <td>@(slot.RequisitoVigor?.ToString() ?? "—")</td>
                             <td>@(slot.Peso?.ToString() ?? "—")</td>
                             <td>
                                 @if (slot.ItemId is not null)
@@ -401,8 +403,6 @@
                         <th>Nome</th>
                         <th>Categoria</th>
                         <th>Bônus de Defesa</th>
-                        <th>Penalidade</th>
-                        <th>Requisito de Vigor</th>
                         <th>Peso</th>
                         <th>Durabilidade</th>
                         <th>Equipado</th>
@@ -413,11 +413,12 @@
                     @foreach (var shield in _shields)
                     {
                         <tr>
-                            <td><ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" /></td>
+                            <td>
+                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@shield.Requisitos" Pendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" />
+                            </td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
-                            <td>@(shield.Penalidade ?? "—")</td>
-                            <td>@(shield.RequisitoVigor?.ToString() ?? "—")</td>
                             <td>@shield.Peso</td>
                             <td>
                                 @if (shield.Inquebravel)
@@ -575,7 +576,9 @@
                         @foreach (var artifact in group)
                         {
                             <tr>
-                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" /> — Alvo @artifact.Alvo — Valor @artifact.Valor</td>
+                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
+                                    <RequisitosDeEquipamentoAviso Requisitos="@artifact.Requisitos" Pendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" />
+                                </td>
                                 <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
                             </tr>
                         }
@@ -632,6 +635,7 @@
     // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
     private string PericiaLabel(string chave) =>
         _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
+    private int _penalidadesVersao;
     private List<CreatureWeaponResponse> _weapons = new();
     private readonly WeaponFormModel _weaponForm = new();
     private List<CreatureArmorSlotResponse> _armorSlots = new();
@@ -845,6 +849,7 @@
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
         await LoadTraitsAsync();
         return true;
     }
@@ -888,6 +893,7 @@
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
         await LoadTraitsAsync();
         return true;
     }
@@ -907,6 +913,7 @@
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
         await LoadTraitsAsync();
         return true;
     }
@@ -957,6 +964,7 @@
 
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateCreatureAttributeRequest(gasto, bonus, temMaestria));
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task UpdateSkillGastoAsync(string pericia, object? value)
@@ -965,6 +973,7 @@
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(gasto, current.AtributoEscolhido));
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task UpdateSkillAtributoAsync(string pericia, object? value)
@@ -973,6 +982,7 @@
         var atributoEscolhido = value?.ToString();
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task AddWeaponAsync()
@@ -994,12 +1004,14 @@
         _weaponForm.ManualDados = "";
         _weaponForm.ManualDano = 0;
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
     {
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task UpdateWeaponDurabilidadeAsync(string weaponId, object? value)
@@ -1014,6 +1026,7 @@
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/armor-slots/{slot}", new UpdateCreatureArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
         _armorSlotForm[slot] = "";
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task UpdateArmorSlotDurabilidadeAsync(string slot, object? value)
@@ -1033,18 +1046,21 @@
         }
         _shieldForm.ItemId = "";
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task EquipShieldAsync(string shieldId, bool isEquipped)
     {
         await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/shields/{shieldId}", isEquipped);
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task DeleteShieldAsync(string shieldId)
     {
         await Http.DeleteAsync($"creature-sheets/{SheetId}/shields/{shieldId}");
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task UpdateShieldDurabilidadeAsync(string shieldId, object? value)
@@ -1058,6 +1074,7 @@
     {
         await Http.DeleteAsync($"creature-sheets/{SheetId}/weapons/{weaponId}");
         await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task LoadSpellAbilitiesAsync()
@@ -1177,12 +1194,16 @@
 
         _artifactForm.ArtifactItemId = "";
         await LoadArtifactsAsync();
+        await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task DeleteArtifactAsync(string id)
     {
         await Http.DeleteAsync($"creature-sheets/{SheetId}/artifacts/{id}");
         await LoadArtifactsAsync();
+        await LoadTabs2And3Async();
+        _penalidadesVersao++;
     }
 
     private async Task LoadAffectionsAsync()

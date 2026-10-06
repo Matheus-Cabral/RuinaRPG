@@ -1,0 +1,83 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
+@*
+    Cadastra (POST) ou edita (PUT) um item da base global de itens fixos dos kits. Os campos são os do
+    formulário do catálogo, sem imagem; o Tipo fica visível mas travado. Editar vale para todos os kits
+    que usam o item. Fecha com o EquipmentKitFixedItemResponse salvo.
+*@
+<MudDialog>
+    <DialogContent>
+        @if (Existente is { Kits.Count: > 0 })
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">Este item é usado em: @string.Join(", ", Existente.Kits). A alteração vale para todos os kits que usam este item.</MudAlert>
+        }
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+        <ItemFieldsEditor Model="_form" TipoBloqueado="true" MostrarImagem="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_salvando" OnClick="SalvarAsync">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string Tipo { get; set; } = "ItemGeral";
+    [Parameter] public string NomeInicial { get; set; } = "";
+    [Parameter] public EquipmentKitFixedItemResponse? Existente { get; set; }
+
+    private ItemFormModel _form = new();
+    private string? _errorMessage;
+    private bool _salvando;
+
+    protected override void OnInitialized() =>
+        _form = Existente is not null
+            ? ItemFormModel.FromRequest(Existente.Dados)
+            : new ItemFormModel { Tipo = Tipo, Nome = NomeInicial };
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task SalvarAsync()
+    {
+        _salvando = true;
+        try
+        {
+            var corpo = _form.ToCreateRequest();
+            var response = Existente is null
+                ? await Http.PostAsJsonAsync("equipment-kit-fixed-items", corpo)
+                : await Http.PutAsJsonAsync($"equipment-kit-fixed-items/{Existente.Id}", corpo);
+            if (!response.IsSuccessStatusCode)
+            {
+                var detalhe = await response.Content.ReadAsStringAsync();
+                _errorMessage = string.IsNullOrWhiteSpace(detalhe) ? "Não foi possível salvar o item fixo." : detalhe;
+                return;
+            }
+
+            var salvo = Existente is null
+                ? await response.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>()
+                : await RelerAsync(Existente.Id, corpo.Tipo);
+            if (salvo is null)
+            {
+                _errorMessage = "O item foi salvo, mas não foi possível relê-lo.";
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(salvo));
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    // Sem filtro de nome: o servidor apara o nome ao salvar e o filtro q casa o texto sem aparar, então
+    // reler pelo nome digitado falharia com espaços nas pontas (ou "\"). O item é achado pelo Id.
+    private async Task<EquipmentKitFixedItemResponse?> RelerAsync(string id, string tipo)
+    {
+        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>($"equipment-kit-fixed-items?tipo={tipo}");
+        return itens?.FirstOrDefault(i => i.Id == id);
+    }
+}

@@ -17,17 +17,19 @@ namespace RuinaRPG.Api.Services;
 /// Passiva requisitos check (Task 5) share one live computation instead of two. Read-only,
 /// everything derived live — nothing here is persisted.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
 {
     /// <summary>
     /// "Bruto [Perícia]" terms (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador
     /// alone (Sistema Básico §2 / SkillFormulas.Modificador), sourced from the sheet's own
     /// CharacterSkill rows below.
     /// </summary>
-    public async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet)
+    public async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+
+    private async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var id = sheet.Id;
-        var artefatos = await GetArtifactBonusInputsAsync(id);
 
         var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
         var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
@@ -89,9 +91,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
             Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
-            // penalidadeArmadura is hardcoded to 0: Armadura.Penalidade is a free-text string? field
-            // in the Catálogo (e.g. "-1 Furtividade"), not a number, so it can't be summed into this
-            // numeric formula term today. Unlike Bruto/Artefatos above, this is a real, still-open gap.
+            // penalidadeArmadura fica 0: penalidades de equipamento chegam como modificadores negativos de Sub-Atributo (ver EquipmentPenaltyService), não por este termo.
             EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
             DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
             ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
@@ -105,13 +105,15 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
 
     /// <summary>
     /// What the sheet has to compare against a Passiva's Requisitos (Task 1's FichaParaRequisitos).
+    /// Sempre SEM penalidades de equipamento: é contra este retrato que os Requisitos (de Passiva e de
+    /// equipamento) são avaliados, para uma penalidade nunca derrubar outro requisito.
     /// Atributos/Perícias/Graduação here must equal what CharacterAttributesController/
     /// CharacterSkillsController.List/CharacterSheetsController's own response already show —
     /// same source data, same formulas, just gathered in one place instead of three.
     /// </summary>
     public async Task<FichaParaRequisitos> FichaParaRequisitosAsync(CharacterSheet sheet)
     {
-        var artefatos = await GetArtifactBonusInputsAsync(sheet.Id);
+        var artefatos = await ArtefatosAsync(sheet.Id);
         var atributos = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
@@ -132,7 +134,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet);
+        var sub = await SubAtributosAsync(sheet, artefatos);
 
         // Mesmo Grau/Círculo que CharacterSheetsController.ToResponseAsync mostra em 1.b.
         var tabela = await tabelaDeNiveis.ObterAsync();
@@ -159,10 +161,9 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// <summary>
     /// Every CharacterArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b
     /// has no separate equip/unequip toggle for Artefatos, so being on the sheet is being "equipped".
-    /// Moved here from CharacterSheetsController; that controller keeps its own copy too since
-    /// ComputeResourceMaximumsAsync still needs it independently of SubAttributes/FichaParaRequisitos.
+    /// Só Artefatos: o que as telas exibem soma também as penalidades (<see cref="ModificadoresAsync"/>).
     /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
+    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId) =>
         await db.CharacterArtifacts
             .Where(a => a.CharacterSheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
@@ -170,7 +171,28 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
             .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
             .ToListAsync();
 
-    /// <summary>Single-row lookup + AttributeTotalCalculator.Total. See GetArtifactBonusInputsAsync's remark on the controller keeping its own copy.</summary>
+    /// <summary>Os equipamentos da ficha e se estão em uso (Requisitos - Catálogo de Itens, Requisitos/Penalidade).</summary>
+    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId)
+    {
+        var armas = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).Select(w => new EquipamentoDaFicha(w.ItemId, w.IsEquipped)).ToListAsync();
+        var escudos = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).Select(s => new EquipamentoDaFicha(s.ItemId, s.IsEquipped)).ToListAsync();
+        var armaduras = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId && a.ItemId != null).Select(a => new EquipamentoDaFicha(a.ItemId!.Value, true)).ToListAsync();
+        var artefatos = await db.CharacterArtifacts.Where(a => a.CharacterSheetId == sheetId).Select(a => new EquipamentoDaFicha(a.ArtifactItemId, true)).ToListAsync();
+        return [.. armas, .. escudos, .. armaduras, .. artefatos];
+    }
+
+    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(CharacterSheet sheet) =>
+        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id), () => FichaParaRequisitosAsync(sheet));
+
+    /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
+    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(CharacterSheet sheet)
+    {
+        var modificadores = await ArtefatosAsync(sheet.Id);
+        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet)));
+        return modificadores;
+    }
+
+    /// <summary>Single-row lookup + AttributeTotalCalculator.Total.</summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
     {
         var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);

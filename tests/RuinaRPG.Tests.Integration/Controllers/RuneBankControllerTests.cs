@@ -57,9 +57,9 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         return message;
     }
 
-    private async Task<RuneBankEntryResponse> CreateAsync(string token, string nome, string descricao, int grau, string? tipo = null)
+    private async Task<RuneBankEntryResponse> CreateAsync(string token, string nome, string descricao, int grau, string? tipo = null, string disciplina = "Adicao")
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo, disciplina)));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
     }
@@ -74,7 +74,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     [Fact]
     public async Task Create_without_a_token_returns_401()
     {
-        var response = await _client.PostAsJsonAsync("/api/rune-bank", new CreateRuneBankEntryRequest("Runa", "Desc.", 1));
+        var response = await _client.PostAsJsonAsync("/api/rune-bank", new CreateRuneBankEntryRequest("Runa", "Desc.", 1, null, null, "Adicao"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -99,9 +99,9 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "RuneBankJogador2", "runebankjogador2@teste.com");
         var entry = await CreateAsync(gmToken, "Runa Secreta", "Só o GM vê.", 1);
 
-        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", jogadorToken, new CreateRuneBankEntryRequest("X", "Y", 1)));
+        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", jogadorToken, new CreateRuneBankEntryRequest("X", "Y", 1, null, null, "Adicao")));
         var get = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rune-bank", jogadorToken));
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", jogadorToken, new UpdateRuneBankEntryRequest("X", "Y", 1)));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", jogadorToken, new UpdateRuneBankEntryRequest("X", "Y", 1, null, null, "Adicao")));
         var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/rune-bank/{entry.Id}", jogadorToken));
 
         post.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -148,7 +148,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var token = await RegisterGmAndGetTokenAsync("RuneBankGm5", "runebankgm5@teste.com");
         var entry = await CreateAsync(token, "Runa Velha", "Antiga.", 1);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa Nova", "Atual.", 4)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa Nova", "Atual.", 4, null, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var atualizada = (await ListAsync(token)).Single(e => e.Id == entry.Id);
@@ -164,7 +164,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var tokenB = await RegisterGmAndGetTokenAsync("RuneBankGmB6", "runebankgmb6@teste.com");
         var entry = await CreateAsync(tokenA, "Runa do A", "A.", 1);
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", tokenB, new UpdateRuneBankEntryRequest("Roubada", "X.", 9)));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", tokenB, new UpdateRuneBankEntryRequest("Roubada", "X.", 9, null, null, "Adicao")));
         var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/rune-bank/{entry.Id}", tokenB));
 
         put.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -189,7 +189,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     {
         var token = await RegisterGmAndGetTokenAsync("RuneBankGm8", "runebankgm8@teste.com");
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{Guid.NewGuid()}", token, new UpdateRuneBankEntryRequest("X", "Y", 1)));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{Guid.NewGuid()}", token, new UpdateRuneBankEntryRequest("X", "Y", 1, null, null, "Adicao")));
         var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/rune-bank/{Guid.NewGuid()}", token));
 
         put.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -222,8 +222,8 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var token = await RegisterGmAndGetTokenAsync($"RuneBankTipoGm2{tipo.Replace(" ", "")}", $"runebanktipogm2{tipo.Replace(" ", "")}@teste.com");
         var entry = await CreateAsync(token, "Runa", "D.", 1);
 
-        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("X", "Y", 1, null, tipo)));
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("X", "Y", 1, null, tipo)));
+        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("X", "Y", 1, null, tipo, "Adicao")));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("X", "Y", 1, null, tipo, "Adicao")));
 
         post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await post.Content.ReadAsStringAsync()).Should().Contain("Tipo de Runa desconhecido.");
@@ -237,11 +237,11 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var token = await RegisterGmAndGetTokenAsync("RuneBankTipoGm3", "runebanktipogm3@teste.com");
         var entry = await CreateAsync(token, "Runa", "D.", 1, "Arcana");
 
-        var troca = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, "Negra")));
+        var troca = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, "Negra", "Adicao")));
         troca.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListAsync(token)).Single(e => e.Id == entry.Id).Tipo.Should().Be("Negra");
 
-        var limpa = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, null)));
+        var limpa = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "D.", 1, null, null, "Adicao")));
         limpa.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListAsync(token)).Single(e => e.Id == entry.Id).Tipo.Should().BeNull();
     }
@@ -286,7 +286,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm1", "runebankimg1@teste.com");
         var (imageId, imageUrl) = await UploadImageAsync(token);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
@@ -301,7 +301,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var otherToken = await RegisterGmAndGetTokenAsync("RuneBankImgGm2b", "runebankimg2b@teste.com");
         var (foreignImage, _) = await UploadImageAsync(otherToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -313,7 +313,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     {
         var token = await RegisterGmAndGetTokenAsync($"RuneBankImgGm3{imageId.Length}", $"runebankimg3{imageId.Length}@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, imageId, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -323,7 +323,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
     {
         var token = await RegisterGmAndGetTokenAsync("RuneBankImgGm4", "runebankimg4@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, "")));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, "", null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
@@ -338,13 +338,13 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (imageId, imageUrl) = await UploadImageAsync(token);
         var entry = await CreateAsync(token, "Runa", "Desc.", 1);
 
-        var set = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, imageId)));
+        var set = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, imageId, null, "Adicao")));
         set.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var comImagem = (await ListAsync(token)).Single(e => e.Id == entry.Id);
         comImagem.ImageId.Should().Be(imageId);
         comImagem.ImageUrl.Should().Be(imageUrl);
 
-        var clear = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "")));
+        var clear = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "", null, "Adicao")));
         clear.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var semImagem = (await ListAsync(token)).Single(e => e.Id == entry.Id);
         semImagem.ImageId.Should().BeNull();
@@ -359,8 +359,8 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (foreignImage, _) = await UploadImageAsync(otherToken);
         var entry = await CreateAsync(token, "Runa", "Desc.", 1);
 
-        var foreign = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage)));
-        var malformed = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "xx")));
+        var foreign = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, foreignImage, null, "Adicao")));
+        var malformed = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, "xx", null, "Adicao")));
 
         foreign.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         malformed.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -408,7 +408,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
         var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
         var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
-            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId)));
+            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId, Disciplina: "Adicao")));
         add.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var bankCopy = (await ListAsync(gmToken)).Single(e => e.Nome == "Runa do Jogador");
@@ -433,7 +433,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var setup = await BuildPlayerRuneSetupAsync("2");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
-            new UpdateRuneBankEntryRequest("Runa Renomeada", "Nova.", 2, setup.ImageId)));
+            new UpdateRuneBankEntryRequest("Runa Renomeada", "Nova.", 2, setup.ImageId, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
@@ -450,7 +450,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (foreignImage, _) = await UploadImageAsync(otherGmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
-            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, foreignImage)));
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, foreignImage, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("Imagem não encontrada.");
@@ -464,7 +464,7 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (ownImage, ownUrl) = await UploadImageAsync(setup.GmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
-            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, ownImage)));
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, ownImage, null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
@@ -478,11 +478,66 @@ public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var setup = await BuildPlayerRuneSetupAsync("5");
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{setup.BankCopy.Id}", setup.GmToken,
-            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, "")));
+            new UpdateRuneBankEntryRequest("Runa do Jogador", "Com imagem dele.", 1, "", null, "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var entry = (await ListAsync(setup.GmToken)).Single(e => e.Id == setup.BankCopy.Id);
         entry.ImageId.Should().BeNull();
         entry.ImageUrl.Should().BeNull();
+    }
+
+    // ---- Disciplina obrigatória ----
+
+    [Fact]
+    public async Task Create_returns_the_disciplina_and_the_list_carries_it()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneDiscGm1", "runediscgm1@teste.com");
+
+        var created = await CreateAsync(token, "Runa do Corpo", "Fortalece.", 1, disciplina: "Manifestacao");
+
+        created.Disciplina.Should().Be("Manifestacao");
+        (await ListAsync(token)).Single(e => e.Id == created.Id).Disciplina.Should().Be("Manifestacao");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task Create_and_update_without_a_disciplina_return_400(string? disciplina)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"RuneDiscGm2{disciplina is null}", $"runediscgm2{disciplina is null}@teste.com");
+        var entry = await CreateAsync(token, "Runa", "Desc.", 1);
+
+        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Outra", "Desc.", 1, null, null, disciplina)));
+        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/rune-bank/{entry.Id}", token, new UpdateRuneBankEntryRequest("Runa", "Desc.", 1, null, null, disciplina)));
+
+        post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await post.Content.ReadAsStringAsync()).Should().Contain("Disciplina é obrigatória.");
+        put.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("adicao")]
+    [InlineData("1")]
+    [InlineData("Fogo")]
+    public async Task Create_with_an_unknown_disciplina_returns_400(string disciplina)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"RuneDiscGm3{disciplina}", $"runediscgm3{disciplina}@teste.com");
+
+        var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", token, new CreateRuneBankEntryRequest("Runa", "Desc.", 1, null, null, disciplina)));
+
+        post.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await post.Content.ReadAsStringAsync()).Should().Contain("Disciplina de Runa desconhecida.");
+    }
+
+    [Fact]
+    public async Task List_filters_by_disciplina_including_the_ones_without()
+    {
+        var token = await RegisterGmAndGetTokenAsync("RuneDiscGm4", "runediscgm4@teste.com");
+        var emissao = await CreateAsync(token, "Runa A", "Desc.", 1, disciplina: "Emissao");
+        await CreateAsync(token, "Runa B", "Desc.", 1, disciplina: "Adicao");
+
+        (await ListAsync(token, "?disciplina=Emissao")).Select(e => e.Id).Should().Equal(emissao.Id);
+        (await ListAsync(token, "?disciplina=Nenhuma")).Should().BeEmpty();
+        (await ListAsync(token)).Should().HaveCount(2);
     }
 }

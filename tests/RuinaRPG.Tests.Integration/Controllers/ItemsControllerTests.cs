@@ -4,7 +4,11 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Images;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Items;
+using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -51,32 +55,32 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArma(string nome) =>
         new("Arma", nome, 1.5m, 50, null, "Espadas", "Uma lâmina curta e leve.",
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalArmadura(string nome) =>
         new("Armadura", nome, 8m, 100, null, null, "Placas forjadas em aço temperado.",
-            "D", null, null, null, null, null, null, null,
-            "Pesada", 5, 2, 1, null, 12,
+            "D", null, null, null, null, null, null,
+            "Pesada", 5, 2, 1,
             null, null, null, null, null);
 
     private static CreateItemRequest MinimalEscudo(string nome) =>
         new("Escudo", nome, 4m, 60, null, null, "Um pequeno broquel de madeira.",
-            "F", null, null, null, null, null, null, null,
-            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            "F", null, null, null, null, null, null,
+            "Leve", null, null, null,
             3, null, null, null, null);
 
     private static CreateItemRequest MinimalArtefato(string nome) =>
         new("Artefato", nome, 0.2m, 200, null, null, "Um anel gravado com runas antigas.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, "Atributo", "Força", 2, null);
 
     [Fact]
@@ -167,8 +171,6 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         body!.Tipo.Should().Be("Escudo");
         body.Categoria.Should().Be("Leve");
         body.BonusDefesa.Should().Be(3);
-        body.Penalidade.Should().Be("Desvantagem em Furtividade");
-        body.RequisitoVigor.Should().Be(8);
         body.DurabilidadeMaxima.Should().Be(20); // Rank F
         body.Descricao.Should().Be("Um pequeno broquel de madeira.");
     }
@@ -301,8 +303,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Corda Reforçada", 0.6m, 8, null, "Equipamentos de Aventura", "Mais resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -324,8 +326,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra1", "itemcapextra1@teste.com");
 
         var request = new CreateItemRequest("ItemGeral", "Mochila de Couro", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, 10m);
         var response = await PostItemAsync(token, request);
 
@@ -343,8 +345,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var token = await RegisterGmAndGetTokenAsync("ItemGmCapExtra2", "itemcapextra2@teste.com");
 
         var request = new CreateItemRequest("Arma", "Espada Estranha", 1.5m, 50, null, "Espadas", null,
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, 10m);
         var response = await PostItemAsync(token, request);
 
@@ -361,8 +363,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Mochila", 1m, 40, null, "Equipamentos de Aventura", "Uma mochila resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, 8m);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -387,8 +389,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
         var update = new UpdateItemRequest("Espada Curta", 1.5m, 50, null, "Espadas", "Agora com o fio recém-afiado.",
-            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null,
+            "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null,
             null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -411,7 +413,7 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
         var createResponse = await PostItemAsync(tokenOwner, MinimalItemGeral("Corda"));
         var itemId = (await createResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
 
-        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var update = new UpdateItemRequest("Hack", 0m, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenOther);
 
@@ -609,8 +611,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Peitoral de Placas", 8m, 100, null,
             "Equipamento inicial - Armadura - Pesada - Placas", "Placas forjadas em aço temperado.",
-            null, null, null, null, null, null, null, null,
-            "Pesada", 5, 2, 1, null, 12,
+            null, null, null, null, null, null, null,
+            "Pesada", 5, 2, 1,
             null, null, null, null, null);
         var updateResponse = await PutItemAsync(token, armadura.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -631,8 +633,8 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Broquel", 4m, 60, null,
             "Equipamento inicial - Escudo - Pesada - Aço", "Um pequeno broquel de madeira.",
-            null, null, null, null, null, null, null, null,
-            "Leve", null, null, null, "Desvantagem em Furtividade", 8,
+            null, null, null, null, null, null, null,
+            "Leve", null, null, null,
             3, null, null, null, null);
         var updateResponse = await PutItemAsync(token, escudo.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -653,13 +655,195 @@ public class ItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifeti
 
         var update = new UpdateItemRequest("Anel do Vigor", 0.2m, 200, null,
             "Equipamento inicial - Artefato - Amuleto - Atributo", "Um anel gravado com runas antigas.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, "Atributo", "Força", 2, null);
         var updateResponse = await PutItemAsync(token, artefato.Id, update);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var items = await ListItemsAsync(token);
         items.Single(i => i.Id == artefato.Id).Subcategoria.Should().Be("Equipamento inicial - Artefato - Amuleto - Atributo");
+    }
+
+    // ---- Requisitos e Penalidade de equipamento ----
+
+    private static CreateItemRequest Arma(string nome, RequisitosDePassivaDto? requisitos = null, PenalidadeDeEquipamentoDto? penalidade = null) =>
+        MinimalArma(nome) with { Requisitos = requisitos, PenalidadeDeRequisitos = penalidade };
+
+    private async Task<ItemResponse> CreateItemAsync(string token, CreateItemRequest request)
+    {
+        var response = await PostItemAsync(token, request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!;
+    }
+
+    private static UpdateItemRequest UpdateDe(ItemResponse i) => new(
+        Nome: i.Nome, Peso: i.Peso, Preco: i.Preco, ImageId: null, Subcategoria: i.Subcategoria, Descricao: i.Descricao,
+        Rank: i.Rank, Empunhadura: i.Empunhadura, Dados: i.Dados, Dano: i.Dano, Critico: i.Critico, Alcance: i.Alcance,
+        TipoDeDano: i.TipoDeDano, Categoria: i.Categoria, Defesa: i.Defesa,
+        RF: i.RF, RM: i.RM, BonusDefesa: i.BonusDefesa,
+        TipoDeAlvo: i.TipoDeAlvo, Alvo: i.Alvo, Valor: i.Valor, CapacidadeExtra: i.CapacidadeExtra,
+        Requisitos: i.Requisitos, PenalidadeDeRequisitos: i.PenalidadeDeRequisitos);
+
+    [Fact]
+    public async Task An_equipment_round_trips_its_requirements_and_penalty_and_spells_them_out()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm1", "itemreqgm1@teste.com");
+        var requisitos = new RequisitosDePassivaDto(Vocacao: "Campeao", Atributos: [new("Vigor", 8)]);
+        var penalidade = new PenalidadeDeEquipamentoDto(Atributos: [new("Forca", 2)], SubAtributos: [new("Movimentacao", 1)], Texto: "Desvantagem em furtividade");
+
+        var created = await CreateItemAsync(token, Arma("Montante", requisitos, penalidade));
+
+        created.Requisitos!.Vocacao.Should().Be("Campeao");
+        created.Requisitos.Atributos.Should().Equal(new RequisitoMinimoDto("Vigor", 8));
+        created.PenalidadeDeRequisitos!.Atributos.Should().Equal(new PenalidadeLinhaDto("Forca", 2));
+        created.RequisitosPorExtenso.Should().Equal("Vocação: Campeão", "Vigor ≥ 8");
+        created.PenalidadePorExtenso.Should().Equal("Força −2", "Movimentação −1");
+        created.PenalidadeDeRequisitos.Texto.Should().Be("Desvantagem em furtividade");
+        (await ListItemsAsync(token)).Single(i => i.Id == created.Id).Requisitos!.Atributos.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Requirement_fields_an_equipment_does_not_accept_are_dropped()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm2", "itemreqgm2@teste.com");
+
+        var created = await CreateItemAsync(token, Arma("Adaga", new RequisitosDePassivaDto(Nivel: 5, Graduacao: 3, CoracaoDeMana: true, Estrela: "Aeurer")));
+
+        created.Requisitos!.Nivel.Should().BeNull();
+        created.Requisitos.Graduacao.Should().BeNull();
+        created.Requisitos.CoracaoDeMana.Should().BeNull();
+        created.Requisitos.Estrela.Should().Be("Aeurer");
+    }
+
+    [Fact]
+    public async Task Empty_requirements_and_penalty_are_stored_as_none()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm3", "itemreqgm3@teste.com");
+
+        var created = await CreateItemAsync(token, Arma("Faca", new RequisitosDePassivaDto(), new PenalidadeDeEquipamentoDto(Texto: "   ")));
+
+        created.Requisitos.Should().BeNull();
+        created.PenalidadeDeRequisitos.Should().BeNull();
+        created.RequisitosPorExtenso.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task An_item_geral_ignores_requirements_and_penalty()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm4", "itemreqgm4@teste.com");
+        var request = Arma("Corda", new RequisitosDePassivaDto(Atributos: [new("Vigor", 8)]), new PenalidadeDeEquipamentoDto(Texto: "x")) with { Tipo = "ItemGeral" };
+
+        var created = await CreateItemAsync(token, request);
+
+        created.Requisitos.Should().BeNull();
+        created.PenalidadeDeRequisitos.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("Sorte", 2, "Atributo desconhecido(a): Sorte.")]
+    [InlineData("Forca", 0, "A penalidade de Atributo deve ser pelo menos 1.")]
+    public async Task An_invalid_penalty_line_returns_400(string alvo, int valor, string mensagem)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"ItemReqGm5{alvo}", $"itemreqgm5{alvo}@teste.com");
+
+        var response = await PostItemAsync(token, Arma("Erro", penalidade: new PenalidadeDeEquipamentoDto(Atributos: [new(alvo, valor)])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(mensagem);
+    }
+
+    [Theory]
+    [InlineData("Atributos", "3", "Atributo desconhecido(a): 3.")]
+    [InlineData("SubAtributos", "3", "Sub-Atributo desconhecido(a): 3.")]
+    [InlineData("Atributos", "forca", "Atributo desconhecido(a): forca.")]
+    public async Task A_penalty_target_that_is_not_an_exact_enum_name_returns_400(string lista, string alvo, string mensagem)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"ItemReqGm5x{lista}{alvo}", $"itemreqgm5x{lista}{alvo}@teste.com");
+        var penalidade = lista == "Atributos"
+            ? new PenalidadeDeEquipamentoDto(Atributos: [new(alvo, 1)])
+            : new PenalidadeDeEquipamentoDto(SubAtributos: [new(alvo, 1)]);
+
+        var response = await PostItemAsync(token, Arma("Erro", penalidade: penalidade));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(mensagem);
+    }
+
+    [Theory]
+    [InlineData("""{"atributos":[null]}""")]
+    [InlineData("""{"subAtributos":[null]}""")]
+    [InlineData("""{"pericias":[null]}""")]
+    [InlineData("""{"atributos":[{"alvo":null,"valor":1}]}""")]
+    public async Task A_null_penalty_line_or_target_returns_400_instead_of_failing(string penalidadeJson)
+    {
+        var token = await RegisterGmAndGetTokenAsync($"ItemReqGm5n{Guid.NewGuid():N}"[..28], $"itemreqgm5n{Guid.NewGuid():N}@teste.com");
+        var corpo = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(Arma("Erro"), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))!;
+        corpo["penalidadeDeRequisitos"] = System.Text.Json.Nodes.JsonNode.Parse(penalidadeJson);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = new StringContent(corpo.ToJsonString(), System.Text.Encoding.UTF8, "application/json") };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(message);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task A_repeated_penalty_target_returns_400()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm6", "itemreqgm6@teste.com");
+
+        var response = await PostItemAsync(token, Arma("Erro", penalidade: new PenalidadeDeEquipamentoDto(Atributos: [new("Forca", 1), new("Forca", 2)])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Atributo repetido(a): Forca.");
+    }
+
+    [Fact]
+    public async Task Update_replaces_and_clears_requirements_and_penalty()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm7", "itemreqgm7@teste.com");
+        var created = await CreateItemAsync(token, Arma("Machado", new RequisitosDePassivaDto(Atributos: [new("Forca", 6)]), new PenalidadeDeEquipamentoDto(Texto: "Lento")));
+
+        (await PutItemAsync(token, created.Id, UpdateDe(created) with { Requisitos = null, PenalidadeDeRequisitos = null }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var depois = (await ListItemsAsync(token)).Single(i => i.Id == created.Id);
+        depois.Requisitos.Should().BeNull();
+        depois.PenalidadeDeRequisitos.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_requirement_or_penalty_on_a_pericia_the_auditor_removed_disappears_from_the_response()
+    {
+        var token = await RegisterGmAndGetTokenAsync("ItemReqGm8", "itemreqgm8@teste.com");
+        string chave, nome;
+        int id;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var p = await db.Pericias.Where(x => !x.IsDeleted).OrderBy(x => x.Id).FirstAsync();
+            (chave, nome, id) = (p.Chave, p.Nome, p.Id);
+        }
+        var created = await CreateItemAsync(token, Arma("Arco Pesado",
+            new RequisitosDePassivaDto(Pericias: [new(chave, 3)]),
+            new PenalidadeDeEquipamentoDto(Pericias: [new(chave, 2)], Texto: "Pesado")));
+        created.Requisitos!.Pericias.Should().HaveCount(1);
+        created.PenalidadeDeRequisitos!.Pericias.Should().HaveCount(1);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.Pericias.SingleAsync(x => x.Id == id)).IsDeleted = true;
+            await db.SaveChangesAsync();
+        }
+
+        var depois = (await ListItemsAsync(token)).Single(i => i.Id == created.Id);
+        depois.Requisitos?.Pericias.Should().BeNullOrEmpty();
+        depois.PenalidadeDeRequisitos!.Pericias.Should().BeEmpty();
+        var textos = depois.RequisitosPorExtenso!.Concat(depois.PenalidadePorExtenso!).ToList();
+        textos.Should().NotContain(t => t.Contains(nome));
+        textos.Should().NotContain(t => t.Contains(id.ToString()));
+        (await PutItemAsync(token, created.Id, UpdateDe(depois))).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

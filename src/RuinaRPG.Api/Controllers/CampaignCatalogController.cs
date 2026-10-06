@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -49,9 +50,10 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
         var items = await query.ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
+        var porId = await pericias.PorIdAsync();
         var responses = new List<ItemResponse>();
         foreach (var item in items)
-            responses.Add(await ToItemResponseAsync(item, tabela));
+            responses.Add(await ToItemResponseAsync(item, tabela, porId));
         return responses;
     }
 
@@ -92,7 +94,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
         var entries = await query.OrderBy(e => e.Nome).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, entries.Select(e => e.ImageId));
-        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau, e.ImageId?.ToString(), RuneImageAccess.UrlOf(urls, e.ImageId), RuneTipo.Format(e.Tipo))).ToList();
+        return entries.Select(e => new RuneBankEntryResponse(e.Id.ToString(), e.Nome, e.Descricao, e.Grau, e.ImageId?.ToString(), RuneImageAccess.UrlOf(urls, e.ImageId), RuneTipo.Format(e.Tipo), RuneDisciplina.Format(e.Disciplina))).ToList();
     }
 
     [HttpGet("available-images")]
@@ -128,7 +130,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
 
     // Mirrors ItemsController.ToResponseAsync exactly (see its comment for why this isn't
     // factored into a shared helper — every controller in this codebase owns its own mapping).
-    private async Task<ItemResponse> ToItemResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
+    private async Task<ItemResponse> ToItemResponseAsync(Item item, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela, IReadOnlyDictionary<int, PericiaDefinicao> porId)
     {
         string? imageUrl = null;
         if (item.ImageId is not null)
@@ -140,24 +142,34 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
         var rank = item switch { Arma a => a.Rank, Armadura ar => ar.Rank, Escudo e => e.Rank, _ => null };
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank, tabela);
 
-        return item switch
+        string? NomeDaPericia(int id) => porId.TryGetValue(id, out var p) && !p.IsDeleted ? p.Nome : null;
+
+        var resposta = item switch
         {
             ItemGeral g => new ItemResponse(g.Id.ToString(), "ItemGeral", g.Nome, g.Peso, g.Preco, imageUrl,
-                g.Subcategoria, g.Descricao, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
+                g.Subcategoria, g.Descricao, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, g.CapacidadeExtra),
             Arma a => new ItemResponse(a.Id.ToString(), "Arma", a.Nome, a.Peso, a.Preco, imageUrl,
-                a.Subcategoria, null, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(), a.RequisitoAtributo,
-                maxima, null, null, null, null, null, null, null, null, null, null, null, inquebravel),
+                a.Subcategoria, null, a.Rank?.ToString(), a.Empunhadura?.ToString(), a.Dados, a.Dano, a.Critico, a.Alcance, a.TipoDeDano?.ToString(),
+                maxima, null, null, null, null, null, null, null, null, null, inquebravel),
             Armadura ar => new ItemResponse(ar.Id.ToString(), "Armadura", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                ar.Subcategoria, null, ar.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
-                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, ar.Penalidade, ar.RequisitoVigor, null, null, null, null, null, inquebravel),
+                ar.Subcategoria, null, ar.Rank?.ToString(), null, null, null, null, null, null, maxima,
+                ar.Categoria?.ToString(), ar.Defesa, ar.RF, ar.RM, null, null, null, null, null, inquebravel),
             Escudo e => new ItemResponse(e.Id.ToString(), "Escudo", e.Nome, e.Peso, e.Preco, imageUrl,
-                e.Subcategoria, null, e.Rank?.ToString(), null, null, null, null, null, null, null, maxima,
-                e.Categoria?.ToString(), null, null, null, e.Penalidade, e.RequisitoVigor, e.BonusDefesa, null, null, null, null, inquebravel),
+                e.Subcategoria, null, e.Rank?.ToString(), null, null, null, null, null, null, maxima,
+                e.Categoria?.ToString(), null, null, null, e.BonusDefesa, null, null, null, null, inquebravel),
             Artefato ar => new ItemResponse(ar.Id.ToString(), "Artefato", ar.Nome, ar.Peso, ar.Preco, imageUrl,
-                ar.Subcategoria, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
+                ar.Subcategoria, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, ar.TipoDeAlvo?.ToString(), ar.Alvo, ar.Valor, null),
             _ => throw new InvalidOperationException($"Unhandled item type {item.GetType()}")
+        };
+
+        return resposta with
+        {
+            Requisitos = RequisitosDePassivaMapper.ToDto(item.Requisitos, porId),
+            PenalidadeDeRequisitos = EquipamentoRequisitosMapper.ToDto(item.PenalidadeDeRequisitos, porId),
+            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia).ToList(),
+            PenalidadePorExtenso = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, NomeDaPericia).ToList(),
         };
     }
 

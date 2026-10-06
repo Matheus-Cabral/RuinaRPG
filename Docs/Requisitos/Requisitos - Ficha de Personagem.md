@@ -92,7 +92,11 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
 ### 2.a) Atributos
 
-> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). As linhas de Passiva usam rótulos fixos ("Passiva Livre", "Passiva Vocacional", "Passiva de Classe", "Habilidade Passiva"): as três de categoria mostram o limite acumulado ou "sem limite" quando a coluna está toda vazia, e "Habilidade Passiva" mostra as vagas coringa acumuladas (0 quando a coluna está vazia). Ver "[[Requisitos - Auditoria de Regras]]" R0013.
+> **Alerta de penalidades**: no topo das abas Atributos & Perícias e Combate (Personagem, NPC e Criatura), um alerta "Penalidades de equipamento ativas" lista cada equipamento em uso cujos Requisitos a ficha não cumpre, o que falta e a penalidade **aplicada** (as linhas numéricas da Penalidade). Se o item tem o texto livre "Outras penalidades", ele aparece junto, marcado como **não aplicado automaticamente**. Explica por que os Totais estão reduzidos; não aparece quando nenhuma Penalidade está ativa e é atualizado ao mexer em equipamentos ou atributos. A linha de cada equipamento (Arma, Armadura, Escudo, Artefato) mostra **sempre** a Penalidade do item como informação — com ou sem Requisitos, cumpridos ou não —, mas as linhas numéricas só são subtraídas enquanto falta algum Requisito (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
+
+  
+
+> **Painel Progressão do nível**: no topo da aba Atributos & Perícias (Personagem e NPC) um painel mostra o total das colunas Acumulativas da tabela de níveis e, para as colunas Por nível, "máx. N" ou "sem limite" (XP e EAP não aparecem aqui). O conteúdo fica num painel expansível, recolhido por padrão; o título e o popup de ajuda ficam sempre visíveis. As linhas de Passiva usam rótulos fixos ("Passiva Livre", "Passiva Vocacional", "Passiva de Classe", "Habilidade Passiva"): as três de categoria mostram o limite acumulado ou "sem limite" quando a coluna está toda vazia, e "Habilidade Passiva" mostra as vagas coringa acumuladas (0 quando a coluna está vazia). Ver "[[Requisitos - Auditoria de Regras]]" R0013.
 
   
 
@@ -101,7 +105,7 @@ Os 8 atributos (ver §1 de "[[Ruína RPG - Sistema Básico]]" para a definição
 - *Gasto*: campo numérico ≥ 0, editável pelo jogador. Acumula os pontos alocados manualmente no atributo: os 9 pontos de distribuição inicial da criação de personagem mais os "Pontos de Atributo" recebidos ao subir de nível (ver "[[Tabela de Níveis]]"). Quando NULL, assume **0**. O Gasto de cada atributo não pode ultrapassar o Máx. de Atributo do nível (R0013 da Auditoria; o servidor recusa, mas uma ficha já acima do limite continua válida e pode baixar o valor). A soma de Gasto de todos os 8 atributos deve ser exibida e não pode ultrapassar o total de pontos que o personagem já recebeu (criação + níveis).
 - *Bônus*: campo numérico ≥ 0, editável pelo jogador. Acumula bônus recebidos de outras fontes que não a alocação manual: o bônus racial de Linhagem/Variante (ver §7 de "[[Ruína RPG - Sistema Básico]]") e pontos de atributo comprados com Pontos de Ignição (ver "[[GRAUS & CÍRCULOS]]", efeito "Pontos de Atributo"). Quando NULL, assume **0**.
 - *Maestria*: checkbox. Marcado, indica que o jogador investiu um Ponto de Maestria (recurso concedido pela "[[Tabela de Níveis]]") naquele atributo — poço separado do de Maestrias de Perícia (ver 4.e); aqui o checkbox só precisa registrar o estado marcado/desmarcado por atributo e alimentar o cálculo de *Total* abaixo.
-- *Total*: campo calculado, não editável. Sem Maestria marcada: `Total = Gasto + (Bônus / 2) + Artefatos`. Com Maestria marcada: `Total = Gasto + Bônus + Artefatos` (ver "[[Formulas]]"). *Artefatos* refere-se à soma dos Valores de Artefatos equipados (ver 5.b) cujo Tipo é Atributo e cujo Alvo é este atributo.
+- *Total*: campo calculado, não editável. Sem Maestria marcada: `Total = Gasto + (Bônus / 2) + Artefatos`. Com Maestria marcada: `Total = Gasto + Bônus + Artefatos` (ver "[[Formulas]]"). *Artefatos* refere-se à soma dos Valores de Artefatos equipados (ver 5.b) cujo Tipo é Atributo e cujo Alvo é este atributo. O Total já inclui as Penalidades de equipamento ativas (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014): o valor delas é subtraído do Total, e o que deriva do atributo (ex: os máximos de Vitalidade e Foco, 1.c) acompanha a redução pelas fórmulas de sempre.
 
   
 
@@ -113,13 +117,15 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
 - *Iniciativa*: `Agilidade + Bruto Prontidão + Artefato ou item`.
 - *Movimentação*: `(Agilidade × 2) + Artefato − Sobrepeso`, com mínimo absoluto de **1**. *Sobrepeso* = `max(0, Peso Atual − Peso Máximo)`, onde *Peso Máximo* = `max(0, piso((Força + Vigor) / 2) + Capacidade Extra + Bônus de carga da Campanha)` (o Bônus de carga é definido pelo GM, pode ser negativo e vale só para fichas de Personagem — ver "[[Requisitos - Campanha]]" R0014; NPCs e Criaturas usam 0) e *Peso Atual* é a soma do campo Peso (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todos os itens do Inventário que não tiverem Capacidade Extra (ver 5.a) mais as Armas e Escudos **não equipados** do arsenal (ver 3.a/3.c) — Armaduras nunca entram nessa soma, pois todo slot preenchido está sempre equipado, sem estado "desequipado" (ver 3.b). *Capacidade Extra* é a soma do campo homônimo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todo item do Inventário que o tiver, multiplicada pela Qtd da linha. Peso Atual/Máximo e um aviso de sobrepeso são exibidos na aba "Posses" (ver 5.a).
-- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`.
+- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`. (Esse termo vale sempre 0: a penalidade de uma armadura agora vem da Penalidade do próprio equipamento, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.)
 - *Defesa Natural*: `Vigor + Bruto Fortitude + Escudo + Artefatos + Cobertura`.
 - *Cobertura*: uma "nota" de dois escudos (ícones), ao lado do rótulo "Cobertura" e do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima; os valores guardados continuam Nenhuma/Parcial/Completa.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
 - *Eficiência Elemental* e *Dano Elemental*: campos calculados, iguais entre si — ambos assumem o *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida em 1.a. Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
 - *Dano de Briga*: campo previsto porém sem fórmula definida ainda. Não implementar até a regra existir.
+
+Os Sub-Atributos também refletem as Penalidades de equipamento ativas (R0014 do Catálogo): uma Penalidade sobre um Sub-Atributo é subtraída do valor exibido, e uma sobre Atributo ou Perícia chega a eles pelas fórmulas acima.
 
   
 
@@ -174,7 +180,7 @@ A ficha exibe todas as Perícias ativas, mantidas pelo Auditor (ver "[[Requisito
 Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da tabela de níveis, então a soma acima eventualmente fica acima do máximo por um motivo legítimo), um campo dedicado permite adicionar ou subtrair a quantidade de pontos ganhos dessa forma (mesmo padrão do campo de XP em "Experiência atual", 1.b); esse valor é subtraído da soma de Gasto antes de compará-la ao total da tabela.
 - *Modificador*: campo calculado, não editável. `Modificador = Gasto ÷ 3` (arredondado para baixo), conforme §2 de "[[Ruína RPG - Sistema Básico]]". Se esta Perícia for uma das duas bonificadas pelo Histórico escolhido (aba Antecedentes, ver R0006), o bônus (+6 ou +3) entra somado ao Gasto antes da divisão — `Modificador = (Gasto + bônus de Histórico) ÷ 3` — e o valor é exibido em **negrito**.
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
-- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha.
+- *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha. O Total já inclui as Penalidades de equipamento ativas sobre a Perícia ou sobre o Atributo escolhido (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
 3. **Combate**: armas e condutores, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo.
 
@@ -187,6 +193,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 Lista tipo arsenal: o jogador adiciona quantas armas quiser (inclui varinhas e cajados mágicos, que são subcategorias de Arma no catálogo — não há distinção de "condutor" à parte). Cada linha:
 
 - *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Rank** são preenchidos automaticamente a partir do item, somente leitura.
+- *Requisitos*: mesmo aviso de 3.b, sob o nome da arma. Enquanto a arma não está equipada, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada — uma arma equipada é considerada "no corpo", não uma carga extra.
 - *Equipada*: seleção exclusiva — apenas 1 arma do arsenal pode estar marcada como equipada por vez, exceto se o personagem tiver a característica **Ambidestria** (ver aba "Posses", Características), que permite 2.
 - *Durabilidade*: par **Atual / Máximo**. O Máximo é somente leitura e vem do Rank do item ([[Tabela de Durabilidade por Rank]]; ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004). Diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo — se o Máximo diminuir depois (mudança do Rank do item ou da tabela), o Atual é limitado ao novo Máximo. Itens de Rank inquebrável (ver a tabela) não têm Atual/Máximo: a linha mostra apenas "Inquebrável".
@@ -201,7 +208,8 @@ Uma linha pode ser removida pelo jogador a qualquer momento.
 
 Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**. Cada slot:
 
-- *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
+- *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
+- *Requisitos*: se o item tem Requisitos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014), eles aparecem sob o nome da armadura. Se a ficha não os cumpre, a linha mostra um ícone de aviso, "Requisitos não cumpridos", o que falta e a Penalidade aplicada. A Penalidade do item (linhas numéricas e "Outras penalidades", esta marcada como não aplicada automaticamente) aparece sempre na linha, com ou sem Requisitos. Nada é bloqueado.
 - *Peso*: herdado do item (somente leitura) de cada slot preenchido. **Não** soma ao Peso Atual (ver 2.b, Movimentação) — todo slot preenchido está sempre equipado (não há estado "desequipado" para Armadura), então seu peso é sempre considerado "no corpo".
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0005, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquele slot. Rank inquebrável: o slot mostra apenas "Inquebrável".
 
@@ -213,7 +221,8 @@ Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**.
 
 Lista tipo arsenal, mesmo padrão de 3.a: o jogador adiciona quantos escudos quiser. Cada linha:
 
-- *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria**, **Bônus de Defesa**, **Penalidade** e **Requisito de Vigor** são preenchidos automaticamente, somente leitura.
+- *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria** e **Bônus de Defesa** são preenchidos automaticamente, somente leitura.
+- *Requisitos*: mesmo aviso de 3.b, sob o nome do escudo. Enquanto o escudo não está equipado, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada, mesma regra de 3.a.
 - *Equipado*: seleção exclusiva — apenas 1 escudo do arsenal pode estar marcado como equipado por vez (sem exceção).
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0006, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquela linha. Rank inquebrável: a linha mostra apenas "Inquebrável".
@@ -301,10 +310,11 @@ Runas são um encantamento das vocações não mágicas (Campeão e Caçador). L
 - *Nome da Runa*: text input.
 - *Descrição*: texto livre.
 - *Grau*: campo numérico, limitado ao Grau atual do personagem (ver 1.b).
+- *Disciplina*: obrigatória ao montar do zero — select com Adição, Alteração, Emissão e Manifestação (sem opção em branco) e popup de ajuda; ao partir de uma entrada do banco a Disciplina vem da entrada (ver "[[Requisitos - Banco de Runas]]" R0010). Runas antigas podem estar sem Disciplina.
 - *Tipo*: opcional — select com "Sem tipo" (padrão), "Runa Arcana" e "Runa Negra", só ao montar do zero; ao partir de uma entrada do banco o tipo vem da entrada (ver "[[Requisitos - Banco de Runas]]" R0009). É apenas uma classificação exibida na lista de Runas; não muda nenhum cálculo.
 - *Imagem*: opcional — upload do próprio jogador ou uma imagem que o GM liberou como pública na campanha (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 para o comportamento da imagem). Ao partir de uma entrada do banco, a imagem vem da entrada e não pode ser trocada.
 
-A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—"). A Runa na lista é somente leitura: o jogador só pode adicionar e remover — para mudar uma Runa, remove e adiciona de novo. Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Como a Runa da ficha não é editável, o que pode mudar depois é só a cópia do banco (editada pelo GM), que não altera a Runa da ficha.
+A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—") e a Disciplina ("Adição", "Alteração", "Emissão", "Manifestação" ou "—"). A Runa na lista é somente leitura: o jogador só pode adicionar e remover — para mudar uma Runa, remove e adiciona de novo. Uma Runa pode ser removida pelo jogador a qualquer momento. Toda Runa criada aqui (do zero ou do banco) também grava uma cópia independente no Banco de Runas do GM (R0001 do banco) e, quando quem cria é o jogador, essa cópia vira anexo público da campanha (R0007 do banco). Como a Runa da ficha não é editável, o que pode mudar depois é só a cópia do banco (editada pelo GM), que não altera a Runa da ficha.
 
   
 
@@ -373,6 +383,8 @@ O personagem pode equipar até **3 artefatos por tipo**, num total de até 12. L
 - *Artefato*: dropdown/busca vinculado a um item do tipo Artefato no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0009). Ao escolher, os campos **Nome**, **Tipo de alvo**, **Alvo**, **Valor** e **Imagem** são preenchidos automaticamente a partir do item, somente leitura. O grupo em que a entrada entra (e o limite de 3) é determinado pelo Tipo de alvo do item escolhido — **Atributo**, **Perícia**, **Sub-Atributo** ou **Dano**.
 
 A soma dos Valores de todos os Artefatos equipados de um dado Alvo alimenta o termo "Artefato(s)" nas fórmulas correspondentes (ver 2.a, 2.b e 2.d). Um Artefato pode ser removido pelo jogador a qualquer momento, respeitando o limite de 3 por Tipo de alvo.
+
+- *Requisitos*: mesmo aviso de 3.b, na linha do artefato. Um Artefato que não cumpre os Requisitos continua dando o próprio Valor; só a Penalidade dele é somada (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
   
 

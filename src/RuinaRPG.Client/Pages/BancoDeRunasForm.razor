@@ -8,6 +8,7 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -24,6 +25,7 @@
     <Section Title="Runa">
         <MudTextField T="string" @bind-Value="_form.Nome" For="@(() => _form.Nome)" Label="Nome" @bind-Value:after="NotifySavedAsync" />
         <MudNumericField T="int" @bind-Value="_form.Grau" For="@(() => _form.Grau)" Label="Grau" @bind-Value:after="NotifySavedAsync" />
+        <DisciplinaDeRunaSelect Value="@_form.Disciplina" ValueChanged="OnDisciplinaChangedAsync" Error="_disciplinaEmFalta" />
         <div class="d-flex align-center">
             <MudSelect T="string" @bind-Value="_form.Tipo" Label="Tipo" @bind-Value:after="NotifySavedAsync">
                 <MudSelectItem Value="@("")">Sem tipo</MudSelectItem>
@@ -64,6 +66,7 @@
     private List<ImageSummaryResponse> _myImages = new();
     private List<string> _imageIds = new();
     private string? _errorMessage;
+    private bool _disciplinaEmFalta;
 
     public BancoDeRunasForm()
     {
@@ -103,6 +106,7 @@
         _form.Nome = existing.Nome;
         _form.Grau = existing.Grau;
         _form.Tipo = existing.Tipo ?? "";
+        _form.Disciplina = existing.Disciplina ?? "";
         _form.Descricao = existing.Descricao;
         _form.ImageId = existing.ImageId;
         _imageIds = existing.ImageId is null ? new() : new() { existing.ImageId };
@@ -113,10 +117,17 @@
 
     private async Task CreateAsync()
     {
+        if (string.IsNullOrEmpty(_form.Disciplina))
+        {
+            _disciplinaEmFalta = true;
+            return;
+        }
+        _disciplinaEmFalta = false;
+
         if (!_editContext.Validate())
             return;
 
-        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo));
+        var response = await Http.PostAsJsonAsync("rune-bank", new CreateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo, _form.Disciplina));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.";
@@ -128,14 +139,28 @@
 
     private async Task<bool> SaveIfValidAsync()
     {
+        if (string.IsNullOrEmpty(_form.Disciplina))
+        {
+            _disciplinaEmFalta = true;
+            return false;
+        }
+        _disciplinaEmFalta = false;
+
         if (!_editContext.Validate())
             return false;
 
-        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo));
+        var response = await Http.PutAsJsonAsync($"rune-bank/{EntryId}", new UpdateRuneBankEntryRequest(_form.Nome, _form.Descricao, _form.Grau, _form.ImageId, _form.TipoOuNulo, _form.Disciplina));
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a entrada.");
 
         return true;
+    }
+
+    private Task OnDisciplinaChangedAsync(string valor)
+    {
+        _form.Disciplina = valor;
+        _disciplinaEmFalta = false;
+        return NotifySavedAsync();
     }
 
     private Task NotifySavedAsync()
@@ -159,6 +184,8 @@
         public string? ImageId { get; set; }
         // "Arcana", "Negra" ou "" (sem tipo); vai ao servidor como null quando vazio.
         public string Tipo { get; set; } = "";
+        // Nome do enum DisciplinaDeRuna; "" = ainda não escolhida (obrigatória ao salvar).
+        public string Disciplina { get; set; } = "";
         public string? TipoOuNulo => string.IsNullOrEmpty(Tipo) ? null : Tipo;
     }
 }

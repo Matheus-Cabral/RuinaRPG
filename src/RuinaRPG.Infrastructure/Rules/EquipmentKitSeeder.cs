@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Infrastructure.Rules;
@@ -25,9 +26,14 @@ public static class EquipmentKitSeeder
             db.EquipmentKits.Add(kit);
 
             foreach (var item in seed.Items)
-                db.EquipmentKitItems.Add(new EquipmentKitItem { Id = Guid.NewGuid(), KitId = kit.Id, Nome = item.Nome, Tipo = item.Tipo, Qtd = item.Qtd, SubcategoriaHint = item.SubcategoriaHint });
+            {
+                var fixo = await EquipmentKitFixedItemBackfill.ObterOuCriarAsync(db, item.Nome, item.Tipo, item.SubcategoriaHint);
+                db.EquipmentKitItems.Add(new EquipmentKitItem { Id = Guid.NewGuid(), KitId = kit.Id, FixedItemId = fixo.Id, Nome = item.Nome, Tipo = item.Tipo, Qtd = item.Qtd, SubcategoriaHint = item.SubcategoriaHint });
+            }
 
             foreach (var slot in seed.ChoiceSlots)
+            {
+                var bonusFixo = slot.BonusNome is null ? null : await EquipmentKitFixedItemBackfill.ObterOuCriarAsync(db, slot.BonusNome, ItemTipo.ItemGeral, null);
                 db.EquipmentKitChoiceSlots.Add(new EquipmentKitChoiceSlot
                 {
                     Id = Guid.NewGuid(),
@@ -39,8 +45,10 @@ public static class EquipmentKitSeeder
                     Qtd = slot.Qtd,
                     BonusSubcategoria = slot.BonusSubcategoria,
                     BonusNome = slot.BonusNome,
+                    BonusFixedItemId = bonusFixo?.Id,
                     BonusQtd = slot.BonusQtd,
                 });
+            }
         }
 
         await db.SaveChangesAsync();

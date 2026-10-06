@@ -242,7 +242,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!;
         var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id)));
+            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id, Disciplina: "Adicao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
@@ -254,7 +254,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     }
 
     [Fact]
-    public async Task Grant_from_an_existing_Npc_copies_the_rune_tipo()
+    public async Task Grant_from_an_existing_Npc_copies_the_rune_tipo_and_disciplina()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("GrantGmRuneTipo", "grantrunetipo@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayerRuneTipo", "grantplayerrunetipo@teste.com");
@@ -262,7 +262,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
         var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra")));
+            new AddNpcRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra", Disciplina: "Manifestacao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
@@ -270,7 +270,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var runes = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
             .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
-        runes!.Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra");
+        runes!.Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra" && r.Disciplina == "Manifestacao");
     }
 
     [Fact]

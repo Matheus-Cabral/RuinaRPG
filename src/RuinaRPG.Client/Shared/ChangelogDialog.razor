@@ -3,12 +3,26 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.4.2 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.4.3 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Habilidade Passiva de qualquer categoria:</b> a Tabela de Níveis pode conceder vagas de Habilidade Passiva que aceitam uma Passiva Livre, Vocacional ou de Classe, além das vagas de cada categoria. As fichas de Personagem e NPC passam a aceitar a Passiva quando a categoria está cheia mas ainda há uma dessas vagas.</li>
-            <li><b>Progressão do nível e aviso de subida de nível:</b> as vagas de Passiva aparecem como "Habilidade Passiva", "Passiva Livre", "Passiva Vocacional" e "Passiva de Classe".</li>
-            <li><b>Livro de Regras:</b> nova aba Habilidades Passivas, depois de Graus &amp; Círculos, para quem está logado. O GM vê as Passivas do próprio banco; o jogador, as que o GM tornou públicas na campanha, com um seletor quando participa de mais de uma. A aba tem busca por nome e mostra os requisitos de cada Passiva.</li>
+            <li><b>Runas:</b> toda Runa passa a ter uma Disciplina obrigatória — Adição, Alteração, Emissão ou Manifestação —, com a explicação de cada uma num popup de ajuda. Runas antigas ficam sem Disciplina até serem editadas no Banco de Runas.</li>
+            <li><b>Requisitos de equipamento:</b> Armas, Armaduras, Escudos e Artefatos podem ter requisitos (Vocação, Classe, Atributo, Perícia, Sub-Atributo, Afinidade, Estrela) e uma penalidade. A ficha avisa quando o personagem não cumpre os requisitos e aplica a penalidade nos cálculos; nada é bloqueado. Os antigos campos Requisito de Atributo, Requisito de Vigor e Penalidade foram convertidos para o novo formato; os textos antigos de Penalidade de Armaduras e Escudos foram mantidos como "Outras penalidades", que a ficha mostra mas não aplica automaticamente.</li>
+            <li><b>Kits de Equipagem:</b> ao escolher um kit, os itens fixos que o GM ainda não tem entram no catálogo dele já completos, e um kit não falha mais por item ausente.</li>
+            <li><b>Livro de Regras:</b> a aba Habilidades Passivas ganhou filtros por Categoria, Vocação e Classe, com as Passivas em ordem alfabética dentro de Passivas Livres, Vocacionais e de Classe, cada Passiva num painel que abre e fecha.</li>
+            <li><b>Progressão do nível:</b> o painel da aba Atributos &amp; Perícias agora abre e fecha, e começa recolhido.</li>
         </ul>
+        @if (IsRulesAuditor)
+        {
+            @* Bloco só para o Auditor de Regras: o que mudou nas páginas de Auditoria nesta versão. Preencha-o
+               sempre que uma versão mexer numa página de Auditoria; apague o bloco inteiro quando não mexer. *@
+            <MudText Typo="Typo.subtitle1" Class="mt-3"><b>Para Auditores</b></MudText>
+            <ul class="mt-1">
+                <li><b>Auditoria de Equipagem:</b> os itens fixos dos kits agora vêm de uma base de itens fixos, igual para todas as campanhas. Pesquise o item pelo nome (filtrando por tipo) ou use o botão "Cadastrar novo item", que aparece ao lado da busca quando nada é encontrado; Armadura já pode ser item fixo (com seu Slot), e a Quantidade e o Slot são editáveis na linha.</li>
+                <li><b>Editar item fixo:</b> cada linha tem uma ação de editar, com "Editar detalhes" (altera o item da base, para todos os kits que o usam) e "Substituir item". A seção "Itens fixos" lista a base.</li>
+                <li><b>Itens convertidos:</b> os kits existentes foram ligados à base automaticamente. As linhas marcadas "Detalhes incompletos" só têm o nome: use a ação de editar da linha para completar os detalhes ou substituir o item.</li>
+                <li><b>Requisitos nos itens fixos:</b> o cadastro de um item fixo tem os mesmos Requisitos e Penalidade do catálogo.</li>
+            </ul>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CloseAsync">Fechar</MudButton>
@@ -18,6 +32,8 @@
 @code {
     [Parameter, EditorRequired] public string Version { get; set; } = "";
     [Parameter] public EventCallback OnDismissed { get; set; }
+    /// <summary>Mostra o bloco "Para Auditores" — novidades das páginas de Auditoria.</summary>
+    [Parameter] public bool IsRulesAuditor { get; set; }
 
     private bool _visible = true;
 

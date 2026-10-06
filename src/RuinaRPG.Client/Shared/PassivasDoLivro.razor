@@ -6,7 +6,9 @@
 @using RuinaRPG.Domain.SpellsAndAbilities
 
 @* Livro de Regras R0010: as Passivas ao alcance de quem está logado — o GM vê o próprio banco; o
-   Jogador, as públicas da campanha escolhida (seletor só com mais de uma campanha). *@
+   Jogador, as públicas da campanha escolhida (seletor só com mais de uma campanha). Filtros combináveis
+   (busca por nome, Categoria, Vocação, Classe); as Passivas sempre nos grupos Livres, Vocacionais e de Classe,
+   em ordem alfabética, cada uma num painel recolhível. *@
 <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
 @if (!IsGm && _campanhas.Count > 1)
@@ -31,26 +33,55 @@
     }
     else
     {
-        <MudTextField T="string" @bind-Value="_filtro" Label="Buscar passiva..." Immediate="true" Class="mb-4" />
-        @foreach (var categoria in Enum.GetValues<CategoriaDePassiva>())
-        {
-            var doGrupo = _passivas
-                .Where(p => p.Categoria == categoria.ToString()
-                    && (string.IsNullOrWhiteSpace(_filtro) || p.Nome.Contains(_filtro, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-            @if (doGrupo.Count > 0)
-            {
-                <MudText Typo="Typo.h5" Class="mt-4">@RequisitoLabels.Categoria(categoria)</MudText>
-                @foreach (var passiva in doGrupo)
+        <div class="d-flex flex-wrap mb-4" style="gap:8px">
+            <MudTextField T="string" @bind-Value="_nome" Label="Buscar passiva..." Immediate="true" Style="min-width:220px" />
+            <MudSelect T="string" @bind-Value="_categoria" Label="Categoria" Style="min-width:200px">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var categoria in Enum.GetValues<CategoriaDePassiva>())
                 {
-                    <Section Title="@passiva.Nome">
-                        <MudText Style="white-space: pre-wrap">@passiva.Descricao</MudText>
-                        <MudText Typo="Typo.body2" Class="mt-2">
-                            <b>Requisitos:</b> @(passiva.Requisitos.Count > 0 ? string.Join(", ", passiva.Requisitos) : "Sem requisitos")
-                        </MudText>
-                    </Section>
+                    <MudSelectItem Value="@categoria.ToString()">@RequisitoLabels.Categoria(categoria)</MudSelectItem>
                 }
-            }
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="_vocacao" Label="Vocação" Style="min-width:180px">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var vocacao in PassivasDoLivroOrganizador.Vocacoes(_passivas))
+                {
+                    <MudSelectItem Value="@vocacao">@vocacao</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="_classe" Label="Classe" Style="min-width:180px">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var classe in PassivasDoLivroOrganizador.Classes(_passivas))
+                {
+                    <MudSelectItem Value="@classe">@classe</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        var grupos = PassivasDoLivroOrganizador.Agrupar(_passivas, new FiltroDePassivas(_nome, _categoria, _vocacao, _classe));
+        @if (grupos.Count == 0)
+        {
+            <MudText>Nenhuma Habilidade Passiva corresponde aos filtros.</MudText>
+        }
+        @foreach (var grupo in grupos)
+        {
+            <MudText Typo="Typo.h5" Class="mt-4 mb-2">@grupo.Titulo (@grupo.Passivas.Count)</MudText>
+            <MudExpansionPanels MultiExpansion="true" Elevation="0" Outlined="true">
+                @foreach (var passiva in grupo.Passivas)
+                {
+                    var requisitos = passiva.Requisitos.Count > 0 ? string.Join(", ", passiva.Requisitos) : "Sem requisitos";
+                    <MudExpansionPanel @key="passiva.Id">
+                        <TitleContent>
+                            <MudText Typo="Typo.subtitle1"><b>@passiva.Nome</b></MudText>
+                            <MudText Typo="Typo.body2">@requisitos</MudText>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudText Style="white-space: pre-wrap">@passiva.Descricao</MudText>
+                            <MudText Typo="Typo.body2" Class="mt-2"><b>Requisitos:</b> @requisitos</MudText>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
         }
     }
 }
@@ -61,7 +92,10 @@
     private List<CampaignResponse> _campanhas = new();
     private List<PassivaDoLivroResponse> _passivas = new();
     private string? _campanhaId;
-    private string _filtro = "";
+    private string _nome = "";
+    private string _categoria = "";
+    private string _vocacao = "";
+    private string _classe = "";
     private string? _errorMessage;
     private bool _carregado;
     // O DismissibleAlert zera _errorMessage ao ser dispensado; o estado de falha não pode depender dele.
@@ -113,5 +147,8 @@
         }
         var url = IsGm ? "rulebook/passivas" : $"rulebook/passivas?campaignId={_campanhaId}";
         _passivas = await Http.GetFromJsonAsync<List<PassivaDoLivroResponse>>(url) ?? new();
+        // Vocação/Classe que não existem na lista carregada (troca de campanha) deixam de filtrar.
+        if (!PassivasDoLivroOrganizador.Vocacoes(_passivas).Contains(_vocacao)) _vocacao = "";
+        if (!PassivasDoLivroOrganizador.Classes(_passivas).Contains(_classe)) _classe = "";
     }
 }

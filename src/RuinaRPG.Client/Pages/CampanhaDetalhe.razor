@@ -503,7 +503,7 @@
         var response = await Http.GetAsync($"rune-bank?nome={Uri.EscapeDataString(query)}");
         if (!response.IsSuccessStatusCode) return new();
         var entries = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>() ?? new();
-        return entries.Select(e => new PickerOption(e.Id, $"{e.Nome} (Grau {e.Grau})")).ToList();
+        return entries.Select(e => new PickerOption(e.Id, string.IsNullOrEmpty(e.Disciplina) ? $"{e.Nome} (Grau {e.Grau})" : $"{e.Nome} (Grau {e.Grau}, {RuneDisciplinaRotulo.De(e.Disciplina)})")).ToList();
     }
 
     private async Task<List<PickerOption>> SearchNpcSheetsAsync(string query)

@@ -67,8 +67,8 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
 
     private static CreateItemRequest MinimalItem(string nome, string tipo = "ItemGeral") =>
         new(tipo, nome, 0.5m, 5, null, "Equipamentos de Aventura", "Descrição.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private async Task<string> CreateItemAsync(string gmToken, string nome, string tipo = "ItemGeral", string? subcategoria = null)
@@ -255,10 +255,10 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
+    private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string disciplina = "Adicao")
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
-            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1, Disciplina: disciplina)));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
@@ -266,7 +266,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
     public async Task AvailableRunes_returns_only_publicly_attached_entries()
     {
         var setup = await BuildMemberSetupAsync("Runes1");
-        var publicRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública");
+        var publicRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública", "Emissao");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, publicRuneId));
         var privateRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Secreta");
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
@@ -277,7 +277,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
-        body!.Should().ContainSingle(e => e.Id == publicRuneId && e.Nome == "Runa Pública");
+        body!.Should().ContainSingle(e => e.Id == publicRuneId && e.Nome == "Runa Pública" && e.Disciplina == "Emissao");
         body.Should().NotContain(e => e.Id == privateRuneId);
         body.Should().HaveCount(1);
     }
@@ -295,7 +295,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", setup.GmToken);
         var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<ImageUploadResponse>())!;
         var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken,
-            new CreateRuneBankEntryRequest("Runa Ilustrada", "Descrição.", 1, image.Id)));
+            new CreateRuneBankEntryRequest("Runa Ilustrada", "Descrição.", 1, image.Id, Disciplina: "Adicao")));
         var comImagemId = (await created.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
         var semImagemId = await CreateRuneEntryAsync(setup.GmToken, "Runa Nua");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, comImagemId));

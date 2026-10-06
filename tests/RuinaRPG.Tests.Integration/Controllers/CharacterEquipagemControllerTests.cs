@@ -77,7 +77,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -259,8 +259,13 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact2)));
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact3)));
 
+        var artifact4FixoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", gmToken,
+            new CreateItemRequest("Artefato", artifact4Nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "Atributo", "Astucia", 1, null)));
+        artifact4FixoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var artifact4Fixo = (await artifact4FixoResponse.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
+
         var kitRequest = new CreateEquipmentKitRequest("Kit com Artefato", "Kit de teste com Artefato", 0,
-            [new EquipmentKitItemInput(artifact4Nome, "Artefato", 1, null)], []);
+            [new EquipmentKitItemInput(artifact4Fixo.Id, 1)], []);
         var kitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, kitRequest));
         var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
@@ -360,5 +365,41 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         superior.Nome.Should().Be("Armadura de Teste F");
         superior.DurabilidadeAtual.Should().Be(0);
         superior.DurabilidadeMaxima.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Choose_a_kit_that_would_CREATE_an_Artefato_past_the_cap_of_3_returns_400_and_persists_nothing()
+    {
+        // O Artefato fixo não está no catálogo do GM: a aplicação o criaria. O teto de 3 por TipoDeAlvo
+        // tem de valer também para o item que ainda só existe no change tracker.
+        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemCapGmC", "equipagemcapgmc@teste.com");
+        await GrantRulesAuditorAsync("equipagemcapgmc@teste.com");
+        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+
+        foreach (var (nome, alvo) in new[] { ("Anel Character Teto 1", "Vigor"), ("Anel Character Teto 2", "Forca"), ("Anel Character Teto 3", "Agilidade") })
+        {
+            var id = await CreateArtefatoItemAsync(gmToken, nome, "Atributo", alvo, 1);
+            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(id)));
+        }
+
+        var fixoNome = "Anel Character Teto Novo " + Guid.NewGuid().ToString("N");
+        var fixoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", gmToken,
+            new CreateItemRequest("Artefato", fixoNome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "Atributo", "Astucia", 1, null)));
+        fixoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var fixo = (await fixoResponse.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
+        var kit = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
+            new CreateEquipmentKitRequest("Kit Teto Criando " + Guid.NewGuid().ToString("N"), "D", 0, [new EquipmentKitItemInput(fixo.Id, 1)], []))))
+            .Content.ReadFromJsonAsync<EquipmentKitResponse>())!;
+
+        var choose = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(kit.Id, [])));
+
+        choose.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await choose.Content.ReadAsStringAsync()).Should().Contain("Limite de 3 Artefatos do tipo Atributo já atingido.");
+        var artifacts = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", gmToken))).Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
+        artifacts!.Should().HaveCount(3);
+        var gmId = Guid.Parse((await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken))).Content.ReadFromJsonAsync<MeResponse>())!.Id);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+        (await db.Items.CountAsync(i => i.GmId == gmId && i.Nome == fixoNome)).Should().Be(0);
     }
 }

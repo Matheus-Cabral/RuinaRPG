@@ -13,17 +13,23 @@
             </InfoPopup>
         </TitleInfo>
         <ChildContent>
-            <MudSimpleTable Dense="true">
-                <tbody>
-                    @foreach (var coluna in _progressao.Colunas.Where(c => c.ChaveDeSistema != ChavesDeNivel.XpParaProximoNivel && c.ChaveDeSistema != ChavesDeNivel.EapBase))
-                    {
-                        <tr>
-                            <td>@ChavesDeNivel.RotuloParaJogador(coluna.ChaveDeSistema, coluna.Nome)</td>
-                            <td>@Formatar(coluna)</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            @* Recolhido por padrão (1.4.3): a tabela ocupa o topo da aba e só interessa de vez em quando.
+               KeepContentAlive mantém o conteúdo no DOM mesmo recolhido. *@
+            <MudExpansionPanels Elevation="0">
+                <MudExpansionPanel Text="Ver saldos e limites do nível" KeepContentAlive="true">
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            @foreach (var coluna in _progressao.Colunas.Where(c => c.ChaveDeSistema != ChavesDeNivel.XpParaProximoNivel && c.ChaveDeSistema != ChavesDeNivel.EapBase))
+                            {
+                                <tr>
+                                    <td>@ChavesDeNivel.RotuloParaJogador(coluna.ChaveDeSistema, coluna.Nome)</td>
+                                    <td>@Formatar(coluna)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
         </ChildContent>
     </Section>
 }

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using RuinaRPG.Contracts.SpellsAndAbilities;
+
 namespace RuinaRPG.Contracts.Items;
 
 public record UpdateItemRequest(
@@ -16,15 +18,14 @@ public record UpdateItemRequest(
     string? Critico,
     int? Alcance,
     string? TipoDeDano,
-    string? RequisitoAtributo,
     string? Categoria,
     int? Defesa,
     int? RF,
     int? RM,
-    string? Penalidade,
-    int? RequisitoVigor,
     int? BonusDefesa,
     string? TipoDeAlvo,
     string? Alvo,
     int? Valor,
-    [Range(typeof(decimal), "0", "79228162514264337593543950335")] decimal? CapacidadeExtra);
+    [Range(typeof(decimal), "0", "79228162514264337593543950335")] decimal? CapacidadeExtra,
+    RequisitosDePassivaDto? Requisitos = null,
+    PenalidadeDeEquipamentoDto? PenalidadeDeRequisitos = null);

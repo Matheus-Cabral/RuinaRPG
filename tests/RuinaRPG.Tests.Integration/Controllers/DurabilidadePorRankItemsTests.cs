@@ -78,14 +78,14 @@ public class DurabilidadePorRankItemsTests : IClassFixture<PostgresFixture>, IAs
 
     private static CreateItemRequest ItemRequest(string tipo, string nome, string? rank) => tipo switch
     {
-        "Arma" => new CreateItemRequest("Arma", nome, 1.5m, 50, null, "Espadas", null, rank, "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-            null, null, null, null, null, null, null, null, null, null, null),
-        "Armadura" => new CreateItemRequest("Armadura", nome, 3m, 30, null, null, null, rank, null, null, null, null, null, null, null,
-            "Medio", 5, 1, 1, null, 2, null, null, null, null, null),
-        "Escudo" => new CreateItemRequest("Escudo", nome, 2m, 25, null, null, null, rank, null, null, null, null, null, null, null,
-            "Leve", null, null, null, null, 1, 2, null, null, null, null),
-        "ItemGeral" => new CreateItemRequest("ItemGeral", nome, 0.5m, 5, null, "Diversos", null, rank, null, null, null, null, null, null, null,
-            null, null, null, null, null, null, null, null, null, null, null),
+        "Arma" => new CreateItemRequest("Arma", nome, 1.5m, 50, null, "Espadas", null, rank, "UmaMao", "2D6", 3, "19", 2, "Cortante",
+            null, null, null, null, null, null, null, null, null),
+        "Armadura" => new CreateItemRequest("Armadura", nome, 3m, 30, null, null, null, rank, null, null, null, null, null, null,
+            "Medio", 5, 1, 1, null, null, null, null, null),
+        "Escudo" => new CreateItemRequest("Escudo", nome, 2m, 25, null, null, null, rank, null, null, null, null, null, null,
+            "Leve", null, null, null, 2, null, null, null, null),
+        "ItemGeral" => new CreateItemRequest("ItemGeral", nome, 0.5m, 5, null, "Diversos", null, rank, null, null, null, null, null, null,
+            null, null, null, null, null, null, null, null, null),
         _ => throw new ArgumentException(tipo),
     };
 
@@ -204,8 +204,8 @@ public class DurabilidadePorRankItemsTests : IClassFixture<PostgresFixture>, IAs
         var gmToken = await RegisterGmAndGetTokenAsync("DurRankUpd", "durrankupd@teste.com");
         var itemId = await CreateItemAsync(gmToken, "Armadura", null);
 
-        var update = new UpdateItemRequest("Armadura B", 3m, 30, null, null, null, "B", null, null, null, null, null, null, null,
-            "Medio", 5, 1, 1, null, 2, null, null, null, null, null);
+        var update = new UpdateItemRequest("Armadura B", 3m, 30, null, null, null, "B", null, null, null, null, null, null,
+            "Medio", 5, 1, 1, null, null, null, null, null);
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -221,8 +221,8 @@ public class DurabilidadePorRankItemsTests : IClassFixture<PostgresFixture>, IAs
         var gmToken = await RegisterGmAndGetTokenAsync("DurRankUpdBad", "durrankupdbad@teste.com");
         var itemId = await CreateItemAsync(gmToken, "Escudo", "F");
 
-        var update = new UpdateItemRequest("Escudo", 2m, 25, null, null, null, "Z", null, null, null, null, null, null, null,
-            "Leve", null, null, null, null, 1, 2, null, null, null, null);
+        var update = new UpdateItemRequest("Escudo", 2m, 25, null, null, null, "Z", null, null, null, null, null, null,
+            "Leve", null, null, null, 2, null, null, null, null);
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

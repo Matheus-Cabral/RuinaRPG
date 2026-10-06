@@ -74,8 +74,8 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
 
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private async Task<string> CreateItemAsync(string gmToken, string nome)
@@ -210,9 +210,9 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     {
         var setup = await BuildSetupAsync("RuneImg");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(setup.GmToken);
-        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId)));
+        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId, Disciplina: "Adicao")));
         var comImagemId = (await comImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
-        var semImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Nua", "D.", 1)));
+        var semImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken, new CreateRuneBankEntryRequest("Runa Nua", "D.", 1, Disciplina: "Adicao")));
         var semImagemId = (await semImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
         var attachmentComImagem = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, comImagemId));
         var attachmentSemImagem = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, semImagemId));
@@ -376,7 +376,7 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
-            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1, Disciplina: "Adicao")));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 }

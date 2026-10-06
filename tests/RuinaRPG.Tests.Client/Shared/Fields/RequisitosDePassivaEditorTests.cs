@@ -243,4 +243,42 @@ public class RequisitosDePassivaEditorTests : MudBunitContext
         var linhaSelect = cut.FindComponents<MudSelect<string>>().Single(s => s.Instance.Label is null);
         linhaSelect.Markup.Should().Contain(AtributoDisplay.Label("Forca"));
     }
+
+    [Fact]
+    public async Task ModoEquipamento_hides_the_fields_an_equipment_does_not_accept()
+    {
+        RegisterCatalogStubs();
+
+        var cut = Render(builder =>
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<RequisitosDePassivaEditor>(1);
+            builder.AddAttribute(2, nameof(RequisitosDePassivaEditor.Model), new RequisitosFormModel());
+            builder.AddAttribute(3, nameof(RequisitosDePassivaEditor.ModoEquipamento), true);
+            builder.CloseComponent();
+        });
+        await Task.Delay(50);
+
+        foreach (var oculto in new[] { "Nível mínimo", "Grau/Círculo mínimo", "Exige Coração de Mana", "Limpar Linhagem/Variante", "Limpar Histórico" })
+            cut.Markup.Should().NotContain(oculto);
+        foreach (var presente in new[] { "Limpar Vocação/Classe", "Limpar Afinidade", "Limpar Estrela", "Adicionar Atributo", "Adicionar Sub-Atributo", "Adicionar Perícia" })
+            cut.Markup.Should().Contain(presente);
+    }
+
+    [Fact]
+    public async Task Without_ModoEquipamento_every_field_is_still_rendered()
+    {
+        RegisterCatalogStubs();
+
+        var cut = RenderEditor(new RequisitosFormModel(), EventCallback.Factory.Create(this, () => { }));
+        await Task.Delay(50);
+
+        foreach (var campo in new[]
+        {
+            "Nível mínimo", "Grau/Círculo mínimo", "Exige Coração de Mana", "Limpar Linhagem/Variante", "Limpar Histórico",
+            "Limpar Vocação/Classe", "Limpar Afinidade", "Limpar Estrela", "Adicionar Atributo", "Adicionar Sub-Atributo", "Adicionar Perícia",
+        })
+            cut.Markup.Should().Contain(campo);
+    }
 }

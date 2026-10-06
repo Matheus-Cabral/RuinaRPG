@@ -8,6 +8,4 @@ public class Escudo : Item
     public RankDeItem? Rank { get; set; }
     public CategoriaProtecao? Categoria { get; set; }
     public int? BonusDefesa { get; set; }
-    public string? Penalidade { get; set; }
-    public int? RequisitoVigor { get; set; }
 }

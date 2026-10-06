@@ -59,6 +59,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Historico> Historicos => Set<Historico>();
     public DbSet<EquipmentKit> EquipmentKits => Set<EquipmentKit>();
     public DbSet<SubcategoriaOption> SubcategoriaOptions => Set<SubcategoriaOption>();
+    public DbSet<EquipmentKitFixedItem> EquipmentKitFixedItems => Set<EquipmentKitFixedItem>();
     public DbSet<EquipmentKitItem> EquipmentKitItems => Set<EquipmentKitItem>();
     public DbSet<EquipmentKitChoiceSlot> EquipmentKitChoiceSlots => Set<EquipmentKitChoiceSlot>();
     public DbSet<Efeito> Efeitos => Set<Efeito>();
@@ -154,6 +155,10 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .HasValue<Armadura>("Armadura")
                 .HasValue<Escudo>("Escudo")
                 .HasValue<Artefato>("Artefato");
+            entity.Property(i => i.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
+            entity.Property(i => i.PenalidadeDeRequisitos).HasColumnType("jsonb")
+                .HasConversion(PenalidadeDeEquipamentoJson.Converter, PenalidadeDeEquipamentoJson.Comparer);
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(i => i.GmId)
@@ -284,6 +289,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(e => e.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(e => e.Tipo).HasConversion<string>();
+            entity.Property(e => e.Disciplina).HasConversion<string>();
         });
 
         builder.Entity<Campaign>(entity =>
@@ -322,13 +328,25 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        builder.Entity<EquipmentKitFixedItem>(entity =>
+        {
+            entity.HasIndex(f => new { f.Nome, f.Tipo }).IsUnique();
+            entity.Property(f => f.Dados).HasColumnType("jsonb");
+            entity.Property(f => f.Requisitos).HasColumnType("jsonb")
+                .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
+            entity.Property(f => f.PenalidadeDeRequisitos).HasColumnType("jsonb")
+                .HasConversion(PenalidadeDeEquipamentoJson.Converter, PenalidadeDeEquipamentoJson.Comparer);
+        });
+
         builder.Entity<EquipmentKitItem>(entity =>
         {
+            entity.HasOne<EquipmentKitFixedItem>().WithMany().HasForeignKey(i => i.FixedItemId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<EquipmentKit>().WithMany().HasForeignKey(i => i.KitId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<EquipmentKitChoiceSlot>(entity =>
         {
+            entity.HasOne<EquipmentKitFixedItem>().WithMany().HasForeignKey(s => s.BonusFixedItemId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<EquipmentKit>().WithMany().HasForeignKey(s => s.KitId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -364,6 +382,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(r => r.Tipo).HasConversion<string>();
+            entity.Property(r => r.Disciplina).HasConversion<string>();
         });
         builder.Entity<CharacterMastery>(entity =>
         {
@@ -537,6 +556,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(r => r.Tipo).HasConversion<string>();
+            entity.Property(r => r.Disciplina).HasConversion<string>();
         });
         builder.Entity<NpcMastery>(entity =>
         {

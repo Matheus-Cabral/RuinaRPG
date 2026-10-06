@@ -45,6 +45,43 @@ public class RuneOrigemFieldsTests : MudBunitContext
     }
 
     [Fact]
+    public void Validar_from_scratch_requires_a_disciplina()
+    {
+        var model = new RuneOrigemModel { Nome = "Runa" };
+
+        model.Validar().Should().Be("Escolha a Disciplina da runa.");
+
+        model.Disciplina = "Adicao";
+        model.Validar().Should().BeNull();
+    }
+
+    [Fact]
+    public void Validar_from_the_bank_does_not_ask_for_a_disciplina() =>
+        new RuneOrigemModel { Origem = "Banco", SourceBankEntryId = "x" }.Validar().Should().BeNull();
+
+    [Fact]
+    public void Limpar_resets_the_disciplina()
+    {
+        var model = new RuneOrigemModel { Disciplina = "Emissao" };
+        model.Limpar();
+        model.Disciplina.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void From_scratch_shows_the_Disciplina_select_and_the_bank_label_includes_it()
+    {
+        var cut = Render<RuneOrigemFields>(p => p
+            .Add(x => x.Model, new RuneOrigemModel { Origem = "Zero" })
+            .Add(x => x.BankEntries, Entradas));
+        cut.FindComponents<DisciplinaDeRunaSelect>().Should().ContainSingle();
+
+        var banco = RenderWithPopover<RuneOrigemFields>(
+            (nameof(RuneOrigemFields.Model), new RuneOrigemModel { Origem = "Banco" }),
+            (nameof(RuneOrigemFields.BankEntries), new[] { new RuneBankEntryResponse("e3", "Runa X", "d", 2, Disciplina: "Emissao") }));
+        OpenSelect(banco, "Entrada do Banco").Should().Contain("Runa X (Grau 2, Emissão)");
+    }
+
+    [Fact]
     public void From_scratch_shows_the_three_rune_fields_and_no_bank_picker()
     {
         var cut = Render<RuneOrigemFields>(p => p
@@ -147,7 +184,7 @@ public class RuneOrigemFieldsTests : MudBunitContext
     [Fact]
     public void Validar_from_scratch_accepts_a_Nome()
     {
-        new RuneOrigemModel { Origem = "Zero", Nome = "Runa do Fogo" }.Validar().Should().BeNull();
+        new RuneOrigemModel { Origem = "Zero", Nome = "Runa do Fogo", Disciplina = "Adicao" }.Validar().Should().BeNull();
     }
 
     [Fact]

@@ -3,9 +3,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
@@ -15,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}")]
-public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades) : ControllerBase
+public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CharacterSheetStats stats) : ControllerBase
 {
     [HttpPost("weapons")]
     public async Task<ActionResult<CharacterWeaponResponse>> AddWeapon(Guid sheetId, AddCharacterWeaponRequest request)
@@ -280,23 +282,52 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         return null;
     }
 
+    // O retrato da ficha SEM penalidades é calculado uma vez por requisição, e só se algum item tiver Requisitos.
+    private Task<FichaParaRequisitos>? _fichaSemPenalidades;
+
+    private Func<Task<FichaParaRequisitos>> FichaSemPenalidades(Guid sheetId) =>
+        () => _fichaSemPenalidades ??= CalcularFichaAsync(sheetId);
+
+    private async Task<FichaParaRequisitos> CalcularFichaAsync(Guid sheetId) =>
+        await stats.FichaParaRequisitosAsync((await db.CharacterSheets.FindAsync(sheetId))!);
+
+    private async Task<CharacterWeaponResponse> ComAvaliacaoAsync(CharacterWeaponResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
+    }
+
+    private async Task<CharacterArmorSlotResponse> ComAvaliacaoAsync(CharacterArmorSlotResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
+    }
+
+    private async Task<CharacterShieldResponse> ComAvaliacaoAsync(CharacterShieldResponse r, Item item, Guid sheetId)
+    {
+        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
+        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
+    }
+
     private async Task<CharacterWeaponResponse> ToWeaponResponseAsync(CharacterWeapon weapon, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
     {
         var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        return new CharacterWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        var resposta = new CharacterWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        return await ComAvaliacaoAsync(resposta, item, weapon.CharacterSheetId);
     }
 
     private async Task<CharacterArmorSlotResponse> ToArmorSlotResponseAsync(CharacterArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
     {
         if (slot.ItemId is null)
-            return new CharacterArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null, null, null);
+            return new CharacterArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null);
 
         var item = await db.Set<Armadura>().SingleAsync(a => a.Id == slot.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        return new CharacterArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Penalidade, item.RequisitoVigor, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+        var resposta = new CharacterArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
+        return await ComAvaliacaoAsync(resposta, item, slot.CharacterSheetId);
     }
 
     private async Task<CharacterShieldResponse> ToShieldResponseAsync(CharacterShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -304,7 +335,8 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        return new CharacterShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Penalidade, item.RequisitoVigor, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        var resposta = new CharacterShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
+        return await ComAvaliacaoAsync(resposta, item, shield.CharacterSheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

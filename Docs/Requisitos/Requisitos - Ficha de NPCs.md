@@ -81,3 +81,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0012** - O VIS Atual do NPC é calculado, não editável.
 
 **Descrição**: Como no Personagem (ver 1.b de "[[Requisitos - Ficha de Personagem]]"), o *VIS Atual* da Ficha de NPC é somente leitura e sempre calculado: o valor da coluna EAP, para o *Nível* da ficha, na tabela de "[[Tabelas de XP, Atributos, Características e EAP]]" somado ao resultado de *Âmbares Absorvidos* (valor por Rank definido em 1.b da ficha de Personagem). Portanto muda quando o *Nível*, a *Experiência atual* (R0005) ou os contadores de Âmbares mudam. É esse valor que determina a *Graduação* (Grau/Círculo, segundo "[[Tabela de Circulo e Grau por EAP]]"), o máximo de Vocação Arcana e os Requisitos de Habilidades Passivas (R0011) — nenhum deles lê mais um número digitado à mão. Isto substitui a edição manual do VIS Atual que a Ficha de NPC permitia antes.
+
+# **R0013** - Requisitos e Penalidades de equipamento seguem o Personagem.
+
+**Descrição**: Os Requisitos e a Penalidade dos equipamentos (Arma, Armadura, Escudo e Artefato) funcionam na Ficha de NPC exatamente como na Ficha de Personagem: o aviso de Requisitos não cumpridos nas linhas de 3.a, 3.b, 3.c e 5.b, o alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate, e a subtração automática das Penalidades dos Totais. Ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]".

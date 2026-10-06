@@ -22,7 +22,7 @@
 
         @if (_me.PendingChangelogVersion is not null)
         {
-            <ChangelogDialog Version="@_me.PendingChangelogVersion" OnDismissed="DismissChangelogAsync" />
+            <ChangelogDialog Version="@_me.PendingChangelogVersion" IsRulesAuditor="@_me.IsRulesAuditor" OnDismissed="DismissChangelogAsync" />
         }
 
         @if (_me.Role == "GM")

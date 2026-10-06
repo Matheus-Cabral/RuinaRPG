@@ -8,6 +8,8 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Runes;
+using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Runes;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -76,7 +78,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
 
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau, string? tipo = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo)));
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo, Disciplina: "Adicao")));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
@@ -107,7 +109,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa do Fogo", "Queima o alvo.", 1)));
+            new AddNpcRuneRequest("Runa do Fogo", "Queima o alvo.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -123,7 +125,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa da Terra", "Endurece a pele.", 2)));
+            new AddNpcRuneRequest("Runa da Terra", "Endurece a pele.", 2, Disciplina: "Adicao")));
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/runes", gmToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -138,7 +140,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa da Água", "Cura ferimentos leves.", 3)));
+            new AddNpcRuneRequest("Runa da Água", "Cura ferimentos leves.", 3, Disciplina: "Adicao")));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcRuneResponse>();
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/runes/{added!.Id}", gmToken));
@@ -157,7 +159,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmTokenOther,
-            new AddNpcRuneRequest("Runa do Vento", "Aumenta velocidade.", 1)));
+            new AddNpcRuneRequest("Runa do Vento", "Aumenta velocidade.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -169,7 +171,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa do Fogo", "Queima o alvo.", 2)));
+            new AddNpcRuneRequest("Runa do Fogo", "Queima o alvo.", 2, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa do Fogo" && e.Grau == 2);
@@ -183,7 +185,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (sheetId, campaignId) = await GrantBlankNpcAsync(gmToken, playerId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
-            new AddNpcRuneRequest("Runa da Terra", "Endurece a pele.", 1)));
+            new AddNpcRuneRequest("Runa da Terra", "Endurece a pele.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa da Terra");
@@ -218,7 +220,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Sombria", "Escura.", 2, null, null, "Negra")));
+            new AddNpcRuneRequest("Runa Sombria", "Escura.", 2, null, null, "Negra", Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Tipo.Should().Be("Negra");
@@ -233,7 +235,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa", "D.", 1, null, null, "Branca")));
+            new AddNpcRuneRequest("Runa", "D.", 1, null, null, "Branca", Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("Tipo de Runa desconhecido.");
@@ -345,7 +347,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
-            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, imageId)));
+            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.ImageUrl.Should().Be(imageUrl);
@@ -360,7 +362,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var (imageId, imageUrl) = await UploadImageAsync(gmToken);
 
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa do GM", "Com imagem.", 2, null, imageId)));
+            new AddNpcRuneRequest("Runa do GM", "Com imagem.", 2, null, imageId, Disciplina: "Adicao")));
 
         (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa do GM" && e.ImageId == imageId && e.ImageUrl == imageUrl);
     }
@@ -375,7 +377,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         await PublishImageToCampaignAsync(gmToken, campaignId, imageId);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
-            new AddNpcRuneRequest("Runa Liberada", "Imagem do GM.", 1, null, imageId)));
+            new AddNpcRuneRequest("Runa Liberada", "Imagem do GM.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.ImageUrl == imageUrl);
@@ -393,9 +395,9 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
             new AttachToCampaignRequest(null, null, null, null, privada, null))); // anexada, mas privada
 
         var semAnexo = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
-            new AddNpcRuneRequest("Runa", "X.", 1, null, naoAnexada)));
+            new AddNpcRuneRequest("Runa", "X.", 1, null, naoAnexada, Disciplina: "Adicao")));
         var comAnexoPrivado = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", playerToken,
-            new AddNpcRuneRequest("Runa", "X.", 1, null, privada)));
+            new AddNpcRuneRequest("Runa", "X.", 1, null, privada, Disciplina: "Adicao")));
 
         semAnexo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         comAnexoPrivado.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -411,7 +413,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa", "X.", 1, null, imageId)));
+            new AddNpcRuneRequest("Runa", "X.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -423,7 +425,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
         var (imageId, imageUrl) = await UploadImageAsync(gmToken);
         var entryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
-            new CreateRuneBankEntryRequest("Runa Herdeira", "Herda a imagem.", 1, imageId)));
+            new CreateRuneBankEntryRequest("Runa Herdeira", "Herda a imagem.", 1, imageId, Disciplina: "Adicao")));
         var entry = (await entryResponse.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
@@ -456,7 +458,7 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         var sheetId = await CreateSheetAsync(gmToken);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Nova", "Criada do zero.", 1, null)));
+            new AddNpcRuneRequest("Runa Nova", "Criada do zero.", 1, null, Disciplina: "Adicao")));
         var created = (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!;
 
         var bankEntry = (await BankOfAsync(gmToken)).Should().ContainSingle().Subject;
@@ -468,5 +470,84 @@ public class NpcRunesControllerTests : IClassFixture<PostgresFixture>, IAsyncLif
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         return await db.NpcRunes.Where(r => r.Id == Guid.Parse(runeId)).Select(r => r.SourceBankEntryId).SingleAsync();
+    }
+
+    [Fact]
+    public async Task Add_from_scratch_requires_a_disciplina_and_returns_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm1", "runedisc1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var semDisciplina = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa", "Desc.", 1)));
+        var comDisciplina = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa", "Desc.", 1, Disciplina: "Alteracao")));
+
+        semDisciplina.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await semDisciplina.Content.ReadAsStringAsync()).Should().Contain("Disciplina é obrigatória.");
+        comDisciplina.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await comDisciplina.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Disciplina.Should().Be("Alteracao");
+    }
+
+    [Fact]
+    public async Task Add_from_scratch_rejects_an_unknown_disciplina()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm5", "runedisc5@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa", "Desc.", 1, Disciplina: "Bruxaria")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Disciplina de Runa desconhecida.");
+    }
+
+    [Fact]
+    public async Task Add_from_scratch_copies_the_disciplina_to_the_automatic_bank_entry()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm2", "runedisc2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest("Runa Copiada", "Desc.", 1, Disciplina: "Emissao")));
+
+        var bank = await BankOfAsync(gmToken);
+        bank.Single(e => e.Nome == "Runa Copiada").Disciplina.Should().Be("Emissao");
+    }
+
+    [Fact]
+    public async Task Add_from_the_bank_copies_the_entrys_disciplina_and_ignores_the_requests()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm3", "runedisc3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var entry = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+            new CreateRuneBankEntryRequest("Do Banco", "Desc.", 1, null, null, "Manifestacao")))).Content.ReadFromJsonAsync<RuneBankEntryResponse>();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest(null, null, null, entry!.Id, Disciplina: "Adicao")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Disciplina.Should().Be("Manifestacao");
+    }
+
+    [Fact]
+    public async Task Add_from_a_legacy_bank_entry_without_disciplina_is_accepted_and_stays_without()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm4", "runedisc4@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var entryId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var gmId = await db.NpcSheets.Where(s => s.Id == Guid.Parse(sheetId)).Select(s => s.GmId).SingleAsync();
+            db.RuneBankEntries.Add(new RuneBankEntry { Id = entryId, GmId = gmId, Nome = "Antiga", Descricao = "Pré-1.4.3", Grau = 1 });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/runes", gmToken,
+            new AddNpcRuneRequest(null, null, null, entryId.ToString())));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<NpcRuneResponse>())!.Disciplina.Should().BeNull();
     }
 }

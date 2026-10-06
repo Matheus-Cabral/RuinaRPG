@@ -13,6 +13,9 @@ public class CharacterRune
     /// <summary>Classificação opcional (Arcana/Negra), só exibida; null = sem tipo. Guardada como texto.</summary>
     public TipoDeRuna? Tipo { get; set; }
 
+    /// <summary>Obrigatória em Runas novas; null só em Runas anteriores à 1.4.3. Guardada como texto.</summary>
+    public DisciplinaDeRuna? Disciplina { get; set; }
+
     /// <summary>Imagem opcional (uma por Runa). FK para Images com SetNull.</summary>
     public Guid? ImageId { get; set; }
 

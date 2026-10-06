@@ -76,4 +76,42 @@ public class BancoDeRunasTests : MudBunitContext
         linhas[1].TextContent.Should().Contain("Runa Negra");
         linhas[2].TextContent.Should().Contain("—");
     }
+
+    [Fact]
+    public async Task The_list_shows_a_Disciplina_column_with_the_label_or_a_dash()
+    {
+        var cut = RenderPage(
+            new RuneBankEntryResponse("1", "Runa E", "d", 1, Disciplina: "Emissao"),
+            new RuneBankEntryResponse("2", "Runa S", "d", 1));
+        await Task.Delay(50);
+
+        cut.FindAll("th").Select(h => h.TextContent.Trim()).Should().Contain("Disciplina");
+        var linhas = cut.FindAll("tbody tr");
+        linhas[0].TextContent.Should().Contain("Emissão");
+        linhas[1].TextContent.Should().Contain("—");
+    }
+
+    [Fact]
+    public async Task The_Disciplina_filter_is_sent_to_the_server()
+    {
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        var filtro = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Disciplina");
+        await cut.InvokeAsync(() => filtro.Instance.ValueChanged.InvokeAsync("Emissao"));
+        await Task.Delay(400);
+
+        _queries.Last().Should().Contain("disciplina=Emissao");
+    }
+
+    [Fact]
+    public async Task The_Disciplina_filter_offers_todas_the_four_and_sem_disciplina()
+    {
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<RuneBankEntryResponse>()) }));
+        var cut = RenderWithPopover<BancoDeRunas>();
+        await Task.Delay(50);
+
+        OpenSelect(cut, "Disciplina").Should().Equal("Todas", "Adição", "Alteração", "Emissão", "Manifestação", "Sem disciplina");
+    }
 }

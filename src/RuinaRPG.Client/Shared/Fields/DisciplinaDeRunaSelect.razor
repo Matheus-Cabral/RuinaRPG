@@ -1,0 +1,29 @@
+@using MudBlazor
+@using RuinaRPG.Domain.Runes
+
+@* Disciplina da Runa (Banco de Runas): obrigatória, sem opção em branco. Usada no formulário do banco
+   e ao montar uma Runa do zero na ficha. *@
+<div class="d-flex align-center">
+    <MudSelect T="string" Value="@Value" ValueChanged="ValueChanged" Label="Disciplina" Required="true"
+               RequiredError="Escolha a Disciplina da runa." Error="@Error" ErrorText="@(Error ? "Escolha a Disciplina da runa." : null)">
+        @foreach (var disciplina in DisciplinaDeRunaInfo.Todas)
+        {
+            <MudSelectItem Value="@disciplina.ToString()">@DisciplinaDeRunaInfo.Rotulo(disciplina)</MudSelectItem>
+        }
+    </MudSelect>
+    <InfoPopup Title="Disciplina da Runa">
+        <ul>
+            @foreach (var disciplina in DisciplinaDeRunaInfo.Todas)
+            {
+                <li><b>@DisciplinaDeRunaInfo.Rotulo(disciplina):</b> @DisciplinaDeRunaInfo.Descricao(disciplina).</li>
+            }
+        </ul>
+    </InfoPopup>
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    /// <summary>Mostra a mensagem de obrigatório (o formulário decide quando: ao tentar salvar sem escolher).</summary>
+    [Parameter] public bool Error { get; set; }
+}

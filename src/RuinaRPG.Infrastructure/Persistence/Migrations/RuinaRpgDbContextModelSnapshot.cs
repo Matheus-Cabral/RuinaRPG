@@ -540,6 +540,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Disciplina")
+                        .HasColumnType("text");
+
                     b.Property<int>("Grau")
                         .HasColumnType("integer");
 
@@ -1785,11 +1788,17 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PenalidadeDeRequisitos")
+                        .HasColumnType("jsonb");
+
                     b.Property<decimal>("Peso")
                         .HasColumnType("numeric");
 
                     b.Property<int>("Preco")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
@@ -2010,6 +2019,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Descricao")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Disciplina")
                         .HasColumnType("text");
 
                     b.Property<int>("Grau")
@@ -2520,6 +2532,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ArmorSlot")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("BonusFixedItemId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("BonusNome")
                         .HasColumnType("text");
 
@@ -2550,9 +2565,45 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BonusFixedItemId");
+
                     b.HasIndex("KitId");
 
                     b.ToTable("EquipmentKitChoiceSlots");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.EquipmentKitFixedItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Dados")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("DetalhesIncompletos")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PenalidadeDeRequisitos")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Requisitos")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome", "Tipo")
+                        .IsUnique();
+
+                    b.ToTable("EquipmentKitFixedItems");
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.EquipmentKitItem", b =>
@@ -2561,11 +2612,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("ArmorSlot")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("FixedItemId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("KitId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Nome")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Qtd")
@@ -2578,6 +2634,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FixedItemId");
 
                     b.HasIndex("KitId");
 
@@ -2841,6 +2899,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Disciplina")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("GmId")
                         .HasColumnType("uuid");
 
@@ -2960,9 +3021,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Arma_Rank");
 
-                    b.Property<string>("RequisitoAtributo")
-                        .HasColumnType("text");
-
                     b.Property<string>("Subcategoria")
                         .HasColumnType("text")
                         .HasColumnName("Arma_Subcategoria");
@@ -2983,9 +3041,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Defesa")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Penalidade")
-                        .HasColumnType("text");
-
                     b.Property<int?>("RF")
                         .HasColumnType("integer");
 
@@ -2996,9 +3051,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Armadura_Rank");
 
-                    b.Property<int?>("RequisitoVigor")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Subcategoria")
                         .HasColumnType("text")
                         .HasColumnName("Armadura_Subcategoria");
@@ -3007,12 +3059,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         {
                             t.Property("Categoria")
                                 .HasColumnName("Armadura_Categoria");
-
-                            t.Property("Penalidade")
-                                .HasColumnName("Armadura_Penalidade");
-
-                            t.Property("RequisitoVigor")
-                                .HasColumnName("Armadura_RequisitoVigor");
                         });
 
                     b.HasDiscriminator().HasValue("Armadura");
@@ -3048,15 +3094,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Categoria")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Penalidade")
-                        .HasColumnType("text");
-
                     b.Property<int?>("Rank")
                         .HasColumnType("integer")
                         .HasColumnName("Escudo_Rank");
-
-                    b.Property<int?>("RequisitoVigor")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Subcategoria")
                         .HasColumnType("text")
@@ -4009,6 +4049,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.EquipmentKitChoiceSlot", b =>
                 {
+                    b.HasOne("RuinaRPG.Infrastructure.Rules.EquipmentKitFixedItem", null)
+                        .WithMany()
+                        .HasForeignKey("BonusFixedItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RuinaRPG.Infrastructure.Rules.EquipmentKit", null)
                         .WithMany()
                         .HasForeignKey("KitId")
@@ -4018,6 +4063,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Rules.EquipmentKitItem", b =>
                 {
+                    b.HasOne("RuinaRPG.Infrastructure.Rules.EquipmentKitFixedItem", null)
+                        .WithMany()
+                        .HasForeignKey("FixedItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RuinaRPG.Infrastructure.Rules.EquipmentKit", null)
                         .WithMany()
                         .HasForeignKey("KitId")

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Pages;
+using RuinaRPG.Client.Shared;
+using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -51,7 +53,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
             {
                 Id = "slot-1", Label = "Armadura inicial", Tipo = "Armadura",
                 Subcategorias = (List<string>?)null, Rank = (string?)null, Qtd = 1,
-                BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusQtd = (int?)null,
+                BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusFixedItemId = (string?)null, BonusQtd = (int?)null,
                 ArmorSlot = "Superior",
             },
         },
@@ -188,7 +190,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         await Task.Delay(50);
 
         // With 1 kit rendered: the "Construtor de Subcategoria" section's "Tipo" select renders
-        // first (it's now the top section on the page), then item-form's "Tipo" select, then
+        // first (it's the top section on the page), then the add-item picker's "Tipo" select, then
         // slot-form's "Tipo" select — in that document order.
         var tipoSelects = cut.FindComponents<MudSelect<string>>().Where(c => c.Instance.Label == "Tipo").ToList();
         tipoSelects.Should().HaveCount(3);
@@ -521,9 +523,336 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var content = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
         content.Should().Be(TextNormalization.Collapse(string.Join(" ",
             "Um kit é o equipamento inicial que o jogador escolhe uma única vez na aba Posses da ficha. Os Ciclos são somados ao dinheiro da ficha.",
-            "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Cada um é encontrado pelo Nome no catálogo do GM da campanha. Armaduras não podem ser item fixo.",
+            "Itens fixos: todo mundo que escolhe o kit recebe esses itens. Eles vêm da base de itens fixos, igual para todas as campanhas: pesquise pelo nome ou cadastre um novo. Ao aplicar o kit, o item que o GM ainda não tem é copiado completo para o catálogo dele.",
             "Slots de escolha: o jogador escolhe um item. Defina o Tipo e as Famílias permitidas; vazio significa qualquer uma. Para Arma, defina também o Rank. Para Armadura, defina em qual posição (Capacete, Superior ou Inferior) ela será equipada, substituindo o que estiver lá.",
             "Excluir um kit já escolhido em alguma ficha é bloqueado.")));
+    }
+
+    // ---- Task 15: itens fixos dos kits escolhidos da base global ----
+
+    private static object ItemRow(string id, string fixedItemId, string nome, string tipo, int qtd = 1, string? armorSlot = null, bool incompleto = false) =>
+        new { Id = id, FixedItemId = fixedItemId, Nome = nome, Tipo = tipo, Qtd = qtd, ArmorSlot = armorSlot, DetalhesIncompletos = incompleto };
+
+    private static object KitComItens(params object[] itens) => new
+    {
+        Id = "kit-1", Nome = "Viajante", Descricao = "Kit do Viajante", Ciclos = 3,
+        Items = itens.ToList(), ChoiceSlots = new List<object>(),
+    };
+
+    private class Escrivaninha
+    {
+        public List<string> Requests { get; } = new();
+        public UpdateEquipmentKitRequestCapture? KitPut { get; set; }
+        public List<object> Kits { get; set; } = new();
+        public List<EquipmentKitFixedItemResponse> Base { get; set; } = new();
+        public HttpResponseMessage? RespostaDelete { get; set; }
+        public HttpResponseMessage? RespostaPutKit { get; set; }
+        public int KitGets => Requests.Count(r => r == "GET /api/equipment-kits");
+    }
+
+    private Escrivaninha RegisterFixedItemHttp(Action<Escrivaninha>? configure = null)
+    {
+        var e = new Escrivaninha();
+        configure?.Invoke(e);
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var rota = FixedItemTestData.Rota(request);
+            e.Requests.Add(rota);
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method == HttpMethod.Get && path.EndsWith("/equipment-kits"))
+                return Json(HttpStatusCode.OK, e.Kits);
+            if (request.Method == HttpMethod.Get && (path.EndsWith("subcategoria-options") || path.EndsWith("pericias")))
+                return Json(HttpStatusCode.OK, new List<object>());
+            if (request.Method == HttpMethod.Get && path.EndsWith("equipment-kit-fixed-items"))
+                return Json(HttpStatusCode.OK, e.Base);
+            if (request.Method == HttpMethod.Put && path.Contains("/equipment-kits/"))
+            {
+                e.KitPut = request.Content!.ReadFromJsonAsync<UpdateEquipmentKitRequestCapture>().GetAwaiter().GetResult();
+                return e.RespostaPutKit ?? new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+            if (request.Method == HttpMethod.Put && path.Contains("/equipment-kit-fixed-items/"))
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            if (request.Method == HttpMethod.Delete && path.Contains("/equipment-kit-fixed-items/"))
+                return e.RespostaDelete ?? new HttpResponseMessage(HttpStatusCode.NoContent);
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }));
+        return e;
+    }
+
+    private IRenderedComponent<ContainerFragment> RenderFull() =>
+        Render(builder =>
+        {
+            builder.OpenComponent<MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<MudDialogProvider>(1);
+            builder.CloseComponent();
+            builder.OpenComponent<AuditoriaEquipagem>(2);
+            builder.CloseComponent();
+        });
+
+    private static async Task PickAsync(IRenderedComponent<ContainerFragment> cut, int pickerIndex, EquipmentKitFixedItemResponse item)
+    {
+        var autocomplete = cut.FindComponents<FixedItemPicker>()[pickerIndex].FindComponent<MudAutocomplete<EquipmentKitFixedItemResponse>>();
+        await cut.InvokeAsync(() => autocomplete.Instance.ValueChanged.InvokeAsync(item));
+    }
+
+    private static IRenderedComponent<MudButton> ButtonWithText(IRenderedComponent<ContainerFragment> cut, string text) =>
+        cut.FindComponents<MudButton>().Single(b => HasExactText(b, text));
+
+    private static Task ClickAsync(IRenderedComponent<ContainerFragment> cut, IRenderedComponent<MudButton> button) =>
+        cut.InvokeAsync(() => button.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+
+    private static async Task SetNumberAsync(IRenderedComponent<ContainerFragment> cut, string label, int value)
+    {
+        var field = cut.FindComponents<MudNumericField<int>>().Single(c => c.Instance.Label == label);
+        await cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync(value));
+    }
+
+    [Fact]
+    public async Task The_add_item_row_uses_the_picker_with_all_five_tipos_including_Armadura()
+    {
+        RegisterFixedItemHttp(e => e.Kits = new() { KitComItens() });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var picker = cut.FindComponents<FixedItemPicker>().First();
+        picker.Instance.TiposPermitidos.Should().BeEquivalentTo(new[] { "ItemGeral", "Arma", "Armadura", "Escudo", "Artefato" });
+    }
+
+    [Fact]
+    public async Task Adding_an_item_puts_the_kit_with_the_picked_FixedItemId_and_qtd()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 1)) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        await PickAsync(cut, 0, FixedItemTestData.Item("fi-tocha", "Tocha", "ItemGeral"));
+        await SetNumberAsync(cut, "Quantidade do item", 3);
+        await ClickAsync(cut, ButtonWithText(cut, "Adicionar item"));
+        await Task.Delay(50);
+
+        e.KitPut.Should().NotBeNull();
+        e.KitPut!.Items.Should().HaveCount(2);
+        e.KitPut.Items[0].FixedItemId.Should().Be("fi-corda");
+        e.KitPut.Items[1].Should().Be(new EquipmentKitItemInputCapture("fi-tocha", 3, null));
+    }
+
+    [Fact]
+    public async Task Adding_an_armadura_requires_and_sends_the_slot()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens() });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        await PickAsync(cut, 0, FixedItemTestData.Item("fi-elmo", "Elmo", "Armadura"));
+        ButtonWithText(cut, "Adicionar item").Instance.Disabled.Should().BeTrue();
+
+        var slot = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Slot de Armadura");
+        await cut.InvokeAsync(() => slot.Instance.ValueChanged.InvokeAsync("Capacete"));
+        ButtonWithText(cut, "Adicionar item").Instance.Disabled.Should().BeFalse();
+        await ClickAsync(cut, ButtonWithText(cut, "Adicionar item"));
+        await Task.Delay(50);
+
+        e.KitPut!.Items.Single().Should().Be(new EquipmentKitItemInputCapture("fi-elmo", 1, "Capacete"));
+    }
+
+    [Fact]
+    public async Task Changing_a_rows_qtd_puts_the_kit_with_the_new_value()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 1)) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        await SetNumberAsync(cut, "Qtd do item", 5);
+        await Task.Delay(50);
+
+        e.KitPut!.Items.Single().Should().Be(new EquipmentKitItemInputCapture("fi-corda", 5, null));
+    }
+
+    [Fact]
+    public async Task A_row_whose_fixed_item_is_incomplete_is_flagged_Detalhes_incompletos()
+    {
+        RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(
+            ItemRow("row-1", "fi-a", "Corda", "ItemGeral", 1, null, true), ItemRow("row-2", "fi-b", "Tocha", "ItemGeral")) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var chips = cut.FindComponents<MudChip<string>>().Where(c => c.Markup.Contains("Detalhes incompletos")).ToList();
+        chips.Should().HaveCount(1);
+        chips[0].Instance.Color.Should().Be(Color.Warning);
+    }
+
+    [Fact]
+    public async Task The_edit_button_opens_the_dialog_and_a_replacement_puts_the_kit_with_the_new_item_keeping_the_qtd()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 4)) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        _ = cut.Find("button[title='Editar item fixo']").ClickAsync(new MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Substituir item"));
+        await cut.InvokeAsync(() => cut.FindComponents<MudButton>().Single(b => b.Markup.Contains("Substituir item")).Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        var autocompleteDoDialogo = cut.FindComponent<EditarItemFixoDoKitDialog>().FindComponent<MudAutocomplete<EquipmentKitFixedItemResponse>>();
+        await cut.InvokeAsync(() => autocompleteDoDialogo.Instance.ValueChanged.InvokeAsync(FixedItemTestData.Item("fi-tocha", "Tocha", "ItemGeral")));
+        await cut.InvokeAsync(() => cut.FindComponents<MudButton>().Single(b => HasExactText(b, "Confirmar")).Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        cut.WaitForAssertion(() => e.KitPut.Should().NotBeNull());
+
+        e.KitPut!.Items.Single().Should().Be(new EquipmentKitItemInputCapture("fi-tocha", 4, null));
+    }
+
+    [Fact]
+    public async Task After_Editar_detalhes_the_kits_are_reloaded()
+    {
+        var corda = FixedItemTestData.Item("fi-corda", "Corda", "ItemGeral");
+        var e = RegisterFixedItemHttp(x =>
+        {
+            x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 1)) };
+            x.Base = new() { corda };
+        });
+        var cut = RenderFull();
+        await Task.Delay(50);
+        var antes = e.KitGets;
+
+        _ = cut.Find("button[title='Editar item fixo']").ClickAsync(new MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Editar detalhes"));
+        _ = cut.InvokeAsync(() => cut.FindComponents<MudButton>().Single(b => b.Markup.Contains("Editar detalhes")).Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        cut.WaitForAssertion(() => cut.Find("button:contains('Salvar')"));
+        cut.Find("button:contains('Salvar')").Click();
+
+        cut.WaitForAssertion(() => e.KitGets.Should().BeGreaterThan(antes));
+        e.KitPut.Should().BeNull("editar detalhes altera o item da base, não o kit");
+    }
+
+    [Fact]
+    public async Task Changing_the_slot_of_an_Armadura_row_puts_the_kit_with_the_new_ArmorSlot_and_everything_else_unchanged()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { new
+        {
+            Id = "kit-1", Nome = "Viajante", Descricao = "Kit", Ciclos = 3,
+            Items = new List<object>
+            {
+                ItemRow("row-1", "fi-elmo", "Elmo", "Armadura", 2, "Capacete"),
+                ItemRow("row-2", "fi-corda", "Corda", "ItemGeral", 1),
+            },
+            ChoiceSlots = new object[]
+            {
+                new { Id = "slot-1", Label = "Armadura inicial", Tipo = "Armadura", Subcategorias = (List<string>?)null, Rank = (string?)null, Qtd = 1,
+                      BonusSubcategoria = (string?)null, BonusNome = (string?)null, BonusFixedItemId = (string?)null, BonusQtd = (int?)null, ArmorSlot = "Superior" },
+            },
+        } });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Slot do item");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Inferior"));
+        await Task.Delay(50);
+
+        e.KitPut!.Items.Should().Equal(new EquipmentKitItemInputCapture("fi-elmo", 2, "Inferior"), new EquipmentKitItemInputCapture("fi-corda", 1, null));
+        e.KitPut.ChoiceSlots.Single().ArmorSlot.Should().Be("Superior");
+    }
+
+    [Fact]
+    public async Task A_non_Armadura_row_renders_no_slot_select()
+    {
+        RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-corda", "Corda", "ItemGeral", 1)) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        cut.FindComponents<MudSelect<string>>().Should().NotContain(c => c.Instance.Label == "Slot do item");
+    }
+
+    [Fact]
+    public async Task A_server_400_when_changing_a_rows_slot_shows_the_servers_message()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens(ItemRow("row-1", "fi-elmo", "Elmo", "Armadura", 1, "Capacete")) });
+        var cut = RenderFull();
+        await Task.Delay(50);
+        e.RespostaPutKit = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("O Slot Inferior ja esta em uso por outra Armadura do kit.") };
+
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Slot do item");
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("Inferior"));
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("O Slot Inferior ja esta em uso por outra Armadura do kit.");
+    }
+
+    [Fact]
+    public async Task The_slot_bonus_is_picked_from_the_base_restricted_to_Item_Geral()
+    {
+        var e = RegisterFixedItemHttp(x => x.Kits = new() { KitComItens() });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var pickers = cut.FindComponents<FixedItemPicker>();
+        pickers.Should().HaveCount(2); // [0] = adicionar item, [1] = bônus do slot
+        pickers[1].Instance.TiposPermitidos.Should().BeEquivalentTo(new[] { "ItemGeral" });
+
+        var label = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Label");
+        await cut.InvokeAsync(() => label.Instance.ValueChanged.InvokeAsync("Arco inicial"));
+        await PickAsync(cut, 1, FixedItemTestData.Item("fi-flecha", "Flecha", "ItemGeral"));
+        var sub = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Subcategoria do bônus");
+        await cut.InvokeAsync(() => sub.Instance.ValueChanged.InvokeAsync("Arcos"));
+        await SetNumberAsync(cut, "Qtd do bônus", 20);
+        await ClickAsync(cut, ButtonWithText(cut, "Adicionar slot"));
+        await Task.Delay(50);
+
+        var novo = e.KitPut!.ChoiceSlots.Single(s => s.Label == "Arco inicial");
+        novo.BonusFixedItemId.Should().Be("fi-flecha");
+        novo.BonusSubcategoria.Should().Be("Arcos");
+        novo.BonusQtd.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task The_Itens_fixos_section_lists_the_base_filters_by_tipo_and_name_and_can_edit_and_delete()
+    {
+        var e = RegisterFixedItemHttp(x => x.Base = new()
+        {
+            FixedItemTestData.Item("fi-1", "Corda", "ItemGeral", false, "Viajante"),
+            FixedItemTestData.Item("fi-2", "Espada", "Arma", true),
+        });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Itens fixos").And.Contain("Corda").And.Contain("Espada").And.Contain("Viajante");
+        cut.FindComponents<MudChip<string>>().Should().Contain(c => c.Markup.Contains("Detalhes incompletos"));
+        ButtonWithText(cut, "Novo item fixo").Should().NotBeNull();
+
+        var tipo = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Filtrar por Tipo");
+        await cut.InvokeAsync(() => tipo.Instance.ValueChanged.InvokeAsync("Arma"));
+        await Task.Delay(50);
+        e.Requests.Should().Contain("GET /api/equipment-kit-fixed-items?tipo=Arma&q=");
+
+        var busca = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Buscar por nome");
+        await cut.InvokeAsync(() => busca.Instance.ValueChanged.InvokeAsync("esp"));
+        await Task.Delay(50);
+        e.Requests.Should().Contain("GET /api/equipment-kit-fixed-items?tipo=Arma&q=esp");
+
+        var editar = cut.FindAll("button[title='Editar item da base']");
+        editar.Should().NotBeEmpty();
+        _ = editar[0].ClickAsync(new MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Find("button:contains('Salvar')"));
+        cut.Find("button:contains('Cancelar')").Click();
+
+        await cut.InvokeAsync(() => cut.FindComponents<MudIconButton>().First(b => b.Markup.Contains("Excluir item fixo")).Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        await Task.Delay(50);
+        e.Requests.Should().Contain(r => r.StartsWith("DELETE /api/equipment-kit-fixed-items/fi-"));
+    }
+
+    [Fact]
+    public async Task Deleting_a_fixed_item_in_use_shows_the_servers_conflict_message()
+    {
+        RegisterFixedItemHttp(x =>
+        {
+            x.Base = new() { FixedItemTestData.Item("fi-1", "Corda", "ItemGeral", false, "Viajante") };
+            x.RespostaDelete = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent("Item usado nos kits: Viajante.") };
+        });
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        await cut.InvokeAsync(() => cut.FindComponents<MudIconButton>().First(b => b.Markup.Contains("Excluir item fixo")).Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Item usado nos kits: Viajante.");
     }
 
     private record CreateSubcategoriaOptionRequestCapture(string Tipo, string Facet, string Valor);
@@ -531,8 +860,8 @@ public class AuditoriaEquipagemTests : MudBunitContext
     private record UpdateEquipmentKitRequestCapture(string Nome, string Descricao, int Ciclos,
         List<EquipmentKitItemInputCapture> Items, List<EquipmentKitChoiceSlotInputCapture> ChoiceSlots);
 
-    private record EquipmentKitItemInputCapture(string Nome, string Tipo, int Qtd, string? SubcategoriaHint);
+    private record EquipmentKitItemInputCapture(string FixedItemId, int Qtd, string? ArmorSlot);
 
     private record EquipmentKitChoiceSlotInputCapture(string Label, string Tipo, List<string>? Subcategorias,
-        string? Rank, int Qtd, string? BonusSubcategoria, string? BonusNome, int? BonusQtd, string? ArmorSlot);
+        string? Rank, int Qtd, string? BonusSubcategoria, string? BonusFixedItemId, int? BonusQtd, string? ArmorSlot);
 }

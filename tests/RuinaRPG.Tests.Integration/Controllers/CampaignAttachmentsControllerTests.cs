@@ -59,8 +59,8 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
-            null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null,
+            null, null, null, null, null, null, null,
+            null, null, null, null,
             null, null, null, null, null);
 
     private async Task<string> CreateItemAsync(string gmToken, string nome)
@@ -79,7 +79,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
-            new CreateRuneBankEntryRequest(nome, "Descrição.", 1)));
+            new CreateRuneBankEntryRequest(nome, "Descrição.", 1, Disciplina: "Adicao")));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
@@ -613,7 +613,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("AttRuneImgGm1", "attruneimg1@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Runa Imagem");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
-        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId)));
+        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId, Disciplina: "Adicao")));
         var comImagemId = (await comImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
         var semImagemId = await CreateRuneEntryAsync(gmToken, "Runa Nua");
 

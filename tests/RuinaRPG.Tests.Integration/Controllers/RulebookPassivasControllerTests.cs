@@ -149,4 +149,17 @@ public class RulebookPassivasControllerTests : IClassFixture<PostgresFixture>, I
         (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={Guid.NewGuid()}", player))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={alheia}", player))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task Vocacao_and_classe_come_from_the_requisitos_with_vocacao_as_display_label_and_null_otherwise()
+    {
+        var gm = await RegisterGmAsync("D");
+        await CreateEntryAsync(gm, "Com", "Passiva", "DeClasse", new RequisitosDePassivaDto(Vocacao: "Campeao", Classe: "Duelista"));
+        await CreateEntryAsync(gm, "Sem", "Passiva", "Livre");
+
+        var passivas = await GetAsync(gm);
+
+        passivas.Single(p => p.Nome == "Com").Should().Match<PassivaDoLivroResponse>(p => p.Vocacao == "Campeão" && p.Classe == "Duelista");
+        passivas.Single(p => p.Nome == "Sem").Should().Match<PassivaDoLivroResponse>(p => p.Vocacao == null && p.Classe == null);
+    }
 }

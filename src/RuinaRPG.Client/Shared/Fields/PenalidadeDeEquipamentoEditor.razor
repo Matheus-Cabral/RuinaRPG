@@ -1,0 +1,126 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared
+@using RuinaRPG.Domain.CharacterSheets
+@using RuinaRPG.Domain.SpellsAndAbilities
+@inject PericiaCatalogo Pericias
+
+@* Edita PenalidadeDeEquipamentoDto (via PenalidadeFormModel). Cada linha tira Valor do alvo enquanto a ficha não cumpre os Requisitos do equipamento. *@
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Atributos</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.Atributos.Count; i++)
+        {
+            var linha = Model.Atributos[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="@linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in AtributoOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.Atributos, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Valor" ValueChanged="@(v => OnValorChangedAsync(linha, v))" Label="Penalidade" Min="1" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.Atributos, index))" title="Remover Atributo" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.Atributos))">Adicionar Atributo</MudButton>
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Sub-Atributos</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.SubAtributos.Count; i++)
+        {
+            var linha = Model.SubAtributos[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="@linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in SubAtributoOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.SubAtributos, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Valor" ValueChanged="@(v => OnValorChangedAsync(linha, v))" Label="Penalidade" Min="1" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.SubAtributos, index))" title="Remover Sub-Atributo" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.SubAtributos))">Adicionar Sub-Atributo</MudButton>
+
+<MudText Typo="Typo.subtitle2" Class="mt-3">Perícias</MudText>
+<table>
+    <tbody>
+        @for (var i = 0; i < Model.Pericias.Count; i++)
+        {
+            var linha = Model.Pericias[i];
+            var index = i;
+            <tr>
+                <td>
+                    <MudSelect T="string" Value="@linha.Alvo" ValueChanged="@(v => OnAlvoChangedAsync(linha, v))" Placeholder="Escolha">
+                        @foreach (var (valor, rotulo) in PericiaOpcoes)
+                        {
+                            <MudSelectItem Value="@valor" Disabled="@JaEscolhidoEmOutraLinha(Model.Pericias, index, valor)">@rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="linha.Valor" ValueChanged="@(v => OnValorChangedAsync(linha, v))" Label="Penalidade" Min="1" /></td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoverAsync(Model.Pericias, index))" title="Remover Perícia" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AdicionarAsync(Model.Pericias))">Adicionar Perícia</MudButton>
+
+<MudTextField T="string" @bind-Value="Model.Texto" Label="Outras penalidades" Lines="3" Class="mt-3"
+              HelperText="Para o que não cabe nas listas acima ou é narrativo. Só é exibido; não entra em nenhum cálculo."
+              @bind-Value:after="OnChangedAsync" />
+
+@code {
+    [Parameter, EditorRequired] public PenalidadeFormModel Model { get; set; } = null!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private static readonly (string Valor, string Rotulo)[] AtributoOpcoes =
+        Enum.GetValues<Atributo>().Select(a => (a.ToString(), AtributoDisplay.Label(a.ToString()))).ToArray();
+    private static readonly (string Valor, string Rotulo)[] SubAtributoOpcoes =
+        Enum.GetValues<SubAtributo>().Select(a => (a.ToString(), RequisitoLabels.SubAtributo(a))).ToArray();
+    // Perícias ativas da Auditoria (Chave = valor gravado, Nome = rótulo).
+    private (string Valor, string Rotulo)[] PericiaOpcoes => Pericias.Ativas.Select(p => (p.Chave, p.Nome)).ToArray();
+
+    protected override async Task OnInitializedAsync() => await Pericias.RecarregarAsync();
+
+    private static bool JaEscolhidoEmOutraLinha(List<PenalidadeLinha> linhas, int index, string valor) =>
+        linhas.Where((_, i) => i != index).Any(l => l.Alvo == valor);
+
+    private Task OnChangedAsync() => OnChanged.HasDelegate ? OnChanged.InvokeAsync() : Task.CompletedTask;
+
+    private Task OnAlvoChangedAsync(PenalidadeLinha linha, string valor)
+    {
+        linha.Alvo = valor;
+        return OnChangedAsync();
+    }
+
+    private Task OnValorChangedAsync(PenalidadeLinha linha, int valor)
+    {
+        linha.Valor = valor;
+        return OnChangedAsync();
+    }
+
+    private Task AdicionarAsync(List<PenalidadeLinha> linhas)
+    {
+        linhas.Add(new PenalidadeLinha());
+        return OnChangedAsync();
+    }
+
+    private Task RemoverAsync(List<PenalidadeLinha> linhas, int index)
+    {
+        linhas.RemoveAt(index);
+        return OnChangedAsync();
+    }
+}

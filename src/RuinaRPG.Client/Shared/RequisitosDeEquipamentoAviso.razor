@@ -1,0 +1,57 @@
+@using MudBlazor
+
+@* Linha de um equipamento na ficha (Arma, Armadura, Escudo, Artefato): os Requisitos do item, o que falta
+   (aviso) e a penalidade. As linhas numéricas são subtraídas só enquanto falta requisito; o texto livre
+   ("Outras penalidades") é apenas informativo e nunca é aplicado. A penalidade do item aparece sempre,
+   com ou sem requisitos. Nada é bloqueado. *@
+@if (Requisitos is { Count: > 0 })
+{
+    @if (Pendentes is { Count: > 0 })
+    {
+        <div class="d-flex align-start" style="gap:4px">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+            <MudText Typo="Typo.body2">
+                <b>Requisitos não cumpridos.</b> Falta: @string.Join(", ", Pendentes).
+                @if (TemLinhas)
+                {
+                    @* Arma/Escudo na ficha mas não equipados: o requisito já falta, mas nada é descontado até equipar. *@
+                    <text>@(EmUso ? "Penalidade aplicada" : "Penalidade ao equipar"): @string.Join(", ", Penalidade!).</text>
+                }
+                else if (!TemTexto)
+                {
+                    <text>Sem penalidade definida.</text>
+                }
+            </MudText>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">
+            Requisitos: @string.Join(", ", Requisitos).
+            @if (TemLinhas)
+            {
+                <text>Penalidade se os requisitos não forem cumpridos: @string.Join(", ", Penalidade!).</text>
+            }
+        </MudText>
+    }
+}
+else if (TemLinhas)
+{
+    <MudText Typo="Typo.body2">Penalidade (sem requisitos definidos, não é aplicada): @string.Join(", ", Penalidade!).</MudText>
+}
+@if (TemTexto)
+{
+    <MudText Typo="Typo.body2">Outras penalidades (não aplicadas automaticamente): @OutrasPenalidades.</MudText>
+}
+
+@code {
+    [Parameter] public List<string>? Requisitos { get; set; }
+    [Parameter] public List<string>? Pendentes { get; set; }
+    [Parameter] public List<string>? Penalidade { get; set; }
+    [Parameter] public string? OutrasPenalidades { get; set; }
+    /// <summary>Falso para Arma ou Escudo não equipados; Armadura num slot e Artefato na lista estão sempre em uso.</summary>
+    [Parameter] public bool EmUso { get; set; } = true;
+
+    private bool TemLinhas => Penalidade is { Count: > 0 };
+    private bool TemTexto => !string.IsNullOrWhiteSpace(OutrasPenalidades);
+}

@@ -17,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/attributes")]
-public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcAttributeResponse>>> List(Guid sheetId)
@@ -35,7 +35,8 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
             .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
             .ToList();
 
-        var artefatos = await GetArtifactBonusInputsAsync(sheetId);
+        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
+        var artefatos = await stats.ModificadoresAsync(sheet);
 
         return attributes
             .Select(a => new NpcAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
@@ -86,19 +87,6 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
 
         return NoContent();
     }
-
-    /// <summary>
-    /// Every NpcArtifact on the sheet, projected down to (TipoDeAlvo, Alvo, Valor) — Posses 5.b has
-    /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
-    /// Mirrors CharacterSheetsController.GetArtifactBonusInputsAsync.
-    /// </summary>
-    private async Task<List<ArtifactBonusInput>> GetArtifactBonusInputsAsync(Guid sheetId) =>
-        await db.NpcArtifacts
-            .Where(a => a.NpcSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
-            .ToListAsync();
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

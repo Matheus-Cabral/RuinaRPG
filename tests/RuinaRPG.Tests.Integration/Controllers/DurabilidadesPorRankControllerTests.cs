@@ -147,8 +147,8 @@ public class DurabilidadesPorRankControllerTests : IClassFixture<PostgresFixture
                 new UpdateDurabilidadePorRankRequest(130, false)));
             putResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-            var itemRequest = new CreateItemRequest("Arma", "Espada de Teste Auditoria", 1.5m, 50, null, "Espadas", null, "C", "UmaMao", "2D6", 3, "19", 2, "Cortante", null,
-                null, null, null, null, null, null, null, null, null, null, null);
+            var itemRequest = new CreateItemRequest("Arma", "Espada de Teste Auditoria", 1.5m, 50, null, "Espadas", null, "C", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+                null, null, null, null, null, null, null, null, null);
             var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, itemRequest));
             createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 

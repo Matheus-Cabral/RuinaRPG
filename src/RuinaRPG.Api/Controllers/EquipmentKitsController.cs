@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -38,13 +39,13 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         if (authError is not null)
             return authError;
 
-        var validationError = ValidateRequest(request.Nome, request.Descricao, request.Ciclos, request.Items, request.ChoiceSlots, out var parsedItems, out var parsedSlots);
+        var (validationError, parsedItems, parsedSlots) = await ValidateRequestAsync(request.Nome, request.Descricao, request.Ciclos, request.Items, request.ChoiceSlots);
         if (validationError is not null)
             return validationError;
 
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = request.Nome, Descricao = request.Descricao, Ciclos = request.Ciclos };
         db.EquipmentKits.Add(kit);
-        AddChildren(kit.Id, parsedItems!, parsedSlots!);
+        AddChildren(kit.Id, parsedItems, parsedSlots);
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(kit));
@@ -61,7 +62,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         if (kit is null)
             return NotFound();
 
-        var validationError = ValidateRequest(request.Nome, request.Descricao, request.Ciclos, request.Items, request.ChoiceSlots, out var parsedItems, out var parsedSlots);
+        var (validationError, parsedItems, parsedSlots) = await ValidateRequestAsync(request.Nome, request.Descricao, request.Ciclos, request.Items, request.ChoiceSlots);
         if (validationError is not null)
             return validationError;
 
@@ -71,7 +72,7 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
 
         db.EquipmentKitItems.RemoveRange(db.EquipmentKitItems.Where(i => i.KitId == id));
         db.EquipmentKitChoiceSlots.RemoveRange(db.EquipmentKitChoiceSlots.Where(s => s.KitId == id));
-        AddChildren(kit.Id, parsedItems!, parsedSlots!);
+        AddChildren(kit.Id, parsedItems, parsedSlots);
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -112,82 +113,94 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
         }
     }
 
-    private ActionResult? ValidateRequest(string nome, string descricao, int ciclos,
-        List<EquipmentKitItemInput> items, List<EquipmentKitChoiceSlotInput> choiceSlots,
-        out List<EquipmentKitItem>? parsedItems, out List<EquipmentKitChoiceSlot>? parsedSlots)
+    private async Task<(ActionResult? Error, List<EquipmentKitItem> Items, List<EquipmentKitChoiceSlot> Slots)> ValidateRequestAsync(
+        string nome, string descricao, int ciclos, List<EquipmentKitItemInput> items, List<EquipmentKitChoiceSlotInput> choiceSlots)
     {
-        parsedItems = null;
-        parsedSlots = null;
+        (ActionResult? Error, List<EquipmentKitItem> Items, List<EquipmentKitChoiceSlot> Slots) Fail(string message) => (BadRequest(message), [], []);
 
         if (string.IsNullOrWhiteSpace(nome))
-            return BadRequest("Nome é obrigatório.");
+            return Fail("Nome é obrigatório.");
         if (string.IsNullOrWhiteSpace(descricao))
-            return BadRequest("Descrição é obrigatória.");
+            return Fail("Descrição é obrigatória.");
         if (ciclos < 0)
-            return BadRequest("Ciclos não pode ser negativo.");
+            return Fail("Ciclos não pode ser negativo.");
+
+        var referenciados = items.Select(i => i.FixedItemId).Concat(choiceSlots.Select(s => s.BonusFixedItemId))
+            .Select(raw => Guid.TryParse(raw, out var id) ? id : Guid.Empty).ToList();
+        var fixos = await db.EquipmentKitFixedItems.Where(f => referenciados.Contains(f.Id)).ToDictionaryAsync(f => f.Id);
+
+        // Uma Armadura de kit (item fixo ou slot de escolha) substitui o que já estiver no ArmorSlot ao aplicar o kit;
+        // duas apontando para o mesmo ArmorSlot fariam a segunda sobrescrever a primeira em silêncio, então o conjunto é
+        // compartilhado pelos dois laços e a repetição é rejeitada aqui.
+        var seenArmorSlots = new HashSet<ArmorSlotType>();
 
         var items2 = new List<EquipmentKitItem>();
         foreach (var item in items)
         {
-            if (!Enum.TryParse<ItemTipo>(item.Tipo, out var tipo) || tipo == ItemTipo.Armadura)
-                return BadRequest($"Tipo de item inválido: \"{item.Tipo}\". Armadura não é suportada em kits de Equipagem.");
-            if (string.IsNullOrWhiteSpace(item.Nome))
-                return BadRequest("Nome do item é obrigatório.");
+            if (!Guid.TryParse(item.FixedItemId, out var fixedId) || !fixos.TryGetValue(fixedId, out var fixo))
+                return Fail("Item fixo não encontrado na base de itens fixos.");
             if (item.Qtd < 1)
-                return BadRequest("Qtd do item deve ser pelo menos 1.");
-            items2.Add(new EquipmentKitItem { Id = Guid.NewGuid(), Nome = item.Nome, Tipo = tipo, Qtd = item.Qtd, SubcategoriaHint = item.SubcategoriaHint });
+                return Fail("Qtd do item deve ser pelo menos 1.");
+
+            ArmorSlotType? armorSlot = null;
+            if (fixo.Tipo == ItemTipo.Armadura)
+            {
+                if (string.IsNullOrWhiteSpace(item.ArmorSlot) || !TryParseExact<ArmorSlotType>(item.ArmorSlot, out var parsed))
+                    return Fail("Um item fixo de Tipo=Armadura precisa de um ArmorSlot válido.");
+                if (!seenArmorSlots.Add(parsed))
+                    return Fail($"Mais de uma Armadura do kit aponta para o mesmo ArmorSlot \"{item.ArmorSlot}\".");
+                armorSlot = parsed;
+            }
+            else if (!string.IsNullOrWhiteSpace(item.ArmorSlot))
+            {
+                return Fail("ArmorSlot só é aplicável a itens fixos de Tipo=Armadura.");
+            }
+            // Nome/Tipo legados seguem preenchidos a partir do item fixo para a linha continuar legível; a fonte é FixedItemId.
+            items2.Add(new EquipmentKitItem { Id = Guid.NewGuid(), FixedItemId = fixo.Id, Nome = fixo.Nome, Tipo = fixo.Tipo, Qtd = item.Qtd, ArmorSlot = armorSlot });
         }
 
         var slots2 = new List<EquipmentKitChoiceSlot>();
-        // On Choose, EquipmentKitGrantService.BuildPlanAsync carries a chosen Armadura's grant to
-        // exactly the ArmorSlot its choice slot names, overwriting whatever already sits there —
-        // two Armadura choice slots aimed at the same ArmorSlot in one kit would mean the second
-        // grant silently clobbers the first, so that's rejected here at authoring time.
-        var seenArmorSlots = new HashSet<RuinaRPG.Domain.CharacterSheets.ArmorSlotType>();
         foreach (var slot in choiceSlots)
         {
-            // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync now dispatch on
-            // slot.Tipo to the matching concrete Item subtype's DbSet — Armadura, Escudo, Artefato
-            // and Arma are all real, resolvable choices; only Armadura also needs to know WHICH
-            // ArmorSlot to fill (validated below), since armor doesn't insert a new row the way the
-            // other 3 do.
+            // EquipmentKitGrantService.ResolveEligibleOptionsAsync/BuildPlanAsync despacham por slot.Tipo para o DbSet do
+            // subtipo concreto — Armadura, Escudo, Artefato e Arma são escolhas reais; só a Armadura também precisa saber QUAL
+            // ArmorSlot preencher (validado abaixo), já que armadura não insere uma linha nova como os outros 3.
             if (!TryParseExact<ItemTipo>(slot.Tipo, out var tipo) || tipo == ItemTipo.ItemGeral)
-                return BadRequest($"Tipo de slot de escolha inválido: \"{slot.Tipo}\".");
+                return Fail($"Tipo de slot de escolha inválido: \"{slot.Tipo}\".");
 
-            RuinaRPG.Domain.CharacterSheets.ArmorSlotType? armorSlot = null;
+            ArmorSlotType? armorSlot = null;
             if (tipo == ItemTipo.Armadura)
             {
-                if (string.IsNullOrWhiteSpace(slot.ArmorSlot) || !TryParseExact<RuinaRPG.Domain.CharacterSheets.ArmorSlotType>(slot.ArmorSlot, out var parsedArmorSlot))
-                    return BadRequest("Slots de escolha de Tipo=Armadura precisam de um ArmorSlot válido.");
+                if (string.IsNullOrWhiteSpace(slot.ArmorSlot) || !TryParseExact<ArmorSlotType>(slot.ArmorSlot, out var parsedArmorSlot))
+                    return Fail("Slots de escolha de Tipo=Armadura precisam de um ArmorSlot válido.");
                 if (!seenArmorSlots.Add(parsedArmorSlot))
-                    return BadRequest($"Mais de um slot de escolha de Tipo=Armadura aponta para o mesmo ArmorSlot \"{slot.ArmorSlot}\".");
+                    return Fail($"Mais de um slot de escolha de Tipo=Armadura aponta para o mesmo ArmorSlot \"{slot.ArmorSlot}\".");
                 armorSlot = parsedArmorSlot;
             }
             else if (!string.IsNullOrWhiteSpace(slot.ArmorSlot))
             {
-                return BadRequest("ArmorSlot só é aplicável a slots de escolha de Tipo=Armadura.");
+                return Fail("ArmorSlot só é aplicável a slots de escolha de Tipo=Armadura.");
             }
             if (string.IsNullOrWhiteSpace(slot.Label))
-                return BadRequest("Label do slot de escolha é obrigatório.");
+                return Fail("Label do slot de escolha é obrigatório.");
             if (slot.Qtd < 1)
-                return BadRequest("Qtd do slot de escolha deve ser pelo menos 1.");
-            // Rank only ever means anything for an Arma choice slot (ResolveEligibleOptionsAsync
-            // only applies the Rank filter in the Arma branch) — a non-empty Rank elsewhere would
-            // be silently ignored at resolve time, so it's rejected here instead.
+                return Fail("Qtd do slot de escolha deve ser pelo menos 1.");
+            // Rank só significa algo num slot de Arma (ResolveEligibleOptionsAsync só aplica o filtro no ramo Arma) — um Rank
+            // preenchido nos outros seria ignorado em silêncio ao resolver, então é rejeitado aqui.
             if (tipo != ItemTipo.Arma && !string.IsNullOrWhiteSpace(slot.Rank))
-                return BadRequest("Rank só é aplicável a slots de escolha de Tipo=Arma.");
+                return Fail("Rank só é aplicável a slots de escolha de Tipo=Arma.");
             RankDeItem? rank = null;
             if (!string.IsNullOrWhiteSpace(slot.Rank))
             {
                 // Nome exato do enum: Enum.TryParse também aceitaria "3"/"99" (valores numéricos).
                 if (!Enum.GetNames<RankDeItem>().Contains(slot.Rank) || !Enum.TryParse<RankDeItem>(slot.Rank, out var parsedRank))
-                    return BadRequest($"Rank inválido: \"{slot.Rank}\".");
+                    return Fail($"Rank inválido: \"{slot.Rank}\".");
                 rank = parsedRank;
             }
-            if ((slot.BonusSubcategoria is null) != (slot.BonusNome is null))
-                return BadRequest("BonusSubcategoria e BonusNome devem ser informados juntos, ou nenhum dos dois.");
-            if (slot.BonusNome is not null && (slot.BonusQtd is null || slot.BonusQtd < 1))
-                return BadRequest("BonusQtd deve ser pelo menos 1 quando BonusNome é informado.");
+
+            var (bonusError, bonusFixo) = ValidateBonus(slot, fixos);
+            if (bonusError is not null)
+                return Fail(bonusError);
 
             slots2.Add(new EquipmentKitChoiceSlot
             {
@@ -198,28 +211,54 @@ public class EquipmentKitsController(RuinaRpgDbContext db) : ControllerBase
                 Rank = rank,
                 Qtd = slot.Qtd,
                 BonusSubcategoria = slot.BonusSubcategoria,
-                BonusNome = slot.BonusNome,
+                BonusFixedItemId = bonusFixo?.Id,
+                BonusNome = bonusFixo?.Nome,
                 BonusQtd = slot.BonusQtd,
                 ArmorSlot = armorSlot,
             });
         }
 
-        parsedItems = items2;
-        parsedSlots = slots2;
-        return null;
+        return (null, items2, slots2);
+    }
+
+    /// <summary>O bônus condicional de um slot: BonusSubcategoria e BonusFixedItemId juntos (ou nenhum), um item fixo do tipo Item Geral, com BonusQtd ≥ 1.</summary>
+    private static (string? Error, EquipmentKitFixedItem? Fixo) ValidateBonus(EquipmentKitChoiceSlotInput slot, Dictionary<Guid, EquipmentKitFixedItem> fixos)
+    {
+        if ((slot.BonusSubcategoria is null) != (slot.BonusFixedItemId is null))
+            return ("BonusSubcategoria e BonusFixedItemId devem ser informados juntos, ou nenhum dos dois.", null);
+        if (slot.BonusFixedItemId is null)
+            return (null, null);
+
+        if (!Guid.TryParse(slot.BonusFixedItemId, out var bonusId) || !fixos.TryGetValue(bonusId, out var fixo))
+            return ("Item fixo não encontrado na base de itens fixos.", null);
+        if (fixo.Tipo != ItemTipo.ItemGeral)
+            return ("O bônus de um slot precisa ser um item fixo do tipo Item Geral.", null);
+        if (slot.BonusQtd is null || slot.BonusQtd < 1)
+            return ("BonusQtd deve ser pelo menos 1 quando o bônus é informado.", null);
+        return (null, fixo);
     }
 
     private async Task<EquipmentKitResponse> ToResponseAsync(EquipmentKit kit)
     {
         var items = await db.EquipmentKitItems.Where(i => i.KitId == kit.Id).ToListAsync();
         var slots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kit.Id).ToListAsync();
+        var fixoIds = items.Select(i => i.FixedItemId).Concat(slots.Select(s => s.BonusFixedItemId)).OfType<Guid>().ToList();
+        var fixos = await db.EquipmentKitFixedItems.AsNoTracking().Where(f => fixoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id);
 
         return new EquipmentKitResponse(kit.Id.ToString(), kit.Nome, kit.Descricao, kit.Ciclos,
-            items.Select(i => new EquipmentKitItemResponse(i.Id.ToString(), i.Nome, i.Tipo.ToString(), i.Qtd, i.SubcategoriaHint)).ToList(),
+            items.Select(i => ToItemResponse(i, fixos)).ToList(),
             slots.Select(s => new EquipmentKitChoiceSlotResponse(s.Id.ToString(), s.Label, s.Tipo.ToString(),
                 s.SubcategoriasCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                s.Rank?.ToString(), s.Qtd, s.BonusSubcategoria, s.BonusNome, s.BonusQtd, s.ArmorSlot?.ToString())).ToList());
+                s.Rank?.ToString(), s.Qtd, s.BonusSubcategoria,
+                s.BonusFixedItemId is { } bonusId && fixos.TryGetValue(bonusId, out var bonus) ? bonus.Nome : s.BonusNome,
+                s.BonusQtd, s.ArmorSlot?.ToString(), s.BonusFixedItemId?.ToString())).ToList());
     }
+
+    /// <summary>Uma linha legada (sem FixedItemId, antes de rodar a conversão) sai com o Nome/Tipo antigos e DetalhesIncompletos = true.</summary>
+    private static EquipmentKitItemResponse ToItemResponse(EquipmentKitItem i, Dictionary<Guid, EquipmentKitFixedItem> fixos) =>
+        i.FixedItemId is { } fixedId && fixos.TryGetValue(fixedId, out var fixo)
+            ? new EquipmentKitItemResponse(i.Id.ToString(), fixedId.ToString(), fixo.Nome, fixo.Tipo.ToString(), i.Qtd, i.ArmorSlot?.ToString(), fixo.DetalhesIncompletos)
+            : new EquipmentKitItemResponse(i.Id.ToString(), "", i.Nome ?? "", i.Tipo.ToString(), i.Qtd, i.ArmorSlot?.ToString(), true);
 
     private async Task<ActionResult?> RequireRulesAuditorAsync()
     {

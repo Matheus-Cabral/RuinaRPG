@@ -78,7 +78,7 @@ public class CatalogoItemPickerTests : MudBunitContext
         cut.Render();
 
         var created = new ItemResponse("item-new", "ItemGeral", "Poção Nova", 1m, 5, null, null, null, null, null,
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         await cut.InvokeAsync(() => cut.Instance.Picker.HandleCreatedForTestsAsync(created));
 
         cut.Instance.Picker.DialogOpenForTests.Should().BeFalse();

@@ -98,17 +98,18 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Critico | string, nullable | Arma |
 | Alcance | int, nullable | Arma |
 | TipoDeDano | enum, nullable | Arma |
-| RequisitoAtributo | string, nullable | Arma |
 | Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura, Escudo |
 | Defesa | int, nullable | Armadura |
 | RF | int, nullable | Armadura |
 | RM | int, nullable | Armadura |
 | BonusDefesa | int, nullable | Escudo |
-| Penalidade | string, nullable | Armadura, Escudo |
-| RequisitoVigor | int, nullable | Armadura, Escudo |
+| Requisitos | jsonb, nullable | Arma, Armadura, Escudo, Artefato |
+| PenalidadeDeRequisitos | jsonb, nullable | Arma, Armadura, Escudo, Artefato |
 | TipoDeAlvo | enum Atributo \| Pericia \| SubAtributo \| Dano, nullable | Artefato |
 | Alvo | string, nullable (para TipoDeAlvo = Pericia, é a `Chave` de `Pericias`) | Artefato |
 | Valor | int, nullable | Artefato |
+
+`Requisitos` guarda o que a ficha precisa ter para usar o item sem penalidade (Vocação, Classe, Atributo, Perícia, Sub-Atributo, Afinidade, Estrela); `PenalidadeDeRequisitos` guarda a penalidade aplicada enquanto eles não são cumpridos (linhas sobre Atributo/Perícia/Sub-Atributo mais o texto "Outras penalidades"). Ambos são NULL em item sem "Possui requisitos" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.
 
 **DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
 
@@ -162,6 +163,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Descricao | text | |
 | Grau | int | |
 | Tipo | enum TipoDeRuna?, nullable | `Arcana` ou `Negra`, guardado como texto; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
+| Disciplina | enum DisciplinaDeRuna?, nullable | `Adicao`/`Alteracao`/`Emissao`/`Manifestacao` como texto; obrigatória na API ao criar/editar, NULL só em entradas antigas — ver R0010 do Banco de Runas |
 | ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
 
   
@@ -346,6 +348,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Grau | int |
 | Tipo | enum TipoDeRuna?, nullable — `Arcana`/`Negra` como texto; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
+| Disciplina | enum DisciplinaDeRuna?, nullable — cópia da Disciplina da entrada quando a Runa parte do banco; obrigatória ao montar do zero. NULL em Runas antigas |
 | SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
@@ -437,16 +440,28 @@ Catálogo global (não por GM) de kits de equipamento inicial, cadastrado a part
 - `Ciclos` (int — moeda concedida ao escolher o kit)
 - `IsDeleted` (bool — soft delete)
 
+**EquipmentKitFixedItems**
+
+Base global (não por GM) de itens fixos dos kits, mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0014). Cada linha é um item completo, com os campos do formulário do catálogo de "[[Requisitos - Catálogo de Itens e Equipamentos]]" por Tipo, sem imagem. Único por `Nome` + `Tipo`.
+
+- `Id` (PK)
+- `Nome` (string, obrigatório)
+- `Tipo` (enum ItemTipo — ItemGeral, Arma, Armadura, Escudo ou Artefato; não muda depois de criado)
+- `Dados` (jsonb — os campos do item que variam por Tipo, os mesmos de `CreateItemRequest`)
+- `Requisitos` (jsonb?, opcional — requisitos para equipar)
+- `PenalidadeDeRequisitos` (jsonb?, opcional — penalidade por não cumprir os requisitos)
+- `DetalhesIncompletos` (bool — true nos itens que a conversão da versão 1.4.3 só conseguiu criar com o nome; deixa de valer quando o Auditor os edita)
+
 **EquipmentKitItems**
 
-Linhas fixas de um `EquipmentKit` — referenciam um Item do catálogo do GM por **Nome + Tipo**, nunca por Id (cada GM tem sua própria cópia do catálogo de Itens).
+Linhas fixas de um `EquipmentKit` — referenciam um item da base `EquipmentKitFixedItems`. Ao aplicar o kit, o item é copiado para o catálogo do GM quando ele ainda não tem um de mesmo Nome e Tipo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0012).
 
 - `Id` (PK)
 - `KitId` (FK → EquipmentKits, cascade)
-- `Nome` (string — Nome do Item alvo no catálogo do GM)
-- `Tipo` (enum ItemTipo — ItemGeral, Arma, Escudo ou Artefato; nunca Armadura)
+- `FixedItemId` (FK → EquipmentKitFixedItems, Restrict, **anulável** — um item usado por um kit não excluído não pode ser excluído; fica NULL nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado)
+- `ArmorSlot` (enum ArmorSlotType?, opcional — obrigatório quando o item fixo é Armadura; vazio nos demais Tipos)
 - `Qtd` (int)
-- `SubcategoriaHint` (string?, opcional — usado só quando o Item precisa ser criado automaticamente no catálogo do GM por não existir ainda)
+- `Nome`, `Tipo`, `SubcategoriaHint` — **legados**, a serem removidos: eram a referência por Nome + Tipo anterior à base; a conversão da versão 1.4.3 os transformou em `FixedItemId`.
 
 **EquipmentKitChoiceSlots**
 
@@ -460,7 +475,8 @@ Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua esc
 - `Rank` (enum RankDeItem?, opcional — NULL = qualquer Rank)
 - `Qtd` (int)
 - `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
-- `BonusNome` (string?, opcional — Item concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusFixedItemId` (FK → EquipmentKitFixedItems, Restrict, anulável — NULL quando não há bônus, nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado; item da base, do tipo Item Geral, concedido além da escolha, só se `BonusSubcategoria` bater)
+- `BonusNome` (string?, **legado**, a ser removido — substituído por `BonusFixedItemId`)
 - `BonusQtd` (int?, opcional)
 
 ### SubcategoriaOptions
@@ -489,7 +505,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWea
 - `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
 - Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable), igual a `CharacterRunes`.
+- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable) e `Disciplina` (enum DisciplinaDeRuna?, nullable), iguais a `CharacterRunes`.
 - `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
 - `NpcSheetHistoriaImages` (`NpcSheetId` FK → NpcSheets, `ImageId` FK → Images, `Ordem` int; PK composta, cascade nas duas FKs): espelho de `CharacterSheetHistoriaImages`. Ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
 - `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).
