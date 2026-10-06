@@ -423,7 +423,7 @@
                         <tr>
                             <td>
                                 <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" />
-                                <RequisitosDeEquipamentoAviso Requisitos="@weapon.Requisitos" Pendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@weapon.Requisitos" Pendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" />
                             </td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
@@ -546,7 +546,7 @@
                         <tr>
                             <td>
                                 <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" />
-                                <RequisitosDeEquipamentoAviso Requisitos="@shield.Requisitos" Pendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" />
+                                <RequisitosDeEquipamentoAviso Requisitos="@shield.Requisitos" Pendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" />
                             </td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>

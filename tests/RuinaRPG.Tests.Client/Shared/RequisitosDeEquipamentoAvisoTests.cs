@@ -101,4 +101,24 @@ public class RequisitosDeEquipamentoAvisoTests : MudBunitContext
 
         cut.Markup.Should().Contain("Outras penalidades (não aplicadas automaticamente): Barulhenta.").And.NotContain("sem requisitos definidos");
     }
+
+    [Fact]
+    public void Pending_requirements_of_an_item_not_in_use_say_the_penalty_applies_when_equipped()
+    {
+        var cut = Render<RequisitosDeEquipamentoAviso>(p => p
+            .Add(x => x.Requisitos, ["Vigor ≥ 8"]).Add(x => x.Pendentes, ["Vigor ≥ 8"]).Add(x => x.Penalidade, ["Força −2"])
+            .Add(x => x.EmUso, false));
+
+        cut.Markup.Should().Contain("Requisitos não cumpridos").And.Contain("Falta: Vigor ≥ 8")
+            .And.Contain("Penalidade ao equipar: Força −2").And.NotContain("Penalidade aplicada");
+    }
+
+    [Fact]
+    public void Pending_requirements_default_to_an_item_in_use()
+    {
+        var cut = Render<RequisitosDeEquipamentoAviso>(p => p
+            .Add(x => x.Requisitos, ["Vigor ≥ 8"]).Add(x => x.Pendentes, ["Vigor ≥ 8"]).Add(x => x.Penalidade, ["Força −2"]));
+
+        cut.Markup.Should().Contain("Penalidade aplicada: Força −2").And.NotContain("Penalidade ao equipar");
+    }
 }

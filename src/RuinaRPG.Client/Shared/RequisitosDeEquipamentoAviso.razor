@@ -14,7 +14,8 @@
                 <b>Requisitos não cumpridos.</b> Falta: @string.Join(", ", Pendentes).
                 @if (TemLinhas)
                 {
-                    <text>Penalidade aplicada: @string.Join(", ", Penalidade!).</text>
+                    @* Arma/Escudo na ficha mas não equipados: o requisito já falta, mas nada é descontado até equipar. *@
+                    <text>@(EmUso ? "Penalidade aplicada" : "Penalidade ao equipar"): @string.Join(", ", Penalidade!).</text>
                 }
                 else if (!TemTexto)
                 {
@@ -48,6 +49,8 @@ else if (TemLinhas)
     [Parameter] public List<string>? Pendentes { get; set; }
     [Parameter] public List<string>? Penalidade { get; set; }
     [Parameter] public string? OutrasPenalidades { get; set; }
+    /// <summary>Falso para Arma ou Escudo não equipados; Armadura num slot e Artefato na lista estão sempre em uso.</summary>
+    [Parameter] public bool EmUso { get; set; } = true;
 
     private bool TemLinhas => Penalidade is { Count: > 0 };
     private bool TemTexto => !string.IsNullOrWhiteSpace(OutrasPenalidades);

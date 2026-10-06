@@ -193,7 +193,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 Lista tipo arsenal: o jogador adiciona quantas armas quiser (inclui varinhas e cajados mágicos, que são subcategorias de Arma no catálogo — não há distinção de "condutor" à parte). Cada linha:
 
 - *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Rank** são preenchidos automaticamente a partir do item, somente leitura.
-- *Requisitos*: mesmo aviso de 3.b, sob o nome da arma.
+- *Requisitos*: mesmo aviso de 3.b, sob o nome da arma. Enquanto a arma não está equipada, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada — uma arma equipada é considerada "no corpo", não uma carga extra.
 - *Equipada*: seleção exclusiva — apenas 1 arma do arsenal pode estar marcada como equipada por vez, exceto se o personagem tiver a característica **Ambidestria** (ver aba "Posses", Características), que permite 2.
 - *Durabilidade*: par **Atual / Máximo**. O Máximo é somente leitura e vem do Rank do item ([[Tabela de Durabilidade por Rank]]; ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004). Diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo — se o Máximo diminuir depois (mudança do Rank do item ou da tabela), o Atual é limitado ao novo Máximo. Itens de Rank inquebrável (ver a tabela) não têm Atual/Máximo: a linha mostra apenas "Inquebrável".
@@ -222,7 +222,7 @@ Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**.
 Lista tipo arsenal, mesmo padrão de 3.a: o jogador adiciona quantos escudos quiser. Cada linha:
 
 - *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria** e **Bônus de Defesa** são preenchidos automaticamente, somente leitura.
-- *Requisitos*: mesmo aviso de 3.b, sob o nome do escudo.
+- *Requisitos*: mesmo aviso de 3.b, sob o nome do escudo. Enquanto o escudo não está equipado, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada, mesma regra de 3.a.
 - *Equipado*: seleção exclusiva — apenas 1 escudo do arsenal pode estar marcado como equipado por vez (sem exceção).
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0006, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquela linha. Rank inquebrável: a linha mostra apenas "Inquebrável".
