@@ -48,6 +48,8 @@
 
 **Descrição**: De dentro da campanha, o GM anexa conteúdo já existente: itens do Catálogo de Itens e Equipamentos, fichas do Bestiário (Fichas de Criaturas), Fichas de NPCs e entradas do "[[Requisitos - Banco de Magias e Habilidades]]" e do "[[Requisitos - Banco de Runas]]". Anexar não duplica o registro original — a campanha guarda uma referência a ele.
 
+Os campos de busca usados para anexar (item, Magia/Habilidade, Runa, Ficha de NPC e Ficha de Criatura) não listam o que já está anexado à campanha; ao remover um anexo, o registro volta a aparecer na busca.
+
   
 
 # **R0007** - O GM deve poder adicionar imagens avulsas à campanha.

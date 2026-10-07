@@ -143,19 +143,19 @@
         <MudGrid Class="mt-3 mb-3">
             <MudItem xs="12" md="6">
                 <Section Title="Item">
-                    <EntityPicker @bind-Value="_attachItemId" SearchItems="SearchItemsAsync" Placeholder="Buscar item..." />
+                    <EntityPicker @bind-Value="_attachItemId" SearchItems="@(q => SearchNotAttachedAsync(SearchItemsAsync, "Item", q))" Placeholder="Buscar item..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachItemAsync">Anexar Item</MudButton>
                 </Section>
             </MudItem>
             <MudItem xs="12" md="6">
                 <Section Title="Entrada do Banco de Magias">
-                    <EntityPicker @bind-Value="_attachBankEntryId" SearchItems="SearchBankEntriesAsync" Placeholder="Buscar magia/habilidade..." />
+                    <EntityPicker @bind-Value="_attachBankEntryId" SearchItems="@(q => SearchNotAttachedAsync(SearchBankEntriesAsync, "SpellAbilityBankEntry", q))" Placeholder="Buscar magia/habilidade..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachBankEntryAsync">Anexar Magia/Habilidade</MudButton>
                 </Section>
             </MudItem>
             <MudItem xs="12" md="6">
                 <Section Title="Entrada do Banco de Runas">
-                    <EntityPicker @bind-Value="_attachRuneEntryId" SearchItems="SearchRuneEntriesAsync" Placeholder="Buscar runa..." />
+                    <EntityPicker @bind-Value="_attachRuneEntryId" SearchItems="@(q => SearchNotAttachedAsync(SearchRuneEntriesAsync, "RuneBankEntry", q))" Placeholder="Buscar runa..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachRuneEntryAsync">Anexar Runa</MudButton>
                 </Section>
             </MudItem>
@@ -169,13 +169,13 @@
             </MudItem>
             <MudItem xs="12" md="6">
                 <Section Title="Ficha de NPC">
-                    <EntityPicker @bind-Value="_attachNpcSheetId" SearchItems="SearchNpcSheetsAsync" Placeholder="Buscar ficha de NPC..." />
+                    <EntityPicker @bind-Value="_attachNpcSheetId" SearchItems="@(q => SearchNotAttachedAsync(SearchNpcSheetsAsync, "NpcSheet", q))" Placeholder="Buscar ficha de NPC..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachNpcSheetAsync">Anexar NPC</MudButton>
                 </Section>
             </MudItem>
             <MudItem xs="12" md="6">
                 <Section Title="Ficha de Criatura">
-                    <EntityPicker @bind-Value="_attachCreatureSheetId" SearchItems="SearchCreatureSheetsAsync" Placeholder="Buscar ficha de Criatura..." />
+                    <EntityPicker @bind-Value="_attachCreatureSheetId" SearchItems="@(q => SearchNotAttachedAsync(SearchCreatureSheetsAsync, "CreatureSheet", q))" Placeholder="Buscar ficha de Criatura..." />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="AttachCreatureSheetAsync">Anexar Criatura</MudButton>
                 </Section>
             </MudItem>
@@ -520,6 +520,15 @@
         if (!response.IsSuccessStatusCode) return new();
         var sheets = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>() ?? new();
         return sheets.Select(s => new PickerOption(s.Id, s.Nome)).ToList();
+    }
+
+    // Campanha R0006: um campo de busca da aba Anexos não lista o que já está anexado à campanha.
+    // Fica aqui, e não dentro de cada Search*Async, porque Conceder Ficha reaproveita as buscas de
+    // NPC/Criatura e lá uma ficha já anexada continua sendo uma escolha válida.
+    private async Task<List<PickerOption>> SearchNotAttachedAsync(Func<string, Task<List<PickerOption>>> search, string tipo, string query)
+    {
+        var attachedIds = _attachments.Where(a => a.Tipo == tipo).Select(a => a.SourceId).ToHashSet();
+        return (await search(query)).Where(o => !attachedIds.Contains(o.Id)).ToList();
     }
 
     private Task<List<PickerOption>> SearchGrantSourceSheetsAsync(string query) =>

@@ -114,6 +114,142 @@ public class CampanhaDetalheTests : MudBunitContext
         results.Should().Contain(o => o.Id == "m1" && o.Label == "Bola de Fogo (Magia, Grau 2)");
     }
 
+    /// <summary>
+    /// Renders the page for a GM whose every catalog holds two entries ("a1" already attached to the
+    /// campaign, "a2" not), so each Anexos picker can be checked for what it hides.
+    /// </summary>
+    private IRenderedComponent<CampanhaDetalhe> RenderWithOneAttachmentOfEachKind()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        var catalog = new[]
+        {
+            new { Id = "a1", Nome = "Anexado", Tipo = "Magia", Grau = 1 },
+            new { Id = "a2", Nome = "Livre", Tipo = "Magia", Grau = 1 },
+        };
+        var catalogPaths = new[] { "/items", "/spell-ability-bank", "/rune-bank", "/npc-sheets", "/creature-sheets" };
+
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) })
+                };
+
+            if (path.EndsWith("/attachments"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new[] { "Item", "SpellAbilityBankEntry", "RuneBankEntry", "NpcSheet", "CreatureSheet" }
+                        .Select(tipo => new CampaignAttachmentResponse($"att-{tipo}", tipo, "Anexado", false, null, null, null, null, null, "a1")))
+                };
+
+            if (catalogPaths.Any(path.EndsWith))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(catalog) };
+
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    private static void GoToTab(IRenderedComponent<CampanhaDetalhe> cut, string text)
+    {
+        var tabHeader = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == text);
+        cut.InvokeAsync(() => tabHeader.Click());
+    }
+
+    /// <summary>
+    /// Campanha R0006: um campo de busca da aba Anexos não lista o que já está anexado à campanha.
+    /// </summary>
+    [Theory]
+    [InlineData("Buscar item...")]
+    [InlineData("Buscar magia/habilidade...")]
+    [InlineData("Buscar runa...")]
+    [InlineData("Buscar ficha de NPC...")]
+    [InlineData("Buscar ficha de Criatura...")]
+    public async Task Anexos_tab_picker_hides_what_is_already_attached_to_the_campaign(string placeholder)
+    {
+        var cut = RenderWithOneAttachmentOfEachKind();
+        await Task.Delay(100);
+
+        GoToAnexosTab(cut);
+        await Task.Delay(50);
+
+        var picker = cut.FindComponents<EntityPicker>().Single(c => c.Instance.Placeholder == placeholder);
+        var results = await picker.Instance.SearchAsyncForTests("");
+
+        results.Select(o => o.Id).Should().Equal("a2");
+    }
+
+    /// <summary>
+    /// O id anexado só esconde a entrada do MESMO tipo: um Item e uma Runa são registros de tabelas
+    /// diferentes, então um anexo de Item nunca pode esconder uma Runa.
+    /// </summary>
+    [Fact]
+    public async Task Anexos_tab_picker_ignores_attachments_of_another_kind()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) })
+                };
+            if (path.EndsWith("/attachments"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new[] { new CampaignAttachmentResponse("att-1", "Item", "Anexado", false, null, null, null, null, null, "a1") })
+                };
+            if (path.EndsWith("/rune-bank"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { Id = "a1", Nome = "Runa", Grau = 1 } }) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+        await Task.Delay(100);
+
+        GoToAnexosTab(cut);
+        await Task.Delay(50);
+
+        var picker = cut.FindComponents<EntityPicker>().Single(c => c.Instance.Placeholder == "Buscar runa...");
+        var results = await picker.Instance.SearchAsyncForTests("");
+
+        results.Select(o => o.Id).Should().Equal("a1");
+    }
+
+    /// <summary>
+    /// O campo "ficha existente" de Conceder Ficha reaproveita a busca de NPC/Criatura, mas conceder
+    /// não é anexar: uma ficha já anexada à campanha continua podendo ser concedida.
+    /// </summary>
+    [Fact]
+    public async Task Conceder_ficha_picker_still_lists_a_sheet_already_attached_to_the_campaign()
+    {
+        var cut = RenderWithOneAttachmentOfEachKind();
+        await Task.Delay(100);
+
+        GoToTab(cut, "Conceder Ficha");
+        await Task.Delay(50);
+
+        var picker = cut.FindComponents<EntityPicker>().Single(c => c.Instance.Placeholder.StartsWith("Buscar ficha existente"));
+        var results = await picker.Instance.SearchAsyncForTests("");
+
+        results.Select(o => o.Id).Should().Equal("a1", "a2");
+    }
+
     [Fact]
     public async Task Clearing_Nome_and_blurring_does_not_call_PUT()
     {

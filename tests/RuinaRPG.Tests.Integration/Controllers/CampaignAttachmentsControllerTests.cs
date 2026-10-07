@@ -670,4 +670,49 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    /// <summary>
+    /// Campanha R0006: os campos de busca da aba Anexos escondem o que já está anexado, e para isso
+    /// o cliente precisa do id do registro de origem — o Nome não serve, dois registros podem ser
+    /// homônimos.
+    /// </summary>
+    [Fact]
+    public async Task List_reports_the_SourceId_of_every_kind_of_attachment()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttSourceGm", "attsource@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Origem");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+        var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
+        var runeId = await CreateRuneEntryAsync(gmToken, "Runa do Fogo");
+        var imageId = await UploadImageAsync(gmToken);
+        var npcId = await CreateNpcSheetAsync(gmToken);
+        var creatureId = await CreateCreatureSheetAsync(gmToken);
+
+        foreach (var request in new[]
+        {
+            new AttachToCampaignRequest(itemId, null, null, null, null),
+            new AttachToCampaignRequest(null, npcId, null, null, null),
+            new AttachToCampaignRequest(null, null, creatureId, null, null),
+            new AttachToCampaignRequest(null, null, null, bankEntryId, null),
+            new AttachToCampaignRequest(null, null, null, null, imageId),
+            new AttachToCampaignRequest(null, null, null, null, null, runeId),
+        })
+        {
+            var attached = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+            attached.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+
+        list!.Select(a => (a.Tipo, a.SourceId)).Should().BeEquivalentTo(new[]
+        {
+            ("Item", itemId),
+            ("NpcSheet", npcId),
+            ("CreatureSheet", creatureId),
+            ("SpellAbilityBankEntry", bankEntryId),
+            ("Image", imageId),
+            ("RuneBankEntry", runeId),
+        });
+    }
 }
