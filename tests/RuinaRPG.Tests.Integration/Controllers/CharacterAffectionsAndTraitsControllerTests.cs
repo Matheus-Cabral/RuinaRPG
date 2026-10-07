@@ -251,22 +251,35 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<Postgre
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// Ficha de Personagem 5.d: o limite de Negativas é o dobro do de Positivas — no nível 1, 10
+    /// contra 5. As Negativas são aceitas enquanto o total cabe em 10 e rejeitadas quando passaria.
+    /// </summary>
     [Fact]
-    public async Task AddTrait_rejects_a_Negativa_that_would_push_the_side_total_past_the_budget()
+    public async Task AddTrait_accepts_Negativas_up_to_twice_the_positive_budget_and_rejects_past_it()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AffGm9", "afftraitgm9@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer9", "afftraitplayer9@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Negativa, 2);
-        Math.Abs(top.Sum(t => t.Custo)).Should().BeGreaterThan(5); // level-1 creation budget
+        var candidatas = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Negativa, 8);
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
-            new AddCharacterTraitRequest(top[0].Id, null)));
-        first.StatusCode.Should().Be(HttpStatusCode.Created);
+        var total = 0;
+        var rejeitadas = 0;
+        foreach (var (id, custo) in candidatas)
+        {
+            var cabe = total + Math.Abs(custo) <= 10;
+            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+                new AddCharacterTraitRequest(id, null)));
+            response.StatusCode.Should().Be(cabe ? HttpStatusCode.Created : HttpStatusCode.BadRequest);
+            if (cabe) total += Math.Abs(custo); else rejeitadas++;
+        }
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
-            new AddCharacterTraitRequest(top[1].Id, null)));
-        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        total.Should().BeGreaterThan(5, "o limite de Negativas passa do de Positivas (5)").And.BeLessThanOrEqualTo(10);
+        rejeitadas.Should().BeGreaterThan(0, "alguma Negativa tem de ter estourado o limite de 10");
+        var lista = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken)))
+            .Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        lista!.PontosDisponiveis.Should().Be(5);
+        lista.PontosDisponiveisNegativas.Should().Be(10);
     }
 
     [Fact]

@@ -206,7 +206,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
 
         var sheet = await db.NpcSheets.FindAsync(sheetId);
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Para(trait.Polaridade, sheet!.Nivel, tabela);
         // Racial grants (IsRacial) are excluded — they cost 0 and never count toward this budget,
         // no matter what the underlying Trait's own Custo is (Requisitos - Ficha de NPCs / Ficha
         // de Personagem 5.d).
@@ -250,7 +250,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         var sheet = await db.NpcSheets.FindAsync(sheetId);
         var tabela = await tabelaDeNiveis.ObterAsync();
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
-        return new NpcTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
+        return new NpcTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis, TraitPointBudgetCalculator.ComputeNegativas(sheet.Nivel, tabela));
     }
 
     [HttpDelete("traits/{id}")]

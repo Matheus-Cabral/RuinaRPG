@@ -218,7 +218,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
 
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
+        var pontosDisponiveis = TraitPointBudgetCalculator.Para(trait.Polaridade, sheet!.Nivel, tabela);
         var existingTotal = await SumExistingCustoAsync(sheetId, trait.Polaridade);
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
             return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Característica {trait.Polaridade} disponíveis.");
@@ -285,7 +285,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var sheet = await db.CreatureSheets.FindAsync(sheetId);
         var tabela = await tabelaDeNiveis.ObterAsync();
         var pontosDisponiveis = TraitPointBudgetCalculator.Compute(sheet!.Nivel, tabela);
-        return new CreatureTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis);
+        return new CreatureTraitsListResponse(positivas, positivas.Sum(r => r.Custo), negativas, negativas.Sum(r => r.Custo), pontosDisponiveis, TraitPointBudgetCalculator.ComputeNegativas(sheet.Nivel, tabela));
     }
 
     [HttpDelete("traits/{id}")]
