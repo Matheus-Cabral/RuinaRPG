@@ -84,4 +84,4 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
 # **R0013** - Requisitos e Penalidades de equipamento seguem o Personagem.
 
-**Descrição**: Os Requisitos e a Penalidade dos equipamentos (Arma, Armadura, Escudo e Artefato) funcionam na Ficha de NPC exatamente como na Ficha de Personagem: o aviso de Requisitos não cumpridos nas linhas de 3.a, 3.b, 3.c e 5.b, o alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate, e a subtração automática das Penalidades dos Totais. Ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]".
+**Descrição**: Os Requisitos e a Penalidade dos equipamentos (Arma, Armadura, Escudo e Artefato) funcionam na Ficha de NPC exatamente como na Ficha de Personagem: a tag "Requisito(s) não cumprido(s)" nas linhas de 3.a, 3.b, 3.c e 5.b (com os Requisitos e a Penalidade no popup do item), o alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate, e a subtração automática das Penalidades dos Totais. Ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]".
