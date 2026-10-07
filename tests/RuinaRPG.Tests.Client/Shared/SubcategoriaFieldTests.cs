@@ -32,6 +32,28 @@ public class SubcategoriaFieldTests : MudBunitContext
     }
 
     [Fact]
+    public void Shows_the_current_value_so_an_existing_item_opens_with_its_subcategoria()
+    {
+        var cut = Render<SubcategoriaField>(p => p.Add(x => x.Tipo, "Arma").Add(x => x.Value, "Espadas"));
+
+        cut.Find("input").GetAttribute("value").Should().Be("Espadas");
+    }
+
+    [Fact]
+    public void Picking_an_existing_subcategoria_becomes_the_value()
+    {
+        string? emitido = null;
+        var cut = Render<SubcategoriaField>(p => p
+            .Add(x => x.Tipo, "Arma")
+            .Add(x => x.Existentes, Existentes(("Arma", ["Espadas"])))
+            .Add(x => x.ValueChanged, v => emitido = v));
+
+        cut.InvokeAsync(() => cut.FindComponent<MudAutocomplete<string>>().Instance.SelectOptionAsync("Espadas"));
+
+        cut.WaitForAssertion(() => emitido.Should().Be("Espadas"));
+    }
+
+    [Fact]
     public async Task Typing_narrows_the_list_ignoring_case()
     {
         var cut = Render<SubcategoriaField>(p => p
