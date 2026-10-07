@@ -97,7 +97,7 @@ public class FichaSubAtributosTests : MudBunitContext
     }
 
     [Fact]
-    public async Task Criatura_keeps_the_Afinidade_in_the_basic_info_and_has_only_the_Defesa_block()
+    public async Task Criatura_keeps_the_Afinidade_in_the_basic_info_and_has_no_Afinidade_block()
     {
         RegisterHttp();
         var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
@@ -109,7 +109,7 @@ public class FichaSubAtributosTests : MudBunitContext
 
         var secao = cut.FindComponent<SubAtributosSection>();
         secao.Instance.ComAfinidade.Should().BeFalse();
-        secao.FindAll(".subatributos-bloco-defesa").Should().ContainSingle();
+        secao.FindAll(".subatributos-defesa").Should().ContainSingle();
         secao.FindAll(".subatributos-bloco-afinidade").Should().BeEmpty();
     }
 

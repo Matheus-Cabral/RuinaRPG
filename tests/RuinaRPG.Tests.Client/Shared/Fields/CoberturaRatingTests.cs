@@ -21,6 +21,20 @@ public class CoberturaRatingTests : MudBunitContext
 
     private static int Acesos(IRenderedComponent<CoberturaRating> cut) => Escudos(cut).Count(b => b.GetAttribute("aria-pressed") == "true");
 
+    // Empilhado, uma coisa por linha: o rótulo, os escudos e, por último, o estado num span próprio.
+    [Fact]
+    public void The_label_the_shields_and_the_state_are_stacked_in_that_order()
+    {
+        var (cut, _) = Render("Parcial");
+
+        var linhas = cut.Find(".cobertura-rating").Children;
+        linhas.Select(l => l.ClassName!.Split(' ').First(c => c.StartsWith("cobertura-rating-"))).Should()
+            .Equal("cobertura-rating-rotulo", "cobertura-rating-escudos", "cobertura-rating-estado");
+        linhas[0].TextContent.Trim().Should().Be("Cobertura");
+        linhas[1].QuerySelectorAll("button").Should().HaveCount(2);
+        linhas[2].LocalName.Should().Be("span");
+    }
+
     [Theory]
     [InlineData(null, 0, "Sem cobertura")]
     [InlineData("Nenhuma", 0, "Sem cobertura")]

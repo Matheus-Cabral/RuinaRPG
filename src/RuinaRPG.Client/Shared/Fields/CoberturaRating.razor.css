@@ -1,0 +1,19 @@
+.cobertura-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.cobertura-rating-escudos {
+    display: flex;
+    align-items: center;
+    /* Os botões de ícone têm um respiro interno; puxa o primeiro escudo para alinhar com o texto. */
+    margin-left: -12px;
+}
+
+.cobertura-rating-estado {
+    font-family: var(--rr-font-heading);
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--mud-palette-primary);
+}

@@ -40,16 +40,31 @@ public class SubAtributosSectionTests : MudBunitContext
             "Iniciativa: 4", "Movimentação: 6", "Esquiva Natural: 12", "Redução Física: 2", "Redução Mágica: 1");
     }
 
+    // Defesa Natural e a Cobertura que entra na sua conta ficam juntas, numa coluna à direita dos
+    // demais sub-atributos — sem moldura, uma coisa por linha.
     [Fact]
-    public void Defesa_Natural_and_the_Cobertura_that_feeds_it_share_a_block()
+    public void Defesa_Natural_and_the_Cobertura_that_feeds_it_are_a_column_beside_the_other_sub_attributes()
     {
         var cut = RenderSecao();
 
-        var bloco = cut.Find(".subatributos-bloco-defesa");
-        bloco.QuerySelector(".subatributos-bloco-titulo")!.TextContent.Trim().Should().Be("Defesa");
-        bloco.QuerySelector(".subatributo")!.TextContent.Trim().Should().Be("Defesa Natural: 15");
-        bloco.QuerySelector(".cobertura-rating").Should().NotBeNull();
+        var topo = cut.Find(".subatributos-topo");
+        topo.Children.Select(c => c.ClassName).Should().Equal("subatributos-gerais", "subatributos-defesa");
+        var defesa = topo.Children[1];
+        defesa.ClassList.Should().NotContain("mud-paper");
+        defesa.Children[0].TextContent.Trim().Should().Be("Defesa Natural: 15");
+        defesa.Children[1].ClassList.Should().Contain("cobertura-rating");
         cut.FindComponent<CoberturaRating>().Instance.Value.Should().Be("Parcial");
+    }
+
+    [Fact]
+    public void The_Afinidade_block_comes_last_after_the_two_columns()
+    {
+        var cut = RenderSecao();
+
+        var topo = cut.Find(".subatributos-topo");
+        var seguinte = topo.NextElementSibling!;
+        seguinte.ClassList.Should().Contain("subatributos-bloco-afinidade");
+        seguinte.NextElementSibling.Should().BeNull();
     }
 
     [Fact]
@@ -82,7 +97,7 @@ public class SubAtributosSectionTests : MudBunitContext
 
         cut.FindAll(".subatributos-bloco-afinidade").Should().BeEmpty();
         cut.FindComponents<AfinidadeSelect>().Should().BeEmpty();
-        cut.FindAll(".subatributos-bloco-defesa").Should().ContainSingle();
+        cut.FindAll(".subatributos-defesa").Should().ContainSingle();
     }
 
     [Fact]

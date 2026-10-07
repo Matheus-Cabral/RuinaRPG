@@ -1,13 +1,15 @@
 @using MudBlazor
 
-@* Cobertura como uma "nota" de dois escudos: 0 acesos = Nenhuma (sem cobertura), 1 = Parcial (+5),
+@* Empilhado, uma coisa por linha: o rótulo, os escudos e o estado (texto menor, em outra fonte e
+   cor — ver CoberturaRating.razor.css).
+   Cobertura como uma "nota" de dois escudos: 0 acesos = Nenhuma (sem cobertura), 1 = Parcial (+5),
    2 = Completa (+10). Clicar no escudo que já é o valor atual limpa para Nenhuma. Os valores
    guardados continuam sendo as strings "Nenhuma" / "Parcial" / "Completa".
    São dois MudIconButton (e não um MudRating) porque o MudRating não deixa nomear/dar tooltip a cada
    item — os rótulos dele são "1 rating"/"2 rating" — e aqui cada escudo precisa de nome acessível. *@
-<div class="d-flex align-center gap-2 cobertura-rating" role="group" aria-label="Cobertura">
-    <MudText Typo="Typo.body1">Cobertura</MudText>
-    <div class="d-flex align-center">
+<div class="cobertura-rating" role="group" aria-label="Cobertura">
+    <MudText Typo="Typo.body1" Class="cobertura-rating-rotulo">Cobertura</MudText>
+    <div class="cobertura-rating-escudos">
         @for (var i = 1; i <= 2; i++)
         {
             var nota = i;
@@ -21,7 +23,7 @@
             </MudTooltip>
         }
     </div>
-    <MudText Typo="Typo.body2" Class="cobertura-rating-estado">@Estado</MudText>
+    <span class="cobertura-rating-estado">@Estado</span>
 </div>
 
 @code {
