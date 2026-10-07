@@ -3,10 +3,16 @@
 @* Renders an item's Nome as clickable text; clicking opens a popup with its catalog image (if any)
    and Descrição (if any) — same "click to reveal detail" idiom as ClickableImage, but keyed off the
    item's name instead of an image thumbnail, for the many item tables (Armas/Armaduras/Escudos/
-   Artefatos/Inventário/Espólios) that show a name but never had anywhere to show art/flavor text. *@
+   Artefatos/Inventário/Espólios) that show a name but never had anywhere to show art/flavor text.
+   For equipment (Arma, Armadura, Escudo, Artefato) the popup also carries the item's Requisitos and
+   Penalidade; the row itself only gets a warning tag while a requirement is missing. *@
 <span style="cursor:pointer;text-decoration:underline dotted" @onclick="@(() => _open = true)" @onclick:stopPropagation="true" @onclick:preventDefault="true">
     @Nome
 </span>
+@if (RequisitosPendentes is { Count: > 0 })
+{
+    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">Requisito(s) não cumprido(s)</MudChip>
+}
 
 <MudDialog @bind-Visible="_open">
     <TitleContent>@Nome</TitleContent>
@@ -16,6 +22,9 @@
             <MudImage Src="@ImageUrl" Alt="@Nome" Class="mb-3" />
         }
         <MudText>@(string.IsNullOrWhiteSpace(Descricao) ? "Sem descrição." : Descricao)</MudText>
+        <div class="mt-3">
+            <RequisitosDeEquipamentoAviso Requisitos="@Requisitos" Pendentes="@RequisitosPendentes" Penalidade="@Penalidade" OutrasPenalidades="@OutrasPenalidades" EmUso="@EmUso" />
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _open = false)">Fechar</MudButton>
@@ -26,6 +35,12 @@
     [Parameter, EditorRequired] public string Nome { get; set; } = "";
     [Parameter] public string? ImageUrl { get; set; }
     [Parameter] public string? Descricao { get; set; }
+    [Parameter] public List<string>? Requisitos { get; set; }
+    [Parameter] public List<string>? RequisitosPendentes { get; set; }
+    [Parameter] public List<string>? Penalidade { get; set; }
+    [Parameter] public string? OutrasPenalidades { get; set; }
+    /// <summary>Falso para Arma ou Escudo não equipados; Armadura num slot e Artefato na lista estão sempre em uso.</summary>
+    [Parameter] public bool EmUso { get; set; } = true;
 
     private bool _open;
 }

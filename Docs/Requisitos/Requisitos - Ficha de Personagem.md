@@ -92,7 +92,7 @@ Cada recurso abaixo é exibido como um par **atual / máximo** (campos numérico
 
 ### 2.a) Atributos
 
-> **Alerta de penalidades**: no topo das abas Atributos & Perícias e Combate (Personagem, NPC e Criatura), um alerta "Penalidades de equipamento ativas" lista cada equipamento em uso cujos Requisitos a ficha não cumpre, o que falta e a penalidade **aplicada** (as linhas numéricas da Penalidade). Se o item tem o texto livre "Outras penalidades", ele aparece junto, marcado como **não aplicado automaticamente**. Explica por que os Totais estão reduzidos; não aparece quando nenhuma Penalidade está ativa e é atualizado ao mexer em equipamentos ou atributos. A linha de cada equipamento (Arma, Armadura, Escudo, Artefato) mostra **sempre** a Penalidade do item como informação — com ou sem Requisitos, cumpridos ou não —, mas as linhas numéricas só são subtraídas enquanto falta algum Requisito (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
+> **Alerta de penalidades**: no topo das abas Atributos & Perícias e Combate (Personagem, NPC e Criatura), um alerta "Penalidades de equipamento ativas" lista cada equipamento em uso cujos Requisitos a ficha não cumpre, o que falta e a penalidade **aplicada** (as linhas numéricas da Penalidade). Se o item tem o texto livre "Outras penalidades", ele aparece junto, marcado como **não aplicado automaticamente**. Explica por que os Totais estão reduzidos; não aparece quando nenhuma Penalidade está ativa e é atualizado ao mexer em equipamentos ou atributos. O popup de cada equipamento (Arma, Armadura, Escudo, Artefato — aberto ao clicar no nome, ver 3.b) mostra **sempre** a Penalidade do item como informação — com ou sem Requisitos, cumpridos ou não —, mas as linhas numéricas só são subtraídas enquanto falta algum Requisito (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
   
 
@@ -195,7 +195,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 Lista tipo arsenal: o jogador adiciona quantas armas quiser (inclui varinhas e cajados mágicos, que são subcategorias de Arma no catálogo — não há distinção de "condutor" à parte). Cada linha:
 
 - *Arma*: dropdown/busca vinculado a um item do tipo Arma no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0004). Ao escolher, os campos **Nome**, **Tipo de Dano**, **Alcance**, **Dados**, **Dano**, **Crítico** e **Rank** são preenchidos automaticamente a partir do item, somente leitura.
-- *Requisitos*: mesmo aviso de 3.b, sob o nome da arma. Enquanto a arma não está equipada, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
+- *Requisitos*: mesma tag e mesmo popup de 3.b. Enquanto a arma não está equipada, nada é descontado: o popup mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada — uma arma equipada é considerada "no corpo", não uma carga extra.
 - *Equipada*: seleção exclusiva — apenas 1 arma do arsenal pode estar marcada como equipada por vez, exceto se o personagem tiver a característica **Ambidestria** (ver aba "Posses", Características), que permite 2.
 - *Durabilidade*: par **Atual / Máximo**. O Máximo é somente leitura e vem do Rank do item ([[Tabela de Durabilidade por Rank]]; ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0004). Diferente dos outros campos herdados, o Atual **não** é somente leitura: é editável pelo jogador e específico daquela linha (duas fichas com a mesma Arma do catálogo têm Durabilidade Atual independentes). Ao adicionar a linha, o Atual começa igual ao Máximo do item naquele momento; não pode exceder o Máximo — se o Máximo diminuir depois (mudança do Rank do item ou da tabela), o Atual é limitado ao novo Máximo. Itens de Rank inquebrável (ver a tabela) não têm Atual/Máximo: a linha mostra apenas "Inquebrável".
@@ -211,7 +211,7 @@ Uma linha pode ser removida pelo jogador a qualquer momento.
 Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**. Cada slot:
 
 - *Armadura*: dropdown/busca vinculado a um item do tipo Armadura no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0005). Ao escolher, os campos **Categoria**, **Defesa**, **RF**, **RM** são preenchidos automaticamente, somente leitura. Um slot pode ficar vazio (exibe travessão).
-- *Requisitos*: se o item tem Requisitos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014), eles aparecem sob o nome da armadura. Se a ficha não os cumpre, a linha mostra um ícone de aviso, "Requisitos não cumpridos", o que falta e a Penalidade aplicada. A Penalidade do item (linhas numéricas e "Outras penalidades", esta marcada como não aplicada automaticamente) aparece sempre na linha, com ou sem Requisitos. Nada é bloqueado.
+- *Requisitos*: se o item tem Requisitos (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014), eles aparecem no popup aberto ao clicar no nome da armadura, junto da Imagem e da Descrição — não na linha. Se a ficha não os cumpre, a linha mostra, ao lado do nome, uma tag de aviso "Requisito(s) não cumprido(s)", e o popup mostra "Requisitos não cumpridos", o que falta e a Penalidade aplicada. A Penalidade do item (linhas numéricas e "Outras penalidades", esta marcada como não aplicada automaticamente) aparece sempre no popup, com ou sem Requisitos. Nada é bloqueado.
 - *Peso*: herdado do item (somente leitura) de cada slot preenchido. **Não** soma ao Peso Atual (ver 2.b, Movimentação) — todo slot preenchido está sempre equipado (não há estado "desequipado" para Armadura), então seu peso é sempre considerado "no corpo".
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0005, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquele slot. Rank inquebrável: o slot mostra apenas "Inquebrável".
 
@@ -224,7 +224,7 @@ Três slots fixos e sempre visíveis: **Capacete**, **Superior** e **Inferior**.
 Lista tipo arsenal, mesmo padrão de 3.a: o jogador adiciona quantos escudos quiser. Cada linha:
 
 - *Escudo*: dropdown/busca vinculado a um item do tipo Escudo no "[[Requisitos - Catálogo de Itens e Equipamentos]]" (ver R0006). Ao escolher, os campos **Nome**, **Categoria** e **Bônus de Defesa** são preenchidos automaticamente, somente leitura.
-- *Requisitos*: mesmo aviso de 3.b, sob o nome do escudo. Enquanto o escudo não está equipado, nada é descontado: o aviso mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
+- *Requisitos*: mesma tag e mesmo popup de 3.b. Enquanto o escudo não está equipado, nada é descontado: o popup mostra "Penalidade ao equipar" no lugar de "Penalidade aplicada".
 - *Peso*: herdado do item (somente leitura). Soma ao Peso Atual (ver 2.b, Movimentação) somente quando a linha **não** está equipada, mesma regra de 3.a.
 - *Equipado*: seleção exclusiva — apenas 1 escudo do arsenal pode estar marcado como equipado por vez (sem exceção).
 - *Durabilidade*: par **Atual / Máximo**, mesmo comportamento de 3.a — Máximo vem do Rank do item (R0006, [[Tabela de Durabilidade por Rank]]), Atual editável pelo jogador e específico daquela linha. Rank inquebrável: a linha mostra apenas "Inquebrável".
@@ -386,7 +386,7 @@ O personagem pode equipar até **3 artefatos por tipo**, num total de até 12. L
 
 A soma dos Valores de todos os Artefatos equipados de um dado Alvo alimenta o termo "Artefato(s)" nas fórmulas correspondentes (ver 2.a, 2.b e 2.d). Um Artefato pode ser removido pelo jogador a qualquer momento, respeitando o limite de 3 por Tipo de alvo.
 
-- *Requisitos*: mesmo aviso de 3.b, na linha do artefato. Um Artefato que não cumpre os Requisitos continua dando o próprio Valor; só a Penalidade dele é somada (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
+- *Requisitos*: mesma tag e mesmo popup de 3.b. Um Artefato que não cumpre os Requisitos continua dando o próprio Valor; só a Penalidade dele é somada (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
   
 
