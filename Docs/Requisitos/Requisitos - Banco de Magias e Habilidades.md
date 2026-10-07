@@ -34,6 +34,8 @@
 
 **Descrição**: Uma lista exibe todas as entradas do banco, com filtros combináveis por **Nome**, **Tipo** (Magia, Habilidade, Racial ou Passiva), **Grau** e **Criatura** (Todas / Só de Criatura / Sem Criatura — ver R0008). As entradas marcadas como de Criatura exibem, ao lado do Nome, o mesmo ícone (e cor) do Bestiário no menu lateral, com a dica "Magia/Habilidade de Criatura". Uma linha de Passiva (Tipo = Passiva) exibe a **Categoria** no lugar de Grau/Efeitos.
 
+Para as Passivas há ainda os filtros **Categoria** (Passiva Livre, Passiva Vocacional, Passiva de Classe), **Vocação** e **Classe** — as duas últimas com os valores presentes na lista, vindos dos Requisitos da Passiva —, combináveis entre si e com os demais. Escolher qualquer um deles deixa na lista apenas Passivas.
+
   
 
 # **R0005** - Campos de uma entrada do banco.

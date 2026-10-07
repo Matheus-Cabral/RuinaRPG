@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @using RuinaRPG.Contracts.SpellsAndAbilities
+@using RuinaRPG.Domain.CharacterSheets
 @using RuinaRPG.Domain.SpellsAndAbilities
 @using MudBlazor
 
@@ -33,6 +34,34 @@
                 <MudSelectItem Value="@("false")">Sem Criatura</MudSelectItem>
             </MudSelect>
         </MudItem>
+        @* Filtros de Passiva (R0004): aplicados aqui, sobre a lista já carregada; escolher um deixa só Passivas. *@
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" @bind-Value="_categoriaFiltro" Label="Categoria">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var categoria in Enum.GetValues<CategoriaDePassiva>())
+                {
+                    <MudSelectItem Value="@categoria.ToString()">@RequisitoLabels.Categoria(categoria)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" @bind-Value="_vocacaoFiltro" Label="Vocação">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var vocacao in Vocacoes())
+                {
+                    <MudSelectItem Value="@vocacao">@vocacao</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" @bind-Value="_classeFiltro" Label="Classe">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var classe in Classes())
+                {
+                    <MudSelectItem Value="@classe">@classe</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
     </MudGrid>
 </Section>
 
@@ -54,7 +83,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var entry in _entries)
+            @foreach (var entry in EntradasFiltradas())
             {
                 <tr>
                     <td>
@@ -101,10 +130,35 @@
     private string _tipoFiltro = "";
     private int? _grauFiltro;
     private string _criaturaFiltro = "";
+    private string _categoriaFiltro = "";
+    private string _vocacaoFiltro = "";
+    private string _classeFiltro = "";
     private List<SpellAbilityEntryResponse> _entries = new();
     private string? _errorMessage;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    // Rótulo de exibição da Vocação exigida, como na aba Habilidades Passivas do Livro de Regras.
+    private static string? VocacaoDe(SpellAbilityEntryResponse entry) =>
+        Enum.TryParse<Vocacao>(entry.Requisitos?.Vocacao, out var vocacao) ? RequisitoLabels.Vocacao(vocacao) : null;
+
+    private static string? ClasseDe(SpellAbilityEntryResponse entry) =>
+        string.IsNullOrWhiteSpace(entry.Requisitos?.Classe) ? null : entry.Requisitos.Classe.Trim();
+
+    private List<string> Vocacoes() => ValoresPresentes(VocacaoDe);
+
+    private List<string> Classes() => ValoresPresentes(ClasseDe);
+
+    private List<string> ValoresPresentes(Func<SpellAbilityEntryResponse, string?> valor) =>
+        _entries.Where(e => e.Tipo == "Passiva").Select(valor).OfType<string>().Distinct().OrderBy(v => v, StringComparer.InvariantCultureIgnoreCase).ToList();
+
+    private IEnumerable<SpellAbilityEntryResponse> EntradasFiltradas() =>
+        _categoriaFiltro == "" && _vocacaoFiltro == "" && _classeFiltro == ""
+            ? _entries
+            : _entries.Where(e => e.Tipo == "Passiva"
+                && (_categoriaFiltro == "" || e.Categoria == _categoriaFiltro)
+                && (_vocacaoFiltro == "" || VocacaoDe(e) == _vocacaoFiltro)
+                && (_classeFiltro == "" || ClasseDe(e) == _classeFiltro));
 
     private CancellationTokenSource? _debounceCts;
 
@@ -138,6 +192,9 @@
         }
 
         _entries = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>() ?? new();
+        // Vocação/Classe que não existem na lista recarregada deixam de filtrar.
+        if (!Vocacoes().Contains(_vocacaoFiltro)) _vocacaoFiltro = "";
+        if (!Classes().Contains(_classeFiltro)) _classeFiltro = "";
         _errorMessage = null;
     }
 
