@@ -181,6 +181,40 @@ public class CatalogoItemFormTests : MudBunitContext
         cut.Markup.Should().Contain("Poção");
     }
 
+    /// <summary>
+    /// Catálogo R0003/R0004: a Subcategoria lista as subcategorias que o GM já usa em itens do mesmo
+    /// Tipo no seu catálogo.
+    /// </summary>
+    [Fact]
+    public async Task The_subcategoria_field_offers_the_subcategorias_of_the_gms_items_of_that_tipo()
+    {
+        var consultas = new List<string>();
+        var http = FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("items"))
+            {
+                consultas.Add(request.RequestUri.Query);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new[]
+                    {
+                        new { Id = "i1", Tipo = "Arma", Nome = "Espada Longa", Subcategoria = (string?)"Espadas" },
+                        new { Id = "i2", Tipo = "Arma", Nome = "Machado", Subcategoria = (string?)"Machados" },
+                        new { Id = "i3", Tipo = "Arma", Nome = "Graveto", Subcategoria = (string?)null },
+                    })
+                };
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        });
+        Services.AddScoped(_ => http);
+        var cut = Render<CatalogoItemForm>();
+
+        var existentes = await cut.FindComponent<RuinaRPG.Client.Shared.SubcategoriaField>().Instance.Existentes!("Arma");
+
+        existentes.Should().BeEquivalentTo(new[] { "Espadas", "Machados" });
+        consultas.Should().Contain("?tipo=Arma");
+    }
+
     private CatalogoItemForm RenderNewItemForm()
     {
         var http = FakeHttpMessageHandler.CreateClient(request =>
@@ -469,7 +503,7 @@ public class CatalogoItemFormTests : MudBunitContext
 
         var fieldAfter = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
         fieldAfter.Instance.IsCheckedForTests.Should().BeFalse("a composed Subcategoria built for Armadura is never valid once Tipo becomes Escudo");
-        cut.FindComponents<MudBlazor.MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
+        cut.FindComponents<RuinaRPG.Client.Shared.SubcategoriaField>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
     }
 
     [Fact]
@@ -505,7 +539,7 @@ public class CatalogoItemFormTests : MudBunitContext
 
         var fieldAfter = cut.FindComponent<RuinaRPG.Client.Shared.ItemInicialSubcategoriaField>();
         fieldAfter.Instance.IsCheckedForTests.Should().BeFalse("a composed Subcategoria built for Arma is never valid once Tipo becomes Armadura");
-        cut.FindComponents<MudBlazor.MudTextField<string>>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
+        cut.FindComponents<RuinaRPG.Client.Shared.SubcategoriaField>().Should().Contain(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == null);
     }
 
     [Fact]

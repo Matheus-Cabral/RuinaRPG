@@ -14,7 +14,7 @@
             <MudAlert Severity="Severity.Info" Class="mb-3">Este item é usado em: @string.Join(", ", Existente.Kits). A alteração vale para todos os kits que usam este item.</MudAlert>
         }
         <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
-        <ItemFieldsEditor Model="_form" TipoBloqueado="true" MostrarImagem="false" />
+        <ItemFieldsEditor Model="_form" TipoBloqueado="true" MostrarImagem="false" SubcategoriasExistentes="LoadSubcategoriasExistentesAsync" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
@@ -37,6 +37,14 @@
         _form = Existente is not null
             ? ItemFormModel.FromRequest(Existente.Dados)
             : new ItemFormModel { Tipo = Tipo, Nome = NomeInicial };
+
+    // As subcategorias sugeridas aqui são as da própria base de itens fixos, não as do catálogo de
+    // algum GM: a base é global e mantida pelo Auditor.
+    private async Task<List<string>> LoadSubcategoriasExistentesAsync(string tipo)
+    {
+        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>($"equipment-kit-fixed-items?tipo={tipo}") ?? [];
+        return itens.Select(i => i.Dados.Subcategoria).OfType<string>().ToList();
+    }
 
     private void Cancelar() => MudDialog.Cancel();
 

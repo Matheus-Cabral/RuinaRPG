@@ -33,14 +33,14 @@
     @if (Model.Tipo == "ItemGeral")
     {
         <Section Title="Item Geral">
-            <MudTextField T="string" @bind-Value="Model.Subcategoria" Label="Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <SubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" Existentes="SubcategoriasExistentes" />
             <MudNumericField T="decimal?" @bind-Value="Model.CapacidadeExtra" For="@(() => Model.CapacidadeExtra)" Label="Capacidade Extra" @bind-Value:after="OnChangedAsync" />
         </Section>
     }
     else if (Model.Tipo == "Arma")
     {
         <Section Title="Arma">
-            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" Existentes="SubcategoriasExistentes" />
             <MudSelect T="string" @bind-Value="Model.Rank" Label="Rank" Clearable="true" @bind-Value:after="OnRankChangedAsync">
                 @foreach (var rank in RankOptions)
                 {
@@ -62,7 +62,7 @@
     else if (Model.Tipo is "Armadura" or "Escudo")
     {
         <Section Title="@(Model.Tipo == "Armadura" ? "Armadura" : "Escudo")">
-            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" Existentes="SubcategoriasExistentes" />
             <MudTextField T="string" @bind-Value="Model.Categoria" Label="Categoria" @bind-Value:after="OnChangedAsync" />
             @if (Model.Tipo == "Armadura")
             {
@@ -89,7 +89,7 @@
     else if (Model.Tipo == "Artefato")
     {
         <Section Title="Artefato">
-            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" />
+            <ItemInicialSubcategoriaField Tipo="@Model.Tipo" @bind-Value="Model.Subcategoria" @bind-Value:after="OnChangedAsync" Existentes="SubcategoriasExistentes" />
             <MudSelect T="string" @bind-Value="Model.TipoDeAlvo" @bind-Value:after="OnTipoDeAlvoChangedAsync" Label="Tipo de Alvo">
                 @foreach (var option in TipoDeAlvoOptions)
                 {
@@ -142,6 +142,9 @@
     /// <summary>Disparado quando o Rank muda, antes de OnChanged, para quem hospeda recalcular o DurabilidadeHint.</summary>
     [Parameter] public EventCallback OnRankChanged { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
+    /// <summary>Carrega, para um Tipo, as subcategorias que o campo Subcategoria sugere — cada
+    /// hospedeiro tem a sua fonte (catálogo do GM, base de itens fixos). Null: sem sugestões.</summary>
+    [Parameter] public Func<string, Task<List<string>>>? SubcategoriasExistentes { get; set; }
 
     // F..SS in RankDeItem declaration order — the same 8 ranks the Auditoria: Durabilidade por
     // Rank page and the DurabilidadesPorRankController both work off of.

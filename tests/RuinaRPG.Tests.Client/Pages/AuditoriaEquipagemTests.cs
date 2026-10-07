@@ -776,6 +776,40 @@ public class AuditoriaEquipagemTests : MudBunitContext
         cut.Markup.Should().Contain("O Slot Inferior ja esta em uso por outra Armadura do kit.");
     }
 
+    /// <summary>
+    /// O bônus de um slot é concedido quando a Subcategoria do item escolhido (ou a sua Família) bate
+    /// com a "Subcategoria do bônus" — então o campo sugere exatamente esses valores para o Tipo do
+    /// slot: as Famílias do vocabulário e as subcategorias dos itens fixos da base.
+    /// </summary>
+    [Fact]
+    public async Task The_slot_bonus_subcategoria_offers_the_familias_and_the_fixed_item_subcategorias_of_the_slots_tipo()
+    {
+        var arco = FixedItemTestData.Item("fi-arco", "Arco Curto", "Arma");
+        arco = arco with { Dados = arco.Dados with { Subcategoria = "Arcos de caça" } };
+        var requests = new List<string>();
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            requests.Add(FixedItemTestData.Rota(request));
+            if (path.EndsWith("/equipment-kits"))
+                return Json(HttpStatusCode.OK, new List<object> { KitComItens() });
+            if (path.EndsWith("subcategoria-options") && request.RequestUri.Query.Contains("Familia"))
+                return Json(HttpStatusCode.OK, new[] { new { Id = "f1", Tipo = "Arma", Facet = "Familia", Valor = "Arcos" } });
+            if (path.EndsWith("equipment-kit-fixed-items"))
+                return Json(HttpStatusCode.OK, new List<EquipmentKitFixedItemResponse> { arco });
+            return Json(HttpStatusCode.OK, new List<object>());
+        }));
+        var cut = RenderFull();
+        await Task.Delay(50);
+
+        var campo = cut.FindComponents<SubcategoriaField>().Single(c => c.Instance.Label == "Subcategoria do bônus").Instance;
+        var existentes = await campo.Existentes!(campo.Tipo);
+
+        campo.Tipo.Should().Be("Arma");
+        existentes.Should().BeEquivalentTo(new[] { "Arcos", "Arcos de caça" });
+        requests.Should().Contain("GET /api/equipment-kit-fixed-items?tipo=Arma");
+    }
+
     [Fact]
     public async Task The_slot_bonus_is_picked_from_the_base_restricted_to_Item_Geral()
     {
@@ -790,7 +824,7 @@ public class AuditoriaEquipagemTests : MudBunitContext
         var label = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Label");
         await cut.InvokeAsync(() => label.Instance.ValueChanged.InvokeAsync("Arco inicial"));
         await PickAsync(cut, 1, FixedItemTestData.Item("fi-flecha", "Flecha", "ItemGeral"));
-        var sub = cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == "Subcategoria do bônus");
+        var sub = cut.FindComponents<SubcategoriaField>().Single(c => c.Instance.Label == "Subcategoria do bônus");
         await cut.InvokeAsync(() => sub.Instance.ValueChanged.InvokeAsync("Arcos"));
         await SetNumberAsync(cut, "Qtd do bônus", 20);
         await ClickAsync(cut, ButtonWithText(cut, "Adicionar slot"));

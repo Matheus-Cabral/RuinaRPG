@@ -33,7 +33,8 @@
                       OcultarTipo="@(ItemId is not null || FixedTipo is not null)" MostrarImagem="true"
                       ImagensDisponiveis="_myImages" ImagemIds="_imageIds" ImagemIdsChanged="OnImagesChanged"
                       OnImageError="@(e => _errorMessage = e)" DurabilidadeHint="@_durabilidadeHint"
-                      OnRankChanged="RecomputeDurabilidadeHint" OnChanged="NotifySavedAsync" />
+                      OnRankChanged="RecomputeDurabilidadeHint" OnChanged="NotifySavedAsync"
+                      SubcategoriasExistentes="LoadSubcategoriasExistentesAsync" />
 
     @if (ItemId is null)
     {
@@ -118,6 +119,17 @@
         _form.ImageId = _myImages.FirstOrDefault(i => i.Url == existing.ImageUrl)?.Id;
         _imageIds = _form.ImageId is null ? new() : new() { _form.ImageId };
         RecomputeDurabilidadeHint();
+    }
+
+    // Catálogo R0003/R0004: a Subcategoria sugere as que o GM já usa em itens do mesmo Tipo. Não há
+    // cadastro próprio de subcategorias — elas são as dos itens do catálogo, como no filtro da lista.
+    private async Task<List<string>> LoadSubcategoriasExistentesAsync(string tipo)
+    {
+        var response = await Http.GetAsync($"items?tipo={Uri.EscapeDataString(tipo)}");
+        if (!response.IsSuccessStatusCode)
+            return new();
+        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
+        return items.Select(i => i.Subcategoria).OfType<string>().ToList();
     }
 
     private async Task LoadDurabilidadesPorRankAsync()

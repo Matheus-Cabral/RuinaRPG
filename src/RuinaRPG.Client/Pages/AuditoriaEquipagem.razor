@@ -190,7 +190,7 @@ else
                     }
                     <MudNumericField T="int" @bind-Value="_slotForm[kit.Id].Qtd" Label="Qtd" />
                     <FixedItemPicker TiposPermitidos="@SoItemGeral" Tipo="ItemGeral" @bind-Value="_slotForm[kit.Id].BonusItem" RotuloTipo="Tipo do bônus" RotuloItem="Item do bônus" />
-                    <MudTextField T="string" @bind-Value="_slotForm[kit.Id].BonusSubcategoria" Label="Subcategoria do bônus" />
+                    <SubcategoriaField Tipo="@_slotForm[kit.Id].Tipo" @bind-Value="_slotForm[kit.Id].BonusSubcategoria" Label="Subcategoria do bônus" Existentes="LoadSubcategoriasDoBonusAsync" />
                     <MudNumericField T="int" @bind-Value="_slotForm[kit.Id].BonusQtd" Label="Qtd do bônus" Min="1" />
                     <MudButton Variant="Variant.Outlined" OnClick="@(() => AddSlotAsync(kit))">Adicionar slot</MudButton>
                 </div>
@@ -354,6 +354,16 @@ else
     {
         _slotForm[kitId].SubcategoriasSelected = new List<string>();
         await LoadSlotFamiliaOptionsAsync(kitId, _slotForm[kitId].Tipo);
+    }
+
+    // O bônus de um slot é concedido quando a Subcategoria do item escolhido — ou a sua Família —
+    // bate com a "Subcategoria do bônus" (EquipmentKitGrantService), então são esses os valores que o
+    // campo sugere para o Tipo do slot.
+    private async Task<List<string>> LoadSubcategoriasDoBonusAsync(string tipo)
+    {
+        var familias = await Http.GetFromJsonAsync<List<SubcategoriaOptionResponse>>($"subcategoria-options?tipo={tipo}&facet=Familia") ?? [];
+        var itens = await Http.GetFromJsonAsync<List<EquipmentKitFixedItemResponse>>($"equipment-kit-fixed-items?tipo={tipo}") ?? [];
+        return familias.Select(f => f.Valor).Concat(itens.Select(i => i.Dados.Subcategoria).OfType<string>()).ToList();
     }
 
     private List<SubcategoriaOptionResponse> GetSlotFamiliaOptions(string kitId) =>

@@ -44,6 +44,26 @@ public class ItemFieldsEditorTests : MudBunitContext
         cut.FindAll("label").Select(l => l.TextContent.Trim()).Should().Contain(campo).And.Contain("Nome");
     }
 
+    [Theory]
+    [InlineData("ItemGeral")]
+    [InlineData("Arma")]
+    [InlineData("Armadura")]
+    [InlineData("Escudo")]
+    [InlineData("Artefato")]
+    public void The_subcategoria_field_of_every_tipo_offers_the_hosts_existing_subcategorias(string tipo)
+    {
+        RegisterStubs();
+        Func<string, Task<List<string>>> existentes = _ => Task.FromResult(new List<string>());
+
+        var cut = Render<ItemFieldsEditor>(p => p
+            .Add(x => x.Model, new ItemFormModel { Tipo = tipo })
+            .Add(x => x.SubcategoriasExistentes, existentes));
+
+        var campo = cut.FindComponent<SubcategoriaField>().Instance;
+        campo.Tipo.Should().Be(tipo);
+        campo.Existentes.Should().BeSameAs(existentes);
+    }
+
     [Fact]
     public void TipoBloqueado_disables_the_tipo_select()
     {
