@@ -50,6 +50,10 @@
 
 Os campos de busca usados para anexar (item, Magia/Habilidade, Runa, Ficha de NPC e Ficha de Criatura) não listam o que já está anexado à campanha; ao remover um anexo, o registro volta a aparecer na busca.
 
+A lista de anexos da campanha é **agrupada por tipo**, sempre nesta ordem: Itens, Magias/Habilidades, Runas, Imagens, NPCs e Criaturas. Cada grupo é um painel recolhível com a contagem no título, e um tipo sem anexos não aparece. Dentro do grupo os anexos ficam em ordem alfabética, em linhas de colunas fixas (miniatura, nome, visibilidade, ação); as Imagens são exibidas como uma galeria, na ordem em que foram anexadas.
+
+Cada grupo tem os seus próprios filtros, que afetam só ele: busca por nome (exceto Imagens), visibilidade (públicos/privados — um NPC ou uma Criatura conta como público quando o Nome ou a Imagem é público, ver R0008) e os critérios do tipo — **Itens**: tipo de item e Subcategoria; **Magias/Habilidades**: tipo e Grau; **Runas**: Grau e Disciplina. As opções de cada filtro são os valores presentes nos anexos do grupo.
+
   
 
 # **R0007** - O GM deve poder adicionar imagens avulsas à campanha.
@@ -68,7 +72,7 @@ Os campos de busca usados para anexar (item, Magia/Habilidade, Runa, Ficha de NP
 
 # **R0009** - Um jogador membro só vê as próprias fichas e os anexos públicos.
 
-**Descrição**: Um jogador que é membro da campanha só tem acesso, dentro dela, às fichas de personagem das quais é dono (R0004), às fichas de NPC/Criatura que lhe foram concedidas (R0010), e aos anexos marcados como públicos (R0008). Anexos privados e o diário (R0005) são visíveis apenas ao GM.
+**Descrição**: Um jogador que é membro da campanha só tem acesso, dentro dela, às fichas de personagem das quais é dono (R0004), às fichas de NPC/Criatura que lhe foram concedidas (R0010), e aos anexos marcados como públicos (R0008). Anexos privados e o diário (R0005) são visíveis apenas ao GM. Os anexos públicos aparecem para o jogador com a mesma organização da lista do GM (R0006) — agrupados por tipo, com a galeria de Imagens e os mesmos filtros —, exceto o filtro de visibilidade e os controles de edição.
 
   
 

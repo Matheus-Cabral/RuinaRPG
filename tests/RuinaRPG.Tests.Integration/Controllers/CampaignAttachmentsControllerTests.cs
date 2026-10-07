@@ -741,7 +741,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
 
         list!.Single(a => a.Tipo == "Item").Facets.Should().Be(new AttachmentFacets(ItemTipo: "ItemGeral", Subcategoria: "Equipamentos de Aventura"));
         list!.Single(a => a.Tipo == "SpellAbilityBankEntry").Facets.Should().Be(new AttachmentFacets(EntradaTipo: "Magia", Grau: 1));
-        list.Single(a => a.Tipo == "RuneBankEntry").Facets.Should().Be(new AttachmentFacets(Grau: 1, Disciplina: "Adicao"));
+        list!.Single(a => a.Tipo == "RuneBankEntry").Facets.Should().Be(new AttachmentFacets(Grau: 1, Disciplina: "Adicao"));
     }
 
     [Fact]
