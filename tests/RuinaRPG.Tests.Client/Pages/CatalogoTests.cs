@@ -78,38 +78,18 @@ public class CatalogoTests : MudBunitContext
         null, null, null, null, null, null, null, false, null, null, requisitos, penalidade);
 
     [Fact]
-    public async Task An_item_with_spelled_out_requirements_and_penalty_shows_both_and_one_without_shows_neither()
+    public async Task The_list_omits_the_requirements_and_the_penalty_of_an_item()
     {
-        var http = FakeHttpMessageHandler.CreateClient(request =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(new[]
-                {
-                    Item("a", "Espada Pesada", ["Vigor ≥ 8"], ["Força −2"]),
-                    Item("b", "Adaga", null, null),
-                }),
-            });
+        var item = Item("a", "Espada Pesada", ["Vigor ≥ 8"], ["Força −2"]) with { PenalidadeDeRequisitos = new(Texto: "-10 Reflexo") };
+        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { item }) });
         Services.AddScoped(_ => http);
 
         var cut = Render<Catalogo>();
         await Task.Delay(50);
 
-        var linhas = cut.FindAll("tbody tr");
-        linhas.Should().HaveCount(2);
-        linhas[0].TextContent.Should().Contain("Requisitos: Vigor ≥ 8").And.Contain("Penalidade: Força −2");
-        linhas[1].TextContent.Should().NotContain("Requisitos:").And.NotContain("Penalidade:");
-    }
-
-    [Fact]
-    public async Task The_free_text_penalty_is_shown_apart_as_Outras_penalidades()
-    {
-        var comTexto = Item("a", "Cota", null, ["Força −2"]) with { PenalidadeDeRequisitos = new(Texto: "-10 Reflexo") };
-        var http = FakeHttpMessageHandler.CreateClient(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { comTexto }) });
-        Services.AddScoped(_ => http);
-
-        var cut = Render<Catalogo>();
-        await Task.Delay(50);
-
-        cut.Find("tbody tr").TextContent.Should().Contain("Penalidade: Força −2").And.Contain("Outras penalidades: -10 Reflexo");
+        cut.Find("tbody tr").TextContent.Should().Contain("Espada Pesada")
+            .And.NotContain("Requisitos").And.NotContain("Vigor ≥ 8")
+            .And.NotContain("Penalidade").And.NotContain("Força −2")
+            .And.NotContain("Outras penalidades").And.NotContain("-10 Reflexo");
     }
 }
