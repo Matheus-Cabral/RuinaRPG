@@ -44,8 +44,23 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
             .Add(x => x.Value, "Espada longa"));
 
         cut.Instance.IsCheckedForTests.Should().BeFalse();
-        cut.FindComponents<MudTextField<string>>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria");
+        cut.FindComponents<SubcategoriaField>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria");
         cut.FindComponents<MudSelect<string>>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Free_text_mode_offers_the_existing_subcategorias_of_its_Tipo()
+    {
+        Services.AddScoped(_ => VocabularyClient(new(), new()));
+        Func<string, Task<List<string>>> existentes = _ => Task.FromResult(new List<string>());
+
+        var cut = Render<ItemInicialSubcategoriaField>(p => p
+            .Add(x => x.Tipo, "Arma")
+            .Add(x => x.Existentes, existentes));
+
+        var campo = cut.FindComponent<SubcategoriaField>().Instance;
+        campo.Tipo.Should().Be("Arma");
+        campo.Existentes.Should().BeSameAs(existentes);
     }
 
     [Fact]
@@ -137,7 +152,7 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
         emittedCount.Should().Be(0, "unchecking is pure UI state and must not emit a new Value");
         cut.Instance.IsCheckedForTests.Should().BeFalse();
         // The free-text field must still show the current (composed) Value for continued editing.
-        cut.FindComponents<MudTextField<string>>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == composed);
+        cut.FindComponents<SubcategoriaField>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == composed);
     }
 
     [Fact]
@@ -179,7 +194,7 @@ public class ItemInicialSubcategoriaFieldTests : MudBunitContext
 
         emitted.Should().Be("not called", "free text is not a constructor string for any Tipo and must survive a Tipo change untouched");
         cut.Instance.IsCheckedForTests.Should().BeFalse();
-        cut.FindComponents<MudTextField<string>>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == "Texto livre qualquer");
+        cut.FindComponents<SubcategoriaField>().Should().ContainSingle(c => c.Instance.Label == "Subcategoria" && c.Instance.Value == "Texto livre qualquer");
     }
 
     [Fact]

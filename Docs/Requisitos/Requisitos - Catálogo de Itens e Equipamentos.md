@@ -45,7 +45,7 @@
 **Descrição**: Um Item Geral tem os campos:
 
 - **Nome**: text input.
-- **Subcategoria**: dropdown extensível — o GM pode escolher uma subcategoria existente ou cadastrar uma nova. As subcategorias observadas no levantamento atual são: Equipamentos de Aventura, Equipamentos Animais, Munição, Alimentação, Serviços, Veículos e Materiais de Estudo & Rituais.
+- **Subcategoria**: dropdown extensível — o GM pode escolher uma subcategoria existente ou cadastrar uma nova. As existentes são as já em uso em itens do mesmo Tipo no catálogo do GM; cadastrar uma nova é digitá-la — ela passa a ser sugerida depois que o item é salvo, sem cadastro à parte. Na base de itens fixos da Auditoria de Equipagem o campo se comporta igual, sugerindo as subcategorias já em uso na própria base. As subcategorias observadas no levantamento atual são: Equipamentos de Aventura, Equipamentos Animais, Munição, Alimentação, Serviços, Veículos e Materiais de Estudo & Rituais.
 - **Descrição**: texto livre, descrevendo o efeito ou uso do item (ex: "+10 em testes de Arrombamento").
 - **Peso**: valor numérico decimal (float) ≥ 0 — itens podem pesar frações, ex. `0,1`. Usado no cálculo de Sobrepeso (ver "[[Requisitos - Ficha de Personagem]]", Sub-Atributos).
 - **Capacidade Extra**: opcional, valor numérico decimal ≥ 0. Quando preenchido, o item é tratado como um recipiente (ex: mochila) — ao entrar no Inventário de uma ficha (ver "[[Requisitos - Ficha de Personagem]]" 5.a), seu próprio Peso deixa de contar no Peso Atual do personagem, e `Capacidade Extra × Qtd` passa a somar ao Peso Máximo. Quando NULL ou 0, o item se comporta normalmente (sem esse efeito).

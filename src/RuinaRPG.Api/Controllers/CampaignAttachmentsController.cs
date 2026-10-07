@@ -209,30 +209,30 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         if (a.ItemId is not null)
         {
             var item = await db.Items.FindAsync(a.ItemId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "Item", item!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(item.ImageId));
+            return new CampaignAttachmentResponse(a.Id.ToString(), "Item", item!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(item.ImageId), a.ItemId.Value.ToString());
         }
         if (a.SpellAbilityBankEntryId is not null)
         {
             var entry = await db.SpellAbilityBankEntries.FindAsync(a.SpellAbilityBankEntryId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, a.IsPublic, null, null, null, null, null);
+            return new CampaignAttachmentResponse(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, a.IsPublic, null, null, null, null, null, a.SpellAbilityBankEntryId.Value.ToString());
         }
         if (a.RuneBankEntryId is not null)
         {
             var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(rune.ImageId));
+            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(rune.ImageId), a.RuneBankEntryId.Value.ToString());
         }
         if (a.ImageId is not null)
         {
             var image = await db.Images.FindAsync(a.ImageId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "Image", image!.Path, a.IsPublic, null, null, null, null, $"/images/{image.Path}");
+            return new CampaignAttachmentResponse(a.Id.ToString(), "Image", image!.Path, a.IsPublic, null, null, null, null, $"/images/{image.Path}", a.ImageId.Value.ToString());
         }
         if (a.NpcSheetId is not null)
         {
             var npc = await db.NpcSheets.FindAsync(a.NpcSheetId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "NpcSheet", npc!.Nome ?? "", null, a.NpcNomePublico, a.NpcImagemPublica, null, null, await ImageUrlAsync(npc.ImageId));
+            return new CampaignAttachmentResponse(a.Id.ToString(), "NpcSheet", npc!.Nome ?? "", null, a.NpcNomePublico, a.NpcImagemPublica, null, null, await ImageUrlAsync(npc.ImageId), a.NpcSheetId.Value.ToString());
         }
         var creature = await db.CreatureSheets.FindAsync(a.CreatureSheetId!.Value);
-        return new CampaignAttachmentResponse(a.Id.ToString(), "CreatureSheet", creature!.Nome ?? "", null, null, null, a.CreatureNomePublico, a.CreatureImagemPublica, await ImageUrlAsync(creature.ImageId));
+        return new CampaignAttachmentResponse(a.Id.ToString(), "CreatureSheet", creature!.Nome ?? "", null, null, null, a.CreatureNomePublico, a.CreatureImagemPublica, await ImageUrlAsync(creature.ImageId), a.CreatureSheetId.Value.ToString());
     }
 
     private async Task<string?> ImageUrlAsync(Guid? imageId)

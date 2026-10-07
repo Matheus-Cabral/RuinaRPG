@@ -28,12 +28,15 @@
 }
 else
 {
-    <MudTextField T="string" Value="Value" ValueChanged="OnFreeTextChangedAsync" Label="Subcategoria" />
+    <SubcategoriaField Tipo="@Tipo" Value="@Value" ValueChanged="OnFreeTextChangedAsync" Existentes="Existentes" />
 }
 
 @code {
     [Parameter] public string Tipo { get; set; } = "";
     [Parameter] public string? Value { get; set; }
+
+    /// <summary>Repassado ao campo de texto livre — ver <see cref="SubcategoriaField.Existentes"/>.</summary>
+    [Parameter] public Func<string, Task<List<string>>>? Existentes { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
     private bool _isChecked;

@@ -1,0 +1,41 @@
+@using MudBlazor
+
+@* Requisitos - Catálogo de Itens e Equipamentos R0003/R0004 — a Subcategoria é um "dropdown
+   extensível": lista as subcategorias que já existem para o Tipo e aceita um texto novo. Não há
+   cadastro próprio de subcategorias: uma nova passa a existir quando um item é salvo com ela, então
+   quem hospeda o campo é que diz, via Existentes, de onde vêm as que já existem (o catálogo do GM,
+   a base de itens fixos da Auditoria...).
+
+   CoerceValue="true" é o que faz o texto digitado valer mesmo sem estar na lista; sem ele o
+   MudAutocomplete só aceita uma opção escolhida. *@
+<MudAutocomplete T="string" Value="Value" ValueChanged="ValueChanged" SearchFunc="SearchAsync" Label="@Label"
+                 CoerceValue="true" CoerceText="false" ResetValueOnEmptyText="true" Clearable="true" MaxItems="null" />
+
+@code {
+    [Parameter] public string Tipo { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Subcategoria";
+
+    /// <summary>Carrega as subcategorias já existentes para um Tipo. Null: o campo não sugere nada.</summary>
+    [Parameter] public Func<string, Task<List<string>>>? Existentes { get; set; }
+
+    private List<string>? _existentes;
+    private string? _carregadoParaTipo;
+
+    private async Task<IEnumerable<string>> SearchAsync(string? texto, CancellationToken token)
+    {
+        // Carregadas na primeira busca (e de novo se o Tipo mudar), não a cada tecla: a fonte
+        // costuma ser a listagem inteira de itens do Tipo.
+        if (_existentes is null || _carregadoParaTipo != Tipo)
+        {
+            var carregadas = Existentes is null ? new List<string>() : await Existentes(Tipo);
+            _existentes = carregadas.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().OrderBy(s => s).ToList();
+            _carregadoParaTipo = Tipo;
+        }
+
+        return string.IsNullOrWhiteSpace(texto)
+            ? _existentes
+            : _existentes.Where(s => s.Contains(texto, StringComparison.OrdinalIgnoreCase));
+    }
+}

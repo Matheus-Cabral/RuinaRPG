@@ -62,6 +62,24 @@ public class FixedItemDialogTests : MudBunitContext
         resultado.Data.Should().BeEquivalentTo(criado);
     }
 
+    /// <summary>
+    /// Na Auditoria, a Subcategoria lista as subcategorias já usadas na base de itens fixos (não as
+    /// do catálogo de algum GM), para o Tipo do item.
+    /// </summary>
+    [Fact]
+    public async Task The_subcategoria_field_offers_the_subcategorias_of_the_fixed_item_base_for_that_tipo()
+    {
+        var espada = Item("fi-1", "Espada Longa", "Arma");
+        espada = espada with { Dados = espada.Dados with { Subcategoria = "Espadas" } };
+        RegisterHttp(_ => Json(HttpStatusCode.OK, new List<EquipmentKitFixedItemResponse> { espada, Item("fi-2", "Graveto", "Arma") }));
+
+        var (cut, _) = await AbrirAsync("Arma", "Espada Nova", null);
+        var existentes = await cut.FindComponent<SubcategoriaField>().Instance.Existentes!("Arma");
+
+        existentes.Should().BeEquivalentTo(new[] { "Espadas" });
+        _requests.Should().Contain("GET /api/equipment-kit-fixed-items?tipo=Arma");
+    }
+
     [Fact]
     public async Task An_existing_item_loads_its_data_and_puts_on_Salvar()
     {
