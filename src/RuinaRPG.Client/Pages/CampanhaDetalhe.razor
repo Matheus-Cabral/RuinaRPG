@@ -181,39 +181,28 @@
             </MudItem>
         </MudGrid>
         <Section Title="Anexos existentes">
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var attachment in _attachments)
+            <AnexosAgrupados Anexos="AnexosView" FiltrarPorVisibilidade="true">
+                <Visibilidade Context="anexo">
+                    @{ var attachment = _attachments.First(a => a.Id == anexo.Id); }
+                    @if (attachment.Tipo == "NpcSheet")
                     {
-                        <tr>
-                            <td>
-                                @if (attachment.ImageUrl is not null)
-                                {
-                                    <ClickableImage Src="@attachment.ImageUrl" Width="40" Height="40" Class="mr-2" />
-                                }
-                            </td>
-                            <td>
-                                <TipoChip Tipo="@attachment.Tipo" /> @attachment.Nome
-                                @if (attachment.Tipo == "NpcSheet")
-                                {
-                                    <MudCheckBox T="bool" Value="@(attachment.NpcNomePublico ?? false)" ValueChanged="@(v => ToggleNpcVisibilityAsync(attachment, v, attachment.NpcImagemPublica ?? false))" Label="Nome público" Dense="true" Class="d-inline-flex" />
-                                    <MudCheckBox T="bool" Value="@(attachment.NpcImagemPublica ?? false)" ValueChanged="@(v => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, v))" Label="Imagem pública" Dense="true" Class="d-inline-flex" />
-                                }
-                                else if (attachment.Tipo == "CreatureSheet")
-                                {
-                                    <MudCheckBox T="bool" Value="@(attachment.CreatureNomePublico ?? false)" ValueChanged="@(v => ToggleCreatureVisibilityAsync(attachment, v, attachment.CreatureImagemPublica ?? false))" Label="Nome público" Dense="true" Class="d-inline-flex" />
-                                    <MudCheckBox T="bool" Value="@(attachment.CreatureImagemPublica ?? false)" ValueChanged="@(v => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, v))" Label="Imagem pública" Dense="true" Class="d-inline-flex" />
-                                }
-                                else
-                                {
-                                    <MudCheckBox T="bool" Value="@(attachment.IsPublic ?? false)" ValueChanged="@(v => ToggleVisibilityAsync(attachment, v))" Label="Público" Dense="true" Class="d-inline-flex" />
-                                }
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(attachment.Id))">Remover</MudButton>
-                            </td>
-                        </tr>
+                        <MudCheckBox T="bool" Value="@(attachment.NpcNomePublico ?? false)" ValueChanged="@(v => ToggleNpcVisibilityAsync(attachment, v, attachment.NpcImagemPublica ?? false))" Label="Nome público" Dense="true" />
+                        <MudCheckBox T="bool" Value="@(attachment.NpcImagemPublica ?? false)" ValueChanged="@(v => ToggleNpcVisibilityAsync(attachment, attachment.NpcNomePublico ?? false, v))" Label="Imagem pública" Dense="true" />
                     }
-                </tbody>
-            </MudSimpleTable>
+                    else if (attachment.Tipo == "CreatureSheet")
+                    {
+                        <MudCheckBox T="bool" Value="@(attachment.CreatureNomePublico ?? false)" ValueChanged="@(v => ToggleCreatureVisibilityAsync(attachment, v, attachment.CreatureImagemPublica ?? false))" Label="Nome público" Dense="true" />
+                        <MudCheckBox T="bool" Value="@(attachment.CreatureImagemPublica ?? false)" ValueChanged="@(v => ToggleCreatureVisibilityAsync(attachment, attachment.CreatureNomePublico ?? false, v))" Label="Imagem pública" Dense="true" />
+                    }
+                    else
+                    {
+                        <MudCheckBox T="bool" Value="@(attachment.IsPublic ?? false)" ValueChanged="@(v => ToggleVisibilityAsync(attachment, v))" Label="Público" Dense="true" />
+                    }
+                </Visibilidade>
+                <Acoes Context="anexo">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(anexo.Id))">Remover</MudButton>
+                </Acoes>
+            </AnexosAgrupados>
         </Section>
     </MudTabPanel>
 
@@ -628,6 +617,15 @@
         var body = await response.Content.ReadFromJsonAsync<EncounterResponse>();
         Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{body!.Id}");
     }
+
+    // Campanha R0006: a lista agrupada filtra por visibilidade. Um NPC ou uma Criatura não tem um
+    // "público" único (Campanha R0008) — conta como público quando o Nome ou a Imagem é público.
+    private IReadOnlyList<AnexoView> AnexosView => _attachments.Select(a => new AnexoView(a.Id, a.Tipo, a.Nome, a.ImageUrl, a.Facets, a.Tipo switch
+    {
+        "NpcSheet" => (a.NpcNomePublico ?? false) || (a.NpcImagemPublica ?? false),
+        "CreatureSheet" => (a.CreatureNomePublico ?? false) || (a.CreatureImagemPublica ?? false),
+        _ => a.IsPublic ?? false,
+    })).ToList();
 
     private async Task LoadAttachmentsAsync()
     {

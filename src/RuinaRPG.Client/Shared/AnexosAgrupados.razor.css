@@ -1,0 +1,79 @@
+.anexos-filtros {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* Colunas fixas e iguais em todos os grupos: miniatura | nome | visibilidade | ações. */
+.anexo-linha {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 6px 4px;
+    border-top: 1px solid var(--mud-palette-divider);
+}
+
+.anexo-linha:first-child {
+    border-top: none;
+}
+
+.anexo-miniatura {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.anexo-nome {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-wrap: anywhere;
+}
+
+.anexo-visibilidade,
+.anexo-acoes {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.anexos-galeria {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.anexo-cartao {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.anexo-cartao-rodape {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* No celular a visibilidade e as ações descem para baixo do nome em vez de espremer a linha. */
+@media (max-width: 600px) {
+    .anexo-linha {
+        grid-template-columns: 40px minmax(0, 1fr);
+        row-gap: 4px;
+    }
+
+    .anexo-visibilidade,
+    .anexo-acoes {
+        grid-column: 2;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+}

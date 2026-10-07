@@ -373,6 +373,25 @@ public class CampaignPlayerViewControllerTests : IClassFixture<PostgresFixture>,
         body.AnexosPublicos.Should().NotContain(a => a.Nome == "Runa Privada Rune");
     }
 
+    /// <summary>
+    /// Campanha R0009: o jogador filtra os anexos públicos pelos mesmos critérios do GM, então o
+    /// resumo público leva as mesmas Facets.
+    /// </summary>
+    [Fact]
+    public async Task PlayerView_reports_the_filter_facets_of_public_item_and_rune_attachments()
+    {
+        var setup = await BuildSetupAsync("Facet");
+        var rune = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública Facet");
+        var runeAttachmentId = await AttachAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, rune));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{setup.CampaignId}/attachments/{runeAttachmentId}/visibility", setup.GmToken, true));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/player-view", setup.PlayerToken));
+        var body = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
+
+        body!.AnexosPublicos.Single(a => a.Tipo == "Item").Facets.Should().Be(new AttachmentFacets(ItemTipo: "ItemGeral", Subcategoria: "Equipamentos de Aventura"));
+        body!.AnexosPublicos.Single(a => a.Tipo == "RuneBankEntry").Facets.Should().Be(new AttachmentFacets(Grau: 1, Disciplina: "Adicao"));
+    }
+
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
     {
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,

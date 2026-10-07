@@ -177,6 +177,36 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<PostgresFixtu
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// Ficha de Personagem 5.d: o limite de Negativas é o dobro do de Positivas — no nível 1, 10
+    /// contra 5. As Negativas são aceitas enquanto o total cabe em 10 e rejeitadas quando passaria.
+    /// </summary>
+    [Fact]
+    public async Task AddTrait_accepts_Negativas_up_to_twice_the_positive_budget_and_rejects_past_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGmNeg", "npcaffgmneg@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var candidatas = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Negativa, 8);
+
+        var total = 0;
+        var rejeitadas = 0;
+        foreach (var (id, custo) in candidatas)
+        {
+            var cabe = total + Math.Abs(custo) <= 10;
+            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+                new AddNpcTraitRequest(id, null)));
+            response.StatusCode.Should().Be(cabe ? HttpStatusCode.Created : HttpStatusCode.BadRequest);
+            if (cabe) total += Math.Abs(custo); else rejeitadas++;
+        }
+
+        total.Should().BeGreaterThan(5, "o limite de Negativas passa do de Positivas (5)").And.BeLessThanOrEqualTo(10);
+        rejeitadas.Should().BeGreaterThan(0, "alguma Negativa tem de ter estourado o limite de 10");
+        var lista = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken)))
+            .Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        lista!.PontosDisponiveis.Should().Be(5);
+        lista.PontosDisponiveisNegativas.Should().Be(10);
+    }
+
     [Fact]
     public async Task AddTrait_rejects_a_RequerEspecificacao_trait_added_without_an_Especificacao_and_persists_it_when_provided()
     {

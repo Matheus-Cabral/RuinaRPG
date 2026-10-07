@@ -1,0 +1,28 @@
+/* Duas colunas: os sub-atributos soltos à esquerda, Defesa Natural + Cobertura à direita. */
+.subatributos-topo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+    align-items: start;
+}
+
+.subatributos-elementais {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.subatributo-eficiencia,
+.subatributo-dano {
+    display: flex;
+    flex-direction: column;
+}
+
+/* No celular a coluna da Defesa desce para baixo dos demais. */
+@media (max-width: 600px) {
+    .subatributos-topo {
+        grid-template-columns: 1fr;
+        row-gap: 12px;
+    }
+}

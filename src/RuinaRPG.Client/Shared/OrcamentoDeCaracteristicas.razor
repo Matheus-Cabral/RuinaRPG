@@ -1,0 +1,22 @@
+@using MudBlazor
+
+@* Ficha de Personagem 5.d — o gasto de cada lista de Características contra o limite dela. Os dois
+   limites são independentes (o de Negativas é o dobro do de Positivas), então cada linha só fica
+   em vermelho quando a própria lista estoura. Mesma exibição nas fichas de Personagem, NPC e
+   Criatura. *@
+<MudText Color="@(TotalPositivas > LimitePositivas ? Color.Error : Color.Default)" Class="mt-3 orcamento-positivas">
+    Positivas: @TotalPositivas / @LimitePositivas
+</MudText>
+<MudText Color="@(Math.Abs(TotalNegativas) > LimiteNegativas ? Color.Error : Color.Default)" Class="orcamento-negativas">
+    Negativas: @Math.Abs(TotalNegativas) / @LimiteNegativas
+</MudText>
+
+@code {
+    [Parameter] public int TotalPositivas { get; set; }
+
+    /// <summary>A soma dos Custos das Negativas como vem da API — negativa.</summary>
+    [Parameter] public int TotalNegativas { get; set; }
+
+    [Parameter] public int LimitePositivas { get; set; }
+    [Parameter] public int LimiteNegativas { get; set; }
+}

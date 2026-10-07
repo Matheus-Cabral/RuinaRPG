@@ -81,17 +81,17 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         foreach (var a in attachments.Where(a => a.IsPublic && a.ItemId is not null))
         {
             var item = await db.Items.FindAsync(a.ItemId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Item", item!.Nome, item.ImageId is not null ? $"/images/{(await db.Images.FindAsync(item.ImageId.Value))!.Path}" : null));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "Item", item!.Nome, item.ImageId is not null ? $"/images/{(await db.Images.FindAsync(item.ImageId.Value))!.Path}" : null, AttachmentFacetsFactory.De(item)));
         }
         foreach (var a in attachments.Where(a => a.IsPublic && a.SpellAbilityBankEntryId is not null))
         {
             var entry = await db.SpellAbilityBankEntries.FindAsync(a.SpellAbilityBankEntryId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, null));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, null, AttachmentFacetsFactory.De(entry)));
         }
         foreach (var a in attachments.Where(a => a.IsPublic && a.RuneBankEntryId is not null))
         {
             var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId!.Value);
-            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "RuneBankEntry", rune!.Nome, await ResolveImageUrlAsync(rune.ImageId)));
+            anexosPublicos.Add(new PublicAttachmentSummary(a.Id.ToString(), "RuneBankEntry", rune!.Nome, await ResolveImageUrlAsync(rune.ImageId), AttachmentFacetsFactory.De(rune)));
         }
         foreach (var a in attachments.Where(a => a.IsPublic && a.ImageId is not null))
         {

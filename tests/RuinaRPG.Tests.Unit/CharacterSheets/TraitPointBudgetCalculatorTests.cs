@@ -34,4 +34,21 @@ public class TraitPointBudgetCalculatorTests
     {
         TraitPointBudgetCalculator.Compute(nivel: 8, Niveis).Should().Be(7);
     }
+
+    // Ficha de Personagem 5.d: o limite de Negativas é o dobro do de Positivas.
+    [Theory]
+    [InlineData(1, 10)]
+    [InlineData(4, 12)]
+    [InlineData(8, 14)]
+    public void ComputeNegativas_is_twice_the_positive_budget_at_every_level(int nivel, int esperado)
+    {
+        TraitPointBudgetCalculator.ComputeNegativas(nivel, Niveis).Should().Be(esperado);
+    }
+
+    [Fact]
+    public void Para_picks_the_budget_of_the_polaridade()
+    {
+        TraitPointBudgetCalculator.Para(RuinaRPG.Domain.Enums.Polaridade.Positiva, nivel: 1, Niveis).Should().Be(5);
+        TraitPointBudgetCalculator.Para(RuinaRPG.Domain.Enums.Polaridade.Negativa, nivel: 1, Niveis).Should().Be(10);
+    }
 }

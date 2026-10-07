@@ -1,0 +1,208 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Campaigns
+
+@* Campanha R0006/R0009 — a lista de anexos da campanha, igual para o GM (aba Anexos) e para o
+   jogador (Anexos Públicos): um painel recolhível por tipo, numa ordem fixa, com os anexos em ordem
+   alfabética (AnexosOrganizador). Imagens são uma galeria; os demais grupos são linhas de colunas
+   fixas — miniatura, nome, visibilidade, ações — para que tudo fique alinhado mesmo quando um anexo
+   não tem imagem. Cada grupo filtra só a si mesmo, pelo nome e pelos critérios do seu tipo.
+
+   Quem hospeda diz o que vai nas colunas Visibilidade e Ações de cada anexo (os toggles e o Remover
+   do GM; nada, no jogador), e se a tela distingue público de privado (FiltrarPorVisibilidade). *@
+@if (Anexos.Count == 0)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Nenhum anexo nesta campanha.</MudText>
+}
+else
+{
+    <MudExpansionPanels MultiExpansion="true" Elevation="0" Outlined="true">
+        @foreach (var grupo in AnexosOrganizador.Agrupar(Anexos))
+        {
+            var filtro = FiltroDe(grupo.Tipo);
+            var visiveis = AnexosOrganizador.Filtrar(grupo.Anexos, filtro);
+            var itemTipos = AnexosOrganizador.Opcoes(grupo.Anexos, f => f.ItemTipo);
+            var subcategorias = AnexosOrganizador.Opcoes(grupo.Anexos, f => f.Subcategoria);
+            var entradaTipos = AnexosOrganizador.Opcoes(grupo.Anexos, f => f.EntradaTipo);
+            var graus = AnexosOrganizador.Opcoes(grupo.Anexos, f => f.Grau);
+            var disciplinas = AnexosOrganizador.Opcoes(grupo.Anexos, f => f.Disciplina);
+            var ehGaleria = grupo.Tipo == AnexosOrganizador.TipoImagem;
+
+            <MudExpansionPanel @key="grupo.Tipo" Text="@Titulo(grupo, filtro, visiveis.Count)" Expanded="true">
+                @* A galeria do jogador não tem nenhum filtro (imagem não tem nome nem facetas). *@
+                @if (!ehGaleria || FiltrarPorVisibilidade)
+                {
+                <div class="anexos-filtros">
+                    @if (!ehGaleria)
+                    {
+                        <MudTextField T="string" Value="filtro.Nome" ValueChanged="@(v => filtro.Nome = v)" Label="Buscar por nome"
+                                      Immediate="true" Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                    }
+                    @if (itemTipos.Count > 0)
+                    {
+                        <MudSelect T="string" Value="filtro.ItemTipo" ValueChanged="@(v => filtro.ItemTipo = v)" Label="Tipo de item"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            @foreach (var opcao in itemTipos)
+                            {
+                                <MudSelectItem T="string" Value="@opcao">@RotuloDeItemTipo(opcao)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    @if (subcategorias.Count > 0)
+                    {
+                        <MudSelect T="string" Value="filtro.Subcategoria" ValueChanged="@(v => filtro.Subcategoria = v)" Label="Subcategoria"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            @foreach (var opcao in subcategorias)
+                            {
+                                <MudSelectItem T="string" Value="@opcao">@opcao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    @if (entradaTipos.Count > 0)
+                    {
+                        <MudSelect T="string" Value="filtro.EntradaTipo" ValueChanged="@(v => filtro.EntradaTipo = v)" Label="Tipo"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            @foreach (var opcao in entradaTipos)
+                            {
+                                <MudSelectItem T="string" Value="@opcao">@opcao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    @if (graus.Count > 0)
+                    {
+                        <MudSelect T="int?" Value="filtro.Grau" ValueChanged="@(v => filtro.Grau = v)" Label="Grau"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            @foreach (var opcao in graus)
+                            {
+                                <MudSelectItem T="int?" Value="@opcao">Grau @opcao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    @if (disciplinas.Count > 0)
+                    {
+                        <MudSelect T="string" Value="filtro.Disciplina" ValueChanged="@(v => filtro.Disciplina = v)" Label="Disciplina"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            @foreach (var opcao in disciplinas)
+                            {
+                                <MudSelectItem T="string" Value="@opcao">@RuneDisciplinaRotulo.De(opcao)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    @if (FiltrarPorVisibilidade)
+                    {
+                        <MudSelect T="bool?" Value="filtro.Publico" ValueChanged="@(v => filtro.Publico = v)" Label="Visibilidade"
+                                   Clearable="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+                            <MudSelectItem T="bool?" Value="@(true)">Públicos</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="@(false)">Privados</MudSelectItem>
+                        </MudSelect>
+                    }
+                </div>
+                }
+
+                @if (visiveis.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Nenhum anexo com esses filtros.</MudText>
+                }
+                else if (ehGaleria)
+                {
+                    <div class="anexos-galeria">
+                        @foreach (var anexo in visiveis)
+                        {
+                            <div class="anexo-cartao" @key="anexo.Id">
+                                @if (anexo.ImageUrl is not null)
+                                {
+                                    <ClickableImage Src="@anexo.ImageUrl" Alt="Imagem anexada" Width="160" Height="160" />
+                                }
+                                @if (Visibilidade is not null || Acoes is not null)
+                                {
+                                    <div class="anexo-cartao-rodape">
+                                        @Visibilidade?.Invoke(anexo)
+                                        @Acoes?.Invoke(anexo)
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="anexos-linhas">
+                        @foreach (var anexo in visiveis)
+                        {
+                            var detalhe = Detalhe(anexo);
+                            <div class="anexo-linha" @key="anexo.Id">
+                                <div class="anexo-miniatura">
+                                    @if (anexo.ImageUrl is not null)
+                                    {
+                                        <ClickableImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="40" Height="40" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@IconeDe(grupo.Tipo)" Color="Color.Default" />
+                                    }
+                                </div>
+                                <div class="anexo-nome">
+                                    <MudText Typo="Typo.body1">@(anexo.Nome ?? "(sem nome público)")</MudText>
+                                    @if (detalhe is not null)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="anexo-detalhe">@detalhe</MudText>
+                                    }
+                                </div>
+                                <div class="anexo-visibilidade">@Visibilidade?.Invoke(anexo)</div>
+                                <div class="anexo-acoes">@Acoes?.Invoke(anexo)</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AnexoView> Anexos { get; set; } = [];
+
+    /// <summary>True na tela do GM, que vê públicos e privados; a do jogador só recebe os públicos.</summary>
+    [Parameter] public bool FiltrarPorVisibilidade { get; set; }
+
+    [Parameter] public RenderFragment<AnexoView>? Visibilidade { get; set; }
+    [Parameter] public RenderFragment<AnexoView>? Acoes { get; set; }
+
+    // Um filtro por grupo, que sobrevive a recarregar a lista (anexar, remover, mudar visibilidade).
+    private readonly Dictionary<string, AnexoFiltro> _filtros = new();
+
+    private AnexoFiltro FiltroDe(string tipo) =>
+        _filtros.TryGetValue(tipo, out var filtro) ? filtro : _filtros[tipo] = new AnexoFiltro();
+
+    private static string Titulo(GrupoDeAnexos grupo, AnexoFiltro filtro, int visiveis) =>
+        filtro.Ativo ? $"{grupo.Titulo} ({visiveis} de {grupo.Anexos.Count})" : $"{grupo.Titulo} ({grupo.Anexos.Count})";
+
+    private static string RotuloDeItemTipo(string itemTipo) => itemTipo == "ItemGeral" ? "Item Geral" : itemTipo;
+
+    private static string? Detalhe(AnexoView anexo)
+    {
+        if (anexo.Facets is not { } f)
+            return null;
+
+        var partes = new[]
+        {
+            f.ItemTipo is null ? null : RotuloDeItemTipo(f.ItemTipo),
+            f.Subcategoria,
+            f.EntradaTipo,
+            f.Grau is null ? null : $"Grau {f.Grau}",
+            f.Disciplina is null ? null : RuneDisciplinaRotulo.De(f.Disciplina),
+        }.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+
+        return partes.Count == 0 ? null : string.Join(" · ", partes);
+    }
+
+    private static string IconeDe(string tipo) => tipo switch
+    {
+        "Item" => Icons.Material.Filled.Backpack,
+        "SpellAbilityBankEntry" => Icons.Material.Filled.AutoAwesome,
+        "RuneBankEntry" => Icons.Material.Filled.Hexagon,
+        "NpcSheet" => Icons.Material.Filled.Person,
+        "CreatureSheet" => Icons.Material.Filled.Pets,
+        _ => Icons.Material.Filled.AttachFile,
+    };
+}

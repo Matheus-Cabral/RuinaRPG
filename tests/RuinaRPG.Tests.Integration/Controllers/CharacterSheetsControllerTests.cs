@@ -1306,8 +1306,8 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.EficienciaElemental.Should().Be(7);
-        body.DanoElemental.Should().Be(7);
+        body!.EficienciaElemental.Should().Be(3); // 7 no elemento: 1 a cada 2 pontos
+        body.DanoElemental.Should().Be(2); // 1 a cada 3 pontos
     }
 
     [Fact]

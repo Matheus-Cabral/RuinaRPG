@@ -130,22 +130,9 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Anexos Públicos">
-        <MudSimpleTable Dense="true" Hover="true">
-            <tbody>
-                @foreach (var anexo in _view.AnexosPublicos)
-                {
-                    <tr>
-                        <td>
-                            <TipoChip Tipo="@anexo.Tipo" /> @(anexo.Nome ?? "(sem nome público)")
-                            @if (anexo.ImageUrl is not null)
-                            {
-                                <ClickableImage Src="@anexo.ImageUrl" Alt="@anexo.Nome" Width="120" Class="ml-2" />
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        @* Campanha R0009: mesma organização da aba Anexos do GM, sem filtro de visibilidade (tudo o
+           que chega aqui é público) e sem controles de edição. *@
+        <AnexosAgrupados Anexos="@(_view.AnexosPublicos.Select(a => new AnexoView(a.Id, a.Tipo, a.Nome, a.ImageUrl, a.Facets, null)).ToList())" />
     </MudTabPanel>
 </MudTabs>
 

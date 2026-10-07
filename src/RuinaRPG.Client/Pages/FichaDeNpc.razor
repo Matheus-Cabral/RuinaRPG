@@ -140,7 +140,6 @@
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <LinhagemVarianteFields VariantesLiberadas="_variantesLiberadas" @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadeSelect.Afinidades" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
@@ -183,15 +182,8 @@
                 <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
             </EditForm>
-            @{
-                var pontosDisponiveis = _traits?.PontosDisponiveis ?? 0;
-            }
-            <MudText Color="@((_traits?.TotalPositivas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)" Class="mt-3">
-                Positivas: @(_traits?.TotalPositivas ?? 0) / @pontosDisponiveis
-            </MudText>
-            <MudText Color="@(Math.Abs(_traits?.TotalNegativas ?? 0) > pontosDisponiveis ? Color.Error : Color.Default)">
-                Negativas: @Math.Abs(_traits?.TotalNegativas ?? 0) / @pontosDisponiveis
-            </MudText>
+            <OrcamentoDeCaracteristicas TotalPositivas="@(_traits?.TotalPositivas ?? 0)" TotalNegativas="@(_traits?.TotalNegativas ?? 0)"
+                                        LimitePositivas="@(_traits?.PontosDisponiveis ?? 0)" LimiteNegativas="@(_traits?.PontosDisponiveisNegativas ?? 0)" />
             <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
@@ -353,17 +345,8 @@
 
         @if (_subAttributes is not null)
         {
-            <Section Title="Sub-Atributos">
-                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
-                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
-                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
-                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
-                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
-                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
-                <MudText>Eficiência Elemental: @_subAttributes.EficienciaElemental</MudText>
-                <MudText>Dano Elemental: @_subAttributes.DanoElemental</MudText>
-                <CoberturaRating Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" />
-            </Section>
+            <SubAtributosSection SubAtributos="_subAttributes" Cobertura="@_form.Cobertura" CoberturaChanged="@(v => UpdateCoberturaAsync(v))"
+                                 ComAfinidade="true" Afinidade="@_form.Afinidade" AfinidadeChanged="@(v => UpdateAfinidadeAsync(v))" />
         }
 
         @if (_modificadorDeDano is not null)
@@ -1164,6 +1147,13 @@
         {
             _errorMessage = ex.Message;
         }
+    }
+
+    private async Task UpdateAfinidadeAsync(string? value)
+    {
+        _form.Afinidade = value;
+        await SaveIgnoringResultAsync();
+        await LoadTabs2And3Async(); // A Afinidade define a Eficiência e o Dano Elemental (2.b), carregados aqui.
     }
 
     private async Task UpdateCoberturaAsync(string? value)

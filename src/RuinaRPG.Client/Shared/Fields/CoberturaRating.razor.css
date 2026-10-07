@@ -1,0 +1,23 @@
+.cobertura-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.cobertura-rating-escudos {
+    display: flex;
+    align-items: center;
+    /* Os botões de ícone têm um respiro interno; puxa o primeiro escudo para alinhar com o texto. */
+    margin-left: -12px;
+}
+
+/* --rr-accent, e não a cor primária: o dourado da primária tem pouco contraste sobre o fundo claro.
+   O accent é legível nos dois temas (marrom escuro no claro, quase branco no escuro). Sem itálico:
+   a Cormorant Garamond só é carregada no estilo normal, e o itálico sintetizado fica fino demais. */
+.cobertura-rating-estado {
+    font-family: var(--rr-font-heading);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    color: var(--rr-accent);
+}

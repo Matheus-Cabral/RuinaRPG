@@ -250,6 +250,103 @@ public class CampanhaDetalheTests : MudBunitContext
         results.Select(o => o.Id).Should().Equal("a1", "a2");
     }
 
+    /// <summary>
+    /// Renders the Anexos tab of a campaign whose attachments are the given ones, recording every
+    /// non-GET request the page makes.
+    /// </summary>
+    private async Task<(IRenderedComponent<CampanhaDetalhe> Cut, List<string> Escritas)> RenderAnexosTabAsync(params CampaignAttachmentResponse[] anexos)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        var escritas = new List<string>();
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get)
+            {
+                escritas.Add($"{request.Method} {path}");
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) })
+                };
+            if (path.EndsWith("/attachments"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(anexos) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        }));
+
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+        await Task.Delay(100);
+        GoToAnexosTab(cut);
+        await Task.Delay(50);
+        return (cut, escritas);
+    }
+
+    /// <summary>
+    /// Campanha R0006: a aba Anexos mostra os anexos agrupados por tipo e filtráveis. Um NPC ou uma
+    /// Criatura conta como "público" no filtro de visibilidade quando o Nome ou a Imagem é público.
+    /// </summary>
+    [Fact]
+    public async Task Anexos_tab_hands_the_attachments_to_the_grouped_list_with_their_facets_and_visibility()
+    {
+        var facets = new AttachmentFacets(ItemTipo: "Arma", Subcategoria: "Espadas");
+        var (cut, _) = await RenderAnexosTabAsync(
+            new CampaignAttachmentResponse("a1", "Item", "Espada", true, null, null, null, null, "/images/e.png", "i1", facets),
+            new CampaignAttachmentResponse("a2", "NpcSheet", "Ferreiro", null, false, true, null, null, null, "n1"),
+            new CampaignAttachmentResponse("a3", "NpcSheet", "Espião", null, false, false, null, null, null, "n2"),
+            new CampaignAttachmentResponse("a4", "CreatureSheet", "Lobo", null, null, null, true, false, null, "c1"));
+
+        var lista = cut.FindComponent<AnexosAgrupados>().Instance;
+
+        lista.FiltrarPorVisibilidade.Should().BeTrue();
+        lista.Anexos.Should().BeEquivalentTo(new[]
+        {
+            new AnexoView("a1", "Item", "Espada", "/images/e.png", facets, true),
+            new AnexoView("a2", "NpcSheet", "Ferreiro", null, null, true),
+            new AnexoView("a3", "NpcSheet", "Espião", null, null, false),
+            new AnexoView("a4", "CreatureSheet", "Lobo", null, null, true),
+        });
+    }
+
+    [Fact]
+    public async Task Anexos_tab_keeps_each_kind_of_visibility_toggle_in_the_row_of_its_attachment()
+    {
+        var (cut, escritas) = await RenderAnexosTabAsync(
+            new CampaignAttachmentResponse("a1", "Item", "Espada", false, null, null, null, null, null, "i1"),
+            new CampaignAttachmentResponse("a2", "NpcSheet", "Ferreiro", null, false, false, null, null, null, "n1"),
+            new CampaignAttachmentResponse("a4", "CreatureSheet", "Lobo", null, null, null, false, false, null, "c1"));
+
+        var caixas = cut.FindComponents<MudBlazor.MudCheckBox<bool>>();
+        caixas.Select(c => c.Instance.Label).Should().Equal("Público", "Nome público", "Imagem pública", "Nome público", "Imagem pública");
+
+        await cut.InvokeAsync(() => caixas[0].Instance.ValueChanged.InvokeAsync(true));
+        await cut.InvokeAsync(() => caixas[2].Instance.ValueChanged.InvokeAsync(true));
+        await cut.InvokeAsync(() => caixas[3].Instance.ValueChanged.InvokeAsync(true));
+
+        escritas.Should().Equal(
+            $"PUT /api/campaigns/{CampaignId}/attachments/a1/visibility",
+            $"PUT /api/campaigns/{CampaignId}/attachments/a2/npc-visibility",
+            $"PUT /api/campaigns/{CampaignId}/attachments/a4/creature-visibility");
+    }
+
+    [Fact]
+    public async Task Anexos_tab_removes_the_attachment_of_the_row_whose_Remover_is_clicked()
+    {
+        var (cut, escritas) = await RenderAnexosTabAsync(
+            new CampaignAttachmentResponse("a1", "Item", "Espada", false, null, null, null, null, null, "i1"),
+            new CampaignAttachmentResponse("a2", "Item", "Corda", false, null, null, null, null, null, "i2"));
+
+        // Em ordem alfabética: Corda (a2), depois Espada (a1).
+        var remover = cut.FindAll(".anexo-acoes button").First();
+        await cut.InvokeAsync(() => remover.Click());
+
+        escritas.Should().Equal($"DELETE /api/campaigns/{CampaignId}/attachments/a2");
+    }
+
     [Fact]
     public async Task Clearing_Nome_and_blurring_does_not_call_PUT()
     {

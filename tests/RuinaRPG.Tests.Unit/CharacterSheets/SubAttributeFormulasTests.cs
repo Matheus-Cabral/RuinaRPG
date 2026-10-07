@@ -72,13 +72,20 @@ public class SubAttributeFormulasTests
         SubAttributeFormulas.ReducaoMagica(artefato: 1, armaduraMagica: 4).Should().Be(5);
     }
 
-    [Fact]
-    public void EficienciaElemental_and_DanoElemental_pass_the_value_through_1_to_1()
+    // 2.b: cada 2 pontos no elemento da Afinidade valem 1 de Eficiência Elemental; cada 3 valem 1 de
+    // Dano Elemental. O que sobra não conta (arredonda para baixo).
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(1, 0, 0)]
+    [InlineData(2, 1, 0)]
+    [InlineData(3, 1, 1)]
+    [InlineData(5, 2, 1)]
+    [InlineData(6, 3, 2)]
+    [InlineData(7, 3, 2)]
+    public void EficienciaElemental_is_one_per_two_points_and_DanoElemental_one_per_three(int valor, int eficiencia, int dano)
     {
-        // 1:1 por ora — cada um é sua própria função porque a proporção pode divergir no futuro
-        // (ver docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md).
-        SubAttributeFormulas.EficienciaElemental(valorDaAfinidadeCorrespondente: 5).Should().Be(5);
-        SubAttributeFormulas.DanoElemental(valorDaAfinidadeCorrespondente: 5).Should().Be(5);
+        SubAttributeFormulas.EficienciaElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(eficiencia);
+        SubAttributeFormulas.DanoElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(dano);
     }
 
     [Fact]
