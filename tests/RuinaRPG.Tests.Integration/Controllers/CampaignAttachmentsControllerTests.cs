@@ -715,4 +715,71 @@ public class CampaignAttachmentsControllerTests : IClassFixture<PostgresFixture>
             ("RuneBankEntry", runeId),
         });
     }
+
+    /// <summary>
+    /// Campanha R0006: a lista de anexos é filtrável dentro de cada grupo, e os filtros próprios de
+    /// cada tipo (tipo de item e subcategoria; tipo e grau; grau e disciplina) vêm nas Facets.
+    /// </summary>
+    [Fact]
+    public async Task List_reports_the_filter_facets_of_item_bank_entry_and_rune_attachments()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttFacetGm", "attfacet@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Filtros");
+        var itemId = await CreateItemAsync(gmToken, "Corda");
+        var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
+        var runeId = await CreateRuneEntryAsync(gmToken, "Runa do Fogo");
+        foreach (var request in new[]
+        {
+            new AttachToCampaignRequest(itemId, null, null, null, null),
+            new AttachToCampaignRequest(null, null, null, bankEntryId, null),
+            new AttachToCampaignRequest(null, null, null, null, null, runeId),
+        })
+            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+
+        list!.Single(a => a.Tipo == "Item").Facets.Should().Be(new AttachmentFacets(ItemTipo: "ItemGeral", Subcategoria: "Equipamentos de Aventura"));
+        list!.Single(a => a.Tipo == "SpellAbilityBankEntry").Facets.Should().Be(new AttachmentFacets(EntradaTipo: "Magia", Grau: 1));
+        list.Single(a => a.Tipo == "RuneBankEntry").Facets.Should().Be(new AttachmentFacets(Grau: 1, Disciplina: "Adicao"));
+    }
+
+    [Fact]
+    public async Task A_passiva_attachment_has_no_Grau_facet()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttFacetGm2", "attfacet2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Passiva");
+        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+            new CreateSpellAbilityEntryRequest("Pele de Pedra", "Passiva", 0, "Descrição.", [], Categoria: "Livre")));
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var passivaId = (await created.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+            new AttachToCampaignRequest(null, null, null, passivaId, null)));
+        var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
+
+        body!.Facets.Should().Be(new AttachmentFacets(EntradaTipo: "Passiva"));
+    }
+
+    [Fact]
+    public async Task Image_npc_and_creature_attachments_have_no_facets()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("AttFacetGm3", "attfacet3@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha sem Filtros");
+        var imageId = await UploadImageAsync(gmToken);
+        var npcId = await CreateNpcSheetAsync(gmToken);
+        var creatureId = await CreateCreatureSheetAsync(gmToken);
+        foreach (var request in new[]
+        {
+            new AttachToCampaignRequest(null, npcId, null, null, null),
+            new AttachToCampaignRequest(null, null, creatureId, null, null),
+            new AttachToCampaignRequest(null, null, null, null, imageId),
+        })
+            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
+
+        list.Should().HaveCount(3).And.OnlyContain(a => a.Facets == null);
+    }
 }

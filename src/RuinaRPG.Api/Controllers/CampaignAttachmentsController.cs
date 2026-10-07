@@ -209,17 +209,17 @@ public class CampaignAttachmentsController(RuinaRpgDbContext db) : ControllerBas
         if (a.ItemId is not null)
         {
             var item = await db.Items.FindAsync(a.ItemId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "Item", item!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(item.ImageId), a.ItemId.Value.ToString());
+            return new CampaignAttachmentResponse(a.Id.ToString(), "Item", item!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(item.ImageId), a.ItemId.Value.ToString(), AttachmentFacetsFactory.De(item));
         }
         if (a.SpellAbilityBankEntryId is not null)
         {
             var entry = await db.SpellAbilityBankEntries.FindAsync(a.SpellAbilityBankEntryId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, a.IsPublic, null, null, null, null, null, a.SpellAbilityBankEntryId.Value.ToString());
+            return new CampaignAttachmentResponse(a.Id.ToString(), "SpellAbilityBankEntry", entry!.Nome, a.IsPublic, null, null, null, null, null, a.SpellAbilityBankEntryId.Value.ToString(), AttachmentFacetsFactory.De(entry));
         }
         if (a.RuneBankEntryId is not null)
         {
             var rune = await db.RuneBankEntries.FindAsync(a.RuneBankEntryId.Value);
-            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(rune.ImageId), a.RuneBankEntryId.Value.ToString());
+            return new CampaignAttachmentResponse(a.Id.ToString(), "RuneBankEntry", rune!.Nome, a.IsPublic, null, null, null, null, await ImageUrlAsync(rune.ImageId), a.RuneBankEntryId.Value.ToString(), AttachmentFacetsFactory.De(rune));
         }
         if (a.ImageId is not null)
         {
