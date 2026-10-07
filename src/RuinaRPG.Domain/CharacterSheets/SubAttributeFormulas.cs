@@ -22,11 +22,14 @@ public static class SubAttributeFormulas
 
     public static int ReducaoMagica(int artefato, int armaduraMagica) => artefato + armaduraMagica;
 
-    // 1:1 por ora — cada uma é sua própria função porque a proporção pode divergir no futuro
-    // (ver docs/superpowers/specs/2026-09-15-automatizar-afinidades-design.md).
-    public static int EficienciaElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente;
+    public const int PontosPorEficienciaElemental = 2;
+    public const int PontosPorDanoElemental = 3;
 
-    public static int DanoElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente;
+    // 2.b: cada 2 pontos no elemento da Afinidade valem 1 de Eficiência Elemental, e cada 3 valem 1
+    // de Dano Elemental — o que sobra não conta (a divisão inteira arredonda para baixo).
+    public static int EficienciaElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente / PontosPorEficienciaElemental;
+
+    public static int DanoElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente / PontosPorDanoElemental;
 
     /// <summary>
     /// Acha, entre as linhas de Afinidade (2.c), o Valor que bate com a Afinidade escolhida em

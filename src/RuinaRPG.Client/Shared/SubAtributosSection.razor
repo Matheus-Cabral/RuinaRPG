@@ -1,0 +1,68 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.CharacterSheets
+@using RuinaRPG.Domain.CharacterSheets
+
+@* Ficha de Personagem 2.b — a seção Sub-Atributos, a mesma nas fichas de Personagem, NPC e
+   Criatura. O que é relacionado fica junto, cada grupo no seu bloco (ainda dentro de
+   Sub-Atributos): Defesa Natural com a Cobertura que entra na sua conta, e a Afinidade com a
+   Eficiência Elemental e o Dano Elemental que saem dela. A Criatura não tem esses dois valores
+   elementais (ComAfinidade = false), então não tem o segundo bloco. *@
+<Section Title="Sub-Atributos">
+    <div class="subatributos-gerais">
+        <MudText Class="subatributo">Iniciativa: @SubAtributos.Iniciativa</MudText>
+        <MudText Class="subatributo">Movimentação: @SubAtributos.Movimentacao</MudText>
+        <MudText Class="subatributo">Esquiva Natural: @SubAtributos.EsquivaNatural</MudText>
+        <MudText Class="subatributo">Redução Física: @SubAtributos.ReducaoFisica</MudText>
+        <MudText Class="subatributo">Redução Mágica: @SubAtributos.ReducaoMagica</MudText>
+    </div>
+
+    <div class="subatributos-blocos">
+        <MudPaper Outlined="true" Elevation="0" Class="pa-3 subatributos-bloco subatributos-bloco-defesa">
+            <MudText Typo="Typo.subtitle2" Class="subatributos-bloco-titulo">Defesa</MudText>
+            <MudText Class="subatributo">Defesa Natural: @SubAtributos.DefesaNatural</MudText>
+            <CoberturaRating Value="@Cobertura" ValueChanged="CoberturaChanged" />
+        </MudPaper>
+
+        @if (ComAfinidade)
+        {
+            <MudPaper Outlined="true" Elevation="0" Class="pa-3 subatributos-bloco subatributos-bloco-afinidade">
+                <MudText Typo="Typo.subtitle2" Class="subatributos-bloco-titulo">Afinidade Elemental</MudText>
+                <AfinidadeSelect Value="@Afinidade" ValueChanged="AfinidadeChanged" OpcoesPermitidas="AfinidadeSelect.Afinidades" />
+                <div class="subatributos-elementais">
+                    <div class="subatributo-eficiencia">
+                        <MudText Typo="Typo.body2">Eficiência Elemental</MudText>
+                        <MudText Typo="Typo.h5" Class="subatributo-valor">@(SubAtributos.EficienciaElemental ?? 0)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">@Regra(SubAttributeFormulas.PontosPorEficienciaElemental)</MudText>
+                    </div>
+                    <div class="subatributo-dano">
+                        <MudText Typo="Typo.body2">Dano Elemental</MudText>
+                        <MudText Typo="Typo.h5" Class="subatributo-valor">@(SubAtributos.DanoElemental ?? 0)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">@Regra(SubAttributeFormulas.PontosPorDanoElemental)</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        }
+    </div>
+</Section>
+
+@code {
+    [Parameter, EditorRequired] public SubAttributesResponse SubAtributos { get; set; } = default!;
+
+    [Parameter] public string? Cobertura { get; set; }
+    [Parameter] public EventCallback<string> CoberturaChanged { get; set; }
+
+    /// <summary>True nas fichas que têm Eficiência/Dano Elemental (Personagem e NPC).</summary>
+    [Parameter] public bool ComAfinidade { get; set; }
+
+    [Parameter] public string? Afinidade { get; set; }
+    [Parameter] public EventCallback<string?> AfinidadeChanged { get; set; }
+
+    private string Regra(int pontos)
+    {
+        var rotulo = AfinidadeSelect.Afinidades.FirstOrDefault(a => a.Valor == Afinidade).Rotulo ?? Afinidade;
+        return string.IsNullOrEmpty(rotulo)
+            ? $"1 a cada {pontos} pontos na Afinidade escolhida"
+            : $"1 a cada {pontos} pontos em {rotulo}";
+    }
+}

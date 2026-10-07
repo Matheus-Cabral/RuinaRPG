@@ -214,15 +214,7 @@
 
         @if (_subAttributes is not null)
         {
-            <Section Title="Sub-Atributos">
-                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
-                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
-                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
-                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
-                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
-                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
-                <CoberturaRating Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" />
-            </Section>
+            <SubAtributosSection SubAtributos="_subAttributes" Cobertura="@_form.Cobertura" CoberturaChanged="@(v => UpdateCoberturaAsync(v))" />
         }
 
         @if (_modificadorDeDano is not null)

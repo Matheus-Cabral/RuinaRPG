@@ -140,7 +140,6 @@
                 <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
                 <LinhagemVarianteFields VariantesLiberadas="_variantesLiberadas" @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
                 <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" OpcoesPermitidas="AfinidadeSelect.Afinidades" />
                 <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
             </Section>
 
@@ -346,17 +345,8 @@
 
         @if (_subAttributes is not null)
         {
-            <Section Title="Sub-Atributos">
-                <MudText>Iniciativa: @_subAttributes.Iniciativa</MudText>
-                <MudText>Movimentação: @_subAttributes.Movimentacao</MudText>
-                <MudText>Esquiva Natural: @_subAttributes.EsquivaNatural</MudText>
-                <MudText>Defesa Natural: @_subAttributes.DefesaNatural</MudText>
-                <MudText>Redução Física: @_subAttributes.ReducaoFisica</MudText>
-                <MudText>Redução Mágica: @_subAttributes.ReducaoMagica</MudText>
-                <MudText>Eficiência Elemental: @_subAttributes.EficienciaElemental</MudText>
-                <MudText>Dano Elemental: @_subAttributes.DanoElemental</MudText>
-                <CoberturaRating Value="@_form.Cobertura" ValueChanged="@(v => UpdateCoberturaAsync(v))" />
-            </Section>
+            <SubAtributosSection SubAtributos="_subAttributes" Cobertura="@_form.Cobertura" CoberturaChanged="@(v => UpdateCoberturaAsync(v))"
+                                 ComAfinidade="true" Afinidade="@_form.Afinidade" AfinidadeChanged="@(v => UpdateAfinidadeAsync(v))" />
         }
 
         @if (_modificadorDeDano is not null)
@@ -1157,6 +1147,13 @@
         {
             _errorMessage = ex.Message;
         }
+    }
+
+    private async Task UpdateAfinidadeAsync(string? value)
+    {
+        _form.Afinidade = value;
+        await SaveIgnoringResultAsync();
+        await LoadTabs2And3Async(); // A Afinidade define a Eficiência e o Dano Elemental (2.b), carregados aqui.
     }
 
     private async Task UpdateCoberturaAsync(string? value)

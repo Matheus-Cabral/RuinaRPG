@@ -1,0 +1,19 @@
+.subatributos-blocos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.subatributos-elementais {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.subatributo-eficiencia,
+.subatributo-dano {
+    display: flex;
+    flex-direction: column;
+}
