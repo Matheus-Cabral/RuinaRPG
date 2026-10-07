@@ -11,9 +11,13 @@
     margin-left: -12px;
 }
 
+/* --rr-accent, e não a cor primária: o dourado da primária tem pouco contraste sobre o fundo claro.
+   O accent é legível nos dois temas (marrom escuro no claro, quase branco no escuro). Sem itálico:
+   a Cormorant Garamond só é carregada no estilo normal, e o itálico sintetizado fica fino demais. */
 .cobertura-rating-estado {
     font-family: var(--rr-font-heading);
-    font-style: italic;
-    font-size: 0.95rem;
-    color: var(--mud-palette-primary);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    color: var(--rr-accent);
 }
