@@ -1,0 +1,153 @@
+@page "/auditoria/tabela-de-afinidades"
+@inject HttpClient Http
+@using RuinaRPG.Contracts.Rules
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<MudText Typo="Typo.h3">Auditoria: Tabela de Afinidades</MudText>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    <Section Title="Tabela de Afinidades">
+        <TitleInfo>
+            <InfoPopup Title="Como funciona a Tabela de Afinidades">
+                Eficiência Elemental e Dano Elemental das fichas vêm desta tabela, conforme o valor da essência ou elemento da Afinidade escolhida. Vale a linha de maior Afinidade que não ultrapassa o valor: abaixo da menor linha os dois valem 0, e acima da maior valem os valores dela. Toda alteração vale imediatamente para todas as fichas.
+            </InfoPopup>
+        </TitleInfo>
+        <ChildContent>
+        <MudText Typo="Typo.subtitle1">Nova linha</MudText>
+        <MudNumericField T="int" @bind-Value="_novaAfinidade" Label="Afinidade" Min="0" />
+        <MudNumericField T="int" @bind-Value="_novaEficiencia" Label="Eficiência" Min="0" />
+        <MudNumericField T="int" @bind-Value="_novoDano" Label="Dano" Min="0" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 mb-4" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">Adicionar linha</MudButton>
+
+        @if (_linhas.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Nenhuma linha cadastrada — Eficiência e Dano Elemental valem 0 em todas as fichas.</MudText>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Afinidade</th><th>Eficiência</th><th>Dano</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var linha in _linhas)
+                    {
+                        <tr>
+                            <td><MudNumericField T="int" Value="@linha.Afinidade" ValueChanged="@(v => SaveAsync(linha, linha with { Afinidade = v }))" Min="0" /></td>
+                            <td><MudNumericField T="int" Value="@linha.Eficiencia" ValueChanged="@(v => SaveAsync(linha, linha with { Eficiencia = v }))" Min="0" /></td>
+                            <td><MudNumericField T="int" Value="@linha.Dano" ValueChanged="@(v => SaveAsync(linha, linha with { Dano = v }))" Min="0" /></td>
+                            <td>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                               aria-label="@($"Excluir linha da Afinidade {linha.Afinidade}")" OnClick="@(() => AskRemove(linha))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        </ChildContent>
+    </Section>
+}
+
+<MudDialog @bind-Visible="_removeDialogOpen">
+    <TitleContent>Excluir linha</TitleContent>
+    <DialogContent>
+        Excluir a linha da Afinidade @_pendingRemove?.Afinidade? Eficiência e Dano Elemental das fichas passam a ser calculados sem ela.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _removeDialogOpen = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmRemoveAsync">Excluir</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Tabela de Afinidades"),
+    };
+
+    private List<LinhaDaTabelaDeAfinidadesResponse> _linhas = new();
+    private string? _errorMessage;
+    private bool _forbidden;
+    private bool _removeDialogOpen;
+    private LinhaDaTabelaDeAfinidadesResponse? _pendingRemove;
+    private int _novaAfinidade;
+    private int _novaEficiencia;
+    private int _novoDano;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("tabela-de-afinidades");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar a Tabela de Afinidades.";
+            return;
+        }
+
+        _linhas = await response.Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>() ?? new();
+    }
+
+    // Shared tail of every write: 403 locks the page, any other failure shows the server's message
+    // and reloads so the rejected value does not stay on screen, success just reloads.
+    private async Task<bool> FinishAsync(HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return false;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(detail) ? "Não foi possível salvar a alteração." : detail;
+            await LoadAsync();
+            return false;
+        }
+
+        await LoadAsync();
+        return true;
+    }
+
+    private async Task AddAsync()
+    {
+        var response = await Http.PostAsJsonAsync("tabela-de-afinidades",
+            new SalvarLinhaDaTabelaDeAfinidadesRequest(_novaAfinidade, _novaEficiencia, _novoDano));
+        if (await FinishAsync(response))
+        {
+            _novaAfinidade = 0;
+            _novaEficiencia = 0;
+            _novoDano = 0;
+        }
+    }
+
+    private async Task SaveAsync(LinhaDaTabelaDeAfinidadesResponse atual, LinhaDaTabelaDeAfinidadesResponse nova) =>
+        await FinishAsync(await Http.PutAsJsonAsync($"tabela-de-afinidades/{atual.Id}",
+            new SalvarLinhaDaTabelaDeAfinidadesRequest(nova.Afinidade, nova.Eficiencia, nova.Dano)));
+
+    private void AskRemove(LinhaDaTabelaDeAfinidadesResponse linha)
+    {
+        _pendingRemove = linha;
+        _removeDialogOpen = true;
+    }
+
+    private async Task ConfirmRemoveAsync()
+    {
+        _removeDialogOpen = false;
+        if (_pendingRemove is null)
+            return;
+        var linha = _pendingRemove;
+        _pendingRemove = null;
+        await FinishAsync(await Http.DeleteAsync($"tabela-de-afinidades/{linha.Id}"));
+    }
+}

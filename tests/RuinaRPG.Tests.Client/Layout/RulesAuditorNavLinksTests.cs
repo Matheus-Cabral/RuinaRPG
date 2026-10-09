@@ -32,6 +32,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
         ("Perícias", "auditoria/pericias"),
         ("Equipagem", "auditoria/equipagem"),
         ("Durabilidade por Rank", "auditoria/durabilidade-por-rank"),
+        ("Tabela de Afinidades", "auditoria/tabela-de-afinidades"),
         ("Tabela de Níveis", "auditoria/tabela-de-niveis"),
     };
 
@@ -102,6 +103,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
             Icons.Material.Filled.FormatListBulleted,
             Icons.Material.Filled.Shield,
             Icons.Material.Filled.Build,
+            Icons.Material.Filled.AutoAwesome,
             Icons.Material.Filled.TableChart,
         };
 
