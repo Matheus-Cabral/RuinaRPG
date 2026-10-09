@@ -27,6 +27,17 @@ public static class SubAttributeFormulas
 
     // 2.b: cada 2 pontos no elemento da Afinidade valem 1 de Eficiência Elemental, e cada 3 valem 1
     // de Dano Elemental — o que sobra não conta (a divisão inteira arredonda para baixo).
+    // 2.b: Eficiência e Dano Elemental vêm da Tabela de Afinidades — vale a linha de maior Afinidade que
+    // não ultrapassa o valor; abaixo da menor linha (ou sem linhas) os dois valem 0.
+    public static int EficienciaElemental(int valorDaAfinidadeCorrespondente, IReadOnlyList<LinhaDaTabelaDeAfinidades> tabela) =>
+        LinhaDaTabela(valorDaAfinidadeCorrespondente, tabela).Eficiencia;
+
+    public static int DanoElemental(int valorDaAfinidadeCorrespondente, IReadOnlyList<LinhaDaTabelaDeAfinidades> tabela) =>
+        LinhaDaTabela(valorDaAfinidadeCorrespondente, tabela).Dano;
+
+    private static LinhaDaTabelaDeAfinidades LinhaDaTabela(int valor, IReadOnlyList<LinhaDaTabelaDeAfinidades> tabela) =>
+        tabela.Where(l => l.Afinidade <= valor).OrderByDescending(l => l.Afinidade).FirstOrDefault();
+
     public static int EficienciaElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente / PontosPorEficienciaElemental;
 
     public static int DanoElemental(int valorDaAfinidadeCorrespondente) => valorDaAfinidadeCorrespondente / PontosPorDanoElemental;

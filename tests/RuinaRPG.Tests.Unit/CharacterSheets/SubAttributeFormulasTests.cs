@@ -5,6 +5,32 @@ namespace RuinaRPG.Tests.Unit.CharacterSheets;
 
 public class SubAttributeFormulasTests
 {
+    private static readonly LinhaDaTabelaDeAfinidades[] TabelaComLacunas =
+    {
+        new(10, 5, 5), new(3, 2, 1), new(5, 3, 2), // fora de ordem de propósito
+    };
+
+    [Theory]
+    [InlineData(3, 2, 1)]   // valor exato
+    [InlineData(4, 2, 1)]   // entre linhas: vale a maior que não ultrapassa
+    [InlineData(7, 3, 2)]   // lacuna entre 5 e 10
+    [InlineData(10, 5, 5)]  // última linha
+    [InlineData(99, 5, 5)]  // acima da tabela: valores máximos
+    [InlineData(2, 0, 0)]   // abaixo da menor linha
+    [InlineData(-1, 0, 0)]  // negativo
+    public void EficienciaElemental_and_DanoElemental_come_from_the_highest_row_not_above_the_value(int valor, int eficiencia, int dano)
+    {
+        SubAttributeFormulas.EficienciaElemental(valor, TabelaComLacunas).Should().Be(eficiencia);
+        SubAttributeFormulas.DanoElemental(valor, TabelaComLacunas).Should().Be(dano);
+    }
+
+    [Fact]
+    public void EficienciaElemental_and_DanoElemental_are_0_with_an_empty_table()
+    {
+        SubAttributeFormulas.EficienciaElemental(7, Array.Empty<LinhaDaTabelaDeAfinidades>()).Should().Be(0);
+        SubAttributeFormulas.DanoElemental(7, Array.Empty<LinhaDaTabelaDeAfinidades>()).Should().Be(0);
+    }
+
     [Fact]
     public void Iniciativa_sums_agilidade_bruto_prontidao_and_artefato_ou_item()
     {
