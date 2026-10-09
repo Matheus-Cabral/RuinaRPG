@@ -1,14 +1,20 @@
 @page "/campanhas/{CampaignId}/jogador"
+@implements IDisposable
 @inject HttpClient Http
+@inject NavigationManager Navigation
+@inject SecretNoteNotifier Notifier
+@using Microsoft.AspNetCore.Components.Routing
+@using RuinaRPG.Client.Services
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.Diary
+@using RuinaRPG.Contracts.Notifications
 @using MudBlazor
 
 <MudText Typo="Typo.h3">Minha Campanha</MudText>
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
-<MudTabs Class="mt-3">
+<MudTabs Class="mt-3" ActivePanelIndex="_activeTab" ActivePanelIndexChanged="OnTabChangedAsync">
     <MudTabPanel Text="Minhas Fichas">
         <MudGrid>
             @foreach (var ficha in _view.MinhasFichas)
@@ -102,7 +108,7 @@
         </Section>
     </MudTabPanel>
 
-    <MudTabPanel Text="Notas Secretas">
+    <MudTabPanel Text="Notas Secretas" BadgeData="@NotasBadge" BadgeColor="Color.Error">
         <MudTimeline TimelinePosition="TimelinePosition.Left">
             @foreach (var note in _secretNotes)
             {
@@ -137,14 +143,71 @@
 </MudTabs>
 
 @code {
+    // Position of the "Notas Secretas" MudTabPanel above — keep in sync if the tabs are reordered.
+    private const int NotasTabIndex = 2;
+
     [Parameter] public string CampaignId { get; set; } = "";
 
     private PlayerCampaignViewResponse _view = new(new(), new(), new());
     private List<SecretNoteResponse> _secretNotes = new();
     private string? _errorMessage;
+    private int _activeTab;
 
-    protected override Task OnInitializedAsync() => Task.WhenAll(LoadAsync(), LoadSecretNotesAsync());
+    // MudTabPanel hides its badge when BadgeData is null.
+    private object? NotasBadge => Notifier.UnreadFor(CampaignId) is > 0 and var count ? count : null;
 
+    protected override async Task OnInitializedAsync()
+    {
+        Notifier.Changed += OnNotifierChanged;
+        Notifier.Received += OnSecretNoteReceived;
+        Navigation.LocationChanged += OnLocationChanged;
+        await Task.WhenAll(LoadAsync(), LoadSecretNotesAsync());
+        await ApplyAbaFromUriAsync();
+    }
+
+    // Campanha R0015: the notification links here with ?aba=notas. Read off the URI (rather than
+    // a [SupplyParameterFromQuery] parameter) so that clicking the notification while already on
+    // this page — a navigation that re-creates nothing — still switches tabs, via LocationChanged.
+    private async Task ApplyAbaFromUriAsync()
+    {
+        var aba = System.Web.HttpUtility.ParseQueryString(new Uri(Navigation.Uri).Query)["aba"];
+        if (aba == "notas")
+            await OnTabChangedAsync(NotasTabIndex);
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        if (index == NotasTabIndex)
+            await Notifier.MarkCampaignReadAsync(CampaignId);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(async () =>
+    {
+        await ApplyAbaFromUriAsync();
+        StateHasChanged();
+    });
+
+    private void OnNotifierChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnSecretNoteReceived(SecretNoteNotification notification) => _ = InvokeAsync(async () =>
+    {
+        if (notification.CampaignId != CampaignId)
+            return;
+
+        await LoadSecretNotesAsync();
+        // Already looking at the tab: the new note is on screen, so it is read.
+        if (_activeTab == NotasTabIndex)
+            await Notifier.MarkCampaignReadAsync(CampaignId);
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Notifier.Changed -= OnNotifierChanged;
+        Notifier.Received -= OnSecretNoteReceived;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
     private async Task LoadAsync()
     {
         var response = await Http.GetAsync($"campaigns/{CampaignId}/player-view");
