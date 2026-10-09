@@ -9,6 +9,8 @@ using MudBlazor;
 using RuinaRPG.Client.Layout;
 using RuinaRPG.Client.Services;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Tests.Client.Shared;
 using System.Linq;
 using System.Net;
@@ -151,5 +153,34 @@ public class NavMenuTests : MudBunitContext
             ("Livro de Regras", Icons.Material.Filled.MenuBook, Color.Primary),
             ("Sair", Icons.Material.Filled.Logout, Color.Primary),
         }, options => options.WithStrictOrdering());
+    }
+
+    private IRenderedComponent<CascadingAuthenticationState> RenderForJogador(List<UnreadSecretNotesResponse> unread)
+    {
+        AddAuthorization().SetAuthorized("jogador").SetRoles("Jogador");
+        Services.AddBlazoredLocalStorage();
+        Services.AddScoped<AuthStateService>();
+        Services.AddScoped<TokenAuthenticationStateProvider>();
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(unread) }));
+
+        return Render<CascadingAuthenticationState>(p => p.AddChildContent<NavMenu>());
+    }
+
+    [Fact]
+    public async Task Minhas_Campanhas_link_shows_the_unread_total_and_follows_live_changes()
+    {
+        var cut = RenderForJogador(new() { new("c1", "Ruína", 2) });
+        var notifier = Services.GetRequiredService<SecretNoteNotifier>();
+        cut.FindAll(".rr-unread-chip").Should().BeEmpty();
+
+        await cut.InvokeAsync(() => notifier.StartAsync());
+        cut.WaitForAssertion(() => cut.Find(".rr-unread-chip").TextContent.Trim().Should().Be("2"));
+
+        await NotificationConnection.RaiseReceivedAsync(new SecretNoteNotification("c1", "Ruína"));
+        cut.WaitForAssertion(() => cut.Find(".rr-unread-chip").TextContent.Trim().Should().Be("3"));
+
+        await cut.InvokeAsync(() => notifier.MarkCampaignReadAsync("c1"));
+        cut.WaitForAssertion(() => cut.FindAll(".rr-unread-chip").Should().BeEmpty());
     }
 }
