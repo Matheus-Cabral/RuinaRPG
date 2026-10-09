@@ -588,6 +588,7 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 |---|---|
 | DiaryEntryId | FK |
 | UserId | FK → Users |
+| ReadAt | timestamp NULL — nulo = não lida ([[Requisitos - Campanha]] R0015) |
 
   
 

@@ -63,7 +63,8 @@ public class ChangelogDialogTests : MudBunitContext
         cut.Markup.Should().Contain("Afinidade Elemental:").And.Contain("Sub-Atributos:").And.Contain("Características:")
             .And.Contain("Anexos da campanha:").And.Contain("Catálogo de Itens:").And.Contain("Banco de Magias e Habilidades:")
             .And.Contain("Tabela de Afinidades").And.Contain("Características Negativas")
-            .And.Contain("Maestrias:").And.Contain("abaixo de Armas");
+            .And.Contain("Maestrias:").And.Contain("abaixo de Armas")
+            .And.Contain("Notas Secretas:");
     }
 
     [Fact]

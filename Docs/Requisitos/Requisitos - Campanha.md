@@ -114,3 +114,15 @@ Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos
 > Na aba "Detalhes", seção "Editar Campanha", o GM edita o campo numérico **Bônus de carga dos personagens** (decimal, passo 1, **pode ser negativo**; padrão 0; limitado a −1000..1000, com erro 400 e mensagem em português fora disso), salvo pelo mesmo autosave de Nome e Descrição. Um ⓘ explica: o valor é somado ao Peso Máximo do inventário de todos os personagens da campanha, um número negativo reduz a capacidade, e NPCs e Criaturas não são afetados.
 >
 > O bônus é somado ao Peso Máximo de toda Ficha de Personagem da campanha (ver "[[Requisitos - Ficha de Personagem]]" 2.b, Movimentação) — tanto no Peso exibido na aba "Posses" quanto na penalidade de sobrepeso da Movimentação —, e o Peso Máximo resultante nunca fica abaixo de 0. Quando o bônus é diferente de 0, a ficha mostra a legenda "inclui +N da campanha" (ou "inclui −N da campanha") ao lado do Peso. Só o GM dono da campanha pode alterá-lo.
+
+# **R0015** - O jogador deve ser notificado quando recebe uma Nota Secreta.
+
+**Descrição**: Quando o GM publica uma Nota Secreta (R0011), cada jogador destinatário que estiver com o sistema aberto recebe, em qualquer página, um aviso visual e um aviso sonoro (`harp_notification.mp3`). O aviso visual informa a campanha de origem e é clicável: leva à aba Notas Secretas da tela do jogador naquela campanha (R0009). O texto da nota não aparece no aviso.
+
+O jogador também vê um contador de Notas Secretas não lidas: um indicador na barra superior e o total no item "Minhas Campanhas" do menu, a quantidade de cada campanha na lista de Minhas Campanhas, e a quantidade da campanha na própria aba Notas Secretas. Uma nota deixa de ser não lida quando o jogador abre a aba Notas Secretas daquela campanha — todas as notas dele ali passam a lidas de uma vez. O contador cobre quem não estava com o sistema aberto no momento do envio; o aviso sonoro não é reproduzido depois.
+
+Se o GM editar uma Nota Secreta e acrescentar um destinatário, esse jogador é notificado como se a nota fosse nova; os destinatários que já existiam não são notificados de novo e conservam o estado de leitura. Editar apenas o texto ou as imagens não notifica ninguém. Excluir a nota, remover um destinatário ou excluir a campanha apenas corrige o contador de quem a perdeu.
+
+Vale a mesma restrição de R0011: quem não é destinatário não recebe aviso nem contagem.
+
+> O navegador pode bloquear o aviso sonoro enquanto o jogador não tiver interagido com a página; o aviso visual aparece de qualquer forma.
