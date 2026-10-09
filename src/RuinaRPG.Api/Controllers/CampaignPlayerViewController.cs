@@ -144,6 +144,50 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         return results;
     }
 
+    /// <summary>
+    /// Campanha R0015: how many Notas Secretas the caller hasn't read yet, per campaign. Only the
+    /// caller's own DiaryEntryRecipients rows are counted, so a non-recipient (or a GM) gets an
+    /// empty list — R0011's "doesn't even know the note exists" still holds.
+    /// </summary>
+    [HttpGet("~/api/secret-notes/unread")]
+    public async Task<ActionResult<List<UnreadSecretNotesResponse>>> ListUnreadSecretNotes()
+    {
+        var callerId = CurrentUserId();
+        var counts = await db.DiaryEntryRecipients
+            .Where(r => r.UserId == callerId && r.ReadAt == null)
+            .Join(db.DiaryEntries.Where(d => d.IsSecretNote && d.CampaignId != null), r => r.DiaryEntryId, d => d.Id, (r, d) => d.CampaignId!.Value)
+            .GroupBy(campaignId => campaignId)
+            .Select(g => new { CampaignId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var campaignIds = counts.Select(c => c.CampaignId).ToList();
+        var names = await db.Campaigns.Where(c => campaignIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Nome);
+        return counts
+            .Select(c => new UnreadSecretNotesResponse(c.CampaignId.ToString(), names[c.CampaignId], c.Count))
+            .OrderBy(c => c.CampaignName)
+            .ToList();
+    }
+
+    [HttpPost("~/api/campaigns/{campaignId}/secret-notes/mark-read")]
+    public async Task<IActionResult> MarkSecretNotesRead(Guid campaignId)
+    {
+        var callerId = CurrentUserId();
+        var campaign = await db.Campaigns.FindAsync(campaignId);
+        if (campaign is null)
+            return NotFound();
+
+        var isMember = campaign.GmId == callerId || await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == callerId);
+        if (!isMember)
+            return Forbid();
+
+        var noteIds = db.DiaryEntries.Where(d => d.CampaignId == campaignId && d.IsSecretNote).Select(d => d.Id);
+        var now = DateTime.UtcNow;
+        await db.DiaryEntryRecipients
+            .Where(r => r.UserId == callerId && r.ReadAt == null && noteIds.Contains(r.DiaryEntryId))
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReadAt, now));
+        return NoContent();
+    }
+
     private async Task<CampaignResponse> ToResponseAsync(Campaign c)
     {
         string? imageUrl = null;

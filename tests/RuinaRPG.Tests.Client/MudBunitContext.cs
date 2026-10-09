@@ -5,6 +5,7 @@ using MudBlazor;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using RuinaRPG.Client.Services;
+using RuinaRPG.Tests.Client.Shared;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client;
@@ -17,6 +18,9 @@ namespace RuinaRPG.Tests.Client;
 /// </summary>
 public abstract class MudBunitContext : BunitContext, IAsyncLifetime
 {
+    /// <summary>The fake behind every test's SecretNoteNotifier — raise hub events through it.</summary>
+    protected FakeNotificationConnection NotificationConnection { get; } = new();
+
     protected MudBunitContext()
     {
         Services.AddMudServices();
@@ -24,6 +28,10 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         // HistoricoSelect and RequisitosDePassivaEditor inject it. It resolves the HttpClient each test
         // registers, so a test whose page needs Perícia names answers GET pericias in its fake handler.
         Services.AddScoped<PericiaCatalogo>();
+        // Same registrations as the app's Program.cs: MainLayout, NavMenu and the player's campaign
+        // pages inject SecretNoteNotifier. The connection is a fake — bUnit can't host SignalR.
+        Services.AddSingleton<INotificationConnection>(NotificationConnection);
+        Services.AddScoped<SecretNoteNotifier>();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 

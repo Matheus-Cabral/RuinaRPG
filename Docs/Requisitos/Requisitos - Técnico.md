@@ -10,7 +10,7 @@
 - **Logging**: Serilog.
 - **Documentação de API**: Swashbuckle/Swagger.
 - **Autenticação**: ASP.NET Core Identity + JWT Bearer + refresh tokens.
-- **Tempo real**: SignalR, com o Hub autenticado pelo mesmo JWT da API — usado pelo "[[Requisitos - Gerenciador de Encontros]]" para refletir em tempo real PV/PF/PA de participantes vindos de Ficha de Personagem.
+- **Tempo real**: SignalR, com o Hub autenticado pelo mesmo JWT da API — usado pelo "[[Requisitos - Gerenciador de Encontros]]" para refletir em tempo real PV/PF/PA de participantes vindos de Ficha de Personagem. Há um segundo hub, `/hubs/notifications`, autenticado para qualquer usuário, só de servidor para cliente e endereçado por usuário (claim `sub` do JWT), usado para os avisos de Nota Secreta (ver "[[Requisitos - Campanha]]" R0015): os eventos `SecretNoteReceived` (apenas id e nome da campanha, nunca o texto da nota) e `SecretNotesChanged` (sem conteúdo; faz o cliente recontar as não lidas).
 - **ORM**: Entity Framework Core 8 + Npgsql (PostgreSQL).
 - **Frontend**: Blazor WebAssembly 8 standalone + Blazored.LocalStorage.
 - **Containers**: Docker + nginx 1.27-alpine.

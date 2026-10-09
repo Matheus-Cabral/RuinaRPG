@@ -3,9 +3,12 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Hubs;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
@@ -16,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/campaigns")]
 [Authorize(Roles = "GM")]
-public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager) : ControllerBase
+public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, ILogger<CampaignsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CampaignResponse>> Create(CreateCampaignRequest request)
@@ -78,8 +81,15 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (user is null || !await userManager.CheckPasswordAsync(user, request.Senha))
             return Unauthorized("Senha inválida.");
 
+        var noteRecipientIds = await db.DiaryEntryRecipients
+            .Where(r => db.DiaryEntries.Any(d => d.Id == r.DiaryEntryId && d.CampaignId == campaign.Id && d.IsSecretNote))
+            .Select(r => r.UserId)
+            .Distinct()
+            .ToListAsync();
+
         db.Campaigns.Remove(campaign);
         await db.SaveChangesAsync();
+        await NotifySecretNotesChangedAsync(noteRecipientIds);
         return NoContent();
     }
 
@@ -240,6 +250,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = note.Id, ImageId = imageId });
         await db.SaveChangesAsync();
 
+        await NotifySecretNoteReceivedAsync(campaignId, recipientIds.Distinct());
         return Created(string.Empty, await ToSecretNoteResponseAsync(note));
     }
 
@@ -267,8 +278,10 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
 
         var existingRecipients = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == noteId).ToListAsync();
         var newRecipientIds = recipientIds.Distinct().ToList();
-        db.DiaryEntryRecipients.RemoveRange(existingRecipients.Where(r => !newRecipientIds.Contains(r.UserId)));
-        foreach (var recipientId in newRecipientIds.Where(id => existingRecipients.All(r => r.UserId != id)))
+        var removedRecipients = existingRecipients.Where(r => !newRecipientIds.Contains(r.UserId)).ToList();
+        var addedRecipientIds = newRecipientIds.Where(id => existingRecipients.All(r => r.UserId != id)).ToList();
+        db.DiaryEntryRecipients.RemoveRange(removedRecipients);
+        foreach (var recipientId in addedRecipientIds)
             db.DiaryEntryRecipients.Add(new DiaryEntryRecipient { DiaryEntryId = noteId, UserId = recipientId });
 
         var existingImages = await db.DiaryEntryImages.Where(i => i.DiaryEntryId == noteId).ToListAsync();
@@ -277,6 +290,8 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             db.DiaryEntryImages.Add(new DiaryEntryImage { DiaryEntryId = noteId, ImageId = imageId });
 
         await db.SaveChangesAsync();
+        await NotifySecretNoteReceivedAsync(campaignId, addedRecipientIds);
+        await NotifySecretNotesChangedAsync(removedRecipients.Select(r => r.UserId));
         return NoContent();
     }
 
@@ -288,9 +303,49 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
         if (note is null)
             return NotFound();
 
+        var recipientIds = await db.DiaryEntryRecipients.Where(r => r.DiaryEntryId == noteId).Select(r => r.UserId).ToListAsync();
         db.DiaryEntries.Remove(note);
         await db.SaveChangesAsync();
+        await NotifySecretNotesChangedAsync(recipientIds);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Campanha R0015. The note is already saved when this runs — a hub failure must not fail the
+    /// request (same reasoning as CharacterSheetsController's ParticipantsChanged push): the
+    /// recipient still gets the unread counter on their next load.
+    /// </summary>
+    private async Task NotifySecretNoteReceivedAsync(Guid campaignId, IEnumerable<Guid> userIds)
+    {
+        var ids = userIds.Select(id => id.ToString()).ToList();
+        if (ids.Count == 0)
+            return;
+
+        try
+        {
+            var nome = await db.Campaigns.Where(c => c.Id == campaignId).Select(c => c.Nome).SingleAsync();
+            await notifications.Clients.Users(ids).SendAsync(NotificationEvents.SecretNoteReceived, new SecretNoteNotification(campaignId.ToString(), nome));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to push SecretNoteReceived for campaign {CampaignId}", campaignId);
+        }
+    }
+
+    private async Task NotifySecretNotesChangedAsync(IEnumerable<Guid> userIds)
+    {
+        var ids = userIds.Select(id => id.ToString()).ToList();
+        if (ids.Count == 0)
+            return;
+
+        try
+        {
+            await notifications.Clients.Users(ids).SendAsync(NotificationEvents.SecretNotesChanged);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to push SecretNotesChanged");
+        }
     }
 
     private async Task<bool> AllAreCampaignMembersAsync(Guid campaignId, List<Guid> userIds)

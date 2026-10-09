@@ -1,12 +1,18 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using MudBlazor
+@using Microsoft.JSInterop
+@using RuinaRPG.Client.Services
+@using RuinaRPG.Contracts.Notifications
 @using Microsoft.AspNetCore.Components.Routing
 @using RuinaRPG.Client.Theme
 @using RuinaRPG.Client.Shared
 @using RuinaRPG.Contracts.Auth
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject SecretNoteNotifier Notifier
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <MudThemeProvider Theme="RrMudTheme.Instance" />
 <MudPopoverProvider />
@@ -27,6 +33,15 @@
             <img src="favicon.png" alt="Ruína RPG" class="rr-logo ml-2" />
             <MudText Typo="Typo.h6" Class="ml-2">Ruína RPG</MudText>
             <MudSpacer />
+            @if (Notifier.TotalUnread > 0)
+            {
+                @* Campanha R0015: lives in the app bar (not only in the drawer) so the counter stays
+                   visible with the drawer collapsed on desktop and closed on mobile. *@
+                <MudBadge Content="@Notifier.TotalUnread" Color="Color.Error" Overlap="true" Class="rr-unread-indicator mr-2">
+                    <MudIconButton Icon="@Icons.Material.Filled.MarkEmailUnread" Color="Color.Inherit" Href="@UnreadHref"
+                                    title="Notas secretas não lidas" aria-label="Notas secretas não lidas" />
+                </MudBadge>
+            }
             <ThemeToggle />
         </MudAppBar>
 
@@ -94,7 +109,9 @@
     {
         _isLandingRoute = IsLandingRoute(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
-        await RefreshMustChangePasswordAsync();
+        Notifier.Changed += OnNotifierChanged;
+        Notifier.Received += OnSecretNoteReceived;
+        await RefreshSessionAsync();
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -104,7 +121,7 @@
             _drawerOpen = false;
         }
         _isLandingRoute = IsLandingRoute(e.Location);
-        await RefreshMustChangePasswordAsync();
+        await RefreshSessionAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -116,17 +133,56 @@
     // Same "hit auth/me, treat a failed response as false" pattern as Painel/RulesAuditorNavLinks
     // — an anonymous caller (Login/Cadastro/Landing, all routed through this same layout) gets a
     // 401 here and is simply never gated.
-    private async Task RefreshMustChangePasswordAsync()
+    private async Task RefreshSessionAsync()
     {
         var response = await Http.GetAsync("auth/me");
-        _mustChangePassword = response.IsSuccessStatusCode
-            && (await response.Content.ReadFromJsonAsync<MeResponse>())?.MustChangePassword == true;
+        var me = response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<MeResponse>() : null;
+        _mustChangePassword = me?.MustChangePassword == true;
+
+        // Campanha R0015: only a Jogador receives Notas Secretas. Running this on every navigation
+        // is what starts the notifier after login, stops it after logout, and restarts a
+        // connection that gave up reconnecting — StartAsync/StopAsync are both idempotent.
+        if (me?.Role == "Jogador")
+            await Notifier.StartAsync();
+        else
+            await Notifier.StopAsync();
     }
+
+    // One campaign with unread notes → straight to its Notas Secretas tab; several → the list,
+    // where each campaign card shows its own count.
+    private string UnreadHref => Notifier.UnreadByCampaign.Count == 1
+        ? NotasHref(Notifier.UnreadByCampaign.Keys.Single())
+        : "minhas-campanhas";
+
+    private static string NotasHref(string campaignId) => $"campanhas/{campaignId}/jogador?aba=notas";
+
+    private void OnNotifierChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnSecretNoteReceived(SecretNoteNotification notification) => _ = InvokeAsync(async () =>
+    {
+        // RenderFragment overload on purpose: the string overload renders its message as markup,
+        // and the campaign name is GM-typed text.
+        Snackbar.Add(
+            builder => builder.AddContent(0, $"Nova nota secreta em {notification.CampaignName}"),
+            Severity.Info,
+            options =>
+            {
+                options.Icon = Icons.Material.Filled.MarkEmailUnread;
+                options.OnClick = _ =>
+                {
+                    Navigation.NavigateTo(NotasHref(notification.CampaignId));
+                    return Task.CompletedTask;
+                };
+            });
+        await JS.InvokeVoidAsync("ruinaNotificationSound.play");
+    });
 
     private void HandleSenhaTrocada() => _mustChangePassword = false;
 
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        Notifier.Changed -= OnNotifierChanged;
+        Notifier.Received -= OnSecretNoteReceived;
     }
 }

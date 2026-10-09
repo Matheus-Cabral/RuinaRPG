@@ -6,11 +6,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 using MudBlazor;
 using MudBlazor.Services;
 using RuinaRPG.Client.Layout;
 using RuinaRPG.Client.Services;
 using RuinaRPG.Contracts.Auth;
+using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -299,5 +302,99 @@ public class MainLayoutTests : MudBunitContext
         await cut.InvokeAsync(() => navigation.NavigateTo("painel/jogadores"));
 
         cut.Find(DrawerSelector).ClassList.Should().Contain("mud-drawer--open");
+    }
+
+    private HttpClient HttpFor(string role, List<UnreadSecretNotesResponse>? unread = null) => FakeHttpMessageHandler.CreateClient(request =>
+        request.RequestUri!.AbsolutePath.EndsWith("secret-notes/unread")
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(unread ?? new()) }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new MeResponse("u1", "Nick", role, false, null, false)) });
+
+    [Fact]
+    public void Starts_the_notifier_for_a_Jogador()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador"));
+        var cut = RenderLayout();
+        cut.WaitForAssertion(() => NotificationConnection.StartCount.Should().Be(1));
+    }
+
+    [Fact]
+    public async Task Does_not_start_the_notifier_for_a_GM()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("GM"));
+        RenderLayout();
+        await Task.Delay(100);
+
+        NotificationConnection.StartCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_received_note_shows_a_clickable_snackbar_and_plays_the_sound()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador"));
+        var cut = RenderLayout();
+        cut.WaitForAssertion(() => NotificationConnection.IsActive.Should().BeTrue());
+
+        await NotificationConnection.RaiseReceivedAsync(new SecretNoteNotification("c1", "Ruína"));
+
+        cut.WaitForAssertion(() => cut.Find(".mud-snackbar").TextContent.Should().Contain("Nova nota secreta em Ruína"));
+        JSInterop.Invocations.Should().Contain(i => i.Identifier == "ruinaNotificationSound.play");
+
+        await cut.InvokeAsync(() => cut.Find(".mud-snackbar").Click());
+
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("campanhas/c1/jogador?aba=notas");
+    }
+
+    [Fact]
+    public async Task Snackbar_shows_a_campaign_name_with_markup_as_plain_text()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador"));
+        var cut = RenderLayout();
+        cut.WaitForAssertion(() => NotificationConnection.IsActive.Should().BeTrue());
+
+        await NotificationConnection.RaiseReceivedAsync(new SecretNoteNotification("c1", "<b id=\"injected\">Ruína</b>"));
+
+        cut.WaitForAssertion(() => cut.Find(".mud-snackbar").TextContent.Should().Contain("<b id=\"injected\">Ruína</b>"));
+        cut.FindAll("#injected").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void App_bar_shows_the_unread_total_linking_to_the_single_campaign_with_unread_notes()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador", new() { new("c1", "Ruína", 3) }));
+        var cut = RenderLayout();
+
+        cut.WaitForAssertion(() =>
+        {
+            var indicator = cut.Find("[aria-label='Notas secretas não lidas']");
+            indicator.GetAttribute("href").Should().Be("campanhas/c1/jogador?aba=notas");
+            cut.Find(".rr-unread-indicator").TextContent.Should().Contain("3");
+        });
+    }
+
+    [Fact]
+    public void App_bar_indicator_links_to_Minhas_Campanhas_when_several_campaigns_have_unread_notes()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador", new() { new("c1", "Ruína", 1), new("c2", "Outra", 1) }));
+        var cut = RenderLayout();
+
+        cut.WaitForAssertion(() =>
+            cut.Find("[aria-label='Notas secretas não lidas']").GetAttribute("href").Should().Be("minhas-campanhas"));
+    }
+
+    [Fact]
+    public async Task App_bar_has_no_indicator_without_unread_notes()
+    {
+        UseViewport(Breakpoint.Lg);
+        RegisterCommonServices(HttpFor("Jogador"));
+        var cut = RenderLayout();
+        await Task.Delay(100);
+
+        cut.FindAll("[aria-label='Notas secretas não lidas']").Should().BeEmpty();
     }
 }
