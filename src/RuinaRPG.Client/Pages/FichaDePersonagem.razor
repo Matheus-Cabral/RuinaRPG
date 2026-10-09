@@ -435,6 +435,58 @@
             </MudSimpleTable>
         </Section>
 
+        <Section Title="Maestrias">
+            <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
+                <MudTextField T="string" @bind-Value="_masteryForm.Nome" Label="Nome" />
+                <MudSelect T="string" @bind-Value="_masteryForm.Pericia" Label="Perícia">
+                    <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
+                    @foreach (var skill in _skills)
+                    {
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
+                    <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
+                    @foreach (var attr in _attributes)
+                    {
+                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead><tr><th>Nome</th><th>Perícia</th><th>Atributo</th><th>Gasto Maestria</th><th>Total</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var mastery in _masteries)
+                    {
+                        <tr>
+                            <td><MudTextField T="string" Value="@mastery.Nome" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Nome", v))" /></td>
+                            <td>
+                                <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
+                                    @foreach (var skill in _skills)
+                                    {
+                                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td>
+                                <MudSelect T="string" Value="@mastery.Atributo" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Atributo", v))">
+                                    @foreach (var attr in _attributes)
+                                    {
+                                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td><MudNumericField T="int" Value="@mastery.GastoMaestria" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "GastoMaestria", v))" /></td>
+                            <td>@mastery.Total</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+
         <Section Title="Armaduras">
             <MudSimpleTable Dense="true" Hover="true">
                 <thead>
@@ -642,58 +694,6 @@
                             <td>@RuneTipoRotulo.De(rune.Tipo)</td>
                             <td>@RuneDisciplinaRotulo.De(rune.Disciplina)</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Maestrias">
-            <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
-                <MudTextField T="string" @bind-Value="_masteryForm.Nome" Label="Nome" />
-                <MudSelect T="string" @bind-Value="_masteryForm.Pericia" Label="Perícia">
-                    <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
-                    @foreach (var skill in _skills)
-                    {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
-                    <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
-                    @foreach (var attr in _attributes)
-                    {
-                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead><tr><th>Nome</th><th>Perícia</th><th>Atributo</th><th>Gasto Maestria</th><th>Total</th><th></th></tr></thead>
-                <tbody>
-                    @foreach (var mastery in _masteries)
-                    {
-                        <tr>
-                            <td><MudTextField T="string" Value="@mastery.Nome" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Nome", v))" /></td>
-                            <td>
-                                <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Pericia", v))">
-                                    @foreach (var skill in _skills)
-                                    {
-                                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </td>
-                            <td>
-                                <MudSelect T="string" Value="@mastery.Atributo" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "Atributo", v))">
-                                    @foreach (var attr in _attributes)
-                                    {
-                                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </td>
-                            <td><MudNumericField T="int" Value="@mastery.GastoMaestria" ValueChanged="@(v => UpdateMasteryAsync(mastery.Id, "GastoMaestria", v))" /></td>
-                            <td>@mastery.Total</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
                         </tr>
                     }
                 </tbody>

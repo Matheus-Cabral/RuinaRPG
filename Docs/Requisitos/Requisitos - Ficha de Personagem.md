@@ -184,7 +184,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
 - *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha. O Total já inclui as Penalidades de equipamento ativas sobre a Perícia ou sobre o Atributo escolhido (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
-3. **Combate**: armas e condutores, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo.
+3. **Combate**: armas e condutores, maestrias, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo, mais as Maestrias (4.e), exibidas logo abaixo de Armas e Condutores (3.a).
 
   
 
@@ -257,7 +257,7 @@ Quatro campos calculados, não editáveis, um por Tipo de Dano — **Cortante**,
 
   
 
-4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas, maestrias e habilidades passivas. Composta pelos subgrupos abaixo.
+4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas e habilidades passivas. Composta pelos subgrupos abaixo, exceto as Maestrias (4.e), que são exibidas na aba Combate.
 
   
 
@@ -323,6 +323,8 @@ A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—"
 ### 4.e) Maestrias
 
   
+
+**Disposição**: apesar do identificador 4.e (mantido para não quebrar as referências existentes), a seção de Maestrias é exibida na aba **Combate**, logo abaixo de Armas e Condutores (3.a) e antes de Armaduras (3.b) — não na aba Magias & Habilidades. Vale igualmente para a Ficha de NPC e a Ficha de Criatura.
 
 Recurso separado da Maestria de Atributos (ver 2.a) — tem seu próprio poço de Pontos/Espaços de Maestria, concedido pela "[[Tabela de Níveis]]". Lista incremental: o jogador adiciona uma Maestria por vez, com os campos:
 
