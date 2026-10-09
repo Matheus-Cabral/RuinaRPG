@@ -56,29 +56,39 @@ public class ChangelogDialogTests : MudBunitContext
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_1_4_3()
+    public void Rendered_list_contains_the_section_labels_of_1_4_4()
     {
-        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Runas:").And.Contain("Requisitos de equipamento:").And.Contain("Kits de Equipagem:")
-            .And.Contain("Livro de Regras:").And.Contain("Progressão do nível:");
+        cut.Markup.Should().Contain("Afinidade Elemental:").And.Contain("Sub-Atributos:").And.Contain("Características:")
+            .And.Contain("Anexos da campanha:").And.Contain("Catálogo de Itens:").And.Contain("Banco de Magias e Habilidades:")
+            .And.Contain("Tabela de Afinidades").And.Contain("Características Negativas");
+    }
+
+    [Fact]
+    public void The_1_4_3_text_is_gone()
+    {
+        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+
+        cut.Markup.Should().NotContain("Disciplina").And.NotContain("Kits de Equipagem");
     }
 
     [Fact]
     public void A_user_who_is_not_an_auditor_does_not_see_the_auditor_block()
     {
-        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().NotContain("Para Auditores").And.NotContain("Auditoria de Equipagem");
+        cut.Markup.Should().NotContain("Para Auditores");
     }
 
     [Fact]
     public void An_auditor_sees_the_auditor_block_after_the_general_list()
     {
-        var cut = RenderDialog("1.4.3", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
         var texto = cut.Markup;
-        texto.Should().Contain("Para Auditores").And.Contain("Auditoria de Equipagem").And.Contain("base de itens fixos");
-        texto.IndexOf("Progressão do nível:").Should().BeLessThan(texto.IndexOf("Para Auditores"));
+        texto.Should().Contain("Para Auditores");
+        texto.IndexOf("Para Auditores").Should().BeGreaterThan(texto.IndexOf("Banco de Magias e Habilidades:"));
+        texto.IndexOf("Tabela de Afinidades:").Should().BeGreaterThan(texto.IndexOf("Para Auditores"));
     }
 }

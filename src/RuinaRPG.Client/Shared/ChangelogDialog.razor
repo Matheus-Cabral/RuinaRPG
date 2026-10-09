@@ -3,13 +3,14 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.4.3 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.4.4 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Runas:</b> toda Runa passa a ter uma Disciplina obrigatória — Adição, Alteração, Emissão ou Manifestação —, com a explicação de cada uma num popup de ajuda. Runas antigas ficam sem Disciplina até serem editadas no Banco de Runas.</li>
-            <li><b>Requisitos de equipamento:</b> Armas, Armaduras, Escudos e Artefatos podem ter requisitos (Vocação, Classe, Atributo, Perícia, Sub-Atributo, Afinidade, Estrela) e uma penalidade. A ficha avisa quando o personagem não cumpre os requisitos e aplica a penalidade nos cálculos; nada é bloqueado. Os antigos campos Requisito de Atributo, Requisito de Vigor e Penalidade foram convertidos para o novo formato; os textos antigos de Penalidade de Armaduras e Escudos foram mantidos como "Outras penalidades", que a ficha mostra mas não aplica automaticamente.</li>
-            <li><b>Kits de Equipagem:</b> ao escolher um kit, os itens fixos que o GM ainda não tem entram no catálogo dele já completos, e um kit não falha mais por item ausente.</li>
-            <li><b>Livro de Regras:</b> a aba Habilidades Passivas ganhou filtros por Categoria, Vocação e Classe, com as Passivas em ordem alfabética dentro de Passivas Livres, Vocacionais e de Classe, cada Passiva num painel que abre e fecha.</li>
-            <li><b>Progressão do nível:</b> o painel da aba Atributos &amp; Perícias agora abre e fecha, e começa recolhido.</li>
+            <li><b>Afinidade Elemental:</b> Eficiência Elemental e Dano Elemental agora vêm da Tabela de Afinidades, conforme o valor da essência ou elemento da Afinidade escolhida (os valores das fichas podem mudar).</li>
+            <li><b>Sub-Atributos:</b> organizados em blocos, com a Defesa em coluna à direita e a Afinidade Elemental no fim; o estado da Cobertura ganhou uma cor de maior contraste.</li>
+            <li><b>Características:</b> o limite de Características Negativas passa a ser o dobro do de Positivas.</li>
+            <li><b>Anexos da campanha:</b> agrupados por tipo, com galeria de imagens e filtros por grupo; a busca não lista mais o que já está anexado.</li>
+            <li><b>Catálogo de Itens:</b> os campos de Subcategoria sugerem as subcategorias já existentes; Requisitos e Penalidade do equipamento aparecem no popup do item, e não mais na lista.</li>
+            <li><b>Banco de Magias e Habilidades:</b> filtros de Categoria, Vocação e Classe nas Passivas.</li>
         </ul>
         @if (IsRulesAuditor)
         {
@@ -17,10 +18,7 @@
                sempre que uma versão mexer numa página de Auditoria; apague o bloco inteiro quando não mexer. *@
             <MudText Typo="Typo.subtitle1" Class="mt-3"><b>Para Auditores</b></MudText>
             <ul class="mt-1">
-                <li><b>Auditoria de Equipagem:</b> os itens fixos dos kits agora vêm de uma base de itens fixos, igual para todas as campanhas. Pesquise o item pelo nome (filtrando por tipo) ou use o botão "Cadastrar novo item", que aparece ao lado da busca quando nada é encontrado; Armadura já pode ser item fixo (com seu Slot), e a Quantidade e o Slot são editáveis na linha.</li>
-                <li><b>Editar item fixo:</b> cada linha tem uma ação de editar, com "Editar detalhes" (altera o item da base, para todos os kits que o usam) e "Substituir item". A seção "Itens fixos" lista a base.</li>
-                <li><b>Itens convertidos:</b> os kits existentes foram ligados à base automaticamente. As linhas marcadas "Detalhes incompletos" só têm o nome: use a ação de editar da linha para completar os detalhes ou substituir o item.</li>
-                <li><b>Requisitos nos itens fixos:</b> o cadastro de um item fixo tem os mesmos Requisitos e Penalidade do catálogo.</li>
+                <li><b>Tabela de Afinidades:</b> nova página de Auditoria para criar, editar e excluir as linhas que definem Eficiência e Dano Elemental por valor de Afinidade; acima da maior linha valem os valores dela.</li>
             </ul>
         }
     </DialogContent>
