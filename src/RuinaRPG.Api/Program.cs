@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -149,6 +150,7 @@ builder.Services
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -205,6 +207,7 @@ app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHub<EncounterHub>("/hubs/encounters");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (args.Contains("--migrate"))
 {
