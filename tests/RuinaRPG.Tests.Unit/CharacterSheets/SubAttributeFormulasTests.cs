@@ -98,22 +98,6 @@ public class SubAttributeFormulasTests
         SubAttributeFormulas.ReducaoMagica(artefato: 1, armaduraMagica: 4).Should().Be(5);
     }
 
-    // 2.b: cada 2 pontos no elemento da Afinidade valem 1 de Eficiência Elemental; cada 3 valem 1 de
-    // Dano Elemental. O que sobra não conta (arredonda para baixo).
-    [Theory]
-    [InlineData(0, 0, 0)]
-    [InlineData(1, 0, 0)]
-    [InlineData(2, 1, 0)]
-    [InlineData(3, 1, 1)]
-    [InlineData(5, 2, 1)]
-    [InlineData(6, 3, 2)]
-    [InlineData(7, 3, 2)]
-    public void EficienciaElemental_is_one_per_two_points_and_DanoElemental_one_per_three(int valor, int eficiencia, int dano)
-    {
-        SubAttributeFormulas.EficienciaElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(eficiencia);
-        SubAttributeFormulas.DanoElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(dano);
-    }
-
     [Fact]
     public void ValorDaAfinidadeCorrespondente_is_0_when_Afinidade_is_null()
     {

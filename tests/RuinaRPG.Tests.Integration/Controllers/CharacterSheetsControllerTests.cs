@@ -1306,8 +1306,50 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.EficienciaElemental.Should().Be(3); // 7 no elemento: 1 a cada 2 pontos
-        body.DanoElemental.Should().Be(2); // 1 a cada 3 pontos
+        body!.EficienciaElemental.Should().Be(4); // 7 no elemento: linha 7 da Tabela de Afinidades
+        body.DanoElemental.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task SubAttributes_follow_an_edit_made_by_the_Auditor_to_the_Tabela_de_Afinidades()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub7b", "sheetsub7b@teste.com");
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
+            var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "SHEETSUB7B@TESTE.COM");
+            user.IsRulesAuditor = true;
+            await db.SaveChangesAsync();
+        }
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub7b", "sheetplayersub7b@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha SubAttr Tabela Editada");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
+        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+            new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null)));
+        var linhas = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-afinidades", gmToken)))
+            .Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
+        var linha7 = linhas.Single(l => l.Afinidade == 7);
+
+        try
+        {
+            var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/tabela-de-afinidades/{linha7.Id}", gmToken,
+                new SalvarLinhaDaTabelaDeAfinidadesRequest(7, 40, 30)));
+            put.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
+
+            var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
+            body!.EficienciaElemental.Should().Be(40);
+            body.DanoElemental.Should().Be(30);
+        }
+        finally
+        {
+            await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/tabela-de-afinidades/{linha7.Id}", gmToken,
+                new SalvarLinhaDaTabelaDeAfinidadesRequest(7, linha7.Eficiencia, linha7.Dano)));
+        }
     }
 
     [Fact]

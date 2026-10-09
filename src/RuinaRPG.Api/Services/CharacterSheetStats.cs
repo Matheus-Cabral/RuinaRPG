@@ -17,7 +17,7 @@ namespace RuinaRPG.Api.Services;
 /// Passiva requisitos check (Task 5) share one live computation instead of two. Read-only,
 /// everything derived live — nothing here is persisted.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
 {
     /// <summary>
     /// "Bruto [Perícia]" terms (Prontidão, Reflexos, Fortitude) mean that Perícia's Modificador
@@ -87,6 +87,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
+        var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
 
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
@@ -98,8 +99,8 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo,
-            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade),
-            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade),
+            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades),
+            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades),
             BonusDeCargaDaCampanha: bonusDeCarga);
     }
 

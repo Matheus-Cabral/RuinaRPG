@@ -370,8 +370,8 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    // Ficha de Personagem 2.b, igual no NPC: 1 de Eficiência Elemental a cada 2 pontos no elemento da
-    // Afinidade, 1 de Dano Elemental a cada 3.
+    // Ficha de Personagem 2.b, igual no NPC: Eficiência e Dano Elemental vêm da Tabela de Afinidades
+    // (7 pontos no elemento da Afinidade → linha 7).
     [Fact]
     public async Task SubAttributes_derive_EficienciaElemental_and_DanoElemental_from_the_points_in_the_Afinidade()
     {
@@ -386,7 +386,7 @@ public class NpcAffinitiesControllerTests : IClassFixture<PostgresFixture>, IAsy
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
         var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CharacterSheets.SubAttributesResponse>();
 
-        body!.EficienciaElemental.Should().Be(3);
-        body.DanoElemental.Should().Be(2);
+        body!.EficienciaElemental.Should().Be(4);
+        body.DanoElemental.Should().Be(3);
     }
 }

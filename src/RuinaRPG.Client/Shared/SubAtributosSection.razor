@@ -32,12 +32,12 @@
                 <div class="subatributo-eficiencia">
                     <MudText Typo="Typo.body2">Eficiência Elemental</MudText>
                     <MudText Typo="Typo.h5" Class="subatributo-valor">@(SubAtributos.EficienciaElemental ?? 0)</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">@Regra(SubAttributeFormulas.PontosPorEficienciaElemental)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">conforme a Tabela de Afinidades</MudText>
                 </div>
                 <div class="subatributo-dano">
                     <MudText Typo="Typo.body2">Dano Elemental</MudText>
                     <MudText Typo="Typo.h5" Class="subatributo-valor">@(SubAtributos.DanoElemental ?? 0)</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">@Regra(SubAttributeFormulas.PontosPorDanoElemental)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="subatributo-regra">conforme a Tabela de Afinidades</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -55,12 +55,4 @@
 
     [Parameter] public string? Afinidade { get; set; }
     [Parameter] public EventCallback<string?> AfinidadeChanged { get; set; }
-
-    private string Regra(int pontos)
-    {
-        var rotulo = AfinidadeSelect.Afinidades.FirstOrDefault(a => a.Valor == Afinidade).Rotulo ?? Afinidade;
-        return string.IsNullOrEmpty(rotulo)
-            ? $"1 a cada {pontos} pontos na Afinidade escolhida"
-            : $"1 a cada {pontos} pontos em {rotulo}";
-    }
 }

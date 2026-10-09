@@ -4,6 +4,7 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Domain.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Services;
 /// of NpcSheetsController so both /sub-attributes (unchanged response) and the Passiva requisitos
 /// check (Task 5) share one live computation. Read-only, everything derived live.
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
 {
     /// <summary>
     /// VIS/EAP Atual do NPC: base do Nível + Âmbares Absorvidos, exatamente como na Ficha de Personagem.
@@ -88,6 +89,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
+        var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
 
         return new SubAttributesResponse(
             Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
@@ -99,8 +101,8 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
             ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo,
-            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade),
-            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade));
+            EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades),
+            DanoElemental: SubAttributeFormulas.DanoElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades));
     }
 
     /// <summary>
