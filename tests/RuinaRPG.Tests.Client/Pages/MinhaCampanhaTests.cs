@@ -21,6 +21,7 @@ public class MinhaCampanhaTests : MudBunitContext
 {
     private readonly List<HttpRequestMessage> _requests = new();
     private List<SecretNoteResponse> _notes = new();
+    private readonly Dictionary<string, List<SecretNoteResponse>> _notesByCampaign = new();
     private List<UnreadSecretNotesResponse> _unread = new();
 
     private void RegisterJogadorBackend()
@@ -41,11 +42,14 @@ public class MinhaCampanhaTests : MudBunitContext
                 _unread = new();
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(_notes) };
+            var campaignId = path.Split('/')[^2];
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(_notesByCampaign.GetValueOrDefault(campaignId, _notes)) };
         }));
     }
 
-    private int MarkReadCalls => _requests.Count(r => r.Method == HttpMethod.Post && r.RequestUri!.AbsolutePath.EndsWith("campaigns/campaign-1/secret-notes/mark-read"));
+    private int MarkReadCallsFor(string campaignId) => _requests.Count(r => r.Method == HttpMethod.Post && r.RequestUri!.AbsolutePath.EndsWith($"campaigns/{campaignId}/secret-notes/mark-read"));
+
+    private int MarkReadCalls => MarkReadCallsFor("campaign-1");
 
     private static string ActiveTab(IRenderedComponent<MinhaCampanha> cut) => cut.Find("div.mud-tab-active").TextContent;
 
@@ -147,6 +151,35 @@ public class MinhaCampanhaTests : MudBunitContext
             ActiveTab(cut).Should().Contain("Notas Secretas");
             MarkReadCalls.Should().Be(1);
         });
+    }
+
+    [Fact]
+    public void Navigating_from_one_campaign_page_to_another_with_aba_notas_loads_the_new_campaign_before_marking_it_read()
+    {
+        RegisterJogadorBackend();
+        _notesByCampaign["campaign-1"] = new() { new SecretNoteResponse("n1", "Nota da campanha um.", DateTime.UtcNow, new(), new()) };
+        _notesByCampaign["campaign-2"] = new() { new SecretNoteResponse("n2", "Nota da campanha dois.", DateTime.UtcNow, new(), new()) };
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("campanhas/campaign-1/jogador");
+        var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
+        cut.WaitForAssertion(() => ActiveTab(cut).Should().Contain("Minhas Fichas"));
+
+        cut.InvokeAsync(() => navigation.NavigateTo("campanhas/campaign-2/jogador?aba=notas"));
+        cut.Render(p => p.Add(x => x.CampaignId, "campaign-2"));
+
+        cut.WaitForAssertion(() =>
+        {
+            ActiveTab(cut).Should().Contain("Notas Secretas");
+            cut.Markup.Should().Contain("Nota da campanha dois.").And.NotContain("Nota da campanha um.");
+            MarkReadCallsFor("campaign-2").Should().Be(1);
+        });
+        var paths = _requests.Select(r => $"{r.Method} {r.RequestUri!.AbsolutePath}").ToList();
+        paths.Should().Contain(x => x.EndsWith("campaigns/campaign-2/player-view"));
+        var notesFetch = paths.FindIndex(x => x.StartsWith("GET") && x.EndsWith("campaigns/campaign-2/secret-notes"));
+        var markRead = paths.FindIndex(x => x.StartsWith("POST") && x.EndsWith("campaigns/campaign-2/secret-notes/mark-read"));
+        notesFetch.Should().BeGreaterThanOrEqualTo(0);
+        markRead.Should().BeGreaterThan(notesFetch);
+        MarkReadCallsFor("campaign-1").Should().Be(0);
     }
 
     /// <summary>
