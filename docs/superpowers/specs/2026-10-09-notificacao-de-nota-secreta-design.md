@@ -23,7 +23,7 @@ Os demais membros da campanha não recebem evento, contagem nem qualquer sinal d
 ## Dados
 
 `DiaryEntryRecipients` ganha a coluna `ReadAt` (`timestamp with time zone`, nula). Nula significa
-não lida. A entidade `DiaryEntryRecipient` (Domain) ganha `DateTime? ReadAt`.
+não lida. A entidade `DiaryEntryRecipient` (`RuinaRPG.Infrastructure.Diary`) ganha `DateTime? ReadAt`.
 
 Migration `AddReadAtToDiaryEntryRecipients`: adiciona a coluna e, no mesmo `Up`, preenche `ReadAt`
 de todas as linhas já existentes com o `CreatedAt` da respectiva `DiaryEntry`. Assim nenhuma nota
@@ -61,9 +61,10 @@ nginx já faz proxy de `/hubs/`. Nenhuma mudança de infra.
 | Evento | Payload | Quando | Para quem |
 |---|---|---|---|
 | `SecretNoteReceived` | `SecretNoteNotification(string CampaignId, string CampaignName)` | `CreateSecretNote`; `UpdateSecretNote` quando há destinatário acrescentado | Na criação, todos os destinatários. Na edição, só os acrescentados |
-| `SecretNotesChanged` | nenhum | `DeleteSecretNote`; `UpdateSecretNote` quando há destinatário removido | Os destinatários que perderam a nota |
+| `SecretNotesChanged` | nenhum | `DeleteSecretNote`; `UpdateSecretNote` quando há destinatário removido; exclusão da campanha | Os destinatários que perderam a nota |
 
-O texto da nota nunca trafega no evento. `SecretNoteNotification` fica em `RuinaRPG.Contracts`.
+O texto da nota nunca trafega no evento. `SecretNoteNotification` e os nomes dos eventos
+(`NotificationEvents`) ficam em `RuinaRPG.Contracts.Notifications`.
 
 Em `UpdateSecretNote`, os destinatários que permanecem conservam o `ReadAt` que tinham; os
 acrescentados entram com `ReadAt` nulo. Editar só o texto ou as imagens não notifica ninguém.
@@ -76,7 +77,9 @@ desfaz nem falha a gravação da nota (mesmo padrão de `CharacterSheetsControll
 
 ### `SecretNoteNotifier` (Services, scoped)
 
-Dono da conexão com `/hubs/notifications` e do estado de não lidas.
+Dono do estado de não lidas e da conexão com `/hubs/notifications`. A conexão fica atrás de
+`INotificationConnection` (implementação real: `SignalRNotificationConnection`), para o serviço ser
+testável em bUnit, que não hospeda SignalR.
 
 - `StartAsync()`: busca `secret-notes/unread`, abre a conexão (`WithAutomaticReconnect`,
   `AccessTokenProvider` do `AuthStateService`, como em `GerenciadorDeEncontros.razor`). Idempotente.
@@ -91,8 +94,10 @@ Dono da conexão com `/hubs/notifications` e do estado de não lidas.
 
 ### `MainLayout`
 
-- Inicia o `SecretNoteNotifier` quando o usuário autenticado tem role Jogador e o encerra quando
-  deixa de estar autenticado (assina `AuthenticationStateChanged`).
+- Inicia o `SecretNoteNotifier` quando `auth/me` (que o layout já consulta a cada navegação)
+  responde role Jogador, e o encerra caso contrário. Como `StartAsync` é idempotente, a mesma
+  chamada reabre uma conexão que tenha desistido de reconectar.
+- O texto do aviso é renderizado como texto puro: o nome da campanha é digitado pelo GM.
 - Assina `Received`: toca o som e abre um snackbar do MudBlazor, "Nova nota secreta em
   *{campanha}*", com ícone (`Icons.Material.Filled.MarkEmailUnread`, sem emoji), clicável. O clique
   navega para `/campanhas/{id}/jogador?aba=notas`.
@@ -105,7 +110,10 @@ Dono da conexão com `/hubs/notifications` e do estado de não lidas.
 
 ### Contador
 
-- `NavMenu`: `MudBadge` com `TotalUnread` no link "Minhas Campanhas" (oculto quando zero).
+- `MainLayout`: indicador com `TotalUnread` na barra superior (oculto quando zero), para o contador
+  continuar visível com o menu recolhido no desktop e fechado no celular. Leva à aba Notas Secretas
+  quando só uma campanha tem não lidas; senão, a Minhas Campanhas.
+- `NavMenu`: `TotalUnread` no link "Minhas Campanhas" (oculto quando zero).
 - `MinhasCampanhas.razor`: badge por campanha.
 - `MinhaCampanha.razor`: badge no título da aba "Notas Secretas".
 
