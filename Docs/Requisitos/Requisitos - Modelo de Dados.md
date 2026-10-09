@@ -119,6 +119,15 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Durabilidade | int, nullable |
 | Inquebravel | bool — quando true, Durabilidade é NULL e o item não tem máximo (ver "[[Requisitos - Auditoria de Regras]]") |
 
+**TabelaDeAfinidades** — "[[Tabela de Afinidades]]" convertida em tabela: Eficiência e Dano Elemental por valor de Afinidade (ver "[[Requisitos - Ficha de Personagem]]" 2.b). Semeada a partir do documento **só enquanto está vazia**; depois é mantida pelo Auditor de Regras ("[[Requisitos - Auditoria de Regras]]" R0016).
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Afinidade | int, único |
+| Eficiencia | int, >= 0 |
+| Dano | int, >= 0 |
+
   
 
 # 4. Banco de Magias e Habilidades

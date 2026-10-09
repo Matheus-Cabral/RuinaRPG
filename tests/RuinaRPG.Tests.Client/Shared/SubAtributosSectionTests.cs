@@ -76,18 +76,18 @@ public class SubAtributosSectionTests : MudBunitContext
         bloco.QuerySelector(".subatributos-bloco-titulo")!.TextContent.Trim().Should().Be("Afinidade Elemental");
         cut.FindComponent<AfinidadeSelect>().Instance.Value.Should().Be("Agua");
         bloco.QuerySelector(".subatributo-eficiencia .subatributo-valor")!.TextContent.Trim().Should().Be("3");
-        bloco.QuerySelector(".subatributo-eficiencia .subatributo-regra")!.TextContent.Trim().Should().Be("1 a cada 2 pontos em Água");
+        bloco.QuerySelector(".subatributo-eficiencia .subatributo-regra")!.TextContent.Trim().Should().Be("conforme a Tabela de Afinidades");
         bloco.QuerySelector(".subatributo-dano .subatributo-valor")!.TextContent.Trim().Should().Be("2");
-        bloco.QuerySelector(".subatributo-dano .subatributo-regra")!.TextContent.Trim().Should().Be("1 a cada 3 pontos em Água");
+        bloco.QuerySelector(".subatributo-dano .subatributo-regra")!.TextContent.Trim().Should().Be("conforme a Tabela de Afinidades");
     }
 
     [Fact]
-    public void Without_a_chosen_Afinidade_the_rule_refers_to_the_Afinidade_generically()
+    public void Without_a_chosen_Afinidade_the_captions_still_point_to_the_Tabela_de_Afinidades()
     {
         var cut = RenderSecao(afinidade: null);
 
-        cut.Find(".subatributo-eficiencia .subatributo-regra").TextContent.Trim().Should().Be("1 a cada 2 pontos na Afinidade escolhida");
-        cut.Find(".subatributo-dano .subatributo-regra").TextContent.Trim().Should().Be("1 a cada 3 pontos na Afinidade escolhida");
+        cut.Find(".subatributo-eficiencia .subatributo-regra").TextContent.Trim().Should().Be("conforme a Tabela de Afinidades");
+        cut.Find(".subatributo-dano .subatributo-regra").TextContent.Trim().Should().Be("conforme a Tabela de Afinidades");
     }
 
     [Fact]

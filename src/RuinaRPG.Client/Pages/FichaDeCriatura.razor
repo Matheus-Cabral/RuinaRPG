@@ -307,6 +307,39 @@
             </MudSimpleTable>
         </Section>
 
+        <Section Title="Maestrias">
+            <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
+                <MudTextField T="string" @bind-Value="_masteryForm.Nome" Label="Nome" />
+                <MudSelect T="string" @bind-Value="_masteryForm.Pericia" Label="Perícia">
+                    <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
+                    @foreach (var skill in _skills)
+                    {
+                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
+                    <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
+                    @foreach (var attr in _attributes)
+                    {
+                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
+            </EditForm>
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <tbody>
+                    @foreach (var mastery in _masteries)
+                    {
+                        <tr>
+                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </Section>
+
         <Section Title="Armaduras">
             <MudSimpleTable Dense="true" Hover="true">
                 <thead>
@@ -475,39 +508,6 @@
         </Section>
 
         <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" />
-
-        <Section Title="Maestrias">
-            <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
-                <MudTextField T="string" @bind-Value="_masteryForm.Nome" Label="Nome" />
-                <MudSelect T="string" @bind-Value="_masteryForm.Pericia" Label="Perícia">
-                    <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
-                    @foreach (var skill in _skills)
-                    {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
-                    <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
-                    @foreach (var attr in _attributes)
-                    {
-                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var mastery in _masteries)
-                    {
-                        <tr>
-                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">

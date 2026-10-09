@@ -11,8 +11,8 @@ Nível e experiencia = tabela
 
 Iniciativa = Agilidade + Bruto Prontidão + Artefato ou item
 Movimentação (Minimo absoluto 1) = Agilidade * 2 + Artefato - Sobrepeso
-Eficiência elemental = Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida (1.a) / 2 (arredondado para baixo)
-Dano elemental = Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida (1.a) / 3 (arredondado para baixo)
+Eficiência elemental = coluna Eficiência de [[Tabela de Afinidades]], para o Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida (1.a)
+Dano elemental = coluna Dano de [[Tabela de Afinidades]], para o Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida (1.a)
 Esquiva Natural = Agilidade + Bruto Reflexos + Artefatos - Penalidade de armadura
 Defesa Natural = Vigor + Bruto Fortitude + Escudo +Artefatos + Cobertura
 Redução física = Artefato + Armadura

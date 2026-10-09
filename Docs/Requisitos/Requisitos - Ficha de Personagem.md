@@ -122,10 +122,10 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 - *Cobertura*: uma "nota" de dois escudos (ícones), abaixo do rótulo "Cobertura" e acima do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima; os valores guardados continuam Nenhuma/Parcial/Completa.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
-- *Eficiência Elemental* e *Dano Elemental*: campos calculados a partir do *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida. **Eficiência Elemental** = 1 a cada **2** pontos desse Valor; **Dano Elemental** = 1 a cada **3** pontos — em ambos o que sobra não conta (arredonda para baixo; ver "[[Formulas]]"). Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
+- *Eficiência Elemental* e *Dano Elemental*: campos calculados a partir do *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida. Os dois vêm da "[[Tabela de Afinidades]]", consultada com esse Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida em 1.a, e mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0016; ver também "[[Formulas]]"). Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
 - *Dano de Briga*: campo previsto porém sem fórmula definida ainda. Não implementar até a regra existir.
 
-**Disposição**: dentro da seção Sub-Atributos, o que é relacionado fica agrupado. A **Defesa Natural** e a **Cobertura** que entra na sua conta formam uma coluna à direita dos demais Sub-Atributos, sem moldura e com uma coisa por linha: "Defesa Natural: x", o rótulo "Cobertura", os escudos e, por último, o estado da cobertura em texto menor, com fonte e cor próprias. O bloco **Afinidade Elemental** fica no fim da seção, ocupando toda a largura, e reúne o dropdown de *Afinidade* (1.a), a Eficiência Elemental e o Dano Elemental, cada um destes com a sua regra por extenso (ex.: "1 a cada 2 pontos em Fogo"); trocar a Afinidade ali atualiza os dois valores. No celular, a coluna da Defesa desce para baixo dos demais. A mesma disposição vale para as fichas de NPC e de Criatura — esta sem o bloco Afinidade Elemental, pois não tem Eficiência nem Dano Elemental (o campo *Afinidade* dela continua em 1.a).
+**Disposição**: dentro da seção Sub-Atributos, o que é relacionado fica agrupado. A **Defesa Natural** e a **Cobertura** que entra na sua conta formam uma coluna à direita dos demais Sub-Atributos, sem moldura e com uma coisa por linha: "Defesa Natural: x", o rótulo "Cobertura", os escudos e, por último, o estado da cobertura em texto menor, com fonte e cor próprias. O bloco **Afinidade Elemental** fica no fim da seção, ocupando toda a largura, e reúne o dropdown de *Afinidade* (1.a), a Eficiência Elemental e o Dano Elemental, cada um destes com a legenda "conforme a Tabela de Afinidades" abaixo do valor; trocar a Afinidade ali atualiza os dois valores. No celular, a coluna da Defesa desce para baixo dos demais. A mesma disposição vale para as fichas de NPC e de Criatura — esta sem o bloco Afinidade Elemental, pois não tem Eficiência nem Dano Elemental (o campo *Afinidade* dela continua em 1.a).
 
 Os Sub-Atributos também refletem as Penalidades de equipamento ativas (R0014 do Catálogo): uma Penalidade sobre um Sub-Atributo é subtraída do valor exibido, e uma sobre Atributo ou Perícia chega a eles pelas fórmulas acima.
 
@@ -184,7 +184,7 @@ Como um Acerto Crítico em teste também concede um ponto de Perícia (fora da t
 - *Atributo*: dropdown com os 8 atributos (ver 2.a). Não há um atributo-chave fixo por Perícia — a associação é situacional, escolhida pelo jogador conforme o teste sendo feito, e pode mudar de uma rolagem para outra.
 - *Total*: campo calculado, não editável. `Total = Modificador + Total do Atributo escolhido + Artefato(s)` (ver 2.a e 5.b — *Artefato(s)* é a soma dos Valores de Artefatos equipados cujo Tipo de alvo é Perícia e cujo Alvo é esta Perícia), refletindo a Fórmula do Teste (`Dado da Cena + Modificador de Perícia + Atributo`) de §2 de "[[Ruína RPG - Sistema Básico]]" — sem o Dado da Cena, que é resolvido no momento da rolagem, fora da ficha. O Total já inclui as Penalidades de equipamento ativas sobre a Perícia ou sobre o Atributo escolhido (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014).
 
-3. **Combate**: armas e condutores, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo.
+3. **Combate**: armas e condutores, maestrias, armaduras, escudos, efeito de batalha e iniciativa. Composta pelos subgrupos abaixo, mais as Maestrias (4.e), exibidas logo abaixo de Armas e Condutores (3.a).
 
   
 
@@ -257,7 +257,7 @@ Quatro campos calculados, não editáveis, um por Tipo de Dano — **Cortante**,
 
   
 
-4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas, maestrias e habilidades passivas. Composta pelos subgrupos abaixo.
+4. **Magias & Habilidades**: habilidade racial, magias/habilidades, contratos, runas e habilidades passivas. Composta pelos subgrupos abaixo, exceto as Maestrias (4.e), que são exibidas na aba Combate.
 
   
 
@@ -323,6 +323,8 @@ A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—"
 ### 4.e) Maestrias
 
   
+
+**Disposição**: apesar do identificador 4.e (mantido para não quebrar as referências existentes), a seção de Maestrias é exibida na aba **Combate**, logo abaixo de Armas e Condutores (3.a) e antes de Armaduras (3.b) — não na aba Magias & Habilidades. Vale igualmente para a Ficha de NPC e a Ficha de Criatura.
 
 Recurso separado da Maestria de Atributos (ver 2.a) — tem seu próprio poço de Pontos/Espaços de Maestria, concedido pela "[[Tabela de Níveis]]". Lista incremental: o jogador adiciona uma Maestria por vez, com os campos:
 

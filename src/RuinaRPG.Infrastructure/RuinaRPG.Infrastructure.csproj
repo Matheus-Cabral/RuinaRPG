@@ -28,6 +28,7 @@
     <EmbeddedResource Include="../../Docs/Sistema RPG/Historico.md" LogicalName="Historico.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/Equipagem.md" LogicalName="Equipagem.md" />
     <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Durabilidade por Rank.md" LogicalName="Tabela de Durabilidade por Rank.md" />
+    <EmbeddedResource Include="../../Docs/Sistema RPG/Tabela de Afinidades.md" LogicalName="Tabela de Afinidades.md" />
   </ItemGroup>
 
   <PropertyGroup>

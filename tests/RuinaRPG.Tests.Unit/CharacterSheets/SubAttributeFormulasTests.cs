@@ -5,6 +5,32 @@ namespace RuinaRPG.Tests.Unit.CharacterSheets;
 
 public class SubAttributeFormulasTests
 {
+    private static readonly LinhaDaTabelaDeAfinidades[] TabelaComLacunas =
+    {
+        new(10, 5, 5), new(3, 2, 1), new(5, 3, 2), // fora de ordem de propósito
+    };
+
+    [Theory]
+    [InlineData(3, 2, 1)]   // valor exato
+    [InlineData(4, 2, 1)]   // entre linhas: vale a maior que não ultrapassa
+    [InlineData(7, 3, 2)]   // lacuna entre 5 e 10
+    [InlineData(10, 5, 5)]  // última linha
+    [InlineData(99, 5, 5)]  // acima da tabela: valores máximos
+    [InlineData(2, 0, 0)]   // abaixo da menor linha
+    [InlineData(-1, 0, 0)]  // negativo
+    public void EficienciaElemental_and_DanoElemental_come_from_the_highest_row_not_above_the_value(int valor, int eficiencia, int dano)
+    {
+        SubAttributeFormulas.EficienciaElemental(valor, TabelaComLacunas).Should().Be(eficiencia);
+        SubAttributeFormulas.DanoElemental(valor, TabelaComLacunas).Should().Be(dano);
+    }
+
+    [Fact]
+    public void EficienciaElemental_and_DanoElemental_are_0_with_an_empty_table()
+    {
+        SubAttributeFormulas.EficienciaElemental(7, Array.Empty<LinhaDaTabelaDeAfinidades>()).Should().Be(0);
+        SubAttributeFormulas.DanoElemental(7, Array.Empty<LinhaDaTabelaDeAfinidades>()).Should().Be(0);
+    }
+
     [Fact]
     public void Iniciativa_sums_agilidade_bruto_prontidao_and_artefato_ou_item()
     {
@@ -70,22 +96,6 @@ public class SubAttributeFormulasTests
         // "Redução Física = Artefato + Armadura" / "Redução Mágica = Artefato + Armadura mágica" — 2.b.
         SubAttributeFormulas.ReducaoFisica(artefato: 2, armadura: 3).Should().Be(5);
         SubAttributeFormulas.ReducaoMagica(artefato: 1, armaduraMagica: 4).Should().Be(5);
-    }
-
-    // 2.b: cada 2 pontos no elemento da Afinidade valem 1 de Eficiência Elemental; cada 3 valem 1 de
-    // Dano Elemental. O que sobra não conta (arredonda para baixo).
-    [Theory]
-    [InlineData(0, 0, 0)]
-    [InlineData(1, 0, 0)]
-    [InlineData(2, 1, 0)]
-    [InlineData(3, 1, 1)]
-    [InlineData(5, 2, 1)]
-    [InlineData(6, 3, 2)]
-    [InlineData(7, 3, 2)]
-    public void EficienciaElemental_is_one_per_two_points_and_DanoElemental_one_per_three(int valor, int eficiencia, int dano)
-    {
-        SubAttributeFormulas.EficienciaElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(eficiencia);
-        SubAttributeFormulas.DanoElemental(valorDaAfinidadeCorrespondente: valor).Should().Be(dano);
     }
 
     [Fact]

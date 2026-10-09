@@ -101,7 +101,7 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 - **4.a Habilidade Racial** não existe na Ficha de Criatura.
 - **4.b Magias & Habilidades**: mesma estrutura do Personagem (Nome, Tipo, Grau, Efeitos, Gasto em PI, Custo em Arcana, Descrição — ver "[[Requisitos - Ficha de Personagem]]" 4.b), com uma diferença: o Grau de cada entrada é limitado pelo *Rank* da Criatura (1.a) em vez do Círculo/Grau do Personagem. A equivalência exata entre Rank e Grau máximo ainda não está definida nas regras — campo de validação previsto porém pendente até essa equivalência existir.
 - **4.c Contratos** e **4.d Runas** não existem na Ficha de Criatura.
-- **4.e Maestrias**: mesma estrutura do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
+- **4.e Maestrias**: mesma estrutura do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). Como no Personagem, a seção é exibida na aba Combate, logo abaixo de Armas.
 - **4.f Habilidades Passivas**: mesma estrutura e regras do Personagem (ver "[[Requisitos - Ficha de Personagem]]" 4.f e R0008). Requisitos sobre campos que a Criatura não tem são **ignorados**: Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Estrela, Histórico e as Perícias fora da lista de 2.d. Entre os Atributos, só Força, Vigor, Agilidade, Destreza e Astúcia são comparados — requisitos de Instinto, Vontade e Influência são ignorados. Nível, Afinidade e Sub-Atributos são conferidos normalmente.
 
   
