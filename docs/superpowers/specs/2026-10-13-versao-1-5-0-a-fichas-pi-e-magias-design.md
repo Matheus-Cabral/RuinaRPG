@@ -91,6 +91,12 @@ AplicarAoAtual(atual, delta) = max(0, atual + delta)
 - `NpcSheetsController.Update` — same with `request.Nivel` against `sheet.Nivel`; there is no manual
   bonus. `request.PontosDeIgnicaoTotal` becomes accepted-but-ignored (same treatment `EAPAtual`
   already has); the column and the contract field stay, no migration.
+- `NpcSheetsController.UpdateNivel` and `UpdateExperienciaAtual` (the two dedicated endpoints the NPC
+  page uses) apply the same delta directly to the stored `PontosDeIgnicaoAtual`.
+- **New sheets (amended 2026-10-13 while planning):** a Ficha de Personagem and an NPC sheet created
+  from blank start with `PontosDeIgnicaoAtual = Acumulado(PontosDeIgnicao, Nivel inicial)`. Without
+  this a new sheet would never receive the level-1 grant and, with item 4, could not buy its first
+  Magia. A sheet copied by a grant keeps the source values.
 - `CharacterSheetResponse.PontosDeIgnicaoTotal` and `PontosDeIgnicaoBonusManual` stay in the contract.
 - No backfill: existing sheets keep their Atual; the rule applies from the next level change.
 
