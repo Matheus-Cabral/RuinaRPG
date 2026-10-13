@@ -162,7 +162,7 @@
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
                 </div>
                 <MudText>VIS Atual: @_form.EAPAtual</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifyPontosDeIgnicaoChangedAsync" />
                 <div class="d-flex align-center mt-2" style="gap:8px">
                     <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:22rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPiDeltaAsync">Aplicar</MudButton>
@@ -1186,6 +1186,32 @@
         return Task.CompletedTask;
     }
 
+    // O saldo de Pontos de Ignição tem endpoint próprio: o servidor o altera sozinho (nível, bônus
+    // manual, Magias/Habilidades), e o PUT genérico o ignora para que um formulário desatualizado nunca
+    // escreva por cima disso. Editar o campo à mão salva só ele.
+    private Task NotifyPontosDeIgnicaoChangedAsync()
+    {
+        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync);
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SavePontosDeIgnicaoAsync()
+    {
+        if (_form.PontosDeIgnicaoAtual is null)
+        {
+            _errorMessage = "Informe os Pontos de Ignição Atual.";
+            return false;
+        }
+
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicaoAtual.Value);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
+
+        _errorMessage = null;
+        await RecarregarPontosDeIgnicaoAsync();
+        return true;
+    }
+
     /// <summary>
     /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via _autoSave.NotifyChanged), for
     /// the pre-existing "Aplicar"/inline-update handlers below that saved immediately before this
@@ -1561,12 +1587,17 @@
     }
 
     /// <summary>
-    /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b). Traz o valor
-    /// novo para o formulário antes do próximo autosave, que senão regravaria o saldo antigo.
+    /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b), e é ela quem
+    /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
+    /// releitura falhar, o campo fica como está — a operação em si já deu certo.
     /// </summary>
     private async Task RecarregarPontosDeIgnicaoAsync()
     {
-        var sheet = await Http.GetFromJsonAsync<CharacterSheetResponse>($"character-sheets/{SheetId}");
+        var response = await Http.GetAsync($"character-sheets/{SheetId}");
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         if (sheet is not null)
             _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
     }

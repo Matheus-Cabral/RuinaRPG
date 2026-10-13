@@ -42,6 +42,7 @@ public class FichaMagiasEdicaoTests : MudBunitContext
 
     private readonly List<string> _requests = new();
     private int _leiturasDaFicha;
+    private bool _releiturasFalham;
 
     private void RegisterHttp()
     {
@@ -56,6 +57,8 @@ public class FichaMagiasEdicaoTests : MudBunitContext
             if (Regex.IsMatch(path, "-sheets/[^/]+$"))
             {
                 var pi = ++_leiturasDaFicha == 1 ? 30 : 16;
+                if (_releiturasFalham && _leiturasDaFicha > 1)
+                    return new HttpResponseMessage(HttpStatusCode.InternalServerError);
                 return Json(new { PontosDeIgnicaoAtual = pi, PontosDeIgnicaoTotal = 40, PontosDeIgnicao = pi });
             }
             if (path.EndsWith("/spell-abilities"))
@@ -98,11 +101,14 @@ public class FichaMagiasEdicaoTests : MudBunitContext
             .Should().NotContain(b => b.TextContent.Contains("Editar"), "só Magia e Habilidade são editáveis");
     }
 
-    [Fact]
-    public async Task Removing_a_spell_reloads_the_Pontos_de_Ignicao_shown_on_the_Personagem()
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "character-sheets", "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "npc-sheets", "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "creature-sheets", "Pontos de Ignição")]
+    public async Task Removing_a_spell_reloads_the_Pontos_de_Ignicao_shown_on_the_sheet(Type pagina, string rota, string rotulo)
     {
         RegisterHttp();
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
+        var cut = RenderPagina(pagina);
         await Task.Delay(100);
         await AbrirAbaAsync(cut, "Magias & Habilidades");
 
@@ -110,7 +116,28 @@ public class FichaMagiasEdicaoTests : MudBunitContext
         await Task.Delay(100);
         await AbrirAbaAsync(cut, "Informações Básicas");
 
-        _requests.Count(r => r == "GET /api/character-sheets/sheet-1").Should().BeGreaterThan(1);
-        cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == "Pontos de Ignição Atual").Find("input").GetAttribute("value").Should().Be("16");
+        _requests.Count(r => r == $"GET /api/{rota}/sheet-1").Should().BeGreaterThan(1);
+        cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == rotulo).Find("input").GetAttribute("value").Should().Be("16");
+    }
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "character-sheets", "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "npc-sheets", "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "creature-sheets", "Pontos de Ignição")]
+    public async Task A_failed_reload_after_removing_a_spell_leaves_the_field_as_it_was(Type pagina, string rota, string rotulo)
+    {
+        // A remoção já deu certo: a releitura do saldo falhar não pode virar erro da operação.
+        _releiturasFalham = true;
+        RegisterHttp();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+        await AbrirAbaAsync(cut, "Magias & Habilidades");
+
+        await cut.InvokeAsync(() => cut.FindAll("tr").Single(tr => tr.TextContent.Contains("Montada")).QuerySelectorAll("button").Single(b => b.TextContent.Contains("Remover")).Click());
+        await Task.Delay(100);
+        await AbrirAbaAsync(cut, "Informações Básicas");
+
+        _requests.Count(r => r == $"GET /api/{rota}/sheet-1").Should().BeGreaterThan(1);
+        cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == rotulo).Find("input").GetAttribute("value").Should().Be("30");
     }
 }
