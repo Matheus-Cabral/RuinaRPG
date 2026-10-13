@@ -119,6 +119,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         // ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
         if (!fromBank)
         {
+            sheetCopy.CriadaNaFicha = true;
             var bankCopy = new SpellAbilityBankEntry
             {
                 Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
@@ -212,7 +213,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
             pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync())).ToList();
         return new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
             e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList(),
-            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes);
+            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes, CriadaNaFicha: e.CriadaNaFicha);
     }
 
     private async Task<List<PassivaDisponivelResponse>> PassivasDisponiveisAsync(IQueryable<SpellAbilityBankEntry> query, FichaParaRequisitos ficha)

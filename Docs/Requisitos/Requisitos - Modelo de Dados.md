@@ -344,6 +344,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Categoria | enum Livre \| Vocacional \| DeClasse, nullable — só em Passiva (Tipo = Passiva) |
 | Requisitos | jsonb, nullable — só em Passiva; ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009 |
+| CriadaNaFicha | boolean, NOT NULL, default false — verdadeiro quando a entrada foi montada do zero na ficha; só essas podem ser editadas. Entradas anteriores à 1.5.0 ficam falsas. Vale também para `NpcSpellAbilities` e `CreatureSpellAbilities`. |
 
 **CharacterSpellAbilityEffects** — mesma forma de `SpellAbilityBankEffects`, FK pra `CharacterSpellAbilities`.
 

@@ -20,4 +20,7 @@ public class CreatureSpellAbility
 
     /// <summary>Só em Passivas; gravado como jsonb. Nulo = sem requisitos.</summary>
     public RequisitosDePassiva? Requisitos { get; set; }
+
+    /// <summary>Montada do zero na ficha (e não escolhida do banco): só essas podem ser editadas (4.b).</summary>
+    public bool CriadaNaFicha { get; set; }
 }

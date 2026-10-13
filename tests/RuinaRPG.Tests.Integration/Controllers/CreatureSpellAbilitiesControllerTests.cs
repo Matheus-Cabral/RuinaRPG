@@ -9,6 +9,7 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -301,5 +302,31 @@ public class CreatureSpellAbilitiesControllerTests : IClassFixture<PostgresFixtu
         var bankEntry = (await GetBankAsync(gmToken)).Should().ContainSingle().Subject;
         (await SourceBankEntryIdAsync(sheetCopy!.Id)).Should().Be(Guid.Parse(bankEntry.Id));
         bankEntry.DeCriatura.Should().Be(true);
+    }
+
+    [Fact]
+    public async Task An_entry_built_from_scratch_is_flagged_CriadaNaFicha_and_one_from_the_bank_is_not()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureMagiasFlag1", "creaturemagiasflag1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetPiAsync(sheetId, 100);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        var bankId = (await GetBankAsync(gmToken)).Single(e => e.Nome == "Bola de Fogo").Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCreatureSpellAbilityRequest(bankId, null, null, null, null, null)));
+
+        var list = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/spell-abilities", gmToken)))
+            .Content.ReadFromJsonAsync<List<CreatureSpellAbilityResponse>>())!;
+        list.Should().HaveCount(2);
+        list.Count(e => e.CriadaNaFicha).Should().Be(1);
+    }
+
+    private async Task SetPiAsync(string sheetId, int pi)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        (await db.CreatureSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicao = pi;
+        await db.SaveChangesAsync();
     }
 }

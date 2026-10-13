@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -299,5 +300,31 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
         var bankEntry = (await GetBankAsync(gmToken)).Should().ContainSingle().Subject;
         (await SourceBankEntryIdAsync(sheetCopy!.Id)).Should().Be(Guid.Parse(bankEntry.Id));
         bankEntry.DeCriatura.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task An_entry_built_from_scratch_is_flagged_CriadaNaFicha_and_one_from_the_bank_is_not()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcMagiasFlag1", "npcmagiasflag1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetPiAsync(sheetId, 100);
+
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+        var bankId = (await GetBankAsync(gmToken)).Single(e => e.Nome == "Bola de Fogo").Id;
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddNpcSpellAbilityRequest(bankId, null, null, null, null, null)));
+
+        var list = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/spell-abilities", gmToken)))
+            .Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>())!;
+        list.Should().HaveCount(2);
+        list.Count(e => e.CriadaNaFicha).Should().Be(1);
+    }
+
+    private async Task SetPiAsync(string sheetId, int pi)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        (await db.NpcSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
+        await db.SaveChangesAsync();
     }
 }

@@ -820,6 +820,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CharacterSheetId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("CriadaNaFicha")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Custo")
                         .HasColumnType("integer");
 
@@ -1264,6 +1267,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("CreatureSheetId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("CriadaNaFicha")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Custo")
                         .HasColumnType("integer");
@@ -2297,6 +2303,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("Categoria")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("CriadaNaFicha")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Custo")
                         .HasColumnType("integer");

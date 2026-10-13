@@ -254,7 +254,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             {
                 Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
-                Categoria = sa.Categoria, Requisitos = sa.Requisitos
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
             db.NpcSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)
@@ -313,7 +313,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             {
                 Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
-                Categoria = sa.Categoria, Requisitos = sa.Requisitos
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
             db.CreatureSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)
