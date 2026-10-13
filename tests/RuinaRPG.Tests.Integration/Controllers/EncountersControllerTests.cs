@@ -105,8 +105,24 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<EncounterResponse>();
         body!.Nome.Should().Be("Emboscada na Ponte");
-        body.CurrentRound.Should().Be(1);
+        body.CurrentRound.Should().Be(0);
         body.CurrentParticipantIndex.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Create_starts_in_Preparacao_at_Turno_0_with_nobody_on_turn()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("EncGmFase", "encfase@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Fase");
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken,
+            new CreateEncounterRequest("Fase")));
+
+        var body = await response.Content.ReadFromJsonAsync<EncounterResponse>();
+        body!.Status.Should().Be("Preparacao");
+        body.CurrentRound.Should().Be(0);
+        body.CurrentParticipantId.Should().BeNull();
+        body.FinalizadoEm.Should().BeNull();
     }
 
     [Fact]
@@ -205,7 +221,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var encountersList = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         var encounters = await encountersList.Content.ReadFromJsonAsync<List<EncounterResponse>>();
         var encounter = encounters!.Should().ContainSingle(e => e.Id == encounterId).Which;
-        encounter.CurrentRound.Should().Be(1);
+        encounter.CurrentRound.Should().Be(0);
         encounter.CurrentParticipantIndex.Should().Be(1);
 
         var after = await ListParticipantsAsync(gmToken, encounterId);
@@ -240,7 +256,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var encountersList = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         var encounters = await encountersList.Content.ReadFromJsonAsync<List<EncounterResponse>>();
         var encounter = encounters!.Should().ContainSingle(e => e.Id == encounterId).Which;
-        encounter.CurrentRound.Should().Be(2);
+        encounter.CurrentRound.Should().Be(1);
         encounter.CurrentParticipantIndex.Should().Be(0);
 
         var after = await ListParticipantsAsync(gmToken, encounterId);

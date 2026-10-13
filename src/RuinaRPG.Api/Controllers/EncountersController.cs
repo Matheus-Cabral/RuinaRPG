@@ -97,7 +97,10 @@ public class EncountersController(RuinaRpgDbContext db) : ControllerBase
             .Select(p => p.Id)
             .ToListAsync();
         var index = RuinaRPG.Domain.Encounters.TurnAdvanceCalculator.IndexOf(e.CurrentParticipantId, orderedIds);
-        return new EncounterResponse(e.Id.ToString(), e.Nome, e.CurrentRound, index);
+        return new EncounterResponse(e.Id.ToString(), e.Nome, e.CurrentRound, index,
+            e.Status.ToString(),
+            e.FinalizadoEm is { } fim ? DateTime.SpecifyKind(fim, DateTimeKind.Utc) : null,
+            e.CurrentParticipantId?.ToString());
     }
 
     private Guid CurrentGmId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

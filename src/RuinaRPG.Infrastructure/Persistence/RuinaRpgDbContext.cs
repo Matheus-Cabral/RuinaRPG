@@ -103,6 +103,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
     public DbSet<CreatureExclusiveTrait> CreatureExclusiveTraits => Set<CreatureExclusiveTrait>();
     public DbSet<SheetLogEntry> SheetLogEntries => Set<SheetLogEntry>();
+    public DbSet<EncounterLogEntry> EncounterLogEntries => Set<EncounterLogEntry>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
     public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
@@ -702,6 +703,15 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         {
             entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(e => e.CurrentParticipantId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(e => e.Status).HasConversion<string>();
+        });
+
+        builder.Entity<EncounterLogEntry>(entity =>
+        {
+            entity.HasOne<Encounter>().WithMany().HasForeignKey(l => l.EncounterId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(l => l.Sequencia).ValueGeneratedOnAdd().UseIdentityByDefaultColumn();
+            entity.Property(l => l.Tipo).HasConversion<string>();
+            entity.HasIndex(l => new { l.EncounterId, l.Sequencia });
         });
 
         builder.Entity<EncounterParticipant>(entity =>

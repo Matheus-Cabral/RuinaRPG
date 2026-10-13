@@ -631,8 +631,28 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Id | PK |
 | CampaignId | FK → Campaigns |
 | Nome | string, nullable |
-| CurrentRound | int |
-| CurrentParticipantIndex | int |
+| Status | string (enum) — `Preparacao`, `EmAndamento` ou `Finalizado`; padrão `Preparacao` |
+| CurrentRound | int — turno atual; `0` enquanto o encontro está em `Preparacao` (nunca iniciou) |
+| CurrentParticipantId | FK → EncounterParticipants, nullable — de quem é a vez (ON DELETE SET NULL) |
+| FinalizadoEm | timestamp, nullable — preenchido quando `Status = Finalizado` |
+
+**EncounterLogEntries** — log do encontro, gravado só com o encontro em andamento.
+
+| Coluna | Tipo | Nota |
+|---|---|---|
+| Id | PK | |
+| EncounterId | FK → Encounters, cascade | índice `(EncounterId, Sequencia)` |
+| Sequencia | bigint, identity | ordem estável dentro do mesmo instante |
+| OccurredAt | timestamp | |
+| Turno | int | turno em que a linha foi gravada |
+| VezParticipantId | guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
+| VezNome | string, nullable | snapshot do nome |
+| Tipo | string (enum) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha` |
+| ParticipanteNome | string, nullable | |
+| Campo | string, nullable | |
+| ValorAntes | string, nullable | |
+| ValorDepois | string, nullable | |
+| Texto | string, nullable | |
 
 **EncounterParticipants**
 

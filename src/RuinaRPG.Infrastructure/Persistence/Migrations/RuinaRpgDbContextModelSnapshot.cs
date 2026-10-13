@@ -1515,7 +1515,14 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("CurrentRound")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FinalizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Nome")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -1525,6 +1532,59 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("CurrentParticipantId");
 
                     b.ToTable("Encounters");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Campo")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ParticipanteNome")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Sequencia")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Sequencia"));
+
+                    b.Property<string>("Texto")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Turno")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ValorAntes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValorDepois")
+                        .HasColumnType("text");
+
+                    b.Property<string>("VezNome")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("VezParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncounterId", "Sequencia");
+
+                    b.ToTable("EncounterLogEntries");
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", b =>
@@ -3845,6 +3905,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CurrentParticipantId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterLogEntry", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Encounters.Encounter", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", b =>
