@@ -3,6 +3,8 @@
 @inject HttpClient Http
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
+@inject IDialogService Dialogs
+@using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.SpellsAndAbilities
@@ -116,7 +118,15 @@
 
         <Section Title="Características">
             <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                <div class="d-flex align-center" style="gap:8px">
+                    <div style="flex:1">
+                        <EntityPicker @ref="_traitPicker" @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
+                    </div>
+                    @if (_isRulesAuditor)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="NovaCaracteristicaDeCriaturaAsync">Nova característica de criatura</MudButton>
+                    }
+                </div>
                 <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
             </EditForm>
@@ -665,28 +675,32 @@
         return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
     }
 
+    private EntityPicker? _traitPicker;
+    private bool _isRulesAuditor;
+
+    // Só o catálogo exclusivo de criatura (Ficha de Criaturas 5.d).
     private async Task<List<PickerOption>> SearchTraitsAsync(string query)
     {
-        var encodedQuery = Uri.EscapeDataString(query);
-        var normalTask = Http.GetAsync($"traits?nome={encodedQuery}");
-        var exclusiveTask = Http.GetAsync($"creature-exclusive-traits?nome={encodedQuery}");
-        await Task.WhenAll(normalTask, exclusiveTask);
+        var response = await Http.GetAsync($"creature-exclusive-traits?nome={Uri.EscapeDataString(query ?? "")}");
+        if (!response.IsSuccessStatusCode)
+            return new();
+        var traits = await response.Content.ReadFromJsonAsync<List<CreatureExclusiveTraitResponse>>() ?? new();
+        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
+    }
 
-        var options = new List<PickerOption>();
-        if (normalTask.Result.IsSuccessStatusCode)
-        {
-            var normalTraits = await normalTask.Result.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
-            options.AddRange(normalTraits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")));
-        }
-        if (exclusiveTask.Result.IsSuccessStatusCode)
-        {
-            var exclusiveTraits = await exclusiveTask.Result.Content.ReadFromJsonAsync<List<CreatureExclusiveTraitResponse>>() ?? new();
-            options.AddRange(exclusiveTraits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")));
-        }
+    private async Task LoadIsRulesAuditorAsync()
+    {
+        var response = await Http.GetAsync("auth/me");
+        if (response.IsSuccessStatusCode)
+            _isRulesAuditor = (await response.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false;
+    }
 
-        // Both catalogs appear together, sorted by name — a stable, predictable order regardless
-        // of which of the two requests happened to come back first.
-        return options.OrderBy(o => o.Label, StringComparer.OrdinalIgnoreCase).ToList();
+    private async Task NovaCaracteristicaDeCriaturaAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CaracteristicaDeCriaturaDialog>("Nova característica de criatura",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false, Data: CreatureExclusiveTraitResponse criada } && _traitPicker is not null)
+            await _traitPicker.SelectExternallyAsync(new PickerOption(criada.Id, $"{criada.Nome} ({criada.Custo}, {criada.Polaridade})"));
     }
 
     protected override void OnInitialized()
@@ -716,7 +730,7 @@
         await Task.WhenAll(
             LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             LoadSpellAbilitiesAsync(), LoadMasteriesAsync(),
-            LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync());
+            LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
     }
 
     private async Task LoadLevelUpNoticeAsync()

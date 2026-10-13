@@ -124,7 +124,7 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 
 **5.c Afeições**: sem alteração em relação ao Personagem.
 
-**5.d Características**: mesmo comportamento do Personagem, mais uma diferença — o seletor de característica também lista o catálogo exclusivo de criatura de "[[Requisitos - Auditoria de Regras]]" R0005, junto com o catálogo normal. Uma característica concedida desse catálogo conta no mesmo orçamento de pontos (Positivas/Negativas) que uma característica normal.
+**5.d Características**: mesmo comportamento do Personagem, com uma diferença — o seletor de característica lista **apenas** o catálogo exclusivo de criatura de "[[Requisitos - Auditoria de Regras]]" R0005; o catálogo normal não é oferecido nem aceito. Uma característica do catálogo normal concedida antes dessa regra continua na ficha, conta no mesmo orçamento de pontos (Positivas/Negativas) e pode ser removida. Quando quem está na ficha é o Auditor de Regras, um botão "Nova característica de criatura" ao lado do seletor abre um popup com os campos de R0005 e cadastra a característica no catálogo sem sair da ficha; ao salvar, ela fica selecionada no seletor.
 
 # **R0009** - Requisitos e Penalidades de equipamento seguem o Personagem, com exceções.
 

@@ -47,6 +47,8 @@ public class FichaSubAtributosTests : MudBunitContext
             _requests.Add($"{request.Method} {path}");
             if (request.Method != HttpMethod.Get)
                 return new HttpResponseMessage(HttpStatusCode.OK);
+            if (path.EndsWith("/auth/me"))
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
             if (path.EndsWith("/level-up-notice"))
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             if (Regex.IsMatch(path, "-sheets/[^/]+$"))

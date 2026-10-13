@@ -1,0 +1,68 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@inject HttpClient Http
+@*
+    Atalho do Auditor de Regras na Ficha de Criatura (Auditoria de Regras R0005): cadastra uma
+    característica no catálogo exclusivo de criatura sem sair da ficha. Mesmos campos do formulário
+    de AuditoriaCaracteristicasDeCriatura. Fecha com a CreatureExclusiveTraitResponse criada.
+*@
+<MudDialog>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+        <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+        <MudSelect T="string" @bind-Value="_form.Polaridade" Label="Polaridade">
+            <MudSelectItem Value="@("Positiva")">Positiva</MudSelectItem>
+            <MudSelectItem Value="@("Negativa")">Negativa</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_form.Custo" Label="Custo" />
+        <div class="d-flex align-center" style="gap:4px">
+            <MudCheckBox T="bool" @bind-Value="_form.RequerEspecificacao" Label="Exige Especificação?" />
+            <InfoPopup Title="O que é Especificação">
+                Marque quando a característica pede que o jogador escolha ou nomeie algo ao recebê-la. Nesse caso, a ficha passa a exigir o campo de texto <b>Especificação</b> para essa característica.
+            </InfoPopup>
+        </div>
+        <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_salvando" OnClick="SalvarAsync">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private readonly FormModel _form = new();
+    private string? _errorMessage;
+    private bool _salvando;
+
+    private async Task SalvarAsync()
+    {
+        _salvando = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("creature-exclusive-traits",
+                new CreateCreatureExclusiveTraitRequest(_form.Nome, _form.Descricao, _form.Custo, _form.Polaridade, _form.RequerEspecificacao));
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(await response.Content.ReadFromJsonAsync<CreatureExclusiveTraitResponse>()));
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private class FormModel
+    {
+        public string Nome { get; set; } = "";
+        public string Descricao { get; set; } = "";
+        public int Custo { get; set; }
+        public string Polaridade { get; set; } = "Positiva";
+        public bool RequerEspecificacao { get; set; }
+    }
+}
