@@ -14,6 +14,7 @@ using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.Runes;
+using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Persistence;
@@ -101,6 +102,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
     public DbSet<CreatureExclusiveTrait> CreatureExclusiveTraits => Set<CreatureExclusiveTrait>();
+    public DbSet<SheetLogEntry> SheetLogEntries => Set<SheetLogEntry>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
     public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
@@ -537,6 +539,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<SheetLogEntry>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(l => l.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(l => l.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(l => l.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(l => l.Categoria).HasConversion<string>();
+            entity.Property(l => l.Acao).HasConversion<string>();
+            entity.HasIndex(l => new { l.CharacterSheetId, l.OccurredAt }).IsDescending(false, true);
+            entity.HasIndex(l => new { l.NpcSheetId, l.OccurredAt }).IsDescending(false, true);
+            entity.HasIndex(l => new { l.CreatureSheetId, l.OccurredAt }).IsDescending(false, true);
         });
 
         builder.Entity<NpcAttribute>(entity =>

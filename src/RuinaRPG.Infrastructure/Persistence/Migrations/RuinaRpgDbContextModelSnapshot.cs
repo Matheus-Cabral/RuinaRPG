@@ -2962,6 +2962,72 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("RuneBankEntries");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.SheetLogs.SheetLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Acao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("ActorIsGm")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ActorNickname")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Campo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CharacterSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatureSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemNome")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("NpcSheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Secao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValorAntes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValorDepois")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CharacterSheetId", "OccurredAt")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("CreatureSheetId", "OccurredAt")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("NpcSheetId", "OccurredAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("SheetLogEntries");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEffect", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4160,6 +4226,24 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.SheetLogs.SheetLogEntry", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CharacterSheetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("CreatureSheetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
+                        .WithMany()
+                        .HasForeignKey("NpcSheetId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEffect", b =>

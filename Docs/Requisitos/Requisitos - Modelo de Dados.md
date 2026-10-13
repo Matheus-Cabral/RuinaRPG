@@ -556,6 +556,33 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 | UpdatedByUserId | FK → Users, nullable |
 | UpdatedAt | DateTime, nullable |
 
+
+## 6.4 SheetLogEntries — log de alterações de ficha
+
+*(ver "[[Requisitos - Campanha]]", R0016)*
+
+Uma linha por alteração registrada numa ficha de Personagem, NPC ou Criatura. **Exatamente uma** das três FKs de ficha (`CharacterSheetId`, `NpcSheetId`, `CreatureSheetId`) é preenchida por linha — mesmo padrão de duas/três FKs nullable de `EncounterParticipant` (seção 8). Excluir a ficha apaga seu log em cascata. As linhas são escritas apenas pelo interceptor de salvamento (ver "[[Requisitos - Técnico]]"), nunca por endpoint próprio.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CharacterSheetId | FK → CharacterSheets, nullable, cascade |
+| NpcSheetId | FK → NpcSheets, nullable, cascade |
+| CreatureSheetId | FK → CreatureSheets, nullable, cascade |
+| OccurredAt | DateTime (UTC) |
+| ActorUserId | Guid — usuário que fez a alteração (sem FK: o log sobrevive à conta) |
+| ActorNickname | string — apelido do autor no momento da alteração |
+| ActorIsGm | bool |
+| Categoria | enum Geral \| RecursoVFA \| Estresse (gravado como texto) |
+| Acao | enum Alterou \| Adicionou \| Removeu \| Criou (gravado como texto) |
+| Secao | string — seção/aba da ficha afetada |
+| Campo | string, nullable |
+| ItemNome | string, nullable — nome do item adicionado/removido |
+| ValorAntes | string, nullable |
+| ValorDepois | string, nullable |
+
+Índices: `(CharacterSheetId, OccurredAt DESC)`, `(NpcSheetId, OccurredAt DESC)` e `(CreatureSheetId, OccurredAt DESC)`.
+
   
 
 # 7. Diário e Notas Secretas
