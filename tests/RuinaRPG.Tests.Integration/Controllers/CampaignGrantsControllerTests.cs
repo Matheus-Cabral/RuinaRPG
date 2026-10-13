@@ -535,6 +535,17 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
     private static RuinaRPG.Contracts.SpellsAndAbilities.SpellAbilityEffectRequest[] EfeitosDeTeste() =>
         [new("Dano", 4, 8), new("Alcance", 2, 6)];
 
+    private async Task SetSheetPiAsync(string tipo, string sheetId, int pi)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        if (tipo == "Npc")
+            (await db.NpcSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
+        else
+            (await db.CreatureSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicao = pi;
+        await db.SaveChangesAsync();
+    }
+
     private async Task<(List<RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry> Banco, List<RuinaRPG.Infrastructure.Campaigns.CampaignAttachment> Anexos)> BancoEAnexosAsync(string campaignId)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -554,6 +565,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Grant Magias {tipo}");
         await AddMemberAsync(gmToken, campaignId, playerId);
         var (sourceId, rota) = tipo == "Npc" ? (await CreateNpcSheetAsync(gmToken), "npc-sheets") : (await CreateCreatureSheetAsync(gmToken), "creature-sheets");
+        await SetSheetPiAsync(tipo, sourceId, 1000);
         object addRequest = tipo == "Npc"
             ? new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())
             : new AddCreatureSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList());
@@ -576,6 +588,7 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Magia Privada");
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
+        await SetSheetPiAsync("Npc", sourceId, 1000);
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gmToken,
             new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())));
         var entryId = (await BancoEAnexosAsync(campaignId)).Banco.Single().Id;

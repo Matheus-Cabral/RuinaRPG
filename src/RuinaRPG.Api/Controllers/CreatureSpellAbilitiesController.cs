@@ -105,6 +105,14 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(efeitos.Select(e => e.CustoPI));
         var custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
 
+        // 4.b: o Gasto em PI sai do saldo da ficha; sem saldo, nem o GM cria. Passivas não têm PI.
+        if (SaldoDePontosDeIgnicao.Consome(tipo))
+        {
+            if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicao, gastoEmPI) is { } semSaldo)
+                return BadRequest(semSaldo);
+            sheet.PontosDeIgnicao = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicao, gastoEmPI);
+        }
+
         var sheetCopy = new CreatureSpellAbility
         {
             Id = Guid.NewGuid(), CreatureSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
@@ -218,6 +226,12 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
 
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
 
+        // Só a diferença: subir o custo precisa caber no saldo; baixar devolve.
+        var diferenca = gastoEmPI - entry.GastoEmPI;
+        if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicao, diferenca) is { } semSaldo)
+            return BadRequest(semSaldo);
+        sheet.PontosDeIgnicao = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicao, diferenca);
+
         entry.Nome = request.Nome;
         entry.Tipo = tipo;
         entry.Grau = request.Grau;
@@ -252,6 +266,9 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         if (entry is null)
             return NotFound();
 
+        // Remover devolve o Gasto em PI, inclusive o de uma entrada anterior à 1.5.0 (nunca debitada).
+        if (SaldoDePontosDeIgnicao.Consome(entry.Tipo))
+            sheet.PontosDeIgnicao = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicao, -entry.GastoEmPI);
         db.CreatureSpellAbilities.Remove(entry); // the bank copy this creation also made is untouched — independent copies
         await db.SaveChangesAsync();
         return NoContent();

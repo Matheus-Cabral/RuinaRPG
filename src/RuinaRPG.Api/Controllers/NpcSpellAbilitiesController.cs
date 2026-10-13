@@ -116,6 +116,14 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats sta
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(efeitos.Select(e => e.CustoPI));
         var custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
 
+        // 4.b: o Gasto em PI sai do saldo da ficha; sem saldo, nem o GM cria. Passivas não têm PI.
+        if (SaldoDePontosDeIgnicao.Consome(tipo))
+        {
+            if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicaoAtual, gastoEmPI) is { } semSaldo)
+                return BadRequest(semSaldo);
+            sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, gastoEmPI);
+        }
+
         var sheetCopy = new NpcSpellAbility
         {
             Id = Guid.NewGuid(), NpcSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
@@ -230,6 +238,12 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats sta
 
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
 
+        // Só a diferença: subir o custo precisa caber no saldo; baixar devolve.
+        var diferenca = gastoEmPI - entry.GastoEmPI;
+        if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicaoAtual, diferenca) is { } semSaldo)
+            return BadRequest(semSaldo);
+        sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, diferenca);
+
         entry.Nome = request.Nome;
         entry.Tipo = tipo;
         entry.Grau = request.Grau;
@@ -264,6 +278,9 @@ public class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats sta
         if (entry is null)
             return NotFound();
 
+        // Remover devolve o Gasto em PI, inclusive o de uma entrada anterior à 1.5.0 (nunca debitada).
+        if (SaldoDePontosDeIgnicao.Consome(entry.Tipo))
+            sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, -entry.GastoEmPI);
         db.NpcSpellAbilities.Remove(entry); // the bank copy this creation also made is untouched — independent copies
         await db.SaveChangesAsync();
         return NoContent();

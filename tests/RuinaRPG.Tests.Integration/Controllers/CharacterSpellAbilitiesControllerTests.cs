@@ -88,6 +88,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasGm1", "magias1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayer1", "magiasplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 1000);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken, BolaDeFogoFromScratch()));
 
@@ -151,6 +152,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasGm3", "magias3@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayer3", "magiasplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 1000);
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken, BolaDeFogoFromScratch()));
         var entryId = (await addResponse.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!.Id;
 
@@ -208,6 +210,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasAutoGm1", "magiasauto1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasAutoPlayer1", "magiasautoplayer1@teste.com");
         var (sheetId, campaignId) = await SetUpSheetWithCampaignAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 1000);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken, BolaDeFogoFromScratch()));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -237,6 +240,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasAutoGm2", "magiasauto2@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasAutoPlayer2", "magiasautoplayer2@teste.com");
         var (sheetId, campaignId) = await SetUpSheetWithCampaignAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 1000);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -310,6 +314,7 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
         var gmToken = await RegisterGmAndGetTokenAsync("MagiasGmLink", "magiasgmlink@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPlayerLink", "magiasplayerlink@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 1000);
 
         var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
         var sheetCopy = await response.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>();
@@ -423,5 +428,126 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/spell-abilities/{Guid.NewGuid()}", gmToken, BolaDeFogoEditada())))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private async Task<int> GetPiAsync(string sheetId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        return (await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == Guid.Parse(sheetId))).PontosDeIgnicaoAtual;
+    }
+
+    [Fact]
+    public async Task Add_is_refused_when_the_Gasto_em_PI_exceeds_the_balance_even_for_the_gm()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasPi1", "magiaspi1@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPiP1", "magiaspip1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 13);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken, BolaDeFogoFromScratch()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Pontos de Ignição insuficientes: custa 14 e a ficha tem 13.");
+        (await GetPiAsync(sheetId)).Should().Be(13);
+        (await GetBankAsync(gmToken)).Should().NotContain(e => e.Nome == "Bola de Fogo", "uma criação recusada não deixa cópia no banco");
+    }
+
+    [Fact]
+    public async Task Add_with_exactly_enough_debits_the_balance_to_zero_and_Delete_refunds_it()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasPi2", "magiaspi2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPiP2", "magiaspip2@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 14);
+
+        var criada = await AddAsync(playerToken, sheetId, BolaDeFogoFromScratch());
+        (await GetPiAsync(sheetId)).Should().Be(0);
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/spell-abilities/{criada.Id}", playerToken)))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetPiAsync(sheetId)).Should().Be(14);
+    }
+
+    [Fact]
+    public async Task Add_from_the_bank_also_checks_and_debits()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasPi3", "magiaspi3@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPiP3", "magiaspip3@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 20);
+        await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch()); // 20 - 14 = 6
+        var bankId = (await GetBankAsync(gmToken)).Single(e => e.Nome == "Bola de Fogo").Id;
+
+        var recusada = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCharacterSpellAbilityRequest(bankId, null, null, null, null, null)));
+        recusada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await SetPiAsync(sheetId, 14);
+        var aceita = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken,
+            new AddCharacterSpellAbilityRequest(bankId, null, null, null, null, null)));
+        aceita.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetPiAsync(sheetId)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Update_settles_only_the_difference_in_both_directions()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasPi4", "magiaspi4@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPiP4", "magiaspip4@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 14);
+        var criada = await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch()); // gasto 14, saldo 0
+        var url = $"/api/character-sheets/{sheetId}/spell-abilities/{criada.Id}";
+
+        // Só o nome muda (diferença 0): aceito mesmo com saldo zero.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken,
+            new UpdateSheetSpellAbilityRequest("Outro Nome", "Magia", 3, "Uma explosão de fogo.",
+                [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)])))).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetPiAsync(sheetId)).Should().Be(0);
+
+        // Custo cai de 14 para 8: devolve 6.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken, BolaDeFogoEditada()))).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetPiAsync(sheetId)).Should().Be(6);
+
+        // Custo sobe de 8 para 14: precisa de 6, tem 6.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken,
+            new UpdateSheetSpellAbilityRequest("Bola de Fogo", "Magia", 3, "x",
+                [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)])))).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetPiAsync(sheetId)).Should().Be(0);
+
+        // Voltar a 8 e tentar subir para 14 com saldo 5: recusado, nada muda.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken, BolaDeFogoEditada()))).EnsureSuccessStatusCode();
+        await SetPiAsync(sheetId, 5);
+        var recusada = await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken,
+            new UpdateSheetSpellAbilityRequest("Bola de Fogo", "Magia", 3, "x",
+                [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)])));
+        recusada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await recusada.Content.ReadAsStringAsync()).Should().Contain("Pontos de Ignição insuficientes: custa 6 e a ficha tem 5.");
+        (await GetPiAsync(sheetId)).Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Deleting_an_entry_that_was_never_debited_still_refunds_its_Gasto_em_PI()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasPi5", "magiaspi5@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasPiP5", "magiaspip5@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        var legadaId = Guid.NewGuid();
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            db.CharacterSpellAbilities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterSpellAbility
+            {
+                Id = legadaId, CharacterSheetId = Guid.Parse(sheetId), Nome = "Antiga", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia,
+                Grau = 1, GastoEmPI = 9, Custo = 12, Descricao = "anterior à 1.5.0",
+            });
+            await db.SaveChangesAsync();
+        }
+        await SetPiAsync(sheetId, 2);
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/spell-abilities/{legadaId}", gmToken))).EnsureSuccessStatusCode();
+
+        (await GetPiAsync(sheetId)).Should().Be(11);
     }
 }
