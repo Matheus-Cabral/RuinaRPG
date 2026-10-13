@@ -711,7 +711,7 @@ Add to `CharacterSheetsControllerTests` (helpers `CreateOwnedSheetAsync`, `GetSh
         var noNivel5 = (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual;
 
         (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoAtual = noNivel5 + 3 })).EnsureSuccessStatusCode();
-        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(3 + await PiAcumuladoAsync(1));
+        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(3); // (Δ + 3) − Δ
 
         (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoAtual = 2 })).EnsureSuccessStatusCode();
         (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoAtual = 1 })).EnsureSuccessStatusCode();
