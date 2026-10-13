@@ -100,6 +100,16 @@ AplicarAoAtual(atual, delta) = max(0, atual + delta)
 - `CharacterSheetResponse.PontosDeIgnicaoTotal` and `PontosDeIgnicaoBonusManual` stay in the contract.
 - No backfill: existing sheets keep their Atual; the rule applies from the next level change.
 
+- **Amended 2026-10-13 after the final review of Plan A:** the generic sheet PUT no longer takes the
+  PI balance from the request. `request.PontosDeIgnicaoAtual` (Personagem, NPC) and
+  `request.PontosDeIgnicao` (Criatura) are accepted but ignored; the level and manual-bonus deltas are
+  applied to the **stored** value. Editing the field by hand goes through a dedicated endpoint,
+  `PUT api/{character|npc|creature}-sheets/{id}/pontos-de-ignicao` (body: the new integer, >= 0), with
+  the sheet's usual edit authorization. Reason: the pages autosave the whole form with no concurrency
+  token, so a stale form (a second user on the same sheet, or a pending autosave) would write an old
+  balance over a server-side debit, refund or level adjustment. This supersedes the
+  `Aplicar(request.PontosDeIgnicaoAtual, …)` formulas above.
+
 ### Client
 
 - `FichaDePersonagem.razor` — remove the "Pontos de Ignição Total" line. After any save, the form's
