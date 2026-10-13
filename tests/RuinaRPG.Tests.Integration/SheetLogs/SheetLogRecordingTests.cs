@@ -446,6 +446,53 @@ public partial class SheetLogRecordingTests : IClassFixture<PostgresFixture>, IA
         (await GetSheetAsync(c.GmToken, c.SheetId)).Nome.Should().Be("Salvo");
     }
 
+    /// <summary>Um ator cuja leitura do usuário falha: faz a montagem das linhas do log lançar sem código de teste na produção.</summary>
+    private sealed class BrokenActor : ICurrentActor
+    {
+        public Guid? UserId => throw new InvalidOperationException("falha simulada ao montar o log");
+    }
+
+    [Fact]
+    public async Task A_fault_while_building_the_log_does_not_fail_the_save()
+    {
+        var c = await CenarioAsync("Defeito");
+        await using var comDefeito = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor, BrokenActor>()));
+
+        var novas = await NovasAsync(c.SheetId, async () =>
+        {
+            await using var scope = comDefeito.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.CharacterSheets.SingleAsync(s => s.Id == c.SheetId)).Nome = "Salvo Sem Log";
+            await db.SaveChangesAsync();
+        });
+
+        novas.Should().BeEmpty();
+        (await GetSheetAsync(c.GmToken, c.SheetId)).Nome.Should().Be("Salvo Sem Log");
+    }
+
+    [Fact]
+    public async Task Retrying_a_failed_save_writes_each_log_row_once()
+    {
+        var c = await CenarioAsync("Retry");
+        await using var comAtor = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor>(_ => new FixedActor(c.GmId))));
+
+        var novas = await NovasAsync(c.SheetId, async () =>
+        {
+            await using var scope = comAtor.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.CharacterSheets.SingleAsync(s => s.Id == c.SheetId)).Nome = "Depois da Falha";
+            var ruim = new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = Guid.NewGuid(), Atributo = Atributo.Vigor };
+            db.CharacterAttributes.Add(ruim);
+            var salvar = () => db.SaveChangesAsync();
+            await salvar.Should().ThrowAsync<DbUpdateException>();
+
+            db.CharacterAttributes.Remove(ruim);
+            await db.SaveChangesAsync();
+        });
+
+        novas.Should().ContainSingle().Which.ValorDepois.Should().Be("Depois da Falha");
+    }
+
     [Fact]
     public async Task A_write_without_an_authenticated_user_logs_nothing()
     {

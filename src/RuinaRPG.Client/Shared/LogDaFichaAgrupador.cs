@@ -1,3 +1,4 @@
+using System.Globalization;
 using RuinaRPG.Contracts.SheetLogs;
 
 namespace RuinaRPG.Client.Shared;
@@ -15,6 +16,13 @@ public static class LogDaFichaAgrupador
             .OrderByDescending(g => g.Key)
             .Select(g => (g.Key, g.OrderByDescending(x => x.Local).Select(x => x.Item).ToList()))
             .ToList();
+
+    private static readonly string[] DiasDaSemana =
+        ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+
+    /// <summary>Cabeçalho do dia ("segunda-feira, 13/10/2026"), sem depender dos dados de cultura do navegador (pt-BR pode não estar carregado no WebAssembly).</summary>
+    public static string TituloDoDia(DateOnly dia) =>
+        $"{DiasDaSemana[(int)dia.DayOfWeek]}, {dia.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}";
 
     public static string Texto(SheetLogEntryResponse linha) => linha.Acao switch
     {

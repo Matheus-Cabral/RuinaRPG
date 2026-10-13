@@ -21,7 +21,7 @@
 
         @foreach (var (dia, linhas) in LogDaFichaAgrupador.PorDia(_itens, TimeZoneInfo.Local))
         {
-            <MudText Typo="Typo.subtitle1" Class="mt-3">@dia.ToString("dddd, dd/MM/yyyy", PtBr)</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mt-3">@LogDaFichaAgrupador.TituloDoDia(dia)</MudText>
             @foreach (var linha in linhas)
             {
                 <div class="d-flex flex-wrap align-center" style="gap:8px">
@@ -56,7 +56,6 @@
 </MudDialog>
 
 @code {
-    private static readonly CultureInfo PtBr = new("pt-BR");
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public string Kind { get; set; } = "";

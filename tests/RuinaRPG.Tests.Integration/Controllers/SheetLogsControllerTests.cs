@@ -119,6 +119,14 @@ public class SheetLogsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     private static string Iso(DateTime d) => Uri.EscapeDataString(d.ToString("O"));
 
     [Fact]
+    public async Task A_request_without_a_token_gets_401()
+    {
+        var response = await _client.GetAsync(Url(Guid.NewGuid()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task The_campaign_gm_gets_the_entries_newest_first_with_utc_timestamps()
     {
         var c = await CenarioAsync("Gm");

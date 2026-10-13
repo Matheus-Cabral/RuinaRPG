@@ -11,6 +11,13 @@ public class LogDaFichaAgrupadorTests
         string? itemNome = null, string? antes = "30", string? depois = "25") =>
         new(id, DateTime.SpecifyKind(utc, DateTimeKind.Utc), "Ana", false, "Recursos", acao, "Informações Básicas", campo, itemNome, antes, depois);
 
+    [Theory]
+    [InlineData(2026, 10, 13, "terça-feira, 13/10/2026")]
+    [InlineData(2026, 10, 11, "domingo, 11/10/2026")]
+    [InlineData(2026, 1, 5, "segunda-feira, 05/01/2026")]
+    public void TituloDoDia_writes_the_weekday_in_portuguese_without_culture_data(int ano, int mes, int dia, string esperado) =>
+        LogDaFichaAgrupador.TituloDoDia(new DateOnly(ano, mes, dia)).Should().Be(esperado);
+
     [Fact]
     public void PorDia_splits_days_by_the_given_zone_not_by_the_utc_date()
     {

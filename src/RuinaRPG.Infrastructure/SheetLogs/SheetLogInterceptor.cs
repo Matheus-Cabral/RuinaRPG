@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -11,12 +12,16 @@ namespace RuinaRPG.Infrastructure.SheetLogs;
 /// <summary>
 /// Grava o log de ficha (Campanha R0016, Técnico R0012): a cada salvamento, lê do ChangeTracker o que mudou nas
 /// tabelas de ficha (SheetLogMap) e acrescenta as linhas de SheetLogEntry ao MESMO salvamento — log e alteração
-/// são gravados ou falham juntos, e nenhum controller de ficha precisa saber do log. Sem usuário autenticado
-/// (seeders, inicialização, CLIs) nada é registrado. ExecuteUpdate/ExecuteDelete e SQL direto não passam por aqui.
+/// são gravados ou falham juntos, e nenhum controller de ficha precisa saber do log. Um defeito ao MONTAR as
+/// linhas é registrado em log de aplicação e o salvamento segue sem elas: perder uma linha do log é aceitável,
+/// derrubar o salvamento de uma ficha não. Sem usuário autenticado (seeders, inicialização, CLIs) nada é registrado. ExecuteUpdate/ExecuteDelete e SQL direto não passam por aqui.
 /// </summary>
-public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChangesInterceptor
+public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<SheetLogInterceptor> logger) : SaveChangesInterceptor
 {
     private const string CampoEfeitos = "Efeitos";
+
+    // Interceptor com escopo de requisição = um contexto: as linhas que ESTE salvamento acrescentou, para soltá-las se ele falhar.
+    private List<SheetLogEntry> _acrescentadas = [];
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -31,20 +36,73 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
         return result;
     }
 
+    public override void SaveChangesFailed(DbContextErrorEventData eventData) => SoltarAcrescentadas(eventData.Context);
+
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        SoltarAcrescentadas(eventData.Context);
+        return Task.CompletedTask;
+    }
+
+    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    {
+        _acrescentadas = [];
+        return result;
+    }
+
+    public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+    {
+        _acrescentadas = [];
+        return ValueTask.FromResult(result);
+    }
+
+    /// <summary>Salvamento que falhou: as linhas do log não podem ficar no contexto, ou uma nova tentativa as gravaria em dobro.</summary>
+    private void SoltarAcrescentadas(DbContext? context)
+    {
+        foreach (var linha in _acrescentadas)
+            if (context?.Entry(linha) is { State: EntityState.Added } entry)
+                entry.State = EntityState.Detached;
+        _acrescentadas = [];
+    }
+
     /// <summary>A ficha de uma linha do log, já resolvida: de que tipo é, qual é e se quem salva é o GM dela.</summary>
     private sealed record Ficha(SheetLogKind Kind, Guid Id, bool ActorIsGm);
 
     private async Task RegistrarAsync(DbContext? context, CancellationToken ct)
     {
+        _acrescentadas = [];
+        List<SheetLogEntry> linhas;
+        try
+        {
+            linhas = await MontarLinhasAsync(context, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to build the sheet log entries; saving without them");
+            return;
+        }
+        if (linhas.Count == 0)
+            return;
+        // A inserção em si fica no MESMO SaveChanges do usuário: log e alteração são gravados ou falham juntos.
+        ((RuinaRpgDbContext)context!).SheetLogEntries.AddRange(linhas);
+        _acrescentadas = linhas;
+    }
+
+    private async Task<List<SheetLogEntry>> MontarLinhasAsync(DbContext? context, CancellationToken ct)
+    {
         // Este método roda em todo salvamento da aplicação: sai o quanto antes quando não há o que registrar.
         if (currentActor.UserId is not { } actorId || context is not RuinaRpgDbContext db)
-            return;
+            return [];
         // Fotografia tirada ANTES de acrescentar as linhas do log. As não alteradas ficam: servem para achar a
         // ficha ou a Magia já carregada sem consultar o banco.
         var rastreadas = db.ChangeTracker.Entries().Where(e => SheetLogMap.Entidades.ContainsKey(e.Metadata.ClrType)).ToList();
         var alteradas = rastreadas.Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
         if (alteradas.Count == 0)
-            return;
+            return [];
 
         var porChave = rastreadas.ToDictionary(e => (e.Metadata.ClrType, Id(e)));
         var fichasNovas = FichasEm(alteradas, EntityState.Added);
@@ -106,7 +164,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
         }
 
         if (linhas.Count == 0)
-            return;
+            return linhas;
         // Um instante e um autor por salvamento: as linhas de uma mesma ação aparecem juntas no log.
         var agora = DateTime.UtcNow;
         var nickname = await db.Users.AsNoTracking().Where(u => u.Id == actorId).Select(u => u.Nickname).FirstOrDefaultAsync(ct) ?? "";
@@ -117,7 +175,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
             linha.ActorUserId = actorId;
             linha.ActorNickname = nickname;
         }
-        db.SheetLogEntries.AddRange(linhas);
+        return linhas;
     }
 
     /// <summary>Uma linha por coluna que realmente mudou (o EF marca tudo como alterado num Update() de entidade solta).</summary>
@@ -223,7 +281,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
         CharacterSheetId = ficha.Kind == SheetLogKind.Character ? ficha.Id : null,
         NpcSheetId = ficha.Kind == SheetLogKind.Npc ? ficha.Id : null,
         CreatureSheetId = ficha.Kind == SheetLogKind.Creature ? ficha.Id : null,
-        ActorNickname = "", // preenchido, com o instante e o autor, ao fim de RegistrarAsync
+        ActorNickname = "", // preenchido, com o instante e o autor, ao fim de MontarLinhasAsync
         ActorIsGm = ficha.ActorIsGm,
         Acao = acao,
         Secao = secao,
