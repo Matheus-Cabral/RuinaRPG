@@ -327,4 +327,82 @@ public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, 
         (await db.NpcSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
         await db.SaveChangesAsync();
     }
+
+    private static UpdateSheetSpellAbilityRequest BolaDeFogoEditada() => new(
+        "Bola de Fogo Maior", "Magia", 3, "Explosão ampliada.",
+        [new SpellAbilityEffectRequest("Dano", 4, 8)]);
+
+    private async Task<NpcSpellAbilityResponse> AddAsync(string token, string sheetId, AddNpcSpellAbilityRequest request) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", token, request)))
+            .Content.ReadFromJsonAsync<NpcSpellAbilityResponse>())!;
+
+    [Fact]
+    public async Task Update_by_the_owner_changes_a_from_scratch_entry_and_leaves_the_bank_copy_alone()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSpEdit1", "npcspedit1@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcSpEditP1", "npcspeditp1@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NpcSp Edit");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new RuinaRPG.Contracts.Campaigns.AddCampaignMemberRequest(playerId)));
+        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
+        await SetPiAsync(sheetId, 100);
+        var criada = await AddAsync(playerToken, sheetId, BolaDeFogoFromScratch());
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/spell-abilities/{criada.Id}", playerToken, BolaDeFogoEditada()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<NpcSpellAbilityResponse>();
+        body!.Nome.Should().Be("Bola de Fogo Maior");
+        body.Descricao.Should().Be("Explosão ampliada.");
+        body.GastoEmPI.Should().Be(8);
+        body.Custo.Should().Be(10); // ceil(8 * 1.25)
+        body.Efeitos.Should().ContainSingle(e => e.EfeitoNome == "Dano");
+        body.CriadaNaFicha.Should().BeTrue();
+        (await GetBankAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Bola de Fogo" && e.GastoEmPI == 14);
+    }
+
+    [Fact]
+    public async Task Update_refuses_an_entry_that_came_from_the_bank()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSpEdit2", "npcspedit2@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetPiAsync(sheetId, 100);
+        await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch());
+        var bankId = (await GetBankAsync(gmToken)).Single(e => e.Nome == "Bola de Fogo").Id;
+        var doBanco = await AddAsync(gmToken, sheetId, new AddNpcSpellAbilityRequest(bankId, null, null, null, null, null));
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/spell-abilities/{doBanco.Id}", gmToken, BolaDeFogoEditada()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Só Magias e Habilidades montadas na ficha podem ser editadas.");
+    }
+
+    [Fact]
+    public async Task Update_validates_like_a_from_scratch_add()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSpEdit3", "npcspedit3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetPiAsync(sheetId, 100);
+        var criada = await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch());
+        var url = $"/api/npc-sheets/{sheetId}/spell-abilities/{criada.Id}";
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken, BolaDeFogoEditada() with { Tipo = "Passiva" }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken, BolaDeFogoEditada() with { Tipo = "Inexistente" }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, url, gmToken,
+            BolaDeFogoEditada() with { Efeitos = [new SpellAbilityEffectRequest("Efeito Que Não Existe", 1, 1)] }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_by_someone_who_cannot_edit_the_sheet_is_404_and_an_unknown_id_is_404()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("NpcSpEdit4", "npcspedit4@teste.com");
+        var outroGm = await RegisterGmAndGetTokenAsync("NpcSpEdit4b", "npcspedit4b@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        await SetPiAsync(sheetId, 100);
+        var criada = await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch());
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/spell-abilities/{criada.Id}", outroGm, BolaDeFogoEditada())))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/spell-abilities/{Guid.NewGuid()}", gmToken, BolaDeFogoEditada())))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

@@ -191,6 +191,53 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         return await PassivasDisponiveisAsync(query, await stats.FichaParaRequisitosAsync(sheet));
     }
 
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CreatureSpellAbilityResponse>> Update(Guid sheetId, Guid id, UpdateSheetSpellAbilityRequest request)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound();
+
+        var entry = await db.CreatureSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.CreatureSheetId == sheetId);
+        if (entry is null)
+            return NotFound();
+
+        // Só o que foi montado na ficha: uma entrada vinda do banco segue somente leitura (4.b).
+        if (!entry.CriadaNaFicha)
+            return BadRequest("Só Magias e Habilidades montadas na ficha podem ser editadas.");
+
+        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !SaldoDePontosDeIgnicao.Consome(tipo))
+            return BadRequest("Tipo desconhecido. Use Magia ou Habilidade.");
+
+        var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
+        if (validationError is not null)
+            return BadRequest(validationError);
+
+        var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
+
+        entry.Nome = request.Nome;
+        entry.Tipo = tipo;
+        entry.Grau = request.Grau;
+        entry.Descricao = request.Descricao;
+        entry.GastoEmPI = gastoEmPI;
+        entry.Custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
+
+        // Troca os Efeitos por inteiro; a cópia que foi para o banco na criação não é tocada.
+        db.CreatureSpellAbilityEffects.RemoveRange(entry.Efeitos);
+        // Adicionados direto no DbSet (e não pela coleção rastreada): o EF os trataria como alterados e o
+        // SaveChanges falharia por concorrência.
+        var novos = request.Efeitos
+            .Select(e => new CreatureSpellAbilityEffect { Id = Guid.NewGuid(), CreatureSpellAbilityId = entry.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
+            .ToList();
+        db.CreatureSpellAbilityEffects.AddRange(novos);
+
+        await db.SaveChangesAsync();
+        return await ToResponseAsync(entry, null);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid sheetId, Guid id)
     {
