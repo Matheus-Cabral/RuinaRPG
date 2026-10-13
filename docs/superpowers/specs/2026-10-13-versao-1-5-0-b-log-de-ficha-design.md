@@ -30,8 +30,7 @@ New table `SheetLogEntries`:
 | Column | Type | Notes |
 |---|---|---|
 | `Id` | uuid PK | |
-| `SheetKind` | enum (Character, Npc, Creature) | |
-| `SheetId` | uuid | No FK (three possible parents). |
+| `CharacterSheetId`, `NpcSheetId`, `CreatureSheetId` | uuid, nullable, FK with ON DELETE CASCADE | Exactly one is set (same shape as `EncounterParticipant.Source*SheetId`). **Amended 2026-10-13 while planning:** replaces the `SheetKind` + `SheetId` pair, so the database removes the log with the sheet. |
 | `OccurredAt` | timestamptz | UTC. |
 | `ActorUserId` | uuid | The authenticated caller. |
 | `ActorNickname` | text | Snapshot, so the line survives a nickname change. |
@@ -43,7 +42,7 @@ New table `SheetLogEntries`:
 | `ItemNome` | text, nullable | Name of the list item (attribute, skill, weapon, spell...). |
 | `ValorAntes`, `ValorDepois` | text, nullable | Rendered values. Null for long texts and for add/remove. |
 
-Index on `(SheetKind, SheetId, OccurredAt DESC)`.
+One index per sheet column: `(CharacterSheetId, OccurredAt DESC)`, and the same for the other two.
 
 ## Recording
 
@@ -66,7 +65,7 @@ to the same save, so log and change commit or fail together. No sheet controller
   Magia/Habilidade are folded into the parent's entry, not logged one by one.
 - **Sheet creation:** a single `Criou` entry instead of one per column. A grant that copies a sheet
   logs one `Criou` for the copy and nothing for the copied children.
-- **Sheet deletion:** the interceptor deletes that sheet's `SheetLogEntries` in the same save.
+- **Sheet deletion:** nothing to do in code; the foreign key cascades.
 - **Long texts** (História and other multi-line fields, listed explicitly): `Alterou` with null values.
 - **Enum and reference values:** enums use their display labels; a foreign key (Histórico, catalog
   item) is rendered by the referenced name when the interceptor can resolve it from the context, and as
@@ -74,11 +73,11 @@ to the same save, so log and change commit or fail together. No sheet controller
 - **Derived writes** in the same request (Nível from XP, the PI sums of Spec A) are recorded like any
   other property change, under the same actor.
 
-`ExecuteUpdate`/`ExecuteDelete` and raw SQL bypass interceptors. The plan must grep the sheet
-controllers for them and convert any hit on a tracked table to tracked operations.
+`ExecuteUpdate`/`ExecuteDelete` and raw SQL bypass interceptors. **Amended 2026-10-13 while planning:**
+the only hits on sheet tables are in `PericiasController` (the Auditor removing a Perícia zeroes its
+`Gasto` on every sheet). That is catalog maintenance, not a sheet edit, and stays unlogged.
 
-The interceptor exposes the entries it produced for the current save to other components of the same
-scope (Spec C consumes the `RecursoVFA` ones for the encounter log).
+Spec C extends the interceptor to feed the encounter log; nothing is exposed for it here.
 
 ## API
 
