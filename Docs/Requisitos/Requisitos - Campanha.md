@@ -126,3 +126,7 @@ Se o GM editar uma Nota Secreta e acrescentar um destinatário, esse jogador é 
 Vale a mesma restrição de R0011: quem não é destinatário não recebe aviso nem contagem.
 
 > O navegador pode bloquear o aviso sonoro enquanto o jogador não tiver interagido com a página; o aviso visual aparece de qualquer forma.
+
+# **R0016** - O GM consulta o log de alterações de cada ficha.
+
+**Descrição**: Na lista de fichas de cada membro (aba Membros) e em cada linha de "Concessões existentes", um ícone ao lado da ficha — depois de "Nível x, Vocação (Linhagem)" — abre um popup com o log daquela ficha: todas as alterações feitas nela, pelo jogador ou pelo próprio GM, cada uma com data e hora, quem fez, a seção, o campo e o valor antes e depois. Textos longos (História, descrições) aparecem apenas como "alterado", sem o conteúdo; o diário do personagem não entra no log. As linhas vêm agrupadas por dia, da mais recente para a mais antiga, e o GM pode filtrar por período. Duas caixas de seleção, marcadas por padrão, mostram ou escondem as linhas de **Vitalidade, Foco e Adrenalina** atuais e, à parte, as de **Estresse** atual. O log vale para toda Ficha de Personagem e para as Fichas de NPC e de Criatura concedidas a um jogador (R0010); fichas de NPC/Criatura não concedidas não têm log. Só o GM vê o log — o jogador não tem acesso, nem ao da própria ficha. O registro começa na versão em que o recurso foi introduzido (não há histórico anterior) e é guardado enquanto a ficha existir. Ver "[[Requisitos - Modelo de Dados]]" (SheetLogEntries).

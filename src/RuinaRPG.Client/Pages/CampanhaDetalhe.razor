@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IDialogService Dialogs
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
@@ -59,6 +60,10 @@
                                         }
                                         <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</MudText>
+                                        <MudTooltip Text="Log da ficha">
+                                            <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                           OnClick="@(() => AbrirLogAsync("character", sheet.Id, sheet.Nome))" />
+                                        </MudTooltip>
                                     </MudListItem>
                                 }
                             </MudList>
@@ -240,6 +245,10 @@
                             <td>
                                 <TipoChip Tipo="@grant.Tipo" /> <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
                                 — concedida a @grant.PlayerNickname
+                                <MudTooltip Text="Log da ficha">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                   OnClick="@(() => AbrirLogAsync(grant.Tipo == "Npc" ? "npc" : "creature", grant.SheetId, grant.Nome))" />
+                                </MudTooltip>
                             </td>
                         </tr>
                     }
@@ -371,6 +380,11 @@
     private readonly EditContext _editContext;
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
     private bool _deleteDialogOpen;
+
+    private Task AbrirLogAsync(string kind, string sheetId, string? nome) =>
+        Dialogs.ShowAsync<LogDaFichaDialog>(null,
+            new DialogParameters<LogDaFichaDialog> { { x => x.Kind, kind }, { x => x.SheetId, sheetId }, { x => x.NomeDaFicha, nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
     private string _deletePassword = "";
     private string? _deleteErrorMessage;
 

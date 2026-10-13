@@ -425,4 +425,68 @@ public class CampanhaDetalheTests : MudBunitContext
         body.Should().NotBeNull("changing the bonus must trigger the autosave PUT");
         body.Should().Contain("\"bonusDeCarga\":12.5");
     }
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComFichasEConcessoes(bool comFichas)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get) return new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) }) };
+            if (path.EndsWith("/members"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignMemberResponse> { new("u1", "Ana", "ana@x.com") }) };
+            if (path.EndsWith("/character-sheets"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(comFichas
+                        ? new[] { new { Id = "s1", OwnerId = "u1", Nome = "Aria", Nivel = 3 } }
+                        : Array.Empty<object>())
+                };
+            if (path.EndsWith("/grants"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(comFichas
+                        ? new List<GrantSummaryResponse> { new("n1", "Npc", "Goblin", "u1", "Ana") }
+                        : new List<GrantSummaryResponse>())
+                };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        }));
+
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    [Fact]
+    public async Task Each_member_sheet_and_each_grant_gets_a_Log_da_ficha_button_outside_the_link()
+    {
+        var cut = RenderComFichasEConcessoes(comFichas: true);
+        await Task.Delay(100);
+
+        var botoesMembros = cut.FindAll("button[aria-label='Log da ficha']");
+        botoesMembros.Should().HaveCount(1);
+        botoesMembros[0].Closest("a").Should().BeNull("o ícone não pode navegar para a ficha");
+
+        GoToTab(cut, "Conceder Ficha");
+        await Task.Delay(50);
+
+        var botoesConcessoes = cut.FindAll("button[aria-label='Log da ficha']");
+        botoesConcessoes.Should().HaveCount(1);
+        botoesConcessoes[0].Closest("a").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Without_sheets_or_grants_there_is_no_Log_da_ficha_button()
+    {
+        var cut = RenderComFichasEConcessoes(comFichas: false);
+        await Task.Delay(100);
+        cut.FindAll("button[aria-label='Log da ficha']").Should().BeEmpty();
+
+        GoToTab(cut, "Conceder Ficha");
+        await Task.Delay(50);
+        cut.FindAll("button[aria-label='Log da ficha']").Should().BeEmpty();
+    }
 }

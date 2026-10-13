@@ -128,7 +128,7 @@ Implicações para o deploy:
 
 # **R0012** - O log de ficha é gravado por um único interceptor de salvamento.
 
-**Descrição**: As linhas do log de alterações de ficha (tabela `SheetLogEntries`, [[Requisitos - Modelo de Dados]]; a tela do GM está em [[Requisitos - Campanha]]) são gravadas por um único interceptor de salvamento do EF Core (`SheetLogInterceptor`, em `RuinaRPG.Infrastructure`), registrado no `RuinaRpgDbContext`. A cada salvamento ele lê do rastreador de alterações o que mudou nas tabelas de ficha e acrescenta as linhas do log ao **mesmo** salvamento: alteração e log são gravados juntos ou falham juntos, e nenhum controller de ficha grava o log por conta própria.
+**Descrição**: As linhas do log de alterações de ficha (tabela `SheetLogEntries`, [[Requisitos - Modelo de Dados]]; a tela do GM está em [[Requisitos - Campanha]] R0016) são gravadas por um único interceptor de salvamento do EF Core (`SheetLogInterceptor`, em `RuinaRPG.Infrastructure`), registrado no `RuinaRpgDbContext`. A cada salvamento ele lê do rastreador de alterações o que mudou nas tabelas de ficha e acrescenta as linhas do log ao **mesmo** salvamento: alteração e log são gravados juntos ou falham juntos, e nenhum controller de ficha grava o log por conta própria.
 
 - O autor da linha é o usuário autenticado da requisição. Um salvamento sem usuário autenticado (seeders, inicialização da Api, utilitários de linha de comando) não gera log.
 - Fichas de NPC e de Criatura só entram no log enquanto estão concedidas a um jogador.

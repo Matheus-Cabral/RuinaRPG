@@ -1,0 +1,154 @@
+@using System.Globalization
+@using MudBlazor
+@using RuinaRPG.Contracts.SheetLogs
+@inject HttpClient Http
+@*
+    Popup do log de alterações de uma ficha (Campanha R0016), só para o GM. Lê
+    GET sheet-logs/{kind}/{sheetId} página a página (cursor opaco em ProximoCursor) e mostra as linhas
+    agrupadas por dia no fuso do navegador. Trocar qualquer filtro descarta a lista e recomeça da primeira página.
+*@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Log da ficha — @NomeDaFicha</MudText>
+    </TitleContent>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_erro" Class="mb-3" />
+        <MudDateRangePicker Label="Período" Clearable="true" DateRange="_periodo" DateRangeChanged="PeriodoMudouAsync" />
+        <div class="d-flex flex-wrap" style="gap:16px">
+            <MudCheckBox T="bool" Value="_recursos" ValueChanged="RecursosMudouAsync" Label="Vitalidade, Foco e Adrenalina" />
+            <MudCheckBox T="bool" Value="_estresse" ValueChanged="EstresseMudouAsync" Label="Estresse" />
+        </div>
+
+        @foreach (var (dia, linhas) in LogDaFichaAgrupador.PorDia(_itens, TimeZoneInfo.Local))
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-3">@dia.ToString("dddd, dd/MM/yyyy", PtBr)</MudText>
+            @foreach (var linha in linhas)
+            {
+                <div class="d-flex flex-wrap align-center" style="gap:8px">
+                    <MudText Typo="Typo.body2">@LocalDe(linha).ToString("HH:mm")</MudText>
+                    <MudText Typo="Typo.body2"><b>@linha.ActorNickname</b></MudText>
+                    @if (linha.ActorIsGm)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">GM</MudChip>
+                    }
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@linha.Secao</MudText>
+                    <MudText Typo="Typo.body2">@LogDaFichaAgrupador.Texto(linha)</MudText>
+                </div>
+            }
+        }
+
+        @if (!_carregando && _erro is null && _itens.Count == 0)
+        {
+            <MudText Class="mt-3">Nenhuma alteração registrada neste período.</MudText>
+        }
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mt-3" />
+        }
+        @if (_cursor is not null)
+        {
+            <MudButton Variant="Variant.Outlined" Class="mt-3" Disabled="_carregando" OnClick="CarregarMaisAsync">Carregar mais</MudButton>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly CultureInfo PtBr = new("pt-BR");
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Kind { get; set; } = "";
+    [Parameter] public string SheetId { get; set; } = "";
+    [Parameter] public string? NomeDaFicha { get; set; }
+
+    private readonly List<SheetLogEntryResponse> _itens = new();
+    private DateRange? _periodo;
+    private bool _recursos = true;
+    private bool _estresse = true;
+    private string? _cursor;
+    private string? _erro;
+    private bool _carregando;
+    private int _geracao; // descarta respostas de uma consulta já substituída por outro filtro
+
+    protected override Task OnInitializedAsync() => RecarregarAsync();
+
+    private static DateTime LocalDe(SheetLogEntryResponse linha) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(linha.OccurredAt, DateTimeKind.Utc), TimeZoneInfo.Local);
+
+    private Task PeriodoMudouAsync(DateRange? periodo)
+    {
+        // O picker repete o evento ao receber de volta o valor que acabou de emitir; só recarrega se o período mudou.
+        if (periodo?.Start == _periodo?.Start && periodo?.End == _periodo?.End) return Task.CompletedTask;
+        _periodo = periodo;
+        return RecarregarAsync();
+    }
+
+    private Task RecursosMudouAsync(bool valor)
+    {
+        _recursos = valor;
+        return RecarregarAsync();
+    }
+
+    private Task EstresseMudouAsync(bool valor)
+    {
+        _estresse = valor;
+        return RecarregarAsync();
+    }
+
+    private Task RecarregarAsync()
+    {
+        _itens.Clear();
+        _cursor = null;
+        return CarregarAsync(null);
+    }
+
+    private Task CarregarMaisAsync() => CarregarAsync(_cursor);
+
+    private string MontarUrl(string? antesDe)
+    {
+        var url = $"sheet-logs/{Kind}/{SheetId}?recursos={(_recursos ? "true" : "false")}&estresse={(_estresse ? "true" : "false")}";
+        if (_periodo?.Start is { } inicio)
+            url += $"&de={Uri.EscapeDataString(ParaUtc(inicio.Date))}";
+        if (_periodo?.End is { } fim)
+            url += $"&ate={Uri.EscapeDataString(ParaUtc(fim.Date.AddDays(1)))}";
+        if (antesDe is not null)
+            url += $"&antesDe={Uri.EscapeDataString(antesDe)}";
+        return url;
+    }
+
+    // O início do dia local (de) e o início do dia seguinte (ate, exclusivo) viajam como instantes UTC.
+    private static string ParaUtc(DateTime diaLocal) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(diaLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local)
+            .ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture);
+
+    private async Task CarregarAsync(string? antesDe)
+    {
+        var geracao = ++_geracao;
+        _carregando = true;
+        _erro = null;
+        try
+        {
+            var response = await Http.GetAsync(MontarUrl(antesDe));
+            if (geracao != _geracao) return;
+            if (!response.IsSuccessStatusCode)
+            {
+                _erro = "Não foi possível carregar o log da ficha.";
+                return;
+            }
+            var pagina = await response.Content.ReadFromJsonAsync<SheetLogPageResponse>();
+            if (geracao != _geracao) return;
+            _itens.AddRange(pagina?.Itens ?? new());
+            _cursor = pagina?.ProximoCursor;
+        }
+        catch (HttpRequestException)
+        {
+            if (geracao == _geracao) _erro = "Não foi possível carregar o log da ficha.";
+        }
+        finally
+        {
+            if (geracao == _geracao) _carregando = false;
+        }
+    }
+}
