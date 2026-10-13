@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Domain.Encounters;
 using RuinaRPG.Infrastructure.Encounters;
@@ -13,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
-public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerBase
+public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
@@ -96,6 +97,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         }
 
         db.EncounterParticipants.Add(participant);
+        await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteAdicionado, participant.Nome);
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(participant, new List<string>()));
@@ -123,6 +125,8 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         if (isLive && (request.PV is not null || request.PF is not null || request.PA is not null))
             return BadRequest("PV/PF/PA de um participante vindo de Ficha de Personagem são somente leitura aqui — edite a ficha diretamente.");
 
+        var antes = (participant.Iniciativa, participant.AcoesRestantes, participant.PVAtual, participant.PFAtual, participant.PAAtual);
+
         participant.Iniciativa = request.Iniciativa;
         participant.AcoesRestantes = request.AcoesRestantes;
         if (!isLive)
@@ -136,6 +140,8 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         db.EncounterParticipantConditions.RemoveRange(existingConditions);
         foreach (var texto in request.Condicoes)
             db.EncounterParticipantConditions.Add(new EncounterParticipantCondition { Id = Guid.NewGuid(), EncounterParticipantId = id, Texto = texto });
+
+        await LogChangesAsync(encounter!, participant, antes, existingConditions.Select(c => c.Texto).ToList(), request.Condicoes);
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -158,7 +164,9 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         if (participant is null)
             return NotFound();
 
-        if (encounter!.CurrentParticipantId == id)
+        var roundBefore = encounter!.CurrentRound;
+        var turnMoved = false;
+        if (encounter.CurrentParticipantId == id)
         {
             // Order passed is the one BEFORE the removal.
             var next = TurnAdvanceCalculator.AfterRemoval(encounter.CurrentRound, id, participants.Select(p => p.Id).ToList());
@@ -167,6 +175,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
                 encounter.CurrentRound = handover.Round;
                 encounter.CurrentParticipantId = handover.ParticipantId;
                 participants.Single(p => p.Id == handover.ParticipantId).AcoesRestantes = 3;
+                turnMoved = true;
             }
             else
             {
@@ -177,6 +186,13 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         db.EncounterParticipantConditions.RemoveRange(conditions);
         db.EncounterParticipants.Remove(participant);
+
+        // The name is read from the loaded participant, so it still exists after the Remove above.
+        await log.RegistrarAsync(encounter, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
+        if (roundBefore != encounter.CurrentRound)
+            await log.RegistrarAsync(encounter, EncounterLogTipo.NovoTurno);
+        if (turnMoved && encounter.CurrentParticipantId is { } newTurn)
+            await log.RegistrarAsync(encounter, EncounterLogTipo.VezPassada, participants.Single(p => p.Id == newTurn).Nome);
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -233,6 +249,28 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         // Source sheet was deleted (SetNull cascaded) — Nome snapshot still displays, PV/PF/PA frozen at whatever the columns last held.
         return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false, condicoes);
     }
+
+    private async Task LogChangesAsync(Encounter encounter, EncounterParticipant participant,
+        (int Iniciativa, int AcoesRestantes, int? PV, int? PF, int? PA) antes, List<string> condicoesAntes, List<string> condicoesDepois)
+    {
+        async Task CampoAsync<T>(string campo, T antigo, T novo)
+        {
+            if (!EqualityComparer<T>.Default.Equals(antigo, novo))
+                await log.RegistrarAsync(encounter, EncounterLogTipo.CampoAlterado, participant.Nome, campo, Texto(antigo), Texto(novo));
+        }
+        await CampoAsync("Iniciativa", antes.Iniciativa, participant.Iniciativa);
+        await CampoAsync("Ações", antes.AcoesRestantes, participant.AcoesRestantes);
+        await CampoAsync("PV", antes.PV, participant.PVAtual);
+        await CampoAsync("PF", antes.PF, participant.PFAtual);
+        await CampoAsync("PA", antes.PA, participant.PAAtual);
+
+        foreach (var texto in condicoesDepois.Distinct().Where(t => !condicoesAntes.Contains(t)))
+            await log.RegistrarAsync(encounter, EncounterLogTipo.CondicaoAdicionada, participant.Nome, texto: texto);
+        foreach (var texto in condicoesAntes.Distinct().Where(t => !condicoesDepois.Contains(t)))
+            await log.RegistrarAsync(encounter, EncounterLogTipo.CondicaoRemovida, participant.Nome, texto: texto);
+    }
+
+    private static string Texto<T>(T valor) => valor?.ToString() ?? "—";
 
     private ActionResult? RequireEditable(Encounter encounter) =>
         encounter.Status == EncounterStatus.Finalizado ? Conflict("Encontro finalizado.") : null;
