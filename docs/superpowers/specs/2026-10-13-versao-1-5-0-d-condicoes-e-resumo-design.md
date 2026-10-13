@@ -158,6 +158,20 @@ Which sheets get this applied:
   Atual writes are captured by the interceptor; applying and removing a condition on a sheet-linked
   participant also writes one `SheetLogEntry` each, explicitly.
 
+## Carried over from the final review of Plan B (sheet log)
+
+- **Actor of server-side writes.** The sheet log takes its actor only from the HTTP request
+  (`ICurrentActor`). This spec adds writes the server makes on its own (per-turn adjustments, clamping
+  Atual to a reduced total, expiry): inside another user's request they would be attributed to that
+  user with no sign they were automatic, and from a hub or timer they would not be logged at all. The
+  plan for this spec must let the actor be set explicitly for a scope and mark such entries as
+  automatic (a flag on `SheetLogEntry`, shown in the popup).
+- **Map tests.** `SheetLogMapTests` finds sheet tables by namespace and name prefix. The tables this
+  spec adds that reference a sheet must either be discovered by foreign key from the EF model or be
+  listed explicitly, so a sheet-linked table cannot be left out of the log unnoticed.
+- **Ignored columns.** `SheetLogMap` ignores columns nothing wrote at the time (`EAPAtual`, `Circulo`,
+  `Grau`, `PontosDeIgnicaoTotal`). If this spec starts writing any of them, label them.
+
 ## Client
 
 - **`AuditoriaCondicoes.razor`** (`/auditoria/condicoes`, nav link "Condições" with
