@@ -34,9 +34,9 @@ public class FichaMagiasEdicaoTests : MudBunitContext
 
     private static HttpResponseMessage Json(object body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
 
-    private static object Entrada(string id, string nome, bool criadaNaFicha) => new
+    private static object Entrada(string id, string nome, bool criadaNaFicha, string tipo = "Magia") => new
     {
-        Id = id, Nome = nome, Tipo = "Magia", Grau = 1, Descricao = "d", GastoEmPI = 8, Custo = 10,
+        Id = id, Nome = nome, Tipo = tipo, Grau = 1, Descricao = "d", GastoEmPI = 8, Custo = 10,
         Efeitos = new List<object>(), CriadaNaFicha = criadaNaFicha,
     };
 
@@ -59,7 +59,7 @@ public class FichaMagiasEdicaoTests : MudBunitContext
                 return Json(new { PontosDeIgnicaoAtual = pi, PontosDeIgnicaoTotal = 40, PontosDeIgnicao = pi });
             }
             if (path.EndsWith("/spell-abilities"))
-                return Json(new List<object> { Entrada("m1", "Montada", true), Entrada("b1", "Do Banco", false) });
+                return Json(new List<object> { Entrada("m1", "Montada", true), Entrada("b1", "Do Banco", false), Entrada("r1", "Racial montada", true, "Racial") });
             if (path.EndsWith("/sub-attributes"))
                 return Json(new { DefesaNatural = 15, EficienciaElemental = 3, DanoElemental = 2 });
             return SingleObjectSuffixes.Any(path.EndsWith) ? Json(new { }) : Json(new List<object>());
@@ -94,6 +94,8 @@ public class FichaMagiasEdicaoTests : MudBunitContext
         var linhas = cut.FindAll("tr").Where(tr => tr.TextContent.Contains("Montada") || tr.TextContent.Contains("Do Banco")).ToList();
         linhas.Single(tr => tr.TextContent.Contains("Montada")).QuerySelectorAll("button").Should().Contain(b => b.TextContent.Contains("Editar"));
         linhas.Single(tr => tr.TextContent.Contains("Do Banco")).QuerySelectorAll("button").Should().NotContain(b => b.TextContent.Contains("Editar"));
+        cut.FindAll("tr").Single(tr => tr.TextContent.Contains("Racial montada")).QuerySelectorAll("button")
+            .Should().NotContain(b => b.TextContent.Contains("Editar"), "só Magia e Habilidade são editáveis");
     }
 
     [Fact]

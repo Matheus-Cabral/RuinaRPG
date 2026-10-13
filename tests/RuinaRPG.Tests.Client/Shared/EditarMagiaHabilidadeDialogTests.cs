@@ -73,4 +73,15 @@ public class EditarMagiaHabilidadeDialogTests : MudBunitContext
 
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Pontos de Ignição insuficientes: custa 6 e a ficha tem 5."));
     }
+
+    [Fact]
+    public async Task The_Tipo_select_offers_only_Magia_and_Habilidade()
+    {
+        RegisterHttp(_ => Json(new List<object>()));
+        var (cut, _) = await AbrirAsync("character-sheets/s1/spell-abilities/e1", "Bola de Fogo", "Magia", 3, "x", []);
+
+        var tipo = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Tipo");
+
+        tipo.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Equal("Magia", "Habilidade");
+    }
 }
