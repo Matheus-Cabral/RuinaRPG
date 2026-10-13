@@ -9,7 +9,7 @@ public enum AutoSaveState { Idle, Saving, Saved, Error }
 public class AutoSaveCoordinator
 {
     private const int DebounceMilliseconds = 400;
-    private CancellationTokenSource? _debounceCts;
+    private readonly Dictionary<string, CancellationTokenSource> _debounceCts = new();
     private Task _inFlight = Task.CompletedTask;
 
     public AutoSaveState State { get; private set; } = AutoSaveState.Idle;
@@ -18,14 +18,18 @@ public class AutoSaveCoordinator
 
     /// <summary>
     /// Call from every in-scope field's commit (blur, or selection change for non-text controls).
-    /// Resets the debounce window; the delegate only actually runs once no further call arrives
-    /// within DebounceMilliseconds.
+    /// Resets the debounce window of <paramref name="canal"/>; the delegate only actually runs once no
+    /// further call arrives on that channel within DebounceMilliseconds. Fields that save through
+    /// their own endpoint (Pontos de Ignição, Nível, Experiência) use their own channel, so a commit
+    /// of another field right after them does not cancel their save. Saves of every channel still run
+    /// one at a time.
     /// </summary>
-    public void NotifyChanged(Func<Task<bool>> validateAndSaveAsync)
+    public void NotifyChanged(Func<Task<bool>> validateAndSaveAsync, string canal = "geral")
     {
-        _debounceCts?.Cancel();
+        if (_debounceCts.TryGetValue(canal, out var pendente))
+            pendente.Cancel();
         var cts = new CancellationTokenSource();
-        _debounceCts = cts;
+        _debounceCts[canal] = cts;
         _ = DebounceAndSaveAsync(validateAndSaveAsync, cts.Token);
     }
 

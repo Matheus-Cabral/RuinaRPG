@@ -121,6 +121,46 @@ public class AutoSaveCoordinatorTests
         Assert.Equal(AutoSaveState.Saved, coordinator.State);
     }
 
+    [Fact]
+    public async Task Saves_on_different_channels_do_not_cancel_each_other()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var ran = new List<string>();
+
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("geral"); return Task.FromResult(true); });
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi"); return Task.FromResult(true); }, "pi");
+        await Task.Delay(700);
+
+        lock (ran) Assert.Equal(new[] { "geral", "pi" }, ran.OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task A_second_call_on_the_same_channel_still_replaces_the_first()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var ran = new List<string>();
+
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi-1"); return Task.FromResult(true); }, "pi");
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi-2"); return Task.FromResult(true); }, "pi");
+        await Task.Delay(700);
+
+        lock (ran) Assert.Equal(new[] { "pi-2" }, ran);
+    }
+
+    [Fact]
+    public async Task Saves_of_different_channels_never_overlap()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var running = 0; var maxRunning = 0;
+        async Task<bool> Save() { maxRunning = Math.Max(maxRunning, ++running); await Task.Delay(100); running--; return true; }
+
+        coordinator.NotifyChanged(Save);
+        coordinator.NotifyChanged(Save, "pi");
+        await Task.Delay(900);
+
+        Assert.Equal(1, maxRunning);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

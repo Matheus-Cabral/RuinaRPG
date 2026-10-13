@@ -1191,7 +1191,7 @@
     // escreva por cima disso. Editar o campo à mão salva só ele.
     private Task NotifyPontosDeIgnicaoChangedAsync()
     {
-        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync);
+        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync, "pi");
         return Task.CompletedTask;
     }
 

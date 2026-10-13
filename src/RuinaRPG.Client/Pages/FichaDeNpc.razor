@@ -1078,13 +1078,13 @@
     // match via the same XP-threshold rule Ficha de Personagem uses (Requisitos - Ficha de NPCs).
     private Task NotifyNivelChangedAsync()
     {
-        _autoSave.NotifyChanged(SaveNivelAsync);
+        _autoSave.NotifyChanged(SaveNivelAsync, "nivel");
         return Task.CompletedTask;
     }
 
     private Task NotifyExperienciaAtualChangedAsync()
     {
-        _autoSave.NotifyChanged(SaveExperienciaAtualAsync);
+        _autoSave.NotifyChanged(SaveExperienciaAtualAsync, "xp");
         return Task.CompletedTask;
     }
 
@@ -1093,7 +1093,7 @@
     // por cima disso. Editar o campo à mão salva só ele.
     private Task NotifyPontosDeIgnicaoChangedAsync()
     {
-        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync);
+        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync, "pi");
         return Task.CompletedTask;
     }
 
