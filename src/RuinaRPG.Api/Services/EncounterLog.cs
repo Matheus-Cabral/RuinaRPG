@@ -8,8 +8,6 @@ namespace RuinaRPG.Api.Services;
 /// <summary>Monta as linhas do log do encontro; só grava com o encontro em andamento. Quem chama salva.</summary>
 public class EncounterLog(RuinaRpgDbContext db)
 {
-    private int _ordem;
-
     /// <summary>No-op unless encounter.Status == EmAndamento. Snapshots Turno and whose turn it is from the encounter as it is NOW.</summary>
     public async Task RegistrarAsync(Encounter encounter, EncounterLogTipo tipo, string? participanteNome = null,
         string? campo = null, string? valorAntes = null, string? valorDepois = null, string? texto = null)
@@ -19,7 +17,8 @@ public class EncounterLog(RuinaRpgDbContext db)
 
         db.EncounterLogEntries.Add(new EncounterLogEntry
         {
-            Id = ProximoId(),
+            Id = Guid.NewGuid(),
+            Ordem = EncounterLogOrdem.Proxima(),
             EncounterId = encounter.Id,
             OccurredAt = DateTime.UtcNow,
             Turno = encounter.CurrentRound,
@@ -32,16 +31,6 @@ public class EncounterLog(RuinaRpgDbContext db)
             ValorDepois = valorDepois,
             Texto = texto,
         });
-    }
-
-    // EF sorts the inserts of one table by primary key inside a save, and Sequencia is assigned in insert
-    // order. A random Guid would scramble the rows of the same save, so the leading Guid field carries a
-    // counter (Guid compares its first field first) and the rest stays random.
-    private Guid ProximoId()
-    {
-        var aleatorio = Guid.NewGuid().ToByteArray();
-        BitConverter.GetBytes(++_ordem).CopyTo(aleatorio, 0);
-        return new Guid(aleatorio);
     }
 
     // The participant may have unsaved changes (tracked) or not be loaded at all.

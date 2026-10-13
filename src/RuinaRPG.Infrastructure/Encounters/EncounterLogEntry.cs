@@ -7,7 +7,8 @@ public class EncounterLogEntry
 {
     public Guid Id { get; set; }
     public Guid EncounterId { get; set; }
-    public long Sequencia { get; set; }        // identity column: stable order inside one instant
+    public long Sequencia { get; set; }        // identity column: tiebreak only
+    public long Ordem { get; set; }            // the order of the log, from EncounterLogOrdem.Proxima()
     public DateTime OccurredAt { get; set; }
     public int Turno { get; set; }
     public Guid? VezParticipantId { get; set; } // no FK: the participant may be removed later

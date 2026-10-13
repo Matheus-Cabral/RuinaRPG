@@ -2,6 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using RuinaRPG.Domain.Encounters;
+using RuinaRPG.Infrastructure.Encounters;
+using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Encounters;
@@ -289,5 +293,31 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", other));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task The_log_is_read_by_Ordem_not_by_insert_order()
+    {
+        var gm = await RegisterGmAsync("LogGm12", "log12@teste.com");
+        var encounterId = await CreateEncounterAsync(gm);
+        await AddNpcAsync(gm, encounterId, "Alfa", 30);
+        await PostAsync(gm, $"/api/encounters/{encounterId}/start");
+        var antes = (await GetLogAsync(gm, encounterId)).Count;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            // Ordem 3, 1, 2 added in that order, in one save, with random Ids.
+            foreach (var (ordem, texto) in new[] { (long.MaxValue - 2, "terceira"), (long.MaxValue - 4, "primeira"), (long.MaxValue - 3, "segunda") })
+                db.EncounterLogEntries.Add(new EncounterLogEntry
+                {
+                    Id = Guid.NewGuid(), EncounterId = Guid.Parse(encounterId), Ordem = ordem, OccurredAt = DateTime.UtcNow,
+                    Turno = 1, Tipo = EncounterLogTipo.CondicaoAdicionada, Texto = texto,
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var log = await GetLogAsync(gm, encounterId);
+        log.Skip(antes).Select(e => e.Texto).Should().Equal("primeira", "segunda", "terceira");
     }
 }

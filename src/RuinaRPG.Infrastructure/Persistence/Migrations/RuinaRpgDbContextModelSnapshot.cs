@@ -1549,6 +1549,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("Ordem")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("ParticipanteNome")
                         .HasColumnType("text");
 
@@ -1582,7 +1585,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EncounterId", "Sequencia");
+                    b.HasIndex("EncounterId", "Ordem");
 
                     b.ToTable("EncounterLogEntries");
                 });

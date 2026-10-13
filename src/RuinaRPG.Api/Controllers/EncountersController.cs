@@ -198,7 +198,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
 
         var entries = await db.EncounterLogEntries
             .Where(e => e.EncounterId == encounterId)
-            .OrderBy(e => e.Sequencia)
+            .OrderBy(e => e.Ordem).ThenBy(e => e.Sequencia)
             .ToListAsync();
         return entries.Select(e => new EncounterLogEntryResponse(e.Sequencia, DateTime.SpecifyKind(e.OccurredAt, DateTimeKind.Utc), e.Turno,
             e.VezNome, e.Tipo.ToString(), e.ParticipanteNome, e.Campo, e.ValorAntes, e.ValorDepois, e.Texto)).ToList();

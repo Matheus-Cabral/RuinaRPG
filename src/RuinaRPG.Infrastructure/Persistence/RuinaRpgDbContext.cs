@@ -711,7 +711,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<Encounter>().WithMany().HasForeignKey(l => l.EncounterId).OnDelete(DeleteBehavior.Cascade);
             entity.Property(l => l.Sequencia).ValueGeneratedOnAdd().UseIdentityByDefaultColumn();
             entity.Property(l => l.Tipo).HasConversion<string>();
-            entity.HasIndex(l => new { l.EncounterId, l.Sequencia });
+            entity.HasIndex(l => new { l.EncounterId, l.Ordem });
         });
 
         builder.Entity<EncounterParticipant>(entity =>

@@ -641,8 +641,9 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Coluna | Tipo | Nota |
 |---|---|---|
 | Id | PK | |
-| EncounterId | FK → Encounters, cascade | índice `(EncounterId, Sequencia)` |
-| Sequencia | bigint, identity | ordem estável dentro do mesmo instante |
+| EncounterId | FK → Encounters, cascade | índice `(EncounterId, Ordem)` |
+| Sequencia | bigint, identity | desempate quando duas linhas têm a mesma `Ordem` |
+| Ordem | bigint | ordem do log (valor estritamente crescente gerado na criação da linha); o log é lido por `Ordem`, com `Sequencia` como desempate |
 | OccurredAt | timestamp | |
 | Turno | int | turno em que a linha foi gravada |
 | VezParticipantId | guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
