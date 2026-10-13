@@ -1,6 +1,7 @@
 @page "/npcs/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject IDialogService Dialogs
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.NpcSheets
@@ -626,7 +627,13 @@
                     {
                         <tr>
                             <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton></td>
+                            <td>
+                                @if (spellAbility.CriadaNaFicha)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" Class="mr-1" OnClick="@(() => EditSpellAbilityAsync(spellAbility))">Editar</MudButton>
+                                }
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -1422,12 +1429,42 @@
         _spellAbilityForm.Descricao = "";
         _spellAbilityForm.Efeitos.Clear();
         await LoadSpellAbilitiesAsync();
+        await RecarregarPontosDeIgnicaoAsync();
     }
 
     private async Task DeleteSpellAbilityAsync(string id)
     {
         await Http.DeleteAsync($"npc-sheets/{SheetId}/spell-abilities/{id}");
         await LoadSpellAbilitiesAsync();
+        await RecarregarPontosDeIgnicaoAsync();
+    }
+
+    private async Task EditSpellAbilityAsync(NpcSpellAbilityResponse entrada)
+    {
+        var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
+            new DialogParameters<EditarMagiaHabilidadeDialog>
+            {
+                { x => x.SaveUrl, $"npc-sheets/{SheetId}/spell-abilities/{entrada.Id}" },
+                { x => x.Nome, entrada.Nome }, { x => x.Tipo, entrada.Tipo }, { x => x.Grau, entrada.Grau },
+                { x => x.Descricao, entrada.Descricao }, { x => x.Efeitos, entrada.Efeitos },
+            },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+        {
+            await LoadSpellAbilitiesAsync();
+            await RecarregarPontosDeIgnicaoAsync();
+        }
+    }
+
+    /// <summary>
+    /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b). Traz o valor
+    /// novo para o formulário antes do próximo autosave, que senão regravaria o saldo antigo.
+    /// </summary>
+    private async Task RecarregarPontosDeIgnicaoAsync()
+    {
+        var sheet = await Http.GetFromJsonAsync<NpcSheetResponse>($"npc-sheets/{SheetId}");
+        if (sheet is not null)
+            _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
     }
 
     private async Task LoadRunesAsync()

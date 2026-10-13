@@ -291,7 +291,9 @@ Lista incremental: o jogador adiciona uma Magia ou Habilidade por vez, montando 
 - *Custo*: campo calculado, não editável, em Foco (PF). `Custo = teto(1,25 × Gasto em PI)`, conforme "[[GRAUS & CÍRCULOS]]" ("Custo: 1,25 de arcana por PI").
 - *Descrição*: texto livre.
 
-Uma entrada pode ser removida pelo jogador a qualquer momento.
+Uma entrada pode ser removida pelo jogador a qualquer momento. Uma entrada **montada do zero** nesta ficha também pode ser editada (mesmos campos e validações da criação) por quem pode editar a ficha; uma entrada vinda do banco não é editável — para mudá-la, remove-se e adiciona-se de novo. Editar a entrada da ficha não altera a cópia que a criação gravou no banco. Entradas que já existiam antes dessa regra não são editáveis, pois a ficha não registrava a origem delas.
+
+**Saldo de Pontos de Ignição**: o *Gasto em PI* de uma Magia ou Habilidade é pago com os *Pontos de Ignição* atuais da ficha (1.b). Ao adicionar uma entrada, montada do zero ou vinda do banco, a ficha confere o saldo: se o Gasto em PI for maior que o saldo, a entrada não é criada; se couber, o valor é descontado. Remover uma entrada devolve o Gasto em PI dela ao saldo. Editar acerta apenas a diferença: um custo maior precisa caber no saldo e é descontado, um custo menor devolve a diferença. A regra vale para todos, inclusive o GM. Passivas (4.f) e a Habilidade Racial não têm Gasto em PI e ficam fora dela.
 
   
 

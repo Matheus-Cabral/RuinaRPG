@@ -85,3 +85,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0013** - Requisitos e Penalidades de equipamento seguem o Personagem.
 
 **Descrição**: Os Requisitos e a Penalidade dos equipamentos (Arma, Armadura, Escudo e Artefato) funcionam na Ficha de NPC exatamente como na Ficha de Personagem: a tag "Requisito(s) não cumprido(s)" nas linhas de 3.a, 3.b, 3.c e 5.b (com os Requisitos e a Penalidade no popup do item), o alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate, e a subtração automática das Penalidades dos Totais. Ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]".
+
+# **R0014** - O saldo de Pontos de Ignição bloqueia também o GM.
+
+**Descrição**: A aba 4.b do NPC segue "[[Requisitos - Ficha de Personagem]]" 4.b sem alteração, incluindo a edição das entradas montadas do zero e o saldo de Pontos de Ignição. Ao contrário dos contadores de R0007 e R0010 deste documento, o saldo de PI **é um limite**: nem o GM adiciona uma Magia/Habilidade cujo Gasto em PI exceda o saldo.
