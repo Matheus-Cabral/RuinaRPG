@@ -135,12 +135,39 @@
         </Section>
 
         <Section Title="Encontros">
-            <MudList T="string" Class="mt-3">
-                @foreach (var encounter in _encounters)
+            <MudList T="string" Class="mt-3" data-testid="encontros-abertos">
+                @foreach (var encounter in _encounters.Where(e => e.Status != "Finalizado"))
                 {
-                    <MudListItem T="string" Text="@(encounter.Nome ?? "(sem nome)")" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")" />
+                    <MudListItem T="string" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">
+                        @(encounter.Nome ?? "(sem nome)")
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">@(encounter.Status == "Preparacao" ? "Preparação" : $"Turno {encounter.CurrentRound}")</MudChip>
+                    </MudListItem>
                 }
             </MudList>
+        </Section>
+
+        <Section Title="Encontros finalizados">
+            <div data-testid="encontros-finalizados">
+                @if (!_encounters.Any(e => e.Status == "Finalizado"))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nenhum encontro finalizado.</MudText>
+                }
+                else
+                {
+                    <MudList T="string" Class="mt-3">
+                        @foreach (var encounter in _encounters.Where(e => e.Status == "Finalizado").OrderByDescending(e => e.FinalizadoEm))
+                        {
+                            <MudListItem T="string" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">
+                                @(encounter.Nome ?? "(sem nome)")
+                                @if (encounter.FinalizadoEm is { } fim)
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-2" Style="display:inline">Finalizado em @fim.ToLocalTime().ToString("dd/MM/yyyy")</MudText>
+                                }
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </div>
         </Section>
     </MudTabPanel>
 

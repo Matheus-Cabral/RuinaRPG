@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -488,5 +489,73 @@ public class CampanhaDetalheTests : MudBunitContext
         GoToTab(cut, "Conceder Ficha");
         await Task.Delay(50);
         cut.FindAll("button[aria-label='Log da ficha']").Should().BeEmpty();
+    }
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComEncontros(params EncounterResponse[] encontros)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get) return new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) }) };
+            if (path.EndsWith("/encounters"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(encontros) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        }));
+
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+        GoToTab(cut, "Encontros");
+        return cut;
+    }
+
+    [Fact]
+    public async Task Encontros_tab_splits_the_encounters_into_em_aberto_and_finalizados()
+    {
+        var finalizadoEm = new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc);
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"),
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", finalizadoEm, "p2"));
+        await Task.Delay(100);
+
+        var abertos = cut.Find("[data-testid='encontros-abertos']");
+        abertos.TextContent.Should().Contain("Emboscada").And.Contain("Preparação");
+        abertos.TextContent.Should().Contain("Ponte").And.Contain("Turno 4");
+        abertos.TextContent.Should().NotContain("Dragão");
+
+        var finalizados = cut.Find("[data-testid='encontros-finalizados']");
+        finalizados.TextContent.Should().Contain("Dragão").And.Contain(finalizadoEm.ToLocalTime().ToString("dd/MM/yyyy"));
+        finalizados.TextContent.Should().NotContain("Emboscada").And.NotContain("Ponte");
+        finalizados.QuerySelector("a")!.GetAttribute("href").Should().EndWith("encontros/e3");
+    }
+
+    [Fact]
+    public async Task Encontros_finalizados_shows_the_empty_message_when_none_is_finished()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"));
+        await Task.Delay(100);
+
+        cut.Find("[data-testid='encontros-finalizados']").TextContent.Should().Contain("Nenhum encontro finalizado.");
+    }
+
+    [Fact]
+    public async Task Encontros_finalizados_are_listed_newest_first()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Antigo", 3, 0, "Finalizado", new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc), "p1"),
+            new EncounterResponse("e2", "Recente", 3, 0, "Finalizado", new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc), "p2"),
+            new EncounterResponse("e3", "Meio", 3, 0, "Finalizado", new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc), "p3"));
+        await Task.Delay(100);
+
+        var nomes = cut.Find("[data-testid='encontros-finalizados']").QuerySelectorAll("a").Select(a => a.TextContent).ToList();
+        nomes.Should().HaveCount(3);
+        nomes[0].Should().Contain("Recente");
+        nomes[1].Should().Contain("Meio");
+        nomes[2].Should().Contain("Antigo");
     }
 }

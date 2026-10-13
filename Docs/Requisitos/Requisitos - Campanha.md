@@ -6,7 +6,7 @@
 
   
 
-> **Documentos relacionados**: jogadores só podem ser adicionados a uma campanha se já estiverem vinculados ao GM (ver "[[Requisitos - Convite de Jogador]]"). Fichas de personagem criadas aqui seguem "[[Requisitos - Ficha de Personagem]]". Itens anexáveis vêm de "[[Requisitos - Catálogo de Itens e Equipamentos]]". Fichas de criatura e de NPC anexáveis vêm de "Requisitos - Ficha de Criaturas" e "Requisitos - Ficha de NPCs" (documentos ainda não detalhados).
+> **Documentos relacionados**: jogadores só podem ser adicionados a uma campanha se já estiverem vinculados ao GM (ver "[[Requisitos - Convite de Jogador]]"). Fichas de personagem criadas aqui seguem "[[Requisitos - Ficha de Personagem]]". Itens anexáveis vêm de "[[Requisitos - Catálogo de Itens e Equipamentos]]". Fichas de criatura e de NPC anexáveis vêm de "Requisitos - Ficha de Criaturas" e "Requisitos - Ficha de NPCs" (documentos ainda não detalhados). Os Encontros da campanha (aba **Encontros**, com a lista em preparação/em andamento e a lista de finalizados) seguem "[[Requisitos - Gerenciador de Encontros]]", ver [[Requisitos - Gerenciador de Encontros#**R0009** - Encontros finalizados ficam em uma lista à parte.|R0009]].
 
   
 
