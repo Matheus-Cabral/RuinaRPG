@@ -93,16 +93,15 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
 
         foreach (var ((tipoDoPai, paiId), grupo) in efeitos)
         {
-            porChave.TryGetValue((tipoDoPai, paiId), out var pai);
-            // Magia criada ou removida neste salvamento: a linha dela já diz tudo.
-            if (pai is { State: EntityState.Added or EntityState.Deleted } || !EfeitosMudaram(grupo))
+            // Os controllers sempre editam os Efeitos com a Magia carregada (Include): sem ela rastreada não há
+            // como nomear a linha, e nada é registrado. Magia criada ou removida neste salvamento: a linha dela já diz tudo.
+            if (!porChave.TryGetValue((tipoDoPai, paiId), out var pai) || pai.State is EntityState.Added or EntityState.Deleted || !EfeitosMudaram(grupo))
                 continue;
             var mapDoPai = SheetLogMap.Entidades[tipoDoPai];
-            var (sheetId, nome) = pai is not null
-                ? ((Guid?)Valor(pai, mapDoPai.SheetIdProperty!), SheetLogValues.Render(Valor(pai, mapDoPai.ItemNomeProperty!)))
-                : await MagiaDoBancoAsync(db, mapDoPai, paiId, ct);
-            if (sheetId is not { } id || fichasNovas.Contains(id) || fichasApagadas.Contains(id) || await FichaAsync(mapDoPai.Kind, id) is not { } ficha)
+            var sheetId = (Guid)Valor(pai, mapDoPai.SheetIdProperty!)!;
+            if (fichasNovas.Contains(sheetId) || fichasApagadas.Contains(sheetId) || await FichaAsync(mapDoPai.Kind, sheetId) is not { } ficha)
                 continue;
+            var nome = SheetLogValues.Render(Valor(pai, mapDoPai.ItemNomeProperty!));
             linhas.Add(Linha(ficha, mapDoPai.Secao, SheetLogAcao.Alterou, itemNome: nome, campo: CampoEfeitos));
         }
 
@@ -217,18 +216,6 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor) : SaveChange
         List<string> Conteudo(EntityState estado) => grupo.Where(e => e.State == estado)
             .Select(e => string.Join('\u001f', map.Campos.Keys.Select(p => SheetLogValues.Render(Valor(e, p))))).Order(StringComparer.Ordinal).ToList();
         return !Conteudo(EntityState.Added).SequenceEqual(Conteudo(EntityState.Deleted));
-    }
-
-    /// <summary>A ficha e o Nome de uma Magia/Habilidade que não está carregada no contexto.</summary>
-    private static async Task<(Guid? SheetId, string Nome)> MagiaDoBancoAsync(RuinaRpgDbContext db, SheetLogEntityMap map, Guid id, CancellationToken ct)
-    {
-        var magia = map.Kind switch
-        {
-            SheetLogKind.Character => await db.CharacterSpellAbilities.AsNoTracking().Where(m => m.Id == id).Select(m => new { SheetId = m.CharacterSheetId, m.Nome }).FirstOrDefaultAsync(ct),
-            SheetLogKind.Npc => await db.NpcSpellAbilities.AsNoTracking().Where(m => m.Id == id).Select(m => new { SheetId = m.NpcSheetId, m.Nome }).FirstOrDefaultAsync(ct),
-            _ => await db.CreatureSpellAbilities.AsNoTracking().Where(m => m.Id == id).Select(m => new { SheetId = m.CreatureSheetId, m.Nome }).FirstOrDefaultAsync(ct),
-        };
-        return (magia?.SheetId, magia?.Nome ?? "");
     }
 
     private static SheetLogEntry Linha(Ficha ficha, string secao, SheetLogAcao acao, string? itemNome = null, string? campo = null) => new()

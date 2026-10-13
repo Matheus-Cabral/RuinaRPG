@@ -20,7 +20,7 @@ using RuinaRPG.Infrastructure.SheetLogs;
 namespace RuinaRPG.Tests.Integration.SheetLogs;
 
 /// <summary>Campanha R0016 / Técnico R0012: o interceptor grava o log de ficha no mesmo salvamento da alteração.</summary>
-public class SheetLogRecordingTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public partial class SheetLogRecordingTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private readonly PostgresFixture _postgres;
     private ApiFactory _factory = null!;
