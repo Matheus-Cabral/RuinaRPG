@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
@@ -143,10 +144,52 @@ public class SheetLogsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     public async Task Real_edits_through_the_api_show_up_in_the_log()
     {
         var c = await CenarioAsync("Real");
+        var criada = (await PaginaAsync(Url(c.SheetId), c.GmToken)).Itens.Should().ContainSingle().Subject;
+        criada.Acao.Should().Be("Criou");
+
+        await SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}", c.GmToken, new UpdateCharacterSheetRequest(
+            null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, "Marcado pela Ruína",
+            true, 749, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, 0, null, null, 0, null, null, 0));
 
         var pagina = await PaginaAsync(Url(c.SheetId), c.GmToken);
+        pagina.Itens.Should().HaveCountGreaterThan(1);
+        pagina.Itens.Last().Id.Should().Be(criada.Id);
+        var nome = pagina.Itens.Single(i => i.Acao == "Alterou" && i.ValorDepois == "Vann Astrel");
+        nome.ActorIsGm.Should().BeTrue();
+        pagina.Itens.Select(i => i.OccurredAt).Should().BeInDescendingOrder();
+        pagina.Itens.Take(pagina.Itens.Count - 1).Should().OnlyContain(i => i.Acao != "Criou");
+    }
 
-        pagina.Itens.Should().ContainSingle().Which.Acao.Should().Be("Criou");
+    [Fact]
+    public async Task Paging_across_a_group_of_equal_timestamps_loses_and_repeats_nothing()
+    {
+        var c = await CenarioAsync("Empate");
+        var empate = Base.AddHours(6);
+        await InserirAsync([
+            Linha(c.SheetId, empate.AddMinutes(-5), campo: "antes"),
+            .. Enumerable.Range(0, 5).Select(i => Linha(c.SheetId, empate, campo: $"empate{i}")),
+            Linha(c.SheetId, empate.AddMinutes(5), campo: "depois")]);
+
+        List<SheetLogEntry> doBanco;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            doBanco = await db.SheetLogEntries.AsNoTracking().Where(l => l.CharacterSheetId == c.SheetId).ToListAsync();
+        }
+
+        var vistos = new List<SheetLogEntryResponse>();
+        string? cursor = null;
+        do
+        {
+            var query = "?limite=2" + (cursor is null ? "" : $"&antesDe={Uri.EscapeDataString(cursor)}");
+            var pagina = await PaginaAsync(Url(c.SheetId, query), c.GmToken);
+            vistos.AddRange(pagina.Itens);
+            cursor = pagina.ProximoCursor;
+        } while (cursor is not null);
+
+        vistos.Select(v => v.Id).Should().OnlyHaveUniqueItems();
+        vistos.Select(v => v.Id).Should().BeEquivalentTo(doBanco.Select(l => l.Id.ToString()));
+        vistos.Select(v => v.OccurredAt).Should().BeInDescendingOrder();
     }
 
     [Fact]
