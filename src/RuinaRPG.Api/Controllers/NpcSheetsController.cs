@@ -36,6 +36,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var gmId = CurrentUserId();
 
         var sheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId };
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(sheet.Nivel, await tabelaDeNiveis.ObterAsync());
         db.NpcSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
@@ -129,6 +130,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.Propriedade = request.Propriedade;
         sheet.Estrela = estrela;
         sheet.HistoricoId = historicoId;
+        var nivelAntigo = sheet.Nivel;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
@@ -142,8 +144,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.NucleosRankB = request.NucleosRankB;
         sheet.NucleosRankA = request.NucleosRankA;
         sheet.NucleosRankS = request.NucleosRankS;
-        sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
-        sheet.PontosDeIgnicaoTotal = request.PontosDeIgnicaoTotal;
+        // Mesma regra do Personagem (Ficha de Personagem 1.b): o Atual acompanha o Nível. O Total do
+        // NPC deixou de ser editável na 1.5.0 — request.PontosDeIgnicaoTotal é aceito mas ignorado.
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(request.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(nivelAntigo, request.Nivel, tabela));
         sheet.VitalidadeAtual = request.VitalidadeAtual;
         sheet.FocoAtual = request.FocoAtual;
         sheet.AdrenalinaAtual = request.AdrenalinaAtual;
@@ -295,6 +299,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (nivel < 1 || nivel > tabela.UltimoNivel)
             return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
 
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(sheet.Nivel, nivel, tabela));
         sheet.Nivel = nivel;
         sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
@@ -315,7 +321,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         sheet.ExperienciaAtual = experienciaAtual;
         var tabela = await tabelaDeNiveis.ObterAsync();
-        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
+        var nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(sheet.Nivel, nivel, tabela));
+        sheet.Nivel = nivel;
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
 

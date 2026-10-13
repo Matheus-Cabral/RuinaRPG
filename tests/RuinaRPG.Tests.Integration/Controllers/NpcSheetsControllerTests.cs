@@ -10,6 +10,8 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -1360,6 +1362,76 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     private async Task<NpcSheetResponse> GetNpcAsync(string token, string sheetId) =>
         (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", token)))
             .Content.ReadFromJsonAsync<NpcSheetResponse>())!;
+
+    private async Task<int> PiAcumuladoAsync(int nivel)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var tabela = await scope.ServiceProvider.GetRequiredService<ITabelaDeNiveis>().ObterAsync();
+        return tabela.Acumulado(ChavesDeNivel.PontosDeIgnicao, nivel);
+    }
+
+    [Fact]
+    public async Task A_new_npc_starts_with_the_level_1_Pontos_de_Ignicao()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiNovo", "npcpinovo@teste.com");
+        var id = await CreateSheetAsync(gm);
+
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(await PiAcumuladoAsync(1));
+    }
+
+    [Fact]
+    public async Task Changing_the_npc_level_through_the_nivel_endpoint_moves_Atual()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiNivel", "npcpinivel@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var inicial = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/nivel", gm, 4))).EnsureSuccessStatusCode();
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(inicial + await PiAcumuladoAsync(4) - await PiAcumuladoAsync(1));
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/nivel", gm, 1))).EnsureSuccessStatusCode();
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(inicial);
+    }
+
+    [Fact]
+    public async Task Changing_the_npc_experience_moves_Atual_with_the_level_it_computes()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiXp", "npcpixp@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var inicial = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/experiencia-atual", gm, 749))).EnsureSuccessStatusCode();
+
+        var npc = await GetNpcAsync(gm, id);
+        npc.PontosDeIgnicaoAtual.Should().Be(inicial + await PiAcumuladoAsync(npc.Nivel) - await PiAcumuladoAsync(1));
+    }
+
+    [Fact]
+    public async Task The_full_npc_update_applies_the_level_delta_and_ignores_PontosDeIgnicaoTotal()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiPut", "npcpiput@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var antes = await GetNpcAsync(gm, id);
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}", gm,
+            ValidUpdate() with { Nivel = 3, PontosDeIgnicaoAtual = 6, PontosDeIgnicaoTotal = 999 }))).EnsureSuccessStatusCode();
+
+        var npc = await GetNpcAsync(gm, id);
+        npc.PontosDeIgnicaoAtual.Should().Be(6 + await PiAcumuladoAsync(3) - await PiAcumuladoAsync(antes.Nivel));
+        npc.PontosDeIgnicaoTotal.Should().Be(antes.PontosDeIgnicaoTotal);
+    }
+
+    [Fact]
+    public async Task A_blank_npc_granted_to_a_player_also_starts_with_the_level_1_points()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiGrant", "npcpigrant@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPiGrantP", "npcpigrantp@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha PI");
+        await AddMemberAsync(gm, campaignId, playerId);
+        var id = await GrantBlankNpcAsync(gm, campaignId, playerId);
+
+        (await GetNpcAsync(playerToken, id)).PontosDeIgnicaoAtual.Should().Be(await PiAcumuladoAsync(1));
+    }
 
     [Fact]
     public async Task UpdateHistoria_by_the_gm_persists_sanitized_html()

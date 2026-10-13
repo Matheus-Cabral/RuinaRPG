@@ -9,6 +9,8 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -1651,6 +1653,79 @@ public class CharacterSheetsControllerTests : IClassFixture<PostgresFixture>, IA
     private async Task<CharacterSheetResponse> GetSheetAsync(string token, string sheetId) =>
         (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token)))
             .Content.ReadFromJsonAsync<CharacterSheetResponse>())!;
+
+    private async Task<int> PiAcumuladoAsync(int nivel)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var tabela = await scope.ServiceProvider.GetRequiredService<ITabelaDeNiveis>().ObterAsync();
+        return tabela.Acumulado(ChavesDeNivel.PontosDeIgnicao, nivel);
+    }
+
+    private Task<HttpResponseMessage> PutSheetAsync(string token, string sheetId, UpdateCharacterSheetRequest request) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", token, request));
+
+    [Fact]
+    public async Task A_new_sheet_starts_with_the_level_1_Pontos_de_Ignicao()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("PiNovo");
+
+        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(await PiAcumuladoAsync(1));
+    }
+
+    [Fact]
+    public async Task Levelling_up_adds_the_gained_levels_Pontos_de_Ignicao_to_Atual()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("PiSobe");
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoAtual = 7 })).EnsureSuccessStatusCode();
+
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoAtual = 7 })).EnsureSuccessStatusCode();
+
+        var sheet = await GetSheetAsync(playerToken, sheetId);
+        sheet.Nivel.Should().Be(5);
+        sheet.PontosDeIgnicaoAtual.Should().Be(7 + await PiAcumuladoAsync(5) - await PiAcumuladoAsync(1));
+    }
+
+    [Fact]
+    public async Task Saving_again_at_the_same_level_does_not_add_the_points_twice()
+    {
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("PiMesmo");
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoAtual = 7 })).EnsureSuccessStatusCode();
+        var depois = (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual;
+
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoAtual = depois })).EnsureSuccessStatusCode();
+
+        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(depois);
+    }
+
+    [Fact]
+    public async Task Losing_levels_subtracts_the_same_points_and_never_goes_below_zero()
+    {
+        // ValidUpdate() carries a manual bonus of 40; pinned to 0 so only the level moves Atual.
+        var (_, playerToken, sheetId) = await CreateOwnedSheetAsync("PiDesce");
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoBonusManual = 0, PontosDeIgnicaoAtual = 0 })).EnsureSuccessStatusCode();
+        var noNivel5 = (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual;
+
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoBonusManual = 0, PontosDeIgnicaoAtual = noNivel5 + 3 })).EnsureSuccessStatusCode();
+        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(3); // (Δ + 3) − Δ
+
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 749, PontosDeIgnicaoBonusManual = 0, PontosDeIgnicaoAtual = 2 })).EnsureSuccessStatusCode();
+        (await PutSheetAsync(playerToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoBonusManual = 0, PontosDeIgnicaoAtual = 1 })).EnsureSuccessStatusCode();
+        (await GetSheetAsync(playerToken, sheetId)).PontosDeIgnicaoAtual.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_manual_bonus_delta_reaches_Atual_as_well_as_the_total()
+    {
+        var (gmToken, _, sheetId) = await CreateOwnedSheetAsync("PiBonus");
+        (await PutSheetAsync(gmToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoAtual = 10, PontosDeIgnicaoBonusManual = 0 })).EnsureSuccessStatusCode();
+
+        (await PutSheetAsync(gmToken, sheetId, ValidUpdate() with { ExperienciaAtual = 0, PontosDeIgnicaoAtual = 10, PontosDeIgnicaoBonusManual = 5 })).EnsureSuccessStatusCode();
+
+        var sheet = await GetSheetAsync(gmToken, sheetId);
+        sheet.PontosDeIgnicaoAtual.Should().Be(15);
+        sheet.PontosDeIgnicaoBonusManual.Should().Be(5);
+        sheet.PontosDeIgnicaoTotal.Should().Be(await PiAcumuladoAsync(1) + 5);
+    }
 
     [Fact]
     public async Task UpdateHistoria_by_the_owner_persists_sanitized_html_and_Get_returns_it()

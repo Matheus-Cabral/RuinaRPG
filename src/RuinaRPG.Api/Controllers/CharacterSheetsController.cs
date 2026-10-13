@@ -43,6 +43,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return BadRequest("O jogador informado não é membro desta campanha.");
 
         var sheet = new CharacterSheet { Id = Guid.NewGuid(), CampaignId = campaignId, OwnerId = ownerId };
+        // Ficha nova já nasce com o que a Tabela de Níveis concede até o nível inicial (1.b).
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(sheet.Nivel, await tabelaDeNiveis.ObterAsync());
         db.CharacterSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
@@ -259,6 +261,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
         var tabela = await tabelaDeNiveis.ObterAsync();
         var nivel = NivelCalculator.Compute(request.ExperienciaAtual, tabela.ComoXpPorNivel());
+        var nivelAntigo = sheet.Nivel;
         sheet.Nivel = nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
@@ -274,10 +277,14 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.NucleosRankB = request.NucleosRankB;
         sheet.NucleosRankA = request.NucleosRankA;
         sheet.NucleosRankS = request.NucleosRankS;
-        sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
         // PontosDeIgnicaoTotal is a pure function of Nível + PontosDeIgnicaoBonusManual now (1.b,
         // "os bônus de PI por nível constam na Tabela de Níveis") — same treatment already given
         // to EAPAtual. Only the manual bonus on top is ever written from here on.
+        // 1.b: o Atual acompanha o Nível (sobe e desce, piso 0) e também o bônus manual do GM, que
+        // continua somando ao total calculado em ToResponseAsync.
+        var deltaDePi = PontosDeIgnicaoPorNivel.Delta(nivelAntigo, nivel, tabela)
+            + (request.PontosDeIgnicaoBonusManual - sheet.PontosDeIgnicaoBonusManual);
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(request.PontosDeIgnicaoAtual, deltaDePi);
         sheet.PontosDeIgnicaoBonusManual = request.PontosDeIgnicaoBonusManual;
 
         // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than

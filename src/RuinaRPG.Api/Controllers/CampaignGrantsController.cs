@@ -12,6 +12,7 @@ using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/campaigns/{campaignId}/grants")]
-public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Grant(Guid campaignId, GrantSheetRequest request)
@@ -49,6 +50,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             if (sourceSheetId is null)
             {
                 newSheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
+                newSheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(newSheet.Nivel, await tabelaDeNiveis.ObterAsync());
                 await SeedBlankNpcChildrenAsync(newSheet.Id);
             }
             else
