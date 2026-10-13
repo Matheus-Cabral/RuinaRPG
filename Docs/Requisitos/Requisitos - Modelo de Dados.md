@@ -250,7 +250,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | ExperienciaAtual | int | 1.b |
 | EAPAtual | int | 1.b — coluna vestigial: mantida no schema mas não mais lida nem gravada pela aplicação; o VIS Atual exibido (`EAPAtual` na response) é **computado em tempo de leitura** (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank). `request.EAPAtual` é aceito mas ignorado. Mesma situação em NpcSheets (6.2), que herda esta coluna sem diferença. |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
-| PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b |
+| PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b — `request.PontosDeIgnicaoAtual` é aceito mas ignorado na atualização geral da ficha: o servidor aplica as diferenças de Nível e de bônus manual sobre o valor guardado, e a edição manual do saldo tem endpoint próprio (`PUT …/pontos-de-ignicao`). Mesma situação em NpcSheets (6.2) e, para `PontosDeIgnicao`, em CreatureSheets (6.3). |
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
 | Cobertura | enum Nenhuma \| Parcial \| Completa | 2.b |
 | Ciclos | int | 5.a |
