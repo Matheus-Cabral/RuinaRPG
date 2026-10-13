@@ -101,4 +101,28 @@ public class SheetLogMapTests
             m.Kind.Should().Be(esperado, tipo.Name);
         }
     }
+
+    [Fact]
+    public void The_armor_slot_column_is_labelled_Slot_de_Armadura()
+    {
+        foreach (var tipo in new[] { typeof(CharacterArmorSlot), typeof(NpcArmorSlot), typeof(CreatureArmorSlot) })
+            SheetLogMap.Entidades[tipo].Campos["Slot"].Should().Be("Slot de Armadura");
+    }
+
+    [Fact]
+    public void The_chosen_attribute_of_a_skill_is_labelled_Atributo_escolhido()
+    {
+        foreach (var tipo in new[] { typeof(CharacterSkill), typeof(NpcSkill), typeof(CreatureSkill) })
+            SheetLogMap.Entidades[tipo].Campos["AtributoEscolhido"].Should().Be("Atributo escolhido");
+    }
+
+    [Fact]
+    public void Every_long_text_has_a_label()
+    {
+        foreach (var (tipo, m) in SheetLogMap.Entidades)
+            foreach (var p in m.TextosLongos)
+                SheetLogMap.RotulosDeTextoLongo.Should().ContainKey(p, $"{tipo.Name}.{p} precisa de rótulo");
+        SheetLogMap.RotulosDeTextoLongo["Historia"].Should().Be("História");
+        SheetLogMap.RotulosDeTextoLongo["Descricao"].Should().Be("Descrição");
+    }
 }

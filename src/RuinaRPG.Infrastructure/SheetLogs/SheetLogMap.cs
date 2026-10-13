@@ -37,6 +37,12 @@ public static class SheetLogMap
         typeof(NpcSheetHistoriaImage),
     };
 
+    /// <summary>Rótulo dos textos longos (TextosLongos), que entram no log sem valores; vale para qualquer tabela.</summary>
+    public static IReadOnlyDictionary<string, string> RotulosDeTextoLongo { get; } = new Dictionary<string, string>
+    {
+        ["Historia"] = "História", ["Descricao"] = "Descrição", ["Requisitos"] = "Requisitos",
+    };
+
     private static Dictionary<Type, SheetLogEntityMap> Montar()
     {
         var mapa = new Dictionary<Type, SheetLogEntityMap>();
@@ -95,13 +101,13 @@ public static class SheetLogMap
         // ---- Filhas: Personagem, NPC e Criatura (as telas usam os mesmos rótulos) ----
         Filhas(mapa, "Atributos", Campos(("Atributo", "Atributo"), ("Gasto", "Gasto"), ("Bonus", "Bônus"), ("TemMaestria", "Proeficiência")),
             [typeof(CharacterAttribute), typeof(NpcAttribute), typeof(CreatureAttribute)], nome: "Atributo");
-        Filhas(mapa, "Perícias", Campos(("PericiaId", "Perícia"), ("Gasto", "Gasto"), ("AtributoEscolhido", "Atributo")),
+        Filhas(mapa, "Perícias", Campos(("PericiaId", "Perícia"), ("Gasto", "Gasto"), ("AtributoEscolhido", "Atributo escolhido")),
             [typeof(CharacterSkill), typeof(NpcSkill), typeof(CreatureSkill)], itemRef: "PericiaId");
         Filhas(mapa, "Maestrias", Campos(("Nome", "Nome"), ("PericiaId", "Perícia"), ("Atributo", "Atributo"), ("GastoMaestria", "Gasto Maestria")),
             [typeof(CharacterMastery), typeof(NpcMastery), typeof(CreatureMastery)], nome: "Nome");
         Filhas(mapa, "Escudos", Campos(("ItemId", "Escudo"), ("IsEquipped", "Equipado"), ("DurabilidadeAtual", "Durabilidade")),
             [typeof(CharacterShield), typeof(NpcShield), typeof(CreatureShield)], itemRef: "ItemId");
-        Filhas(mapa, "Armaduras", Campos(("Slot", "Slot"), ("ItemId", "Armadura"), ("DurabilidadeAtual", "Durabilidade")),
+        Filhas(mapa, "Armaduras", Campos(("Slot", "Slot de Armadura"), ("ItemId", "Armadura"), ("DurabilidadeAtual", "Durabilidade")),
             [typeof(CharacterArmorSlot), typeof(NpcArmorSlot), typeof(CreatureArmorSlot)], nome: "Slot", itemRef: "ItemId");
         Filhas(mapa, "Artefatos", Campos(("ArtifactItemId", "Artefato")),
             [typeof(CharacterArtifact), typeof(NpcArtifact), typeof(CreatureArtifact)], itemRef: "ArtifactItemId");

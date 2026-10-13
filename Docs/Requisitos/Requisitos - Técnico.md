@@ -123,3 +123,14 @@ Implicações para o deploy:
 # **R0011** - Desenvolvimento segue TDD.
 
 **Descrição**: Toda unidade de comportamento (endpoint, serviço, regra de domínio) é implementada escrevendo primeiro um teste que falha, depois o código mínimo pra fazê-lo passar — não só onde for conveniente. Vale para todo o código de produção do projeto; os planos de implementação em `docs/superpowers/plans/` (fora deste `Docs/`, é a pasta usada pela skill de planejamento) já seguem esse ciclo passo a passo por padrão.
+
+  
+
+# **R0012** - O log de ficha é gravado por um único interceptor de salvamento.
+
+**Descrição**: As linhas do log de alterações de ficha (tabela `SheetLogEntries`, [[Requisitos - Modelo de Dados]]; a tela do GM está em [[Requisitos - Campanha]]) são gravadas por um único interceptor de salvamento do EF Core (`SheetLogInterceptor`, em `RuinaRPG.Infrastructure`), registrado no `RuinaRpgDbContext`. A cada salvamento ele lê do rastreador de alterações o que mudou nas tabelas de ficha e acrescenta as linhas do log ao **mesmo** salvamento: alteração e log são gravados juntos ou falham juntos, e nenhum controller de ficha grava o log por conta própria.
+
+- O autor da linha é o usuário autenticado da requisição. Um salvamento sem usuário autenticado (seeders, inicialização da Api, utilitários de linha de comando) não gera log.
+- Fichas de NPC e de Criatura só entram no log enquanto estão concedidas a um jogador.
+- O que entra no log, e com qual rótulo, é definido numa tabela única no código (`SheetLogMap`): cada tabela de ficha e cada coluna dela tem um rótulo, está marcada como texto longo (registrado sem o conteúdo) ou está na lista de ignoradas. **Uma tabela ou coluna de ficha nova precisa ser acrescentada a essa tabela** — um teste automatizado falha enquanto ela não estiver classificada.
+- Operações em massa que não passam pelo rastreador do EF Core (`ExecuteUpdate`, `ExecuteDelete`, SQL direto) **não** disparam o interceptor e, portanto, não geram log. O único uso atual sobre tabelas de ficha é o do Auditor de Regras ao remover uma Perícia, que zera o Gasto dela em todas as fichas ([[Requisitos - Auditoria de Regras]]): é manutenção do catálogo, não edição de ficha, e fica fora do log de propósito. Uma nova operação em massa sobre tabelas de ficha deve decidir explicitamente se precisa registrar log.

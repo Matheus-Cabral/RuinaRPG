@@ -7,6 +7,7 @@ using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
@@ -48,8 +49,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddDbContext<RuinaRpgDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+// Log de ficha (Técnico R0012): o interceptor é por requisição (precisa saber quem está salvando), por isso
+// entra pelo provider do escopo. O ApiFactory dos testes de integração refaz este registro — manter os dois iguais.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentActor, HttpCurrentActor>();
+builder.Services.AddScoped<SheetLogInterceptor>();
+builder.Services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
+    .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
+    .AddInterceptors(sp.GetRequiredService<SheetLogInterceptor>()));
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>

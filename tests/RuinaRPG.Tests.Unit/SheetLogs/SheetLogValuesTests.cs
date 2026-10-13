@@ -1,6 +1,8 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Runes;
+using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.SheetLogs;
 
 namespace RuinaRPG.Tests.Unit.SheetLogs;
@@ -37,4 +39,43 @@ public class SheetLogValuesTests
 
     [Fact]
     public void Strings_render_as_they_are() => SheetLogValues.Render("Aldric").Should().Be("Aldric");
+
+    [Theory]
+    [InlineData(Atributo.Forca, "Força")]
+    [InlineData(Atributo.Astucia, "Astúcia")]
+    [InlineData(Atributo.Influencia, "Influência")]
+    [InlineData(Atributo.Vigor, "Vigor")]
+    public void An_attribute_renders_its_Portuguese_name(Atributo atributo, string esperado) =>
+        SheetLogValues.Render(atributo).Should().Be(esperado);
+
+    [Fact]
+    public void Enums_shown_on_the_sheet_with_accents_or_spaces_render_as_the_sheet_shows_them()
+    {
+        SheetLogValues.Render(Vocacao.Campeao).Should().Be("Campeão");
+        SheetLogValues.Render(Vocacao.Cacador).Should().Be("Caçador");
+        SheetLogValues.Render(Variante.PhylacTai).Should().Be("Phylac'tai (Sol)");
+        SheetLogValues.Render(Variante.Alora).Should().Be("Alóra (Lua)");
+        SheetLogValues.Render(AfinidadeElemental.Agua).Should().Be("Água");
+        SheetLogValues.Render(AfinidadeElemental.Invocacao).Should().Be("Invocação");
+        SheetLogValues.Render(Elemento.Agua).Should().Be("Água");
+        SheetLogValues.Render(EssenciaBasica.Agua).Should().Be("Água");
+        SheetLogValues.Render(SubElemento.Invocacao).Should().Be("Invocação");
+        SheetLogValues.Render(Arquetipo.Fisico).Should().Be("Físico");
+        SheetLogValues.Render(TipoDeRuna.Negra).Should().Be("Runa Negra");
+        SheetLogValues.Render(CategoriaDePassiva.DeClasse).Should().Be("Passiva de Classe");
+    }
+
+    [Fact]
+    public void A_nullable_enum_with_a_value_renders_like_the_enum()
+    {
+        Atributo? escolhido = Atributo.Forca;
+        SheetLogValues.Render(escolhido).Should().Be("Força");
+    }
+
+    [Fact]
+    public void An_enum_member_without_an_entry_renders_its_member_name()
+    {
+        SheetLogValues.Render(Linhagem.Econos).Should().Be("Econos");
+        SheetLogValues.Render(Rank.S).Should().Be("S");
+    }
 }
