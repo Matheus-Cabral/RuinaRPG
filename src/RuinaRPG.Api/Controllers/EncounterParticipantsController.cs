@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Domain.Encounters;
 using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -20,6 +21,8 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
         if (authError is not null)
             return authError;
+        if (RequireEditable(encounter!) is { } wrongPhase)
+            return wrongPhase;
 
         var sourceCount = new[] { request.SourceCharacterSheetId, request.SourceNpcSheetId, request.SourceCreatureSheetId }.Count(id => id is not null);
         if (sourceCount != 1)
@@ -101,9 +104,11 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid encounterId, Guid id, UpdateParticipantRequest request)
     {
-        var (authError, _) = await CheckEncounterOwnershipAsync(encounterId);
+        var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
         if (authError is not null)
             return authError;
+        if (RequireEditable(encounter!) is { } wrongPhase)
+            return wrongPhase;
 
         var participant = await db.EncounterParticipants.FirstOrDefaultAsync(p => p.Id == id && p.EncounterId == encounterId);
         if (participant is null)
@@ -131,6 +136,47 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         db.EncounterParticipantConditions.RemoveRange(existingConditions);
         foreach (var texto in request.Condicoes)
             db.EncounterParticipantConditions.Add(new EncounterParticipantCondition { Id = Guid.NewGuid(), EncounterParticipantId = id, Texto = texto });
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid encounterId, Guid id)
+    {
+        var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
+        if (authError is not null)
+            return authError;
+        if (RequireEditable(encounter!) is { } wrongPhase)
+            return wrongPhase;
+
+        var participants = await db.EncounterParticipants
+            .Where(p => p.EncounterId == encounterId)
+            .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
+            .ToListAsync();
+        var participant = participants.FirstOrDefault(p => p.Id == id);
+        if (participant is null)
+            return NotFound();
+
+        if (encounter!.CurrentParticipantId == id)
+        {
+            // Order passed is the one BEFORE the removal.
+            var next = TurnAdvanceCalculator.AfterRemoval(encounter.CurrentRound, id, participants.Select(p => p.Id).ToList());
+            if (next is { } handover)
+            {
+                encounter.CurrentRound = handover.Round;
+                encounter.CurrentParticipantId = handover.ParticipantId;
+                participants.Single(p => p.Id == handover.ParticipantId).AcoesRestantes = 3;
+            }
+            else
+            {
+                encounter.CurrentParticipantId = null;
+            }
+        }
+
+        var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
+        db.EncounterParticipantConditions.RemoveRange(conditions);
+        db.EncounterParticipants.Remove(participant);
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -187,6 +233,9 @@ public class EncounterParticipantsController(RuinaRpgDbContext db) : ControllerB
         // Source sheet was deleted (SetNull cascaded) — Nome snapshot still displays, PV/PF/PA frozen at whatever the columns last held.
         return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false, condicoes);
     }
+
+    private ActionResult? RequireEditable(Encounter encounter) =>
+        encounter.Status == EncounterStatus.Finalizado ? Conflict("Encontro finalizado.") : null;
 
     private async Task<(ActionResult? Error, Encounter? Encounter)> CheckEncounterOwnershipAsync(Guid encounterId)
     {
