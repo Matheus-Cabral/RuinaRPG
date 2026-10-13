@@ -1,0 +1,4 @@
+/* O participante com a vez ganha fundo preenchido (o negrito sozinho some numa tabela cheia). */
+.encontro-vez {
+    background-color: var(--mud-palette-primary-hover);
+}

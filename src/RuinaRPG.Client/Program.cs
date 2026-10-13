@@ -27,6 +27,7 @@ builder.Services
     .AddHttpMessageHandler<BearerTokenHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 builder.Services.AddScoped<INotificationConnection, SignalRNotificationConnection>();
+builder.Services.AddTransient<IEncounterConnection, SignalREncounterConnection>();
 builder.Services.AddScoped<SecretNoteNotifier>();
 
 await builder.Build().RunAsync();

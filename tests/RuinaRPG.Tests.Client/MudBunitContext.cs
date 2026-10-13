@@ -21,6 +21,9 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
     /// <summary>The fake behind every test's SecretNoteNotifier — raise hub events through it.</summary>
     protected FakeNotificationConnection NotificationConnection { get; } = new();
 
+    /// <summary>The fake behind the encounter page's hub connection.</summary>
+    protected FakeEncounterConnection EncounterConnection { get; } = new();
+
     protected MudBunitContext()
     {
         Services.AddMudServices();
@@ -32,6 +35,7 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         // pages inject SecretNoteNotifier. The connection is a fake — bUnit can't host SignalR.
         Services.AddSingleton<INotificationConnection>(NotificationConnection);
         Services.AddScoped<SecretNoteNotifier>();
+        Services.AddSingleton<IEncounterConnection>(EncounterConnection);
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
