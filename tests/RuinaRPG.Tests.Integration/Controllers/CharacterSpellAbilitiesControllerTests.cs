@@ -550,4 +550,44 @@ public class CharacterSpellAbilitiesControllerTests : IClassFixture<PostgresFixt
 
         (await GetPiAsync(sheetId)).Should().Be(11);
     }
+
+    [Fact]
+    public async Task Update_refuses_a_from_scratch_entry_whose_stored_Tipo_does_not_consume_PI()
+    {
+        // Uma Racial montada na ficha é CriadaNaFicha mas nunca foi debitada: convertê-la em Magia por
+        // aqui custaria quase nada e a remoção devolveria o gasto inteiro.
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasFix1", "magiasfix1@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasFixP1", "magiasfixp1@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 100);
+        var racial = await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch() with { Tipo = "Racial" });
+        var saldo = await GetPiAsync(sheetId);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/spell-abilities/{racial.Id}", gmToken, BolaDeFogoEditada()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Só Magias e Habilidades montadas na ficha podem ser editadas.");
+        var list = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/spell-abilities", gmToken)))
+            .Content.ReadFromJsonAsync<List<CharacterSpellAbilityResponse>>())!;
+        list.Should().ContainSingle(e => e.Id == racial.Id && e.Nome == "Bola de Fogo" && e.Tipo == "Racial" && e.GastoEmPI == 14 && e.Efeitos.Count == 2);
+        (await GetPiAsync(sheetId)).Should().Be(saldo);
+    }
+
+    [Fact]
+    public async Task A_stale_sheet_form_cannot_erase_a_debit()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("MagiasFix2", "magiasfix2@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "MagiasFixP2", "magiasfixp2@teste.com");
+        var sheetId = await SetUpSheetAsync(gmToken, playerId);
+        await SetPiAsync(sheetId, 14);
+        await AddAsync(gmToken, sheetId, BolaDeFogoFromScratch());
+        (await GetPiAsync(sheetId)).Should().Be(0);
+
+        // O formulário da ficha, aberto antes do débito, ainda traz 14 no campo de PI.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken,
+            new UpdateCharacterSheetRequest(null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, null,
+                true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 0)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await GetPiAsync(sheetId)).Should().Be(0);
+    }
 }

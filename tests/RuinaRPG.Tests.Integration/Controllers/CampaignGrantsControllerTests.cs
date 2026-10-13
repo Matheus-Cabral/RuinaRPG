@@ -578,6 +578,14 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
         var (banco, anexos) = await BancoEAnexosAsync(campaignId);
         banco.Select(e => e.Id).Should().BeEquivalentTo(bancoAntes.Select(e => e.Id));
         anexos.Should().ContainSingle(a => a.SpellAbilityBankEntryId == bancoAntes.Single().Id && a.IsPublic);
+
+        // A cópia concedida continua "montada na ficha": o jogador que a recebe pode editá-la (4.b).
+        var copiaId = (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
+        var copiadas = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{rota}/{copiaId}/spell-abilities", gmToken));
+        var criadasNaFicha = tipo == "Npc"
+            ? (await copiadas.Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha))
+            : (await copiadas.Content.ReadFromJsonAsync<List<CreatureSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha));
+        criadasNaFicha.Should().Equal(("Bola de Fogo", true));
     }
 
     [Fact]

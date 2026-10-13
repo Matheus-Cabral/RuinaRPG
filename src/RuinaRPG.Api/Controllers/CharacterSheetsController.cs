@@ -282,9 +282,13 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // to EAPAtual. Only the manual bonus on top is ever written from here on.
         // 1.b: o Atual acompanha o Nível (sobe e desce, piso 0) e também o bônus manual do GM, que
         // continua somando ao total calculado em ToResponseAsync.
+        // request.PontosDeIgnicaoAtual é aceito mas ignorado, como EAPAtual: as diferenças entram sobre
+        // o saldo guardado. O formulário é salvo por inteiro e sem controle de concorrência — se o saldo
+        // viesse dele, um formulário desatualizado apagaria um débito, uma devolução ou um ajuste de
+        // nível feito pelo servidor. A edição manual do campo tem endpoint próprio (UpdatePontosDeIgnicao).
         var deltaDePi = PontosDeIgnicaoPorNivel.Delta(nivelAntigo, nivel, tabela)
             + (request.PontosDeIgnicaoBonusManual - sheet.PontosDeIgnicaoBonusManual);
-        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(request.PontosDeIgnicaoAtual, deltaDePi);
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual, deltaDePi);
         sheet.PontosDeIgnicaoBonusManual = request.PontosDeIgnicaoBonusManual;
 
         // "Atual não pode exceder o máximo" (1.c, all 4 resources) — clamped rather than
@@ -338,6 +342,31 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
                 logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
             }
         }
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Edição manual do saldo de Pontos de Ignição (1.b) — fora do Update genérico de propósito: lá o
+    /// saldo só recebe as diferenças de nível e de bônus manual, para que um formulário desatualizado
+    /// nunca escreva por cima do que o servidor debitou ou devolveu. Mesma autorização do Update.
+    /// </summary>
+    [HttpPut("api/character-sheets/{id}/pontos-de-ignicao")]
+    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        if (pontos < 0)
+            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
+
+        sheet.PontosDeIgnicaoAtual = pontos;
+        await db.SaveChangesAsync();
 
         return NoContent();
     }

@@ -102,7 +102,9 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Rank = rank;
         sheet.Nivel = request.Nivel;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
-        sheet.PontosDeIgnicao = request.PontosDeIgnicao;
+        // request.PontosDeIgnicao é aceito mas ignorado: o saldo só muda pelo endpoint próprio
+        // (UpdatePontosDeIgnicao) e pelas Magias/Habilidades, para um formulário desatualizado não
+        // apagar um débito ou uma devolução feita pelo servidor.
         sheet.VitalidadeAtual = request.VitalidadeAtual;
         sheet.FocoAtual = request.FocoAtual;
         sheet.AdrenalinaAtual = request.AdrenalinaAtual;
@@ -160,6 +162,29 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    // Edição manual do saldo de Pontos de Ignição — fora do Update genérico pelo mesmo motivo de Nível e
+    // Experiência Atual terem os seus: o formulário inteiro não diz qual campo o usuário de fato mexeu, e
+    // um saldo desatualizado nele apagaria o que o servidor debitou ou devolveu. Não avisa os Encontros:
+    // eles não exibem Pontos de Ignição.
+    [HttpPut("{id}/pontos-de-ignicao")]
+    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (pontos < 0)
+            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
+
+        sheet.PontosDeIgnicao = pontos;
+        await db.SaveChangesAsync();
 
         return NoContent();
     }

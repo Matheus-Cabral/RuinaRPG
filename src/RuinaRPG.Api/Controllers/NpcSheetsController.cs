@@ -146,7 +146,10 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.NucleosRankS = request.NucleosRankS;
         // Mesma regra do Personagem (Ficha de Personagem 1.b): o Atual acompanha o Nível. O Total do
         // NPC deixou de ser editável na 1.5.0 — request.PontosDeIgnicaoTotal é aceito mas ignorado.
-        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(request.PontosDeIgnicaoAtual,
+        // request.PontosDeIgnicaoAtual também é aceito mas ignorado: a diferença de nível entra sobre o
+        // saldo guardado, para um formulário desatualizado não apagar um débito, uma devolução ou um
+        // ajuste de nível feito pelo servidor. A edição manual tem endpoint próprio (UpdatePontosDeIgnicao).
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
             PontosDeIgnicaoPorNivel.Delta(nivelAntigo, request.Nivel, tabela));
         sheet.VitalidadeAtual = request.VitalidadeAtual;
         sheet.FocoAtual = request.FocoAtual;
@@ -327,6 +330,29 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.Nivel = nivel;
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    // Edição manual do saldo de Pontos de Ignição — fora do Update genérico pelo mesmo motivo de Nível e
+    // Experiência Atual terem os seus: o formulário inteiro não diz qual campo o usuário de fato mexeu, e
+    // um saldo desatualizado nele apagaria o que o servidor debitou ou devolveu. Não avisa os Encontros:
+    // eles não exibem Pontos de Ignição.
+    [HttpPut("{id}/pontos-de-ignicao")]
+    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (pontos < 0)
+            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
+
+        sheet.PontosDeIgnicaoAtual = pontos;
+        await db.SaveChangesAsync();
 
         return NoContent();
     }

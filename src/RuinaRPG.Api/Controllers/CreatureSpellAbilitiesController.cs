@@ -214,7 +214,9 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
             return NotFound();
 
         // Só o que foi montado na ficha: uma entrada vinda do banco segue somente leitura (4.b).
-        if (!entry.CriadaNaFicha)
+        // E só Magia ou Habilidade: uma Racial montada na ficha nunca foi debitada — convertê-la por aqui
+        // sairia quase de graça e a remoção devolveria o gasto inteiro.
+        if (!entry.CriadaNaFicha || !SaldoDePontosDeIgnicao.Consome(entry.Tipo))
             return BadRequest("Só Magias e Habilidades montadas na ficha podem ser editadas.");
 
         if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !SaldoDePontosDeIgnicao.Consome(tipo))
