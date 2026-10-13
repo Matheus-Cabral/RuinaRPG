@@ -372,8 +372,18 @@ public class CampaignGrantsControllerTests : IClassFixture<PostgresFixture>, IAs
 
         var sourceId = await CreateCreatureSheetAsync(gmToken);
         var normalTraitId = await GetSeededPositiveTraitIdAsync();
-        var exclusiveTraitId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
-        await AddCreatureTraitAsync(gmToken, sourceId, normalTraitId);
+        var exclusiveTraitId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 2, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
+        // O catálogo normal já não é concedido pela API: a linha legada entra direto no banco.
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
+            {
+                Id = Guid.NewGuid(), CreatureSheetId = Guid.Parse(sourceId), TraitId = Guid.Parse(normalTraitId),
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            });
+            await db.SaveChangesAsync();
+        }
         await AddCreatureTraitAsync(gmToken, sourceId, exclusiveTraitId);
 
         var sourceTraits = await GetCreatureTraitsAsync(gmToken, sourceId);

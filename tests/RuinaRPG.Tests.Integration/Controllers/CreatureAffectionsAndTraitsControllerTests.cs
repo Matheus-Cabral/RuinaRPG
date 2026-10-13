@@ -94,22 +94,6 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
         return trait.Id.ToString();
     }
 
-    // The two highest-cost traits on a side (excluding ones needing a specification, to isolate the
-    // budget check from the specification check) — real Características.md data, at least 5 points
-    // apart when combined, safely exceeding the level-1 budget of 5.
-    private async Task<List<(string Id, int Custo)>> GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade polaridade, int take)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        // Each candidate's own |Custo| must stay within the level-1 budget (5) on its own — the test
-        // using this helper adds them one at a time and expects the FIRST to succeed, so a trait that
-        // alone already exceeds the budget (e.g. a -10 magnitude Negativa) would be a false failure.
-        var ordered = polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva
-            ? await db.Traits.Where(t => t.Polaridade == polaridade && !t.RequerEspecificacao && t.Custo <= 5).OrderByDescending(t => t.Custo).Take(take).ToListAsync()
-            : await db.Traits.Where(t => t.Polaridade == polaridade && !t.RequerEspecificacao && t.Custo >= -5).OrderBy(t => t.Custo).Take(take).ToListAsync();
-        return ordered.Select(t => (t.Id.ToString(), t.Custo)).ToList();
-    }
-
     [Fact]
     public async Task AddAffection_then_ListAffections_returns_it_then_DeleteAffection_removes_it()
     {
@@ -140,7 +124,8 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm2", "creatureafftraitgm2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var (positiveTraitId, negativeTraitId) = await GetSeededTraitIdsAsync();
+        var positiveTraitId = await CreateExclusiveTraitDirectlyAsync("Couraça Viva", "Pele endurecida.", 2, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
+        var negativeTraitId = await CreateExclusiveTraitDirectlyAsync("Lentidão Crônica", "Move-se devagar.", -2, RuinaRPG.Domain.Enums.Polaridade.Negativa, false);
 
         var addPositiveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(positiveTraitId, null)));
@@ -167,6 +152,20 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
     }
 
     [Fact]
+    public async Task AddTrait_rejects_a_characteristic_of_the_normal_catalog()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureTraitOnly1", "creaturetraitonly1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        var (positiveTraitId, _) = await GetSeededTraitIdsAsync();
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+            new AddCreatureTraitRequest(positiveTraitId, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Esta característica não é do catálogo de criatura.");
+    }
+
+    [Fact]
     public async Task AddTrait_with_a_nonexistent_TraitId_returns_400()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm3", "creatureafftraitgm3@teste.com");
@@ -183,7 +182,11 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm5", "creatureafftraitgm5@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Positiva, 2);
+        var top = new List<(string Id, int Custo)>
+        {
+            (await CreateExclusiveTraitDirectlyAsync("Presas Colossais", "Mordida devastadora.", 4, RuinaRPG.Domain.Enums.Polaridade.Positiva, false), 4),
+            (await CreateExclusiveTraitDirectlyAsync("Garras Afiadas", "Rasga a carne.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false), 3),
+        };
         top.Sum(t => t.Custo).Should().BeGreaterThan(5); // level-1 creation budget
 
         var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
@@ -204,7 +207,10 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGmNeg", "creatureaffgmneg@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var candidatas = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Negativa, 8);
+        var candidatas = new List<(string Id, int Custo)>();
+        var custos = new[] { -5, -4, -3, -3, -2, -2, -1, -1 };
+        for (var i = 0; i < custos.Length; i++)
+            candidatas.Add((await CreateExclusiveTraitDirectlyAsync($"Defeito Bestial {i}", "Fraqueza da criatura.", custos[i], RuinaRPG.Domain.Enums.Polaridade.Negativa, false), custos[i]));
 
         var total = 0;
         var rejeitadas = 0;
@@ -230,14 +236,14 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm6", "creatureafftraitgm6@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        var alergia = await GetTraitAsync("Alergia");
+        var alergiaId = await CreateExclusiveTraitDirectlyAsync("Alergia Bestial", "Reage a um elemento.", -1, RuinaRPG.Domain.Enums.Polaridade.Negativa, true);
 
         var rejected = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
-            new AddCreatureTraitRequest(alergia.Id.ToString(), null)));
+            new AddCreatureTraitRequest(alergiaId, null)));
         rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
-            new AddCreatureTraitRequest(alergia.Id.ToString(), "Poeira")));
+            new AddCreatureTraitRequest(alergiaId, "Poeira")));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CreatureTraitResponse>();
         added!.Especificacao.Should().Be("Poeira");
@@ -277,13 +283,27 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
         alfabetizado.Custo.Should().Be(1);
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(alfabetizado.Id.ToString(), null)));
+        Guid legacyRowId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            legacyRowId = Guid.NewGuid();
+            db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
+            {
+                Id = legacyRowId, CreatureSheetId = Guid.Parse(sheetId), TraitId = alfabetizado.Id,
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            });
+            await db.SaveChangesAsync();
+        }
         await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(exclusiveId, null)));
 
         var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         list!.Positivas.Should().HaveCount(2);
         list.TotalPositivas.Should().Be(4); // 1 (Alfabetizado) + 3 (Regeneração Bestial)
+
+        var deleteLegacy = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{legacyRowId}", gmToken));
+        deleteLegacy.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -305,7 +325,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<Postgres
         var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureAffGmOwner4", "creatureafftraitgmowner4@teste.com");
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureAffGmOther4", "creatureafftraitgmother4@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
-        var (positiveTraitId, _) = await GetSeededTraitIdsAsync();
+        var positiveTraitId = await CreateExclusiveTraitDirectlyAsync("Olhar Hipnótico", "Fascina a presa.", 1, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
 
         var addAffection = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmTokenOwner, new AddCreatureAffectionRequest("Rival", -2)));
         var affectionId = (await addAffection.Content.ReadFromJsonAsync<CreatureAffectionResponse>())!.Id;

@@ -202,16 +202,18 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        // Try the shared catalog first, then the creature-exclusive one — an Id can only ever
-        // exist in one of the two tables (separate Guid spaces), so this is unambiguous.
-        var normalTrait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
-        var exclusiveTrait = normalTrait is null
-            ? await db.Set<CreatureExclusiveTrait>().FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted)
-            : null;
-        if (normalTrait is null && exclusiveTrait is null)
+        // Só o catálogo exclusivo de criatura (Auditoria de Regras R0005). Um Id do catálogo normal é
+        // recusado com mensagem própria; as linhas normais concedidas antes da 1.5.0 continuam valendo
+        // em ListTraits/SumExistingCustoAsync/DeleteTrait.
+        var exclusiveTrait = await db.Set<CreatureExclusiveTrait>().FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
+        if (exclusiveTrait is null)
+        {
+            if (await db.Traits.AnyAsync(t => t.Id == traitId))
+                return BadRequest("Esta característica não é do catálogo de criatura.");
             return BadRequest("Trait não encontrado.");
+        }
 
-        var trait = normalTrait is not null ? ToResolved(normalTrait) : ToResolved(exclusiveTrait!);
+        var trait = ToResolved(exclusiveTrait);
 
         if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
             return BadRequest("Esta característica exige uma especificação.");
@@ -227,8 +229,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         {
             Id = Guid.NewGuid(),
             CreatureSheetId = sheetId,
-            TraitId = normalTrait?.Id,
-            CreatureExclusiveTraitId = exclusiveTrait?.Id,
+            TraitId = null,
+            CreatureExclusiveTraitId = exclusiveTrait.Id,
             Polaridade = trait.Polaridade,
             Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
         };

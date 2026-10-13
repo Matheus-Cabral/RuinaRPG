@@ -99,8 +99,17 @@ public class TraitsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var created = await createResponse.Content.ReadFromJsonAsync<TraitResponse>();
 
         var sheetId = await CreateCreatureSheetAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
-            new AddCreatureTraitRequest(created!.Id, null)));
+        // O catálogo normal já não é concedido pela API: a linha legada entra direto no banco.
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
+            {
+                Id = Guid.NewGuid(), CreatureSheetId = Guid.Parse(sheetId), TraitId = Guid.Parse(created!.Id),
+                Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
+            });
+            await db.SaveChangesAsync();
+        }
 
         var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/traits/{created.Id}", gmToken));
 
