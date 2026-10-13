@@ -44,7 +44,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
 # **R0005** - Editar Nível ou Experiência atual recalcula automaticamente o outro campo.
 
-**Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si.
+**Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si. Pontos de Ignição seguem 1.b do Personagem: só o valor atual é exibido, e ele acompanha o Nível (inclusive quando o GM edita o Nível diretamente). O NPC não tem bônus manual.
 
 # **R0006** - O popup de Característica Racial (5.d) é resolvido pelo GM, não pelo NPC.
 

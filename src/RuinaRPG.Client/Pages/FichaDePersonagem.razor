@@ -157,14 +157,13 @@
                     @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
                 </MudText>
                 <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:14rem" />
+                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:22rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
                 </div>
                 <MudText>VIS Atual: @_form.EAPAtual</MudText>
                 <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
-                <MudText>Pontos de Ignição Total: @_form.PontosDeIgnicaoTotal</MudText>
                 <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:16rem" />
+                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:22rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPiDeltaAsync">Aplicar</MudButton>
                 </div>
             </Section>
@@ -1106,7 +1105,6 @@
         _form.NucleosRankA = sheet.NucleosRankA;
         _form.NucleosRankS = sheet.NucleosRankS;
         _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
-        _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
         _form.PontosDeIgnicaoBonusManual = sheet.PontosDeIgnicaoBonusManual;
         _form.PontosDePericiaBonusCritico = sheet.PontosDePericiaBonusCritico;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
@@ -1218,7 +1216,8 @@
     /// <summary>
     /// The "GM também pode conceder PI" manual bonus (1.b): applies a signed delta to
     /// PontosDeIgnicaoBonusManual and saves immediately, same pattern as ApplyXpDeltaAsync above.
-    /// PontosDeIgnicaoTotal is derived server-side from Nível + this bonus.
+    /// The server adds the same delta to PontosDeIgnicaoAtual; the reload inside SaveIfValidAsync
+    /// brings that value back into the form.
     /// </summary>
     private async Task ApplyPiDeltaAsync()
     {
@@ -1877,9 +1876,6 @@
         public int? NucleosRankS { get; set; }
         [Required(ErrorMessage = "Informe os Pontos de Ignição Atual.")]
         public int? PontosDeIgnicaoAtual { get; set; }
-        // PontosDeIgnicaoTotal is derived server-side (Nível + PontosDeIgnicaoBonusManual) — no
-        // longer directly editable, same treatment as Nível.
-        public int PontosDeIgnicaoTotal { get; set; }
         public int PontosDeIgnicaoBonusManual { get; set; }
         public int PontosDePericiaBonusCritico { get; set; }
         [Required(ErrorMessage = "Informe a Vitalidade.")]
