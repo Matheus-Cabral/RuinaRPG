@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -39,15 +40,19 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias,
         [AtributoCriatura.Astucia] = Atributo.Astucia,
     };
 
-    public async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet) =>
-        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+    /// <remarks>
+    /// <paramref name="efeitos"/> são as Condições ativas da ficha (CondicoesAtivasDaFicha); sem elas, o valor sem Condições.
+    /// As penalidades de equipamento são avaliadas antes, sobre a ficha sem Condições, e as Condições entram por cima.
+    /// </remarks>
+    public async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet, EfeitosDeCondicao? efeitos = null) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet), efeitos ?? EfeitosDeCondicao.Nenhum);
 
-    private async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<SubAttributesResponse> SubAtributosAsync(CreatureSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var id = sheet.Id;
-        var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade, artefatos);
-        var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor, artefatos);
-        var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca, artefatos);
+        var agilidade = await GetAttributeTotalAsync(id, AtributoCriatura.Agilidade, artefatos, efeitos);
+        var vigor = await GetAttributeTotalAsync(id, AtributoCriatura.Vigor, artefatos, efeitos);
+        var forca = await GetAttributeTotalAsync(id, AtributoCriatura.Forca, artefatos, efeitos);
 
         var brutoSkills = await db.CreatureSkills
             .Where(s => s.CreatureSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
@@ -82,13 +87,13 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias,
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m, bonusDeCarga: 0m)),
+            Iniciativa: efeitos.NoSubAtributo(SubAtributoAlvo.Iniciativa, SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa))),
+            Movimentacao: efeitos.NaMovimentacao(SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual: pesoTotalCarregado, pesoMaximo: CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m, bonusDeCarga: 0m))),
             // penalidadeArmadura fica 0: penalidades de equipamento chegam como modificadores negativos de Sub-Atributo (ver EquipmentPenaltyService), não por este termo.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
+            EsquivaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.EsquivaNatural, SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0)),
+            DefesaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.DefesaNatural, SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus)),
+            ReducaoFisica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoFisica, SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf)),
+            ReducaoMagica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoMagica, SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm)),
             // Espólios (5.a) is loot dropped when defeated, not a carried inventory — out of scope
             // for this feature. See docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md.
             PesoAtual: null,
@@ -131,7 +136,8 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias,
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet, artefatos);
+        // Requisitos são sempre avaliados SEM Condições (como sem penalidades): elas só mudam o que a ficha exibe.
+        var sub = await SubAtributosAsync(sheet, artefatos, EfeitosDeCondicao.Nenhum);
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: false, sheet.Nivel, null, null, null, null, 0, false, sheet.Afinidade, null, null,
@@ -173,10 +179,10 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias,
         return modificadores;
     }
 
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
     }
 }

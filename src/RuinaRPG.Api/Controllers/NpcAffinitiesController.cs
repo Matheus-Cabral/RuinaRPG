@@ -3,8 +3,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -13,7 +15,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/affinities")]
-public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
+public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NpcAffinityResponse>> Add(Guid sheetId, AddNpcAffinityRequest request)
@@ -41,7 +43,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         db.NpcAffinities.Add(affinity);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(affinity));
+        return Created(string.Empty, ToResponse(affinity, await condicoes.ParaNpcAsync(sheet)));
     }
 
     [HttpGet]
@@ -55,7 +57,8 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
             return NotFound();
 
         var affinities = await db.NpcAffinities.Where(a => a.NpcSheetId == sheetId).ToListAsync();
-        return affinities.Select(ToResponse).ToList();
+        var efeitos = await condicoes.ParaNpcAsync(sheet);
+        return affinities.Select(a => ToResponse(a, efeitos)).ToList();
     }
 
     [HttpPut("{id}")]
@@ -89,7 +92,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         affinity.Experiencia = request.Experiencia;
         await db.SaveChangesAsync();
 
-        return Ok(ToResponse(affinity));
+        return Ok(ToResponse(affinity, await condicoes.ParaNpcAsync(sheet)));
     }
 
     [HttpDelete("{id}")]
@@ -162,8 +165,11 @@ public class NpcAffinitiesController(RuinaRpgDbContext db) : ControllerBase
         subElemento is not null && await db.NpcAffinities.AnyAsync(a =>
             a.NpcSheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
 
-    private static NpcAffinityResponse ToResponse(NpcAffinity a) =>
-        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia);
+    // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
+    // o que as Condições mudam vai à parte, só para exibir.
+    private static NpcAffinityResponse ToResponse(NpcAffinity a, EfeitosDeCondicao efeitos) =>
+        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia,
+            efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -89,3 +89,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0014** - O saldo de Pontos de Ignição bloqueia também o GM.
 
 **Descrição**: A aba 4.b do NPC segue "[[Requisitos - Ficha de Personagem]]" 4.b sem alteração, incluindo a edição das entradas montadas do zero e o saldo de Pontos de Ignição. Ao contrário dos contadores de R0007 e R0010 deste documento, o saldo de PI **é um limite**: nem o GM adiciona uma Magia/Habilidade cujo Gasto em PI exceda o saldo.
+
+# **R0015** - Condições ativas: só na ficha concedida.
+
+**Descrição**: Um NPC **concedido** a um jogador segue "[[Requisitos - Ficha de Personagem]]" R0009: as Condições ativas dos participantes ligados a ele mudam os valores calculados da ficha, que o dono e o GM veem. Na ficha de um NPC **do GM** (não concedido) nada muda, por mais instâncias dele que estejam num encontro com Condições: elas só valem no resumo daquele participante no encontro, e a lista de Condições ativas da ficha fica vazia. O NPC não limita o Atual ao máximo ao salvar, então a exceção de R0009 não se aplica a ele.

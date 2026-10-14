@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -24,16 +25,20 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// alone (Sistema Básico §2 / SkillFormulas.Modificador), sourced from the sheet's own
     /// CharacterSkill rows below.
     /// </summary>
-    public async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet) =>
-        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+    /// <remarks>
+    /// <paramref name="efeitos"/> são as Condições ativas da ficha (CondicoesAtivasDaFicha); sem elas, o valor sem Condições.
+    /// As penalidades de equipamento são avaliadas antes, sobre a ficha sem Condições, e as Condições entram por cima.
+    /// </remarks>
+    public async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, EfeitosDeCondicao? efeitos = null) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet), efeitos ?? EfeitosDeCondicao.Nenhum);
 
-    private async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var id = sheet.Id;
 
-        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
-        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
-        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
+        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos, efeitos);
+        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos, efeitos);
+        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos, efeitos);
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
@@ -86,17 +91,18 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
-        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
+        // A Eficiência e o Dano Elemental saem do valor da Afinidade já com as Condições (o mesmo que a lista 2.c exibe).
+        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, efeitos.NasAfinidades(linhasDeAfinidade));
         var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
+            Iniciativa: efeitos.NoSubAtributo(SubAtributoAlvo.Iniciativa, SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa))),
+            Movimentacao: efeitos.NaMovimentacao(SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo)),
             // penalidadeArmadura fica 0: penalidades de equipamento chegam como modificadores negativos de Sub-Atributo (ver EquipmentPenaltyService), não por este termo.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
+            EsquivaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.EsquivaNatural, SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0)),
+            DefesaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.DefesaNatural, SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus)),
+            ReducaoFisica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoFisica, SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf)),
+            ReducaoMagica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoMagica, SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm)),
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo,
             EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades),
@@ -135,7 +141,8 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet, artefatos);
+        // Requisitos são sempre avaliados SEM Condições (como sem penalidades): elas só mudam o que a ficha exibe.
+        var sub = await SubAtributosAsync(sheet, artefatos, EfeitosDeCondicao.Nenhum);
 
         // Mesmo Grau/Círculo que CharacterSheetsController.ToResponseAsync mostra em 1.b.
         var tabela = await tabelaDeNiveis.ObterAsync();
@@ -194,10 +201,10 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>Single-row lookup + AttributeTotalCalculator.Total.</summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
         var artefatoBonus = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString());
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: artefatoBonus);
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: artefatoBonus));
     }
 }

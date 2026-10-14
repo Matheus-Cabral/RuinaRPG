@@ -129,3 +129,7 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 # **R0009** - Requisitos e Penalidades de equipamento seguem o Personagem, com exceções.
 
 **Descrição**: Os Requisitos e a Penalidade dos equipamentos funcionam na Ficha de Criatura como na Ficha de Personagem (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]"): tag "Requisito(s) não cumprido(s)" nas linhas de equipamento (com os Requisitos e a Penalidade no popup do item), alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate e subtração automática dos Totais. Exceções: os Requisitos de **Vocação**, **Classe** e **Estrela** são ignorados, pois a Criatura não os tem; um Requisito ou uma Penalidade sobre um atributo que a Criatura não possui (Instinto, Vontade, Influência) não tem efeito; e um ataque natural (preenchido manualmente, sem vínculo com o Catálogo) não tem Requisitos.
+
+# **R0010** - Condições ativas: só na ficha concedida, com exceções.
+
+**Descrição**: Como no NPC ("[[Requisitos - Ficha de NPCs]]" R0015): uma Criatura **concedida** segue "[[Requisitos - Ficha de Personagem]]" R0009; a de um GM nunca muda por causa de Condições, que só valem no resumo do participante. Exceções: linhas de Estresse total e de Afinidade não têm efeito, pois a Criatura não tem Estresse nem lista de Afinidades; e, como o NPC, a Criatura não limita o Atual ao máximo ao salvar.

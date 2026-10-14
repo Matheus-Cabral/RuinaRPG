@@ -3,8 +3,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -15,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/affinities")]
-public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterAffinityResponse>> Add(Guid sheetId, AddCharacterAffinityRequest request)
@@ -48,7 +50,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         db.CharacterAffinities.Add(affinity);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, ToResponse(affinity));
+        return Created(string.Empty, ToResponse(affinity, await condicoes.ParaPersonagemAsync(sheet.Id)));
     }
 
     [HttpGet]
@@ -63,7 +65,8 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
             return Forbid();
 
         var affinities = await db.CharacterAffinities.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
-        return affinities.Select(ToResponse).ToList();
+        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        return affinities.Select(a => ToResponse(a, efeitos)).ToList();
     }
 
     [HttpPut("{id}")]
@@ -102,7 +105,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         affinity.Experiencia = request.Experiencia;
         await db.SaveChangesAsync();
 
-        return Ok(ToResponse(affinity));
+        return Ok(ToResponse(affinity, await condicoes.ParaPersonagemAsync(sheet.Id)));
     }
 
     [HttpDelete("{id}")]
@@ -198,8 +201,11 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
             : null;
     }
 
-    private static CharacterAffinityResponse ToResponse(CharacterAffinity a) =>
-        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia);
+    // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
+    // o que as Condições mudam vai à parte, só para exibir.
+    private static CharacterAffinityResponse ToResponse(CharacterAffinity a, EfeitosDeCondicao efeitos) =>
+        new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia,
+            efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

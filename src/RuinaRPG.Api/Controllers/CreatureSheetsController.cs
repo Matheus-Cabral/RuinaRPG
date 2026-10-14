@@ -8,9 +8,11 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -24,7 +26,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -301,11 +303,28 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// AttributeTotalCalculator.Total, rather than duplicating that logic. Mirrors
     /// NpcSheetsController.GetAttributeTotalAsync, scoped to CreatureAttributes/AtributoCriatura.
     /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
+    }
+
+    /// <summary>
+    /// As Condições ativas na ficha, com o que cada uma muda e os Turnos que faltam. Sempre vazia numa ficha do GM
+    /// (sem dono): as Condições de um participante dela só valem no resumo do encontro.
+    /// </summary>
+    [HttpGet("{id}/condicoes-ativas")]
+    public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        return await condicoes.ListarDaCriaturaAsync(sheet);
     }
 
     /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
@@ -337,12 +356,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var artefatos = await stats.ModificadoresAsync(sheet);
-        return new ModificadorDeDanoResponse(
-            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
-            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
-            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
-            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+        return (await condicoes.ParaCriaturaAsync(sheet)).NoModificadorDeDano(await stats.ModificadoresAsync(sheet));
     }
 
     /// <summary>
@@ -360,7 +374,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await stats.SubAtributosAsync(sheet);
+        return await stats.SubAtributosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
     }
 
     // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.
@@ -424,14 +438,14 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
         var artefatosParaMaximos = await stats.ModificadoresAsync(s);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos);
+        var efeitos = await condicoes.ParaCriaturaAsync(s); // Nenhum numa ficha do GM (sem dono)
+        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos, efeitos);
+        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos, efeitos);
         var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
         var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
 
-        var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
-        var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);
-        var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
+        // A Criatura não tem Estresse: o quarto máximo é descartado.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, _) = efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
 
         var campaignId = await db.CampaignAttachments
             .Where(a => a.CreatureSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))

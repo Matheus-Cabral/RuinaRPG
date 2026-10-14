@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
@@ -33,11 +34,12 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
         var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         var artefatos = await stats.ModificadoresAsync(sheet);
+        var efeitos = await condicoes.ParaCriaturaAsync(sheet);
 
         var attributeTotals = await db.CreatureAttributes
             .Where(a => a.CreatureSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
+            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
 
         return ativas
             .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
@@ -48,7 +50,7 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
                 var atributo = s?.AtributoEscolhido ?? SugeridoParaCriatura(p);
                 var modificador = SkillFormulas.Modificador(gasto, 0);
                 var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
+                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
                     : (int?)null;
                 return new CreatureSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, p.Nome, p.Descricao);
             })

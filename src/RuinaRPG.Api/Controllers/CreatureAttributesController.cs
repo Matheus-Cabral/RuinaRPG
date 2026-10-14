@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/attributes")]
-public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureAttributeResponse>>> List(Guid sheetId)
@@ -31,10 +32,11 @@ public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis 
 
         var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
         var artefatos = await stats.ModificadoresAsync(sheet);
+        var efeitos = await condicoes.ParaCriaturaAsync(sheet);
         return attributes
             .Select(a => new CreatureAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
+                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
             .ToList();
     }
 

@@ -3,8 +3,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -14,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/masteries")]
-public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NpcMasteryResponse>> Add(Guid sheetId, AddNpcMasteryRequest request)
@@ -37,7 +39,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         await db.SaveChangesAsync();
 
         var porId = await pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheetId, pericia.Id, atributo, mastery.GastoMaestria);
+        var total = await ComputeTotalAsync(sheetId, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaNpcAsync(sheet));
         return Created(string.Empty, ToResponse(mastery, total, porId));
     }
 
@@ -56,9 +58,10 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
             .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
             .ToList();
         var responses = new List<NpcMasteryResponse>();
+        var efeitos = await condicoes.ParaNpcAsync(sheet);
         foreach (var mastery in masteries)
         {
-            var total = await ComputeTotalAsync(sheetId, mastery.PericiaId, mastery.Atributo, mastery.GastoMaestria);
+            var total = await ComputeTotalAsync(sheetId, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
             responses.Add(ToResponse(mastery, total, porId));
         }
 
@@ -84,15 +87,20 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         return NoContent();
     }
 
-    private async Task<int> ComputeTotalAsync(Guid sheetId, int periciaId, Atributo atributo, int gastoMaestria)
+    /// <summary>
+    /// Condições: o Atributo entra já ajustado pelas linhas de Atributo, e o total passa pelas linhas de Maestria
+    /// daquela Perícia. (A fórmula da Maestria nunca somou Artefatos nem penalidades; isso não muda aqui.)
+    /// </summary>
+    private async Task<int> ComputeTotalAsync(Guid sheetId, PericiaDefinicao pericia, Atributo atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
     {
+        var periciaId = pericia.Id;
         var skill = await db.NpcSkills.FirstOrDefaultAsync(s => s.NpcSheetId == sheetId && s.PericiaId == periciaId);
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
         var historicoId = await db.NpcSheets.Where(s => s.Id == sheetId).Select(s => s.HistoricoId).SingleAsync();
         var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
         var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
-        var atributoTotal = AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0);
-        return gastoMaestria + bruto + atributoTotal;
+        var atributoTotal = efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0));
+        return efeitos.NaMaestria(pericia.Chave, gastoMaestria + bruto + atributoTotal);
     }
 
     private static NpcMasteryResponse ToResponse(NpcMastery m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>

@@ -499,3 +499,16 @@ O servidor rejeita adicionar ou editar uma linha quando isso faria o gasto **sub
 **Descrição**: Ao adicionar uma Passiva (4.f), o servidor confere os Requisitos cadastrados nela (ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009) contra os valores atuais da ficha e recusa a adição, listando o que falta, quando algum não é cumprido — para qualquer um, **GM incluído**. A janela de adicionar lista as Passivas alcançáveis (as do banco do GM; para o jogador, só as públicas na campanha) e mostra desabilitadas, com o motivo, as que a ficha ainda não cumpre. Uma entrada que o jogador não alcança responde como não encontrada, sem revelar seus requisitos.
 
 Uma Passiva que já está na ficha **permanece** quando a ficha deixa de cumprir os requisitos (ex: um Atributo reduzido): ela só passa a exibir o aviso "⚠ Requisitos não cumpridos" com o que falta, e o aviso some sozinho quando a ficha volta a cumpri-los.
+
+  
+
+# **R0009** - As Condições ativas mudam os valores calculados da ficha enquanto estão ativas.
+
+**Descrição**: Uma Condição aplicada ao personagem num encontro (ver "[[Requisitos - Gerenciador de Encontros]]") muda os valores **calculados** da ficha só enquanto está **ativa**: o encontro está em andamento e o prazo em Turnos não venceu. Na preparação, num encontro finalizado, depois de removida ou vencida, a ficha mostra exatamente o que mostraria sem ela; reabrir o encontro a reativa. Condições de encontros diferentes em andamento ao mesmo tempo se somam.
+
+- *O que muda*: os Totais de Atributo (2.a) e de Perícia (2.d), os Sub-Atributos (2.b, defesas incluídas), os máximos de Vitalidade, Foco, Adrenalina e Estresse (1.c), o valor exibido de cada linha de Afinidade do Elemento atingido (2.c) e a Eficiência e o Dano Elemental que dependem dele, os Modificadores de Dano (3.f), um novo Modificador de Dano por Elemento (3.f, 0 sem Condição) e o Total das Maestrias.
+- *Ordem*: a fórmula de sempre, com Artefatos e Penalidades de equipamento, e só então a Condição. Um valor que depende de outro (Perícia e Sub-Atributo de um Atributo, máximo de recurso de um Atributo) é calculado sobre o outro **já** ajustado, e cada linha da Condição age uma única vez, no seu alvo. Percentuais somados nunca passam de −100% (zeram o valor, não invertem o sinal). Os máximos e a Afinidade nunca ficam negativos e a Movimentação nunca fica abaixo de 1; os demais podem ficar negativos, como já podiam com as Penalidades.
+- *Nada é guardado*: os valores guardados (Gasto, Bônus, Valor da Afinidade, Atual dos recursos) não mudam por causa da Condição, e salvar a ficha com a página aberta não grava nenhum valor calculado com ela. A única exceção é a regra de 1.c: ao salvar, o Atual é limitado ao máximo **com** as Condições, e esse corte é permanente.
+- *O que ignora as Condições*: o orçamento de pontos de Atributo e de Perícia, os limites por Nível, o contador de Vocação Arcana (2.c), os Requisitos de Passiva (R0008) e os Requisitos e Penalidades de equipamento — todos usam a ficha sem Condições.
+
+Quem pode editar a ficha vê a lista das Condições ativas, com nome, descrição, ícone, Turnos restantes e, em texto, o que cada uma muda.

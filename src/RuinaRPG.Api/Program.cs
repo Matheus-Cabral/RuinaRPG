@@ -87,6 +87,7 @@ builder.Services.AddScoped<DurabilidadePorRankProvider>();
 builder.Services.AddScoped<TabelaDeAfinidadesProvider>();
 builder.Services.AddScoped<ITabelaDeNiveis, TabelaDeNiveis>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
+builder.Services.AddScoped<CondicoesAtivasDaFicha>();
 builder.Services.AddScoped<CharacterSheetStats>();
 builder.Services.AddScoped<EncounterLog>();
 builder.Services.AddScoped<EncounterTurnos>();
