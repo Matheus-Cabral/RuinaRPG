@@ -320,4 +320,55 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var log = await GetLogAsync(gm, encounterId);
         log.Skip(antes).Select(e => e.Texto).Should().Equal("primeira", "segunda", "terceira");
     }
+
+    [Fact]
+    public async Task Removing_the_last_participant_of_the_order_on_turn_files_the_removal_under_its_own_Turno_and_vez()
+    {
+        var gm = await RegisterGmAsync("LogGm13", "log13@teste.com");
+        var encounterId = await CreateEncounterAsync(gm);
+        var a = await AddNpcAsync(gm, encounterId, "Alfa", 30);
+        var b = await AddNpcAsync(gm, encounterId, "Beta", 20);
+        await PostAsync(gm, $"/api/encounters/{encounterId}/start");
+        await PostAsync(gm, $"/api/encounters/{encounterId}/advance-turn");
+        var antes = (await GetLogAsync(gm, encounterId)).Count;
+
+        await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{b.Id}", gm));
+
+        var log = (await GetLogAsync(gm, encounterId)).Skip(antes).ToList();
+        log.Select(e => e.Tipo).Should().Equal("ParticipanteRemovido", "NovoTurno", "VezPassada");
+        log[0].Turno.Should().Be(1);
+        log[0].VezNome.Should().Be("Beta");
+        log[0].VezParticipantId.Should().Be(b.Id);
+        log[1].Turno.Should().Be(2);
+        log[2].VezParticipantId.Should().Be(a.Id);
+    }
+
+    [Fact]
+    public async Task Log_rows_expose_the_participant_who_had_the_vez()
+    {
+        var gm = await RegisterGmAsync("LogGm14", "log14@teste.com");
+        var encounterId = await CreateEncounterAsync(gm);
+        var a = await AddNpcAsync(gm, encounterId, "Alfa", 30);
+        await PostAsync(gm, $"/api/encounters/{encounterId}/start");
+
+        var log = await GetLogAsync(gm, encounterId);
+
+        log.Last().VezParticipantId.Should().Be(a.Id);
+    }
+
+    [Fact]
+    public async Task The_log_is_403_for_a_jogador()
+    {
+        var gm = await RegisterGmAsync("LogGm15", "log15@teste.com");
+        var encounterId = await CreateEncounterAsync(gm);
+        var code = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/invite-codes", gm)))
+            .Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
+        var player = (await (await _client.PostAsJsonAsync("/api/auth/register/jogador",
+            new RegisterJogadorRequest("LogPlayer15", "logp15@teste.com", "Senha!123", "Senha!123", code)))
+            .Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+
+        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", player));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

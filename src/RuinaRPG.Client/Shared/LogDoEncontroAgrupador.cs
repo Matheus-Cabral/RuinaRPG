@@ -14,7 +14,7 @@ public static class LogDoEncontroAgrupador
             var vezes = new List<VezDoLog>();
             foreach (var linha in porTurno)
             {
-                if (vezes.Count == 0 || vezes[^1].VezNome != linha.VezNome)
+                if (vezes.Count == 0 || MudouAVez(vezes[^1].Linhas[^1], linha))
                     vezes.Add(new VezDoLog(linha.VezNome, new List<EncounterLogEntryResponse>()));
                 vezes[^1].Linhas.Add(linha);
             }
@@ -22,6 +22,12 @@ public static class LogDoEncontroAgrupador
         }
         return turnos;
     }
+
+    // Participants can share a name, so the id decides; the name is only the fallback when neither row has one.
+    private static bool MudouAVez(EncounterLogEntryResponse anterior, EncounterLogEntryResponse atual) =>
+        anterior.VezParticipantId is null && atual.VezParticipantId is null
+            ? anterior.VezNome != atual.VezNome
+            : anterior.VezParticipantId != atual.VezParticipantId;
 
     public static string Texto(EncounterLogEntryResponse linha) => linha.Tipo switch
     {

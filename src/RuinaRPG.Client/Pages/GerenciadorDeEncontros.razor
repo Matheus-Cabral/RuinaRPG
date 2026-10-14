@@ -130,7 +130,7 @@ else
                     }
                 </td>
             </tr>
-            @if (_editingParticipantId == participant.Id)
+            @if (_editingParticipantId == participant.Id && !Finalizado)
             {
                 <tr>
                     <td colspan="8">
@@ -255,6 +255,8 @@ else
         var encountersResponse = await Http.GetAsync($"campaigns/{CampaignId}/encounters");
         var encounters = await encountersResponse.Content.ReadFromJsonAsync<List<EncounterResponse>>() ?? new();
         _encounter = encounters.SingleOrDefault(e => e.Id == EncounterId);
+        if (Finalizado)
+            _editingParticipantId = null; // a finished encounter is read-only: drop any inline edit left open
 
         _participants = await Http.GetFromJsonAsync<List<EncounterParticipantResponse>>($"encounters/{EncounterId}/participants") ?? new();
 
@@ -308,26 +310,43 @@ else
 
     private async Task FinishAsync()
     {
-        var confirmou = await DialogService.ShowMessageBoxAsync(
-            "Finalizar encontro",
-            "Finalizar o encontro? Ele passa a ser somente leitura; é possível reabrir depois.",
-            yesText: "Finalizar", cancelText: "Cancelar");
+        if (_enviando)
+            return;
+
+        // The flag stays up while the confirmation is open, so a second click cannot open another one.
+        _enviando = true;
+        bool? confirmou;
+        try
+        {
+            confirmou = await DialogService.ShowMessageBoxAsync(
+                "Finalizar encontro",
+                "Finalizar o encontro? Ele passa a ser somente leitura; é possível reabrir depois.",
+                yesText: "Finalizar", cancelText: "Cancelar");
+        }
+        finally
+        {
+            _enviando = false;
+        }
         if (confirmou == true)
             await PostAsync("finish", "Não foi possível finalizar o encontro.");
     }
 
     private async Task RemoveParticipantAsync(EncounterParticipantResponse participant)
     {
-        var confirmou = await DialogService.ShowMessageBoxAsync(
-            "Remover participante",
-            $"Remover {participant.Nome} do encontro?",
-            yesText: "Remover", cancelText: "Cancelar");
-        if (confirmou != true)
+        if (_enviando)
             return;
 
+        // The flag stays up from the confirmation through the request, so a second click cannot open another dialog.
         _enviando = true;
         try
         {
+            var confirmou = await DialogService.ShowMessageBoxAsync(
+                "Remover participante",
+                $"Remover {participant.Nome} do encontro?",
+                yesText: "Remover", cancelText: "Cancelar");
+            if (confirmou != true)
+                return;
+
             var response = await Http.DeleteAsync($"encounters/{EncounterId}/participants/{participant.Id}");
             if (!response.IsSuccessStatusCode)
             {

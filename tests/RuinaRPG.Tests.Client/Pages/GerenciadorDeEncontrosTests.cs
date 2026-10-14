@@ -211,6 +211,50 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Finalizar_encontro_clicked_twice_opens_a_single_confirmation()
+    {
+        var cut = await RenderLoadedAsync();
+
+        _ = cut.InvokeAsync(() => Botao(cut, "Finalizar encontro").Click());
+        cut.WaitForAssertion(() => cut.FindAll(".mud-dialog").Should().HaveCount(1));
+        _ = cut.InvokeAsync(() => Botao(cut, "Finalizar encontro").Click());
+        await Task.Delay(100);
+        cut.FindAll(".mud-dialog").Should().HaveCount(1);
+
+        cut.FindAll(".mud-dialog button").First(b => b.TextContent.Trim() == "Finalizar").Click();
+        cut.WaitForAssertion(() => _requests.Count(r => r == "POST encounters/e1/finish").Should().Be(1));
+    }
+
+    [Fact]
+    public async Task Remover_participante_clicked_twice_opens_a_single_confirmation_and_sends_one_request()
+    {
+        var cut = await RenderLoadedAsync();
+
+        _ = cut.InvokeAsync(() => cut.FindAll("button[aria-label='Remover do encontro']")[0].Click());
+        cut.WaitForAssertion(() => cut.FindAll(".mud-dialog").Should().HaveCount(1));
+        _ = cut.InvokeAsync(() => cut.FindAll("button[aria-label='Remover do encontro']")[1].Click());
+        await Task.Delay(100);
+        cut.FindAll(".mud-dialog").Should().HaveCount(1);
+
+        cut.FindAll(".mud-dialog button").First(b => b.TextContent.Trim() == "Remover").Click();
+        cut.WaitForAssertion(() => _requests.Count(r => r.StartsWith("DELETE")).Should().Be(1));
+    }
+
+    [Fact]
+    public async Task The_inline_edit_form_disappears_when_a_reload_finds_the_encounter_finished()
+    {
+        var cut = await RenderLoadedAsync();
+        await cut.InvokeAsync(() => Botao(cut, "Editar").Click());
+        cut.Markup.Should().Contain("Ações Restantes (0-3)");
+
+        _status = "Finalizado"; _vezId = null;
+        await cut.InvokeAsync(() => EncounterConnection.RaiseChangedAsync());
+
+        cut.Markup.Should().NotContain("Ações Restantes (0-3)");
+        Has(cut, "Cancelar").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Finished_is_read_only_with_Reabrir_and_the_log()
     {
         _status = "Finalizado"; _vezId = null;

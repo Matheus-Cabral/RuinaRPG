@@ -95,7 +95,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
 
         var participants = await OrderedParticipantsAsync(encounterId);
         if (participants.Count == 0)
-            return BadRequest("Adicione ao menos um participante antes de avançar o turno.");
+            return BadRequest("Adicione ao menos um participante antes de passar a vez.");
 
         var orderedIds = participants.Select(p => p.Id).ToList();
         // Nobody on turn (the only participant was removed): the next is the first of the SAME Turno.
@@ -201,7 +201,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
             .OrderBy(e => e.Ordem).ThenBy(e => e.Sequencia)
             .ToListAsync();
         return entries.Select(e => new EncounterLogEntryResponse(e.Sequencia, DateTime.SpecifyKind(e.OccurredAt, DateTimeKind.Utc), e.Turno,
-            e.VezNome, e.Tipo.ToString(), e.ParticipanteNome, e.Campo, e.ValorAntes, e.ValorDepois, e.Texto)).ToList();
+            e.VezNome, e.Tipo.ToString(), e.ParticipanteNome, e.Campo, e.ValorAntes, e.ValorDepois, e.Texto, e.VezParticipantId?.ToString())).ToList();
     }
 
     private static string? NomeDe(List<EncounterParticipant> participants, Guid id) => participants.Single(p => p.Id == id).Nome;

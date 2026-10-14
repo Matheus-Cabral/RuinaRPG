@@ -575,4 +575,73 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
 
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    private async Task<string> AddNamedNpcAsync(string gmToken, string encounterId, string npcId, int iniciativa = 10)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken, new AddParticipantRequest(null, npcId, null, iniciativa)));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Nome;
+    }
+
+    [Fact]
+    public async Task Adding_the_same_sheet_again_numbers_the_name_and_reuses_a_freed_number()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup1", "epdup1@teste.com");
+        var (_, enc, _) = await EncounterWithAsync(gm);
+        var npcId = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, npcId, "Goblin", 30);
+
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin");
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 2");
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 3");
+
+        var segundo = (await ListAsync(gm, enc)).Single(p => p.Nome == "Goblin 2");
+        (await DeleteAsync(gm, enc, segundo.Id)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 2");
+    }
+
+    [Fact]
+    public async Task Adding_sheets_with_different_names_leaves_the_names_untouched()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup2", "epdup2@teste.com");
+        var (_, enc, _) = await EncounterWithAsync(gm);
+        var goblin = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, goblin, "Goblin", 30);
+        var orc = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, orc, "Orc", 30);
+
+        (await AddNamedNpcAsync(gm, enc, goblin)).Should().Be("Goblin");
+        (await AddNamedNpcAsync(gm, enc, orc)).Should().Be("Orc");
+    }
+
+    [Fact]
+    public async Task A_character_sheet_added_first_keeps_its_name()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup3", "epdup3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "EpPlayerDup3", "epplayerdup3@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha Nome Personagem");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        var encounterId = await CreateEncounterAsync(gm, campaignId, "Encontro");
+        var sheetId = await CreateCharacterSheetAsync(gm, campaignId, playerId);
+        await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Astrel", 5);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(sheetId, null, null, 8)));
+
+        (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Nome.Should().Be("Vann Astrel");
+    }
+
+    [Fact]
+    public async Task Deleting_a_participant_who_does_not_hold_the_turn_leaves_Turno_and_vez_unchanged()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel5", "epdel5@teste.com");
+        var (camp, enc, ids) = await EncounterWithAsync(gm, 30, 20, 10);
+        await PostAsync(gm, $"/api/encounters/{enc}/start");
+
+        (await DeleteAsync(gm, enc, ids[1])).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().Be(ids[0]);
+        e.CurrentRound.Should().Be(1);
+    }
 }

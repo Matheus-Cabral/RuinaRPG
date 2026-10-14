@@ -1,4 +1,8 @@
-/* O participante com a vez ganha fundo preenchido (o negrito sozinho some numa tabela cheia). */
+/* O participante com a vez ganha fundo preenchido (o negrito sozinho some numa tabela cheia).
+   Tinta do primário (mesmo tom nos dois temas, via o tripleto rgb do tema) em opacidade bem acima da cor
+   de hover da tabela (--mud-palette-table-hover, sombra a 18%), mais uma faixa na borda esquerda; o texto
+   continua na cor padrão da tabela. */
 .encontro-vez {
-    background-color: var(--mud-palette-primary-hover);
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.4);
+    box-shadow: inset 4px 0 0 var(--mud-palette-primary);
 }

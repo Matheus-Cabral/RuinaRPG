@@ -10,8 +10,8 @@ public class LogDoEncontroAgrupadorTests
     private static long _seq;
 
     private static EncounterLogEntryResponse Linha(int turno, string? vez, string tipo = "VezPassada", string? participante = "Goblin",
-        string? campo = null, string? antes = null, string? depois = null, string? texto = null) =>
-        new(++_seq, DateTime.UtcNow, turno, vez, tipo, participante, campo, antes, depois, texto);
+        string? campo = null, string? antes = null, string? depois = null, string? texto = null, string? vezId = null) =>
+        new(++_seq, DateTime.UtcNow, turno, vez, tipo, participante, campo, antes, depois, texto, vezId);
 
     [Fact]
     public void Groups_by_Turno_ascending_and_then_by_vez_in_order_of_occurrence()
@@ -27,6 +27,17 @@ public class LogDoEncontroAgrupadorTests
         grupos[0].Vezes.Select(v => v.VezNome).Should().Equal("A", "B", "A");
         grupos[0].Vezes.Select(v => v.Linhas.Count).Should().Equal(2, 1, 1);
         grupos[1].Vezes.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Consecutive_vezes_of_different_participants_with_the_same_name_are_separate_groups()
+    {
+        var grupos = LogDoEncontroAgrupador.PorTurno(new[]
+        {
+            Linha(1, "Goblin", vezId: "1"), Linha(1, "Goblin", vezId: "1"), Linha(1, "Goblin", vezId: "2"),
+        });
+
+        grupos[0].Vezes.Select(v => v.Linhas.Count).Should().Equal(2, 1);
     }
 
     [Fact]

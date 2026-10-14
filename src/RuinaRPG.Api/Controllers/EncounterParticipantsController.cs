@@ -96,11 +96,36 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             }
         }
 
+        participant.Nome = await NomeSemRepeticaoAsync(encounterId, participant.Nome);
         db.EncounterParticipants.Add(participant);
         await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteAdicionado, participant.Nome);
         await db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(participant, new List<string>()));
+    }
+
+    /// <summary>
+    /// The same ficha can enter more than once: the first keeps its name, the others become "Nome 2", "Nome 3"…
+    /// (smallest number ≥ 2 not in use). An empty name is left alone.
+    /// </summary>
+    private async Task<string> NomeSemRepeticaoAsync(Guid encounterId, string nome)
+    {
+        if (nome.Length == 0)
+            return nome;
+
+        var existentes = await db.EncounterParticipants.Where(p => p.EncounterId == encounterId).Select(p => p.Nome).ToListAsync();
+        var prefixo = nome + " ";
+        var numerosEmUso = existentes
+            .Where(n => n.StartsWith(prefixo, StringComparison.Ordinal) && n.Length > prefixo.Length && n.Skip(prefixo.Length).All(char.IsAsciiDigit))
+            .Select(n => int.TryParse(n.AsSpan(prefixo.Length), out var numero) ? numero : 0)
+            .ToHashSet();
+        if (!existentes.Contains(nome) && numerosEmUso.Count == 0)
+            return nome;
+
+        var proximo = 2;
+        while (numerosEmUso.Contains(proximo))
+            proximo++;
+        return $"{nome} {proximo}";
     }
 
     [HttpPut("{id}")]
@@ -165,6 +190,9 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             return NotFound();
 
         var roundBefore = encounter!.CurrentRound;
+        // Registered first, while the removed participant still has the turn: "X saiu" belongs under X's own vez and Turno.
+        await log.RegistrarAsync(encounter, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
+
         var turnMoved = false;
         if (encounter.CurrentParticipantId == id)
         {
@@ -187,8 +215,6 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         db.EncounterParticipantConditions.RemoveRange(conditions);
         db.EncounterParticipants.Remove(participant);
 
-        // The name is read from the loaded participant, so it still exists after the Remove above.
-        await log.RegistrarAsync(encounter, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
         if (roundBefore != encounter.CurrentRound)
             await log.RegistrarAsync(encounter, EncounterLogTipo.NovoTurno);
         if (turnMoved && encounter.CurrentParticipantId is { } newTurn)
