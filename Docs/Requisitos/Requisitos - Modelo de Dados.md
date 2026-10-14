@@ -805,3 +805,44 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Nivel | FK → NiveisProgressao (cascade), parte da PK |
 | ColunaId | FK → ColunasDeNivel (cascade), parte da PK |
 | Valor | int, nullable — vazio = 0 (Acumulativa) ou herda o nível anterior (Por nível, exceto XP e EAP) |
+
+
+# 12. Condições
+
+Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma Condição é um nome com uma lista de modificadores e uma lista de categorias desabilitadas, que o Gerenciador de Encontros aplica a participantes (cópia independente, padrão 1 da legenda). Começa vazio.
+
+**Condicoes**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string — único entre as linhas não apagadas (índice filtrado por `IsDeleted = false`) |
+| Descricao | text |
+| Icone | string — uma chave da lista fixa de ícones (`CondicaoIcones.Chaves`, no projeto Contracts) |
+| DuracaoPadraoTurnos | int, nullable — vazio = até ser removida; quando informado, ≥ 1 |
+| IsDeleted | bool — exclusão lógica, sempre permitida (as aplicadas são cópias independentes) |
+| UpdatedByUserId | FK → Users, nullable |
+| UpdatedAt | DateTime, nullable |
+
+**CondicaoModificadores**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CondicaoId | FK → Condicoes (cascade) |
+| Ordem | int |
+| Alvo | enum `AlvoDeCondicao`: Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria (texto) |
+| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; nome do `Elemento` (vazio = geral); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
+| TipoDeValor | enum `TipoDeValorDeCondicao`: Fixo \| Percentual (texto); percentual entre −100 e 1000 |
+| Valor | int, com sinal, diferente de zero |
+| Momento | enum `MomentoDeCondicao`: AoAplicar \| ACadaVez (texto), nullable — preenchido se e somente se `Alvo = RecursoAtual` |
+
+**CondicaoDesabilitacoes**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CondicaoId | FK → Condicoes (cascade) |
+| Categoria | enum `CategoriaDesabilitavel`: Arma \| Armadura \| Escudo \| Artefato \| Magia \| Habilidade \| Runa \| Passiva (texto); sem repetir na mesma Condição |
+
+Uma Condição precisa de ao menos um modificador ou uma desabilitação.

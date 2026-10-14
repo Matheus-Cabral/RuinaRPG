@@ -1001,6 +1001,101 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("RacialTraitOverrides");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.Condicao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DuracaoPadraoTurnos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Icone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("Condicoes");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoDesabilitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CondicaoId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CondicaoId");
+
+                    b.ToTable("CondicaoDesabilitacoes");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoModificador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Alvo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AlvoEspecifico")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CondicaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Momento")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TipoDeValor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Valor")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CondicaoId");
+
+                    b.ToTable("CondicaoModificadores");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3672,6 +3767,24 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("GmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoDesabilitacao", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Condicoes.Condicao", null)
+                        .WithMany()
+                        .HasForeignKey("CondicaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoModificador", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Condicoes.Condicao", null)
+                        .WithMany()
+                        .HasForeignKey("CondicaoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Infrastructure.Condicoes;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Diary;
@@ -102,6 +103,9 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
     public DbSet<CreatureExclusiveTrait> CreatureExclusiveTraits => Set<CreatureExclusiveTrait>();
+    public DbSet<Condicao> Condicoes => Set<Condicao>();
+    public DbSet<CondicaoModificador> CondicaoModificadores => Set<CondicaoModificador>();
+    public DbSet<CondicaoDesabilitacao> CondicaoDesabilitacoes => Set<CondicaoDesabilitacao>();
     public DbSet<SheetLogEntry> SheetLogEntries => Set<SheetLogEntry>();
     public DbSet<EncounterLogEntry> EncounterLogEntries => Set<EncounterLogEntry>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
@@ -697,6 +701,23 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             // Exactly one of TraitId/CreatureExclusiveTraitId is set per row (see CreatureTrait's
             // own doc comment) — formalized as a DB-level invariant, not just an application one.
             entity.ToTable(t => t.HasCheckConstraint("CK_CreatureTraits_ExactlyOneTraitSource", "num_nonnulls(\"TraitId\", \"CreatureExclusiveTraitId\") = 1"));
+        });
+
+        builder.Entity<Condicao>(entity =>
+        {
+            entity.HasIndex(c => c.Nome).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+        builder.Entity<CondicaoModificador>(entity =>
+        {
+            entity.HasOne<Condicao>().WithMany().HasForeignKey(m => m.CondicaoId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(m => m.Alvo).HasConversion<string>();
+            entity.Property(m => m.TipoDeValor).HasConversion<string>();
+            entity.Property(m => m.Momento).HasConversion<string>();
+        });
+        builder.Entity<CondicaoDesabilitacao>(entity =>
+        {
+            entity.HasOne<Condicao>().WithMany().HasForeignKey(d => d.CondicaoId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(d => d.Categoria).HasConversion<string>();
         });
 
         builder.Entity<Encounter>(entity =>
