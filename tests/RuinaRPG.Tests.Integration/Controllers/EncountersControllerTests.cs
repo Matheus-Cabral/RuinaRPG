@@ -669,4 +669,37 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Two_simultaneous_AdvanceTurn_requests_apply_only_one_and_the_other_is_409()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EncRace1", "encrace1@teste.com");
+        var (campaign, enc, _) = await EncounterWithAsync(gm, 30, 20, 10);
+
+        // Interleaving is up to the scheduler: repeat until a pair actually collides (bounded).
+        var conflictSeen = false;
+        (await StartAsync(gm, enc)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        for (var attempt = 0; attempt < 15 && !conflictSeen; attempt++)
+        {
+            var before = (await GetAsync(gm, campaign, enc)).CurrentParticipantId;
+
+            var results = await Task.WhenAll(AdvanceAsync(gm, enc), AdvanceAsync(gm, enc));
+
+            var codes = results.Select(r => r.StatusCode).ToList();
+            codes.Should().OnlyContain(c => c == HttpStatusCode.NoContent || c == HttpStatusCode.Conflict);
+            var ok = codes.Count(c => c == HttpStatusCode.NoContent);
+            var conflict = codes.Count(c => c == HttpStatusCode.Conflict);
+            ok.Should().BeGreaterThanOrEqualTo(1);
+            if (conflict == 1)
+            {
+                conflictSeen = true;
+                (await BodyAsync(results.Single(r => r.StatusCode == HttpStatusCode.Conflict)))
+                    .Should().Contain("O encontro foi alterado por outra ação. Recarregue e tente de novo.");
+                var after = (await GetAsync(gm, campaign, enc)).CurrentParticipantId;
+                var order = (await ListParticipantsAsync(gm, enc)).Select(p => p.Id).ToList();
+                order.IndexOf(after!).Should().Be((order.IndexOf(before!) + 1) % order.Count);
+            }
+        }
+        conflictSeen.Should().BeTrue("a simultaneous pair should collide at least once in 15 attempts");
+    }
 }

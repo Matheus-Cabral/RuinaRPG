@@ -17,4 +17,8 @@ public class Encounter
     // reorders the participant list (Épico 5 item 2 of the gap audit). Null before the encounter
     // has ever advanced, or if that participant was since removed (ON DELETE SET NULL).
     public Guid? CurrentParticipantId { get; set; }
+
+    // PostgreSQL's system column xmin: changes on every UPDATE of the row, so two simultaneous
+    // load-modify-save cycles (e.g. two turn changes) cannot both apply. No real column exists.
+    public uint RowVersion { get; set; }
 }

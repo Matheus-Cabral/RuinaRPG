@@ -14,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/campaigns/{campaignId}/encounters")]
-public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : ControllerBase
+public class EncountersController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterResponse>> Create(Guid campaignId, CreateEncounterRequest request)
@@ -63,6 +63,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
     }
 
     [HttpPost("~/api/encounters/{encounterId}/start")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> Start(Guid encounterId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -74,19 +75,15 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
             return BadRequest("Adicione ao menos um participante antes de iniciar o encontro.");
 
         var (round, participantId) = TurnAdvanceCalculator.Start(participants.Select(p => p.Id).ToList());
-        encounter!.CurrentRound = round;
-        encounter.CurrentParticipantId = participantId;
-        encounter.Status = EncounterStatus.EmAndamento;
-        participants.Single(p => p.Id == participantId).AcoesRestantes = 3;
-
-        await log.RegistrarAsync(encounter, EncounterLogTipo.Iniciado);
-        await log.RegistrarAsync(encounter, EncounterLogTipo.VezPassada, NomeDe(participants, participantId));
+        encounter!.Status = EncounterStatus.EmAndamento;
+        await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == participantId), round, MotivoDaVez.Inicio);
 
         await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPost("~/api/encounters/{encounterId}/advance-turn")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> AdvanceTurn(Guid encounterId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -103,21 +100,14 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
         var (nextRound, nextParticipantId) = encounter!.CurrentParticipantId is null
             ? (encounter.CurrentRound, orderedIds[0])
             : TurnAdvanceCalculator.Advance(encounter.CurrentRound, encounter.CurrentParticipantId, orderedIds);
-        var wrapped = nextRound > encounter.CurrentRound;
-        encounter.CurrentRound = nextRound;
-        encounter.CurrentParticipantId = nextParticipantId;
-
-        participants.Single(p => p.Id == nextParticipantId).AcoesRestantes = 3;
-
-        if (wrapped)
-            await log.RegistrarAsync(encounter, EncounterLogTipo.NovoTurno);
-        await log.RegistrarAsync(encounter, EncounterLogTipo.VezPassada, NomeDe(participants, nextParticipantId));
+        await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == nextParticipantId), nextRound, MotivoDaVez.Proxima);
 
         await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPost("~/api/encounters/{encounterId}/previous-turn")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> PreviousTurn(Guid encounterId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -129,16 +119,14 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
         if (previous is null)
             return BadRequest("Não há vez anterior.");
 
-        encounter.CurrentRound = previous.Value.Round;
-        encounter.CurrentParticipantId = previous.Value.ParticipantId;
-
-        await log.RegistrarAsync(encounter, EncounterLogTipo.VezVoltou, NomeDe(participants, previous.Value.ParticipantId));
+        await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == previous.Value.ParticipantId), previous.Value.Round, MotivoDaVez.Anterior);
 
         await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPost("~/api/encounters/{encounterId}/turn/{participantId}")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> ChooseTurn(Guid encounterId, Guid participantId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -149,16 +137,14 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
         if (participant is null)
             return NotFound();
 
-        encounter!.CurrentParticipantId = participant.Id;
-        participant.AcoesRestantes = 3;
-
-        await log.RegistrarAsync(encounter, EncounterLogTipo.VezEscolhida, participant.Nome);
+        await turnos.DarAVezAsync(encounter!, participant, encounter!.CurrentRound, MotivoDaVez.Escolhida);
 
         await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPost("~/api/encounters/{encounterId}/finish")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> Finish(Guid encounterId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -174,6 +160,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
     }
 
     [HttpPost("~/api/encounters/{encounterId}/reopen")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> Reopen(Guid encounterId)
     {
         var (error, encounter) = await LoadOwnedAsync(encounterId);
@@ -203,8 +190,6 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log) : Cont
         return entries.Select(e => new EncounterLogEntryResponse(e.Sequencia, DateTime.SpecifyKind(e.OccurredAt, DateTimeKind.Utc), e.Turno,
             e.VezNome, e.Tipo.ToString(), e.ParticipanteNome, e.Campo, e.ValorAntes, e.ValorDepois, e.Texto, e.VezParticipantId?.ToString())).ToList();
     }
-
-    private static string? NomeDe(List<EncounterParticipant> participants, Guid id) => participants.Single(p => p.Id == id).Nome;
 
     private async Task<(ActionResult? Error, Encounter? Encounter)> LoadOwnedAsync(Guid encounterId)
     {

@@ -704,6 +704,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(e => e.CurrentParticipantId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.RowVersion).IsRowVersion();
         });
 
         builder.Entity<EncounterLogEntry>(entity =>

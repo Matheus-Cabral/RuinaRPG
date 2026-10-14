@@ -635,6 +635,7 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | CurrentRound | int — turno atual; `0` enquanto o encontro está em `Preparacao` (nunca iniciou) |
 | CurrentParticipantId | FK → EncounterParticipants, nullable — de quem é a vez (ON DELETE SET NULL) |
 | FinalizadoEm | timestamp, nullable — preenchido quando `Status = Finalizado` |
+| RowVersion | uint — token de concorrência otimista mapeado na coluna de sistema `xmin` do PostgreSQL (não é uma coluna criada pela migração). Duas ações de vez ou de fase simultâneas sobre o mesmo encontro: só uma é aplicada, a outra responde 409 |
 
 **EncounterLogEntries** — log do encontro, gravado só com o encontro em andamento.
 

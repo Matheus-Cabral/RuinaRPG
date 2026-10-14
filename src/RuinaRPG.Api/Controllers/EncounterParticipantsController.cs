@@ -14,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
-public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log) : ControllerBase
+public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
@@ -173,6 +173,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
     }
 
     [HttpDelete("{id}")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> Delete(Guid encounterId, Guid id)
     {
         var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
@@ -189,36 +190,20 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         if (participant is null)
             return NotFound();
 
-        var roundBefore = encounter!.CurrentRound;
         // Registered first, while the removed participant still has the turn: "X saiu" belongs under X's own vez and Turno.
-        await log.RegistrarAsync(encounter, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
+        await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
 
-        var turnMoved = false;
-        if (encounter.CurrentParticipantId == id)
+        if (encounter!.CurrentParticipantId == id)
         {
             // Order passed is the one BEFORE the removal.
             var next = TurnAdvanceCalculator.AfterRemoval(encounter.CurrentRound, id, participants.Select(p => p.Id).ToList());
-            if (next is { } handover)
-            {
-                encounter.CurrentRound = handover.Round;
-                encounter.CurrentParticipantId = handover.ParticipantId;
-                participants.Single(p => p.Id == handover.ParticipantId).AcoesRestantes = 3;
-                turnMoved = true;
-            }
-            else
-            {
-                encounter.CurrentParticipantId = null;
-            }
+            var receiver = next is { } handover ? participants.Single(p => p.Id == handover.ParticipantId) : null;
+            await turnos.DarAVezAsync(encounter, receiver, next?.Round ?? encounter.CurrentRound, MotivoDaVez.Remocao);
         }
 
         var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         db.EncounterParticipantConditions.RemoveRange(conditions);
         db.EncounterParticipants.Remove(participant);
-
-        if (roundBefore != encounter.CurrentRound)
-            await log.RegistrarAsync(encounter, EncounterLogTipo.NovoTurno);
-        if (turnMoved && encounter.CurrentParticipantId is { } newTurn)
-            await log.RegistrarAsync(encounter, EncounterLogTipo.VezPassada, participants.Single(p => p.Id == newTurn).Nome);
 
         await db.SaveChangesAsync();
         return NoContent();
