@@ -172,6 +172,30 @@ Which sheets get this applied:
 - **Ignored columns.** `SheetLogMap` ignores columns nothing wrote at the time (`EAPAtual`, `Circulo`,
   `Grau`, `PontosDeIgnicaoTotal`). If this spec starts writing any of them, label them.
 
+## Carried over from the final review of Plan C (encounters)
+
+- **One place for turn hand-over.** Today four actions (`Start`, `AdvanceTurn`, `ChooseTurn`, and the
+  hand-over branch of participant `Delete`) each set the pointer, reset Ações and log by hand. The
+  first task of this spec's plan extracts one method — give the turn to participant P at round R, with
+  a reason — and routes all four through it; the hooks "a participant just received the turn"
+  (per-turn adjustments) and "the encounter just entered Turno N" (expiry) live there. `Start` enters
+  Turno 1 and must fire the second hook too, although it logs no `NovoTurno`.
+- **Going back and forth.** "Vez anterior" followed by "Próxima vez" hands the same participant the
+  turn twice and can enter the same Turno twice. Per-turn adjustments and expiry must not fire twice
+  for the same (participant, Turno): track what was already applied per applied condition.
+- **Encounter-driven sheet writes and the logs.** `EncounterLogDaFicha` reads Turno and vez from the
+  database, so a sheet change saved in the same `SaveChanges` as a turn advance would be logged with
+  the old Turno, next to this spec's own `AjusteDeCondicao` row. Condition adjustments write their
+  encounter-log row themselves and must not also produce a `RecursoDaFicha` row.
+- **Conditions get their own endpoints and table.** `UpdateParticipantRequest.Condicoes` (replace-all
+  list of texts) stays for the legacy tags only.
+- **Concurrency.** `Encounter` has no concurrency token; two simultaneous advances collapse into one
+  step, harmless today, but per-turn effects would apply twice. Add a row version to `Encounter` in
+  this spec's plan.
+- **Notifications.** Encounter controllers do not notify `EncounterHub` or the players; a condition
+  that changes a player's sheet from an encounter action needs the `CondicoesAlteradas` push described
+  below, and the encounter page reloads itself after its own actions.
+
 ## Client
 
 - **`AuditoriaCondicoes.razor`** (`/auditoria/condicoes`, nav link "Condições" with
