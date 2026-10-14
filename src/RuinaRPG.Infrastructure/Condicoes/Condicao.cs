@@ -1,7 +1,7 @@
 namespace RuinaRPG.Infrastructure.Condicoes;
 
 /// <summary>
-/// Catálogo global de Condições, mantido pelo Auditor de Regras (ver "Requisitos - Condições").
+/// Catálogo global de Condições, mantido pelo Auditor de Regras (ver "Requisitos - Auditoria de Regras").
 /// Exclusão lógica: uma Condição já aplicada a um participante é uma cópia independente, então
 /// apagar a entrada do catálogo nunca a afeta. Filtrada explicitamente por consulta, como Trait.
 /// </summary>

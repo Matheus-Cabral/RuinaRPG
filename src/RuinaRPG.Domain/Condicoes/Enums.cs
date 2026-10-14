@@ -1,6 +1,6 @@
 namespace RuinaRPG.Domain.Condicoes;
 
-/// <summary>O que uma linha de uma Condição altera (ver "Requisitos - Condições").</summary>
+/// <summary>O que uma linha de uma Condição altera (ver "Requisitos - Auditoria de Regras").</summary>
 public enum AlvoDeCondicao
 {
     Atributo,

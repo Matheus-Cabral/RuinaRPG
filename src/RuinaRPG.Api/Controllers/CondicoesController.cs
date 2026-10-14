@@ -124,6 +124,8 @@ public class CondicoesController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         var modificadores = new List<ModificadorDeCondicao>();
         foreach (var m in request.Modificadores ?? [])
         {
+            if (m is null)
+                return ("Modificador inválido.", modificadores, []);
             if (!Enum.TryParse<AlvoDeCondicao>(m.Alvo, out var alvo) || !Enum.GetNames<AlvoDeCondicao>().Contains(m.Alvo))
                 return ("Alvo de modificador inválido.", modificadores, []);
             if (!Enum.TryParse<TipoDeValorDeCondicao>(m.TipoDeValor, out var tipo) || !Enum.GetNames<TipoDeValorDeCondicao>().Contains(m.TipoDeValor))
@@ -141,6 +143,8 @@ public class CondicoesController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         var desabilitacoes = new List<CategoriaDesabilitavel>();
         foreach (var d in request.Desabilitacoes ?? [])
         {
+            if (d is null)
+                return ("Categoria desabilitável inválida.", modificadores, desabilitacoes);
             if (!Enum.TryParse<CategoriaDesabilitavel>(d, out var categoria) || !Enum.GetNames<CategoriaDesabilitavel>().Contains(d))
                 return ("Categoria desabilitável inválida.", modificadores, desabilitacoes);
             desabilitacoes.Add(categoria);

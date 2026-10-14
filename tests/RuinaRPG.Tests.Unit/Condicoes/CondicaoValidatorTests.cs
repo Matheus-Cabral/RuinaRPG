@@ -112,4 +112,45 @@ public class CondicaoValidatorTests
     [InlineData(AlvoDeCondicao.Maestria)]
     public void A_null_AlvoEspecifico_means_all_where_allowed(AlvoDeCondicao alvo) =>
         Validar(mods: [Mod(alvo, null)]).Should().BeNull();
+
+    private static readonly ModificadorDeCondicao Boa = Mod(AlvoDeCondicao.Atributo, "Forca");
+
+    public static IEnumerable<object[]> SegundaLinhaInvalida() =>
+    [
+        [Mod(AlvoDeCondicao.Atributo, "Forca", 0)],
+        [Mod(AlvoDeCondicao.Atributo, "Forca", 1001, TipoDeValorDeCondicao.Percentual)],
+        [Mod(AlvoDeCondicao.RecursoAtual, "Vitalidade")],
+        [Mod(AlvoDeCondicao.Atributo, "Sorte")],
+    ];
+
+    [Theory]
+    [MemberData(nameof(SegundaLinhaInvalida))]
+    public void An_invalid_second_line_is_rejected_after_a_valid_first_line(ModificadorDeCondicao ruim) =>
+        Validar(mods: [Boa, ruim]).Should().NotBeNull();
+
+    [Theory]
+    [InlineData(SubAtributoAlvo.Iniciativa)]
+    [InlineData(SubAtributoAlvo.Movimentacao)]
+    [InlineData(SubAtributoAlvo.EsquivaNatural)]
+    [InlineData(SubAtributoAlvo.DefesaNatural)]
+    [InlineData(SubAtributoAlvo.ReducaoFisica)]
+    [InlineData(SubAtributoAlvo.ReducaoMagica)]
+    [InlineData(SubAtributoAlvo.Adrenalina)]
+    public void Every_SubAtributoAlvo_constant_is_accepted(string subAtributo) =>
+        Validar(mods: [Mod(AlvoDeCondicao.SubAtributo, subAtributo)]).Should().BeNull();
+
+    [Theory]
+    [InlineData("Vitalidade")]
+    [InlineData("Foco")]
+    [InlineData("Adrenalina")]
+    [InlineData("Estresse")]
+    public void Every_resource_is_accepted_for_total_and_current(string recurso)
+    {
+        Validar(mods: [Mod(AlvoDeCondicao.RecursoTotal, recurso)]).Should().BeNull();
+        Validar(mods: [Mod(AlvoDeCondicao.RecursoAtual, recurso, momento: MomentoDeCondicao.AoAplicar)]).Should().BeNull();
+    }
+
+    [Fact]
+    public void A_value_outside_the_RecursoAtual_list_is_rejected() =>
+        Validar(mods: [Mod(AlvoDeCondicao.RecursoAtual, "Mana", momento: MomentoDeCondicao.AoAplicar)]).Should().NotBeNull();
 }

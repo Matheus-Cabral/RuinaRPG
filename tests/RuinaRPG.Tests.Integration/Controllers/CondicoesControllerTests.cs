@@ -152,4 +152,83 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var boa = Valida("Pericia boa") with { Modificadores = [new CondicaoModificadorDto("Pericia", "Prontidao", "Fixo", -1, null)] };
         (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, boa))).StatusCode.Should().Be(HttpStatusCode.Created);
     }
+
+    [Fact]
+    public async Task Delete_is_a_soft_delete_that_keeps_the_children_and_hides_the_row_from_later_calls()
+    {
+        var token = await RegisterGmAsync("CondGm7", "cond7@teste.com", true);
+        var criada = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Soft")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var id = Guid.Parse(criada.Id);
+
+        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.Condicoes.SingleAsync(c => c.Id == id)).IsDeleted.Should().BeTrue();
+            (await db.CondicaoModificadores.CountAsync(m => m.CondicaoId == id)).Should().Be(2);
+            (await db.CondicaoDesabilitacoes.CountAsync(d => d.CondicaoId == id)).Should().Be(2);
+        }
+
+        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{id}", token, Valida("Soft")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task The_nome_query_excludes_conditions_that_do_not_match()
+    {
+        var token = await RegisterGmAsync("CondGm8", "cond8@teste.com", true);
+        var alfa = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Filtro Alfa")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var beta = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Outra Beta")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+
+        var filtradas = await ListAsync(token, "alfa");
+
+        filtradas.Should().Contain(c => c.Id == alfa.Id);
+        filtradas.Should().NotContain(c => c.Id == beta.Id);
+    }
+
+    [Fact]
+    public async Task Update_onto_another_conditions_name_returns_400_but_keeping_its_own_name_returns_204()
+    {
+        var token = await RegisterGmAsync("CondGm9", "cond9@teste.com", true);
+        await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Um")));
+        var dois = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Dois")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+
+        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Um")))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Dois")))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    public static IEnumerable<object[]> PayloadsComEnumInvalido() =>
+    [
+        [Valida("Enum ruim") with { Modificadores = [new CondicaoModificadorDto("Inventado", "Vigor", "Fixo", -1, null)] }],
+        [Valida("Enum ruim") with { Modificadores = [new CondicaoModificadorDto("Atributo", "Vigor", "Inventado", -1, null)] }],
+        [Valida("Enum ruim") with { Modificadores = [new CondicaoModificadorDto("RecursoAtual", "Vitalidade", "Fixo", -1, "Inventado")] }],
+        [Valida("Enum ruim") with { Desabilitacoes = ["Inventada"] }],
+        [Valida("Enum ruim") with { Modificadores = [null!] }],
+        [Valida("Enum ruim") with { Desabilitacoes = [null!] }],
+    ];
+
+    [Theory]
+    [MemberData(nameof(PayloadsComEnumInvalido))]
+    public async Task An_invalid_enum_string_or_a_null_element_returns_400(SalvarCondicaoRequest payload)
+    {
+        var token = await RegisterGmAsync("CondGmEnum" + Guid.NewGuid().ToString("N")[..6], $"condenum{Guid.NewGuid():N}@teste.com", true);
+
+        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, payload))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Update_and_delete_of_an_unknown_id_return_404()
+    {
+        var token = await RegisterGmAsync("CondGm10", "cond10@teste.com", true);
+
+        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{Guid.NewGuid()}", token, Valida("Fantasma")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{Guid.NewGuid()}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task An_unauthenticated_GET_returns_401()
+    {
+        (await _client.GetAsync("/api/condicoes")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }
