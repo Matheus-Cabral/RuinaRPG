@@ -25,6 +25,13 @@ public class AuditoriaCondicoesTests : MudBunitContext
     private readonly List<(HttpMethod Method, string Path, string Body)> _calls = new();
     private List<CondicaoResponse> _catalogo = new();
     private bool _auditor = true;
+    private Task? _meGate;
+    private bool _meFalha;
+
+    private sealed class AsyncHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => responder(request);
+    }
     private Func<HttpMethod, HttpResponseMessage?> _escrita = _ => null;
 
     private static CondicaoResponse Veneno() => new("c1", "Veneno", "Perde vida", "Veneno", 3,
@@ -32,9 +39,16 @@ public class AuditoriaCondicoesTests : MudBunitContext
 
     private IRenderedComponent<ContainerFragment> RenderPage()
     {
-        var http = FakeHttpMessageHandler.CreateClient(request =>
+        var http = new HttpClient(new AsyncHandler(async request =>
         {
             var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("/auth/me"))
+            {
+                if (_meGate is not null)
+                    await _meGate;
+                if (_meFalha)
+                    throw new HttpRequestException("sem rede");
+            }
             var body = request.Content is null ? "" : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             if (request.Method != HttpMethod.Get)
                 _calls.Add((request.Method, path, body));
@@ -45,7 +59,7 @@ public class AuditoriaCondicoesTests : MudBunitContext
             if (request.Method == HttpMethod.Get && path.EndsWith("/condicoes"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(_catalogo) };
             return _escrita(request.Method) ?? new HttpResponseMessage(HttpStatusCode.OK);
-        });
+        })) { BaseAddress = new Uri("http://localhost/api/") };
         Services.AddScoped(_ => http);
 
         return Render(builder =>
@@ -313,5 +327,55 @@ public class AuditoriaCondicoesTests : MudBunitContext
         cut.Find("button[aria-label='Editar Lento']").Click();
 
         cut.Markup.Should().NotContain("foi removida do catálogo");
+    }
+
+    [Fact]
+    public async Task While_the_Auditor_check_is_pending_no_write_control_is_rendered_and_the_Auditor_then_gets_the_page()
+    {
+        var gate = new TaskCompletionSource();
+        _meGate = gate.Task;
+        _catalogo = [Veneno()];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.FindAll("button").Where(b => b.TextContent.Contains("Nova condição")).Should().BeEmpty();
+        cut.FindAll("button[aria-label='Editar Veneno']").Should().BeEmpty();
+        cut.FindAll("button[aria-label='Excluir Veneno']").Should().BeEmpty();
+        cut.FindComponents<MudTextField<string>>().Should().BeEmpty();
+        cut.Markup.Should().NotContain("Você não é o Auditor");
+
+        gate.SetResult();
+        await Task.Delay(100);
+
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("Nova condição"));
+    }
+
+    [Fact]
+    public async Task While_the_check_is_pending_and_then_answers_non_Auditor_only_the_forbidden_notice_remains()
+    {
+        _auditor = false;
+        var gate = new TaskCompletionSource();
+        _meGate = gate.Task;
+        var cut = RenderPage();
+        await Task.Delay(50);
+        cut.FindAll("button").Where(b => b.TextContent.Contains("Nova condição")).Should().BeEmpty();
+
+        gate.SetResult();
+        await Task.Delay(100);
+
+        cut.Markup.Should().Contain("Você não é o Auditor de Regras designado");
+        cut.FindAll("button").Where(b => b.TextContent.Contains("Nova condição")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_failing_Auditor_check_does_not_crash_the_page_and_the_list_still_loads()
+    {
+        _meFalha = true;
+        _catalogo = [Veneno()];
+        var cut = RenderPage();
+        await Task.Delay(100);
+
+        cut.Markup.Should().Contain("Veneno");
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("Nova condição"));
     }
 }

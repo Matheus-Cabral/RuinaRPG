@@ -29,7 +29,11 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
-@if (_forbidden)
+@if (!_verificado)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-3" />
+}
+else if (_forbidden)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
 }
@@ -120,14 +124,23 @@ else
     private bool _excluirAberto;
     private string? _errorMessage;
     private bool _forbidden;
+    private bool _verificado;
 
     protected override async Task OnInitializedAsync()
     {
         // Todo usuário autenticado pode ler o catálogo, então o 200 do GET não diz quem pode editar:
-        // pergunta-se antes. Se a consulta falhar, a API continua recusando a escrita (403).
-        var me = await Http.GetAsync("auth/me");
-        if (me.IsSuccessStatusCode && !((await me.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false))
-            _forbidden = true;
+        // pergunta-se antes, e nenhum controle de escrita aparece até a resposta. Se a consulta falhar,
+        // a página segue sem a decisão e a API continua recusando a escrita (403).
+        try
+        {
+            var me = await Http.GetAsync("auth/me");
+            if (me.IsSuccessStatusCode && !((await me.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false))
+                _forbidden = true;
+        }
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException or NotSupportedException)
+        {
+        }
+        _verificado = true;
 
         await Catalogo.CarregarAsync();
         await LoadAsync();
