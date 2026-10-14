@@ -111,6 +111,70 @@ public class EfeitosDeCondicaoTests
     }
 
     [Fact]
+    public void Percentuais_somados_nunca_invertem_o_sinal()
+    {
+        var e = Efeitos(
+            Cond("A", Pct(AlvoDeCondicao.Atributo, "Forca", -60)),
+            Cond("B", Pct(AlvoDeCondicao.Atributo, "Forca", -60)));
+        Assert.Equal(0, e.Ajustar(AlvoDeCondicao.Atributo, "Forca", 10));
+        Assert.Equal(-10, e.Delta(AlvoDeCondicao.Atributo, "Forca", 10));
+        Assert.Equal(0, e.Ajustar(AlvoDeCondicao.Atributo, "Forca", -4));
+    }
+
+    [Fact]
+    public void O_limite_de_menos_100_vale_para_a_soma_e_nao_para_cada_linha()
+    {
+        // −60 −60 +50 = −70: dentro do limite, nada é cortado.
+        var e = Efeitos(Cond("A",
+            Pct(AlvoDeCondicao.Atributo, "Forca", -60),
+            Pct(AlvoDeCondicao.Atributo, "Forca", -60),
+            Pct(AlvoDeCondicao.Atributo, "Forca", 50)));
+        Assert.Equal(3, e.Ajustar(AlvoDeCondicao.Atributo, "Forca", 10));
+    }
+
+    [Fact]
+    public void O_limite_do_percentual_incide_sobre_base_mais_fixos()
+    {
+        var e = Efeitos(Cond("A",
+            Fixo(AlvoDeCondicao.Atributo, "Forca", 4),
+            Pct(AlvoDeCondicao.Atributo, "Forca", -100),
+            Pct(AlvoDeCondicao.Atributo, "Forca", -100)));
+        Assert.Equal(0, e.Ajustar(AlvoDeCondicao.Atributo, "Forca", 10));
+    }
+
+    [Fact]
+    public void ValorDoAjuste_nao_e_limitado_a_menos_100()
+    {
+        var linha = Atual("Vitalidade", -150, MomentoDeCondicao.AoAplicar, TipoDeValorDeCondicao.Percentual);
+        Assert.Equal(-30, DuracaoDeCondicao.ValorDoAjuste(linha, 20));
+    }
+
+    [Fact]
+    public void Alvo_especifico_com_acento_casa_ignorando_a_caixa()
+    {
+        var e = Efeitos(Cond("A", Fixo(AlvoDeCondicao.SubAtributo, "Movimentação", -2)));
+        Assert.Equal(6, e.Ajustar(AlvoDeCondicao.SubAtributo, "movimentação", 8));
+        Assert.Equal(6, e.Ajustar(AlvoDeCondicao.SubAtributo, "MOVIMENTAÇÃO", 8));
+        Assert.Equal(8, e.Ajustar(AlvoDeCondicao.SubAtributo, "Movimentacao", 8));
+    }
+
+    [Fact]
+    public void Explicar_diz_que_o_percentual_de_um_valor_atual_e_sobre_o_total()
+    {
+        var c = Cond("Sangrando",
+            Atual("Vitalidade", -10, MomentoDeCondicao.ACadaVez, TipoDeValorDeCondicao.Percentual),
+            Atual("Foco", -5, MomentoDeCondicao.AoAplicar, TipoDeValorDeCondicao.Percentual),
+            Atual("Adrenalina", 2, MomentoDeCondicao.ACadaVez));
+
+        Assert.Equal(
+        [
+            "Vitalidade atual −10% do total a cada vez",
+            "Foco atual −5% do total ao aplicar",
+            "Adrenalina atual +2 a cada vez"
+        ], Assert.Single(Efeitos(c).Explicar()).Linhas);
+    }
+
+    [Fact]
     public void RecursoAtual_nunca_participa_de_Ajustar()
     {
         var e = Efeitos(Cond("A", Atual("Vitalidade", -3, MomentoDeCondicao.ACadaVez)));

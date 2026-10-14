@@ -19,6 +19,7 @@ public sealed class EfeitosDeCondicao
 
     /// <summary>
     /// floor((valorBase + fixos) × (100 + percentuais) / 100), com piso matemático (rumo a menos infinito).
+    /// A soma dos percentuais nunca passa de −100: várias reduções juntas zeram o valor, não invertem o sinal.
     /// A linha casa quando o Alvo é igual e o AlvoEspecifico é nulo ou igual ao pedido (ignora caixa);
     /// um pedido sem alvo específico só casa com linhas gerais. Linhas de RecursoAtual nunca entram.
     /// </summary>
@@ -40,6 +41,7 @@ public sealed class EfeitosDeCondicao
 
         if (percentuais == 0)
             return (int)(valorBase + fixos);
+        percentuais = Math.Max(percentuais, -100);
         return (int)PisDaDivisao((valorBase + fixos) * (100 + percentuais), 100);
     }
 
@@ -101,7 +103,8 @@ public sealed class EfeitosDeCondicao
             AlvoDeCondicao.Maestria => e is null ? $"Todas as Maestrias {valor}" : $"Maestria de {nomeDaPericia(e)} {valor}",
             AlvoDeCondicao.SubAtributo => $"{e} {valor}",
             AlvoDeCondicao.RecursoTotal => $"{RotulosPt.Recurso(e)} total {valor}",
-            AlvoDeCondicao.RecursoAtual => $"{RotulosPt.Recurso(e)} atual {valor} {(m.Momento == MomentoDeCondicao.ACadaVez ? "a cada vez" : "ao aplicar")}",
+            // O percentual de um valor atual é uma fração do total do recurso (DuracaoDeCondicao.ValorDoAjuste).
+            AlvoDeCondicao.RecursoAtual => $"{RotulosPt.Recurso(e)} atual {valor}{(m.TipoDeValor == TipoDeValorDeCondicao.Percentual ? " do total" : "")} {(m.Momento == MomentoDeCondicao.ACadaVez ? "a cada vez" : "ao aplicar")}",
             AlvoDeCondicao.AfinidadeElemental => e is null ? $"Todas as Afinidades {valor}" : $"Afinidade de {RotulosPt.Elemento(e)} {valor}",
             AlvoDeCondicao.DanoElemental => e is null ? $"Todo dano elemental {valor}" : $"Dano de {RotulosPt.Elemento(e)} {valor}",
             AlvoDeCondicao.Dano => e is null ? $"Dano {valor}" : $"Dano {RotulosPt.TipoDeDano(e)} {valor}",
