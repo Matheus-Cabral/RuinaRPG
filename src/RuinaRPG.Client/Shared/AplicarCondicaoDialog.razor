@@ -22,8 +22,11 @@
             {
                 <MudText Typo="Typo.body2" Class="mt-2">@_condicao.Descricao</MudText>
             }
-            <MudNumericField T="int?" Label="Duração (turnos)" @bind-Value="_duracao" Min="1" Clearable="true" Class="mt-3"
-                             HelperText="Vazio usa a duração padrão da Condição." />
+            <div class="d-flex align-center mt-3" style="gap:12px">
+                <MudNumericField T="int?" Label="Duração (turnos)" @bind-Value="_duracao" Min="1" Clearable="true" Disabled="_semDuracao"
+                                 HelperText="Vazio usa a duração padrão da Condição." />
+                <MudCheckBox T="bool" Label="Sem duração" Value="_semDuracao" ValueChanged="@(v => { _semDuracao = v; if (v) _duracao = null; })" />
+            </div>
 
             @for (var i = 0; i < _condicao.Modificadores.Count; i++)
             {
@@ -41,7 +44,11 @@
                 var rotulo = CondicaoAlvos.Categorias.FirstOrDefault(o => o.Valor == categoria)?.Rotulo ?? categoria;
                 var linhas = ItensDa(categoria);
                 <div class="mt-3">
-                    @if (linhas.Count == 0)
+                    @if (!_itensCarregados)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Error">Não foi possível carregar os itens da ficha deste participante.</MudText>
+                    }
+                    else if (linhas.Count == 0)
                     {
                         <MudText Typo="Typo.body2">Desabilita @rotulo: a ficha não tem itens nesta categoria.</MudText>
                     }
@@ -68,7 +75,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_condicao is null || _aplicando)" OnClick="AplicarAsync">Aplicar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_condicao is null || _aplicando || (!_itensCarregados && _condicao.Desabilitacoes.Count > 0))" OnClick="AplicarAsync">Aplicar</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -86,6 +93,8 @@
     private Dictionary<string, HashSet<string>> _itensEscolhidos = new();
     private string? _errorMessage;
     private bool _aplicando;
+    private bool _semDuracao;
+    private bool _itensCarregados;
 
     protected override async Task OnInitializedAsync()
     {
@@ -104,8 +113,11 @@
     private async Task CarregarItensAsync()
     {
         var response = await Http.GetAsync($"encounters/{EncounterId}/participants/{ParticipantId}/itens-desabilitaveis");
-        if (response.IsSuccessStatusCode)
-            _itens = (await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())?.Categorias ?? new();
+        if (!response.IsSuccessStatusCode)
+            return; // _itensCarregados fica falso: o diálogo avisa e não deixa aplicar uma Condição que desabilita itens
+
+        _itens = (await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())?.Categorias ?? new();
+        _itensCarregados = true;
     }
 
     private Task<IEnumerable<CondicaoResponse>> BuscarAsync(string? texto, CancellationToken token) =>
@@ -117,6 +129,7 @@
     {
         _condicao = condicao;
         _duracao = condicao?.DuracaoPadraoTurnos;
+        _semDuracao = false;
         _valores = condicao?.Modificadores.Select(m => m.Valor).ToArray() ?? [];
         _categoriaInteira = condicao?.Desabilitacoes.ToDictionary(c => c, _ => true) ?? new();
         _itensEscolhidos = condicao?.Desabilitacoes.ToDictionary(c => c, _ => new HashSet<string>()) ?? new();
@@ -159,7 +172,7 @@
         _aplicando = true;
         try
         {
-            var request = new AplicarCondicaoRequest(_condicao.Id, _duracao, ajustados.Count > 0 ? ajustados : null, itens.Count > 0 ? itens : null);
+            var request = new AplicarCondicaoRequest(_condicao.Id, _semDuracao ? null : _duracao, ajustados.Count > 0 ? ajustados : null, itens.Count > 0 ? itens : null, _semDuracao);
             var response = await Http.PostAsJsonAsync($"encounters/{EncounterId}/participants/{ParticipantId}/condicoes", request);
             if (!response.IsSuccessStatusCode)
             {

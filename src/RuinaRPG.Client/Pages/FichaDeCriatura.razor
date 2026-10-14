@@ -19,7 +19,7 @@
 @using RuinaRPG.Contracts.Notifications
 @using System.ComponentModel.DataAnnotations
 
-<div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiuAsync())">
+<div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Criatura</h1>
 @if (_concedida)
@@ -728,7 +728,12 @@
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
         // trocar o campo que está sendo editado (RecargaAdiada).
-        _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado);
+        _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado,
+            aoFalhar: falha => _ = InvokeAsync(() =>
+            {
+                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
+                StateHasChanged();
+            }));
         Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
     }
 
@@ -751,7 +756,7 @@
             {
                 await _recarga.SolicitarAsync();
             }
-            catch (HttpRequestException)
+            catch (Exception)
             {
                 _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
             }
@@ -760,11 +765,12 @@
     }
 
     // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
-    private async Task RecarregarPorCondicoesAsync()
+    private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
     {
         await LoadSheetAsync(); await LoadTabs2And3Async(); await LoadSpellAbilitiesAsync(); await LoadArtifactsAsync();
         _penalidadesVersao++;
-    }
+        StateHasChanged();
+    });
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
 
@@ -772,6 +778,7 @@
     {
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
         Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
+        _recarga.Dispose();
     }
 
     protected override async Task OnInitializedAsync()

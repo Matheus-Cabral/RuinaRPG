@@ -28,6 +28,7 @@ public class AplicarCondicaoDialogTests : MudBunitContext
     private readonly List<string> _requests = new();
     private AplicarCondicaoRequest? _corpo;
     private HttpResponseMessage? _respostaDoPost;
+    private bool _itensFalham;
 
     private async Task<(IRenderedComponent<ContainerFragment> Cut, IDialogReference Dialog)> AbrirAsync()
     {
@@ -42,6 +43,8 @@ public class AplicarCondicaoDialogTests : MudBunitContext
             }
             if (path == "condicoes")
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CondicaoResponse> { Veneno, Bencao }) };
+            if (path == "encounters/e1/participants/p1/itens-desabilitaveis" && _itensFalham)
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
             if (path == "encounters/e1/participants/p1/itens-desabilitaveis")
             {
                 var vazia = new List<ItemDesabilitavelDto>();
@@ -174,5 +177,53 @@ public class AplicarCondicaoDialogTests : MudBunitContext
         var (cut, _) = await AbrirAsync();
 
         cut.Find("button:contains('Aplicar')").HasAttribute("disabled").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Sem_duracao_sends_the_flag_with_no_duration_and_disables_the_duration_field()
+    {
+        var (cut, dialog) = await AbrirAsync();
+        await EscolherAsync(cut, Veneno);
+
+        cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Sem duração").Find("input").Change(true);
+        cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == "Duração (turnos)").Find("input").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("button:contains('Aplicar')").Click();
+        await dialog.Result;
+
+        _corpo.Should().Be(new AplicarCondicaoRequest("c1", null, null, null, true));
+    }
+
+    [Fact]
+    public async Task Without_sem_duracao_the_flag_is_false()
+    {
+        var (cut, dialog) = await AbrirAsync();
+        await EscolherAsync(cut, Veneno);
+
+        cut.Find("button:contains('Aplicar')").Click();
+        await dialog.Result;
+
+        _corpo!.SemDuracao.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task When_the_participants_rows_fail_to_load_the_error_shows_and_a_disabling_condition_cannot_be_applied()
+    {
+        _itensFalham = true;
+        var (cut, _) = await AbrirAsync();
+        await EscolherAsync(cut, Veneno);
+
+        cut.Markup.Should().Contain("Não foi possível carregar os itens da ficha deste participante.");
+        cut.FindComponents<MudSwitch<bool>>().Should().BeEmpty();
+        cut.Find("button:contains('Aplicar')").HasAttribute("disabled").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task When_the_participants_rows_fail_to_load_a_condition_that_disables_nothing_can_still_be_applied()
+    {
+        _itensFalham = true;
+        var (cut, _) = await AbrirAsync();
+        await EscolherAsync(cut, Bencao);
+
+        cut.Find("button:contains('Aplicar')").HasAttribute("disabled").Should().BeFalse();
     }
 }
