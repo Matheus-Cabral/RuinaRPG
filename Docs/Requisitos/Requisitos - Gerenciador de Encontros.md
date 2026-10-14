@@ -21,7 +21,7 @@
 **Descrição**: Para cada participante adicionado, o GM escolhe a origem:
 
 - **Ficha de Personagem** de um jogador membro da campanha, incluindo Fichas de NPC/Criatura concedidas a ele (ver "[[Requisitos - Campanha]]" R0010).
-- **Ficha de NPC ou de Criatura** do GM (não concedida a nenhum jogador). Pode ser adicionada mais de uma vez ao mesmo Encontro (ex: 3 goblins) — cada adição gera uma **instância** independente, sem duplicar a ficha original no Bestiário/NPCs do GM.
+- **Ficha de NPC ou de Criatura** do GM (não concedida a nenhum jogador). Pode ser adicionada mais de uma vez ao mesmo Encontro (ex: 3 goblins) — cada adição gera uma **instância** independente, sem duplicar a ficha original no Bestiário/NPCs do GM. Quando a mesma ficha é adicionada mais de uma vez, as instâncias depois da primeira recebem um número no nome ("Goblin", "Goblin 2", "Goblin 3"), usando o menor número a partir de 2 que não esteja em uso no Encontro.
 
   
 
@@ -62,7 +62,7 @@ O comportamento de PV/PF/PA difere conforme a origem do participante (R0002):
 - **Vez anterior**: volta um passo na ordem, inclusive do primeiro participante do Turno N para o último do Turno N−1, sem alterar as Ações restantes e sem voltar antes do início do Turno 1.
 - **Passar a vez para este**, em cada participante: dá a vez ao participante escolhido, fora da ordem, mantendo o Turno e voltando as Ações restantes dele para 3.
 
-A tela mostra sempre, em destaque, o Turno e de quem é a vez.
+Com o Encontro em andamento, a tela mostra sempre, em destaque, o Turno e de quem é a vez. Na preparação ela mostra o Turno 0 e ninguém tem a vez.
 
   
 
@@ -80,7 +80,7 @@ Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta
 
 # **R0008** - O GM pode remover um participante.
 
-**Descrição**: Na preparação e em andamento, o GM remove um participante do Encontro (com confirmação). Se ele tinha a vez, ela passa ao seguinte na ordem de Iniciativa (ou ao primeiro do Turno seguinte, se era o último). Se não sobrar nenhum participante, ninguém tem a vez até que um participante seja adicionado e o GM avance a vez.
+**Descrição**: Na preparação e em andamento, o GM remove um participante do Encontro (com confirmação). Se ele tinha a vez, ela passa ao seguinte na ordem de Iniciativa (ou ao primeiro do Turno seguinte, se era o último; nesse caso o Turno avança em um). Quem recebe a vez fica com 3 Ações restantes (R0005). Se não sobrar nenhum participante, ninguém tem a vez até que um participante seja adicionado e o GM avance a vez.
 
   
 
@@ -100,4 +100,4 @@ Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta
 - a finalização e a reabertura do Encontro;
 - para um participante ligado a uma ficha (Personagem, ou NPC/Criatura concedido), as alterações de Vitalidade, Foco e Adrenalina feitas na própria ficha.
 
-Nada é registrado na preparação nem depois da finalização. O log aparece na própria tela do Encontro, agrupado por Turno e, dentro dele, pela vez em que o evento ocorreu. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
+Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log aparece na própria tela do Encontro, agrupado por Turno e, dentro dele, pela vez em que o evento ocorreu. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
