@@ -109,7 +109,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 
 **Descrição**: Na preparação e em andamento, o GM aplica a um participante uma Condição do catálogo de "[[Requisitos - Auditoria de Regras]]" R0017. A Condição aplicada é uma **cópia independente**: editar ou excluir a entrada do catálogo depois não a altera. Ao aplicar, o GM pode:
 
-- mudar a **duração** em Turnos (no mínimo 1), que começa com a duração padrão da entrada; vazia, a Condição dura até ser removida;
+- mudar a **duração** em Turnos (no mínimo 1), que começa com a duração padrão da entrada, ou marcar **sem duração** (mesmo que a entrada tenha uma padrão): a Condição então dura até ser removida;
 - ajustar o **Valor** de cada modificador (nunca 0);
 - escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
 
@@ -143,3 +143,5 @@ A expiração acontece só ao entrar num Turno novo (pela **Próxima vez**, ao p
 Um modificador **percentual** é um percentual do **total** do recurso, arredondado para baixo: o máximo da ficha com as Condições ativas; numa instância do GM, o máximo da ficha original calculado com as Condições **daquela instância**. Se a ficha original já não existe, o percentual é pulado (um fixo ainda roda).
 
 **Log**: cada ajuste vira uma linha no log do Encontro (R0010) com o participante, o recurso, o valor antes e depois e o nome da Condição; um ajuste pulado também vira uma linha, dizendo por quê ("Estresse não é acompanhado no encontro" ou "ficha de origem removida"). O ajuste na ficha não gera, além disso, a linha de alteração de recurso da ficha.
+
+**Ações simultâneas**: duas ações do GM que poderiam rodar o mesmo ajuste ao mesmo tempo (ex: um clique duplo em **Passar a vez para este**, ou aplicar uma Condição enquanto a vez avança) nunca o aplicam duas vezes: uma delas é recusada com o aviso de que o Encontro foi alterado por outra ação, e o GM recarrega e tenta de novo.

@@ -176,6 +176,36 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<Postgr
     }
 
     [Fact]
+    public async Task Apply_with_SemDuracao_has_no_duration_even_when_the_catalog_has_a_default()
+    {
+        var gm = await RegisterGmAsync("CpGmSd1", "cpsd1@teste.com", auditor: true);
+        var condicao = await CriarNoCatalogoAsync(gm, Catalogo("Eterna", 3));
+        var encounterId = await CreateEncounterAsync(gm);
+        var participantId = await AddNpcParticipantAsync(gm, encounterId);
+
+        var response = await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, null, null, SemDuracao: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<CondicaoAplicadaResponse>())!.TurnosRestantes.Should().BeNull();
+        (await LerAsync(participantId)).DuracaoTurnos.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Apply_with_SemDuracao_and_a_duration_returns_400()
+    {
+        var gm = await RegisterGmAsync("CpGmSd2", "cpsd2@teste.com", auditor: true);
+        var condicao = await CriarNoCatalogoAsync(gm, Catalogo("Confusa", 3));
+        var encounterId = await CreateEncounterAsync(gm);
+        var participantId = await AddNpcParticipantAsync(gm, encounterId);
+
+        var response = await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, 2, null, null, SemDuracao: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Informe a duração ou marque sem duração, não os dois.");
+        (await ListarAsync(gm, encounterId)).Single().CondicoesAplicadas.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Apply_the_same_catalog_condition_twice_to_one_participant_returns_400()
     {
         var gm = await RegisterGmAsync("CpGm3", "cp3@teste.com", auditor: true);

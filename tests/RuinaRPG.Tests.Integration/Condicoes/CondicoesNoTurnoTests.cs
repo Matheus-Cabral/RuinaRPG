@@ -480,6 +480,73 @@ public class CondicoesNoTurnoTests : IClassFixture<PostgresFixture>, IAsyncLifet
         ((await VitalidadeAsync(c)) + (await ParticipanteAsync(c, c.LoboId)).PV).Should().Be(32 - sucessos);
     }
 
+    [Fact]
+    public async Task Duas_Passar_a_vez_simultaneas_para_quem_ja_tem_a_vez_aplicam_o_ajuste_uma_vez_so()
+    {
+        // Escolher quem já tem a vez não muda Turno nem vez: sem o encontro no UPDATE, nada detectaria a corrida.
+        var c = await CenaAsync("CorEsc"); // Aria tem a vez no Turno 1
+        var aplicados = 0;
+        var conflito = false;
+        for (var tentativa = 0; tentativa < 15 && !conflito; tentativa++)
+        {
+            // Uma Condição nova a cada tentativa: a linha dela ainda não rodou neste Turno.
+            var nome = $"Corte{tentativa}";
+            await AplicarAsync(c, c.AriaId, await CondicaoAsync(c.Mesa, nome, Atual("Vitalidade", -1, "ACadaVez")));
+
+            var resultados = await Task.WhenAll(
+                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)),
+                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)));
+
+            resultados.Select(r => r.StatusCode).Should().OnlyContain(s => s == HttpStatusCode.NoContent || s == HttpStatusCode.Conflict);
+            resultados.Should().Contain(r => r.StatusCode == HttpStatusCode.NoContent);
+            if (resultados.FirstOrDefault(r => r.StatusCode == HttpStatusCode.Conflict) is { } conflitante)
+            {
+                conflito = true;
+                (await conflitante.Content.ReadAsStringAsync()).Should().Contain("O encontro foi alterado por outra ação. Recarregue e tente de novo.");
+            }
+            (await AjustesAsync(c)).Count(l => l.Texto == $"{nome} {c.Mesa.Tag}").Should().Be(1, $"a linha de {nome} roda uma vez só");
+            aplicados++;
+        }
+
+        conflito.Should().BeTrue("um par simultâneo deve colidir ao menos uma vez em 15 tentativas");
+        (await VitalidadeAsync(c)).Should().Be(16 - aplicados);
+    }
+
+    [Fact]
+    public async Task Aplicar_com_linha_ao_aplicar_correndo_com_Proxima_vez_e_conferido_contra_o_encontro()
+    {
+        var c = await CenaAsync("CorApl");
+        var sucessos = 0;
+        var conflito = false;
+        for (var tentativa = 0; tentativa < 15 && !conflito; tentativa++)
+        {
+            var nome = $"Golpe{tentativa}";
+            var condicaoId = await CondicaoAsync(c.Mesa, nome, Atual("Vitalidade", -1, "AoAplicar"));
+
+            var resultados = await Task.WhenAll(
+                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/participants/{c.LoboId}/condicoes", c.Mesa.Gm,
+                    new AplicarCondicaoRequest(condicaoId, null, null, null))),
+                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)));
+
+            var (aplicar, avancar) = (resultados[0], resultados[1]);
+            aplicar.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.Conflict);
+            avancar.StatusCode.Should().BeOneOf(HttpStatusCode.NoContent, HttpStatusCode.Conflict);
+            if (resultados.FirstOrDefault(r => r.StatusCode == HttpStatusCode.Conflict) is { } conflitante)
+            {
+                conflito = true;
+                (await conflitante.Content.ReadAsStringAsync()).Should().Contain("O encontro foi alterado por outra ação. Recarregue e tente de novo.");
+            }
+            var aplicada = aplicar.StatusCode == HttpStatusCode.Created;
+            sucessos += aplicada ? 1 : 0;
+            // Aplicada: a linha rodou uma vez (na aplicação ou, se não, no varrimento da Próxima vez); recusada: nada dela ficou.
+            (await AjustesAsync(c)).Count(l => l.Texto == $"{nome} {c.Mesa.Tag}").Should().Be(aplicada ? 1 : 0);
+            (await ParticipanteAsync(c, c.LoboId)).CondicoesAplicadas.Count(a => a.Nome == $"{nome} {c.Mesa.Tag}").Should().Be(aplicada ? 1 : 0);
+        }
+
+        conflito.Should().BeTrue("aplicar com o encontro em andamento é conferido contra a versão do encontro");
+        (await ParticipanteAsync(c, c.LoboId)).PV.Should().Be(16 - sucessos);
+    }
+
     // ---------- trazidos da revisão da Tarefa 8 ----------
 
     [Fact]

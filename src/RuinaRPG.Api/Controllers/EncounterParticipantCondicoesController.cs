@@ -23,6 +23,7 @@ namespace RuinaRPG.Api.Controllers;
 public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, EncounterLog log, ItensDesabilitaveisDaFicha itens, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
 {
     [HttpPost("condicoes")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<ActionResult<CondicaoAplicadaResponse>> Aplicar(Guid encounterId, Guid participantId, AplicarCondicaoRequest request)
     {
         var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
@@ -44,6 +45,8 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             return BadRequest("Esta condição já está neste participante.");
         if (request.DuracaoTurnos is < 1)
             return BadRequest("A duração deve ser de pelo menos 1 Turno.");
+        if (request.SemDuracao && request.DuracaoTurnos is not null)
+            return BadRequest("Informe a duração ou marque sem duração, não os dois.");
 
         var modificadores = await db.CondicaoModificadores.Where(m => m.CondicaoId == condicaoId).OrderBy(m => m.Ordem).ToListAsync();
         var ajustados = request.ValoresAjustados ?? [];
@@ -68,7 +71,7 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             Descricao = condicao.Descricao,
             Icone = condicao.Icone,
             AplicadaNoTurno = encounter!.CurrentRound,
-            DuracaoTurnos = request.DuracaoTurnos ?? condicao.DuracaoPadraoTurnos,
+            DuracaoTurnos = request.SemDuracao ? null : request.DuracaoTurnos ?? condicao.DuracaoPadraoTurnos,
             Modificadores = modificadores.Select((m, i) => new LinhaDeCondicaoAplicada(Guid.NewGuid(), m.Alvo, m.AlvoEspecifico, m.TipoDeValor,
                 ajustados.TryGetValue(i, out var valor) ? valor : m.Valor, m.Momento)).ToList(),
             Desabilitacoes = desabilitacoes!,

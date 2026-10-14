@@ -89,6 +89,7 @@ public class CondicoesDoEncontro(
     /// </summary>
     public async Task AoMudarAVezAsync(Encounter encounter, MudancaDeVez mudanca)
     {
+        ConferirVersaoDoEncontro(encounter);
         var participantes = await ParticipantesDoEncontroAsync(encounter.Id);
         var ids = participantes.Select(p => p.Id).ToHashSet();
         await db.EncounterParticipantCondicoes.Where(c => ids.Contains(c.EncounterParticipantId)).LoadAsync();
@@ -124,8 +125,20 @@ public class CondicoesDoEncontro(
     /// Para a Condição recém-aplicada, depois de <see cref="AoMudarAtivacaoAsync"/> e antes do salvamento: com o
     /// encontro em andamento, as linhas "ao aplicar" rodam já. Na preparação nada roda (fica para o Iniciar).
     /// </summary>
-    public Task AoAplicarAsync(Encounter encounter, EncounterParticipant participante, EncounterParticipantCondicao aplicada) =>
-        RodarAsync(encounter, participante, aplicada, MomentoDeCondicao.AoAplicar);
+    public Task AoAplicarAsync(Encounter encounter, EncounterParticipant participante, EncounterParticipantCondicao aplicada)
+    {
+        if (encounter.Status == EncounterStatus.EmAndamento)
+            ConferirVersaoDoEncontro(encounter);
+        return RodarAsync(encounter, participante, aplicada, MomentoDeCondicao.AoAplicar);
+    }
+
+    /// <summary>
+    /// Põe a linha do encontro no UPDATE da ação, mesmo quando nada nela muda (escolher quem já tem a vez, aplicar uma
+    /// Condição): o salvamento então confere a versão (xmin) e uma ação simultânea que rodaria os mesmos ajustes
+    /// recebe 409 (ConflitoDeConcorrenciaDoEncontro) em vez de aplicá-los de novo.
+    /// </summary>
+    private void ConferirVersaoDoEncontro(Encounter encounter) =>
+        db.Entry(encounter).Property(e => e.Nome).IsModified = true;
 
     /// <summary>
     /// Roda as linhas de valor atual de <paramref name="momento"/> que ainda não rodaram, se a Condição estiver ativa, e
