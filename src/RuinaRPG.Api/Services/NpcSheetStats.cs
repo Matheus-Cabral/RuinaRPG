@@ -4,6 +4,7 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.ReferenceData;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -195,6 +196,17 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         var modificadores = await ArtefatosAsync(sheet.Id, efeitos);
         modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet, efeitos)));
         return modificadores;
+    }
+
+    /// <summary>Os quatro totais de recurso exibidos, com as Condições de <paramref name="efeitos"/> — mesma conta de CharacterSheetStats.MaximosAsync.</summary>
+    public async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> MaximosAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var vigorTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Vigor, artefatos, efeitos);
+        var astuciaTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Astucia, artefatos, efeitos);
+        var (statusVida, statusFoco) = sheet.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, CharacterSheetStats.VocacaoTabelaName(sheet.Vocacao.Value), sheet.Nivel) : (0, 0);
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
+        return efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
     }
 
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)

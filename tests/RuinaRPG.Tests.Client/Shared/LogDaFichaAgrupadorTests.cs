@@ -64,4 +64,8 @@ public class LogDaFichaAgrupadorTests
         LogDaFichaAgrupador.Texto(Linha("a", DateTime.UtcNow, "Removeu", null, "Rival", null, null)).Should().Be("removeu Rival");
         LogDaFichaAgrupador.Texto(Linha("a", DateTime.UtcNow, "Criou", null, null, null, null)).Should().Be("ficha criada");
     }
+
+    [Fact]
+    public void Texto_expirou() =>
+        LogDaFichaAgrupador.Texto(Linha("a", DateTime.UtcNow, "Expirou", null, "Envenenado", null, null)).Should().Be("Envenenado expirou");
 }

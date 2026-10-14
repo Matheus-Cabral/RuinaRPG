@@ -5,4 +5,5 @@ public static class NotificationEvents
 {
     public const string SecretNoteReceived = "SecretNoteReceived";
     public const string SecretNotesChanged = "SecretNotesChanged";
+    public const string CondicoesAlteradas = "CondicoesAlteradas";
 }

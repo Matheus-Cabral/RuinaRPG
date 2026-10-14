@@ -19,7 +19,8 @@ internal static class EncounterLogDaFicha
     /// </summary>
     public static async Task<List<EncounterLogEntry>> MontarAsync(RuinaRpgDbContext db, IReadOnlyList<SheetLogEntry> linhas, CancellationToken ct)
     {
-        var recursos = linhas.Where(l => l is { Categoria: SheetLogCategoria.RecursoVFA, Acao: SheetLogAcao.Alterou }).ToList();
+        // Uma escrita automática (o corte do Atual por uma Condição) não vira RecursoDaFicha: quem a provoca registra a sua própria linha no encontro.
+        var recursos = linhas.Where(l => l is { Categoria: SheetLogCategoria.RecursoVFA, Acao: SheetLogAcao.Alterou, Automatico: false }).ToList();
         if (recursos.Count == 0)
             return [];
         var personagens = recursos.Where(l => l.CharacterSheetId is not null).Select(l => l.CharacterSheetId!.Value).Distinct().ToList();

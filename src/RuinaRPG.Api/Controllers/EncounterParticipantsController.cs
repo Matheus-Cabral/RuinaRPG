@@ -14,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
-public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos) : ControllerBase
+public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
@@ -208,8 +208,11 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         db.EncounterParticipantConditions.RemoveRange(conditions);
         db.EncounterParticipants.Remove(participant);
+        // As Condições do participante saem com ele (cascata): a ficha volta aos totais sem elas.
+        await condicoesDoEncontro.AoMudarAtivacaoAsync([id]);
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 

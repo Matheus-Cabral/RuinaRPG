@@ -78,8 +78,14 @@ public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo peric
         return _porOrigem[(origem, id)] = ativas.Count == 0 ? Nenhuma : ativas;
     }
 
-    private static EfeitosDeCondicao Efeitos(IReadOnlyList<Aplicada> ativas) =>
-        ativas.Count == 0 ? EfeitosDeCondicao.Nenhum : new EfeitosDeCondicao(ativas.Select(a => ComoAtiva(a.Condicao)).ToList());
+    private static EfeitosDeCondicao Efeitos(IReadOnlyList<Aplicada> ativas) => EfeitosDe(ativas.Select(a => a.Condicao).ToList());
+
+    /// <summary>
+    /// Os efeitos de um conjunto de Condições dado por quem chama, sem consulta nem cache: CondicoesDoEncontro calcula
+    /// assim os totais com as Condições que estarão ativas depois da ação, antes de ela ser salva.
+    /// </summary>
+    public static EfeitosDeCondicao EfeitosDe(IReadOnlyCollection<EncounterParticipantCondicao> ativas) =>
+        ativas.Count == 0 ? EfeitosDeCondicao.Nenhum : new EfeitosDeCondicao(ativas.Select(ComoAtiva).ToList());
 
     private static CondicaoAtiva ComoAtiva(EncounterParticipantCondicao c) => new(
         c.Id, c.Nome,

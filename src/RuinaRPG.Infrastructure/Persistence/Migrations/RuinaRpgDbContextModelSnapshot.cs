@@ -3195,6 +3195,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Automatico")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Campo")
                         .HasColumnType("text");
 

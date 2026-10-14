@@ -29,6 +29,7 @@ public static class LogDaFichaAgrupador
         "Adicionou" => $"adicionou {linha.ItemNome}",
         "Removeu" => $"removeu {linha.ItemNome}",
         "Criou" => "ficha criada",
+        "Expirou" => $"{linha.ItemNome} expirou",
         _ => TextoDeAlteracao(linha),
     };
 

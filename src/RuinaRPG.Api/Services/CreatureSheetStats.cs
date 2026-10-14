@@ -4,6 +4,8 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
+using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.ReferenceData;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -23,7 +25,7 @@ namespace RuinaRPG.Api.Services;
 /// Redução Mágica); Resistência Física/Arcana and Dano Cortante are explicitly "pendente" — no
 /// formula defined yet, so they're not implemented here.
 /// </summary>
-public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
+public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
 {
     /// <summary>
     /// Ego is a Criatura-only attribute — it has no counterpart in Ficha de Personagem's Atributo
@@ -191,6 +193,22 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IPericiaCatalogo pericias,
         var modificadores = await ArtefatosAsync(sheet.Id, efeitos);
         modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet, efeitos)));
         return modificadores;
+    }
+
+    /// <summary>
+    /// Vitalidade, Foco e Adrenalina exibidos, com as Condições de <paramref name="efeitos"/>. A Criatura não tem
+    /// Estresse. Status de Vida/Foco pela Tabela de Arquétipos (Arquétipo × Nível): os nomes do enum (Fisico/Arcano)
+    /// são os da tabela, sem mapa de acentos.
+    /// </summary>
+    public async Task<(int Vitalidade, int Foco, int Adrenalina)> MaximosAsync(CreatureSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var vigorTotal = await GetAttributeTotalAsync(sheet.Id, AtributoCriatura.Vigor, artefatos, efeitos);
+        var astuciaTotal = await GetAttributeTotalAsync(sheet.Id, AtributoCriatura.Astucia, artefatos, efeitos);
+        var (statusVida, statusFoco) = sheet.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, sheet.Arquetipo.Value.ToString(), sheet.Nivel) : (0, 0);
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
+        var (vitalidade, foco, adrenalina, _) = efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
+        return (vitalidade, foco, adrenalina);
     }
 
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)

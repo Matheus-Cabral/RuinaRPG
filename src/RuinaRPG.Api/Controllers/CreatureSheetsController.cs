@@ -1,4 +1,3 @@
-using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -26,7 +25,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -416,15 +415,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// Abate/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
     ///
-    /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo mirror NpcSheetsController.ToResponseAsync's
-    /// máximo computation, via ResourceMaximumCalculator and IRulesDataProvider.Arquetipos (looked
-    /// up by Arquetipo/Nivel — unlike Vocacao, Arquetipo's C# enum member names (Fisico/Arcano)
-    /// match the real Tabela de Arquetipos.md's labels exactly, so a plain .ToString() lookup is
-    /// correct here — no accent-mapping helper needed).
-    ///
-    /// vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync now that CreatureAttribute
-    /// exists (Task 3) — resolves the earlier hardcoded-0 gap (mirrors NpcSheetsController's
-    /// equivalent fix once NpcAttribute existed).
+    /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo come from CreatureSheetStats.MaximosAsync (Tabela de
+    /// Arquetipos by Arquetipo/Nivel), shared with the Condições activation clamp.
     /// </summary>
     private async Task<CreatureSheetResponse> ToResponseAsync(CreatureSheet s)
     {
@@ -438,15 +430,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
-        var efeitos = await condicoes.ParaCriaturaAsync(s); // Nenhum numa ficha do GM (sem dono)
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s, efeitos);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos, efeitos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos, efeitos);
-        var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        // A Criatura não tem Estresse: o quarto máximo é descartado.
-        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, _) = efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
+        // Totais exibidos com as Condições ativas (Nenhum numa ficha do GM, sem dono). A Criatura não tem Estresse.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(s, await condicoes.ParaCriaturaAsync(s));
 
         var campaignId = await db.CampaignAttachments
             .Where(a => a.CreatureSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))

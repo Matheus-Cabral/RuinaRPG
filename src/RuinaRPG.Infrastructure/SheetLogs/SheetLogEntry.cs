@@ -18,4 +18,6 @@ public class SheetLogEntry
     public string? ItemNome { get; set; }
     public string? ValorAntes { get; set; }
     public string? ValorDepois { get; set; }
+    /// <summary>Escrita que o servidor fez por conta própria dentro da ação do autor (corte do Atual por uma Condição, expiração).</summary>
+    public bool Automatico { get; set; }
 }

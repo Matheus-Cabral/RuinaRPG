@@ -14,12 +14,13 @@ namespace RuinaRPG.Api.Controllers;
 
 /// <summary>
 /// Condições do catálogo aplicadas a um participante do encontro. A aplicação copia a entrada (cópia independente);
-/// este controller só guarda e devolve, o efeito nos números da ficha vem de outro lugar.
+/// o efeito nos números da ficha vem de CondicoesAtivasDaFicha, e o que muda no momento (corte do Atual, log da
+/// ficha, aviso ao dono) de CondicoesDoEncontro.
 /// </summary>
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants/{participantId}")]
-public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, EncounterLog log, ItensDesabilitaveisDaFicha itens) : ControllerBase
+public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, EncounterLog log, ItensDesabilitaveisDaFicha itens, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
 {
     [HttpPost("condicoes")]
     public async Task<ActionResult<CondicaoAplicadaResponse>> Aplicar(Guid encounterId, Guid participantId, AplicarCondicaoRequest request)
@@ -74,7 +75,9 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         };
         db.EncounterParticipantCondicoes.Add(aplicada);
         await log.RegistrarAsync(encounter, EncounterLogTipo.CondicaoAdicionada, participant.Nome, texto: aplicada.Nome);
+        await condicoesDoEncontro.AoMudarAtivacaoAsync([participantId]);
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
 
         return Created(string.Empty, CondicaoAplicadaMapper.ToResponse(aplicada, encounter));
     }
@@ -96,7 +99,9 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
 
         db.EncounterParticipantCondicoes.Remove(condicao);
         await log.RegistrarAsync(encounter!, EncounterLogTipo.CondicaoRemovida, participant.Nome, texto: condicao.Nome);
+        await condicoesDoEncontro.AoMudarAtivacaoAsync([participantId]);
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 

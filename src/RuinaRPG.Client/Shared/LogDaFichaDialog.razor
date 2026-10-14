@@ -31,6 +31,11 @@
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Primary">GM</MudChip>
                     }
+                    @if (linha.Automatico)
+                    {
+                        @* Feita pelo servidor dentro da ação do autor (corte do Atual por uma Condição, expiração). *@
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">automático</MudChip>
+                    }
                     <MudText Typo="Typo.body2" Color="Color.Secondary">@linha.Secao</MudText>
                     <MudText Typo="Typo.body2">@LogDaFichaAgrupador.Texto(linha)</MudText>
                 </div>

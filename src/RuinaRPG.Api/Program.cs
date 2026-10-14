@@ -53,6 +53,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // entra pelo provider do escopo. O ApiFactory dos testes de integração refaz este registro — manter os dois iguais.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentActor, HttpCurrentActor>();
+builder.Services.AddScoped<SheetLogDoServidor>();
 builder.Services.AddScoped<SheetLogInterceptor>();
 builder.Services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
     .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
@@ -91,6 +92,7 @@ builder.Services.AddScoped<CondicoesAtivasDaFicha>();
 builder.Services.AddScoped<CharacterSheetStats>();
 builder.Services.AddScoped<EncounterLog>();
 builder.Services.AddScoped<EncounterTurnos>();
+builder.Services.AddScoped<CondicoesDoEncontro>();
 builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();

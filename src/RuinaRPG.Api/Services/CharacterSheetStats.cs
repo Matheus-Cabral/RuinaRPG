@@ -4,6 +4,7 @@ using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.ReferenceData;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -213,6 +214,37 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet, efeitos)));
         return modificadores;
     }
+
+    /// <summary>
+    /// Os quatro totais de recurso exibidos: Artefatos + penalidades de equipamento ativas e, por cima, as Condições de
+    /// <paramref name="efeitos"/>. Quem chama escolhe as Condições: a ficha usa as ativas (CondicoesAtivasDaFicha), o
+    /// corte da ativação (CondicoesDoEncontro) as que estarão ativas depois da ação. "Status de classe Vida/Foco" vem
+    /// da Tabela de Vocação (Vocação × Nível), pela Vocação base — não pela SubVocacao (aproximação aceita).
+    /// </summary>
+    public async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> MaximosAsync(CharacterSheet sheet, EfeitosDeCondicao efeitos, Vocacao? vocacao, int nivel)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var vigorTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Vigor, artefatos, efeitos);
+        var astuciaTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Astucia, artefatos, efeitos);
+        var (statusVida, statusFoco) = vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(vocacao.Value), nivel) : (0, 0);
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
+        return efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
+    }
+
+    public Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> MaximosAsync(CharacterSheet sheet, EfeitosDeCondicao efeitos) =>
+        MaximosAsync(sheet, efeitos, sheet.Vocacao, sheet.Nivel);
+
+    /// <summary>
+    /// Os nomes do enum Vocacao não têm acento (Campeao, Cacador), mas IRulesDataProvider.Vocacoes vem direto da
+    /// Tabela de Vocação, com acento (Campeão, Caçador): sem este mapa, as duas dariam 0 de Vida/Foco. Só para essa
+    /// consulta; NpcSheetStats usa o mesmo.
+    /// </summary>
+    internal static string VocacaoTabelaName(Vocacao vocacao) => vocacao switch
+    {
+        Vocacao.Campeao => "Campeão",
+        Vocacao.Cacador => "Caçador",
+        _ => vocacao.ToString()
+    };
 
     /// <summary>Single-row lookup + AttributeTotalCalculator.Total.</summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)

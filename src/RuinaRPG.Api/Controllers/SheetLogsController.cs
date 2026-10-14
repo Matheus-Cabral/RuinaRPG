@@ -101,7 +101,7 @@ public class SheetLogsController(RuinaRpgDbContext db) : ControllerBase
 
     private static SheetLogEntryResponse ToResponse(SheetLogEntry l) => new(
         l.Id.ToString(), DateTime.SpecifyKind(l.OccurredAt, DateTimeKind.Utc), l.ActorNickname, l.ActorIsGm,
-        l.Categoria.ToString(), l.Acao.ToString(), l.Secao, l.Campo, l.ItemNome, l.ValorAntes, l.ValorDepois);
+        l.Categoria.ToString(), l.Acao.ToString(), l.Secao, l.Campo, l.ItemNome, l.ValorAntes, l.ValorDepois, l.Automatico);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

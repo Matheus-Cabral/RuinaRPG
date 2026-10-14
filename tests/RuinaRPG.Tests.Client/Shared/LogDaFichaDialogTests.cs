@@ -68,6 +68,23 @@ public class LogDaFichaDialogTests : MudBunitContext
     }
 
     [Fact]
+    public async Task An_automatic_line_shows_the_automatico_chip_next_to_the_actor_and_the_others_do_not()
+    {
+        RegisterHttp(_ => Pagina(new()
+        {
+            Linha("2", new DateTime(2026, 10, 12, 15, 0, 0), "Mestre", gm: true) with { Automatico = true },
+            Linha("1", new DateTime(2026, 10, 12, 14, 0, 0), "Mestre", gm: true, campo: "Foco Atual"),
+        }));
+
+        var cut = await AbrirAsync();
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Foco Atual: 30 → 25"));
+        cut.FindAll(".mud-chip").Count(c => c.TextContent.Trim() == "automático").Should().Be(1);
+        var linhaAutomatica = cut.FindAll(".mud-chip").Single(c => c.TextContent.Trim() == "automático").Closest("div.d-flex")!;
+        linhaAutomatica.TextContent.Should().Contain("Mestre").And.Contain("Vitalidade Atual: 30 → 25");
+    }
+
+    [Fact]
     public async Task Unchecking_the_filters_reloads_the_list_without_those_lines()
     {
         RegisterHttp(r => r.RequestUri!.Query.Contains("recursos=false")

@@ -1,4 +1,3 @@
-using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -638,20 +637,6 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>
-    /// Vocacao's C# member names are unaccented (Campeao, Cacador, ...) but IRulesDataProvider.Vocacoes
-    /// is parsed straight from the real Tabela de Vocação markdown, which uses the accented Portuguese
-    /// names (Campeão, Caçador). A raw .ToString() lookup would never match those two, silently
-    /// returning 0 for statusVida/statusFoco. Used ONLY for that lookup — mirrors
-    /// CharacterSheetsController.VocacaoTabelaName.
-    /// </summary>
-    private static string VocacaoTabelaName(Vocacao vocacao) => vocacao switch
-    {
-        Vocacao.Campeao => "Campeão",
-        Vocacao.Cacador => "Caçador",
-        _ => vocacao.ToString()
-    };
-
-    /// <summary>
     /// Same shape as CharacterSheetsController.ToResponseAsync's Graduação/máximo computation,
     /// now that NpcAttribute exists — vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync,
     /// same as SubAttributes uses.
@@ -681,15 +666,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
-        // Totais exibidos: Artefatos + penalidades de equipamento ativas.
-        var efeitos = await condicoes.ParaNpcAsync(s); // Nenhum numa ficha do GM (sem dono)
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s, efeitos);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos, efeitos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos, efeitos);
-        var (statusVida, statusFoco) = s.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(s.Vocacao.Value), s.Nivel) : (0, 0);
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
+        // Totais exibidos: Artefatos + penalidades de equipamento ativas e as Condições ativas (Nenhum numa ficha do GM, sem dono).
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await stats.MaximosAsync(s, await condicoes.ParaNpcAsync(s));
 
         var campaignId = await db.CampaignAttachments
             .Where(a => a.NpcSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))

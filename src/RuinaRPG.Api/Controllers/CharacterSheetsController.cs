@@ -1,4 +1,3 @@
-using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -566,21 +565,6 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     }
 
     /// <summary>
-    /// Vocacao's C# member names are unaccented (Campeao, Cacador, ...) but IRulesDataProvider.Vocacoes
-    /// is parsed straight from the real Tabela de Vocação markdown, which uses the accented Portuguese
-    /// names (Campeão, Caçador). A raw .ToString() lookup would never match those two, silently
-    /// returning 0 for statusVida/statusFoco. Used ONLY for that lookup — the existing, unrelated
-    /// convention elsewhere in this file exposing s.Vocacao?.ToString() unaccented to API clients is
-    /// separate and correct as-is.
-    /// </summary>
-    private static string VocacaoTabelaName(RuinaRPG.Domain.CharacterSheets.Vocacao vocacao) => vocacao switch
-    {
-        RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao => "Campeão",
-        RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador => "Caçador",
-        _ => vocacao.ToString()
-    };
-
-    /// <summary>
     /// A null request value means "not set" and maps to null on the entity. A non-null value
     /// that fails to parse is malformed input, not an absent one — the caller must 400 rather
     /// than silently persisting null (e.g. a garbage Variante silently skipping
@@ -666,29 +650,10 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
     /// <summary>
     /// Shared by ToResponseAsync (display) and Update (clamping "Atual não pode exceder o
-    /// máximo", 1.c) — "Status de classe Vida/Foco" comes from Tabela de Vocação (Vocação ×
-    /// Nível); that table's rows are keyed by the 5 base Vocação names, not by SubVocacao (displayed
-    /// as "Classe"), so vocacao (not SubVocacao) is the lookup key — an accepted approximation (see plan's
-    /// Explicitly out of scope).
+    /// máximo", 1.c): os totais com as Condições ativas da ficha (CharacterSheetStats.MaximosAsync).
     /// </summary>
-    private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(CharacterSheet sheet, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)
-    {
-        // Totais exibidos: Artefatos + penalidades de equipamento ativas e, por cima, as Condições ativas.
-        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
-        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
-        var atributos = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheet.Id && (a.Atributo == Atributo.Vigor || a.Atributo == Atributo.Astucia)).ToListAsync();
-        int TotalDe(Atributo atributo)
-        {
-            var a = atributos.Single(x => x.Atributo == atributo);
-            return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
-        }
-        var vigorTotal = TotalDe(Atributo.Vigor);
-        var astuciaTotal = TotalDe(Atributo.Astucia);
-        var (statusVida, statusFoco) = vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(vocacao.Value), nivel) : (0, 0);
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        return efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
-    }
+    private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(CharacterSheet sheet, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel) =>
+        await stats.MaximosAsync(sheet, await condicoes.ParaPersonagemAsync(sheet.Id), vocacao, nivel);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -872,23 +872,21 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var aplicadaId = await AplicarAsync(mesa, encounterId, participantId, await CriarCondicaoAsync(mesa, "Debilitado", null,
             Fixo("RecursoTotal", "Vitalidade", -6), Pct("RecursoTotal", "Foco", -50), Fixo("RecursoTotal", "Adrenalina", 5), Fixo("RecursoTotal", "Estresse", -20)));
 
-        // Ativar a Condição não mexe no Atual guardado (isso é da próxima tarefa); só os máximos mudam.
+        // Ativar a Condição já corta o Atual guardado acima do total reduzido (AtivacaoDeCondicoesTests cobre o corte).
         var sob = await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz);
         (sob.VitalidadeMaximo, sob.FocoMaximo, sob.AdrenalinaMaximo, sob.EstresseMaximo).Should().Be((10, 7, 15, 0));
-        (sob.VitalidadeAtual, sob.FocoAtual, sob.AdrenalinaAtual, sob.EstresseAtual).Should().Be((16, 14, 10, 10));
+        (sob.VitalidadeAtual, sob.FocoAtual, sob.AdrenalinaAtual, sob.EstresseAtual).Should().Be((10, 7, 10, 0));
 
         // O jogador tenta salvar acima do total reduzido (e usa o total aumentado de Adrenalina).
-        await EnviarAsync(HttpMethod.Put, raiz, mesa.Jogador, ComoPut(sob) with { AdrenalinaAtual = 15 });
+        await EnviarAsync(HttpMethod.Put, raiz, mesa.Jogador, ComoPut(sob) with { VitalidadeAtual = 16, FocoAtual = 14, AdrenalinaAtual = 15, EstresseAtual = 10 });
         var salva = await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz);
         (salva.VitalidadeAtual, salva.FocoAtual, salva.AdrenalinaAtual, salva.EstresseAtual).Should().Be((10, 7, 15, 0));
 
         await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
         var depois = await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz);
         (depois.VitalidadeMaximo, depois.FocoMaximo, depois.AdrenalinaMaximo, depois.EstresseMaximo).Should().Be((16, 14, 10, 10));
-        // O corte foi real e fica; a Adrenalina guardada (15) está acima do total de volta a 10 até o próximo salvamento.
-        (depois.VitalidadeAtual, depois.FocoAtual, depois.AdrenalinaAtual, depois.EstresseAtual).Should().Be((10, 7, 15, 0));
-        await EnviarAsync(HttpMethod.Put, raiz, mesa.Jogador, ComoPut(depois));
-        (await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz)).AdrenalinaAtual.Should().Be(10);
+        // O corte foi real e fica; a Adrenalina guardada (15) desce ao total de volta a 10 na própria remoção.
+        (depois.VitalidadeAtual, depois.FocoAtual, depois.AdrenalinaAtual, depois.EstresseAtual).Should().Be((10, 7, 10, 0));
     }
 
     // ---------- GET condicoes-ativas ----------

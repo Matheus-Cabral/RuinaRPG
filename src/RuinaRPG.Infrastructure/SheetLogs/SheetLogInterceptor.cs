@@ -16,9 +16,11 @@ namespace RuinaRPG.Infrastructure.SheetLogs;
 /// linhas é registrado em log de aplicação e o salvamento segue sem elas: perder uma linha do log é aceitável,
 /// derrubar o salvamento de uma ficha não. Sem usuário autenticado (seeders, inicialização, CLIs) nada é registrado. ExecuteUpdate/ExecuteDelete e SQL direto não passam por aqui.
 /// As mudanças de Vitalidade, Foco e Adrenalina vão também, pelo mesmo caminho, para o log dos encontros em
-/// andamento de que a ficha participa (EncounterLogDaFicha).
+/// andamento de que a ficha participa (EncounterLogDaFicha). O que o servidor escreve por conta própria dentro da
+/// ação (SheetLogDoServidor) entra no mesmo salvamento: as escritas marcadas saem com Automatico, e as linhas
+/// explícitas ("Condição X aplicada") são assinadas como as outras.
 /// </summary>
-public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<SheetLogInterceptor> logger) : SaveChangesInterceptor
+public sealed class SheetLogInterceptor(ICurrentActor currentActor, SheetLogDoServidor doServidor, ILogger<SheetLogInterceptor> logger) : SaveChangesInterceptor
 {
     private const string CampoEfeitos = "Efeitos";
 
@@ -50,12 +52,14 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
         _acrescentadas = [];
+        doServidor.Limpar();
         return result;
     }
 
     public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
         _acrescentadas = [];
+        doServidor.Limpar();
         return ValueTask.FromResult(result);
     }
 
@@ -108,7 +112,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
     /// O que as etapas de um salvamento compartilham: as entidades de ficha rastreadas (por chave), as fichas
     /// criadas ou apagadas nele e as já resolvidas — cada ficha é resolvida uma vez só por salvamento.
     /// </summary>
-    private sealed class Salvamento(RuinaRpgDbContext db, Guid actorId, List<EntityEntry> rastreadas, List<EntityEntry> alteradas, CancellationToken ct)
+    private sealed class Salvamento(RuinaRpgDbContext db, Guid actorId, List<EntityEntry> rastreadas, List<EntityEntry> alteradas, SheetLogDoServidor doServidor, CancellationToken ct)
     {
         private readonly Dictionary<(SheetLogKind, Guid), Ficha?> _fichas = [];
         private readonly HashSet<Guid> _fichasNovas = FichasEm(alteradas, EntityState.Added);
@@ -118,6 +122,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
         public List<EntityEntry> Alteradas => alteradas;
         public Dictionary<(Type, Guid), EntityEntry> PorChave { get; } = rastreadas.ToDictionary(e => (e.Metadata.ClrType, Id(e)));
         public SheetLogNames Nomes { get; } = new(db);
+        public SheetLogDoServidor DoServidor => doServidor;
 
         public bool CriadaOuApagada(Guid sheetId) => _fichasNovas.Contains(sheetId) || _fichasApagadas.Contains(sheetId);
 
@@ -135,12 +140,13 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
         if (currentActor.UserId is not { } actorId || context is not RuinaRpgDbContext db)
             return [];
         var (rastreadas, alteradas) = EntidadesDeFicha(db);
-        if (alteradas.Count == 0)
+        if (alteradas.Count == 0 && doServidor.Explicitas.Count == 0)
             return [];
 
-        var salvamento = new Salvamento(db, actorId, rastreadas, alteradas, ct);
+        var salvamento = new Salvamento(db, actorId, rastreadas, alteradas, doServidor, ct);
         var (linhas, efeitos) = await LinhasDasEntidadesAsync(salvamento);
         linhas.AddRange(await LinhasDosEfeitosAsync(salvamento, efeitos));
+        linhas.AddRange(await LinhasExplicitasAsync(salvamento));
         if (linhas.Count > 0)
             await AssinarAsync(db, linhas, actorId, ct);
         return linhas;
@@ -184,7 +190,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
                 continue;
 
             if (entry.State == EntityState.Modified)
-                linhas.AddRange(await AlteracoesAsync(entry, map, ficha, salvamento.Nomes, salvamento.Ct));
+                linhas.AddRange(await AlteracoesAsync(entry, map, ficha, salvamento.Nomes, salvamento.DoServidor, salvamento.Ct));
             else if (map.IsSheet)
                 linhas.Add(Linha(ficha, map.Secao, SheetLogAcao.Criou));
             else
@@ -214,6 +220,21 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
         return linhas;
     }
 
+    /// <summary>As linhas que o servidor registrou por conta própria; uma ficha fora do log (NPC/Criatura do GM, ou apagada) não ganha a sua.</summary>
+    private static async Task<List<SheetLogEntry>> LinhasExplicitasAsync(Salvamento salvamento)
+    {
+        var linhas = new List<SheetLogEntry>();
+        foreach (var explicita in salvamento.DoServidor.Explicitas)
+        {
+            if (salvamento.CriadaOuApagada(explicita.SheetId) || await salvamento.FichaAsync(explicita.Kind, explicita.SheetId) is not { } ficha)
+                continue;
+            var linha = Linha(ficha, explicita.Secao, explicita.Acao, itemNome: explicita.ItemNome);
+            linha.Automatico = explicita.Automatico;
+            linhas.Add(linha);
+        }
+        return linhas;
+    }
+
     /// <summary>Um instante e um autor por salvamento: as linhas de uma mesma ação aparecem juntas no log.</summary>
     private static async Task AssinarAsync(RuinaRpgDbContext db, List<SheetLogEntry> linhas, Guid actorId, CancellationToken ct)
     {
@@ -229,7 +250,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
     }
 
     /// <summary>Uma linha por coluna que realmente mudou (o EF marca tudo como alterado num Update() de entidade solta).</summary>
-    private static async Task<List<SheetLogEntry>> AlteracoesAsync(EntityEntry entry, SheetLogEntityMap map, Ficha ficha, SheetLogNames nomes, CancellationToken ct)
+    private static async Task<List<SheetLogEntry>> AlteracoesAsync(EntityEntry entry, SheetLogEntityMap map, Ficha ficha, SheetLogNames nomes, SheetLogDoServidor doServidor, CancellationToken ct)
     {
         var linhas = new List<SheetLogEntry>();
         string? itemNome = null;
@@ -250,6 +271,7 @@ public sealed class SheetLogInterceptor(ICurrentActor currentActor, ILogger<Shee
             linha.Categoria = map.Categorias.GetValueOrDefault(nome, SheetLogCategoria.Geral);
             linha.ValorAntes = await nomes.RenderAsync(nome, p.OriginalValue, ct);
             linha.ValorDepois = await nomes.RenderAsync(nome, p.CurrentValue, ct);
+            linha.Automatico = doServidor.EhAutomatica(entry.Entity, nome);
             linhas.Add(linha);
         }
         return linhas;

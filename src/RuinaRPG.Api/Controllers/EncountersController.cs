@@ -14,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/campaigns/{campaignId}/encounters")]
-public class EncountersController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos) : ControllerBase
+public class EncountersController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterResponse>> Create(Guid campaignId, CreateEncounterRequest request)
@@ -77,8 +77,10 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         var (round, participantId) = TurnAdvanceCalculator.Start(participants.Select(p => p.Id).ToList());
         encounter!.Status = EncounterStatus.EmAndamento;
         await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == participantId), round, MotivoDaVez.Inicio);
+        await condicoesDoEncontro.AoMudarAtivacaoAsync(participants.Select(p => p.Id));
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 
@@ -154,8 +156,10 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         await log.RegistrarAsync(encounter!, EncounterLogTipo.Finalizado); // before the status leaves EmAndamento
         encounter!.Status = EncounterStatus.Finalizado;
         encounter.FinalizadoEm = DateTime.UtcNow;
+        await condicoesDoEncontro.AoMudarAtivacaoAsync(await ParticipantIdsAsync(encounterId));
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 
@@ -172,8 +176,10 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         encounter.FinalizadoEm = null;
 
         await log.RegistrarAsync(encounter, EncounterLogTipo.Reaberto);
+        await condicoesDoEncontro.AoMudarAtivacaoAsync(await ParticipantIdsAsync(encounterId));
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 
@@ -211,6 +217,9 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
             _ => Conflict("O encontro não está em andamento."),
         };
     }
+
+    private Task<List<Guid>> ParticipantIdsAsync(Guid encounterId) =>
+        db.EncounterParticipants.Where(p => p.EncounterId == encounterId).Select(p => p.Id).ToListAsync();
 
     private Task<List<EncounterParticipant>> OrderedParticipantsAsync(Guid encounterId) =>
         db.EncounterParticipants
