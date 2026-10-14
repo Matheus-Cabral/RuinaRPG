@@ -80,12 +80,30 @@ public class RecargaAdiadaTests
     }
 
     [Fact]
-    public async Task The_wait_has_an_upper_bound_after_which_the_reload_runs_anyway()
+    public async Task A_focused_text_field_defers_with_no_time_limit_until_it_is_released_then_one_reload()
     {
-        using var recarga = Criar(TimeSpan.FromMilliseconds(150));
+        using var recarga = Criar(TimeSpan.FromMilliseconds(100));
         _emEdicao = true;
 
         await recarga.SolicitarAsync();
+        await Task.Delay(500); // five times the bound
+        _recargas.Should().Be(0);
+
+        _emEdicao = false;
+        await AteAsync(() => _recargas > 0);
+        await Task.Delay(50);
+
+        _recargas.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_save_stuck_beyond_the_bound_with_no_field_focused_reloads_anyway()
+    {
+        using var recarga = Criar(TimeSpan.FromMilliseconds(150));
+        _salvando = true;
+
+        await recarga.SolicitarAsync();
+        _recargas.Should().Be(0);
         await AteAsync(() => _recargas > 0);
 
         _recargas.Should().Be(1);
