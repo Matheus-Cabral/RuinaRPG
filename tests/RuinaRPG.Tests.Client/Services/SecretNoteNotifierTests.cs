@@ -42,6 +42,20 @@ public class SecretNoteNotifierTests
     }
 
     [Fact]
+    public async Task A_conditions_message_from_the_hub_is_relayed_as_an_event()
+    {
+        var notifier = CreateNotifier();
+        await notifier.StartAsync();
+        var received = new List<CondicoesAlteradasNotification>();
+        notifier.CondicoesAlteradas += received.Add;
+
+        await _connection.RaiseCondicoesAlteradasAsync(new("character", "s1"));
+
+        received.Should().ContainSingle().Which.Should().Be(new CondicoesAlteradasNotification("character", "s1"));
+        notifier.TotalUnread.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Starting_twice_opens_a_single_connection()
     {
         var notifier = CreateNotifier();

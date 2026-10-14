@@ -5,6 +5,7 @@
 @inject IDialogService DialogService
 @inject IEncounterConnection Connection
 @using RuinaRPG.Client.Services
+@using RuinaRPG.Client.Shared
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.CreatureSheets
@@ -108,7 +109,7 @@ else
                 <td>@participant.PF @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
                 <td>@participant.PA @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
                 <td>@participant.AcoesRestantes</td>
-                <td>@string.Join(", ", participant.Condicoes)</td>
+                <td>@CondicoesDe(participant)</td>
                 <td>
                     @if (Finalizado)
                     {
@@ -125,6 +126,8 @@ else
                                            OnClick="@(() => PostAsync($"turn/{participant.Id}", "Não foi possível passar a vez."))" />
                         }
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditParticipant(participant))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Coronavirus" Disabled="_enviando"
+                                   OnClick="@(() => AdicionarCondicaoAsync(participant))">Adicionar condição</MudButton>
                         <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" aria-label="Remover do encontro" title="Remover do encontro" Disabled="_enviando"
                                        OnClick="@(() => RemoveParticipantAsync(participant))" />
                     }
@@ -160,9 +163,6 @@ else
                                         <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
                                     </MudItem>
                                 }
-                                <MudItem xs="12" md="6">
-                                    <MudTextField T="string" @bind-Value="_editParticipantForm.CondicoesText" Label="Condições (substitui a lista atual)" />
-                                </MudItem>
                                 <MudItem xs="12" md="2">
                                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Salvar</MudButton>
                                 </MudItem>
@@ -264,6 +264,75 @@ else
         _log = _encounter is { Status: not "Preparacao" }
             ? await Http.GetFromJsonAsync<List<EncounterLogEntryResponse>>($"encounters/{EncounterId}/log") ?? new()
             : new();
+    }
+
+    /// <summary>Chips das Condições do participante: as do catálogo (ícone, nome, Turnos) e, à parte, as de texto antigas.</summary>
+    private RenderFragment CondicoesDe(EncounterParticipantResponse participant) => __builder =>
+    {
+        foreach (var aplicada in participant.CondicoesAplicadas)
+        {
+            var condicao = aplicada;
+            var texto = condicao.TurnosRestantes is { } turnos ? $"{condicao.Nome} · {CondicaoResumo.Turnos(turnos)}" : condicao.Nome;
+            var classe = condicao.Ativa ? "mr-1" : "mr-1 condicao-inativa";
+            if (Finalizado)
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@CondicaoIcone.Icone(condicao.Icone)" Class="@classe" title="@condicao.Descricao">@texto</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@CondicaoIcone.Icone(condicao.Icone)" Class="@classe" title="@condicao.Descricao"
+                         OnClose="@(() => RemoverCondicaoAsync(participant, condicao))">@texto</MudChip>
+            }
+        }
+        foreach (var legada in participant.Condicoes)
+        {
+            var texto = legada;
+            if (Finalizado)
+            {
+                <MudChip T="string" Size="Size.Small" Class="mr-1">@texto</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Class="mr-1" OnClose="@(() => RemoverCondicaoLegadaAsync(participant, texto))">@texto</MudChip>
+            }
+        }
+    };
+
+    private async Task AdicionarCondicaoAsync(EncounterParticipantResponse participant)
+    {
+        var dialog = await DialogService.ShowAsync<AplicarCondicaoDialog>($"Adicionar condição: {participant.Nome}",
+            new DialogParameters<AplicarCondicaoDialog> { { x => x.EncounterId, EncounterId }, { x => x.ParticipantId, participant.Id } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task RemoverCondicaoAsync(EncounterParticipantResponse participant, CondicaoAplicadaResponse condicao)
+    {
+        var response = await Http.DeleteAsync($"encounters/{EncounterId}/participants/{participant.Id}/condicoes/{condicao.Id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível remover a condição.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    // O PUT só aceita tirar textos antigos da lista; os demais campos seguem como estão no participante.
+    private async Task RemoverCondicaoLegadaAsync(EncounterParticipantResponse participant, string texto)
+    {
+        var request = new UpdateParticipantRequest(participant.Iniciativa,
+            participant.IsLiveSourced ? null : participant.PV, participant.IsLiveSourced ? null : participant.PF, participant.IsLiveSourced ? null : participant.PA,
+            participant.AcoesRestantes, participant.Condicoes.Where(c => c != texto).ToList());
+        var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível remover a condição.";
+            return;
+        }
+
+        await LoadAsync();
     }
 
     private bool Finalizado => _encounter?.Status == "Finalizado";
@@ -449,9 +518,6 @@ else
         _editParticipantForm.PV = participant.PV;
         _editParticipantForm.PF = participant.PF;
         _editParticipantForm.PA = participant.PA;
-        // The label makes clear that submitting replaces the whole list, matching the server's
-        // actual (replace, not append) semantics — pre-filling here just saves retyping unchanged tags.
-        _editParticipantForm.CondicoesText = string.Join(", ", participant.Condicoes);
     }
 
     private void CancelEditParticipant()
@@ -461,19 +527,13 @@ else
 
     private async Task SaveParticipantAsync(EncounterParticipantResponse participant)
     {
-        var condicoes = _editParticipantForm.CondicoesText
-            .Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(c => c.Trim())
-            .Where(c => c.Length > 0)
-            .ToList();
-
         var request = new UpdateParticipantRequest(
             _editParticipantForm.Iniciativa,
             participant.IsLiveSourced ? null : _editParticipantForm.PV,
             participant.IsLiveSourced ? null : _editParticipantForm.PF,
             participant.IsLiveSourced ? null : _editParticipantForm.PA,
             _editParticipantForm.AcoesRestantes,
-            condicoes);
+            participant.Condicoes); // the edit form no longer touches Condições: the legacy texts go back as they are
 
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
         if (!response.IsSuccessStatusCode)
@@ -505,6 +565,5 @@ else
         public int? PV { get; set; }
         public int? PF { get; set; }
         public int? PA { get; set; }
-        public string CondicoesText { get; set; } = "";
     }
 }

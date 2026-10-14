@@ -26,6 +26,7 @@
                 <tr>
                     <td>
                         <b>@p.Nome</b> (@CategoriaLabel(p.Categoria)) — @p.Descricao
+                        <DesabilitadoChip Condicao="@p.DesabilitadoPor" />
                         @if (p.RequisitosPendentes is { Count: > 0 } pendentes)
                         {
                             <MudTooltip Text="@string.Join(", ", pendentes)">
@@ -43,8 +44,11 @@
 @code {
     [Parameter, EditorRequired] public string SpellAbilitiesUrl { get; set; } = "";
 
+    /// <summary>A ficha o incrementa quando as Condições mudam: a lista recarrega (traz o "Desabilitado por").</summary>
+    [Parameter] public int Versao { get; set; }
+
     // Subconjunto comum das respostas de Character/Npc/CreatureSpellAbilityResponse.
-    private record PassivaDaFicha(string Id, string Nome, string Tipo, string Descricao, string? Categoria, List<string>? RequisitosPendentes);
+    private record PassivaDaFicha(string Id, string Nome, string Tipo, string Descricao, string? Categoria, List<string>? RequisitosPendentes, string? DesabilitadoPor = null);
 
     private List<PassivaDaFicha> _passivas = new();
     private List<PassivaDisponivelResponse> _disponiveis = new();

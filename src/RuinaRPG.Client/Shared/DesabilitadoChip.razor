@@ -1,0 +1,11 @@
+@using MudBlazor
+
+@* Linha de equipamento, Magia/Habilidade/Passiva ou Runa desabilitada por uma Condição ativa. Nada quando não há. *@
+@if (!string.IsNullOrEmpty(Condicao))
+{
+    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Block">Desabilitado por: @Condicao</MudChip>
+}
+
+@code {
+    [Parameter] public string? Condicao { get; set; }
+}

@@ -11,6 +11,10 @@ public class AutoSaveCoordinator
     private const int DebounceMilliseconds = 400;
     private readonly Dictionary<string, CancellationTokenSource> _debounceCts = new();
     private Task _inFlight = Task.CompletedTask;
+    private int _emAndamento;
+
+    /// <summary>True from a field's commit until its save has finished (or was superseded): a reload must not run in between.</summary>
+    public bool Ocupado => _emAndamento > 0;
 
     public AutoSaveState State { get; private set; } = AutoSaveState.Idle;
     public DateTime? LastSavedAt { get; private set; }
@@ -30,10 +34,23 @@ public class AutoSaveCoordinator
             pendente.Cancel();
         var cts = new CancellationTokenSource();
         _debounceCts[canal] = cts;
+        _emAndamento++;
         _ = DebounceAndSaveAsync(validateAndSaveAsync, cts.Token);
     }
 
     private async Task DebounceAndSaveAsync(Func<Task<bool>> validateAndSaveAsync, CancellationToken token)
+    {
+        try
+        {
+            await DebounceAndSaveCoreAsync(validateAndSaveAsync, token);
+        }
+        finally
+        {
+            _emAndamento--;
+        }
+    }
+
+    private async Task DebounceAndSaveCoreAsync(Func<Task<bool>> validateAndSaveAsync, CancellationToken token)
     {
         try
         {

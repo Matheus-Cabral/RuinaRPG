@@ -6,6 +6,36 @@ namespace RuinaRPG.Tests.Client.Services;
 public class AutoSaveCoordinatorTests
 {
     [Fact]
+    public async Task Ocupado_is_true_from_the_commit_until_the_save_finishes()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var release = new TaskCompletionSource<bool>();
+
+        Assert.False(coordinator.Ocupado);
+        coordinator.NotifyChanged(() => release.Task);
+        Assert.True(coordinator.Ocupado);
+
+        await Task.Delay(700);
+        Assert.True(coordinator.Ocupado); // the save is in flight
+
+        release.SetResult(true);
+        await Task.Delay(100);
+        Assert.False(coordinator.Ocupado);
+    }
+
+    [Fact]
+    public async Task Ocupado_goes_back_to_false_when_a_newer_commit_cancels_the_pending_one()
+    {
+        var coordinator = new AutoSaveCoordinator();
+
+        coordinator.NotifyChanged(() => Task.FromResult(true));
+        coordinator.NotifyChanged(() => Task.FromResult(true));
+        await Task.Delay(800);
+
+        Assert.False(coordinator.Ocupado);
+    }
+
+    [Fact]
     public async Task Rapid_repeated_calls_collapse_into_a_single_save_after_the_debounce_window()
     {
         var coordinator = new AutoSaveCoordinator();

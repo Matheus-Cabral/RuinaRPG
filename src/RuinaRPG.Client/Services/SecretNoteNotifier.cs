@@ -25,6 +25,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     public event Action<SecretNoteNotification>? Received;
 
     /// <summary>
+    /// The Condições acting on a sheet of this user changed (an encounter action). May be raised off the
+    /// renderer's context — use InvokeAsync. Subscribers pick out their own sheet by kind and id.
+    /// </summary>
+    public event Action<CondicoesAlteradasNotification>? CondicoesAlteradas;
+
+    /// <summary>
     /// Idempotent, and safe to call on every navigation: MainLayout does exactly that, which is
     /// also what brings a connection that gave up reconnecting back to life.
     /// </summary>
@@ -42,7 +48,7 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
         await RefreshAsync();
         try
         {
-            await connection.StartAsync(OnReceivedAsync, RefreshAsync);
+            await connection.StartAsync(OnReceivedAsync, RefreshAsync, OnCondicoesAlteradasAsync);
         }
         catch (Exception)
         {
@@ -80,6 +86,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
         var unread = await response.Content.ReadFromJsonAsync<List<UnreadSecretNotesResponse>>() ?? new();
         _unread = unread.ToDictionary(u => u.CampaignId, u => u.Count);
         Changed?.Invoke();
+    }
+
+    private Task OnCondicoesAlteradasAsync(CondicoesAlteradasNotification notification)
+    {
+        CondicoesAlteradas?.Invoke(notification);
+        return Task.CompletedTask;
     }
 
     private Task OnReceivedAsync(SecretNoteNotification notification)

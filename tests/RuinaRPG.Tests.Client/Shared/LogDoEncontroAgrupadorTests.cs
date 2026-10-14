@@ -63,6 +63,9 @@ public class LogDoEncontroAgrupadorTests
         new object[] { Linha(1, "A", "CondicaoAdicionada", texto: "Atordoado"), "Goblin recebeu a condição Atordoado" },
         new object[] { Linha(1, "A", "CondicaoRemovida", texto: "Atordoado"), "Goblin perdeu a condição Atordoado" },
         new object[] { Linha(1, "A", "RecursoDaFicha", campo: "Vitalidade", antes: "20", depois: "15"), "Goblin — Vitalidade: 20 → 15 (na ficha)" },
+        new object[] { Linha(1, "A", "CondicaoExpirada", texto: "Veneno"), "Goblin: a condição Veneno expirou" },
+        new object[] { Linha(1, "A", "AjusteDeCondicao", campo: "Vitalidade", antes: "20", depois: "17", texto: "Veneno"), "Goblin — Vitalidade: 20 → 17 (Veneno)" },
+        new object[] { Linha(1, "A", "AjusteDeCondicao", texto: "Veneno: Vitalidade já está no mínimo"), "Goblin — Veneno: Vitalidade já está no mínimo" },
         new object[] { Linha(1, "A", "Outra"), "Outra" },
     };
 

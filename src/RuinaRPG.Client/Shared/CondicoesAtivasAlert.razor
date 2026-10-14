@@ -1,0 +1,61 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Contracts.Condicoes
+
+@* As Condições ativas na ficha e o que cada uma muda: explica por que os totais da ficha não são os guardados.
+   Recarrega quando Versao muda (a ficha a incrementa ao receber CondicoesAlteradas). Nada quando não há. *@
+@if (_ativas.Count > 0)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-3" Icon="@Icons.Material.Filled.Coronavirus">
+        <MudText Typo="Typo.subtitle2">Condições ativas</MudText>
+        @foreach (var ativa in _ativas)
+        {
+            <div class="mt-2">
+                <MudIcon Icon="@CondicaoIcone.Icone(ativa.Icone)" Size="Size.Small" Class="mr-1" />
+                <b>@ativa.Nome</b>
+                @if (ativa.TurnosRestantes is { } turnos)
+                {
+                    <span> — @CondicaoResumo.Turnos(turnos)</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(ativa.Descricao))
+                {
+                    <MudText Typo="Typo.body2">@ativa.Descricao</MudText>
+                }
+                @if (ativa.Linhas.Count > 0)
+                {
+                    <ul>
+                        @foreach (var linha in ativa.Linhas)
+                        {
+                            <li>@linha</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Url { get; set; } = "";
+    [Parameter] public int Versao { get; set; }
+
+    private List<CondicaoAtivaNaFichaResponse> _ativas = new();
+    private (string Url, int Versao)? _carregado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_carregado == (Url, Versao))
+            return;
+        _carregado = (Url, Versao);
+        try
+        {
+            _ativas = await Http.GetFromJsonAsync<List<CondicaoAtivaNaFichaResponse>>(Url) ?? new();
+        }
+        catch (Exception)
+        {
+            // Um aviso que falhou não derruba a ficha; aparece de novo na próxima recarga.
+            _ativas = new();
+        }
+    }
+}

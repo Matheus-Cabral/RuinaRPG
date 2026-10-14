@@ -9,7 +9,8 @@ public sealed class SignalRNotificationConnection(HttpClient http, AuthStateServ
 
     public bool IsActive => _connection is { State: not HubConnectionState.Disconnected };
 
-    public async Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged)
+    public async Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged,
+        Func<CondicoesAlteradasNotification, Task> onCondicoes)
     {
         await StopAsync();
 
@@ -23,6 +24,7 @@ public sealed class SignalRNotificationConnection(HttpClient http, AuthStateServ
             .Build();
         connection.On(NotificationEvents.SecretNoteReceived, onReceived);
         connection.On(NotificationEvents.SecretNotesChanged, onChanged);
+        connection.On(NotificationEvents.CondicoesAlteradas, onCondicoes);
         connection.Reconnected += _ => onChanged();
 
         _connection = connection;

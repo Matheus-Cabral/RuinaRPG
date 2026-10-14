@@ -33,6 +33,8 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
 
     private static HttpResponseMessage Json(object body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
 
+    private List<EncounterParticipantResponse> _participants = Participants;
+
     private static readonly List<EncounterParticipantResponse> Participants = new()
     {
         new("p1", "Aldric", 15, 10, 5, 3, 3, false, new(), new()),
@@ -56,7 +58,9 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
             if (path == "campaigns/c1/encounters")
                 return Json(new List<EncounterResponse> { new("e1", "Emboscada", _turno, 0, _status, _status == "Finalizado" ? DateTime.UtcNow : null, _vezId) });
             if (path == "encounters/e1/participants")
-                return Json(Participants);
+                return Json(_participants);
+            if (path == "condicoes")
+                return Json(new List<RuinaRPG.Contracts.Condicoes.CondicaoResponse>());
             if (path == "encounters/e1/log")
                 return Json(_log);
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -317,5 +321,134 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
 
         cut.FindAll(".encontro-log-linha").Should().HaveCount(1);
         EncounterConnection.JoinedEncounterId.Should().Be("e1");
+    }
+
+    private static CondicaoAplicadaResponse Veneno(bool ativa = true, int? turnos = 3) => new("a1", "Veneno", "Corrói.", "Veneno", turnos, ativa);
+
+    private static List<EncounterParticipantResponse> ComCondicoes(params CondicaoAplicadaResponse[] aplicadas) => new()
+    {
+        new("p1", "Aldric", 15, 10, 5, 3, 3, false, new(), new()),
+        new("p2", "Goblin", 12, 7, 0, 0, 2, false, new() { "Atordoado" }, aplicadas.ToList()),
+    };
+
+    [Fact]
+    public async Task A_catalog_condition_shows_as_a_chip_with_icon_name_and_remaining_turns()
+    {
+        _participants = ComCondicoes(Veneno(turnos: 3));
+        var cut = await RenderLoadedAsync();
+
+        var chip = cut.FindAll(".mud-chip").Single(c => c.TextContent.Contains("Veneno"));
+        chip.TextContent.Should().Contain("3 turnos");
+        chip.QuerySelector(".mud-chip-icon").Should().NotBeNull();
+        chip.ClassList.Should().NotContain("condicao-inativa");
+    }
+
+    [Fact]
+    public async Task A_condition_without_duration_shows_no_turns_and_an_inactive_one_is_muted()
+    {
+        _participants = ComCondicoes(Veneno(ativa: false, turnos: null));
+        var cut = await RenderLoadedAsync();
+
+        var chip = cut.FindAll(".mud-chip").Single(c => c.TextContent.Contains("Veneno"));
+        chip.TextContent.Should().NotContain("turno");
+        chip.ClassList.Should().Contain("condicao-inativa");
+    }
+
+    [Fact]
+    public async Task Removing_a_catalog_chip_deletes_that_applied_condition_and_reloads()
+    {
+        _participants = ComCondicoes(Veneno());
+        var cut = await RenderLoadedAsync();
+        var antes = _requests.Count(r => r == "GET encounters/e1/participants");
+
+        await cut.InvokeAsync(() => cut.FindAll(".mud-chip").Single(c => c.TextContent.Contains("Veneno")).QuerySelector(".mud-chip-close-button")!.Click());
+
+        _requests.Should().Contain("DELETE encounters/e1/participants/p2/condicoes/a1");
+        _requests.Count(r => r == "GET encounters/e1/participants").Should().Be(antes + 1);
+    }
+
+    [Fact]
+    public async Task A_legacy_text_condition_is_a_plain_chip_whose_remove_sends_the_reduced_list()
+    {
+        _participants = ComCondicoes();
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        var cut = await RenderLoadedAsync();
+
+        var chip = cut.FindAll(".mud-chip").Single(c => c.TextContent.Contains("Atordoado"));
+        chip.QuerySelector(".mud-chip-icon").Should().BeNull("a legacy chip has no catalog icon");
+        await cut.InvokeAsync(() => chip.QuerySelector(".mud-chip-close-button")!.Click());
+
+        _requests.Should().Contain("PUT encounters/e1/participants/p2");
+        System.Text.Json.JsonDocument.Parse(corpo!).RootElement.GetProperty("condicoes").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_edit_form_no_longer_has_the_free_text_conditions_field()
+    {
+        var cut = await RenderLoadedAsync();
+
+        await cut.InvokeAsync(() => Botao(cut, "Editar").Click());
+
+        cut.Markup.Should().Contain("Ações Restantes (0-3)").And.NotContain("Condições (substitui a lista atual)");
+    }
+
+    [Fact]
+    public async Task Saving_the_edit_form_keeps_the_legacy_texts()
+    {
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        var cut = await RenderLoadedAsync();
+        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Editar").ElementAt(1).Click());
+
+        cut.FindAll("form").Last().Submit();
+
+        cut.WaitForState(() => corpo is not null);
+        System.Text.Json.JsonDocument.Parse(corpo!).RootElement.GetProperty("condicoes").EnumerateArray().Select(e => e.GetString()).Should().Equal("Atordoado");
+    }
+
+    [Fact]
+    public async Task A_failed_remove_shows_the_api_message()
+    {
+        _participants = ComCondicoes(Veneno());
+        _override = r => r.Method == HttpMethod.Delete
+            ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent("Encontro finalizado.") })
+            : null;
+        var cut = await RenderLoadedAsync();
+
+        await cut.InvokeAsync(() => cut.FindAll(".mud-chip").Single(c => c.TextContent.Contains("Veneno")).QuerySelector(".mud-chip-close-button")!.Click());
+
+        cut.Markup.Should().Contain("Encontro finalizado.");
+    }
+
+    [Fact]
+    public async Task Adicionar_condicao_is_offered_per_row_and_opens_the_dialog()
+    {
+        var cut = await RenderLoadedAsync();
+
+        cut.FindAll("button").Count(b => b.TextContent.Trim() == "Adicionar condição").Should().Be(3);
+        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Adicionar condição").ElementAt(1).Click());
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Adicionar condição: Goblin"));
+        _requests.Should().Contain("GET condicoes").And.Contain("GET encounters/e1/participants/p2/itens-desabilitaveis");
+    }
+
+    [Fact]
+    public async Task Adicionar_condicao_is_not_offered_on_a_finished_encounter()
+    {
+        _status = "Finalizado"; _vezId = null;
+        var cut = await RenderLoadedAsync();
+
+        cut.Markup.Should().NotContain("Adicionar condição");
     }
 }

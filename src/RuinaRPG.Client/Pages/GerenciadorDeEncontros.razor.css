@@ -6,3 +6,8 @@
     background-color: rgba(var(--mud-palette-primary-rgb), 0.4);
     box-shadow: inset 4px 0 0 var(--mud-palette-primary);
 }
+
+/* Condição fora de ação (prazo vencido, ou o encontro não está em andamento): o chip fica esmaecido. */
+::deep .condicao-inativa {
+    opacity: 0.5;
+}

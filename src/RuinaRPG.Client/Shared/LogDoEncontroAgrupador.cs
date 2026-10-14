@@ -44,6 +44,10 @@ public static class LogDoEncontroAgrupador
         "CondicaoAdicionada" => $"{linha.ParticipanteNome} recebeu a condição {linha.Texto}",
         "CondicaoRemovida" => $"{linha.ParticipanteNome} perdeu a condição {linha.Texto}",
         "RecursoDaFicha" => $"{linha.ParticipanteNome} — {linha.Campo}: {linha.ValorAntes} → {linha.ValorDepois} (na ficha)",
+        "CondicaoExpirada" => $"{linha.ParticipanteNome}: a condição {linha.Texto} expirou",
+        // Um ajuste pulado não tem valores: o Texto já traz "{condição}: {motivo}".
+        "AjusteDeCondicao" when linha.ValorAntes is null && linha.ValorDepois is null => $"{linha.ParticipanteNome} — {linha.Texto}",
+        "AjusteDeCondicao" => $"{linha.ParticipanteNome} — {linha.Campo}: {linha.ValorAntes} → {linha.ValorDepois} ({linha.Texto})",
         _ => linha.Tipo,
     };
 }

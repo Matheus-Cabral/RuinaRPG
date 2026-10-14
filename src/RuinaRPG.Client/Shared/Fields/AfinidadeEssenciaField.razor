@@ -15,6 +15,10 @@
         }
     </MudSelect>
     <MudNumericField T="int?" Value="Valor" ValueChanged="OnValorChangedAsync" Margin="Margin.Dense" Style="max-width:4.5rem" />
+    @if (ValorComCondicoes is { } ajustado && ajustado != Valor)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning" Style="white-space:nowrap">com Condições: @ajustado</MudText>
+    }
 </div>
 
 @code {
@@ -24,6 +28,8 @@
     [Parameter] public EventCallback<string?> NomeChanged { get; set; }
     [Parameter] public int? Valor { get; set; }
     [Parameter] public EventCallback<int?> ValorChanged { get; set; }
+    /// <summary>O Valor com as Condições ativas: só para mostrar ao lado; o campo edita e salva sempre o Valor guardado.</summary>
+    [Parameter] public int? ValorComCondicoes { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool Clearable { get; set; }
 

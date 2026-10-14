@@ -1,6 +1,8 @@
 @page "/criaturas/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject IJSRuntime JS
+@inject SecretNoteNotifier Notifier
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @inject IDialogService Dialogs
@@ -14,10 +16,16 @@
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
+@using RuinaRPG.Contracts.Notifications
 @using System.ComponentModel.DataAnnotations
 
+<div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiuAsync())">
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Criatura</h1>
+@if (_concedida)
+{
+    <CondicoesAtivasAlert Url="@($"creature-sheets/{SheetId}/condicoes-ativas")" Versao="_condicoesVersao" />
+}
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
@@ -234,6 +242,10 @@
                 <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
                 <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
                 <MudText>Mágico: @_modificadorDeDano.Arcano</MudText>
+            @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(_modificadorDeDano.DanoElemental))
+            {
+                <MudText>@linha</MudText>
+            }
             </Section>
         }
 
@@ -284,7 +296,7 @@
                     {
                         <tr>
                             <td>
-                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" />
+                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" /> <DesabilitadoChip Condicao="@weapon.DesabilitadoPor" />
                             </td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
@@ -373,7 +385,7 @@
                             <td>
                                 @if (slot.Nome is not null)
                                 {
-                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" />
+                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" /> <DesabilitadoChip Condicao="@slot.DesabilitadoPor" />
                                 }
                                 else
                                 {
@@ -440,7 +452,7 @@
                     {
                         <tr>
                             <td>
-                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" />
+                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" /> <DesabilitadoChip Condicao="@shield.DesabilitadoPor" />
                             </td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
@@ -509,7 +521,7 @@
                     @foreach (var spellAbility in _spellAbilities.Where(s => s.Tipo != "Passiva"))
                     {
                         <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
+                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade))) <DesabilitadoChip Condicao="@spellAbility.DesabilitadoPor" /></td>
                             <td>
                                 @if (spellAbility.CriadaNaFicha && spellAbility.Tipo is "Magia" or "Habilidade")
                                 {
@@ -523,7 +535,7 @@
             </MudSimpleTable>
         </Section>
 
-        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" />
+        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" Versao="_condicoesVersao" />
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
@@ -574,7 +586,7 @@
                         @foreach (var artifact in group)
                         {
                             <tr>
-                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
+                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> <DesabilitadoChip Condicao="@artifact.DesabilitadoPor" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
                                 </td>
                                 <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
                             </tr>
@@ -604,6 +616,8 @@
         </Section>
     </MudTabPanel>
 </MudTabs>
+
+</div>
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
@@ -712,6 +726,44 @@
     protected override void OnInitialized()
     {
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
+        // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
+        // trocar o campo que está sendo editado (RecargaAdiada).
+        _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado);
+        Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
+    }
+
+    private RecargaAdiada _recarga = null!;
+    private int _condicoesVersao;
+    // Só uma ficha concedida a um jogador tem Condições vivas; a do Mestre mostra o efeito só no Resumo do encontro.
+    private bool _concedida;
+
+    private void OnCondicoesAlteradas(CondicoesAlteradasNotification notificacao)
+    {
+        if (notificacao.Kind != "creature" || notificacao.SheetId != SheetId)
+            return;
+
+        _ = InvokeAsync(async () =>
+        {
+            // O aviso e a lista de Passivas mudam já; a recarga da ficha espera se há um campo em edição.
+            _condicoesVersao++;
+            StateHasChanged();
+            try
+            {
+                await _recarga.SolicitarAsync();
+            }
+            catch (HttpRequestException)
+            {
+                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
+            }
+            StateHasChanged();
+        });
+    }
+
+    // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
+    private async Task RecarregarPorCondicoesAsync()
+    {
+        await LoadSheetAsync(); await LoadTabs2And3Async(); await LoadSpellAbilitiesAsync(); await LoadArtifactsAsync();
+        _penalidadesVersao++;
     }
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
@@ -719,6 +771,7 @@
     public void Dispose()
     {
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+        Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
     }
 
     protected override async Task OnInitializedAsync()
@@ -807,6 +860,7 @@
 
         var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         _campaignId = sheet!.CampaignId;
+        _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
         _form.Nome = sheet.Nome;
