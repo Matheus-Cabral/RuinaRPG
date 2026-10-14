@@ -115,7 +115,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 
 A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
 
-Uma Condição só está **ativa** com o Encontro em andamento e enquanto a duração não venceu (R0012): na preparação ela fica no participante sem efeito nenhum, e começa a valer ao Iniciar. O efeito nos valores depende da origem do participante (R0002): numa Ficha de Personagem, ou numa Ficha de NPC/Criatura concedida a um jogador, a ficha mostra os valores com a Condição enquanto ela está ativa (ver "[[Requisitos - Ficha de Personagem]]" R0009), e o dono da ficha é avisado sempre que as Condições ativas dela mudam; numa Ficha de NPC/Criatura do GM, a ficha original nunca muda e a Condição só vale para aquela instância no Encontro.
+Uma Condição só está **ativa** com o Encontro em andamento e enquanto a duração não venceu (R0012): na preparação ela fica no participante sem efeito nenhum, e começa a valer ao Iniciar. O efeito nos valores depende da origem do participante (R0002): numa Ficha de Personagem, ou numa Ficha de NPC/Criatura concedida a um jogador, a ficha mostra os valores com a Condição enquanto ela está ativa (ver "[[Requisitos - Ficha de Personagem]]" R0009), e o dono da ficha é avisado sempre que as Condições ativas dela mudam; numa Ficha de NPC/Criatura do GM, a ficha original nunca muda e a Condição só vale para aquela instância no Encontro, e o GM a vê no resumo da ficha (R0014).
 
   
 
@@ -145,3 +145,30 @@ Um modificador **percentual** é um percentual do **total** do recurso, arredond
 **Log**: cada ajuste vira uma linha no log do Encontro (R0010) com o participante, o recurso, o valor antes e depois e o nome da Condição; um ajuste pulado também vira uma linha, dizendo por quê ("Estresse não é acompanhado no encontro" ou "ficha de origem removida"). O ajuste na ficha não gera, além disso, a linha de alteração de recurso da ficha.
 
 **Ações simultâneas**: duas ações do GM que poderiam rodar o mesmo ajuste ao mesmo tempo (ex: um clique duplo em **Passar a vez para este**, ou aplicar uma Condição enquanto a vez avança) nunca o aplicam duas vezes: uma delas é recusada com o aviso de que o Encontro foi alterado por outra ação, e o GM recarrega e tenta de novo.
+
+  
+
+# **R0014** - O GM vê o resumo da ficha de um NPC ou Criatura com as Condições aplicadas.
+
+**Descrição**: Cada linha de participante que veio de uma Ficha de NPC ou de Criatura (R0002) tem um botão de **Resumo da ficha** (ícone de olho). Ele abre um popup **somente leitura**, só para o GM do Encontro, que mostra a ficha daquele participante com as Condições ativas dele (R0011) já aplicadas. Para um participante de Ficha de Personagem não há botão (o GM e o jogador já veem a ficha com as Condições, ver "[[Requisitos - Ficha de Personagem]]" R0009). O popup funciona também num Encontro finalizado, mas então não há Condição ativa (R0011) e os valores são os da ficha.
+
+**Conteúdo**, na ordem e com os rótulos das seções da ficha ("[[Requisitos - Ficha de NPCs]]", "[[Requisitos - Ficha de Criaturas]]"):
+
+- imagem, nome, Nível e, na Criatura, o Rank;
+- **Atributos**, **Sub-Atributos** e defesas;
+- **Recursos**: Vitalidade, Foco e Adrenalina, atual e total;
+- **Perícias**: só as que têm pontos gastos e as que uma Condição alterou;
+- **Equipamento em uso** (armas e escudos equipados, armaduras e artefatos) e **Magias e Habilidades** (com Passivas e, no NPC, Runas);
+- **Características**;
+- as **Condições ativas**, cada uma com o que ela muda e os Turnos restantes.
+
+Uma linha de equipamento ou de magia que uma Condição desabilita (R0011) aparece com o aviso "Desabilitado por: {Condição}".
+
+**Valores com e sem Condição**: todo número do resumo vem do mesmo cálculo das telas da ficha, feito duas vezes — com as Condições e sem elas. Um número que a Condição mudou aparece destacado, com o valor original riscado ao lado; os demais aparecem normais.
+
+**Quais Condições valem**:
+
+- **Ficha do GM** (sem dono): as Condições **daquele participante**. Duas instâncias da mesma ficha no Encontro mostram números diferentes se têm Condições diferentes, e a ficha original, em todas as suas telas, continua sem Condição nenhuma. O Atual de cada recurso é o PV/PF/PA da instância (R0003); o total é o da ficha original calculado com as Condições da instância.
+- **Ficha concedida** a um jogador: as Condições **da ficha** — as mesmas que o dono e o GM veem na própria ficha, o que inclui as de outro Encontro em andamento de que ela também participa. Assim o resumo nunca difere da ficha. O Atual é o da ficha.
+
+**Ficha removida**: se a ficha de origem já não existe, o resumo não está disponível e o popup avisa isso. O resumo apenas lê: não grava nada na ficha, no participante nem no log. Há um atalho para abrir a **ficha completa** numa aba nova.

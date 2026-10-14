@@ -97,6 +97,7 @@ builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
 builder.Services.AddScoped<CreatureSheetStats>();
+builder.Services.AddScoped<ResumoDeFichaDoParticipante>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
 {

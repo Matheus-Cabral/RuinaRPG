@@ -209,6 +209,46 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         return efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
     }
 
+    /// <summary>Os Atributos da ficha na ordem de exibição, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Atributos e do resumo do encontro.</summary>
+    public async Task<List<AtributoCalculado>> AtributosAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        return (await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id).ToListAsync())
+            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
+            .Select(a => new AtributoCalculado(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
+                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
+            .ToList();
+    }
+
+    /// <summary>Todas as Perícias ativas, por nome, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Perícias e do resumo do encontro.</summary>
+    public async Task<List<PericiaCalculada>> PericiasAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var ativas = (await pericias.PorIdAsync()).Values.Where(p => !p.IsDeleted).ToList();
+        var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var totaisDeAtributo = await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id)
+            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
+        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
+
+        return ativas
+            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
+            .Select(p =>
+            {
+                linhas.TryGetValue(p.Id, out var s);
+                var gasto = s?.Gasto ?? 0;
+                var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
+                var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
+                var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
+                var total = atributo is not null && totaisDeAtributo.TryGetValue(atributo.Value, out var atributoTotal)
+                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
+                    : (int?)null;
+                return new PericiaCalculada(p.Chave, p.Nome, p.Descricao, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0);
+            })
+            .ToList();
+    }
+
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);

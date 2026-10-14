@@ -451,4 +451,55 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
 
         cut.Markup.Should().NotContain("Adicionar condição");
     }
+
+    // ---------- Resumo da ficha (Gerenciador de Encontros R0014) ----------
+
+    private static List<EncounterParticipantResponse> ComOrigens() => new()
+    {
+        new("p1", "Aldric", 15, 10, 5, 3, 3, true, new(), new(), "Personagem"),
+        new("p2", "Goblin", 12, 7, 0, 0, 2, false, new(), new(), "Npc"),
+        new("p3", "Lobo", 8, 9, 0, 0, 1, true, new(), new(), "Criatura"),
+        new("p4", "Fantasma", 5, 1, 0, 0, 1, false, new(), new(), null),
+    };
+
+    [Fact]
+    public async Task The_resumo_button_is_only_on_Npc_and_Criatura_rows()
+    {
+        _participants = ComOrigens();
+        var cut = await RenderLoadedAsync();
+
+        var botoes = cut.FindAll("button[aria-label='Resumo da ficha']");
+        botoes.Should().HaveCount(2);
+        botoes[0].InnerHtml.Should().Contain("M12 4.5C7 4.5"); // o glifo de Icons.Material.Filled.Visibility
+        var linhas = cut.FindAll("tbody tr").Where(l => l.TextContent.Contains("Goblin") || l.TextContent.Contains("Lobo")).ToList();
+        linhas.Should().OnlyContain(l => l.QuerySelector("button[aria-label='Resumo da ficha']") != null);
+        cut.FindAll("tbody tr").Where(l => l.TextContent.Contains("Aldric") || l.TextContent.Contains("Fantasma"))
+            .Should().OnlyContain(l => l.QuerySelector("button[aria-label='Resumo da ficha']") == null);
+    }
+
+    [Fact]
+    public async Task The_resumo_button_is_still_there_on_a_finished_encounter()
+    {
+        _status = "Finalizado"; _vezId = null;
+        _participants = ComOrigens();
+        var cut = await RenderLoadedAsync();
+
+        cut.FindAll("button[aria-label='Resumo da ficha']").Should().HaveCount(2);
+        cut.FindAll("button[aria-label='Remover do encontro']").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Clicking_the_resumo_button_opens_the_dialog_of_that_participant()
+    {
+        _participants = ComOrigens();
+        _override = request => request.RequestUri!.AbsolutePath.EndsWith("/participants/p2/resumo")
+            ? Task.FromResult(Json(new ResumoDeFichaResponse("f2", "Npc", "Goblin", null, 2, null, new() { new("Forca", new(5, 5)) }, new(), new(), new(), new(), new(), new(), new())))
+            : null;
+        var cut = await RenderLoadedAsync();
+
+        await cut.InvokeAsync(() => cut.FindAll("button[aria-label='Resumo da ficha']")[0].Click());
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Resumo da ficha — Goblin"));
+        _requests.Should().Contain("GET encounters/e1/participants/p2/resumo");
+    }
 }

@@ -30,35 +30,8 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var porId = await pericias.PorIdAsync();
-        var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
-        var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
-
-        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var efeitos = await condicoes.ParaNpcAsync(sheet);
-        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
-
-        var attributeTotals = await db.NpcAttributes
-            .Where(a => a.NpcSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
-
-        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-
-        return ativas
-            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
-            .Select(p =>
-            {
-                linhas.TryGetValue(p.Id, out var s);
-                var gasto = s?.Gasto ?? 0;
-                var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
-                var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
-                var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
-                var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
-                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
-                    : (int?)null;
-                return new NpcSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0, p.Nome, p.Descricao);
-            })
+        return (await stats.PericiasAsync(sheet, await condicoes.ParaNpcAsync(sheet)))
+            .Select(p => new NpcSkillResponse(p.Chave, p.Gasto, p.Modificador, p.Atributo, p.Total, p.BonusDeHistorico, p.Nome, p.Descricao))
             .ToList();
     }
 

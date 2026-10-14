@@ -30,20 +30,9 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        // Display order is independent of the enum's underlying (persisted) int value —
-        // see AttributeDisplayOrder's doc comment — so this sorts in memory, not in SQL.
-        var attributes = (await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).ToListAsync())
-            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
-            .ToList();
-
-        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var efeitos = await condicoes.ParaNpcAsync(sheet);
-        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
-
-        return attributes
-            .Select(a => new NpcAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
+        // Artefatos (Posses 5.b: estar na ficha é estar equipado), penalidades de equipamento ativas e Condições: NpcSheetStats.
+        return (await stats.AtributosAsync(sheet, await condicoes.ParaNpcAsync(sheet)))
+            .Select(a => new NpcAttributeResponse(a.Atributo, a.Gasto, a.Bonus, a.TemMaestria, a.Total))
             .ToList();
     }
 

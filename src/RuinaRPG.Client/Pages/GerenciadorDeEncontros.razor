@@ -111,6 +111,11 @@ else
                 <td>@participant.AcoesRestantes</td>
                 <td>@CondicoesDe(participant)</td>
                 <td>
+                    @if (participant.Origem is "Npc" or "Criatura")
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" aria-label="Resumo da ficha" title="Resumo da ficha"
+                                       OnClick="@(() => AbrirResumoAsync(participant))" />
+                    }
                     @if (Finalizado)
                     {
                     }
@@ -306,6 +311,12 @@ else
         if ((await dialog.Result) is { Canceled: false })
             await LoadAsync();
     }
+
+    /// <summary>O resumo (só leitura) do NPC/Criatura do participante, com as Condições dele aplicadas; funciona também no encontro finalizado.</summary>
+    private async Task AbrirResumoAsync(EncounterParticipantResponse participant) =>
+        await DialogService.ShowAsync<ResumoDaFichaDialog>($"Resumo da ficha: {participant.Nome}",
+            new DialogParameters<ResumoDaFichaDialog> { { x => x.EncounterId, EncounterId }, { x => x.ParticipantId, participant.Id }, { x => x.NomeDoParticipante, participant.Nome } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
 
     private async Task RemoverCondicaoAsync(EncounterParticipantResponse participant, CondicaoAplicadaResponse condicao)
     {

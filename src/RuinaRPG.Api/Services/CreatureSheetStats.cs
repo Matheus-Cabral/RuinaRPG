@@ -211,6 +211,47 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, 
         return (vitalidade, foco, adrenalina);
     }
 
+    /// <summary>Os Atributos da ficha, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Atributos e do resumo do encontro.</summary>
+    public async Task<List<AtributoCalculado>> AtributosAsync(CreatureSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        return (await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheet.Id).OrderBy(a => a.Atributo).ToListAsync())
+            .Select(a => new AtributoCalculado(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
+                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
+            .ToList();
+    }
+
+    /// <summary>As Perícias disponíveis para Criaturas, por nome, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Perícias e do resumo do encontro.</summary>
+    public async Task<List<PericiaCalculada>> PericiasAsync(CreatureSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var ativas = (await pericias.PorIdAsync()).Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToList();
+        var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var totaisDeAtributo = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheet.Id)
+            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
+
+        return ativas
+            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
+            .Select(p =>
+            {
+                linhas.TryGetValue(p.Id, out var s);
+                var gasto = s?.Gasto ?? 0;
+                var atributo = s?.AtributoEscolhido ?? SugeridoParaCriatura(p);
+                var modificador = SkillFormulas.Modificador(gasto, 0);
+                var total = atributo is not null && totaisDeAtributo.TryGetValue(atributo.Value, out var atributoTotal)
+                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
+                    : (int?)null;
+                return new PericiaCalculada(p.Chave, p.Nome, p.Descricao, gasto, modificador, atributo?.ToString(), total, false);
+            })
+            .ToList();
+    }
+
+    /// <summary>Atributo sugerido como Atributo de Criatura; nulo se a Criatura não tem esse Atributo.</summary>
+    private static AtributoCriatura? SugeridoParaCriatura(PericiaDefinicao p) =>
+        p.AtributoSugerido is { } a && Enum.TryParse<AtributoCriatura>(a.ToString(), out var c) ? c : null;
+
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);

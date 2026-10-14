@@ -1,0 +1,181 @@
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Client.Services
+@using RuinaRPG.Contracts.Encounters
+@inject HttpClient Http
+@*
+    Resumo da ficha de um NPC/Criatura participante do encontro (Gerenciador de Encontros R0014), só para o GM. Lê
+    GET encounters/{id}/participants/{pid}/resumo, que já traz cada número com e sem as Condições do participante:
+    o que a Condição mudou aparece destacado, com o valor original riscado ao lado. Somente leitura; abre a ficha
+    completa numa aba nova. Os rótulos são os das seções da ficha.
+*@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Resumo da ficha — @NomeDoParticipante</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_erro is not null)
+        {
+            <MudAlert Severity="Severity.Error">@_erro</MudAlert>
+        }
+        else if (_resumo is { } r)
+        {
+            <div class="d-flex align-center mb-3" style="gap:16px">
+                @if (!string.IsNullOrEmpty(r.ImagemUrl))
+                {
+                    <MudAvatar Size="Size.Large"><MudImage Src="@r.ImagemUrl" Alt="@r.Nome" /></MudAvatar>
+                }
+                <div>
+                    <MudText Typo="Typo.h6">@r.Nome</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(r.Tipo == "Criatura" ? "Criatura" : "NPC") · Nível @r.Nivel@(r.Rank is null ? "" : $" · Rank {r.Rank}")</MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.subtitle1" Class="mt-2">Atributos</MudText>
+            @Valores(r.Atributos.Select(a => (AtributoDisplay.Label(a.Nome), a.Valor)))
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3">Sub-Atributos</MudText>
+            @Valores(r.SubAtributos.Select(a => (a.Nome, a.Valor)))
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3">Recursos</MudText>
+            <ul class="resumo-lista">
+                @foreach (var recurso in r.Recursos)
+                {
+                    <li>@recurso.Nome: @(recurso.Atual is { } atual ? $"{atual} / " : "")@Numero(recurso.Total)</li>
+                }
+            </ul>
+
+            @if (r.Pericias.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-3">Perícias</MudText>
+                @Valores(r.Pericias.Select(p => ($"{p.Nome} ({p.Gasto})", p.Total)))
+            }
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3">Equipamento em uso</MudText>
+            @Linhas(r.Equipamentos, "Nenhum equipamento em uso.")
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3">Magias e Habilidades</MudText>
+            @Linhas(r.MagiasEHabilidades, "Nenhuma magia ou habilidade.")
+
+            @if (r.Caracteristicas.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-3">Características</MudText>
+                <ul class="resumo-lista">
+                    @foreach (var c in r.Caracteristicas)
+                    {
+                        <li>@c.Nome@(string.IsNullOrWhiteSpace(c.Especificacao) ? "" : $" ({c.Especificacao})") — @c.Polaridade</li>
+                    }
+                </ul>
+            }
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3">Condições ativas</MudText>
+            @if (r.Condicoes.Count == 0)
+            {
+                <MudText Typo="Typo.body2">Nenhuma condição ativa.</MudText>
+            }
+            @foreach (var condicao in r.Condicoes)
+            {
+                <div class="mt-1">
+                    <MudIcon Icon="@CondicaoIcone.Icone(condicao.Icone)" Size="Size.Small" Class="mr-1" />
+                    <b>@condicao.Nome</b>
+                    @if (condicao.TurnosRestantes is { } turnos)
+                    {
+                        <span> — @CondicaoResumo.Turnos(turnos)</span>
+                    }
+                    <ul class="resumo-lista">
+                        @foreach (var linha in condicao.Linhas)
+                        {
+                            <li>@linha</li>
+                        }
+                    </ul>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_resumo is { } ficha)
+        {
+            <MudButton Href="@(ficha.Tipo == "Criatura" ? $"criaturas/{ficha.FichaId}" : $"npcs/{ficha.FichaId}")" Target="_blank" Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.OpenInNew">Abrir a ficha completa</MudButton>
+        }
+        <MudButton OnClick="@(() => MudDialog.Close())">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public string EncounterId { get; set; } = "";
+    [Parameter, EditorRequired] public string ParticipantId { get; set; } = "";
+    [Parameter] public string? NomeDoParticipante { get; set; }
+
+    private ResumoDeFichaResponse? _resumo;
+    private string? _erro;
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetAsync($"encounters/{EncounterId}/participants/{ParticipantId}/resumo");
+            if (response.IsSuccessStatusCode)
+                _resumo = await response.Content.ReadFromJsonAsync<ResumoDeFichaResponse>();
+            else if (response.StatusCode == HttpStatusCode.NotFound)
+                _erro = "A ficha deste participante não existe mais.";
+            else
+                _erro = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível carregar o resumo da ficha.";
+        }
+        catch (Exception)
+        {
+            _erro = "Não foi possível carregar o resumo da ficha.";
+        }
+        _carregando = false;
+    }
+
+    /// <summary>O valor com as Condições; quando mudou, o original riscado ao lado.</summary>
+    private static RenderFragment Numero(ValorDoResumo valor) => __builder =>
+    {
+        if (valor.Valor == valor.ValorSemCondicoes)
+        {
+            <span>@valor.Valor</span>
+        }
+        else
+        {
+            <span class="resumo-alterado"><s class="resumo-original">@valor.ValorSemCondicoes</s> <b>@valor.Valor</b></span>
+        }
+    };
+
+    private static RenderFragment Valores(IEnumerable<(string Nome, ValorDoResumo Valor)> valores) => __builder =>
+    {
+        <div class="resumo-grade">
+            @foreach (var (nome, valor) in valores)
+            {
+                <div>@nome: @Numero(valor)</div>
+            }
+        </div>
+    };
+
+    private static RenderFragment Linhas(List<ResumoDeLinha> linhas, string vazio) => __builder =>
+    {
+        if (linhas.Count == 0)
+        {
+            <MudText Typo="Typo.body2">@vazio</MudText>
+        }
+        else
+        {
+            <ul class="resumo-lista">
+                @foreach (var linha in linhas)
+                {
+                    <li class="resumo-linha">
+                        <span class="@(linha.DesabilitadoPor is null ? "" : "resumo-desabilitada")">@linha.Categoria · @linha.Nome</span>
+                        <DesabilitadoChip Condicao="@linha.DesabilitadoPor" />
+                    </li>
+                }
+            </ul>
+        }
+    };
+}

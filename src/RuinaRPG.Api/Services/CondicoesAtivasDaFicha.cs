@@ -37,6 +37,9 @@ public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo peric
     /// <summary>Só para o resumo do participante no encontro: vale também para NPC/Criatura do GM.</summary>
     public async Task<EfeitosDeCondicao> DoParticipanteAsync(Guid participantId) => Efeitos(await AtivasAsync(Origem.Participante, participantId));
 
+    /// <summary>As Condições ativas do participante (resumo do encontro), com o texto do que cada uma muda.</summary>
+    public async Task<List<CondicaoAtivaNaFichaResponse>> ListarDoParticipanteAsync(Guid participantId) => await ListarAsync(await AtivasAsync(Origem.Participante, participantId));
+
     public async Task<List<CondicaoAtivaNaFichaResponse>> ListarDoPersonagemAsync(Guid sheetId) => await ListarAsync(await AtivasAsync(Origem.Personagem, sheetId));
 
     public async Task<List<CondicaoAtivaNaFichaResponse>> ListarDoNpcAsync(NpcSheet sheet) =>
