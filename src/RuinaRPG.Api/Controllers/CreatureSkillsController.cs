@@ -33,8 +33,8 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
         var ativas = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToList();
         var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaCriaturaAsync(sheet);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         var attributeTotals = await db.CreatureAttributes
             .Where(a => a.CreatureSheetId == sheetId)

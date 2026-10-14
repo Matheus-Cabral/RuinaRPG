@@ -37,8 +37,8 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         var linhas = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         var attributeTotals = await db.CharacterAttributes
             .Where(a => a.CharacterSheetId == sheetId)

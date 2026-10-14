@@ -37,8 +37,8 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
             .ToList();
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         return attributes
             .Select(a => new CharacterAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,

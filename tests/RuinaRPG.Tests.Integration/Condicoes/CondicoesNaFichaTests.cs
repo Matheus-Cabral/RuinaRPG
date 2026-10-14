@@ -10,6 +10,7 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
@@ -939,5 +940,354 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         }
         (await _client.GetAsync($"/api/character-sheets/{personagem.Id}/condicoes-ativas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/condicoes-ativas", mesa.Gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ---------- Condições que desabilitam ----------
+
+    private static readonly string[] CaminhosDeLista = ["weapons", "armor-slots", "shields", "artifacts", "spell-abilities", "runes"];
+
+    private async Task<string> CriarCondicaoQueDesabilitaAsync(Mesa mesa, string nome, params string[] categorias)
+    {
+        var request = new SalvarCondicaoRequest($"{nome} {mesa.Tag}", "Desabilita equipamentos.", "Veneno", null, [], categorias.ToList());
+        return (await (await EnviarAsync(HttpMethod.Post, "/api/condicoes", mesa.Gm, request, HttpStatusCode.Created)).Content.ReadFromJsonAsync<CondicaoResponse>())!.Id;
+    }
+
+    private async Task<string> AplicarDesabilitandoAsync(Mesa mesa, string encounterId, string participantId, string condicaoId, Dictionary<string, List<string>>? itens = null) =>
+        (await (await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", mesa.Gm,
+            new AplicarCondicaoRequest(condicaoId, null, null, itens), HttpStatusCode.Created)).Content.ReadFromJsonAsync<CondicaoAplicadaResponse>())!.Id;
+
+    private static readonly RuinaRPG.Domain.SpellsAndAbilities.RequisitosDePassiva RequisitoImpossivel = new() { Atributos = [new(Atributo.Vigor, 99)] };
+    private static readonly PenalidadeDeEquipamento MenosDoisAgilidade = new() { Atributos = [new(Atributo.Agilidade, 2)] };
+
+    /// <summary>
+    /// Põe uma linha da categoria na ficha (Arma e Escudo equipados; Armadura no slot Capacete) e devolve o Id da LINHA da ficha,
+    /// o mesmo que "itens-desabilitaveis" lista. <paramref name="penalizada"/> dá ao item um requisito impossível e uma penalidade de Agilidade −2.
+    /// </summary>
+    private async Task<Guid> AdicionarLinhaAsync(Mesa mesa, Ficha f, string categoria, string nome, bool penalizada = false, RuinaRPG.Domain.SpellsAndAbilities.RequisitosDePassiva? requisitos = null)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var sheetId = Guid.Parse(f.Id);
+        var linhaId = Guid.NewGuid();
+
+        Item? item = categoria switch
+        {
+            "Arma" => new Arma { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = nome, Peso = 0, Preco = 0 },
+            "Escudo" => new Escudo { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = nome, Peso = 0, Preco = 0, BonusDefesa = 3 },
+            "Armadura" => new Armadura { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = nome, Peso = 0, Preco = 0, RF = 5, RM = 2 },
+            "Artefato" => new Artefato { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = nome, Peso = 0, Preco = 0, TipoDeAlvo = TipoDeAlvo.Atributo, Alvo = "Forca", Valor = 2 },
+            _ => null
+        };
+        if (item is not null)
+        {
+            if (penalizada)
+            {
+                item.Requisitos = RequisitoImpossivel;
+                item.PenalidadeDeRequisitos = MenosDoisAgilidade;
+            }
+            db.Set<Item>().Add(item);
+            await db.SaveChangesAsync();
+        }
+
+        switch (f.Rota, categoria)
+        {
+            case (Personagem, "Arma"): db.CharacterWeapons.Add(new CharacterWeapon { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Escudo"): db.CharacterShields.Add(new CharacterShield { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Artefato"): db.CharacterArtifacts.Add(new CharacterArtifact { Id = linhaId, CharacterSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Personagem, "Armadura"):
+                var slotP = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                slotP.ItemId = item!.Id; linhaId = slotP.Id; break;
+            case (Personagem, "Runa"): db.CharacterRunes.Add(new CharacterRune { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Npc, "Arma"): db.NpcWeapons.Add(new NpcWeapon { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Escudo"): db.NpcShields.Add(new NpcShield { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Artefato"): db.NpcArtifacts.Add(new NpcArtifact { Id = linhaId, NpcSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Npc, "Armadura"):
+                var slotN = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                slotN.ItemId = item!.Id; linhaId = slotN.Id; break;
+            case (Npc, "Runa"): db.NpcRunes.Add(new NpcRune { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Criatura, "Arma"): db.CreatureWeapons.Add(new CreatureWeapon { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Escudo"): db.CreatureShields.Add(new CreatureShield { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Artefato"): db.CreatureArtifacts.Add(new CreatureArtifact { Id = linhaId, CreatureSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Criatura, "Armadura"):
+                var slotC = await db.CreatureArmorSlots.SingleAsync(a => a.CreatureSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                slotC.ItemId = item!.Id; linhaId = slotC.Id; break;
+            default:
+                var tipo = categoria switch
+                {
+                    "Magia" => RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia,
+                    "Habilidade" => RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Habilidade,
+                    "Passiva" => RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Passiva,
+                    "Racial" => RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Racial,
+                    _ => throw new ArgumentException(categoria)
+                };
+                if (f.Rota == Personagem)
+                    db.CharacterSpellAbilities.Add(new CharacterSpellAbility { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                else if (f.Rota == Npc)
+                    db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                else
+                    db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = linhaId, CreatureSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                break;
+        }
+        await db.SaveChangesAsync();
+        return linhaId;
+    }
+
+    /// <summary>O que o banco guarda das linhas de equipamento: equipado ou não, e qual Item cada slot de armadura veste.</summary>
+    private async Task<List<string>> EstadoGuardadoAsync(Ficha f)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var id = Guid.Parse(f.Id);
+        var linhas = new List<string>();
+        if (f.Rota == Personagem)
+        {
+            linhas.AddRange((await db.CharacterWeapons.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterShields.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterArmorSlots.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CharacterArtifacts.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+        }
+        else if (f.Rota == Npc)
+        {
+            linhas.AddRange((await db.NpcWeapons.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcShields.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcArmorSlots.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.NpcArtifacts.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+        }
+        else
+        {
+            linhas.AddRange((await db.CreatureWeapons.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureShields.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureArmorSlots.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CreatureArtifacts.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+        }
+        return linhas.Order().ToList();
+    }
+
+    /// <summary>Nome de cada linha das listas de Armas, Armaduras, Escudos, Artefatos, Magias/Habilidades/Passivas e Runas → o que ela diz em "desabilitadoPor".</summary>
+    private async Task<SortedDictionary<string, string?>> MarcasAsync(Ficha f, string token)
+    {
+        var marcas = new SortedDictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var caminho in CaminhosDeLista.Where(c => !(c == "runes" && f.Rota == Criatura)))
+        {
+            foreach (var linha in (await JsonAsync(token, $"/api/{f.Rota}/{f.Id}/{caminho}")).EnumerateArray())
+            {
+                var nome = linha.GetProperty("nome").GetString();
+                if (nome is null)
+                    continue; // slot de armadura vazio
+                linha.TryGetProperty("desabilitadoPor", out var marca).Should().BeTrue($"a linha {nome} de /{caminho} traz o campo, mesmo nulo");
+                marcas[nome] = marca.ValueKind == JsonValueKind.Null ? null : marca.GetString();
+            }
+        }
+        return marcas;
+    }
+
+    private static SortedDictionary<string, string?> Marcas(IEnumerable<string> nomes, string? marca) =>
+        new(nomes.ToDictionary(n => n, _ => marca), StringComparer.Ordinal);
+
+    [Fact]
+    public async Task Artefato_desabilitado_perde_o_bonus_so_o_escolhido_e_o_bonus_volta()
+    {
+        var mesa = await MesaAsync("DesArt");
+        var ficha = await NovoPersonagemAsync(mesa);
+        var anel = await AdicionarLinhaAsync(mesa, ficha, "Artefato", "Anel");
+        // Requisito sobre Força 12 só é cumprido com o Anel: requisitos ignoram o desabilitar.
+        var passiva = await AdicionarLinhaAsync(mesa, ficha, "Passiva", "Pele", requisitos: new() { Atributos = [new(Atributo.Forca, 12)] });
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var antes = await NumerosAsync(ficha, mesa.Gm);
+        var estado = await EstadoGuardadoAsync(ficha);
+        antes["Atributo:Forca"].Should().Be(12);
+        var nomes = (await MarcasAsync(ficha, mesa.Gm)).Keys.ToList();
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+
+        // Só o Anel: o Gume (Dano) e a Placa (Redução Física) seguem valendo.
+        var condicao = await CriarCondicaoQueDesabilitaAsync(mesa, "Antimagia", "Artefato");
+        var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, condicao, new() { ["Artefato"] = [anel.ToString()] });
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Atributo:Forca", 10), ("Pericia", 10), ("Maestria:Espadas", 13)));
+        var marcas = await MarcasAsync(ficha, mesa.Gm);
+        marcas["Anel"].Should().Be($"Antimagia {mesa.Tag}");
+        marcas.Where(m => m.Key != "Anel").Should().OnlyContain(m => m.Value == null);
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Nome == "Pele").RequisitosPendentes.Should().BeNullOrEmpty();
+        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Id == passiva.ToString()).DesabilitadoPor.Should().BeNull();
+
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+
+        // A categoria inteira: o Gume e a Placa também deixam de valer.
+        aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, condicao);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Atributo:Forca", 10), ("Pericia", 10), ("Maestria:Espadas", 13), ("Dano:cortante", 0), ("Sub:reducaoFisica", 0)));
+        var marcasDaCategoria = await MarcasAsync(ficha, mesa.Gm);
+        marcasDaCategoria["Anel"].Should().NotBeNull();
+        marcasDaCategoria["Gume"].Should().NotBeNull();
+        marcasDaCategoria["Placa"].Should().NotBeNull();
+        marcasDaCategoria["Pele"].Should().BeNull();
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+
+        // Encerrar o encontro também devolve tudo.
+        await EncontroAsync(mesa, encounterId, "finish");
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+    }
+
+    [Fact]
+    public async Task Escudo_e_Armadura_desabilitados_param_de_contar_nas_defesas_e_reducoes()
+    {
+        var mesa = await MesaAsync("DesDef");
+        var ficha = await NovoPersonagemAsync(mesa);
+        var escudo = await AdicionarLinhaAsync(mesa, ficha, "Escudo", "Broquel");
+        await AdicionarLinhaAsync(mesa, ficha, "Armadura", "Elmo");
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var antes = await NumerosAsync(ficha, mesa.Gm);
+        var estado = await EstadoGuardadoAsync(ficha);
+        antes["Sub:defesaNatural"].Should().Be(11); // 8 + Escudo 3
+        antes["Sub:reducaoFisica"].Should().Be(9); // Artefato 4 + Armadura 5
+        antes["Sub:reducaoMagica"].Should().Be(2);
+
+        var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Desarmado", "Escudo"));
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:defesaNatural", 8)));
+        var escudos = await LerAsync<List<CharacterShieldResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/shields");
+        escudos.Single().Id.Should().Be(escudo.ToString());
+        escudos.Single().IsEquipped.Should().BeTrue("o estado guardado não muda");
+        escudos.Single().DesabilitadoPor.Should().Be($"Desarmado {mesa.Tag}");
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
+
+        aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Sem peça", "Armadura"));
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:reducaoFisica", 4), ("Sub:reducaoMagica", 0)));
+        (await LerAsync<List<CharacterArmorSlotResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/armor-slots")).Single(s => s.Nome == "Elmo").DesabilitadoPor.Should().Be($"Sem peça {mesa.Tag}");
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+    }
+
+    [Fact]
+    public async Task Arma_desabilitada_com_requisito_nao_cumprido_perde_a_penalidade_mas_continua_dizendo_o_requisito()
+    {
+        var mesa = await MesaAsync("DesArma");
+        var ficha = await NovoPersonagemAsync(mesa);
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var semArma = await NumerosAsync(ficha, mesa.Gm);
+        var montante = await AdicionarLinhaAsync(mesa, ficha, "Arma", "Montante", penalizada: true);
+        var comPenalidade = await NumerosAsync(ficha, mesa.Gm);
+        var estado = await EstadoGuardadoAsync(ficha);
+        comPenalidade["Atributo:Agilidade"].Should().Be(semArma["Atributo:Agilidade"] - 2);
+        comPenalidade.Should().NotEqual(semArma);
+        var url = $"/api/character-sheets/{ficha.Id}";
+        (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Select(p => p.ItemNome).Should().Equal("Montante");
+
+        var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Manco", "Arma"), new() { ["Arma"] = [montante.ToString()] });
+
+        // Durante: a penalidade some de TUDO o que a ficha mostra, e volta a ser o número de quem não tem a arma.
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(semArma);
+        (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Should().BeEmpty();
+        var arma = (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single();
+        arma.DesabilitadoPor.Should().Be($"Manco {mesa.Tag}");
+        arma.IsEquipped.Should().BeTrue();
+        // A avaliação do requisito do item não usa Condições: segue dizendo o que falta e qual seria a penalidade.
+        arma.Requisitos.Should().Equal("Vigor ≥ 99");
+        arma.RequisitosPendentes.Should().Equal("Vigor ≥ 99");
+        arma.Penalidade.Should().Equal("Agilidade −2");
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(comPenalidade);
+        (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Select(p => p.ItemNome).Should().Equal("Montante");
+        (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single().DesabilitadoPor.Should().BeNull();
+
+        // Encerrar o encontro com a Condição ativa também traz a penalidade de volta.
+        await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Manco 2", "Arma"));
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(semArma);
+        await EncontroAsync(mesa, encounterId, "finish");
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(comPenalidade);
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+    }
+
+    [Theory]
+    [InlineData(Personagem)]
+    [InlineData(Npc)]
+    [InlineData(Criatura)]
+    public async Task Cada_lista_traz_DesabilitadoPor_por_categoria_inteira_ou_por_item_e_nunca_para_Racial(string rota)
+    {
+        var mesa = await MesaAsync($"DesLst{rota[..2]}");
+        var ficha = rota == Personagem ? await NovoPersonagemAsync(mesa) : await NovaFichaDoGmAsync(mesa, rota, concedida: true);
+        var ids = new Dictionary<string, Guid>();
+        foreach (var categoria in new[] { "Arma", "Escudo", "Armadura", "Artefato", "Magia", "Habilidade", "Passiva", "Racial" })
+            ids[categoria] = await AdicionarLinhaAsync(mesa, ficha, categoria, $"{categoria} teste");
+        if (rota != Criatura)
+            ids["Runa"] = await AdicionarLinhaAsync(mesa, ficha, "Runa", "Runa teste");
+        await AdicionarLinhaAsync(mesa, ficha, "Magia", "Outra Magia");
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var nomes = (await MarcasAsync(ficha, mesa.Gm)).Keys.ToList();
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+        var estado = await EstadoGuardadoAsync(ficha);
+        var todas = new[] { "Arma", "Armadura", "Escudo", "Artefato", "Magia", "Habilidade", "Runa", "Passiva" };
+        var marca = $"Tudo {mesa.Tag}";
+
+        // Categoria inteira, as oito: toda linha de cada lista, exceto a Racial, traz o nome da Condição.
+        var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Tudo", todas));
+        var todasMarcadas = await MarcasAsync(ficha, mesa.Gm);
+        todasMarcadas.Where(m => m.Key != "Racial teste").Should().OnlyContain(m => m.Value == marca);
+        todasMarcadas["Racial teste"].Should().BeNull();
+        todasMarcadas.Keys.Should().Contain(["Arma teste", "Armadura teste", "Escudo teste", "Artefato teste", "Magia teste", "Habilidade teste", "Passiva teste"]);
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+
+        // Itens específicos: só os escolhidos (uma Magia de duas, e a Runa quando existe).
+        var escolhidos = new Dictionary<string, List<string>> { ["Magia"] = [ids["Magia"].ToString()], ["Arma"] = [ids["Arma"].ToString()] };
+        aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Alguns", "Magia", "Arma"), escolhidos);
+        var algumas = await MarcasAsync(ficha, mesa.Gm);
+        algumas.Where(m => m.Value != null).Select(m => m.Key).Should().BeEquivalentTo("Magia teste", "Arma teste");
+        algumas["Outra Magia"].Should().BeNull();
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(Marcas(nomes, null));
+    }
+
+    [Theory]
+    [InlineData(Npc)]
+    [InlineData(Criatura)]
+    public async Task Ficha_de_NPC_ou_Criatura_do_GM_nunca_e_afetada_pelo_desabilitar(string rota)
+    {
+        var mesa = await MesaAsync($"DesGm{rota[..2]}");
+        var ficha = await NovaFichaDoGmAsync(mesa, rota, concedida: false);
+        foreach (var categoria in new[] { "Arma", "Escudo", "Armadura", "Artefato", "Magia", "Habilidade", "Passiva" })
+            await AdicionarLinhaAsync(mesa, ficha, categoria, $"{categoria} teste", penalizada: categoria is "Arma" or "Escudo" or "Armadura" or "Artefato");
+        if (rota == Npc)
+            await AdicionarLinhaAsync(mesa, ficha, "Runa", "Runa teste");
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var numeros = await NumerosAsync(ficha, mesa.Gm);
+        var marcas = await MarcasAsync(ficha, mesa.Gm);
+        var penalidades = await TextoAsync(mesa.Gm, $"/api/{rota}/{ficha.Id}/equipment-penalties");
+        var estado = await EstadoGuardadoAsync(ficha);
+
+        await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Tudo", "Arma", "Armadura", "Escudo", "Artefato", "Magia", "Habilidade", "Runa", "Passiva"));
+
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(numeros);
+        (await MarcasAsync(ficha, mesa.Gm)).Should().Equal(marcas);
+        marcas.Values.Should().OnlyContain(v => v == null);
+        (await TextoAsync(mesa.Gm, $"/api/{rota}/{ficha.Id}/equipment-penalties")).Should().Be(penalidades);
+        (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
+    }
+
+    [Fact]
+    public async Task NPC_concedido_a_um_jogador_tem_o_equipamento_desabilitado_nos_numeros_e_o_dono_ve_o_mesmo()
+    {
+        var mesa = await MesaAsync("DesNpc");
+        var ficha = await NovaFichaDoGmAsync(mesa, Npc, concedida: true);
+        await AdicionarLinhaAsync(mesa, ficha, "Escudo", "Broquel");
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var antes = await NumerosAsync(ficha, mesa.Gm);
+        antes["Sub:defesaNatural"].Should().Be(11);
+
+        var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Desarmado", "Escudo"));
+
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:defesaNatural", 8)));
+        (await NumerosAsync(ficha, mesa.Jogador)).Should().Equal(await NumerosAsync(ficha, mesa.Gm));
+        await RemoverAsync(mesa, encounterId, participantId, aplicada);
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
     }
 }

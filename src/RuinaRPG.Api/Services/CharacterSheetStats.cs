@@ -30,7 +30,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// As penalidades de equipamento são avaliadas antes, sobre a ficha sem Condições, e as Condições entram por cima.
     /// </remarks>
     public async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, EfeitosDeCondicao? efeitos = null) =>
-        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet), efeitos ?? EfeitosDeCondicao.Nenhum);
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet, efeitos), efeitos ?? EfeitosDeCondicao.Nenhum);
 
     private async Task<SubAttributesResponse> SubAtributosAsync(CharacterSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
@@ -72,10 +72,14 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var bonusDeCarga = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
         var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga);
 
-        var equippedShield = await db.CharacterShields
+        // Escudo e Armadura desabilitados por Condição não estão em uso (a linha guardada não muda).
+        var equippedShield = (await db.CharacterShields
             .Where(s => s.CharacterSheetId == id && s.IsEquipped)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => i.BonusDefesa)
-            .FirstOrDefaultAsync();
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => new { s.Id, i.BonusDefesa })
+            .ToListAsync())
+            .Where(s => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Escudo, s.Id) is null)
+            .Select(s => s.BonusDefesa)
+            .FirstOrDefault();
         var coberturaBonus = sheet.Cobertura switch { Cobertura.Parcial => 5, Cobertura.Completa => 10, _ => 0 };
 
         // Every CharacterArmorSlot with an ItemId is inherently worn (no separate IsEquipped
@@ -83,8 +87,9 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         // scoped to equipped armor only.
         var armorRfRm = await db.CharacterArmorSlots
             .Where(a => a.CharacterSheetId == id && a.ItemId != null)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { i.RF, i.RM })
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { a.Id, i.RF, i.RM })
             .ToListAsync();
+        armorRfRm = armorRfRm.Where(a => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Armadura, a.Id) is null).ToList();
         var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
@@ -171,32 +176,41 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// has no separate equip/unequip toggle for Artefatos, so being on the sheet is being "equipped".
     /// Só Artefatos: o que as telas exibem soma também as penalidades (<see cref="ModificadoresAsync"/>).
     /// </summary>
-    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId) =>
-        await db.CharacterArtifacts
+    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
+    {
+        var linhas = await db.CharacterArtifacts
             .Where(a => a.CharacterSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => new { a.Id, i })
+            .Where(x => x.i.TipoDeAlvo != null)
+            .Select(x => new { x.Id, Bonus = new ArtifactBonusInput(x.i.TipoDeAlvo!.Value, x.i.Alvo, x.i.Valor ?? 0) })
             .ToListAsync();
+        // Artefato desabilitado por Condição não está em uso: o bônus não conta enquanto ela durar.
+        return linhas.Where(l => efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, l.Id) is null).Select(l => l.Bonus).ToList();
+    }
 
     /// <summary>Os equipamentos da ficha e se estão em uso (Requisitos - Catálogo de Itens, Requisitos/Penalidade).</summary>
-    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId)
+    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
-        var armas = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).Select(w => new EquipamentoDaFicha(w.ItemId, w.IsEquipped)).ToListAsync();
-        var escudos = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).Select(s => new EquipamentoDaFicha(s.ItemId, s.IsEquipped)).ToListAsync();
-        var armaduras = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId && a.ItemId != null).Select(a => new EquipamentoDaFicha(a.ItemId!.Value, true)).ToListAsync();
-        var artefatos = await db.CharacterArtifacts.Where(a => a.CharacterSheetId == sheetId).Select(a => new EquipamentoDaFicha(a.ArtifactItemId, true)).ToListAsync();
+        // Equipamento desabilitado por Condição não está em uso (a linha guardada não muda): sem penalidade enquanto ela durar.
+        var armas = (await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Arma, x.Id) is null)).ToList();
+        var escudos = (await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Escudo, x.Id) is null)).ToList();
+        var armaduras = (await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Armadura, x.Id) is null)).ToList();
+        var artefatos = (await db.CharacterArtifacts.Where(a => a.CharacterSheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, x.Id) is null)).ToList();
         return [.. armas, .. escudos, .. armaduras, .. artefatos];
     }
 
-    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(CharacterSheet sheet) =>
-        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id), () => FichaParaRequisitosAsync(sheet));
+    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(CharacterSheet sheet, EfeitosDeCondicao? efeitos = null) =>
+        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id, efeitos), () => FichaParaRequisitosAsync(sheet));
 
     /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
-    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(CharacterSheet sheet)
+    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(CharacterSheet sheet, EfeitosDeCondicao? efeitos = null)
     {
-        var modificadores = await ArtefatosAsync(sheet.Id);
-        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet)));
+        var modificadores = await ArtefatosAsync(sheet.Id, efeitos);
+        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet, efeitos)));
         return modificadores;
     }
 

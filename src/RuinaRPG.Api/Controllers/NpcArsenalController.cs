@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}")]
-public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
+public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.NpcSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost("weapons")]
     public async Task<ActionResult<NpcWeaponResponse>> AddWeapon(Guid sheetId, AddNpcWeaponRequest request)
@@ -309,7 +310,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, weapon.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.NpcSheetId, weapon.Id) }, item, weapon.NpcSheetId);
     }
 
     private async Task<NpcArmorSlotResponse> ToArmorSlotResponseAsync(NpcArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -321,7 +322,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, slot.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.NpcSheetId, slot.Id) }, item, slot.NpcSheetId);
     }
 
     private async Task<NpcShieldResponse> ToShieldResponseAsync(NpcShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -330,7 +331,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, shield.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.NpcSheetId, shield.Id) }, item, shield.NpcSheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -341,6 +342,10 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var image = await db.Images.FindAsync(imageId.Value);
         return image is not null ? $"/images/{image.Path}" : null;
     }
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaNpcAsync((await db.NpcSheets.FindAsync(sheetId))!)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

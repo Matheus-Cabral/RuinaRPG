@@ -535,7 +535,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaNpcAsync(sheet)));
     }
 
     /// <summary>
@@ -553,7 +553,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return (await condicoes.ParaNpcAsync(sheet)).NoModificadorDeDano(await stats.ModificadoresAsync(sheet));
+        var efeitos = await condicoes.ParaNpcAsync(sheet);
+        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
     }
 
     // The GM's whole NPC roster/library, not scoped to any one player — GM-only, same reasoning as Create.
@@ -681,8 +682,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
         // Totais exibidos: Artefatos + penalidades de equipamento ativas.
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s);
         var efeitos = await condicoes.ParaNpcAsync(s); // Nenhum numa ficha do GM (sem dono)
+        var artefatosParaMaximos = await stats.ModificadoresAsync(s, efeitos);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos, efeitos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos, efeitos);
         var (statusVida, statusFoco) = s.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(s.Vocacao.Value), s.Nivel) : (0, 0);

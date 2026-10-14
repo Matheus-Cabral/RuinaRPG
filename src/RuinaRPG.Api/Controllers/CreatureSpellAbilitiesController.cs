@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/spell-abilities")]
-public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureSheetStats stats, IPericiaCatalogo pericias) : ControllerBase
+public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureSheetStats stats, IPericiaCatalogo pericias, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CreatureSpellAbilityResponse>> Add(Guid sheetId, AddCreatureSpellAbilityRequest request)
@@ -283,7 +284,8 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
             pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync())).ToList();
         return new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
             e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList(),
-            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes, CriadaNaFicha: e.CriadaNaFicha);
+            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes, CriadaNaFicha: e.CriadaNaFicha,
+            DesabilitadoPor: await DesabilitadoPorAsync(e));
     }
 
     private async Task<List<PassivaDisponivelResponse>> PassivasDisponiveisAsync(IQueryable<SpellAbilityBankEntry> query, FichaParaRequisitos ficha)
@@ -299,6 +301,22 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
                 pendencias.ToList()));
         }
         return result;
+    }
+
+    // Condição ativa da ficha que desabilita a linha (null se nenhuma). Racial nunca é desabilitada.
+    private async Task<string?> DesabilitadoPorAsync(CreatureSpellAbility e)
+    {
+        var categoria = e.Tipo switch
+        {
+            SpellAbilityTipo.Magia => CategoriaDesabilitavel.Magia,
+            SpellAbilityTipo.Habilidade => CategoriaDesabilitavel.Habilidade,
+            SpellAbilityTipo.Passiva => CategoriaDesabilitavel.Passiva,
+            _ => (CategoriaDesabilitavel?)null
+        };
+        if (categoria is not { } c)
+            return null;
+        var sheetId = e.CreatureSheetId;
+        return (await condicoes.ParaCriaturaAsync((await db.CreatureSheets.FindAsync(sheetId))!)).DesabilitadoPor(c, e.Id);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

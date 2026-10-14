@@ -31,8 +31,8 @@ public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis 
             return NotFound();
 
         var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).OrderBy(a => a.Atributo).ToListAsync();
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaCriaturaAsync(sheet);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
         return attributes
             .Select(a => new CreatureAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
                 efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,

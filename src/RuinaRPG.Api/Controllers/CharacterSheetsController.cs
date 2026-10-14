@@ -542,7 +542,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaPersonagemAsync(sheet.Id)));
     }
 
     /// <summary>
@@ -561,7 +561,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        return (await condicoes.ParaPersonagemAsync(sheet.Id)).NoModificadorDeDano(await stats.ModificadoresAsync(sheet));
+        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
     }
 
     /// <summary>
@@ -673,8 +674,8 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(CharacterSheet sheet, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel)
     {
         // Totais exibidos: Artefatos + penalidades de equipamento ativas e, por cima, as Condições ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
         var atributos = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheet.Id && (a.Atributo == Atributo.Vigor || a.Atributo == Atributo.Astucia)).ToListAsync();
         int TotalDe(Atributo atributo)
         {

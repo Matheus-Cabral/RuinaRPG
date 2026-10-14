@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Items;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     /// <summary>
     /// R0006 3.a: a Criatura weapon is EITHER a Catálogo-linked Arma (ItemId) OR a natural attack
@@ -345,11 +346,12 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
             var imageUrl = await ResolveImageUrlAsync(item.ImageId);
             var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
             var resposta = new CreatureWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Dados, item.Dano, item.Alcance, item.Critico, item.Rank?.ToString(), weapon.IsEquipped, weapon.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-            return await ComAvaliacaoAsync(resposta, item, weapon.CreatureSheetId);
+            return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.CreatureSheetId, weapon.Id) }, item, weapon.CreatureSheetId);
         }
 
         // A manual (natural attack) weapon has no catalog Item to read an ImageUrl/Descricao from.
-        return new CreatureWeaponResponse(weapon.Id.ToString(), null, weapon.ManualNome!, weapon.ManualTipoDeDano?.ToString(), weapon.ManualDados, weapon.ManualDano, null, null, null, weapon.IsEquipped, null, null, null, null);
+        return new CreatureWeaponResponse(weapon.Id.ToString(), null, weapon.ManualNome!, weapon.ManualTipoDeDano?.ToString(), weapon.ManualDados, weapon.ManualDano, null, null, null, weapon.IsEquipped, null, null, null, null)
+            with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.CreatureSheetId, weapon.Id) };
     }
 
     private async Task<CreatureArmorSlotResponse> ToArmorSlotResponseAsync(CreatureArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -361,7 +363,7 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CreatureArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, slot.CreatureSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.CreatureSheetId, slot.Id) }, item, slot.CreatureSheetId);
     }
 
     private async Task<CreatureShieldResponse> ToShieldResponseAsync(CreatureShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -370,7 +372,7 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CreatureShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, shield.CreatureSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.CreatureSheetId, shield.Id) }, item, shield.CreatureSheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -381,6 +383,10 @@ public class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRank
         var image = await db.Images.FindAsync(imageId.Value);
         return image is not null ? $"/images/{image.Path}" : null;
     }
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaCriaturaAsync((await db.CreatureSheets.FindAsync(sheetId))!)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

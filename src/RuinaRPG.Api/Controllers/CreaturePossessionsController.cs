@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Condicoes;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     /// <summary>
     /// R0006 3.d: Butim (Spoils), not the plain inventory the Personagem/NPC sheet has — Custo and
@@ -337,7 +338,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
         var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CreatureSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades };
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.CreatureSheetId, artifact.Id) };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -365,6 +366,10 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
 
     private static CreatureTraitResponse ToTraitResponse(CreatureTrait creatureTrait, ResolvedCatalogTrait trait) =>
         new(creatureTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), creatureTrait.Especificacao, trait.RequerEspecificacao);
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaCriaturaAsync((await db.CreatureSheets.FindAsync(sheetId))!)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

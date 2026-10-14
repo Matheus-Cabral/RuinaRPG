@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.Campaigns;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/runes")]
-public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
+public class CharacterRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterRuneResponse>> Add(Guid sheetId, AddCharacterRuneRequest request)
@@ -112,7 +113,7 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
-        return Created(string.Empty, ToResponse(rune, await RuneImageAccess.UrlsAsync(db, [rune.ImageId])));
+        return Created(string.Empty, await ToResponseAsync(rune, await RuneImageAccess.UrlsAsync(db, [rune.ImageId])));
     }
 
     [HttpGet]
@@ -128,7 +129,10 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
 
         var runes = await db.CharacterRunes.Where(r => r.CharacterSheetId == sheetId).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
-        return runes.Select(r => ToResponse(r, urls)).ToList();
+        var respostas = new List<CharacterRuneResponse>();
+        foreach (var r in runes)
+            respostas.Add(await ToResponseAsync(r, urls));
+        return respostas;
     }
 
     [HttpDelete("{id}")]
@@ -151,8 +155,12 @@ public class CharacterRunesController(RuinaRpgDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static CharacterRuneResponse ToResponse(CharacterRune r, Dictionary<Guid, string> imageUrls) =>
-        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina));
+    private async Task<CharacterRuneResponse> ToResponseAsync(CharacterRune r, Dictionary<Guid, string> imageUrls)
+    {
+        var sheetId = r.CharacterSheetId;
+        return new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina),
+            DesabilitadoPor: (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(CategoriaDesabilitavel.Runa, r.Id));
+    }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

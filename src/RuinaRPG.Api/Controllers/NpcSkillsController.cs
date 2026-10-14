@@ -35,8 +35,8 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
         var efeitos = await condicoes.ParaNpcAsync(sheet);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         var attributeTotals = await db.NpcAttributes
             .Where(a => a.NpcSheetId == sheetId)

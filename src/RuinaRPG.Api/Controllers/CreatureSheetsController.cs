@@ -338,7 +338,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaCriaturaAsync(sheet)));
     }
 
     /// <summary>
@@ -356,7 +356,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return (await condicoes.ParaCriaturaAsync(sheet)).NoModificadorDeDano(await stats.ModificadoresAsync(sheet));
+        var efeitos = await condicoes.ParaCriaturaAsync(sheet);
+        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
     }
 
     /// <summary>
@@ -437,8 +438,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s);
         var efeitos = await condicoes.ParaCriaturaAsync(s); // Nenhum numa ficha do GM (sem dono)
+        var artefatosParaMaximos = await stats.ModificadoresAsync(s, efeitos);
         var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos, efeitos);
         var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos, efeitos);
         var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
