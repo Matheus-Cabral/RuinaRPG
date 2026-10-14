@@ -123,7 +123,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     [Fact]
     public async Task AdvanceTurn_with_no_participants_asks_to_add_one_before_passing_the_vez()
     {
-        var gm = await RegisterGmAndGetTokenAsync("EncS2", "encs2@teste.com");
+        var gm = await RegisterGmAndGetTokenAsync("EncAdv0", "encadv0@teste.com");
         var (_, enc, ids) = await EncounterWithAsync(gm, 10);
         await StartAsync(gm, enc);
         await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/encounters/{enc}/participants/{ids[0]}", gm));
