@@ -101,7 +101,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteAdicionado, participant.Nome);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, await ToResponseAsync(participant, new List<string>()));
+        return Created(string.Empty, await ToResponseAsync(participant, new List<string>(), new List<CondicaoAplicadaResponse>()));
     }
 
     /// <summary>
@@ -150,6 +150,11 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         if (isLive && (request.PV is not null || request.PF is not null || request.PA is not null))
             return BadRequest("PV/PF/PA de um participante vindo de Ficha de Personagem são somente leitura aqui — edite a ficha diretamente.");
 
+        var existingConditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
+        // As condições de texto livre só podem ser reduzidas; as novas vêm do catálogo.
+        if (request.Condicoes.Any(t => !existingConditions.Any(c => c.Texto == t)))
+            return BadRequest("Novas condições vêm do catálogo.");
+
         var antes = (participant.Iniciativa, participant.AcoesRestantes, participant.PVAtual, participant.PFAtual, participant.PAAtual);
 
         participant.Iniciativa = request.Iniciativa;
@@ -161,7 +166,6 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             participant.PAAtual = request.PA;
         }
 
-        var existingConditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         db.EncounterParticipantConditions.RemoveRange(existingConditions);
         foreach (var texto in request.Condicoes)
             db.EncounterParticipantConditions.Add(new EncounterParticipantCondition { Id = Guid.NewGuid(), EncounterParticipantId = id, Texto = texto });
@@ -212,7 +216,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
     [HttpGet]
     public async Task<ActionResult<List<EncounterParticipantResponse>>> List(Guid encounterId)
     {
-        var (authError, _) = await CheckEncounterOwnershipAsync(encounterId);
+        var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
         if (authError is not null)
             return authError;
 
@@ -228,18 +232,25 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             .GroupBy(c => c.EncounterParticipantId)
             .ToDictionary(g => g.Key, g => g.Select(c => c.Texto).ToList());
 
+        var aplicadasByParticipantId = (await db.EncounterParticipantCondicoes
+                .Where(c => participantIds.Contains(c.EncounterParticipantId))
+                .ToListAsync())
+            .GroupBy(c => c.EncounterParticipantId)
+            .ToDictionary(g => g.Key, g => g.Select(c => CondicaoAplicadaMapper.ToResponse(c, encounter!)).ToList());
+
         var responses = new List<EncounterParticipantResponse>();
         foreach (var participant in participants)
-            responses.Add(await ToResponseAsync(participant, conditionsByParticipantId.GetValueOrDefault(participant.Id, new List<string>())));
+            responses.Add(await ToResponseAsync(participant, conditionsByParticipantId.GetValueOrDefault(participant.Id, new List<string>()),
+                aplicadasByParticipantId.GetValueOrDefault(participant.Id, new List<CondicaoAplicadaResponse>())));
         return responses;
     }
 
-    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p, List<string> condicoes)
+    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p, List<string> condicoes, List<CondicaoAplicadaResponse> condicoesAplicadas)
     {
         if (p.SourceCharacterSheetId is not null)
         {
             var sheet = await db.CharacterSheets.FindAsync(p.SourceCharacterSheetId.Value);
-            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true, condicoes);
+            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true, condicoes, condicoesAplicadas);
         }
         if (p.SourceNpcSheetId is not null)
         {
@@ -247,7 +258,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             var isLive = sheet?.OwnerId is not null;
             return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa,
                 isLive ? sheet?.VitalidadeAtual : p.PVAtual, isLive ? sheet?.FocoAtual : p.PFAtual, isLive ? sheet?.AdrenalinaAtual : p.PAAtual,
-                p.AcoesRestantes, isLive, condicoes);
+                p.AcoesRestantes, isLive, condicoes, condicoesAplicadas);
         }
         if (p.SourceCreatureSheetId is not null)
         {
@@ -255,10 +266,10 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             var isLive = sheet?.OwnerId is not null;
             return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa,
                 isLive ? sheet?.VitalidadeAtual : p.PVAtual, isLive ? sheet?.FocoAtual : p.PFAtual, isLive ? sheet?.AdrenalinaAtual : p.PAAtual,
-                p.AcoesRestantes, isLive, condicoes);
+                p.AcoesRestantes, isLive, condicoes, condicoesAplicadas);
         }
         // Source sheet was deleted (SetNull cascaded) — Nome snapshot still displays, PV/PF/PA frozen at whatever the columns last held.
-        return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false, condicoes);
+        return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, p.PVAtual, p.PFAtual, p.PAAtual, p.AcoesRestantes, IsLiveSourced: false, condicoes, condicoesAplicadas);
     }
 
     private async Task LogChangesAsync(Encounter encounter, EncounterParticipant participant,

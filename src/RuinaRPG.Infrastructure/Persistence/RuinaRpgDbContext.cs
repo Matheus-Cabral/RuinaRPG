@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Condicoes;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
@@ -111,6 +112,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
     public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
+    public DbSet<EncounterParticipantCondicao> EncounterParticipantCondicoes => Set<EncounterParticipantCondicao>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -746,5 +748,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<EncounterParticipantCondition>(entity =>
             entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<EncounterParticipantCondicao>(entity =>
+        {
+            entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(c => c.Modificadores).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<List<LinhaDeCondicaoAplicada>>.Converter, JsonbConversao<List<LinhaDeCondicaoAplicada>>.Comparer);
+            entity.Property(c => c.Desabilitacoes).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<Dictionary<CategoriaDesabilitavel, List<Guid>>>.Converter, JsonbConversao<Dictionary<CategoriaDesabilitavel, List<Guid>>>.Comparer);
+            entity.Property(c => c.AjustesAplicados).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<List<AjusteAplicado>>.Converter, JsonbConversao<List<AjusteAplicado>>.Comparer);
+        });
     }
 }

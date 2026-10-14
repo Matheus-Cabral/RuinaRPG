@@ -94,6 +94,16 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         _client.SendAsync(Authed(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{p.Id}", gmToken,
             new UpdateParticipantRequest(iniciativa, pv, p.PF, p.PA, acoes, condicoes.ToList())));
 
+    // Free-text conditions can no longer be added through the API (they come from the catalog): seed the legacy rows directly.
+    private async Task SeedLegacyConditionsAsync(EncounterParticipantResponse p, params string[] textos)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        foreach (var texto in textos)
+            db.EncounterParticipantConditions.Add(new() { Id = Guid.NewGuid(), EncounterParticipantId = Guid.Parse(p.Id), Texto = texto });
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task Nothing_is_logged_in_preparation()
     {
@@ -101,6 +111,7 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var encounterId = await CreateEncounterAsync(gm);
 
         var a = await AddNpcAsync(gm, encounterId, "Alfa", 30);
+        await SeedLegacyConditionsAsync(a, "Envenenado", "Cego");
         (await UpdateAsync(gm, encounterId, a, 25, 10, 3, "Envenenado")).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{a.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -191,27 +202,25 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Conditions_log_additions_and_removals_only()
+    public async Task Legacy_conditions_log_removals_and_an_unchanged_list_logs_nothing()
     {
+        // Additions come from the catalog now (see EncounterParticipantCondicoesControllerTests); the free-text rows are legacy.
         var gm = await RegisterGmAsync("LogGm6", "log6@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
         var a = await AddNpcAsync(gm, encounterId, "Alfa", 30);
+        await SeedLegacyConditionsAsync(a, "Envenenado", "Enraizado");
         await PostAsync(gm, $"/api/encounters/{encounterId}/start");
-        await UpdateAsync(gm, encounterId, a, 30, a.PV, 3, "Envenenado");
         var antes = (await GetLogAsync(gm, encounterId)).Count;
 
-        await UpdateAsync(gm, encounterId, a, 30, a.PV, 3, "Envenenado", "Enraizado");
-        var log = (await GetLogAsync(gm, encounterId)).Skip(antes).ToList();
-        log.Should().ContainSingle();
-        log[0].Tipo.Should().Be("CondicaoAdicionada");
-        log[0].Texto.Should().Be("Enraizado");
-        log[0].ParticipanteNome.Should().Be("Alfa");
+        (await UpdateAsync(gm, encounterId, a, 30, a.PV, 3, "Envenenado", "Enraizado")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetLogAsync(gm, encounterId)).Should().HaveCount(antes);
 
         await UpdateAsync(gm, encounterId, a, 30, a.PV, 3, "Enraizado");
-        log = (await GetLogAsync(gm, encounterId)).Skip(antes + 1).ToList();
+        var log = (await GetLogAsync(gm, encounterId)).Skip(antes).ToList();
         log.Should().ContainSingle();
         log[0].Tipo.Should().Be("CondicaoRemovida");
         log[0].Texto.Should().Be("Envenenado");
+        log[0].ParticipanteNome.Should().Be("Alfa");
     }
 
     [Fact]

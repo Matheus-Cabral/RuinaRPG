@@ -35,9 +35,9 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
 
     private static readonly List<EncounterParticipantResponse> Participants = new()
     {
-        new("p1", "Aldric", 15, 10, 5, 3, 3, false, new()),
-        new("p2", "Goblin", 12, 7, 0, 0, 2, false, new() { "Atordoado" }),
-        new("p3", "Lobo", 8, 9, 0, 0, 1, true, new()),
+        new("p1", "Aldric", 15, 10, 5, 3, 3, false, new(), new()),
+        new("p2", "Goblin", 12, 7, 0, 0, 2, false, new() { "Atordoado" }, new()),
+        new("p3", "Lobo", 8, 9, 0, 0, 1, true, new(), new()),
     };
 
     private IRenderedComponent<ContainerFragment> RenderPage()

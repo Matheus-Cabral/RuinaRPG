@@ -90,6 +90,7 @@ builder.Services.AddScoped<EquipmentKitGrantService>();
 builder.Services.AddScoped<CharacterSheetStats>();
 builder.Services.AddScoped<EncounterLog>();
 builder.Services.AddScoped<EncounterTurnos>();
+builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
 builder.Services.AddScoped<CreatureSheetStats>();

@@ -15,5 +15,7 @@ public enum EncounterLogTipo
     CampoAlterado,
     CondicaoAdicionada,
     CondicaoRemovida,
-    RecursoDaFicha
+    RecursoDaFicha,
+    CondicaoExpirada,
+    AjusteDeCondicao
 }

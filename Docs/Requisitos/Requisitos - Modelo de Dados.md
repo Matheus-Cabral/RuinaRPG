@@ -649,7 +649,7 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Turno | int | turno em que a linha foi gravada |
 | VezParticipantId | guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
 | VezNome | string, nullable | snapshot do nome |
-| Tipo | string (enum) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha` |
+| Tipo | string (enum) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha`, `CondicaoExpirada`, `AjusteDeCondicao` |
 | ParticipanteNome | string, nullable | |
 | Campo | string, nullable | |
 | ValorAntes | string, nullable | |
@@ -682,6 +682,22 @@ A regra de PV/PF/PA não depende só de qual `Source*SheetId` está setada, mas 
 | Id | PK |
 | EncounterParticipantId | FK |
 | Texto | string |
+
+Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`, seção abaixo) e ficam em `EncounterParticipantCondicoes`.
+
+**EncounterParticipantCondicoes** — uma Condição do catálogo aplicada a um participante. **Cópia independente** (padrão 1 da legenda): editar ou apagar a entrada do catálogo não altera a que já foi aplicada.
+
+| Coluna | Tipo | Nota |
+|---|---|---|
+| Id | PK | |
+| EncounterParticipantId | FK → EncounterParticipants, cascade | índice |
+| CondicaoId | guid, nullable | só procedência (sem FK); serve para recusar a mesma Condição duas vezes no participante |
+| Nome, Descricao, Icone | string | snapshot da entrada do catálogo |
+| AplicadaNoTurno | int | `CurrentRound` ao aplicar; 0 se na preparação (a contagem começa no Turno 1) |
+| DuracaoTurnos | int, nullable | a do catálogo, ou a escolhida ao aplicar; nulo = sem prazo |
+| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento}` com o valor como o GM ajustou; `LinhaId` (guid) é estável |
+| Desabilitacoes | jsonb | por categoria (`Arma`, `Armadura`, `Escudo`, `Artefato`, `Magia`, `Habilidade`, `Runa`, `Passiva`): lista vazia = a categoria inteira; senão os ids das linhas da ficha |
+| AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos; começa vazia |
 
   
 

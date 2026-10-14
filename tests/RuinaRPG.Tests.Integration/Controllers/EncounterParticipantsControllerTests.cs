@@ -119,6 +119,16 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
     private async Task UpdateCreatureVitalidadeAsync(string gmToken, string creatureId, string nome, int vitalidadeAtual) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, ValidCreatureUpdate(nome, vitalidadeAtual)));
 
+    // Free-text conditions can no longer be added through the API (they come from the catalog): seed the legacy rows directly.
+    private async Task SeedLegacyConditionsAsync(string participantId, params string[] textos)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        foreach (var texto in textos)
+            db.EncounterParticipantConditions.Add(new() { Id = Guid.NewGuid(), EncounterParticipantId = Guid.Parse(participantId), Texto = texto });
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task AddParticipant_from_a_gm_owned_npc_copies_PV_once_and_it_becomes_independently_editable()
     {
@@ -380,6 +390,9 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new AddParticipantRequest(null, npcId, null, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
 
+        await SeedLegacyConditionsAsync(added!.Id, "Enfraquecido", "Sangrando", "Cego");
+
+        // "Cego" is dropped by the request, the other two stay.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
             new UpdateParticipantRequest(15, 12, 5, 2, 1, new List<string> { "Enfraquecido", "Sangrando" })));
 
@@ -436,6 +449,7 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new AddParticipantRequest(null, npcId, null, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
 
+        await SeedLegacyConditionsAsync(added!.Id, "Envenenado", "Enraizado");
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
             new UpdateParticipantRequest(10, 12, 5, 2, 3, new List<string> { "Envenenado", "Enraizado" })));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
