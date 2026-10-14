@@ -266,7 +266,7 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_log_is_ordered_by_Sequencia_and_each_row_carries_Turno_and_whose_turn_it_was()
+    public async Task The_log_lists_the_events_in_the_order_they_happened_and_each_row_carries_Turno_and_whose_turn_it_was()
     {
         var gm = await RegisterGmAsync("LogGm9", "log9@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
@@ -278,7 +278,10 @@ public class EncounterLogTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
         var log = await GetLogAsync(gm, encounterId);
 
-        log.Select(e => e.Sequencia).Should().BeInAscendingOrder().And.OnlyHaveUniqueItems();
+        // The identity Sequencia is not an order promise (EF does not insert one save's rows in the
+        // order they were added); the log's order is the application-assigned Ordem, so what is
+        // asserted here is the sequence of events itself.
+        log.Select(e => e.Tipo).Should().Equal("Iniciado", "VezPassada", "VezPassada", "VezPassada", "NovoTurno", "VezPassada");
         log.Select(e => (e.Turno, e.VezNome)).Should().Equal(
             (1, "Alfa"), (1, "Alfa"), (1, "Beta"), (1, "Gama"), (2, "Alfa"), (2, "Alfa"));
     }
