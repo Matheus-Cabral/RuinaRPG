@@ -698,7 +698,7 @@ Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`,
 | DuracaoTurnos | int, nullable | a do catálogo, ou a escolhida ao aplicar; nulo = sem prazo |
 | Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento}` com o valor como o GM ajustou; `LinhaId` (guid) é estável |
 | Desabilitacoes | jsonb | por categoria (`Arma`, `Armadura`, `Escudo`, `Artefato`, `Magia`, `Habilidade`, `Runa`, `Passiva`): lista vazia = a categoria inteira; senão os ids das linhas da ficha |
-| AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos; começa vazia |
+| AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos (Turno 0 = linha "ao aplicar"; uma linha "a cada vez" roda no máximo uma vez por Turno, ver [[Requisitos - Gerenciador de Encontros]] R0013); começa vazia |
 
   
 

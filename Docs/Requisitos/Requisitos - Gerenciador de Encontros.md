@@ -33,7 +33,7 @@
 - *Iniciativa*: campo numérico, digitado manualmente pelo GM (o cálculo com Dado da Cena é feito à mesa, ver §5 de "[[Ruína RPG - Sistema Básico]]").
 - *Vitalidade (PV) atual*, *Foco/Arcana (PF) atual* e *Adrenalina (PA) atual*: campos numéricos.
 - *Ações restantes*: contador de 0 a 3 (ver §4 de "[[Ruína RPG - Sistema Básico]]").
-- *Condições*: lista de tags em texto livre (ex: Envenenado, Enraizado — não há catálogo estruturado de condições ainda).
+- *Condições*: as Condições do catálogo aplicadas a ele (ver R0011), cada uma com ícone, nome e Turnos restantes quando tem duração. As tags de texto livre de antes do catálogo (ex: Envenenado, Enraizado) continuam exibidas, mas só podem ser removidas; condições novas vêm sempre do catálogo.
 
 O comportamento de PV/PF/PA difere conforme a origem do participante (R0002):
 
@@ -97,7 +97,49 @@ Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta
 - o início do Encontro, cada novo Turno e cada passagem de vez (próxima, anterior e escolhida);
 - participante adicionado ou removido;
 - alterações de Iniciativa, Ações restantes, PV/PF/PA e Condições de um participante;
+- Condição aplicada, removida ou expirada (R0012) e cada ajuste de valor atual feito por uma Condição (R0013);
 - a finalização e a reabertura do Encontro;
 - para um participante ligado a uma ficha (Personagem, ou NPC/Criatura concedido), as alterações de Vitalidade, Foco e Adrenalina feitas na própria ficha.
 
 Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log aparece na própria tela do Encontro, agrupado por Turno e, dentro dele, pela vez em que o evento ocorreu. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
+
+  
+
+# **R0011** - O GM aplica Condições do catálogo aos participantes.
+
+**Descrição**: Na preparação e em andamento, o GM aplica a um participante uma Condição do catálogo de "[[Requisitos - Auditoria de Regras]]" R0017. A Condição aplicada é uma **cópia independente**: editar ou excluir a entrada do catálogo depois não a altera. Ao aplicar, o GM pode:
+
+- mudar a **duração** em Turnos (no mínimo 1), que começa com a duração padrão da entrada; vazia, a Condição dura até ser removida;
+- ajustar o **Valor** de cada modificador (nunca 0);
+- escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
+
+A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
+
+Uma Condição só está **ativa** com o Encontro em andamento e enquanto a duração não venceu (R0012): na preparação ela fica no participante sem efeito nenhum, e começa a valer ao Iniciar. O efeito nos valores depende da origem do participante (R0002): numa Ficha de Personagem, ou numa Ficha de NPC/Criatura concedida a um jogador, a ficha mostra os valores com a Condição enquanto ela está ativa (ver "[[Requisitos - Ficha de Personagem]]" R0009), e o dono da ficha é avisado sempre que as Condições ativas dela mudam; numa Ficha de NPC/Criatura do GM, a ficha original nunca muda e a Condição só vale para aquela instância no Encontro.
+
+  
+
+# **R0012** - As Condições com duração expiram sozinhas.
+
+**Descrição**: Uma Condição com duração **N** Turnos, aplicada no Turno **T**, vale do Turno T até o Turno T + N − 1 e é retirada do participante quando o Encontro **entra** no Turno T + N. Uma Condição aplicada na preparação conta a partir do Turno 1. Os Turnos restantes exibidos (R0003) seguem a mesma conta, então o contador e a expiração sempre concordam.
+
+A expiração acontece só ao entrar num Turno novo (pela **Próxima vez**, ao passar do último participante, ou ao remover o último participante da vez, R0008). **Vez anterior** nunca traz de volta uma Condição que expirou. Ao expirar, a ficha ligada ao participante volta aos valores sem ela, a expiração é registrada no log do Encontro (R0010) e no log da ficha como automática, e o dono da ficha é avisado.
+
+  
+
+# **R0013** - Os ajustes de valor atual das Condições acontecem na hora certa e uma única vez.
+
+**Descrição**: Um modificador de **valor atual** de recurso (ver "[[Requisitos - Auditoria de Regras]]" R0017) muda de verdade o valor corrente, e esse ajuste nunca é devolvido — nem ao remover a Condição, nem ao voltar a vez.
+
+- **Ao aplicar**: roda uma única vez, na primeira vez em que a Condição fica ativa — na hora, se o Encontro já está em andamento, ou ao **Iniciar**, se ela foi aplicada na preparação. Uma Condição aplicada e removida ainda na preparação nunca roda.
+- **A cada vez do participante**: roda cada vez que o participante **recebe** a vez — por **Próxima vez**, por **Passar a vez para este**, ao **Iniciar** (o primeiro da ordem) e quando a vez passa a ele porque quem a tinha foi removido (R0008) —, no máximo **uma vez por Turno** para cada modificador. **Vez anterior** não roda nem desfaz nada; voltar e avançar de novo no mesmo Turno não repete o ajuste, e o Turno seguinte roda de novo.
+- Quando uma mesma ação entra num Turno novo e dá a vez a alguém, primeiro expiram as Condições vencidas (R0012), depois rodam os ajustes das que continuam ativas.
+
+**Onde o ajuste cai**:
+
+- **Ficha de Personagem**, ou **Ficha de NPC/Criatura concedida**: no valor atual guardado na ficha, que fica entre 0 e o máximo da ficha com as Condições ativas (de todos os Encontros em andamento de que ela participa). O ajuste aparece no log da ficha como automático e o dono da ficha é avisado.
+- **Ficha de NPC/Criatura do GM**: no PV/PF/PA daquela instância no Encontro, que nunca fica abaixo de 0 e não tem teto (como quando o GM os edita à mão, R0003). Estresse não é acompanhado no Encontro: o ajuste é pulado.
+
+Um modificador **percentual** é um percentual do **total** do recurso, arredondado para baixo: o máximo da ficha com as Condições ativas; numa instância do GM, o máximo da ficha original calculado com as Condições **daquela instância**. Se a ficha original já não existe, o percentual é pulado (um fixo ainda roda).
+
+**Log**: cada ajuste vira uma linha no log do Encontro (R0010) com o participante, o recurso, o valor antes e depois e o nome da Condição; um ajuste pulado também vira uma linha, dizendo por quê ("Estresse não é acompanhado no encontro" ou "ficha de origem removida"). O ajuste na ficha não gera, além disso, a linha de alteração de recurso da ficha.

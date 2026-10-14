@@ -76,8 +76,10 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
 
         var (round, participantId) = TurnAdvanceCalculator.Start(participants.Select(p => p.Id).ToList());
         encounter!.Status = EncounterStatus.EmAndamento;
-        await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == participantId), round, MotivoDaVez.Inicio);
+        var mudanca = await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == participantId), round, MotivoDaVez.Inicio);
         await condicoesDoEncontro.AoMudarAtivacaoAsync(participants.Select(p => p.Id));
+        // Depois do corte da ativação: as linhas "ao aplicar" das Condições da preparação e as "a cada vez" do primeiro.
+        await condicoesDoEncontro.AoMudarAVezAsync(encounter, mudanca);
 
         await db.SaveChangesAsync();
         await condicoesDoEncontro.NotificarAsync();
@@ -102,9 +104,11 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         var (nextRound, nextParticipantId) = encounter!.CurrentParticipantId is null
             ? (encounter.CurrentRound, orderedIds[0])
             : TurnAdvanceCalculator.Advance(encounter.CurrentRound, encounter.CurrentParticipantId, orderedIds);
-        await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == nextParticipantId), nextRound, MotivoDaVez.Proxima);
+        var mudanca = await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == nextParticipantId), nextRound, MotivoDaVez.Proxima);
+        await condicoesDoEncontro.AoMudarAVezAsync(encounter, mudanca);
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 
@@ -121,6 +125,7 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         if (previous is null)
             return BadRequest("Não há vez anterior.");
 
+        // Vez anterior não roda nem desfaz ajuste de Condição, e não traz de volta uma que expirou: sem gancho.
         await turnos.DarAVezAsync(encounter, participants.Single(p => p.Id == previous.Value.ParticipantId), previous.Value.Round, MotivoDaVez.Anterior);
 
         await db.SaveChangesAsync();
@@ -139,9 +144,11 @@ public class EncountersController(RuinaRpgDbContext db, EncounterLog log, Encoun
         if (participant is null)
             return NotFound();
 
-        await turnos.DarAVezAsync(encounter!, participant, encounter!.CurrentRound, MotivoDaVez.Escolhida);
+        var mudanca = await turnos.DarAVezAsync(encounter!, participant, encounter!.CurrentRound, MotivoDaVez.Escolhida);
+        await condicoesDoEncontro.AoMudarAVezAsync(encounter, mudanca);
 
         await db.SaveChangesAsync();
+        await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
 

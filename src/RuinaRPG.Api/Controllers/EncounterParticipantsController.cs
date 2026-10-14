@@ -197,18 +197,24 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         // Registered first, while the removed participant still has the turn: "X saiu" belongs under X's own vez and Turno.
         await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
 
+        MudancaDeVez? mudanca = null;
         if (encounter!.CurrentParticipantId == id)
         {
             // Order passed is the one BEFORE the removal.
             var next = TurnAdvanceCalculator.AfterRemoval(encounter.CurrentRound, id, participants.Select(p => p.Id).ToList());
             var receiver = next is { } handover ? participants.Single(p => p.Id == handover.ParticipantId) : null;
-            await turnos.DarAVezAsync(encounter, receiver, next?.Round ?? encounter.CurrentRound, MotivoDaVez.Remocao);
+            mudanca = await turnos.DarAVezAsync(encounter, receiver, next?.Round ?? encounter.CurrentRound, MotivoDaVez.Remocao);
         }
 
         var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         db.EncounterParticipantConditions.RemoveRange(conditions);
+        // As Condições do catálogo saem com ele. Apagadas aqui (e não só pela cascata) para o log da ficha registrar cada uma.
+        db.EncounterParticipantCondicoes.RemoveRange(await db.EncounterParticipantCondicoes.Where(c => c.EncounterParticipantId == id).ToListAsync());
         db.EncounterParticipants.Remove(participant);
-        // As Condições do participante saem com ele (cascata): a ficha volta aos totais sem elas.
+        // Quem recebeu a vez: expiração (se entrou num Turno novo) e linhas "a cada vez" dele. O removido já não conta.
+        if (mudanca is not null)
+            await condicoesDoEncontro.AoMudarAVezAsync(encounter, mudanca);
+        // A ficha do removido volta aos totais sem as Condições dele.
         await condicoesDoEncontro.AoMudarAtivacaoAsync([id]);
 
         await db.SaveChangesAsync();

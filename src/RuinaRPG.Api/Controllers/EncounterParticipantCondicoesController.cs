@@ -76,6 +76,7 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         db.EncounterParticipantCondicoes.Add(aplicada);
         await log.RegistrarAsync(encounter, EncounterLogTipo.CondicaoAdicionada, participant.Nome, texto: aplicada.Nome);
         await condicoesDoEncontro.AoMudarAtivacaoAsync([participantId]);
+        await condicoesDoEncontro.AoAplicarAsync(encounter, participant, aplicada);
         await db.SaveChangesAsync();
         await condicoesDoEncontro.NotificarAsync();
 

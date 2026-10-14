@@ -211,6 +211,45 @@ public class CondicoesAlteradasTests : IClassFixture<PostgresFixture>, IAsyncLif
     }
 
     [Fact]
+    public async Task O_dono_e_avisado_quando_uma_Condicao_expira_e_quando_um_ajuste_a_cada_vez_muda_a_ficha_e_Vez_anterior_nao_avisa()
+    {
+        var mesa = await MesaAsync();
+        var sheetId = await PersonagemAsync(mesa);
+        var encounterId = await EncontroAsync(mesa);
+        var participantId = await ParticiparAsync(mesa, encounterId, new AddParticipantRequest(sheetId, null, null, 10));
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/start", mesa.Gm);
+        var lenta = await CondicaoAsync(mesa);
+        var sangria = (await (await EnviarAsync(HttpMethod.Post, "/api/condicoes", mesa.Gm, new SalvarCondicaoRequest(Unique("Sangria"), null, "Veneno", null,
+            [new CondicaoModificadorDto("RecursoAtual", "Vitalidade", "Fixo", -1, "ACadaVez")], []))).Content.ReadFromJsonAsync<CondicaoResponse>())!.Id;
+        await using var dono = await ConectarAsync("/hubs/notifications", mesa.Jogador);
+        var caixa = new Caixa(dono);
+
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", mesa.Gm, new AplicarCondicaoRequest(lenta, 1, null, null));
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("aplicar já avisa (Tarefa 8)");
+
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", mesa.Gm); // Turno 2: expira
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("a expiração avisa o dono");
+
+        // Só um ajuste que muda a ficha avisa: Vigor 8 dá total 16, e com 10 guardado o −1 leva a 9.
+        await EnviarAsync(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", mesa.Gm, new { Gasto = 0, Bonus = 8, TemMaestria = true });
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.CharacterSheets.FindAsync(Guid.Parse(sheetId)))!.VitalidadeAtual = 10;
+            await db.SaveChangesAsync();
+        }
+        await AplicarAsync(mesa, encounterId, participantId, sangria);
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("aplicar já avisa (Tarefa 8)");
+
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", mesa.Gm); // Turno 3: −1
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("o ajuste a cada vez avisa o dono");
+
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/previous-turn", mesa.Gm);
+        (await caixa.EsperarAsync(StaysSilent)).Should().BeFalse("Vez anterior não muda nada");
+        caixa.Recebidas.Should().HaveCount(4).And.AllBeEquivalentTo(new CondicoesAlteradasNotification("character", sheetId));
+    }
+
+    [Fact]
     public async Task O_grupo_do_encontro_recebe_ParticipantsChanged()
     {
         var mesa = await MesaAsync();
