@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject PericiaCatalogo Catalogo
 @using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.Condicoes
 @using RuinaRPG.Domain.Condicoes
 @using MudBlazor
@@ -11,10 +12,17 @@
     <MudText Typo="Typo.h3">Auditoria: Condições</MudText>
     <InfoPopup Title="O que são as Condições">
         <MudText>
-            Uma Condição é um estado aplicado a participantes durante um encontro (Envenenado, Lento, Abençoado...). Não são os Efeitos que uma Magia compra com PI: esses ficam em Auditoria: Efeitos. Ela só age enquanto o encontro está em andamento.
+            Uma Condição é um estado aplicado a um participante durante um encontro em andamento (Envenenado, Lento, Abençoado...). Não são os Efeitos que uma Magia compra com PI: esses ficam em Auditoria: Efeitos.
         </MudText>
+        <ul class="mt-2">
+            <li><b>Total de um recurso</b> muda o máximo enquanto a Condição durar e é desfeito quando ela sai.</li>
+            <li><b>Valor atual</b> muda o que o participante tem agora e nunca é devolvido.</li>
+            <li>No valor atual, <b>ao aplicar</b> age uma vez; <b>a cada vez do participante</b> age toda vez que ele recebe a vez no encontro.</li>
+            <li>Uma porcentagem no valor atual é uma porcentagem do total daquele recurso.</li>
+            <li>Valor negativo reduz; valor positivo aumenta.</li>
+        </ul>
         <MudText Class="mt-2">
-            Cada linha de modificador altera um número da ficha, por um valor fixo ou por uma porcentagem. <b>Total</b> de um recurso muda o máximo, e some quando a Condição sai. <b>Valor atual</b> muda o que o participante tem agora, uma vez ao aplicar ou a cada vez do participante, e nunca é devolvido. As categorias desabilitadas fazem equipamentos, Magias, Habilidades, Runas ou Passivas deixarem de valer. O catálogo vale para todo o servidor, e editá-lo ou excluir uma entrada não altera uma Condição já aplicada a um participante.
+            O catálogo vale para todo o servidor. Editar ou excluir uma entrada não altera uma Condição já aplicada.
         </MudText>
     </InfoPopup>
 </div>
@@ -115,6 +123,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Todo usuário autenticado pode ler o catálogo, então o 200 do GET não diz quem pode editar:
+        // pergunta-se antes. Se a consulta falhar, a API continua recusando a escrita (403).
+        var me = await Http.GetAsync("auth/me");
+        if (me.IsSuccessStatusCode && !((await me.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false))
+            _forbidden = true;
+
         await Catalogo.CarregarAsync();
         await LoadAsync();
     }

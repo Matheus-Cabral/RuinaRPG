@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Pages;
+using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Tests.Client.Shared;
@@ -23,6 +24,7 @@ public class AuditoriaCondicoesTests : MudBunitContext
 
     private readonly List<(HttpMethod Method, string Path, string Body)> _calls = new();
     private List<CondicaoResponse> _catalogo = new();
+    private bool _auditor = true;
     private Func<HttpMethod, HttpResponseMessage?> _escrita = _ => null;
 
     private static CondicaoResponse Veneno() => new("c1", "Veneno", "Perde vida", "Veneno", 3,
@@ -36,6 +38,8 @@ public class AuditoriaCondicoesTests : MudBunitContext
             var body = request.Content is null ? "" : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             if (request.Method != HttpMethod.Get)
                 _calls.Add((request.Method, path, body));
+            if (request.Method == HttpMethod.Get && path.EndsWith("/auth/me"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new MeResponse("u1", "Usuario", "GM", _auditor, null, false)) };
             if (request.Method == HttpMethod.Get && path.EndsWith("/pericias"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Pericias) };
             if (request.Method == HttpMethod.Get && path.EndsWith("/condicoes"))
@@ -263,5 +267,51 @@ public class AuditoriaCondicoesTests : MudBunitContext
         await Task.Delay(50);
 
         _calls.Should().ContainSingle(c => c.Method == HttpMethod.Delete && c.Path.EndsWith("/condicoes/c1"));
+    }
+
+    [Fact]
+    public async Task A_user_who_is_not_the_Auditor_sees_the_forbidden_notice_and_no_form_edit_or_delete()
+    {
+        _auditor = false;
+        _catalogo = [Veneno()];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Markup.Should().Contain("Você não é o Auditor de Regras designado");
+        cut.FindAll("button").Where(b => b.TextContent.Contains("Nova condição")).Should().BeEmpty();
+        cut.FindAll("button[aria-label='Editar Veneno']").Should().BeEmpty();
+        cut.FindAll("button[aria-label='Excluir Veneno']").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_line_whose_Pericia_was_removed_shows_a_flagged_option_and_a_warning_and_keeps_the_key()
+    {
+        _catalogo = [new("c2", "Lento", "", "Lentidao", null,
+            [new CondicaoModificadorDto("Pericia", "Apagada", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Lento']").Click();
+
+        Escolha(cut, "Específico").Should().Be("Apagada");
+        Opcoes(cut, "Específico").Should().Equal("Todas", "Atletismo", "Furtividade", "(Perícia removida)");
+        cut.Markup.Should().Contain("Esta Perícia foi removida do catálogo; escolha outra.");
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Salvar")).Click();
+        await Task.Delay(50);
+        _calls.Single(c => c.Method == HttpMethod.Put).Body.Should().Contain("\"Apagada\"");
+    }
+
+    [Fact]
+    public async Task A_line_with_an_existing_Pericia_shows_no_removed_warning()
+    {
+        _catalogo = [new("c2", "Lento", "", "Lentidao", null,
+            [new CondicaoModificadorDto("Pericia", "Atletismo", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Lento']").Click();
+
+        cut.Markup.Should().NotContain("foi removida do catálogo");
     }
 }

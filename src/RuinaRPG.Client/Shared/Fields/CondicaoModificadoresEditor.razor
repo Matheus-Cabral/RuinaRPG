@@ -28,7 +28,15 @@
                         {
                             <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
                         }
+                        @if (PericiaRemovida(alvo, linha))
+                        {
+                            <MudSelectItem T="string" Value="@linha.Especifico">(Perícia removida)</MudSelectItem>
+                        }
                     </MudSelect>
+                    @if (PericiaRemovida(alvo, linha))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">Esta Perícia foi removida do catálogo; escolha outra.</MudText>
+                    }
                 </td>
                 <td>
                     <MudSelect T="string" Label="Tipo" Dense="true" @bind-Value="linha.TipoDeValor">
@@ -64,6 +72,13 @@
 @code {
     [Parameter, EditorRequired] public List<CondicaoLinhaForm> Linhas { get; set; } = new();
     [Parameter] public IReadOnlyList<PericiaResponse> Pericias { get; set; } = Array.Empty<PericiaResponse>();
+
+    // Uma linha antiga pode citar uma Perícia que saiu do catálogo: ela continua visível e marcada, sem trocar o dado do Auditor.
+    private bool PericiaRemovida(AlvoDeCondicao alvo, CondicaoLinhaForm linha) =>
+        alvo is AlvoDeCondicao.Pericia or AlvoDeCondicao.Maestria
+        && linha.Especifico != ""
+        && Pericias.Count > 0
+        && Pericias.All(p => p.Chave != linha.Especifico);
 
     // Trocar o Alvo reinicia o "específico" (a primeira escolha, que para os alvos opcionais é "Todos/Todas")
     // e o Momento, que só existe para o valor atual de um recurso.
