@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Domain.CharacterSheets;
@@ -28,9 +29,7 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
         [CategoriaDesabilitavel.Magia, CategoriaDesabilitavel.Habilidade, CategoriaDesabilitavel.Passiva, CategoriaDesabilitavel.Runa];
 
     /// <summary>Tudo o que difere entre os dois tipos de ficha, já calculado para um conjunto de Condições.</summary>
-    private sealed record Numeros(List<AtributoCalculado> Atributos, SubAttributesResponseLite Sub, (int Vitalidade, int Foco, int Adrenalina) Maximos, List<PericiaCalculada> Pericias);
-
-    private sealed record SubAttributesResponseLite(int Iniciativa, int Movimentacao, int EsquivaNatural, int DefesaNatural, int ReducaoFisica, int ReducaoMagica, int? EficienciaElemental, int? DanoElemental);
+    private sealed record Numeros(List<AtributoCalculado> Atributos, SubAttributesResponse Sub, (int Vitalidade, int Foco, int Adrenalina, int? Estresse) Maximos, List<PericiaCalculada> Pericias);
 
     /// <returns>null quando a ficha de origem não existe mais ou o participante não é de NPC nem de Criatura.</returns>
     public async Task<ResumoDeFichaResponse?> MontarAsync(EncounterParticipant participante)
@@ -46,15 +45,15 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
             Func<EfeitosDeCondicao, Task<Numeros>> calcular = async e =>
             {
                 var sub = await npcStats.SubAtributosAsync(ficha, e);
-                var (vitalidade, foco, adrenalina, _) = await npcStats.MaximosAsync(ficha, e);
-                return new Numeros(await npcStats.AtributosAsync(ficha, e), Enxuto(sub), (vitalidade, foco, adrenalina), await npcStats.PericiasAsync(ficha, e));
+                var (vitalidade, foco, adrenalina, estresse) = await npcStats.MaximosAsync(ficha, e);
+                return new Numeros(await npcStats.AtributosAsync(ficha, e), sub, (vitalidade, foco, adrenalina, estresse), await npcStats.PericiasAsync(ficha, e));
             };
 
             var traits = await db.NpcTraits.Where(t => t.NpcSheetId == ficha.Id).Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new ResumoDeCaracteristica(t.Nome, nt.Polaridade.ToString(), nt.Especificacao)).ToListAsync();
             var equipados = (await db.NpcWeapons.Where(w => w.NpcSheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
                 .Concat(await db.NpcShields.Where(s => s.NpcSheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
             return await ComporAsync(participante, "Npc", ficha.Id, ficha.Nome, ficha.ImageId, ficha.Nivel, null, ficha.OwnerId is not null,
-                (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), efeitos, ativas, calcular, traits, equipados);
+                (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), ficha.EstresseAtual, efeitos, ativas, calcular, traits, equipados);
         }
 
         if (participante.SourceCreatureSheetId is { } criaturaId)
@@ -66,7 +65,10 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
             var ativas = ficha.OwnerId is null ? await condicoes.ListarDoParticipanteAsync(participante.Id) : await condicoes.ListarDaCriaturaAsync(ficha);
 
             Func<EfeitosDeCondicao, Task<Numeros>> calcular = async e =>
-                new(await criaturaStats.AtributosAsync(ficha, e), Enxuto(await criaturaStats.SubAtributosAsync(ficha, e)), await criaturaStats.MaximosAsync(ficha, e), await criaturaStats.PericiasAsync(ficha, e));
+            {
+                var (vitalidade, foco, adrenalina) = await criaturaStats.MaximosAsync(ficha, e);
+                return new Numeros(await criaturaStats.AtributosAsync(ficha, e), await criaturaStats.SubAtributosAsync(ficha, e), (vitalidade, foco, adrenalina, null), await criaturaStats.PericiasAsync(ficha, e));
+            };
 
             var normais = await db.CreatureTraits.Where(t => t.CreatureSheetId == ficha.Id && t.TraitId != null)
                 .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new ResumoDeCaracteristica(t.Nome, ct.Polaridade.ToString(), ct.Especificacao)).ToListAsync();
@@ -75,14 +77,14 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
             var equipados = (await db.CreatureWeapons.Where(w => w.CreatureSheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
                 .Concat(await db.CreatureShields.Where(s => s.CreatureSheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
             return await ComporAsync(participante, "Criatura", ficha.Id, ficha.Nome, ficha.ImageId, ficha.Nivel, ficha.Rank?.ToString(), ficha.OwnerId is not null,
-                (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), efeitos, ativas, calcular, [.. normais, .. exclusivas], equipados);
+                (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), null, efeitos, ativas, calcular, [.. normais, .. exclusivas], equipados);
         }
 
         return null;
     }
 
     private async Task<ResumoDeFichaResponse> ComporAsync(EncounterParticipant participante, string tipo, Guid fichaId, string? nomeDaFicha, Guid? imageId, int nivel, string? rank,
-        bool concedida, (int Vitalidade, int Foco, int Adrenalina) atuaisDaFicha, EfeitosDeCondicao efeitos, List<CondicaoAtivaNaFichaResponse> ativas,
+        bool concedida, (int Vitalidade, int Foco, int Adrenalina) atuaisDaFicha, int? estresseAtual, EfeitosDeCondicao efeitos, List<CondicaoAtivaNaFichaResponse> ativas,
         Func<EfeitosDeCondicao, Task<Numeros>> calcular, List<ResumoDeCaracteristica> caracteristicas, HashSet<Guid> emUsoSeEquipavel)
     {
         var com = await calcular(efeitos);
@@ -117,6 +119,9 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
             new("Foco", pf, new(com.Maximos.Foco, sem.Maximos.Foco)),
             new("Adrenalina", pa, new(com.Maximos.Adrenalina, sem.Maximos.Adrenalina)),
         };
+        // O encontro não acompanha Estresse (R0013): o atual é o da ficha. A Criatura não tem Estresse.
+        if (com.Maximos.Estresse is { } estresse && sem.Maximos.Estresse is { } estresseSem)
+            recursos.Add(new("Estresse", estresseAtual, new(estresse, estresseSem)));
 
         // Só as Perícias com pontos e as que uma Condição mudou.
         var pericias = com.Pericias
@@ -137,7 +142,4 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
             atributos, subAtributos, recursos, pericias, Linhas(CategoriasDeEquipamento, soEmUso: true), Linhas(CategoriasDeMagia, soEmUso: false),
             caracteristicas, ativas);
     }
-
-    private static SubAttributesResponseLite Enxuto(RuinaRPG.Contracts.CharacterSheets.SubAttributesResponse s) =>
-        new(s.Iniciativa, s.Movimentacao, s.EsquivaNatural, s.DefesaNatural, s.ReducaoFisica, s.ReducaoMagica, s.EficienciaElemental, s.DanoElemental);
 }

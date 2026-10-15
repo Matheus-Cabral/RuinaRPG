@@ -309,7 +309,7 @@ public class ResumoDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         depois.MagiasEHabilidades.Single().DesabilitadoPor.Should().Be(nome);
         depois.Equipamentos.Single(e => e.Categoria == "Artefato").DesabilitadoPor.Should().Be(nome);
         depois.Equipamentos.Single(e => e.Categoria == "Arma").DesabilitadoPor.Should().BeNull();
-        // O Artefato desabilitado deixa de somar: o resumo e só ele.
+        // O Artefato desabilitado continua listado, só marcado.
         depois.Equipamentos.Should().HaveCount(2);
     }
 
@@ -419,7 +419,7 @@ public class ResumoDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Outro_GM_e_um_jogador_recebem_404()
+    public async Task Outro_GM_recebe_404_e_um_jogador_403()
     {
         var mesa = await MesaAsync("Acesso");
         var outro = await MesaAsync("Acesso2");
@@ -458,5 +458,64 @@ public class ResumoDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
         var lista = await LerAsync<List<EncounterParticipantResponse>>(mesa.Gm, $"/api/encounters/{encounterId}/participants");
         lista.Select(p => p.Origem).Should().BeEquivalentTo(["Npc", "Criatura"]);
+    }
+
+    [Fact]
+    public async Task NPC_do_GM_mostra_o_Estresse_com_e_sem_a_condicao_e_a_Criatura_nao_tem_a_linha()
+    {
+        var mesa = await MesaAsync("Estr");
+        var npc = await NovaFichaAsync(mesa, Npc, concedida: false);
+        var criatura = await NovaFichaAsync(mesa, Criatura, concedida: false);
+        var encounterId = await NovoEncontroAsync(mesa);
+        var pNpc = await ParticiparAsync(mesa, encounterId, npc);
+        var pCriatura = await ParticiparAsync(mesa, encounterId, criatura);
+        await IniciarAsync(mesa, encounterId);
+        var antes = await ResumoAsync(mesa.Gm, encounterId, pNpc);
+        var original = Recurso(antes, "Estresse").ValorSemCondicoes;
+
+        await AplicarAsync(mesa, encounterId, pNpc, await CriarCondicaoAsync(mesa, "Tensão", Fixo("RecursoTotal", "Estresse", 5)));
+
+        var resumo = await ResumoAsync(mesa.Gm, encounterId, pNpc);
+        Recurso(resumo, "Estresse").Should().Be(new ValorDoResumo(original + 5, original));
+        resumo.Recursos.Single(r => r.Nome == "Estresse").Atual.Should().Be(0);
+        (await ResumoAsync(mesa.Gm, encounterId, pCriatura)).Recursos.Select(r => r.Nome).Should().NotContain("Estresse");
+    }
+
+    [Fact]
+    public async Task O_resumo_nao_escreve_nada()
+    {
+        var mesa = await MesaAsync("Leit");
+        var ficha = await NovaFichaAsync(mesa, Npc, concedida: true);
+        var encounterId = await NovoEncontroAsync(mesa);
+        var participantId = await ParticiparAsync(mesa, encounterId, ficha);
+        await IniciarAsync(mesa, encounterId);
+        await AplicarAsync(mesa, encounterId, participantId, await CriarCondicaoAsync(mesa, "Fraqueza", Fixo("Atributo", "Forca", -3)));
+
+        async Task<(int Log, int Ficha, string Participante, string Condicoes)> EstadoAsync()
+        {
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var pid = Guid.Parse(participantId);
+            var p = await db.EncounterParticipants.AsNoTracking().SingleAsync(x => x.Id == pid);
+            var condicoes = await db.EncounterParticipantCondicoes.AsNoTracking().Where(c => c.EncounterParticipantId == pid).Select(c => c.Id + ":" + c.Nome).ToListAsync();
+            return (await db.EncounterLogEntries.CountAsync(), await db.SheetLogEntries.CountAsync(), $"{p.PVAtual}/{p.PFAtual}/{p.PAAtual}/{p.AcoesRestantes}", string.Join(",", condicoes));
+        }
+
+        var antes = await EstadoAsync();
+        await ResumoAsync(mesa.Gm, encounterId, participantId);
+        await ResumoAsync(mesa.Gm, encounterId, participantId);
+        (await EstadoAsync()).Should().Be(antes);
+    }
+
+    [Fact]
+    public async Task Origem_fica_nula_na_lista_depois_que_a_ficha_de_origem_e_apagada()
+    {
+        var mesa = await MesaAsync("OrigN");
+        var ficha = await NovaFichaAsync(mesa, Npc, concedida: false);
+        var encounterId = await NovoEncontroAsync(mesa);
+        await ParticiparAsync(mesa, encounterId, ficha);
+        await EnviarAsync(HttpMethod.Delete, $"/api/npc-sheets/{ficha.Id}", mesa.Gm, esperado: HttpStatusCode.NoContent);
+
+        (await LerAsync<List<EncounterParticipantResponse>>(mesa.Gm, $"/api/encounters/{encounterId}/participants")).Single().Origem.Should().BeNull();
     }
 }

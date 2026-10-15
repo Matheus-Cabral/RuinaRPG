@@ -156,7 +156,7 @@ Um modificador **percentual** é um percentual do **total** do recurso, arredond
 
 - imagem, nome, Nível e, na Criatura, o Rank;
 - **Atributos**, **Sub-Atributos** e defesas;
-- **Recursos**: Vitalidade, Foco e Adrenalina, atual e total;
+- **Recursos**: Vitalidade, Foco e Adrenalina e, no NPC, Estresse, atual e total (o Estresse atual é o da ficha: o Encontro não o acompanha);
 - **Perícias**: só as que têm pontos gastos e as que uma Condição alterou;
 - **Equipamento em uso** (armas e escudos equipados, armaduras e artefatos) e **Magias e Habilidades** (com Passivas e, no NPC, Runas);
 - **Características**;
