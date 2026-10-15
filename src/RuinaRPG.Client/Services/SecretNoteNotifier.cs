@@ -38,15 +38,21 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     /// <param name="notasSecretas">False for a GM: only the sheet events, the unread counters are never loaded.</param>
     public Task StartAsync(bool notasSecretas = true)
     {
-        if (connection.IsActive)
+        if (connection.IsActive && _notasSecretas == notasSecretas)
             return Task.CompletedTask;
         if (_starting is { IsCompleted: false })
             return _starting;
         return _starting = StartCoreAsync(notasSecretas);
     }
 
+    // O modo da conexão aberta: outro usuário na mesma aba (GM ↔ Jogador) pede o outro modo, e a conexão é refeita.
+    private bool _notasSecretas;
+
     private async Task StartCoreAsync(bool notasSecretas)
     {
+        if (connection.IsActive)
+            await StopAsync();
+        _notasSecretas = notasSecretas;
         Func<Task> refresh = notasSecretas ? RefreshAsync : () => Task.CompletedTask;
         await refresh();
         try

@@ -72,6 +72,30 @@ public class SecretNoteNotifierTests
     }
 
     [Fact]
+    public async Task Starting_in_the_other_mode_restarts_the_connection_and_the_same_mode_does_not()
+    {
+        _unread = new() { new("c1", "Ruína", 2) };
+        var notifier = CreateNotifier();
+
+        await notifier.StartAsync(notasSecretas: false);
+        await notifier.StartAsync(notasSecretas: false);
+        _connection.StartCount.Should().Be(1);
+        notifier.TotalUnread.Should().Be(0);
+
+        // Outro usuário na mesma aba (GM saiu, Jogador entrou sem a navegação parar a conexão).
+        await notifier.StartAsync();
+
+        _connection.StopCount.Should().Be(1);
+        _connection.StartCount.Should().Be(2);
+        notifier.TotalUnread.Should().Be(2);
+
+        await notifier.StartAsync(notasSecretas: false);
+        _connection.StopCount.Should().Be(2);
+        _connection.StartCount.Should().Be(3);
+        notifier.TotalUnread.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Starting_twice_opens_a_single_connection()
     {
         var notifier = CreateNotifier();
