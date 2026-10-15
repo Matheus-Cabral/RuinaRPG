@@ -13,7 +13,7 @@ namespace RuinaRPG.Client.Services;
 /// <param name="salvando">Há um autosave pendente ou em andamento.</param>
 /// <param name="espera">Intervalo entre as conferências durante a espera.</param>
 /// <param name="limite">Tempo máximo de espera por um autosave (não vale para um campo em edição); padrão 10 s.</param>
-/// <param name="aoFalhar">Recebe o erro de uma recarga adiada (não há quem espere por ela).</param>
+/// <param name="aoFalhar">Recebe o erro de uma recarga adiada (não há quem espere por ela); nunca depois de <see cref="Dispose"/>.</param>
 public sealed class RecargaAdiada(Func<Task> recarregar, Func<Task<bool>> campoEmEdicao, Func<bool> salvando,
     TimeSpan? espera = null, TimeSpan? limite = null, Action<Exception>? aoFalhar = null) : IDisposable
 {
@@ -30,7 +30,9 @@ public sealed class RecargaAdiada(Func<Task> recarregar, Func<Task<bool>> campoE
             return;
         if (!await OcupadoAsync())
         {
-            await recarregar();
+            // A pergunta ao navegador é assíncrona: a página pode ter sido descartada enquanto isso.
+            if (!_cancelamento.IsCancellationRequested)
+                await recarregar();
             return;
         }
 
@@ -93,9 +95,13 @@ public sealed class RecargaAdiada(Func<Task> recarregar, Func<Task<bool>> campoE
         catch (OperationCanceledException)
         {
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!_cancelamento.IsCancellationRequested)
         {
             aoFalhar?.Invoke(ex);
+        }
+        catch (Exception)
+        {
+            // Descartada no meio da recarga: não há página para mostrar o erro, e ele não fica sem observador.
         }
         finally
         {

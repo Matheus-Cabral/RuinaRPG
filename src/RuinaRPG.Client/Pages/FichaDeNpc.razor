@@ -900,12 +900,25 @@
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
         // trocar o campo que está sendo editado (RecargaAdiada).
         _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado,
-            aoFalhar: falha => _ = InvokeAsync(() =>
+            aoFalhar: falha => _ = AvisarFalhaDaRecargaAsync());
+        Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
+    }
+
+    // Erro de uma recarga adiada (RecargaAdiada nunca chama isto depois do Dispose). Ninguém espera esta tarefa, então
+    // ela não pode falhar: se a página sair no meio-tempo, não há onde mostrar o erro.
+    private async Task AvisarFalhaDaRecargaAsync()
+    {
+        try
+        {
+            await InvokeAsync(() =>
             {
                 _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
                 StateHasChanged();
-            }));
-        Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
+            });
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private RecargaAdiada _recarga = null!;

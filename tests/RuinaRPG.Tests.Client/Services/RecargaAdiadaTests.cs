@@ -136,4 +136,37 @@ public class RecargaAdiadaTests
 
         _falhas.Should().ContainSingle().Which.Should().BeOfType<HttpRequestException>();
     }
+
+    [Fact]
+    public async Task Disposing_while_the_browser_is_being_asked_drops_the_immediate_reload()
+    {
+        var resposta = new TaskCompletionSource<bool>();
+        var recarga = new RecargaAdiada(() => { _recargas++; return Task.CompletedTask; }, () => resposta.Task, () => false,
+            TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30), _falhas.Add);
+
+        var solicitada = recarga.SolicitarAsync();
+        recarga.Dispose();
+        resposta.SetResult(false);
+        await solicitada;
+
+        _recargas.Should().Be(0, "a página já foi descartada: recarregar escreveria num componente que não existe mais");
+    }
+
+    [Fact]
+    public async Task A_deferred_reload_that_fails_after_dispose_is_not_reported()
+    {
+        var recarregando = new TaskCompletionSource();
+        _emEdicao = true;
+        var recarga = new RecargaAdiada(async () => { _recargas++; await recarregando.Task; }, () => Task.FromResult(_emEdicao), () => false,
+            TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30), _falhas.Add);
+        await recarga.SolicitarAsync();
+        _emEdicao = false;
+        await AteAsync(() => _recargas > 0);
+
+        recarga.Dispose();
+        recarregando.SetException(new InvalidOperationException("componente descartado"));
+        await Task.Delay(50);
+
+        _falhas.Should().BeEmpty("depois do descarte não há página para mostrar o erro");
+    }
 }
