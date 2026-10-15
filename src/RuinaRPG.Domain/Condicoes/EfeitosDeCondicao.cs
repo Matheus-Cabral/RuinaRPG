@@ -117,8 +117,9 @@ public sealed class EfeitosDeCondicao
             // O percentual de um valor atual é uma fração do total do recurso (DuracaoDeCondicao.ValorDoAjuste).
             AlvoDeCondicao.RecursoAtual => $"{RotulosPt.Recurso(e)} atual {valor}{(m.TipoDeValor == TipoDeValorDeCondicao.Percentual ? " do total" : "")} {(m.Momento == MomentoDeCondicao.ACadaVez ? "a cada vez" : "ao aplicar")}",
             AlvoDeCondicao.AfinidadeElemental => e is null ? $"Todas as Afinidades {valor}" : $"Afinidade de {RotulosPt.Elemento(e)} {valor}",
-            AlvoDeCondicao.DanoElemental => e is null ? $"Todo dano elemental {valor}" : $"Dano de {RotulosPt.Elemento(e)} {valor}",
-            AlvoDeCondicao.Dano => e is null ? $"Dano {valor}" : $"Dano {RotulosPt.TipoDeDano(e)} {valor}",
+            // "dos ataques": o modificador do dano que a ficha causa, não a Vitalidade dela (isso é o valor atual).
+            AlvoDeCondicao.DanoElemental => e is null ? $"Todo dano elemental dos ataques {valor}" : $"Dano de {RotulosPt.Elemento(e)} dos ataques {valor}",
+            AlvoDeCondicao.Dano => e is null ? $"Dano dos ataques {valor}" : $"Dano {RotulosPt.TipoDeDano(e)} dos ataques {valor}",
             _ => $"{e} {valor}"
         };
     }

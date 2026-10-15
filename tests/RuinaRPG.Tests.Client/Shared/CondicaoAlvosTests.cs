@@ -22,7 +22,12 @@ public class CondicaoAlvosTests
     public void Every_Alvo_has_a_portuguese_label()
     {
         CondicaoAlvos.Alvos.Select(a => a.Valor).Should().BeEquivalentTo(Enum.GetNames<AlvoDeCondicao>());
-        CondicaoAlvos.Alvos.Single(a => a.Valor == nameof(AlvoDeCondicao.RecursoAtual)).Rotulo.Should().Be("Valor atual de um recurso");
+        // Nomes explícitos: "Dano" é o modificador de dano dos ataques, não tira Vitalidade; isso é o Valor atual.
+        string Rotulo(AlvoDeCondicao alvo) => CondicaoAlvos.Alvos.Single(a => a.Valor == alvo.ToString()).Rotulo;
+        Rotulo(AlvoDeCondicao.RecursoAtual).Should().Be("Valor atual de um recurso (dano ou cura por vez)");
+        Rotulo(AlvoDeCondicao.RecursoTotal).Should().Be("Total (máximo) de um recurso");
+        Rotulo(AlvoDeCondicao.Dano).Should().Be("Modificador de dano dos ataques");
+        Rotulo(AlvoDeCondicao.DanoElemental).Should().Be("Dano elemental dos ataques");
     }
 
     [Fact]

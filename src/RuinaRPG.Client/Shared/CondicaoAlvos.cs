@@ -18,11 +18,11 @@ public static class CondicaoAlvos
         new(nameof(AlvoDeCondicao.Atributo), "Atributo"),
         new(nameof(AlvoDeCondicao.Pericia), "Perícia"),
         new(nameof(AlvoDeCondicao.SubAtributo), "Sub-atributo"),
-        new(nameof(AlvoDeCondicao.RecursoTotal), "Total de um recurso"),
-        new(nameof(AlvoDeCondicao.RecursoAtual), "Valor atual de um recurso"),
+        new(nameof(AlvoDeCondicao.RecursoTotal), "Total (máximo) de um recurso"),
+        new(nameof(AlvoDeCondicao.RecursoAtual), "Valor atual de um recurso (dano ou cura por vez)"),
         new(nameof(AlvoDeCondicao.AfinidadeElemental), "Afinidade elemental"),
-        new(nameof(AlvoDeCondicao.DanoElemental), "Dano elemental"),
-        new(nameof(AlvoDeCondicao.Dano), "Dano"),
+        new(nameof(AlvoDeCondicao.DanoElemental), "Dano elemental dos ataques"),
+        new(nameof(AlvoDeCondicao.Dano), "Modificador de dano dos ataques"),
         new(nameof(AlvoDeCondicao.Maestria), "Maestria")
     ];
 

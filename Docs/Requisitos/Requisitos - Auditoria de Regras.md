@@ -133,11 +133,11 @@ Os valores iniciais vêm de "[[Tabela de Afinidades]]" e são semeados **só enq
 - **Atributo**: um dos oito atributos (obrigatório).
 - **Perícia**: todas as Perícias ou uma Perícia.
 - **Sub-atributo**: Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Redução Física, Redução Mágica ou Adrenalina (obrigatório; as defesas entram aqui).
-- **Total de um recurso**: o máximo de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Vale só enquanto a Condição está ativa.
-- **Valor atual de um recurso**: o valor corrente de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Exige o **Momento**: **ao aplicar** (uma única vez) ou **a cada vez do participante** (toda vez que ele recebe o turno). O ajuste nunca é devolvido. O Momento existe só neste Alvo.
+- **Total (máximo) de um recurso**: o máximo de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Vale só enquanto a Condição está ativa.
+- **Valor atual de um recurso (dano ou cura por vez)**: o valor corrente de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Exige o **Momento**: **ao aplicar** (uma única vez) ou **a cada vez do participante** (toda vez que ele recebe o turno). O ajuste nunca é devolvido. O Momento existe só neste Alvo.
 - **Afinidade elemental**: todas as Afinidades ou as de um dos quatro Elementos.
-- **Dano elemental**: o modificador de dano de todos os Elementos ou de um deles.
-- **Dano**: o modificador de dano de todos os tipos ou de um tipo de dano.
+- **Dano elemental dos ataques**: o modificador do dano elemental que a ficha causa nos ataques, de todos os Elementos ou de um deles. Não mexe na Vitalidade da ficha.
+- **Modificador de dano dos ataques**: o modificador do dano que a ficha causa nos ataques, de todos os tipos ou de um tipo de dano. Não mexe na Vitalidade da ficha: para tirar Vitalidade a cada vez (veneno, sangramento), usa-se o Valor atual de um recurso com valor negativo e o Momento "a cada vez do participante".
 - **Maestria**: todas as Maestrias ou as de uma Perícia.
 
 Cada linha tem um **Tipo de valor**, **Fixo** ou **Percentual**, e um **Valor** com sinal, que nunca é 0; o percentual fica entre −100 e 1000. Num Valor atual, um percentual é um percentual do total daquele recurso. Os fixos somam; depois a soma dos percentuais incide sobre o valor já com os fixos, arredondando para baixo.

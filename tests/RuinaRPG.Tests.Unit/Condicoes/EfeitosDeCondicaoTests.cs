@@ -262,9 +262,9 @@ public class EfeitosDeCondicaoTests
             "Movimentação −1",
             "Afinidade de Água +1",
             "Todas as Afinidades +1",
-            "Dano de Fogo +2",
-            "Dano Cortante −1",
-            "Dano +4",
+            "Dano de Fogo dos ataques +2",
+            "Dano Cortante dos ataques −1",
+            "Dano dos ataques +4",
             "Todas as Maestrias +20%",
             "Maestria de Luta de Sangue +1"
         ], explicacao.Linhas);
