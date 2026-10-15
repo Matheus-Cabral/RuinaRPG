@@ -29,6 +29,12 @@ else
             <MudChip T="string" Size="Size.Small" Color="@CorDaFase" Class="ml-2">@NomeDaFase</MudChip>
         }
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="StartEditNome" Class="ml-2">Renomear</MudButton>
+        @if (_encounter is { Status: not "Preparacao" })
+        {
+            <MudTooltip Text="Log do encontro">
+                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro" OnClick="AbrirLogAsync" />
+            </MudTooltip>
+        }
     </MudText>
 }
 
@@ -180,34 +186,6 @@ else
     </tbody>
 </MudSimpleTable>
 
-@if (_encounter is { Status: not "Preparacao" })
-{
-    <Section Title="Log do encontro">
-        @if (_log.Count == 0)
-        {
-            <MudText Color="Color.Secondary">Nenhum evento registrado ainda.</MudText>
-        }
-        @foreach (var turno in LogDoEncontroAgrupador.PorTurno(_log))
-        {
-            <MudText Typo="Typo.h6" Class="mt-3">Turno @turno.Turno</MudText>
-            @foreach (var vez in turno.Vezes)
-            {
-                @if (vez.VezNome is not null)
-                {
-                    <MudText Typo="Typo.subtitle2" Class="mt-1">Vez de @vez.VezNome</MudText>
-                }
-                @foreach (var linha in vez.Linhas)
-                {
-                    <div class="encontro-log-linha">
-                        <MudText Typo="Typo.body2" Inline="true" Class="mr-2">@LocalDe(linha).ToString("HH:mm")</MudText>
-                        <MudText Typo="Typo.body2" Inline="true">@LogDoEncontroAgrupador.Texto(linha)</MudText>
-                    </div>
-                }
-            }
-        }
-    </Section>
-}
-
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
     [Parameter] public string EncounterId { get; set; } = "";
@@ -231,7 +209,6 @@ else
 
     private EncounterResponse? _encounter;
     private List<EncounterParticipantResponse> _participants = new();
-    private List<EncounterLogEntryResponse> _log = new();
     private bool _enviando;
     private readonly AddParticipantFormModel _addForm = new();
     private string? _errorMessage;
@@ -264,11 +241,6 @@ else
             _editingParticipantId = null; // a finished encounter is read-only: drop any inline edit left open
 
         _participants = await Http.GetFromJsonAsync<List<EncounterParticipantResponse>>($"encounters/{EncounterId}/participants") ?? new();
-
-        // The log only exists once the encounter has started; "Preparacao" has nothing to show or fetch.
-        _log = _encounter is { Status: not "Preparacao" }
-            ? await Http.GetFromJsonAsync<List<EncounterLogEntryResponse>>($"encounters/{EncounterId}/log") ?? new()
-            : new();
     }
 
     /// <summary>Chips das Condições do participante: as do catálogo (ícone, nome, Turnos) e, à parte, as de texto antigas.</summary>
@@ -366,8 +338,11 @@ else
 
     private string? NomeDaVez => _participants.FirstOrDefault(p => p.Id == _encounter?.CurrentParticipantId)?.Nome;
 
-    private static DateTime LocalDe(EncounterLogEntryResponse linha) =>
-        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(linha.OccurredAt, DateTimeKind.Utc), TimeZoneInfo.Local);
+    /// <summary>O log do encontro (só leitura, também no finalizado) abre num popup, como o log da ficha.</summary>
+    private Task AbrirLogAsync() =>
+        DialogService.ShowAsync<LogDoEncontroDialog>(null,
+            new DialogParameters<LogDoEncontroDialog> { { x => x.EncounterId, EncounterId }, { x => x.NomeDoEncontro, _encounter?.Nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
 
     /// <summary>One request of the phase/turn controls: every button stays disabled until it answers.</summary>
     private async Task PostAsync(string path, string fallbackMessage)

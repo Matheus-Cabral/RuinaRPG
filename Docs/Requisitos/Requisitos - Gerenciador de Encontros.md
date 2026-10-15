@@ -101,7 +101,7 @@ Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta
 - a finalização e a reabertura do Encontro;
 - para um participante ligado a uma ficha (Personagem, ou NPC/Criatura concedido), as alterações de Vitalidade, Foco e Adrenalina feitas na própria ficha.
 
-Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log aparece na própria tela do Encontro, agrupado por Turno e, dentro dele, pela vez em que o evento ocorreu. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
+Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log abre num **popup**, como o log de alterações da ficha (ver "[[Requisitos - Campanha]]" R0016), por um ícone de histórico "Log do encontro": na tela do Encontro (fora da preparação) e em cada Encontro das listas de Encontros e de Encontros finalizados da Campanha; também funciona, só para leitura, no Encontro finalizado. O popup agrupa as linhas por **dia** (no fuso do navegador, do mais novo ao mais antigo) e, dentro de cada dia, por Turno e, dentro dele, pela vez em que o evento ocorreu, na ordem em que aconteceram. Ele tem um filtro de **período** e duas caixas, ambas marcadas de início: "Vitalidade, Foco e Adrenalina" e "Estresse", que escondem só as linhas de alteração desses recursos; os eventos do Encontro (início, Turnos, vez, participantes, Condições) nunca são escondidos. O popup mostra o log como estava ao abrir. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
 
   
 

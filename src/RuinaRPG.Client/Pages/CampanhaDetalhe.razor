@@ -138,9 +138,16 @@
             <MudList T="string" Class="mt-3" data-testid="encontros-abertos">
                 @foreach (var encounter in _encounters.Where(e => e.Status != "Finalizado"))
                 {
-                    <MudListItem T="string" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">
-                        @(encounter.Nome ?? "(sem nome)")
+                    <MudListItem T="string">
+                        <MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink>
                         <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">@(encounter.Status == "Preparacao" ? "Preparação" : $"Turno {encounter.CurrentRound}")</MudChip>
+                        @if (encounter.Status != "Preparacao")
+                        {
+                            <MudTooltip Text="Log do encontro">
+                                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
+                                               OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
+                            </MudTooltip>
+                        }
                     </MudListItem>
                 }
             </MudList>
@@ -157,12 +164,16 @@
                     <MudList T="string" Class="mt-3">
                         @foreach (var encounter in _encounters.Where(e => e.Status == "Finalizado").OrderByDescending(e => e.FinalizadoEm))
                         {
-                            <MudListItem T="string" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">
-                                @(encounter.Nome ?? "(sem nome)")
+                            <MudListItem T="string">
+                                <MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink>
                                 @if (encounter.FinalizadoEm is { } fim)
                                 {
                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-2" Style="display:inline">Finalizado em @fim.ToLocalTime().ToString("dd/MM/yyyy")</MudText>
                                 }
+                                <MudTooltip Text="Log do encontro">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
+                                                   OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
+                                </MudTooltip>
                             </MudListItem>
                         }
                     </MudList>
@@ -411,6 +422,11 @@
     private Task AbrirLogAsync(string kind, string sheetId, string? nome) =>
         Dialogs.ShowAsync<LogDaFichaDialog>(null,
             new DialogParameters<LogDaFichaDialog> { { x => x.Kind, kind }, { x => x.SheetId, sheetId }, { x => x.NomeDaFicha, nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+
+    private Task AbrirLogDoEncontroAsync(EncounterResponse encounter) =>
+        Dialogs.ShowAsync<LogDoEncontroDialog>(null,
+            new DialogParameters<LogDoEncontroDialog> { { x => x.EncounterId, encounter.Id }, { x => x.NomeDoEncontro, encounter.Nome ?? "(sem nome)" } },
             new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
     private string _deletePassword = "";
     private string? _deleteErrorMessage;

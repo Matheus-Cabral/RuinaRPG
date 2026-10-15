@@ -73,4 +73,77 @@ public class LogDoEncontroAgrupadorTests
     [MemberData(nameof(Textos))]
     public void Texto_follows_the_table(EncounterLogEntryResponse linha, string esperado) =>
         LogDoEncontroAgrupador.Texto(linha).Should().Be(esperado);
+
+    private static EncounterLogEntryResponse EmUtc(DateTime utc, int turno = 1, string tipo = "VezPassada", string? campo = null) =>
+        new(++_seq, DateTime.SpecifyKind(utc, DateTimeKind.Utc), turno, "A", tipo, "Goblin", campo, "1", "2", null, "p1");
+
+    private static readonly TimeZoneInfo Fuso = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    [Fact]
+    public void PorDia_groups_by_local_day_newest_day_first_and_keeps_Turno_vez_grouping_chronological_inside_a_day()
+    {
+        var linhas = new[]
+        {
+            EmUtc(new DateTime(2026, 10, 12, 15, 0, 0), turno: 1),
+            EmUtc(new DateTime(2026, 10, 13, 2, 30, 0), turno: 1),  // 23:30 do dia 12 em Sao Paulo
+            EmUtc(new DateTime(2026, 10, 13, 15, 0, 0), turno: 2),
+            EmUtc(new DateTime(2026, 10, 13, 16, 0, 0), turno: 3),
+        };
+
+        var dias = LogDoEncontroAgrupador.PorDia(linhas, Fuso);
+
+        dias.Select(d => d.Dia).Should().Equal(new DateOnly(2026, 10, 13), new DateOnly(2026, 10, 12));
+        dias[0].Turnos.Select(t => t.Turno).Should().Equal(2, 3);
+        dias[1].Turnos.Should().ContainSingle().Which.Vezes.Single().Linhas.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Filtrar_by_period_uses_local_day_boundaries_inclusive_of_the_last_day()
+    {
+        var antes = EmUtc(new DateTime(2026, 10, 10, 2, 59, 0));   // 23:59 do dia 9
+        var inicio = EmUtc(new DateTime(2026, 10, 10, 3, 0, 0));   // 00:00 do dia 10
+        var fim = EmUtc(new DateTime(2026, 10, 12, 2, 59, 0));     // 23:59 do dia 11, o último do período
+        var depois = EmUtc(new DateTime(2026, 10, 12, 3, 0, 0));   // 00:00 do dia 12
+
+        var r = LogDoEncontroAgrupador.Filtrar(new[] { antes, inicio, fim, depois }, new DateTime(2026, 10, 10), new DateTime(2026, 10, 11), true, true, Fuso);
+
+        r.Should().Equal(inicio, fim);
+    }
+
+    [Theory]
+    [InlineData("RecursoDaFicha", "Vitalidade")]
+    [InlineData("RecursoDaFicha", "Foco (PF)")]
+    [InlineData("RecursoDaFicha", "Adrenalina (PA)")]
+    [InlineData("CampoAlterado", "PV")]
+    [InlineData("CampoAlterado", "PF")]
+    [InlineData("CampoAlterado", "PA")]
+    [InlineData("AjusteDeCondicao", "PV")]
+    [InlineData("AjusteDeCondicao", "Vitalidade")]
+    [InlineData("AjusteDeCondicao", "Foco")]
+    [InlineData("AjusteDeCondicao", "Adrenalina")]
+    public void The_resources_checkbox_hides_only_Vitalidade_Foco_Adrenalina_lines(string tipo, string campo)
+    {
+        var recurso = EmUtc(DateTime.UtcNow, tipo: tipo, campo: campo);
+        var evento = EmUtc(DateTime.UtcNow, tipo: "CondicaoAdicionada");
+        var iniciativa = EmUtc(DateTime.UtcNow, tipo: "CampoAlterado", campo: "Iniciativa");
+
+        var r = LogDoEncontroAgrupador.Filtrar(new[] { recurso, evento, iniciativa }, null, null, false, true, Fuso);
+
+        r.Should().Equal(evento, iniciativa);
+    }
+
+    [Theory]
+    [InlineData("RecursoDaFicha")]
+    [InlineData("CampoAlterado")]
+    [InlineData("AjusteDeCondicao")]
+    public void The_estresse_checkbox_hides_only_Estresse_lines(string tipo)
+    {
+        var estresse = EmUtc(DateTime.UtcNow, tipo: tipo, campo: "Estresse");
+        var vida = EmUtc(DateTime.UtcNow, tipo: tipo, campo: "PV");
+        var evento = EmUtc(DateTime.UtcNow, tipo: "VezPassada");
+
+        var r = LogDoEncontroAgrupador.Filtrar(new[] { estresse, vida, evento }, null, null, true, false, Fuso);
+
+        r.Should().Equal(vida, evento);
+    }
 }

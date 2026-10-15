@@ -115,6 +115,7 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
         cut.FindAll("button[aria-label='Passar a vez para este']").Should().BeEmpty();
         cut.FindAll("button[aria-label='Remover do encontro']").Should().HaveCount(3);
         cut.Markup.Should().NotContain("Log do encontro");
+        cut.FindAll("button[aria-label='Log do encontro']").Should().BeEmpty();
     }
 
     [Fact]
@@ -271,31 +272,27 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
         Has(cut, "Editar").Should().BeFalse();
         cut.FindAll("button[aria-label='Passar a vez para este']").Should().BeEmpty();
         cut.FindAll("button[aria-label='Remover do encontro']").Should().BeEmpty();
-        cut.Markup.Should().Contain("Log do encontro");
-        cut.Markup.Should().Contain("Encontro finalizado");
+        cut.FindAll("button[aria-label='Log do encontro']").Should().ContainSingle();
 
         await cut.InvokeAsync(() => Botao(cut, "Reabrir").Click());
         _requests.Should().Contain("POST encounters/e1/reopen");
     }
 
     [Fact]
-    public async Task The_log_renders_a_heading_per_Turno_and_vez_with_each_line_and_its_local_time()
+    public async Task The_inline_log_section_is_gone_and_a_Log_do_encontro_icon_opens_the_dialog()
     {
         var utc = new DateTime(2026, 10, 13, 15, 30, 0, DateTimeKind.Utc);
-        _log = new()
-        {
-            new(1, utc, 1, "Aldric", "VezPassada", "Aldric", null, null, null, null),
-            new(2, utc, 1, "Aldric", "CampoAlterado", "Goblin", "PV", "7", "3", null),
-            new(3, utc, 1, "Goblin", "VezPassada", "Goblin", null, null, null, null),
-        };
+        _log = new() { new(1, utc, 1, "Aldric", "VezPassada", "Aldric", null, null, null, null, "p1") };
         var cut = await RenderLoadedAsync();
 
-        var hora = TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local).ToString("HH:mm");
-        cut.FindAll("h6").Select(h => h.TextContent.Trim()).Should().Contain("Turno 1");
-        cut.FindAll("h6").Select(h => h.TextContent.Trim()).Should().Contain("Log do encontro");
-        cut.Markup.Should().Contain("Vez de Aldric").And.Contain("Goblin — PV: 7 → 3");
-        cut.FindAll(".encontro-log-linha").Should().HaveCount(3);
-        cut.FindAll(".encontro-log-linha")[1].TextContent.Should().Contain(hora).And.Contain("Goblin — PV: 7 → 3");
+        cut.FindAll(".encontro-log-linha").Should().BeEmpty();
+        cut.FindAll("h6").Select(h => h.TextContent.Trim()).Should().NotContain("Log do encontro");
+        var botao = cut.FindAll("button[aria-label='Log do encontro']").Should().ContainSingle().Subject;
+
+        await cut.InvokeAsync(() => botao.Click());
+
+        cut.WaitForAssertion(() => cut.Find(".mud-dialog").TextContent.Should().Contain("Log do encontro — Emboscada").And.Contain("Vez de Aldric"));
+        _requests.Should().Contain("GET encounters/e1/log");
     }
 
     [Fact]
@@ -309,18 +306,6 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
         await cut.InvokeAsync(() => Botao(cut, "Vez anterior").Click());
 
         cut.Markup.Should().Contain("Não há vez anterior.");
-    }
-
-    [Fact]
-    public async Task A_ParticipantsChanged_message_reloads_the_log()
-    {
-        var cut = await RenderLoadedAsync();
-        _log = new() { new(1, DateTime.UtcNow, 2, "Goblin", "VezPassada", "Goblin", null, null, null, null) };
-
-        await cut.InvokeAsync(() => EncounterConnection.RaiseChangedAsync());
-
-        cut.FindAll(".encontro-log-linha").Should().HaveCount(1);
-        EncounterConnection.JoinedEncounterId.Should().Be("e1");
     }
 
     private static CondicaoAplicadaResponse Veneno(bool ativa = true, int? turnos = 3) => new("a1", "Veneno", "Corrói.", "Veneno", turnos, ativa);

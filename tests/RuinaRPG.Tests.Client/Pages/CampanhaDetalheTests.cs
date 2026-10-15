@@ -1,3 +1,4 @@
+using MudBlazor;
 using Bunit;
 using Bunit.TestDoubles;
 using FluentAssertions;
@@ -557,5 +558,34 @@ public class CampanhaDetalheTests : MudBunitContext
         nomes[0].Should().Contain("Recente");
         nomes[1].Should().Contain("Meio");
         nomes[2].Should().Contain("Antigo");
+    }
+
+    [Fact]
+    public async Task Started_and_finished_encounters_get_a_Log_do_encontro_button_outside_the_link_and_Preparacao_does_not()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"),
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        await Task.Delay(100);
+
+        var abertos = cut.Find("[data-testid='encontros-abertos']").QuerySelectorAll("button[aria-label='Log do encontro']");
+        abertos.Should().ContainSingle();
+        abertos[0].Closest("a").Should().BeNull("o ícone não pode navegar para o encontro");
+        var finalizados = cut.Find("[data-testid='encontros-finalizados']").QuerySelectorAll("button[aria-label='Log do encontro']");
+        finalizados.Should().ContainSingle();
+        finalizados[0].Closest("a").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task The_Log_do_encontro_button_opens_the_dialog_of_that_encounter()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"));
+        var dialogos = Render<MudDialogProvider>();
+        await Task.Delay(100);
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Log do encontro']").Click());
+
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Log do encontro — Ponte"));
     }
 }

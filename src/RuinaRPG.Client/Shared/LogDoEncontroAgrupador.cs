@@ -2,9 +2,43 @@ using RuinaRPG.Contracts.Encounters;
 
 namespace RuinaRPG.Client.Shared;
 
-/// <summary>Lógica pura do log do encontro: agrupa por Turno e por vez e monta o texto de cada linha.</summary>
+/// <summary>Lógica pura do popup do log do encontro: filtra por período e recurso, agrupa por dia, Turno e vez e monta o texto de cada linha.</summary>
 public static class LogDoEncontroAgrupador
 {
+    // Os Campo exatos que o servidor grava: o rótulo da ficha (RecursoDaFicha e Atual guardado) e o PV/PF/PA da instância no encontro.
+    private static readonly HashSet<string> CamposDeVfa =
+        ["Vitalidade", "Foco (PF)", "Adrenalina (PA)", "Foco", "Adrenalina", "PV", "PF", "PA"];
+
+    private static bool EhLinhaDeRecurso(EncounterLogEntryResponse l) => l.Tipo is "RecursoDaFicha" or "CampoAlterado" or "AjusteDeCondicao";
+
+    /// <summary>
+    /// Aplica o período (dias locais, o último inclusive) e as duas caixas: <paramref name="recursos"/> falso esconde as linhas de
+    /// Vitalidade, Foco e Adrenalina; <paramref name="estresse"/> falso esconde as de Estresse. Eventos do encontro nunca somem.
+    /// </summary>
+    public static List<EncounterLogEntryResponse> Filtrar(IEnumerable<EncounterLogEntryResponse> linhas, DateTime? de, DateTime? ate,
+        bool recursos, bool estresse, TimeZoneInfo fuso) =>
+        linhas.Where(l =>
+        {
+            var dia = DiaLocal(l, fuso);
+            if (de is { } d && dia < DateOnly.FromDateTime(d)) return false;
+            if (ate is { } a && dia > DateOnly.FromDateTime(a)) return false;
+            if (!EhLinhaDeRecurso(l)) return true;
+            if (!recursos && l.Campo is not null && CamposDeVfa.Contains(l.Campo)) return false;
+            if (!estresse && l.Campo == "Estresse") return false;
+            return true;
+        }).ToList();
+
+    /// <summary>Dias do mais novo para o mais antigo; dentro de cada um, Turno e vez na ordem em que aconteceram (ler Turno/vez de trás para frente confunde).</summary>
+    public static List<(DateOnly Dia, List<TurnoDoLog> Turnos)> PorDia(IEnumerable<EncounterLogEntryResponse> linhas, TimeZoneInfo fuso) =>
+        linhas
+            .GroupBy(l => DiaLocal(l, fuso))
+            .OrderByDescending(g => g.Key)
+            .Select(g => (g.Key, PorTurno(g)))
+            .ToList();
+
+    private static DateOnly DiaLocal(EncounterLogEntryResponse l, TimeZoneInfo fuso) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(l.OccurredAt, DateTimeKind.Utc), fuso));
+
     /// <summary>Grupos por Turno (ordem crescente) e, dentro dele, por vez, na ordem em que aconteceram.</summary>
     public static List<TurnoDoLog> PorTurno(IEnumerable<EncounterLogEntryResponse> linhas)
     {
