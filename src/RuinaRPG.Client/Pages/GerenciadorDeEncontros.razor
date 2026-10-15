@@ -289,16 +289,17 @@ else
                          OnClose="@(() => RemoverCondicaoAsync(participant, condicao))">@texto</MudChip>
             }
         }
-        foreach (var legada in participant.Condicoes)
+        for (var i = 0; i < participant.Condicoes.Count; i++)
         {
-            var texto = legada;
+            var indice = i;
+            var texto = participant.Condicoes[indice];
             if (Finalizado)
             {
                 <MudChip T="string" Size="Size.Small" Class="mr-1">@texto</MudChip>
             }
             else
             {
-                <MudChip T="string" Size="Size.Small" Class="mr-1" OnClose="@(() => RemoverCondicaoLegadaAsync(participant, texto))">@texto</MudChip>
+                <MudChip T="string" Size="Size.Small" Class="mr-1" OnClose="@(() => RemoverCondicaoLegadaAsync(participant, indice))">@texto</MudChip>
             }
         }
     };
@@ -330,12 +331,13 @@ else
         await LoadAsync();
     }
 
-    // O PUT só aceita tirar textos antigos da lista; os demais campos seguem como estão no participante.
-    private async Task RemoverCondicaoLegadaAsync(EncounterParticipantResponse participant, string texto)
+    // O PUT só aceita tirar textos antigos da lista; os demais campos seguem como estão no participante. Sai só a tag
+    // clicada (pelo índice): duas tags com o mesmo texto são duas tags.
+    private async Task RemoverCondicaoLegadaAsync(EncounterParticipantResponse participant, int indice)
     {
         var request = new UpdateParticipantRequest(participant.Iniciativa,
             participant.IsLiveSourced ? null : participant.PV, participant.IsLiveSourced ? null : participant.PF, participant.IsLiveSourced ? null : participant.PA,
-            participant.AcoesRestantes, participant.Condicoes.Where(c => c != texto).ToList());
+            participant.AcoesRestantes, participant.Condicoes.Where((_, i) => i != indice).ToList());
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
         if (!response.IsSuccessStatusCode)
         {

@@ -389,6 +389,29 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task Removing_one_of_two_identical_legacy_tags_keeps_the_other()
+    {
+        _participants = new()
+        {
+            new("p2", "Goblin", 12, 7, 0, 0, 2, false, new() { "Atordoado", "Caído", "Atordoado" }, new()),
+        };
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        var cut = await RenderLoadedAsync();
+
+        var ultimo = cut.FindAll(".mud-chip").Last(c => c.TextContent.Contains("Atordoado"));
+        await cut.InvokeAsync(() => ultimo.QuerySelector(".mud-chip-close-button")!.Click());
+
+        System.Text.Json.JsonDocument.Parse(corpo!).RootElement.GetProperty("condicoes").EnumerateArray().Select(e => e.GetString())
+            .Should().Equal("Atordoado", "Caído");
+    }
+
+    [Fact]
     public async Task The_edit_form_no_longer_has_the_free_text_conditions_field()
     {
         var cut = await RenderLoadedAsync();
