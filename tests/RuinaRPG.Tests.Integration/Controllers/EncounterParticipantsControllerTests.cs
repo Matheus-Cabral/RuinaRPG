@@ -119,6 +119,16 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
     private async Task UpdateCreatureVitalidadeAsync(string gmToken, string creatureId, string nome, int vitalidadeAtual) =>
         await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, ValidCreatureUpdate(nome, vitalidadeAtual)));
 
+    // Free-text conditions can no longer be added through the API (they come from the catalog): seed the legacy rows directly.
+    private async Task SeedLegacyConditionsAsync(string participantId, params string[] textos)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        foreach (var texto in textos)
+            db.EncounterParticipantConditions.Add(new() { Id = Guid.NewGuid(), EncounterParticipantId = Guid.Parse(participantId), Texto = texto });
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task AddParticipant_from_a_gm_owned_npc_copies_PV_once_and_it_becomes_independently_editable()
     {
@@ -380,6 +390,9 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new AddParticipantRequest(null, npcId, null, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
 
+        await SeedLegacyConditionsAsync(added!.Id, "Enfraquecido", "Sangrando", "Cego");
+
+        // "Cego" is dropped by the request, the other two stay.
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
             new UpdateParticipantRequest(15, 12, 5, 2, 1, new List<string> { "Enfraquecido", "Sangrando" })));
 
@@ -399,28 +412,8 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             .Select(c => c.Texto)
             .ToListAsync();
         condicoes.Should().BeEquivalentTo(new[] { "Enfraquecido", "Sangrando" });
-    }
-
-    [Fact]
-    public async Task Update_PV_on_a_live_sourced_participant_returns_400()
-    {
-        // R0003: PV/PF/PA are read-only on the Encounter screen for a live-sourced participant.
-        var gmToken = await RegisterGmAndGetTokenAsync("EpGm9", "ep9@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer9", "epplayer9@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Live");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Update Live");
-        var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
-        await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Editável", 25);
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
-            new AddParticipantRequest(sheetId, null, null, 8)));
-        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
-
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
-            new UpdateParticipantRequest(8, 5, null, null, 3, new List<string>())));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // A instância do GM é independente: a ficha de origem continua como estava.
+        (await db.NpcSheets.FindAsync(Guid.Parse(npcId)))!.VitalidadeAtual.Should().Be(30);
     }
 
     [Fact]
@@ -436,6 +429,7 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new AddParticipantRequest(null, npcId, null, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
 
+        await SeedLegacyConditionsAsync(added!.Id, "Envenenado", "Enraizado");
         var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
             new UpdateParticipantRequest(10, 12, 5, 2, 3, new List<string> { "Envenenado", "Enraizado" })));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -464,5 +458,184 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             new UpdateParticipantRequest(10, null, null, null, acoesRestantes, new List<string>())));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private async Task<(string Campaign, string Encounter, List<string> Ids)> EncounterWithAsync(string gmToken, params int[] iniciativas)
+    {
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha " + Guid.NewGuid());
+        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro");
+        var ids = new List<string>();
+        foreach (var ini in iniciativas)
+            ids.Add(await AddNpcParticipantAsync(gmToken, encounterId, ini));
+        return (campaignId, encounterId, ids);
+    }
+
+    private async Task<string> AddNpcParticipantAsync(string gmToken, string encounterId, int iniciativa)
+    {
+        var npc = await CreateNpcSheetAsync(gmToken);
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken, new AddParticipantRequest(null, npc, null, iniciativa)));
+        return (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
+    }
+
+    private async Task<HttpResponseMessage> PostAsync(string gmToken, string url) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, url, gmToken));
+
+    private async Task<HttpResponseMessage> DeleteAsync(string gmToken, string encounterId, string participantId) =>
+        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}", gmToken));
+
+    private async Task<List<EncounterParticipantResponse>> ListAsync(string gmToken, string encounterId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken)))
+            .Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>())!;
+
+    private async Task<EncounterResponse> GetEncounterAsync(string gmToken, string campaignId, string encounterId)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        return (await response.Content.ReadFromJsonAsync<List<EncounterResponse>>())!.Single(e => e.Id == encounterId);
+    }
+
+    private async Task ZeroActionsAsync(string gmToken, string encounterId)
+    {
+        foreach (var p in await ListAsync(gmToken, encounterId))
+            await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{p.Id}", gmToken,
+                new UpdateParticipantRequest(p.Iniciativa, p.PV, p.PF, p.PA, 0, new List<string>())));
+    }
+
+    [Fact]
+    public async Task Delete_in_preparation_removes_the_participant()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel1", "epdel1@teste.com");
+        var (_, enc, ids) = await EncounterWithAsync(gm, 20, 10);
+
+        var r = await DeleteAsync(gm, enc, ids[0]);
+
+        r.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await ListAsync(gm, enc)).Select(p => p.Id).Should().Equal(ids[1]);
+    }
+
+    [Fact]
+    public async Task Deleting_the_participant_on_turn_passes_the_turn_on()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel2", "epdel2@teste.com");
+        var (camp, enc, ids) = await EncounterWithAsync(gm, 30, 20, 10);
+        await PostAsync(gm, $"/api/encounters/{enc}/start");
+        await PostAsync(gm, $"/api/encounters/{enc}/advance-turn"); // middle, Turno 1
+        await ZeroActionsAsync(gm, enc);
+
+        (await DeleteAsync(gm, enc, ids[1])).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().Be(ids[2]);
+        e.CurrentRound.Should().Be(1);
+        (await ListAsync(gm, enc)).Single(p => p.Id == ids[2]).AcoesRestantes.Should().Be(3);
+
+        // Now the last one has the turn: removing it wraps to the first of the next Turno.
+        await ZeroActionsAsync(gm, enc);
+        (await DeleteAsync(gm, enc, ids[2])).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().Be(ids[0]);
+        e.CurrentRound.Should().Be(2);
+        (await ListAsync(gm, enc)).Single(p => p.Id == ids[0]).AcoesRestantes.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Deleting_the_only_participant_in_progress_leaves_nobody_on_turn_and_the_encounter_usable()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel3", "epdel3@teste.com");
+        var (camp, enc, ids) = await EncounterWithAsync(gm, 30);
+        await PostAsync(gm, $"/api/encounters/{enc}/start");
+
+        (await DeleteAsync(gm, enc, ids[0])).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().BeNull();
+        e.Status.Should().Be("EmAndamento");
+
+        var newId = await AddNpcParticipantAsync(gm, enc, 15);
+        (await PostAsync(gm, $"/api/encounters/{enc}/advance-turn")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().Be(newId);
+        e.CurrentRound.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Delete_of_an_unknown_participant_is_404()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel4", "epdel4@teste.com");
+        var (_, enc, _) = await EncounterWithAsync(gm, 30);
+
+        var r = await DeleteAsync(gm, enc, Guid.NewGuid().ToString());
+
+        r.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private async Task<string> AddNamedNpcAsync(string gmToken, string encounterId, string npcId, int iniciativa = 10)
+    {
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken, new AddParticipantRequest(null, npcId, null, iniciativa)));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Nome;
+    }
+
+    [Fact]
+    public async Task Adding_the_same_sheet_again_numbers_the_name_and_reuses_a_freed_number()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup1", "epdup1@teste.com");
+        var (_, enc, _) = await EncounterWithAsync(gm);
+        var npcId = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, npcId, "Goblin", 30);
+
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin");
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 2");
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 3");
+
+        var segundo = (await ListAsync(gm, enc)).Single(p => p.Nome == "Goblin 2");
+        (await DeleteAsync(gm, enc, segundo.Id)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await AddNamedNpcAsync(gm, enc, npcId)).Should().Be("Goblin 2");
+    }
+
+    [Fact]
+    public async Task Adding_sheets_with_different_names_leaves_the_names_untouched()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup2", "epdup2@teste.com");
+        var (_, enc, _) = await EncounterWithAsync(gm);
+        var goblin = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, goblin, "Goblin", 30);
+        var orc = await CreateNpcSheetAsync(gm);
+        await UpdateNpcVitalidadeAsync(gm, orc, "Orc", 30);
+
+        (await AddNamedNpcAsync(gm, enc, goblin)).Should().Be("Goblin");
+        (await AddNamedNpcAsync(gm, enc, orc)).Should().Be("Orc");
+    }
+
+    [Fact]
+    public async Task A_character_sheet_added_first_keeps_its_name()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDup3", "epdup3@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "EpPlayerDup3", "epplayerdup3@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha Nome Personagem");
+        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        var encounterId = await CreateEncounterAsync(gm, campaignId, "Encontro");
+        var sheetId = await CreateCharacterSheetAsync(gm, campaignId, playerId);
+        await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Astrel", 5);
+
+        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(sheetId, null, null, 8)));
+
+        (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Nome.Should().Be("Vann Astrel");
+    }
+
+    [Fact]
+    public async Task Deleting_a_participant_who_does_not_hold_the_turn_leaves_Turno_and_vez_unchanged()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("EpDel5", "epdel5@teste.com");
+        var (camp, enc, ids) = await EncounterWithAsync(gm, 30, 20, 10);
+        await PostAsync(gm, $"/api/encounters/{enc}/start");
+
+        (await DeleteAsync(gm, enc, ids[1])).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var e = await GetEncounterAsync(gm, camp, enc);
+        e.CurrentParticipantId.Should().Be(ids[0]);
+        e.CurrentRound.Should().Be(1);
     }
 }

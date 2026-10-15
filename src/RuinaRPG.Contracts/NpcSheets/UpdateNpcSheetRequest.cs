@@ -1,5 +1,6 @@
 namespace RuinaRPG.Contracts.NpcSheets;
 
+/// <summary>Os <c>*AtualCarregad*</c> seguem a regra de <see cref="CharacterSheets.UpdateCharacterSheetRequest"/>.</summary>
 public record UpdateNpcSheetRequest(
     string? ImageId,
     string? Nome,
@@ -33,4 +34,8 @@ public record UpdateNpcSheetRequest(
     int SinaAtual,
     string? HistoricoId,
     string? EquipmentKitId,
-    int AfinidadeAdicional);
+    int AfinidadeAdicional,
+    int? VitalidadeAtualCarregada = null,
+    int? FocoAtualCarregado = null,
+    int? AdrenalinaAtualCarregada = null,
+    int? EstresseAtualCarregado = null);

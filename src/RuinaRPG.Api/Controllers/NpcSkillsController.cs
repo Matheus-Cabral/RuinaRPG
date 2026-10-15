@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/skills")]
-public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
+public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcSkillResponse>>> List(Guid sheetId)
@@ -29,34 +30,8 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var porId = await pericias.PorIdAsync();
-        var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
-        var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
-
-        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
-
-        var attributeTotals = await db.NpcAttributes
-            .Where(a => a.NpcSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
-
-        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-
-        return ativas
-            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
-            .Select(p =>
-            {
-                linhas.TryGetValue(p.Id, out var s);
-                var gasto = s?.Gasto ?? 0;
-                var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
-                var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
-                var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
-                var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
-                    : (int?)null;
-                return new NpcSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0, p.Nome, p.Descricao);
-            })
+        return (await stats.PericiasAsync(sheet, await condicoes.ParaNpcAsync(sheet)))
+            .Select(p => new NpcSkillResponse(p.Chave, p.Gasto, p.Modificador, p.Atributo, p.Total, p.BonusDeHistorico, p.Nome, p.Descricao))
             .ToList();
     }
 

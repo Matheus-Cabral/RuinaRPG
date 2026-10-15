@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Domain.Rules.ReferenceData;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -30,15 +32,19 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         return EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
     }
 
-    public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet) =>
-        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet));
+    /// <remarks>
+    /// <paramref name="efeitos"/> são as Condições ativas da ficha (CondicoesAtivasDaFicha); sem elas, o valor sem Condições.
+    /// As penalidades de equipamento são avaliadas antes, sobre a ficha sem Condições, e as Condições entram por cima.
+    /// </remarks>
+    public async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet, EfeitosDeCondicao? efeitos = null) =>
+        await SubAtributosAsync(sheet, await ModificadoresAsync(sheet, efeitos), efeitos ?? EfeitosDeCondicao.Nenhum);
 
-    private async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<SubAttributesResponse> SubAtributosAsync(NpcSheet sheet, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var id = sheet.Id;
-        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos);
-        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos);
-        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos);
+        var agilidade = await GetAttributeTotalAsync(id, Atributo.Agilidade, artefatos, efeitos);
+        var vigor = await GetAttributeTotalAsync(id, Atributo.Vigor, artefatos, efeitos);
+        var forca = await GetAttributeTotalAsync(id, Atributo.Forca, artefatos, efeitos);
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
@@ -69,10 +75,14 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
         var pesoMaximo = CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga: 0m);
 
-        var equippedShield = await db.NpcShields
+        // Escudo e Armadura desabilitados por Condição não estão em uso (a linha guardada não muda).
+        var equippedShield = (await db.NpcShields
             .Where(s => s.NpcSheetId == id && s.IsEquipped)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => i.BonusDefesa)
-            .FirstOrDefaultAsync();
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => new { s.Id, i.BonusDefesa })
+            .ToListAsync())
+            .Where(s => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Escudo, s.Id) is null)
+            .Select(s => s.BonusDefesa)
+            .FirstOrDefault();
         var coberturaBonus = sheet.Cobertura switch { Cobertura.Parcial => 5, Cobertura.Completa => 10, _ => 0 };
 
         // Every NpcArmorSlot with an ItemId is inherently worn (no separate IsEquipped flag,
@@ -80,25 +90,27 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         // equipped armor only.
         var armorRfRm = await db.NpcArmorSlots
             .Where(a => a.NpcSheetId == id && a.ItemId != null)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { i.RF, i.RM })
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { a.Id, i.RF, i.RM })
             .ToListAsync();
+        armorRfRm = armorRfRm.Where(a => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Armadura, a.Id) is null).ToList();
         var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
         var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
-        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, linhasDeAfinidade);
+        // A Eficiência e o Dano Elemental saem do valor da Afinidade já com as Condições (o mesmo que a lista 2.c exibe).
+        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(sheet.Afinidade, efeitos.NasAfinidades(linhasDeAfinidade));
         var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
 
         return new SubAttributesResponse(
-            Iniciativa: SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa)),
-            Movimentacao: SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo),
+            Iniciativa: efeitos.NoSubAtributo(SubAtributoAlvo.Iniciativa, SubAttributeFormulas.Iniciativa(agilidade, brutoProntidao, artefatoOuItem: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Iniciativa))),
+            Movimentacao: efeitos.NaMovimentacao(SubAttributeFormulas.Movimentacao(agilidade, artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Movimentacao), pesoAtual, pesoMaximo)),
             // penalidadeArmadura fica 0: penalidades de equipamento chegam como modificadores negativos de Sub-Atributo (ver EquipmentPenaltyService), não por este termo.
-            EsquivaNatural: SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0),
-            DefesaNatural: SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus),
-            ReducaoFisica: SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf),
-            ReducaoMagica: SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm),
+            EsquivaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.EsquivaNatural, SubAttributeFormulas.EsquivaNatural(agilidade, brutoReflexos, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.EsquivaNatural), penalidadeArmadura: 0)),
+            DefesaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.DefesaNatural, SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus)),
+            ReducaoFisica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoFisica, SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf)),
+            ReducaoMagica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoMagica, SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm)),
             PesoAtual: pesoAtual,
             PesoMaximo: pesoMaximo,
             EficienciaElemental: SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades),
@@ -132,7 +144,8 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
                 : (int?)null;
         });
 
-        var sub = await SubAtributosAsync(sheet, artefatos);
+        // Requisitos são sempre avaliados SEM Condições (como sem penalidades): elas só mudam o que a ficha exibe.
+        var sub = await SubAtributosAsync(sheet, artefatos, EfeitosDeCondicao.Nenhum);
 
         var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, await EapAtualAsync(sheet), sheet.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
 
@@ -147,39 +160,99 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     /// no equip/unequip toggle for Artefatos, so simply being on the sheet counts as equipped.
     /// Só Artefatos: o que as telas exibem soma também as penalidades (<see cref="ModificadoresAsync"/>).
     /// </summary>
-    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId) =>
-        await db.NpcArtifacts
+    public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
+    {
+        var linhas = await db.NpcArtifacts
             .Where(a => a.NpcSheetId == sheetId)
-            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i)
-            .Where(i => i.TipoDeAlvo != null)
-            .Select(i => new ArtifactBonusInput(i.TipoDeAlvo!.Value, i.Alvo, i.Valor ?? 0))
+            .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => new { a.Id, i })
+            .Where(x => x.i.TipoDeAlvo != null)
+            .Select(x => new { x.Id, Bonus = new ArtifactBonusInput(x.i.TipoDeAlvo!.Value, x.i.Alvo, x.i.Valor ?? 0) })
             .ToListAsync();
+        // Artefato desabilitado por Condição não está em uso: o bônus não conta enquanto ela durar.
+        return linhas.Where(l => efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, l.Id) is null).Select(l => l.Bonus).ToList();
+    }
 
     /// <summary>Os equipamentos da ficha e se estão em uso (Requisitos - Catálogo de Itens, Requisitos/Penalidade).</summary>
-    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId)
+    private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
-        var armas = await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId).Select(w => new EquipamentoDaFicha(w.ItemId, w.IsEquipped)).ToListAsync();
-        var escudos = await db.NpcShields.Where(s => s.NpcSheetId == sheetId).Select(s => new EquipamentoDaFicha(s.ItemId, s.IsEquipped)).ToListAsync();
-        var armaduras = await db.NpcArmorSlots.Where(a => a.NpcSheetId == sheetId && a.ItemId != null).Select(a => new EquipamentoDaFicha(a.ItemId!.Value, true)).ToListAsync();
-        var artefatos = await db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId).Select(a => new EquipamentoDaFicha(a.ArtifactItemId, true)).ToListAsync();
+        // Equipamento desabilitado por Condição não está em uso (a linha guardada não muda): sem penalidade enquanto ela durar.
+        var armas = (await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Arma, x.Id) is null)).ToList();
+        var escudos = (await db.NpcShields.Where(s => s.NpcSheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Escudo, x.Id) is null)).ToList();
+        var armaduras = (await db.NpcArmorSlots.Where(a => a.NpcSheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Armadura, x.Id) is null)).ToList();
+        var artefatos = (await db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
+            .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, x.Id) is null)).ToList();
         return [.. armas, .. escudos, .. armaduras, .. artefatos];
     }
 
-    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(NpcSheet sheet) =>
-        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id), () => FichaParaRequisitosAsync(sheet));
+    public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(NpcSheet sheet, EfeitosDeCondicao? efeitos = null) =>
+        await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id, efeitos), () => FichaParaRequisitosAsync(sheet));
 
     /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
-    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(NpcSheet sheet)
+    public async Task<List<ArtifactBonusInput>> ModificadoresAsync(NpcSheet sheet, EfeitosDeCondicao? efeitos = null)
     {
-        var modificadores = await ArtefatosAsync(sheet.Id);
-        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet)));
+        var modificadores = await ArtefatosAsync(sheet.Id, efeitos);
+        modificadores.AddRange(await penalidades.ComoModificadoresAsync(await PenalidadesAtivasAsync(sheet, efeitos)));
         return modificadores;
     }
 
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    /// <summary>Os quatro totais de recurso exibidos, com as Condições de <paramref name="efeitos"/> — mesma conta de CharacterSheetStats.MaximosAsync.</summary>
+    public async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> MaximosAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var vigorTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Vigor, artefatos, efeitos);
+        var astuciaTotal = await GetAttributeTotalAsync(sheet.Id, Atributo.Astucia, artefatos, efeitos);
+        var (statusVida, statusFoco) = sheet.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, CharacterSheetStats.VocacaoTabelaName(sheet.Vocacao.Value), sheet.Nivel) : (0, 0);
+        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
+        return efeitos.NosMaximos(vigorTotal, statusVida, astuciaTotal, statusFoco, artefatoBonusParaAdrenalina);
+    }
+
+    /// <summary>Os Atributos da ficha na ordem de exibição, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Atributos e do resumo do encontro.</summary>
+    public async Task<List<AtributoCalculado>> AtributosAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        return (await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id).ToListAsync())
+            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
+            .Select(a => new AtributoCalculado(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
+                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
+            .ToList();
+    }
+
+    /// <summary>Todas as Perícias ativas, por nome, com o total calculado com <paramref name="efeitos"/> — a conta da lista de Perícias e do resumo do encontro.</summary>
+    public async Task<List<PericiaCalculada>> PericiasAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
+    {
+        var ativas = (await pericias.PorIdAsync()).Values.Where(p => !p.IsDeleted).ToList();
+        var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var artefatos = await ModificadoresAsync(sheet, efeitos);
+        var totaisDeAtributo = await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id)
+            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
+        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
+
+        return ativas
+            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
+            .Select(p =>
+            {
+                linhas.TryGetValue(p.Id, out var s);
+                var gasto = s?.Gasto ?? 0;
+                var atributo = s?.AtributoEscolhido ?? p.AtributoSugerido;
+                var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
+                var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
+                var total = atributo is not null && totaisDeAtributo.TryGetValue(atributo.Value, out var atributoTotal)
+                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
+                    : (int?)null;
+                return new PericiaCalculada(p.Chave, p.Nome, p.Descricao, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0);
+            })
+            .ToList();
+    }
+
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
     }
 }

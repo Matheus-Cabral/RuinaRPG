@@ -56,28 +56,27 @@ public class ChangelogDialogTests : MudBunitContext
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_1_4_4()
+    public void Rendered_list_contains_the_section_labels_of_1_5_0()
     {
-        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Afinidade Elemental:").And.Contain("Sub-Atributos:").And.Contain("Características:")
-            .And.Contain("Anexos da campanha:").And.Contain("Catálogo de Itens:").And.Contain("Banco de Magias e Habilidades:")
-            .And.Contain("Tabela de Afinidades").And.Contain("Características Negativas")
-            .And.Contain("Maestrias:").And.Contain("abaixo de Armas");
+        cut.Markup.Should().Contain("Características de Criatura:").And.Contain("Pontos de Ignição:").And.Contain("PI 0")
+            .And.Contain("Magias e Habilidades da ficha:").And.Contain("Log de ficha:")
+            .And.Contain("Encontros:").And.Contain("Goblin 2").And.Contain("Condições:").And.Contain("Resumo da ficha no encontro:");
     }
 
     [Fact]
-    public void The_1_4_3_text_is_gone()
+    public void The_1_4_4_text_is_gone()
     {
-        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        cut.Markup.Should().NotContain("Disciplina").And.NotContain("Kits de Equipagem");
+        cut.Markup.Should().NotContain("Notas Secretas:").And.NotContain("Maestrias:").And.NotContain("Tabela de Afinidades");
     }
 
     [Fact]
     public void A_user_who_is_not_an_auditor_does_not_see_the_auditor_block()
     {
-        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }));
 
         cut.Markup.Should().NotContain("Para Auditores");
     }
@@ -85,11 +84,11 @@ public class ChangelogDialogTests : MudBunitContext
     [Fact]
     public void An_auditor_sees_the_auditor_block_after_the_general_list()
     {
-        var cut = RenderDialog("1.4.4", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
         var texto = cut.Markup;
         texto.Should().Contain("Para Auditores");
-        texto.IndexOf("Para Auditores").Should().BeGreaterThan(texto.IndexOf("Banco de Magias e Habilidades:"));
-        texto.IndexOf("Tabela de Afinidades:").Should().BeGreaterThan(texto.IndexOf("Para Auditores"));
+        texto.IndexOf("Para Auditores").Should().BeGreaterThan(texto.IndexOf("Resumo da ficha no encontro:"));
+        texto.IndexOf("Auditoria de Condições:").Should().BeGreaterThan(texto.IndexOf("Para Auditores"));
     }
 }

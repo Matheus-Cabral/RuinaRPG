@@ -10,7 +10,7 @@
 - **Logging**: Serilog.
 - **Documentação de API**: Swashbuckle/Swagger.
 - **Autenticação**: ASP.NET Core Identity + JWT Bearer + refresh tokens.
-- **Tempo real**: SignalR, com o Hub autenticado pelo mesmo JWT da API — usado pelo "[[Requisitos - Gerenciador de Encontros]]" para refletir em tempo real PV/PF/PA de participantes vindos de Ficha de Personagem.
+- **Tempo real**: SignalR, com o Hub autenticado pelo mesmo JWT da API — usado pelo "[[Requisitos - Gerenciador de Encontros]]" para refletir em tempo real PV/PF/PA de participantes vindos de Ficha de Personagem. Há um segundo hub, `/hubs/notifications`, autenticado para qualquer usuário, só de servidor para cliente e endereçado por usuário (claim `sub` do JWT), usado para os avisos de Nota Secreta (ver "[[Requisitos - Campanha]]" R0015): os eventos `SecretNoteReceived` (apenas id e nome da campanha, nunca o texto da nota) e `SecretNotesChanged` (sem conteúdo; faz o cliente recontar as não lidas).
 - **ORM**: Entity Framework Core 8 + Npgsql (PostgreSQL).
 - **Frontend**: Blazor WebAssembly 8 standalone + Blazored.LocalStorage.
 - **Containers**: Docker + nginx 1.27-alpine.
@@ -107,6 +107,8 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 
 **Descrição**: Em ambiente de **desenvolvimento**, migrations pendentes são aplicadas automaticamente na inicialização da Api. Em ambiente de **produção**, a aplicação de migrations é um passo explícito do processo de deploy — `make migrate` (R0008), não automático na inicialização — para evitar uma migration destrutiva rodar sem revisão prévia.
 
+**Versão 1.5.0**: esta versão traz migrations que o código usa já no primeiro request: todo salvamento de ficha grava o log de ficha ([[Requisitos - Campanha]] R0016, R0012 abaixo) e as tabelas de encontros e de Condições são novas. Em produção, portanto, `make migrate` deve rodar **logo após** `make deploy`, com os jogadores fora do aplicativo; enquanto ele não rodar, salvar uma ficha falha.
+
   
 
 # **R0010** - Hospedagem: VM Ubuntu Server num homelab Proxmox, atrás de um túnel Cloudflare.
@@ -123,3 +125,18 @@ Implicações para o deploy:
 # **R0011** - Desenvolvimento segue TDD.
 
 **Descrição**: Toda unidade de comportamento (endpoint, serviço, regra de domínio) é implementada escrevendo primeiro um teste que falha, depois o código mínimo pra fazê-lo passar — não só onde for conveniente. Vale para todo o código de produção do projeto; os planos de implementação em `docs/superpowers/plans/` (fora deste `Docs/`, é a pasta usada pela skill de planejamento) já seguem esse ciclo passo a passo por padrão.
+
+  
+
+# **R0012** - O log de ficha é gravado por um único interceptor de salvamento.
+
+**Descrição**: As linhas do log de alterações de ficha (tabela `SheetLogEntries`, [[Requisitos - Modelo de Dados]]; a tela do GM está em [[Requisitos - Campanha]] R0016) são gravadas por um único interceptor de salvamento do EF Core (`SheetLogInterceptor`, em `RuinaRPG.Infrastructure`), registrado no `RuinaRpgDbContext`. A cada salvamento ele lê do rastreador de alterações o que mudou nas tabelas de ficha e acrescenta as linhas do log ao **mesmo** salvamento: alteração e log são gravados juntos ou falham juntos, e nenhum controller de ficha grava o log por conta própria.
+
+- O autor da linha é o usuário autenticado da requisição. Um salvamento sem usuário autenticado (seeders, inicialização da Api, utilitários de linha de comando) não gera log.
+- **Escritas automáticas.** Dentro da ação de um usuário o servidor também escreve por conta própria: quando as Condições ativas de um participante mudam ([[Requisitos - Gerenciador de Encontros]]), o Atual da ficha acima do novo total é cortado até ele; os ajustes por vez e a expiração de Condições são do mesmo tipo. Essas escritas são marcadas uma a uma (serviço `SheetLogDoServidor`, com o mesmo escopo da requisição) e a linha que o interceptor monta delas sai com `Automatico = true` — o autor continua sendo o usuário da requisição, e o popup do log mostra o selo "automático" ao lado dele. A marca é por escrita, e não por salvamento, porque a ação do GM e o corte que ela provoca vão no mesmo salvamento. Uma escrita automática de Vitalidade, Foco ou Adrenalina não gera a linha `RecursoDaFicha` no log do encontro.
+- **Linhas explícitas.** Aplicar, remover ou expirar uma Condição num participante ligado a uma ficha registra uma linha "Condição X aplicada/removida/expirada" (seção "Condições") que não vem de coluna nenhuma da ficha. Ela também passa pelo interceptor (mesmo instante, autor e recorte das demais): aplicar e remover são do GM; a expiração é automática.
+- Fichas de NPC e de Criatura só entram no log enquanto estão concedidas a um jogador.
+- O mesmo interceptor também grava uma linha no log de cada encontro em andamento de que a ficha participa quando a Vitalidade, o Foco ou a Adrenalina atual dela muda (ver "[[Requisitos - Gerenciador de Encontros]]").
+- O que entra no log, e com qual rótulo, é definido numa tabela única no código (`SheetLogMap`): cada tabela de ficha e cada coluna dela tem um rótulo, está marcada como texto longo (registrado sem o conteúdo) ou está na lista de ignoradas. **Uma tabela ou coluna de ficha nova precisa ser acrescentada a essa tabela** — um teste automatizado falha enquanto ela não estiver classificada.
+- Operações em massa que não passam pelo rastreador do EF Core (`ExecuteUpdate`, `ExecuteDelete`, SQL direto) **não** disparam o interceptor e, portanto, não geram log. O único uso atual sobre tabelas de ficha é o do Auditor de Regras ao remover uma Perícia, que zera o Gasto dela em todas as fichas ([[Requisitos - Auditoria de Regras]]): é manutenção do catálogo, não edição de ficha, e fica fora do log de propósito. Uma nova operação em massa sobre tabelas de ficha deve decidir explicitamente se precisa registrar log.
+- Uma coluna zerada pelo próprio banco quando a linha que ela referencia é apagada (`ON DELETE SET NULL`: a imagem, o Histórico ou a Equipagem de uma ficha) também não passa pelo interceptor e não é registrada, como a operação em massa acima.

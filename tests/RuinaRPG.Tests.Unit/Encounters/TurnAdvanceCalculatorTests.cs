@@ -85,6 +85,37 @@ public class TurnAdvanceCalculatorTests
         nextId.Should().Be(A);
     }
 
+    private static readonly Guid[] Ordem = [A, B, C];
+
+    [Fact] public void Start_is_round_1_on_the_first() => TurnAdvanceCalculator.Start(Ordem).Should().Be((1, A));
+
+    [Fact] public void Previous_inside_a_round_steps_back_one() =>
+        TurnAdvanceCalculator.Previous(2, C, Ordem).Should().Be((2, B));
+
+    [Fact] public void Previous_from_the_first_of_a_round_goes_to_the_last_of_the_round_before() =>
+        TurnAdvanceCalculator.Previous(3, A, Ordem).Should().Be((2, C));
+
+    [Fact] public void Previous_from_the_first_of_round_1_is_refused() =>
+        TurnAdvanceCalculator.Previous(1, A, Ordem).Should().BeNull();
+
+    [Fact] public void Previous_when_the_current_participant_is_gone_is_refused() =>
+        TurnAdvanceCalculator.Previous(2, Guid.NewGuid(), Ordem).Should().BeNull();
+
+    [Fact] public void Previous_with_nobody_on_turn_is_refused() =>
+        TurnAdvanceCalculator.Previous(2, null, Ordem).Should().BeNull();
+
+    [Fact] public void Previous_with_a_single_participant_goes_to_the_round_before() =>
+        TurnAdvanceCalculator.Previous(2, A, new[] { A }).Should().Be((1, A));
+
+    [Fact] public void AfterRemoval_of_a_middle_participant_gives_the_turn_to_the_next_in_the_same_round() =>
+        TurnAdvanceCalculator.AfterRemoval(2, B, Ordem).Should().Be((2, C));
+
+    [Fact] public void AfterRemoval_of_the_last_starts_the_next_round_on_the_first() =>
+        TurnAdvanceCalculator.AfterRemoval(2, C, Ordem).Should().Be((3, A));
+
+    [Fact] public void AfterRemoval_of_the_only_participant_leaves_nobody() =>
+        TurnAdvanceCalculator.AfterRemoval(2, A, new[] { A }).Should().BeNull();
+
     [Fact]
     public void IndexOf_returns_the_current_participants_live_position()
     {

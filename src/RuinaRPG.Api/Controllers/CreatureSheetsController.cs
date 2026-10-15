@@ -1,4 +1,3 @@
-using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -8,9 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -24,7 +25,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -102,11 +103,15 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Rank = rank;
         sheet.Nivel = request.Nivel;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
-        sheet.PontosDeIgnicao = request.PontosDeIgnicao;
-        sheet.VitalidadeAtual = request.VitalidadeAtual;
-        sheet.FocoAtual = request.FocoAtual;
-        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
+        // request.PontosDeIgnicao é aceito mas ignorado: o saldo só muda pelo endpoint próprio
+        // (UpdatePontosDeIgnicao) e pelas Magias/Habilidades, para um formulário desatualizado não
+        // apagar um débito ou uma devolução feita pelo servidor.
         sheet.Cobertura = cobertura;
+        // Só o Atual que o jogador editou é gravado, e no máximo atual da ficha (AtualDoFormulario), como no NPC.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
+        sheet.VitalidadeAtual = AtualDoFormulario.EscolherNoMaximo(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada, vitalidadeMaximo);
+        sheet.FocoAtual = AtualDoFormulario.EscolherNoMaximo(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado, focoMaximo);
+        sheet.AdrenalinaAtual = AtualDoFormulario.EscolherNoMaximo(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada, adrenalinaMaximo);
 
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
@@ -160,6 +165,29 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    // Edição manual do saldo de Pontos de Ignição — fora do Update genérico pelo mesmo motivo de Nível e
+    // Experiência Atual terem os seus: o formulário inteiro não diz qual campo o usuário de fato mexeu, e
+    // um saldo desatualizado nele apagaria o que o servidor debitou ou devolveu. Não avisa os Encontros:
+    // eles não exibem Pontos de Ignição.
+    [HttpPut("{id}/pontos-de-ignicao")]
+    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (pontos < 0)
+            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
+
+        sheet.PontosDeIgnicao = pontos;
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -276,11 +304,28 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// AttributeTotalCalculator.Total, rather than duplicating that logic. Mirrors
     /// NpcSheetsController.GetAttributeTotalAsync, scoped to CreatureAttributes/AtributoCriatura.
     /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
+    }
+
+    /// <summary>
+    /// As Condições ativas na ficha, com o que cada uma muda e os Turnos que faltam. Sempre vazia numa ficha do GM
+    /// (sem dono): as Condições de um participante dela só valem no resumo do encontro.
+    /// </summary>
+    [HttpGet("{id}/condicoes-ativas")]
+    public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
+    {
+        var sheet = await db.CreatureSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        return await condicoes.ListarDaCriaturaAsync(sheet);
     }
 
     /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
@@ -294,7 +339,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaCriaturaAsync(sheet)));
     }
 
     /// <summary>
@@ -312,12 +357,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var artefatos = await stats.ModificadoresAsync(sheet);
-        return new ModificadorDeDanoResponse(
-            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
-            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
-            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
-            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+        var efeitos = await condicoes.ParaCriaturaAsync(sheet);
+        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
     }
 
     /// <summary>
@@ -335,7 +376,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await stats.SubAtributosAsync(sheet);
+        return await stats.SubAtributosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
     }
 
     // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.
@@ -376,15 +417,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
     /// Abate/Assistencia are computed live via XpAwardCalculator, never persisted — same pattern
     /// as CharacterSheetResponse.Graduacao/NpcSheetResponse.Graduacao.
     ///
-    /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo mirror NpcSheetsController.ToResponseAsync's
-    /// máximo computation, via ResourceMaximumCalculator and IRulesDataProvider.Arquetipos (looked
-    /// up by Arquetipo/Nivel — unlike Vocacao, Arquetipo's C# enum member names (Fisico/Arcano)
-    /// match the real Tabela de Arquetipos.md's labels exactly, so a plain .ToString() lookup is
-    /// correct here — no accent-mapping helper needed).
-    ///
-    /// vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync now that CreatureAttribute
-    /// exists (Task 3) — resolves the earlier hardcoded-0 gap (mirrors NpcSheetsController's
-    /// equivalent fix once NpcAttribute existed).
+    /// VitalidadeMaximo/FocoMaximo/AdrenalinaMaximo come from CreatureSheetStats.MaximosAsync (Tabela de
+    /// Arquetipos by Arquetipo/Nivel), shared with the Condições activation clamp.
     /// </summary>
     private async Task<CreatureSheetResponse> ToResponseAsync(CreatureSheet s)
     {
@@ -398,15 +432,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, IRulesDataProvider r
         var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Vigor, artefatosParaMaximos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, AtributoCriatura.Astucia, artefatosParaMaximos);
-        var (statusVida, statusFoco) = s.Arquetipo is not null ? VidaEArcanaPorNivel.Arquetipo(rules.Arquetipos, s.Arquetipo.Value.ToString(), s.Nivel) : (0, 0);
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
-        var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);
-        var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
+        // Totais exibidos com as Condições ativas (Nenhum numa ficha do GM, sem dono). A Criatura não tem Estresse.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(s, await condicoes.ParaCriaturaAsync(s));
 
         var campaignId = await db.CampaignAttachments
             .Where(a => a.CreatureSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))

@@ -250,7 +250,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | ExperienciaAtual | int | 1.b |
 | EAPAtual | int | 1.b — coluna vestigial: mantida no schema mas não mais lida nem gravada pela aplicação; o VIS Atual exibido (`EAPAtual` na response) é **computado em tempo de leitura** (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank). `request.EAPAtual` é aceito mas ignorado. Mesma situação em NpcSheets (6.2), que herda esta coluna sem diferença. |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
-| PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b |
+| PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b — `request.PontosDeIgnicaoAtual` é aceito mas ignorado na atualização geral da ficha: o servidor aplica as diferenças de Nível e de bônus manual sobre o valor guardado, e a edição manual do saldo tem endpoint próprio (`PUT …/pontos-de-ignicao`). Mesma situação em NpcSheets (6.2) e, para `PontosDeIgnicao`, em CreatureSheets (6.3). |
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
 | Cobertura | enum Nenhuma \| Parcial \| Completa | 2.b |
 | Ciclos | int | 5.a |
@@ -344,6 +344,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Categoria | enum Livre \| Vocacional \| DeClasse, nullable — só em Passiva (Tipo = Passiva) |
 | Requisitos | jsonb, nullable — só em Passiva; ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009 |
+| CriadaNaFicha | boolean, NOT NULL, default false — verdadeiro quando a entrada foi montada do zero na ficha; só essas podem ser editadas. Entradas anteriores à 1.5.0 ficam falsas. Vale também para `NpcSpellAbilities` e `CreatureSpellAbilities`. |
 
 **CharacterSpellAbilityEffects** — mesma forma de `SpellAbilityBankEffects`, FK pra `CharacterSpellAbilities`.
 
@@ -555,6 +556,34 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 | UpdatedByUserId | FK → Users, nullable |
 | UpdatedAt | DateTime, nullable |
 
+
+## 6.4 SheetLogEntries — log de alterações de ficha
+
+*(ver "[[Requisitos - Campanha]]", R0016)*
+
+Uma linha por alteração registrada numa ficha de Personagem, NPC ou Criatura. **Exatamente uma** das três FKs de ficha (`CharacterSheetId`, `NpcSheetId`, `CreatureSheetId`) é preenchida por linha — mesmo padrão de duas/três FKs nullable de `EncounterParticipant` (seção 8). Excluir a ficha apaga seu log em cascata. As linhas são escritas apenas pelo interceptor de salvamento (ver "[[Requisitos - Técnico]]" R0012), nunca por endpoint próprio.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CharacterSheetId | FK → CharacterSheets, nullable, cascade |
+| NpcSheetId | FK → NpcSheets, nullable, cascade |
+| CreatureSheetId | FK → CreatureSheets, nullable, cascade |
+| OccurredAt | DateTime (UTC) |
+| ActorUserId | Guid — usuário que fez a alteração (sem FK: o log sobrevive à conta) |
+| ActorNickname | string — apelido do autor no momento da alteração |
+| ActorIsGm | bool |
+| Categoria | enum Geral \| RecursoVFA \| Estresse (gravado como texto) |
+| Acao | enum Alterou \| Adicionou \| Removeu \| Criou \| Expirou (gravado como texto; Expirou só para Condições) |
+| Secao | string — seção/aba da ficha afetada |
+| Campo | string, nullable |
+| ItemNome | string, nullable — nome do item adicionado/removido |
+| ValorAntes | string, nullable |
+| ValorDepois | string, nullable |
+| Automatico | bool — escrita feita pelo servidor por conta própria dentro da ação do autor (corte do Atual por uma Condição, expiração); default false |
+
+Índices: `(CharacterSheetId, OccurredAt DESC)`, `(NpcSheetId, OccurredAt DESC)` e `(CreatureSheetId, OccurredAt DESC)`.
+
   
 
 # 7. Diário e Notas Secretas
@@ -588,6 +617,7 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 |---|---|
 | DiaryEntryId | FK |
 | UserId | FK → Users |
+| ReadAt | timestamp NULL — nulo = não lida ([[Requisitos - Campanha]] R0015) |
 
   
 
@@ -602,8 +632,30 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Id | PK |
 | CampaignId | FK → Campaigns |
 | Nome | string, nullable |
-| CurrentRound | int |
-| CurrentParticipantIndex | int |
+| Status | string (enum) — `Preparacao`, `EmAndamento` ou `Finalizado`; padrão `Preparacao` |
+| CurrentRound | int — turno atual; `0` enquanto o encontro está em `Preparacao` (nunca iniciou) |
+| CurrentParticipantId | FK → EncounterParticipants, nullable — de quem é a vez (ON DELETE SET NULL) |
+| FinalizadoEm | timestamp, nullable — preenchido quando `Status = Finalizado` |
+| RowVersion | uint — token de concorrência otimista mapeado na coluna de sistema `xmin` do PostgreSQL (não é uma coluna criada pela migração). Duas ações de vez ou de fase simultâneas sobre o mesmo encontro: só uma é aplicada, a outra responde 409 |
+
+**EncounterLogEntries** — log do encontro, gravado só com o encontro em andamento.
+
+| Coluna | Tipo | Nota |
+|---|---|---|
+| Id | PK | |
+| EncounterId | FK → Encounters, cascade | índice `(EncounterId, Ordem)` |
+| Sequencia | bigint, identity | desempate quando duas linhas têm a mesma `Ordem` |
+| Ordem | bigint | ordem do log (valor estritamente crescente gerado na criação da linha); o log é lido por `Ordem`, com `Sequencia` como desempate |
+| OccurredAt | timestamp | |
+| Turno | int | turno em que a linha foi gravada |
+| VezParticipantId | guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
+| VezNome | string, nullable | snapshot do nome |
+| Tipo | string (enum) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha`, `CondicaoExpirada`, `AjusteDeCondicao` |
+| ParticipanteNome | string, nullable | |
+| Campo | string, nullable | |
+| ValorAntes | string, nullable | |
+| ValorDepois | string, nullable | |
+| Texto | string, nullable | |
 
 **EncounterParticipants**
 
@@ -631,6 +683,22 @@ A regra de PV/PF/PA não depende só de qual `Source*SheetId` está setada, mas 
 | Id | PK |
 | EncounterParticipantId | FK |
 | Texto | string |
+
+Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`, seção abaixo) e ficam em `EncounterParticipantCondicoes`.
+
+**EncounterParticipantCondicoes** — uma Condição do catálogo aplicada a um participante. **Cópia independente** (padrão 1 da legenda): editar ou apagar a entrada do catálogo não altera a que já foi aplicada.
+
+| Coluna | Tipo | Nota |
+|---|---|---|
+| Id | PK | |
+| EncounterParticipantId | FK → EncounterParticipants, cascade | índice |
+| CondicaoId | guid, nullable | só procedência (sem FK); serve para recusar a mesma Condição duas vezes no participante |
+| Nome, Descricao, Icone | string | snapshot da entrada do catálogo |
+| AplicadaNoTurno | int | `CurrentRound` ao aplicar; 0 se na preparação (a contagem começa no Turno 1) |
+| DuracaoTurnos | int, nullable | a do catálogo, ou a escolhida ao aplicar; nulo = sem prazo |
+| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento, Maestrias}` com o valor como o GM ajustou; `LinhaId` (guid) é estável; `Maestrias` (lista de ids de linhas de Maestria da ficha, ou nulo = todas) só numa linha de Maestria que o GM restringiu ao aplicar |
+| Desabilitacoes | jsonb | por categoria (`Arma`, `Armadura`, `Escudo`, `Artefato`, `Magia`, `Habilidade`, `Runa`, `Passiva`): lista vazia = a categoria inteira; senão os ids das linhas da ficha |
+| AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos (Turno 0 = linha "ao aplicar"; uma linha "a cada vez" roda no máximo uma vez por Turno, ver [[Requisitos - Gerenciador de Encontros]] R0013); começa vazia |
 
   
 
@@ -754,3 +822,44 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Nivel | FK → NiveisProgressao (cascade), parte da PK |
 | ColunaId | FK → ColunasDeNivel (cascade), parte da PK |
 | Valor | int, nullable — vazio = 0 (Acumulativa) ou herda o nível anterior (Por nível, exceto XP e EAP) |
+
+
+# 12. Condições
+
+Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma Condição é um nome com uma lista de modificadores e uma lista de categorias desabilitadas, que o Gerenciador de Encontros aplica a participantes (cópia independente, padrão 1 da legenda). Começa vazio.
+
+**Condicoes**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string — único entre as linhas não apagadas (índice filtrado por `IsDeleted = false`) |
+| Descricao | text |
+| Icone | string — uma chave da lista fixa de ícones (`CondicaoIcones.Chaves`, no projeto Contracts) |
+| DuracaoPadraoTurnos | int, nullable — vazio = até ser removida; quando informado, ≥ 1 |
+| IsDeleted | bool — exclusão lógica, sempre permitida (as aplicadas são cópias independentes) |
+| UpdatedByUserId | FK → Users, nullable |
+| UpdatedAt | DateTime, nullable |
+
+**CondicaoModificadores**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CondicaoId | FK → Condicoes (cascade) |
+| Ordem | int |
+| Alvo | enum `AlvoDeCondicao`: Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria (texto) |
+| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; nome do `Elemento` (vazio = geral); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
+| TipoDeValor | enum `TipoDeValorDeCondicao`: Fixo \| Percentual (texto); percentual entre −100 e 1000 |
+| Valor | int, com sinal, diferente de zero |
+| Momento | enum `MomentoDeCondicao`: AoAplicar \| ACadaVez (texto), nullable — preenchido se e somente se `Alvo = RecursoAtual` |
+
+**CondicaoDesabilitacoes**
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| CondicaoId | FK → Condicoes (cascade) |
+| Categoria | enum `CategoriaDesabilitavel`: Arma \| Armadura \| Escudo \| Artefato \| Magia \| Habilidade \| Runa \| Passiva (texto); sem repetir na mesma Condição |
+
+Uma Condição precisa de ao menos um modificador ou uma desabilitação.

@@ -2,9 +2,10 @@
 @implements IAsyncDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject AuthStateService AuthState
-@using Microsoft.AspNetCore.SignalR.Client
+@inject IDialogService DialogService
+@inject IEncounterConnection Connection
 @using RuinaRPG.Client.Services
+@using RuinaRPG.Client.Shared
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.CreatureSheets
@@ -22,13 +23,34 @@
 else
 {
     <MudText Typo="Typo.h3">
-        @(_encounter?.Nome ?? "Encontro") — Rodada @_encounter?.CurrentRound
+        @(_encounter?.Nome ?? "Encontro") — Turno @_encounter?.CurrentRound
+        @if (_encounter is not null)
+        {
+            <MudChip T="string" Size="Size.Small" Color="@CorDaFase" Class="ml-2">@NomeDaFase</MudChip>
+        }
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="StartEditNome" Class="ml-2">Renomear</MudButton>
+        @if (_encounter is { Status: not "Preparacao" })
+        {
+            <MudTooltip Text="Log do encontro">
+                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro" OnClick="AbrirLogAsync" />
+            </MudTooltip>
+        }
     </MudText>
 }
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
+@if (_encounter?.Status == "EmAndamento")
+{
+    <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.PlayArrow" Class="mt-3">
+        @(_encounter.CurrentParticipantId is null
+            ? $"Turno {_encounter.CurrentRound}, ninguém com a vez"
+            : $"Turno {_encounter.CurrentRound}, vez de {NomeDaVez}")
+    </MudAlert>
+}
+
+@if (!Finalizado)
+{
 <Section Title="Adicionar Participante">
     <EditForm Model="_addForm" OnValidSubmit="AddParticipantAsync">
         <MudGrid Class="mt-3">
@@ -51,36 +73,95 @@ else
         </MudGrid>
     </EditForm>
 </Section>
+}
 
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Class="my-3" OnClick="AdvanceTurnAsync">Próximo Turno</MudButton>
+@if (_encounter is not null)
+{
+    <MudStack Row="true" Class="my-3">
+        @switch (_encounter.Status)
+        {
+            case "Preparacao":
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_enviando" OnClick="@(() => PostAsync("start", "Não foi possível iniciar o encontro."))">Iniciar encontro</MudButton>
+                break;
+            case "EmAndamento":
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SkipPrevious" Disabled="_enviando" OnClick="@(() => PostAsync("previous-turn", "Não foi possível voltar a vez."))">Vez anterior</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SkipNext" Disabled="_enviando" OnClick="@(() => PostAsync("advance-turn", "Não foi possível passar a vez."))">Próxima vez</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Flag" Disabled="_enviando" OnClick="FinishAsync">Finalizar encontro</MudButton>
+                break;
+            default:
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Replay" Disabled="_enviando" OnClick="@(() => PostAsync("reopen", "Não foi possível reabrir o encontro."))">Reabrir</MudButton>
+                break;
+        }
+    </MudStack>
+}
 
-<MudSimpleTable Dense="true" Hover="true">
+<div class="d-flex align-center mt-3" style="gap:4px">
+    <MudText Typo="Typo.h6">Participantes</MudText>
+    <InfoPopup Title="PV, PF e PA no encontro">
+        <MudText>
+            PV, PF e PA de uma Ficha de Personagem, ou de um NPC ou Criatura concedido a um jogador, mudam na própria ficha
+            quando editados aqui. Cada valor fica no máximo que a ficha mostra com as Condições ativas, só o que você mudou é
+            gravado, e o jogador vê a mudança na ficha na hora.
+        </MudText>
+        <MudText Class="mt-2">
+            Um NPC ou Criatura do GM entra no encontro como uma cópia: os valores daqui são só desta instância e a ficha de
+            origem não muda.
+        </MudText>
+    </InfoPopup>
+</div>
+
+@* Com o combate, os botões da linha crescem: a tabela rola para o lado em vez de quebrar a linha. *@
+<div class="encontro-tabela">
+<MudSimpleTable Dense="true" Hover="true" Class="encontro-sem-quebra">
     <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < _participants.Count; i++)
         {
             var participant = _participants[i];
-            var isCurrentTurn = i == _encounter?.CurrentParticipantIndex;
-            <tr style="@(isCurrentTurn ? "font-weight: bold" : "")">
-                <td>@participant.Nome</td>
-                <td>@participant.Iniciativa</td>
-                <td>@participant.PV @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.PF @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.PA @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.AcoesRestantes</td>
-                <td>@string.Join(", ", participant.Condicoes)</td>
+            var isCurrentTurn = _encounter?.CurrentParticipantId == participant.Id;
+            <tr class="@(isCurrentTurn ? "encontro-vez" : "")">
                 <td>
-                    @if (_editingParticipantId == participant.Id)
+                    @if (isCurrentTurn)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Class="mr-1" />
+                    }
+                    @participant.Nome
+                </td>
+                <td>@participant.Iniciativa</td>
+                <td>@participant.PV</td>
+                <td>@participant.PF</td>
+                <td>@participant.PA</td>
+                <td>@participant.AcoesRestantes</td>
+                <td>@CondicoesDe(participant)</td>
+                <td>
+                    @if (participant.Origem is "Npc" or "Criatura")
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" aria-label="Resumo da ficha" title="Resumo da ficha"
+                                       OnClick="@(() => AbrirResumoAsync(participant))" />
+                    }
+                    @if (Finalizado)
+                    {
+                    }
+                    else if (_editingParticipantId == participant.Id)
                     {
                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="CancelEditParticipant">Cancelar</MudButton>
                     }
                     else
                     {
+                        @if (_encounter?.Status == "EmAndamento" && !isCurrentTurn)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Redo" Size="Size.Small" aria-label="Passar a vez para este" title="Passar a vez para este" Disabled="_enviando"
+                                           OnClick="@(() => PostAsync($"turn/{participant.Id}", "Não foi possível passar a vez."))" />
+                        }
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditParticipant(participant))">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Coronavirus" Disabled="_enviando"
+                                   OnClick="@(() => AdicionarCondicaoAsync(participant))">Adicionar condição</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" aria-label="Remover do encontro" title="Remover do encontro" Disabled="_enviando"
+                                       OnClick="@(() => RemoveParticipantAsync(participant))" />
                     }
                 </td>
             </tr>
-            @if (_editingParticipantId == participant.Id)
+            @if (_editingParticipantId == participant.Id && !Finalizado)
             {
                 <tr>
                     <td colspan="8">
@@ -92,26 +173,15 @@ else
                                 <MudItem xs="12" md="2">
                                     <MudNumericField T="int" @bind-Value="_editParticipantForm.AcoesRestantes" Label="Ações Restantes (0-3)" Min="0" Max="3" />
                                 </MudItem>
-                                @if (participant.IsLiveSourced)
-                                {
-                                    <MudItem xs="12" md="8">
-                                        <MudText Color="Color.Secondary">PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</MudText>
-                                    </MudItem>
-                                }
-                                else
-                                {
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
-                                    </MudItem>
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
-                                    </MudItem>
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
-                                    </MudItem>
-                                }
-                                <MudItem xs="12" md="6">
-                                    <MudTextField T="string" @bind-Value="_editParticipantForm.CondicoesText" Label="Condições (substitui a lista atual)" />
+                                @* Vindo de uma ficha, PV/PF/PA mudam na própria ficha (o servidor grava só o que mudou aqui). *@
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
                                 </MudItem>
                                 <MudItem xs="12" md="2">
                                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Salvar</MudButton>
@@ -124,6 +194,7 @@ else
         }
     </tbody>
 </MudSimpleTable>
+</div>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
@@ -148,7 +219,7 @@ else
 
     private EncounterResponse? _encounter;
     private List<EncounterParticipantResponse> _participants = new();
-    private HubConnection? _hubConnection;
+    private bool _enviando;
     private readonly AddParticipantFormModel _addForm = new();
     private string? _errorMessage;
     private string? _editingParticipantId;
@@ -160,26 +231,7 @@ else
     {
         await Task.WhenAll(LoadAsync(), LoadCampaignNameAsync());
 
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(new Uri(new Uri(Http.BaseAddress!, "/"), "hubs/encounters"), options =>
-            {
-                options.AccessTokenProvider = async () => await AuthState.GetAccessTokenAsync();
-            })
-            .WithAutomaticReconnect()
-            .Build();
-        _hubConnection.On("ParticipantsChanged", async () => { await LoadAsync(); StateHasChanged(); });
-        // A reconnect gets a brand-new connection id server-side, so group membership (JoinEncounter)
-        // doesn't survive it — without re-joining here, live sync would silently stop after any
-        // network hiccup until the whole page was manually reloaded (item 5 of the gap audit).
-        // Also re-fetch state in case anything changed while disconnected.
-        _hubConnection.Reconnected += async _ =>
-        {
-            await _hubConnection.SendAsync("JoinEncounter", EncounterId);
-            await LoadAsync();
-            await InvokeAsync(StateHasChanged);
-        };
-        await _hubConnection.StartAsync();
-        await _hubConnection.SendAsync("JoinEncounter", EncounterId);
+        await Connection.StartAsync(EncounterId, async () => { await LoadAsync(); await InvokeAsync(StateHasChanged); });
     }
 
     private async Task LoadCampaignNameAsync()
@@ -195,8 +247,186 @@ else
         var encountersResponse = await Http.GetAsync($"campaigns/{CampaignId}/encounters");
         var encounters = await encountersResponse.Content.ReadFromJsonAsync<List<EncounterResponse>>() ?? new();
         _encounter = encounters.SingleOrDefault(e => e.Id == EncounterId);
+        if (Finalizado)
+            _editingParticipantId = null; // a finished encounter is read-only: drop any inline edit left open
 
         _participants = await Http.GetFromJsonAsync<List<EncounterParticipantResponse>>($"encounters/{EncounterId}/participants") ?? new();
+    }
+
+    /// <summary>Chips das Condições do participante: as do catálogo (ícone, nome, Turnos) e, à parte, as de texto antigas.</summary>
+    private RenderFragment CondicoesDe(EncounterParticipantResponse participant) => __builder =>
+    {
+        foreach (var aplicada in participant.CondicoesAplicadas)
+        {
+            var condicao = aplicada;
+            var texto = condicao.TurnosRestantes is { } turnos ? $"{condicao.Nome} · {CondicaoResumo.Turnos(turnos)}" : condicao.Nome;
+            var classe = condicao.Ativa ? "mr-1" : "mr-1 condicao-inativa";
+            if (Finalizado)
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@CondicaoIcone.Icone(condicao.Icone)" Class="@classe" title="@condicao.Descricao">@texto</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@CondicaoIcone.Icone(condicao.Icone)" Class="@classe" title="@condicao.Descricao"
+                         OnClose="@(() => RemoverCondicaoAsync(participant, condicao))">@texto</MudChip>
+            }
+        }
+        for (var i = 0; i < participant.Condicoes.Count; i++)
+        {
+            var indice = i;
+            var texto = participant.Condicoes[indice];
+            if (Finalizado)
+            {
+                <MudChip T="string" Size="Size.Small" Class="mr-1">@texto</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Class="mr-1" OnClose="@(() => RemoverCondicaoLegadaAsync(participant, indice))">@texto</MudChip>
+            }
+        }
+    };
+
+    private async Task AdicionarCondicaoAsync(EncounterParticipantResponse participant)
+    {
+        var dialog = await DialogService.ShowAsync<AplicarCondicaoDialog>($"Adicionar condição: {participant.Nome}",
+            new DialogParameters<AplicarCondicaoDialog> { { x => x.EncounterId, EncounterId }, { x => x.ParticipantId, participant.Id } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+            await LoadAsync();
+    }
+
+    /// <summary>O resumo (só leitura) do NPC/Criatura do participante, com as Condições dele aplicadas; funciona também no encontro finalizado.</summary>
+    private async Task AbrirResumoAsync(EncounterParticipantResponse participant) =>
+        await DialogService.ShowAsync<ResumoDaFichaDialog>($"Resumo da ficha: {participant.Nome}",
+            new DialogParameters<ResumoDaFichaDialog> { { x => x.EncounterId, EncounterId }, { x => x.ParticipantId, participant.Id }, { x => x.NomeDoParticipante, participant.Nome } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+    private async Task RemoverCondicaoAsync(EncounterParticipantResponse participant, CondicaoAplicadaResponse condicao)
+    {
+        var response = await Http.DeleteAsync($"encounters/{EncounterId}/participants/{participant.Id}/condicoes/{condicao.Id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível remover a condição.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    // O PUT só aceita tirar textos antigos da lista; os demais campos seguem como estão no participante. Sai só a tag
+    // clicada (pelo índice): duas tags com o mesmo texto são duas tags.
+    private async Task RemoverCondicaoLegadaAsync(EncounterParticipantResponse participant, int indice)
+    {
+        var request = new UpdateParticipantRequest(participant.Iniciativa,
+            participant.IsLiveSourced ? null : participant.PV, participant.IsLiveSourced ? null : participant.PF, participant.IsLiveSourced ? null : participant.PA,
+            participant.AcoesRestantes, participant.Condicoes.Where((_, i) => i != indice).ToList());
+        var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível remover a condição.";
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private bool Finalizado => _encounter?.Status == "Finalizado";
+
+    private string NomeDaFase => _encounter?.Status switch
+    {
+        "EmAndamento" => "Em andamento",
+        "Finalizado" => "Finalizado",
+        _ => "Preparação",
+    };
+
+    private Color CorDaFase => _encounter?.Status switch
+    {
+        "EmAndamento" => Color.Success,
+        "Finalizado" => Color.Dark,
+        _ => Color.Default,
+    };
+
+    private string? NomeDaVez => _participants.FirstOrDefault(p => p.Id == _encounter?.CurrentParticipantId)?.Nome;
+
+    /// <summary>O log do encontro (só leitura, também no finalizado) abre num popup, como o log da ficha.</summary>
+    private Task AbrirLogAsync() =>
+        DialogService.ShowAsync<LogDoEncontroDialog>(null,
+            new DialogParameters<LogDoEncontroDialog> { { x => x.EncounterId, EncounterId }, { x => x.NomeDoEncontro, _encounter?.Nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+
+    /// <summary>One request of the phase/turn controls: every button stays disabled until it answers.</summary>
+    private async Task PostAsync(string path, string fallbackMessage)
+    {
+        _enviando = true;
+        try
+        {
+            var response = await Http.PostAsync($"encounters/{EncounterId}/{path}", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = await response.Content.ReadErrorMessageAsync() ?? fallbackMessage;
+                return;
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _enviando = false;
+        }
+    }
+
+    private async Task FinishAsync()
+    {
+        if (_enviando)
+            return;
+
+        // The flag stays up while the confirmation is open, so a second click cannot open another one.
+        _enviando = true;
+        bool? confirmou;
+        try
+        {
+            confirmou = await DialogService.ShowMessageBoxAsync(
+                "Finalizar encontro",
+                "Finalizar o encontro? Ele passa a ser somente leitura; é possível reabrir depois.",
+                yesText: "Finalizar", cancelText: "Cancelar");
+        }
+        finally
+        {
+            _enviando = false;
+        }
+        if (confirmou == true)
+            await PostAsync("finish", "Não foi possível finalizar o encontro.");
+    }
+
+    private async Task RemoveParticipantAsync(EncounterParticipantResponse participant)
+    {
+        if (_enviando)
+            return;
+
+        // The flag stays up from the confirmation through the request, so a second click cannot open another dialog.
+        _enviando = true;
+        try
+        {
+            var confirmou = await DialogService.ShowMessageBoxAsync(
+                "Remover participante",
+                $"Remover {participant.Nome} do encontro?",
+                yesText: "Remover", cancelText: "Cancelar");
+            if (confirmou != true)
+                return;
+
+            var response = await Http.DeleteAsync($"encounters/{EncounterId}/participants/{participant.Id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível remover o participante.";
+                return;
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _enviando = false;
+        }
     }
 
     private async Task<List<PickerOption>> SearchSourceSheetsAsync(string query)
@@ -249,7 +479,7 @@ else
         var response = await Http.PostAsJsonAsync($"encounters/{EncounterId}/participants", request);
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível adicionar o participante.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar o participante.";
             return;
         }
 
@@ -270,23 +500,11 @@ else
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}", new UpdateEncounterRequest(nome));
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível renomear o encontro.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível renomear o encontro.";
             return;
         }
 
         _editingNome = false;
-        await LoadAsync();
-    }
-
-    private async Task AdvanceTurnAsync()
-    {
-        var response = await Http.PostAsync($"encounters/{EncounterId}/advance-turn", null);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível avançar o turno.";
-            return;
-        }
-
         await LoadAsync();
     }
 
@@ -298,9 +516,11 @@ else
         _editParticipantForm.PV = participant.PV;
         _editParticipantForm.PF = participant.PF;
         _editParticipantForm.PA = participant.PA;
-        // The label makes clear that submitting replaces the whole list, matching the server's
-        // actual (replace, not append) semantics — pre-filling here just saves retyping unchanged tags.
-        _editParticipantForm.CondicoesText = string.Join(", ", participant.Condicoes);
+        // Guardados ao abrir: uma recarga com o formulário aberto troca _participants, e os valores novos não podem
+        // passar por "carregados" (o que o GM não mexeu pareceria editado e desfaria a mudança).
+        _editParticipantForm.PVCarregado = participant.PV;
+        _editParticipantForm.PFCarregado = participant.PF;
+        _editParticipantForm.PACarregado = participant.PA;
     }
 
     private void CancelEditParticipant()
@@ -310,24 +530,20 @@ else
 
     private async Task SaveParticipantAsync(EncounterParticipantResponse participant)
     {
-        var condicoes = _editParticipantForm.CondicoesText
-            .Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(c => c.Trim())
-            .Where(c => c.Length > 0)
-            .ToList();
-
+        // Os valores com que o formulário abriu vão junto: numa ficha ligada, o servidor só grava o recurso mudado aqui.
         var request = new UpdateParticipantRequest(
             _editParticipantForm.Iniciativa,
-            participant.IsLiveSourced ? null : _editParticipantForm.PV,
-            participant.IsLiveSourced ? null : _editParticipantForm.PF,
-            participant.IsLiveSourced ? null : _editParticipantForm.PA,
+            _editParticipantForm.PV,
+            _editParticipantForm.PF,
+            _editParticipantForm.PA,
             _editParticipantForm.AcoesRestantes,
-            condicoes);
+            participant.Condicoes, // the edit form no longer touches Condições: the legacy texts go back as they are
+            _editParticipantForm.PVCarregado, _editParticipantForm.PFCarregado, _editParticipantForm.PACarregado);
 
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Não foi possível salvar o participante.";
+            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar o participante.";
             return;
         }
 
@@ -337,8 +553,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        if (_hubConnection is not null)
-            await _hubConnection.DisposeAsync();
+        await Connection.DisposeAsync();
     }
 
     private class AddParticipantFormModel
@@ -355,6 +570,8 @@ else
         public int? PV { get; set; }
         public int? PF { get; set; }
         public int? PA { get; set; }
-        public string CondicoesText { get; set; } = "";
+        public int? PVCarregado { get; set; }
+        public int? PFCarregado { get; set; }
+        public int? PACarregado { get; set; }
     }
 }

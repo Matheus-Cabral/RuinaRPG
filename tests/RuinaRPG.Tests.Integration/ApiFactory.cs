@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.SheetLogs;
 
 namespace RuinaRPG.Tests.Integration;
 
@@ -15,7 +16,11 @@ public class ApiFactory(string connectionString) : WebApplicationFactory<Program
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<RuinaRpgDbContext>>();
-            services.AddDbContext<RuinaRpgDbContext>(options => options.UseNpgsql(connectionString));
+            // Mesmo registro do Program.cs, só com outra connection string: sem o interceptor aqui, o log de
+            // ficha não seria gravado em nenhum teste.
+            services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
+                .UseNpgsql(connectionString)
+                .AddInterceptors(sp.GetRequiredService<SheetLogInterceptor>()));
 
             // Jwt options have no appsettings defaults (they're env-var-only in prod, per the
             // "no secret hardcoded" constraint - see docker-compose.yml's Jwt__* mappings). The

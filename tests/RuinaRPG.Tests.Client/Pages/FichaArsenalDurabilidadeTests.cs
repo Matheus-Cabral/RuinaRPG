@@ -55,6 +55,8 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
             return new HttpResponseMessage(HttpStatusCode.OK);
 
         var path = request.RequestUri!.AbsolutePath;
+        if (path.EndsWith("/auth/me"))
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         if (path.EndsWith("/level-up-notice"))
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         if (Regex.IsMatch(path, "-sheets/[^/]+$"))

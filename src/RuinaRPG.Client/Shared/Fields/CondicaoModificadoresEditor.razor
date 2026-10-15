@@ -1,0 +1,92 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Condicoes
+
+@* A tabela editável de linhas de modificador de uma Condição: Alvo -> "específico" (depende do Alvo)
+   -> Fixo/Percentual -> Valor -> Momento (só para o valor atual de um recurso). *@
+<MudSimpleTable Dense="true" Class="mt-2">
+    <thead>
+        <tr><th>Alvo</th><th>Específico</th><th>Tipo</th><th>Valor</th><th>Momento</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var linha in Linhas)
+        {
+            var alvo = Enum.Parse<AlvoDeCondicao>(linha.Alvo);
+            var percentual = linha.TipoDeValor == nameof(TipoDeValorDeCondicao.Percentual);
+            <tr @key="linha">
+                <td>
+                    <MudSelect T="string" Label="Alvo" Dense="true" Value="@linha.Alvo" ValueChanged="@(v => AlvoMudou(linha, v))">
+                        @foreach (var o in CondicaoAlvos.Alvos)
+                        {
+                            <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td>
+                    <MudSelect T="string" Label="Específico" Dense="true" Value="@linha.Especifico" ValueChanged="@(v => linha.Especifico = v)">
+                        @foreach (var o in CondicaoAlvos.Especificos(alvo, Pericias))
+                        {
+                            <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
+                        }
+                        @if (PericiaRemovida(alvo, linha))
+                        {
+                            <MudSelectItem T="string" Value="@linha.Especifico">(Perícia removida)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @if (PericiaRemovida(alvo, linha))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">Esta Perícia foi removida do catálogo; escolha outra.</MudText>
+                    }
+                </td>
+                <td>
+                    <MudSelect T="string" Label="Tipo" Dense="true" @bind-Value="linha.TipoDeValor">
+                        @foreach (var o in CondicaoAlvos.Tipos)
+                        {
+                            <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td>
+                    <MudNumericField T="int" Label="Valor" Margin="Margin.Dense" @bind-Value="linha.Valor"
+                                     Min="@(percentual ? -100 : -9999)" Max="@(percentual ? 1000 : 9999)"
+                                     Adornment="@(percentual ? Adornment.End : Adornment.None)" AdornmentText="%" />
+                </td>
+                <td>
+                    @if (alvo == AlvoDeCondicao.RecursoAtual)
+                    {
+                        <MudSelect T="string" Label="Momento" Dense="true" @bind-Value="linha.Momento">
+                            @foreach (var o in CondicaoAlvos.Momentos)
+                            {
+                                <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="Remover linha" aria-label="Remover linha" OnClick="@(() => Linhas.Remove(linha))" /></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+<MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => Linhas.Add(new CondicaoLinhaForm()))">Adicionar linha</MudButton>
+
+@code {
+    [Parameter, EditorRequired] public List<CondicaoLinhaForm> Linhas { get; set; } = new();
+    [Parameter] public IReadOnlyList<PericiaResponse> Pericias { get; set; } = Array.Empty<PericiaResponse>();
+
+    // Uma linha antiga pode citar uma Perícia que saiu do catálogo: ela continua visível e marcada, sem trocar o dado do Auditor.
+    private bool PericiaRemovida(AlvoDeCondicao alvo, CondicaoLinhaForm linha) =>
+        alvo is AlvoDeCondicao.Pericia or AlvoDeCondicao.Maestria
+        && linha.Especifico != ""
+        && Pericias.Count > 0
+        && Pericias.All(p => p.Chave != linha.Especifico);
+
+    // Trocar o Alvo reinicia o "específico" (a primeira escolha, que para os alvos opcionais é "Todos/Todas")
+    // e o Momento, que só existe para o valor atual de um recurso.
+    private void AlvoMudou(CondicaoLinhaForm linha, string valor)
+    {
+        linha.Alvo = valor;
+        var alvo = Enum.Parse<AlvoDeCondicao>(valor);
+        linha.Especifico = CondicaoAlvos.Especificos(alvo, Pericias)[0].Valor;
+        linha.Momento = alvo == AlvoDeCondicao.RecursoAtual ? nameof(MomentoDeCondicao.AoAplicar) : null;
+    }
+}

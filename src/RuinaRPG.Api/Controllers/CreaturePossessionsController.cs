@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Condicoes;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
-public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     /// <summary>
     /// R0006 3.d: Butim (Spoils), not the plain inventory the Personagem/NPC sheet has — Custo and
@@ -202,16 +203,18 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (!Guid.TryParse(request.TraitId, out var traitId))
             return BadRequest("TraitId inválido.");
 
-        // Try the shared catalog first, then the creature-exclusive one — an Id can only ever
-        // exist in one of the two tables (separate Guid spaces), so this is unambiguous.
-        var normalTrait = await db.Traits.FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
-        var exclusiveTrait = normalTrait is null
-            ? await db.Set<CreatureExclusiveTrait>().FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted)
-            : null;
-        if (normalTrait is null && exclusiveTrait is null)
+        // Só o catálogo exclusivo de criatura (Auditoria de Regras R0005). Um Id do catálogo normal é
+        // recusado com mensagem própria; as linhas normais concedidas antes da 1.5.0 continuam valendo
+        // em ListTraits/SumExistingCustoAsync/DeleteTrait.
+        var exclusiveTrait = await db.Set<CreatureExclusiveTrait>().FirstOrDefaultAsync(t => t.Id == traitId && !t.IsDeleted);
+        if (exclusiveTrait is null)
+        {
+            if (await db.Traits.AnyAsync(t => t.Id == traitId))
+                return BadRequest("Esta característica não é do catálogo de criatura.");
             return BadRequest("Trait não encontrado.");
+        }
 
-        var trait = normalTrait is not null ? ToResolved(normalTrait) : ToResolved(exclusiveTrait!);
+        var trait = ToResolved(exclusiveTrait);
 
         if (trait.RequerEspecificacao && string.IsNullOrWhiteSpace(request.Especificacao))
             return BadRequest("Esta característica exige uma especificação.");
@@ -227,8 +230,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         {
             Id = Guid.NewGuid(),
             CreatureSheetId = sheetId,
-            TraitId = normalTrait?.Id,
-            CreatureExclusiveTraitId = exclusiveTrait?.Id,
+            TraitId = null,
+            CreatureExclusiveTraitId = exclusiveTrait.Id,
             Polaridade = trait.Polaridade,
             Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
         };
@@ -335,7 +338,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
         var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CreatureSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades };
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.CreatureSheetId, artifact.Id) };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -363,6 +366,10 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
 
     private static CreatureTraitResponse ToTraitResponse(CreatureTrait creatureTrait, ResolvedCatalogTrait trait) =>
         new(creatureTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao, trait.Custo, trait.Polaridade.ToString(), creatureTrait.Especificacao, trait.RequerEspecificacao);
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaCriaturaAsync((await db.CreatureSheets.FindAsync(sheetId))!)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -212,6 +212,70 @@ public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAs
         body.VitalidadeAtual.Should().Be(12);
     }
 
+    private async Task<CreatureSheetResponse> GetCreatureAsync(string token, string sheetId) =>
+        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", token)))
+            .Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
+
+    private Task<HttpResponseMessage> PutPontosDeIgnicaoAsync(string token, string sheetId, int pontos) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/pontos-de-ignicao", token, pontos));
+
+    [Fact]
+    public async Task Update_does_not_change_PontosDeIgnicao()
+    {
+        // O saldo tem endpoint próprio: o formulário da ficha (ValidUpdate() manda 5) não o grava.
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmPi1", "criaturapi1@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        (await PutPontosDeIgnicaoAsync(gmToken, sheetId, 11)).EnsureSuccessStatusCode();
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, ValidUpdate()))).EnsureSuccessStatusCode();
+
+        (await GetCreatureAsync(gmToken, sheetId)).PontosDeIgnicao.Should().Be(11);
+    }
+
+    [Fact]
+    public async Task UpdatePontosDeIgnicao_sets_the_balance_for_the_gm_and_the_granted_player()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmPi2", "criaturapi2@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CreatureJogadorPi2", "creaturejogadorpi2@teste.com");
+        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Creature PI");
+        await AddMemberAsync(gmToken, campaignId, playerId);
+        var sheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
+
+        (await PutPontosDeIgnicaoAsync(playerToken, sheetId, 23)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetCreatureAsync(gmToken, sheetId)).PontosDeIgnicao.Should().Be(23);
+
+        (await PutPontosDeIgnicaoAsync(gmToken, sheetId, 0)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetCreatureAsync(gmToken, sheetId)).PontosDeIgnicao.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UpdatePontosDeIgnicao_refuses_a_negative_value()
+    {
+        var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmPi3", "criaturapi3@teste.com");
+        var sheetId = await CreateSheetAsync(gmToken);
+        (await PutPontosDeIgnicaoAsync(gmToken, sheetId, 4)).EnsureSuccessStatusCode();
+
+        var response = await PutPontosDeIgnicaoAsync(gmToken, sheetId, -1);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Os Pontos de Ignição não podem ser negativos.");
+        (await GetCreatureAsync(gmToken, sheetId)).PontosDeIgnicao.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task UpdatePontosDeIgnicao_is_404_for_a_stranger_and_for_an_unknown_sheet()
+    {
+        var gmTokenOwner = await RegisterGmAndGetTokenAsync("CreatureGmPiOwner4", "criaturapiowner4@teste.com");
+        var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmPiOther4", "criaturapiother4@teste.com");
+        var (_, strangerToken) = await RegisterJogadorLinkedToAsync(gmTokenOwner, "CreatureJogadorPi4", "creaturejogadorpi4@teste.com");
+        var sheetId = await CreateSheetAsync(gmTokenOwner);
+
+        (await PutPontosDeIgnicaoAsync(gmTokenOther, sheetId, 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await PutPontosDeIgnicaoAsync(strangerToken, sheetId, 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await PutPontosDeIgnicaoAsync(gmTokenOwner, Guid.NewGuid().ToString(), 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetCreatureAsync(gmTokenOwner, sheetId)).PontosDeIgnicao.Should().Be(0);
+    }
+
     [Fact]
     public async Task UpdateNivel_pulls_ExperienciaAtual_to_that_levels_minimum_XP()
     {

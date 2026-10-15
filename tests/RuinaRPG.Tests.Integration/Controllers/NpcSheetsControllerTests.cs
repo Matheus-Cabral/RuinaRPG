@@ -10,6 +10,8 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.Rules.Niveis;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -1360,6 +1362,141 @@ public class NpcSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     private async Task<NpcSheetResponse> GetNpcAsync(string token, string sheetId) =>
         (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", token)))
             .Content.ReadFromJsonAsync<NpcSheetResponse>())!;
+
+    private async Task<int> PiAcumuladoAsync(int nivel)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var tabela = await scope.ServiceProvider.GetRequiredService<ITabelaDeNiveis>().ObterAsync();
+        return tabela.Acumulado(ChavesDeNivel.PontosDeIgnicao, nivel);
+    }
+
+    [Fact]
+    public async Task A_new_npc_starts_with_the_level_1_Pontos_de_Ignicao()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiNovo", "npcpinovo@teste.com");
+        var id = await CreateSheetAsync(gm);
+
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(await PiAcumuladoAsync(1));
+    }
+
+    [Fact]
+    public async Task Changing_the_npc_level_through_the_nivel_endpoint_moves_Atual()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiNivel", "npcpinivel@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var inicial = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/nivel", gm, 4))).EnsureSuccessStatusCode();
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(inicial + await PiAcumuladoAsync(4) - await PiAcumuladoAsync(1));
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/nivel", gm, 1))).EnsureSuccessStatusCode();
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(inicial);
+    }
+
+    [Fact]
+    public async Task Changing_the_npc_experience_moves_Atual_with_the_level_it_computes()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiXp", "npcpixp@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var inicial = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}/experiencia-atual", gm, 749))).EnsureSuccessStatusCode();
+
+        var npc = await GetNpcAsync(gm, id);
+        npc.PontosDeIgnicaoAtual.Should().Be(inicial + await PiAcumuladoAsync(npc.Nivel) - await PiAcumuladoAsync(1));
+    }
+
+    private Task<HttpResponseMessage> PutPontosDeIgnicaoAsync(string token, string sheetId, int pontos) =>
+        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/pontos-de-ignicao", token, pontos));
+
+    [Fact]
+    public async Task The_full_npc_update_applies_the_level_delta_and_ignores_PontosDeIgnicaoTotal()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiPut", "npcpiput@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var antes = await GetNpcAsync(gm, id);
+        (await PutPontosDeIgnicaoAsync(gm, id, 6)).EnsureSuccessStatusCode();
+
+        // O saldo do formulário (500) é ignorado: a diferença de nível entra sobre o valor guardado (6).
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}", gm,
+            ValidUpdate() with { Nivel = 3, PontosDeIgnicaoAtual = 500, PontosDeIgnicaoTotal = 999 }))).EnsureSuccessStatusCode();
+
+        var npc = await GetNpcAsync(gm, id);
+        npc.PontosDeIgnicaoAtual.Should().Be(6 + await PiAcumuladoAsync(3) - await PiAcumuladoAsync(antes.Nivel));
+        npc.PontosDeIgnicaoTotal.Should().Be(antes.PontosDeIgnicaoTotal);
+    }
+
+    [Fact]
+    public async Task The_full_npc_update_ignores_the_PontosDeIgnicaoAtual_of_the_request()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiIgnora", "npcpiignora@teste.com");
+        var id = await CreateSheetAsync(gm);
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}", gm, ValidUpdate()))).EnsureSuccessStatusCode();
+        var guardado = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        // Mesmo nível: só o saldo do formulário difere.
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{id}", gm,
+            ValidUpdate() with { PontosDeIgnicaoAtual = guardado + 123 }))).EnsureSuccessStatusCode();
+
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(guardado);
+    }
+
+    [Fact]
+    public async Task The_pontos_de_ignicao_endpoint_sets_the_balance_for_the_gm_and_the_granted_player()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiCampo", "npcpicampo@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPiCampoP", "npcpicampop@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha PI Campo");
+        await AddMemberAsync(gm, campaignId, playerId);
+        var id = await GrantBlankNpcAsync(gm, campaignId, playerId);
+
+        (await PutPontosDeIgnicaoAsync(playerToken, id, 23)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(23);
+
+        (await PutPontosDeIgnicaoAsync(gm, id, 0)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_pontos_de_ignicao_endpoint_refuses_a_negative_value()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiNegativo", "npcpinegativo@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var antes = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        var response = await PutPontosDeIgnicaoAsync(gm, id, -1);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Os Pontos de Ignição não podem ser negativos.");
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(antes);
+    }
+
+    [Fact]
+    public async Task The_pontos_de_ignicao_endpoint_is_404_for_a_stranger_and_for_an_unknown_sheet()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiEstranho", "npcpiestranho@teste.com");
+        var outroGm = await RegisterGmAndGetTokenAsync("NpcPiEstranhoB", "npcpiestranhob@teste.com");
+        var (_, strangerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPiEstranhoP", "npcpiestranhop@teste.com");
+        var id = await CreateSheetAsync(gm);
+        var antes = (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual;
+
+        (await PutPontosDeIgnicaoAsync(outroGm, id, 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await PutPontosDeIgnicaoAsync(strangerToken, id, 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await PutPontosDeIgnicaoAsync(gm, Guid.NewGuid().ToString(), 50)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetNpcAsync(gm, id)).PontosDeIgnicaoAtual.Should().Be(antes);
+    }
+
+    [Fact]
+    public async Task A_blank_npc_granted_to_a_player_also_starts_with_the_level_1_points()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("NpcPiGrant", "npcpigrant@teste.com");
+        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPiGrantP", "npcpigrantp@teste.com");
+        var campaignId = await CreateCampaignAsync(gm, "Campanha PI");
+        await AddMemberAsync(gm, campaignId, playerId);
+        var id = await GrantBlankNpcAsync(gm, campaignId, playerId);
+
+        (await GetNpcAsync(playerToken, id)).PontosDeIgnicaoAtual.Should().Be(await PiAcumuladoAsync(1));
+    }
 
     [Fact]
     public async Task UpdateHistoria_by_the_gm_persists_sanitized_html()

@@ -44,7 +44,7 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
 # **R0005** - Editar Nível ou Experiência atual recalcula automaticamente o outro campo.
 
-**Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si.
+**Descrição**: Ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela — ver 1.b de "[[Requisitos - Ficha de Personagem]]"), na Ficha de NPC o Nível continua editável diretamente pelo GM. Editar um dos dois campos recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem. Os dois campos nunca ficam inconsistentes entre si. Pontos de Ignição seguem 1.b do Personagem: só o valor atual é exibido, e ele acompanha o Nível (inclusive quando o GM edita o Nível diretamente). O NPC não tem bônus manual.
 
 # **R0006** - O popup de Característica Racial (5.d) é resolvido pelo GM, não pelo NPC.
 
@@ -85,3 +85,11 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 # **R0013** - Requisitos e Penalidades de equipamento seguem o Personagem.
 
 **Descrição**: Os Requisitos e a Penalidade dos equipamentos (Arma, Armadura, Escudo e Artefato) funcionam na Ficha de NPC exatamente como na Ficha de Personagem: a tag "Requisito(s) não cumprido(s)" nas linhas de 3.a, 3.b, 3.c e 5.b (com os Requisitos e a Penalidade no popup do item), o alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate, e a subtração automática das Penalidades dos Totais. Ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]".
+
+# **R0014** - O saldo de Pontos de Ignição bloqueia também o GM.
+
+**Descrição**: A aba 4.b do NPC segue "[[Requisitos - Ficha de Personagem]]" 4.b sem alteração, incluindo a edição das entradas montadas do zero e o saldo de Pontos de Ignição. Ao contrário dos contadores de R0007 e R0010 deste documento, o saldo de PI **é um limite**: nem o GM adiciona uma Magia/Habilidade cujo Gasto em PI exceda o saldo.
+
+# **R0015** - Condições ativas: só na ficha concedida.
+
+**Descrição**: Um NPC **concedido** a um jogador segue "[[Requisitos - Ficha de Personagem]]" R0009: as Condições ativas dos participantes ligados a ele mudam os valores calculados da ficha, que o dono e o GM veem. Na ficha de um NPC **do GM** (não concedido) nada muda, por mais instâncias dele que estejam num encontro com Condições: elas só valem no resumo daquele participante no encontro, e a lista de Condições ativas da ficha fica vazia. O NPC não limita o Atual ao máximo ao salvar, então a exceção de R0009 não se aplica a ele.

@@ -1,0 +1,284 @@
+@page "/auditoria/condicoes"
+@inject HttpClient Http
+@inject PericiaCatalogo Catalogo
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.Auth
+@using RuinaRPG.Contracts.Condicoes
+@using RuinaRPG.Domain.Condicoes
+@using MudBlazor
+
+<Breadcrumbs Items="@Crumbs" />
+<div class="d-flex align-center" style="gap:4px">
+    <MudText Typo="Typo.h3">Auditoria: Condições</MudText>
+    <InfoPopup Title="O que são as Condições">
+        <MudText>
+            Uma Condição é um estado aplicado a um participante durante um encontro em andamento (Envenenado, Lento, Abençoado...). Não são os Efeitos que uma Magia compra com PI: esses ficam em Auditoria: Efeitos.
+        </MudText>
+        <ul class="mt-2">
+            <li><b>Total (máximo) de um recurso</b> muda o máximo enquanto a Condição durar e é desfeito quando ela sai.</li>
+            <li><b>Valor atual de um recurso (dano ou cura por vez)</b> muda o que o participante tem agora e nunca é devolvido: é o Alvo de um veneno, sangramento ou regeneração.</li>
+            <li><b>Modificador de dano dos ataques</b> e <b>Dano elemental dos ataques</b> mudam o dano que a ficha causa nos ataques, não a Vitalidade dela.</li>
+            <li>No valor atual, <b>ao aplicar</b> age uma vez; <b>a cada vez do participante</b> age toda vez que ele recebe a vez no encontro.</li>
+            <li>Uma porcentagem no valor atual é uma porcentagem do total daquele recurso.</li>
+            <li>Valor negativo reduz; valor positivo aumenta.</li>
+            <li>O ícone da Condição é escolhido no painel <b>Ícone</b> do formulário.</li>
+        </ul>
+        <MudText Class="mt-2">
+            O catálogo vale para todo o servidor. Editar ou excluir uma entrada não altera uma Condição já aplicada.
+        </MudText>
+    </InfoPopup>
+</div>
+
+<DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+@if (!_verificado)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-3" />
+}
+else if (_forbidden)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+else
+{
+    @if (_form is null)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" StartIcon="@Icons.Material.Filled.Add" OnClick="Nova">Nova condição</MudButton>
+    }
+    else
+    {
+        <Section Title="@(_form.Id is null ? "Nova condição" : "Editar condição")">
+            <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
+            <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
+            @* São muitos ícones: a grade fica num painel fechado, cujo cabeçalho mostra o escolhido. *@
+            <MudExpansionPanels Class="mt-3" Elevation="0" Outlined="true">
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center" style="gap:8px">
+                            <MudText Typo="Typo.subtitle2">Ícone</MudText>
+                            @if (string.IsNullOrEmpty(_form.Icone))
+                            {
+                                <MudText Typo="Typo.body2">nenhum escolhido</MudText>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@CondicaoIcone.Icone(_form.Icone)" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@CondicaoIcone.Nome(_form.Icone)</MudText>
+                            }
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <div class="d-flex flex-wrap">
+                            @foreach (var chave in CondicaoIcones.Chaves)
+                            {
+                                var escolhido = _form.Icone == chave;
+                                <MudIconButton Icon="@CondicaoIcone.Icone(chave)" title="@CondicaoIcone.Nome(chave)" aria-label="@CondicaoIcone.Nome(chave)"
+                                               Color="@(escolhido ? Color.Primary : Color.Default)" Variant="@(escolhido ? Variant.Filled : Variant.Text)"
+                                               OnClick="@(() => _form.Icone = chave)" />
+                            }
+                        </div>
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+            <MudNumericField T="int?" @bind-Value="_form.DuracaoPadraoTurnos" Label="Duração padrão (Turnos, opcional)" Min="1" HelperText="Vazio = dura até ser removida." />
+            <MudText Typo="Typo.subtitle2" Class="mt-2">Modificadores</MudText>
+            <CondicaoModificadoresEditor Linhas="_form.Linhas" Pericias="Catalogo.Ativas" />
+            <MudSelect T="string" Label="Categorias desabilitadas" Class="mt-3" MultiSelection="true"
+                       SelectedValues="@_form.Categorias" SelectedValuesChanged="@(v => _form.Categorias = v.ToList())"
+                       MultiSelectionTextFunc="@RotulosDasCategorias">
+                @foreach (var o in CondicaoAlvos.Categorias)
+                {
+                    <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
+                }
+            </MudSelect>
+            <div class="mt-3">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SalvarAsync">Salvar</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
+            </div>
+        </Section>
+    }
+
+    <Section Title="Condições">
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th></th><th>Nome</th><th>O que faz</th><th>Duração</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _condicoes)
+                {
+                    <tr @key="c.Id">
+                        <td><MudIcon Icon="@CondicaoIcone.Icone(c.Icone)" title="@CondicaoIcone.Nome(c.Icone)" /></td>
+                        <td>@c.Nome</td>
+                        <td>@Resumo(c)</td>
+                        <td>@(c.DuracaoPadraoTurnos is { } t ? $"{t} {(t == 1 ? "Turno" : "Turnos")}" : "—")</td>
+                        <td>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="@($"Editar {c.Nome}")" aria-label="@($"Editar {c.Nome}")" OnClick="@(() => Editar(c))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="@($"Excluir {c.Nome}")" aria-label="@($"Excluir {c.Nome}")" OnClick="@(() => PedirExclusao(c))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </Section>
+}
+
+<MudDialog @bind-Visible="_excluirAberto">
+    <TitleContent>Excluir condição</TitleContent>
+    <DialogContent>
+        Excluir @_pendente?.Nome do catálogo? Isso não altera as condições já aplicadas a participantes.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _excluirAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmarExclusaoAsync">Excluir</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
+    {
+        new("Painel", "painel"),
+        new("Auditoria: Condições"),
+    };
+
+    private List<CondicaoResponse> _condicoes = new();
+    private CondicaoFormModel? _form;
+    private CondicaoResponse? _pendente;
+    private bool _excluirAberto;
+    private string? _errorMessage;
+    private bool _forbidden;
+    private bool _verificado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Todo usuário autenticado pode ler o catálogo, então o 200 do GET não diz quem pode editar:
+        // pergunta-se antes, e nenhum controle de escrita aparece até a resposta. Se a consulta falhar,
+        // a página segue sem a decisão e a API continua recusando a escrita (403).
+        try
+        {
+            var me = await Http.GetAsync("auth/me");
+            if (me.IsSuccessStatusCode && !((await me.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false))
+                _forbidden = true;
+        }
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException or NotSupportedException)
+        {
+        }
+        _verificado = true;
+
+        await Catalogo.CarregarAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var response = await Http.GetAsync("condicoes");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível carregar as condições.";
+            return;
+        }
+
+        _condicoes = await response.Content.ReadFromJsonAsync<List<CondicaoResponse>>() ?? new();
+    }
+
+    private void Nova() => _form = new CondicaoFormModel();
+
+    private void Cancelar() => _form = null;
+
+    private void Editar(CondicaoResponse c) => _form = new CondicaoFormModel
+    {
+        Id = c.Id,
+        Nome = c.Nome,
+        Descricao = c.Descricao,
+        Icone = c.Icone,
+        DuracaoPadraoTurnos = c.DuracaoPadraoTurnos,
+        Linhas = c.Modificadores.Select(m => new CondicaoLinhaForm
+        {
+            Alvo = m.Alvo,
+            Especifico = m.AlvoEspecifico ?? "",
+            TipoDeValor = m.TipoDeValor,
+            Valor = m.Valor,
+            Momento = m.Momento
+        }).ToList(),
+        Categorias = c.Desabilitacoes.ToList()
+    };
+
+    private async Task SalvarAsync()
+    {
+        if (_form is null)
+            return;
+
+        var body = new SalvarCondicaoRequest(_form.Nome, _form.Descricao, _form.Icone, _form.DuracaoPadraoTurnos,
+            _form.Linhas.Select(l => new CondicaoModificadorDto(l.Alvo, string.IsNullOrEmpty(l.Especifico) ? null : l.Especifico, l.TipoDeValor, l.Valor, l.Momento)).ToList(),
+            _form.Categorias.ToList());
+        var response = _form.Id is null
+            ? await Http.PostAsJsonAsync("condicoes", body)
+            : await Http.PutAsJsonAsync($"condicoes/{_form.Id}", body);
+
+        if (!await ChecarAsync(response, "Não foi possível salvar a condição."))
+            return;
+
+        _form = null;
+        await LoadAsync();
+    }
+
+    private void PedirExclusao(CondicaoResponse c)
+    {
+        _pendente = c;
+        _excluirAberto = true;
+    }
+
+    private async Task ConfirmarExclusaoAsync()
+    {
+        _excluirAberto = false;
+        if (_pendente is null)
+            return;
+
+        var c = _pendente;
+        _pendente = null;
+        if (!await ChecarAsync(await Http.DeleteAsync($"condicoes/{c.Id}"), "Não foi possível excluir a condição."))
+            return;
+
+        await LoadAsync();
+    }
+
+    // 403: o usuário não é o Auditor. 400: a API devolve a mensagem em português, mostrada como veio.
+    private async Task<bool> ChecarAsync(HttpResponseMessage response, string mensagemPadrao)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+            return false;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            var detalhe = await response.Content.ReadAsStringAsync();
+            _errorMessage = response.StatusCode == System.Net.HttpStatusCode.BadRequest && !string.IsNullOrWhiteSpace(detalhe) ? detalhe : mensagemPadrao;
+            return false;
+        }
+        return true;
+    }
+
+    private static string RotulosDasCategorias(IReadOnlyList<string> escolhidas) =>
+        string.Join(", ", escolhidas.Select(v => CondicaoAlvos.Categorias.FirstOrDefault(o => o.Valor == v)?.Rotulo ?? v));
+
+    // O texto do motor do Domain, numa linha só.
+    private string Resumo(CondicaoResponse c)
+    {
+        var modificadores = new List<ModificadorDeCondicao>();
+        foreach (var m in c.Modificadores)
+        {
+            if (Enum.TryParse<AlvoDeCondicao>(m.Alvo, out var alvo) && Enum.TryParse<TipoDeValorDeCondicao>(m.TipoDeValor, out var tipo))
+                modificadores.Add(new ModificadorDeCondicao(alvo, m.AlvoEspecifico, tipo, m.Valor, Enum.TryParse<MomentoDeCondicao>(m.Momento, out var momento) ? momento : null));
+        }
+
+        var desabilitacoes = new Dictionary<CategoriaDesabilitavel, IReadOnlySet<Guid>>();
+        foreach (var d in c.Desabilitacoes)
+        {
+            if (Enum.TryParse<CategoriaDesabilitavel>(d, out var categoria))
+                desabilitacoes[categoria] = new HashSet<Guid>();
+        }
+
+        var ativa = new CondicaoAtiva(Guid.Empty, c.Nome, modificadores, desabilitacoes);
+        return string.Join("; ", new EfeitosDeCondicao([ativa]).Explicar(Catalogo.Label)[0].Linhas);
+    }
+}

@@ -7,6 +7,7 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Campaigns;
@@ -21,7 +22,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/spell-abilities")]
-public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
+public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CharacterSpellAbilityResponse>> Add(Guid sheetId, AddCharacterSpellAbilityRequest request)
@@ -105,6 +106,14 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(efeitos.Select(e => e.CustoPI));
         var custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
 
+        // 4.b: o Gasto em PI sai do saldo da ficha; sem saldo, nem o GM cria. Passivas não têm PI.
+        if (SaldoDePontosDeIgnicao.Consome(tipo))
+        {
+            if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicaoAtual, gastoEmPI) is { } semSaldo)
+                return BadRequest(semSaldo);
+            sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, gastoEmPI);
+        }
+
         var sheetCopy = new CharacterSpellAbility
         {
             Id = Guid.NewGuid(), CharacterSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
@@ -119,6 +128,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         // ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
         if (!fromBank)
         {
+            sheetCopy.CriadaNaFicha = true;
             var bankCopy = new SpellAbilityBankEntry
             {
                 Id = Guid.NewGuid(), GmId = campaignGmId, Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao
@@ -185,6 +195,62 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         return await PassivasDisponiveisAsync(query, await stats.FichaParaRequisitosAsync(sheet));
     }
 
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CharacterSpellAbilityResponse>> Update(Guid sheetId, Guid id, UpdateSheetSpellAbilityRequest request)
+    {
+        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        if (sheet is null)
+            return NotFound();
+
+        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+            return Forbid();
+
+        var entry = await db.CharacterSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.CharacterSheetId == sheetId);
+        if (entry is null)
+            return NotFound();
+
+        // Só o que foi montado na ficha: uma entrada vinda do banco segue somente leitura (4.b).
+        // E só Magia ou Habilidade: uma Racial montada na ficha nunca foi debitada — convertê-la por aqui
+        // sairia quase de graça e a remoção devolveria o gasto inteiro.
+        if (!entry.CriadaNaFicha || !SaldoDePontosDeIgnicao.Consome(entry.Tipo))
+            return BadRequest("Só Magias e Habilidades montadas na ficha podem ser editadas.");
+
+        if (!Enum.TryParse<SpellAbilityTipo>(request.Tipo, out var tipo) || !SaldoDePontosDeIgnicao.Consome(tipo))
+            return BadRequest("Tipo desconhecido. Use Magia ou Habilidade.");
+
+        var validationError = await EfeitoValidationHelper.ValidarAsync(db, request.Grau, request.Efeitos);
+        if (validationError is not null)
+            return BadRequest(validationError);
+
+        var gastoEmPI = SpellAbilityCostCalculator.GastoEmPI(request.Efeitos.Select(e => e.CustoPI));
+
+        // Só a diferença: subir o custo precisa caber no saldo; baixar devolve.
+        var diferenca = gastoEmPI - entry.GastoEmPI;
+        if (SaldoDePontosDeIgnicao.ErroAoDebitar(sheet.PontosDeIgnicaoAtual, diferenca) is { } semSaldo)
+            return BadRequest(semSaldo);
+        sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, diferenca);
+
+        entry.Nome = request.Nome;
+        entry.Tipo = tipo;
+        entry.Grau = request.Grau;
+        entry.Descricao = request.Descricao;
+        entry.GastoEmPI = gastoEmPI;
+        entry.Custo = SpellAbilityCostCalculator.Custo(gastoEmPI);
+
+        // Troca os Efeitos por inteiro; a cópia que foi para o banco na criação não é tocada.
+        db.CharacterSpellAbilityEffects.RemoveRange(entry.Efeitos);
+        // Adicionados direto no DbSet (e não pela coleção rastreada): o EF os trataria como alterados e o
+        // SaveChanges falharia por concorrência.
+        var novos = request.Efeitos
+            .Select(e => new CharacterSpellAbilityEffect { Id = Guid.NewGuid(), CharacterSpellAbilityId = entry.Id, EfeitoNome = e.EfeitoNome, Quantidade = e.Quantidade, CustoPI = e.CustoPI })
+            .ToList();
+        db.CharacterSpellAbilityEffects.AddRange(novos);
+
+        await db.SaveChangesAsync();
+        return await ToResponseAsync(entry, null);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid sheetId, Guid id)
     {
@@ -200,6 +266,9 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         if (entry is null)
             return NotFound();
 
+        // Remover devolve o Gasto em PI, inclusive o de uma entrada anterior à 1.5.0 (nunca debitada).
+        if (SaldoDePontosDeIgnicao.Consome(entry.Tipo))
+            sheet.PontosDeIgnicaoAtual = SaldoDePontosDeIgnicao.Debitar(sheet.PontosDeIgnicaoAtual, -entry.GastoEmPI);
         db.CharacterSpellAbilities.Remove(entry); // the bank copy this creation also made is untouched — independent copies
         await db.SaveChangesAsync();
         return NoContent();
@@ -212,7 +281,8 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
             pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await pericias.PorIdAsync())).ToList();
         return new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao,
             e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList(),
-            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes);
+            e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await pericias.PorIdAsync()), pendentes, CriadaNaFicha: e.CriadaNaFicha,
+            DesabilitadoPor: await DesabilitadoPorAsync(e));
     }
 
     private async Task<List<PassivaDisponivelResponse>> PassivasDisponiveisAsync(IQueryable<SpellAbilityBankEntry> query, FichaParaRequisitos ficha)
@@ -228,6 +298,22 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
                 pendencias.ToList()));
         }
         return result;
+    }
+
+    // Condição ativa da ficha que desabilita a linha (null se nenhuma). Racial nunca é desabilitada.
+    private async Task<string?> DesabilitadoPorAsync(CharacterSpellAbility e)
+    {
+        var categoria = e.Tipo switch
+        {
+            SpellAbilityTipo.Magia => CategoriaDesabilitavel.Magia,
+            SpellAbilityTipo.Habilidade => CategoriaDesabilitavel.Habilidade,
+            SpellAbilityTipo.Passiva => CategoriaDesabilitavel.Passiva,
+            _ => (CategoriaDesabilitavel?)null
+        };
+        if (categoria is not { } c)
+            return null;
+        var sheetId = e.CharacterSheetId;
+        return (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(c, e.Id);
     }
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/attributes")]
-public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
+public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.NpcSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<NpcAttributeResponse>>> List(Guid sheetId)
@@ -29,19 +30,9 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        // Display order is independent of the enum's underlying (persisted) int value —
-        // see AttributeDisplayOrder's doc comment — so this sorts in memory, not in SQL.
-        var attributes = (await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).ToListAsync())
-            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
-            .ToList();
-
-        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
-
-        return attributes
-            .Select(a => new NpcAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
+        // Artefatos (Posses 5.b: estar na ficha é estar equipado), penalidades de equipamento ativas e Condições: NpcSheetStats.
+        return (await stats.AtributosAsync(sheet, await condicoes.ParaNpcAsync(sheet)))
+            .Select(a => new NpcAttributeResponse(a.Atributo, a.Gasto, a.Bonus, a.TemMaestria, a.Total))
             .ToList();
     }
 

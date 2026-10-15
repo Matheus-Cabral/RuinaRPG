@@ -1,0 +1,24 @@
+/* O participante com a vez ganha fundo preenchido (o negrito sozinho some numa tabela cheia).
+   Tinta do primário (mesmo tom nos dois temas, via o tripleto rgb do tema) em opacidade bem acima da cor
+   de hover da tabela (--mud-palette-table-hover, sombra a 18%), mais uma faixa na borda esquerda; o texto
+   continua na cor padrão da tabela. */
+.encontro-vez {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.4);
+    box-shadow: inset 4px 0 0 var(--mud-palette-primary);
+}
+
+/* Condição fora de ação (prazo vencido, ou o encontro não está em andamento): o chip fica esmaecido. */
+::deep .condicao-inativa {
+    opacity: 0.5;
+}
+
+/* A tabela não quebra a linha: botões e ícones ficam lado a lado e o contêiner rola para o lado. A linha do
+   formulário de edição (a célula com colspan) fica de fora: os campos dela podem quebrar. */
+.encontro-tabela {
+    overflow-x: auto;
+}
+
+.encontro-tabela ::deep .encontro-sem-quebra th,
+.encontro-tabela ::deep .encontro-sem-quebra td:not([colspan]) {
+    white-space: nowrap;
+}

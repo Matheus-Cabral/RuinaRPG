@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+using MudBlazor;
 using Bunit;
 using Bunit.TestDoubles;
 using FluentAssertions;
@@ -5,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
@@ -424,5 +427,199 @@ public class CampanhaDetalheTests : MudBunitContext
 
         body.Should().NotBeNull("changing the bonus must trigger the autosave PUT");
         body.Should().Contain("\"bonusDeCarga\":12.5");
+    }
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComFichasEConcessoes(bool comFichas)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get) return new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) }) };
+            if (path.EndsWith("/members"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignMemberResponse> { new("u1", "Ana", "ana@x.com") }) };
+            if (path.EndsWith("/character-sheets"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(comFichas
+                        ? new[] { new { Id = "s1", OwnerId = "u1", Nome = "Aria", Nivel = 3 } }
+                        : Array.Empty<object>())
+                };
+            if (path.EndsWith("/grants"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(comFichas
+                        ? new List<GrantSummaryResponse> { new("n1", "Npc", "Goblin", "u1", "Ana") }
+                        : new List<GrantSummaryResponse>())
+                };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        }));
+
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    [Fact]
+    public async Task Each_member_sheet_and_each_grant_gets_a_Log_da_ficha_button_outside_the_link()
+    {
+        var cut = RenderComFichasEConcessoes(comFichas: true);
+        await Task.Delay(100);
+
+        var botoesMembros = cut.FindAll("button[aria-label='Log da ficha']");
+        botoesMembros.Should().HaveCount(1);
+        botoesMembros[0].Closest("a").Should().BeNull("o ícone não pode navegar para a ficha");
+
+        GoToTab(cut, "Conceder Ficha");
+        await Task.Delay(50);
+
+        var botoesConcessoes = cut.FindAll("button[aria-label='Log da ficha']");
+        botoesConcessoes.Should().HaveCount(1);
+        botoesConcessoes[0].Closest("a").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Without_sheets_or_grants_there_is_no_Log_da_ficha_button()
+    {
+        var cut = RenderComFichasEConcessoes(comFichas: false);
+        await Task.Delay(100);
+        cut.FindAll("button[aria-label='Log da ficha']").Should().BeEmpty();
+
+        GoToTab(cut, "Conceder Ficha");
+        await Task.Delay(50);
+        cut.FindAll("button[aria-label='Log da ficha']").Should().BeEmpty();
+    }
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComEncontros(params EncounterResponse[] encontros)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get) return new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (path.EndsWith("campaigns"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CampaignResponse> { new(CampaignId, "Campanha Original", "Descrição", null) }) };
+            if (path.EndsWith("/encounters"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(encontros) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+        }));
+
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+        GoToTab(cut, "Encontros");
+        return cut;
+    }
+
+    [Fact]
+    public async Task Encontros_tab_splits_the_encounters_into_em_aberto_and_finalizados()
+    {
+        var finalizadoEm = new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc);
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"),
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", finalizadoEm, "p2"));
+        await Task.Delay(100);
+
+        var abertos = cut.Find("[data-testid='encontros-abertos']");
+        abertos.TextContent.Should().Contain("Emboscada").And.Contain("Preparação");
+        abertos.TextContent.Should().Contain("Ponte").And.Contain("Turno 4");
+        abertos.TextContent.Should().NotContain("Dragão");
+
+        var finalizados = cut.Find("[data-testid='encontros-finalizados']");
+        finalizados.TextContent.Should().Contain("Dragão").And.Contain(finalizadoEm.ToLocalTime().ToString("dd/MM/yyyy"));
+        finalizados.TextContent.Should().NotContain("Emboscada").And.NotContain("Ponte");
+        finalizados.QuerySelector("a")!.GetAttribute("href").Should().EndWith("encontros/e3");
+    }
+
+    [Fact]
+    public async Task Encontros_finalizados_shows_the_empty_message_when_none_is_finished()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"));
+        await Task.Delay(100);
+
+        cut.Find("[data-testid='encontros-finalizados']").TextContent.Should().Contain("Nenhum encontro finalizado.");
+    }
+
+    [Fact]
+    public async Task Encontros_finalizados_are_listed_newest_first()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Antigo", 3, 0, "Finalizado", new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc), "p1"),
+            new EncounterResponse("e2", "Recente", 3, 0, "Finalizado", new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc), "p2"),
+            new EncounterResponse("e3", "Meio", 3, 0, "Finalizado", new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc), "p3"));
+        await Task.Delay(100);
+
+        var nomes = cut.Find("[data-testid='encontros-finalizados']").QuerySelectorAll("a").Select(a => a.TextContent).ToList();
+        nomes.Should().HaveCount(3);
+        nomes[0].Should().Contain("Recente");
+        nomes[1].Should().Contain("Meio");
+        nomes[2].Should().Contain("Antigo");
+    }
+
+    [Fact]
+    public async Task Started_and_finished_encounters_get_a_Log_do_encontro_button_outside_the_link_and_Preparacao_does_not()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e1", "Emboscada", 0, 0, "Preparacao"),
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        await Task.Delay(100);
+
+        var abertos = cut.Find("[data-testid='encontros-abertos']").QuerySelectorAll("button[aria-label='Log do encontro']");
+        abertos.Should().ContainSingle();
+        abertos[0].Closest("a").Should().BeNull("o ícone não pode navegar para o encontro");
+        var finalizados = cut.Find("[data-testid='encontros-finalizados']").QuerySelectorAll("button[aria-label='Log do encontro']");
+        finalizados.Should().ContainSingle();
+        finalizados[0].Closest("a").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task The_Log_do_encontro_button_opens_the_dialog_of_that_encounter()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"));
+        var dialogos = Render<MudDialogProvider>();
+        await Task.Delay(100);
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Log do encontro']").Click());
+
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Log do encontro — Ponte"));
+    }
+
+    [Fact]
+    public async Task The_Log_do_encontro_button_of_a_finished_encounter_opens_its_dialog()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        var dialogos = Render<MudDialogProvider>();
+        await Task.Delay(100);
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] button[aria-label='Log do encontro']").Click());
+
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Log do encontro — Dragão"));
+    }
+
+    [Fact]
+    public async Task Clicking_the_row_navigates_to_the_encounter_but_clicking_the_Log_icon_does_not()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        Render<MudDialogProvider>();
+        await Task.Delay(100);
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var inicial = nav.Uri;
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-abertos'] button[aria-label='Log do encontro']").Click());
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] button[aria-label='Log do encontro']").Click());
+        nav.Uri.Should().Be(inicial);
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-abertos'] .mud-list-item").Click());
+        nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e2");
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] .mud-list-item").Click());
+        nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e3");
     }
 }

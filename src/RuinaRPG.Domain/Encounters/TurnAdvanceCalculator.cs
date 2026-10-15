@@ -53,6 +53,53 @@ public static class TurnAdvanceCalculator
         return index < 0 ? 0 : index;
     }
 
+    /// <summary>Iniciar: Turno 1, vez do primeiro da ordem. Ordem não pode ser vazia.</summary>
+    public static (int Round, Guid ParticipantId) Start(IReadOnlyList<Guid> orderedParticipantIds) => (1, orderedParticipantIds[0]);
+
+    /// <summary>
+    /// Vez anterior: o participante anterior na ordem; do primeiro do Turno N volta ao último do
+    /// Turno N−1. Nulo quando não há para onde voltar (primeiro do Turno 1, ou a vez atual não está
+    /// mais na ordem).
+    /// </summary>
+    public static (int Round, Guid ParticipantId)? Previous(int currentRound, Guid? currentParticipantId, IReadOnlyList<Guid> orderedParticipantIds)
+    {
+        if (currentParticipantId is null)
+            return null;
+
+        var index = FindIndex(currentParticipantId.Value, orderedParticipantIds);
+        if (index < 0)
+            return null;
+
+        if (index > 0)
+            return (currentRound, orderedParticipantIds[index - 1]);
+
+        return currentRound <= 1
+            ? null
+            : (currentRound - 1, orderedParticipantIds[^1]);
+    }
+
+    /// <summary>
+    /// Quem fica com a vez quando o participante que a tinha é removido: o seguinte na ordem (mesmo
+    /// Turno) ou, se ele era o último, o primeiro do Turno seguinte. Nulo se não sobra ninguém.
+    /// <paramref name="orderedParticipantIds"/> é a ordem ANTES da remoção.
+    /// </summary>
+    public static (int Round, Guid ParticipantId)? AfterRemoval(int currentRound, Guid removedParticipantId, IReadOnlyList<Guid> orderedParticipantIds)
+    {
+        var remaining = orderedParticipantIds.Where(id => id != removedParticipantId).ToList();
+        if (remaining.Count == 0)
+            return null;
+
+        var index = FindIndex(removedParticipantId, orderedParticipantIds);
+        // Not in the order: nothing to hand over from, so the turn stays on the first of the same round.
+        if (index < 0)
+            return (currentRound, remaining[0]);
+
+        // After removal the former next participant sits at the removed one's index.
+        return index < remaining.Count
+            ? (currentRound, remaining[index])
+            : (currentRound + 1, remaining[0]);
+    }
+
     private static int FindIndex(Guid id, IReadOnlyList<Guid> ids)
     {
         for (var i = 0; i < ids.Count; i++)

@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IDialogService Dialogs
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
@@ -59,6 +60,10 @@
                                         }
                                         <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, @(sheet.Vocacao ?? "sem vocação") (@(sheet.Linhagem ?? "sem linhagem"))</MudText>
+                                        <MudTooltip Text="Log da ficha">
+                                            <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                           OnClick="@(() => AbrirLogAsync("character", sheet.Id, sheet.Nome))" />
+                                        </MudTooltip>
                                     </MudListItem>
                                 }
                             </MudList>
@@ -130,12 +135,50 @@
         </Section>
 
         <Section Title="Encontros">
-            <MudList T="string" Class="mt-3">
-                @foreach (var encounter in _encounters)
+            <MudList T="string" Class="mt-3" data-testid="encontros-abertos">
+                @foreach (var encounter in _encounters.Where(e => e.Status != "Finalizado"))
                 {
-                    <MudListItem T="string" Text="@(encounter.Nome ?? "(sem nome)")" Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")" />
+                    <MudListItem T="string" OnClick="@(() => Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{encounter.Id}"))">
+                        <span @onclick:stopPropagation="true"><MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink></span>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">@(encounter.Status == "Preparacao" ? "Preparação" : $"Turno {encounter.CurrentRound}")</MudChip>
+                        @if (encounter.Status != "Preparacao")
+                        {
+                            <span @onclick:stopPropagation="true"><MudTooltip Text="Log do encontro">
+                                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
+                                               OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
+                            </MudTooltip></span>
+                        }
+                    </MudListItem>
                 }
             </MudList>
+        </Section>
+
+        <Section Title="Encontros finalizados">
+            <div data-testid="encontros-finalizados">
+                @if (!_encounters.Any(e => e.Status == "Finalizado"))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nenhum encontro finalizado.</MudText>
+                }
+                else
+                {
+                    <MudList T="string" Class="mt-3">
+                        @foreach (var encounter in _encounters.Where(e => e.Status == "Finalizado").OrderByDescending(e => e.FinalizadoEm))
+                        {
+                            <MudListItem T="string" OnClick="@(() => Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{encounter.Id}"))">
+                                <span @onclick:stopPropagation="true"><MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink></span>
+                                @if (encounter.FinalizadoEm is { } fim)
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-2" Style="display:inline">Finalizado em @fim.ToLocalTime().ToString("dd/MM/yyyy")</MudText>
+                                }
+                                <span @onclick:stopPropagation="true"><MudTooltip Text="Log do encontro">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
+                                                   OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
+                                </MudTooltip></span>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </div>
         </Section>
     </MudTabPanel>
 
@@ -240,6 +283,10 @@
                             <td>
                                 <TipoChip Tipo="@grant.Tipo" /> <MudLink Href="@((grant.Tipo == "Npc" ? "npcs/" : "criaturas/") + grant.SheetId)">@(grant.Nome ?? "(sem nome)")</MudLink>
                                 — concedida a @grant.PlayerNickname
+                                <MudTooltip Text="Log da ficha">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                   OnClick="@(() => AbrirLogAsync(grant.Tipo == "Npc" ? "npc" : "creature", grant.SheetId, grant.Nome))" />
+                                </MudTooltip>
                             </td>
                         </tr>
                     }
@@ -371,6 +418,16 @@
     private readonly EditContext _editContext;
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
     private bool _deleteDialogOpen;
+
+    private Task AbrirLogAsync(string kind, string sheetId, string? nome) =>
+        Dialogs.ShowAsync<LogDaFichaDialog>(null,
+            new DialogParameters<LogDaFichaDialog> { { x => x.Kind, kind }, { x => x.SheetId, sheetId }, { x => x.NomeDaFicha, nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+
+    private Task AbrirLogDoEncontroAsync(EncounterResponse encounter) =>
+        Dialogs.ShowAsync<LogDoEncontroDialog>(null,
+            new DialogParameters<LogDoEncontroDialog> { { x => x.EncounterId, encounter.Id }, { x => x.NomeDoEncontro, encounter.Nome ?? "(sem nome)" } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
     private string _deletePassword = "";
     private string? _deleteErrorMessage;
 

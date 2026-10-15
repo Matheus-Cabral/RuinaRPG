@@ -34,7 +34,7 @@ Diferente do Catálogo de Itens ou do Banco de Magias, esse catálogo não é po
 
 # **R0005** - O Auditor de Regras tem CRUD completo sobre um catálogo separado de características exclusivas de Criatura.
 
-**Descrição**: Uma página separada de R0003 (mesmo formato: Nome, Custo, Polaridade, Descrição, "Exige Especificação?", exclusão por linha, formulário de adicionar, mesma consistência de sinal do Custo, mesmo bloqueio de exclusão em uso) lista um catálogo à parte — **não é a mesma tabela de R0003**. Só a Ficha de Criatura pode conceder uma característica desse catálogo (junto com as de R0003, no mesmo seletor); Personagem, NPC e a aba "Características" do "[[Requisitos - Livro de Regras]]" nunca têm acesso a ele. Assim como R0003, é global (vale para o servidor inteiro, não por GM).
+**Descrição**: Uma página separada de R0003 (mesmo formato: Nome, Custo, Polaridade, Descrição, "Exige Especificação?", exclusão por linha, formulário de adicionar, mesma consistência de sinal do Custo, mesmo bloqueio de exclusão em uso) lista um catálogo à parte — **não é a mesma tabela de R0003**. Só a Ficha de Criatura pode conceder uma característica desse catálogo, e ela só concede as deste catálogo (ver "[[Requisitos - Ficha de Criaturas]]" 5.d, que também descreve o atalho de cadastro do Auditor na própria ficha); Personagem, NPC e a aba "Características" do "[[Requisitos - Livro de Regras]]" nunca têm acesso a ele. Assim como R0003, é global (vale para o servidor inteiro, não por GM).
 
 # **R0006** - O Auditor de Regras tem CRUD sobre o catálogo de Efeitos de "[[GRAUS & CÍRCULOS]]".
 
@@ -121,3 +121,29 @@ Na mesma página de R0009, uma seção **"Itens fixos"** lista a base com filtro
 **Regra de consulta**: dado o Valor da Afinidade da ficha, vale a linha de **maior Afinidade que não ultrapassa** esse Valor. Abaixo da menor linha, ou com a tabela vazia, Eficiência e Dano valem 0; acima da maior linha, valem os valores dela. A mudança vale imediatamente para toda Ficha de Personagem e de NPC (a Criatura não tem esses valores; ver "[[Requisitos - Ficha de Personagem]]" 2.b).
 
 Os valores iniciais vêm de "[[Tabela de Afinidades]]" e são semeados **só enquanto a tabela está vazia**; depois disso vale o que o Auditor mantém, e editar o Markdown não altera mais a tabela. A Tabela de Afinidades não aparece no "[[Requisitos - Livro de Regras]]".
+
+# **R0017** - O Auditor mantém o catálogo de Condições.
+
+**Descrição**: A página **Auditoria → Condições** mantém o catálogo das **Condições** de combate (estados como Envenenado, Lento ou Abençoado que o Mestre aplica a participantes de um encontro). O catálogo é **global**, igual para todas as campanhas, e **só o Auditor** cria, edita e exclui; qualquer usuário autenticado pode consultá-lo (o Mestre precisa da lista para aplicar). Ele **não é** o catálogo de Efeitos de R0006, que são os Efeitos que uma Magia/Habilidade compra com PI. A página começa vazia: nenhuma Condição é semeada.
+
+**Campos**: **Nome** (obrigatório, único entre as não excluídas), **Descrição**, **Ícone** (uma escolha entre uma lista fixa de cerca de cem ícones de RPG — elementos, estados físicos e mentais, sentidos, bônus, penalidades, magia —, cada um com nome em português; a grade fica num painel recolhido "Ícone", cujo cabeçalho mostra o ícone escolhido), **Duração padrão** em Turnos (opcional; se informada, no mínimo 1; vazia = dura até ser removida) e as listas de **modificadores** e de **categorias desabilitadas**. Uma Condição precisa de pelo menos um modificador ou uma categoria desabilitada. Na lista, cada Condição mostra o ícone, o nome, uma linha com o que ela faz, a duração padrão e os botões de editar e excluir; o formulário, com a tabela de modificadores, abre num painel acima da lista, e excluir pede confirmação.
+
+**Modificadores**: cada linha escolhe um **Alvo** e, conforme ele, o que exatamente muda:
+
+- **Atributo**: um dos oito atributos (obrigatório).
+- **Perícia**: todas as Perícias ou uma Perícia.
+- **Sub-atributo**: Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Redução Física, Redução Mágica ou Adrenalina (obrigatório; as defesas entram aqui).
+- **Total (máximo) de um recurso**: o máximo de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Vale só enquanto a Condição está ativa.
+- **Valor atual de um recurso (dano ou cura por vez)**: o valor corrente de Vitalidade, Foco, Adrenalina ou Estresse (obrigatório). Exige o **Momento**: **ao aplicar** (uma única vez) ou **a cada vez do participante** (toda vez que ele recebe o turno). O ajuste nunca é devolvido. O Momento existe só neste Alvo.
+- **Afinidade elemental**: todas as Afinidades ou as de um dos quatro Elementos.
+- **Dano elemental dos ataques**: o modificador do dano elemental que a ficha causa nos ataques, de todos os Elementos ou de um deles. Não mexe na Vitalidade da ficha.
+- **Modificador de dano dos ataques**: o modificador do dano que a ficha causa nos ataques, de todos os tipos ou de um tipo de dano. Não mexe na Vitalidade da ficha: para tirar Vitalidade a cada vez (veneno, sangramento), usa-se o Valor atual de um recurso com valor negativo e o Momento "a cada vez do participante".
+- **Maestria**: todas as Maestrias ou as de uma Perícia.
+
+Cada linha tem um **Tipo de valor**, **Fixo** ou **Percentual**, e um **Valor** com sinal, que nunca é 0; o percentual fica entre −100 e 1000. Num Valor atual, um percentual é um percentual do total daquele recurso. Os fixos somam; depois a soma dos percentuais incide sobre o valor já com os fixos, arredondando para baixo.
+
+**Categorias desabilitadas**: a Condição pode, além disso (ou no lugar), desabilitar uma ou mais de oito categorias: **Armas**, **Armaduras**, **Escudos**, **Artefatos**, **Magias**, **Habilidades**, **Runas** e **Passivas**. Quais itens dentro da categoria são desabilitados (toda a categoria ou itens escolhidos) o Mestre decide ao aplicar a Condição ao participante.
+
+**Quando age**: uma Condição só tem efeito enquanto o participante a tem **e** o encontro está **em andamento**; em preparação ou encerrado, nada muda (ver "[[Requisitos - Gerenciador de Encontros]]").
+
+**Editar ou excluir**: a Condição aplicada a um participante é uma **cópia independente** do catálogo (ver a legenda de "[[Requisitos - Modelo de Dados]]"). Editar ou excluir uma entrada do catálogo **não altera** uma Condição já aplicada; só vale para as aplicações seguintes. Excluir é sempre permitido, e o nome da entrada excluída pode ser usado de novo. Uma entrada com o mesmo nome de outra não excluída é recusada com uma mensagem.

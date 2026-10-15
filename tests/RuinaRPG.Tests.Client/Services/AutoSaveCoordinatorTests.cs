@@ -6,6 +6,36 @@ namespace RuinaRPG.Tests.Client.Services;
 public class AutoSaveCoordinatorTests
 {
     [Fact]
+    public async Task Ocupado_is_true_from_the_commit_until_the_save_finishes()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var release = new TaskCompletionSource<bool>();
+
+        Assert.False(coordinator.Ocupado);
+        coordinator.NotifyChanged(() => release.Task);
+        Assert.True(coordinator.Ocupado);
+
+        await Task.Delay(700);
+        Assert.True(coordinator.Ocupado); // the save is in flight
+
+        release.SetResult(true);
+        await Task.Delay(100);
+        Assert.False(coordinator.Ocupado);
+    }
+
+    [Fact]
+    public async Task Ocupado_goes_back_to_false_when_a_newer_commit_cancels_the_pending_one()
+    {
+        var coordinator = new AutoSaveCoordinator();
+
+        coordinator.NotifyChanged(() => Task.FromResult(true));
+        coordinator.NotifyChanged(() => Task.FromResult(true));
+        await Task.Delay(800);
+
+        Assert.False(coordinator.Ocupado);
+    }
+
+    [Fact]
     public async Task Rapid_repeated_calls_collapse_into_a_single_save_after_the_debounce_window()
     {
         var coordinator = new AutoSaveCoordinator();
@@ -119,6 +149,46 @@ public class AutoSaveCoordinatorTests
 
         lock (order) Assert.Equal(new[] { "A", "B" }, order);
         Assert.Equal(AutoSaveState.Saved, coordinator.State);
+    }
+
+    [Fact]
+    public async Task Saves_on_different_channels_do_not_cancel_each_other()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var ran = new List<string>();
+
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("geral"); return Task.FromResult(true); });
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi"); return Task.FromResult(true); }, "pi");
+        await Task.Delay(700);
+
+        lock (ran) Assert.Equal(new[] { "geral", "pi" }, ran.OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task A_second_call_on_the_same_channel_still_replaces_the_first()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var ran = new List<string>();
+
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi-1"); return Task.FromResult(true); }, "pi");
+        coordinator.NotifyChanged(() => { lock (ran) ran.Add("pi-2"); return Task.FromResult(true); }, "pi");
+        await Task.Delay(700);
+
+        lock (ran) Assert.Equal(new[] { "pi-2" }, ran);
+    }
+
+    [Fact]
+    public async Task Saves_of_different_channels_never_overlap()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var running = 0; var maxRunning = 0;
+        async Task<bool> Save() { maxRunning = Math.Max(maxRunning, ++running); await Task.Delay(100); running--; return true; }
+
+        coordinator.NotifyChanged(Save);
+        coordinator.NotifyChanged(Save, "pi");
+        await Task.Delay(900);
+
+        Assert.Equal(1, maxRunning);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)

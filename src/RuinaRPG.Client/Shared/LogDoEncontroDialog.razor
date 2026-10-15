@@ -1,0 +1,115 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Encounters
+@inject HttpClient Http
+@*
+    Popup do log de um encontro (Gerenciador de Encontros R0010), só para o GM, no molde do LogDaFichaDialog.
+    Lê GET encounters/{id}/log uma vez, ao abrir (o log do encontro é limitado), e filtra no cliente: o período e as duas caixas
+    só escondem linhas. Mostra os dias no fuso do navegador e, em cada dia, Turno e vez na ordem em que aconteceram.
+    Não acompanha o hub: o log fica como estava ao abrir; o botão Atualizar (ou reabrir) busca o mais novo, mantendo os filtros.
+*@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Log do encontro — @NomeDoEncontro</MudText>
+    </TitleContent>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_erro" Class="mb-3" />
+        <div class="d-flex align-center">
+            <MudDateRangePicker Label="Período" Clearable="true" DateRange="_periodo" DateRangeChanged="PeriodoMudou" />
+            <MudTooltip Text="Atualizar">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" aria-label="Atualizar" Disabled="_carregando" OnClick="CarregarAsync" />
+            </MudTooltip>
+        </div>
+        <div class="d-flex flex-wrap" style="gap:16px">
+            <MudCheckBox T="bool" @bind-Value="_recursos" Label="Vitalidade, Foco e Adrenalina" />
+            <MudCheckBox T="bool" @bind-Value="_estresse" Label="Estresse" />
+        </div>
+
+        @foreach (var (dia, turnos) in LogDoEncontroAgrupador.PorDia(Visiveis, TimeZoneInfo.Local))
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-3">@LogDaFichaAgrupador.TituloDoDia(dia)</MudText>
+            @foreach (var turno in turnos)
+            {
+                <MudText Typo="Typo.h6" Class="mt-2">Turno @turno.Turno</MudText>
+                @foreach (var vez in turno.Vezes)
+                {
+                    @if (vez.VezNome is not null)
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mt-1">Vez de @vez.VezNome</MudText>
+                    }
+                    @foreach (var linha in vez.Linhas)
+                    {
+                        <div class="encontro-log-linha d-flex flex-wrap align-center" style="gap:8px">
+                            <MudText Typo="Typo.body2">@LocalDe(linha).ToString("HH:mm")</MudText>
+                            <MudText Typo="Typo.body2">@LogDoEncontroAgrupador.Texto(linha)</MudText>
+                        </div>
+                    }
+                }
+            }
+        }
+
+        @if (!_carregando && _erro is null && Visiveis.Count == 0)
+        {
+            <MudText Class="mt-3">Nenhum evento registrado neste período.</MudText>
+        }
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mt-3" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string EncounterId { get; set; } = "";
+    [Parameter] public string? NomeDoEncontro { get; set; }
+
+    private List<EncounterLogEntryResponse> _linhas = new();
+    private DateRange? _periodo;
+    private bool _recursos = true;
+    private bool _estresse = true;
+    private string? _erro;
+    private bool _carregando;
+
+    private List<EncounterLogEntryResponse> Visiveis =>
+        LogDoEncontroAgrupador.Filtrar(_linhas, _periodo?.Start, _periodo?.End, _recursos, _estresse, TimeZoneInfo.Local);
+
+    protected override Task OnInitializedAsync() => CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        _erro = null;
+        try
+        {
+            var response = await Http.GetAsync($"encounters/{EncounterId}/log");
+            if (!response.IsSuccessStatusCode)
+            {
+                _erro = "Não foi possível carregar o log do encontro.";
+                return;
+            }
+            _linhas = await response.Content.ReadFromJsonAsync<List<EncounterLogEntryResponse>>() ?? new();
+        }
+        catch (HttpRequestException)
+        {
+            _erro = "Não foi possível carregar o log do encontro.";
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private static DateTime LocalDe(EncounterLogEntryResponse linha) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(linha.OccurredAt, DateTimeKind.Utc), TimeZoneInfo.Local);
+
+    private void PeriodoMudou(DateRange? periodo)
+    {
+        // O picker repete o evento ao receber de volta o valor que acabou de emitir.
+        if (periodo?.Start == _periodo?.Start && periodo?.End == _periodo?.End) return;
+        _periodo = periodo;
+    }
+}

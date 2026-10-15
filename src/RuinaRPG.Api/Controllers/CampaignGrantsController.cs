@@ -12,6 +12,7 @@ using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Api.Controllers;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/campaigns/{campaignId}/grants")]
-public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Grant(Guid campaignId, GrantSheetRequest request)
@@ -49,6 +50,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             if (sourceSheetId is null)
             {
                 newSheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId, OwnerId = playerId };
+                newSheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(newSheet.Nivel, await tabelaDeNiveis.ObterAsync());
                 await SeedBlankNpcChildrenAsync(newSheet.Id);
             }
             else
@@ -252,7 +254,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             {
                 Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
-                Categoria = sa.Categoria, Requisitos = sa.Requisitos
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
             db.NpcSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)
@@ -311,7 +313,7 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             {
                 Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
-                Categoria = sa.Categoria, Requisitos = sa.Requisitos
+                Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
             db.CreatureSpellAbilities.Add(saCopy);
             foreach (var eff in efeitos)

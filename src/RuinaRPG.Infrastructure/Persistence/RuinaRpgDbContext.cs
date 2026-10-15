@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Domain.Condicoes;
+using RuinaRPG.Infrastructure.Condicoes;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Diary;
@@ -14,6 +16,7 @@ using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 using RuinaRPG.Infrastructure.Runes;
+using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Persistence;
@@ -101,9 +104,15 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CreatureAffection> CreatureAffections => Set<CreatureAffection>();
     public DbSet<CreatureTrait> CreatureTraits => Set<CreatureTrait>();
     public DbSet<CreatureExclusiveTrait> CreatureExclusiveTraits => Set<CreatureExclusiveTrait>();
+    public DbSet<Condicao> Condicoes => Set<Condicao>();
+    public DbSet<CondicaoModificador> CondicaoModificadores => Set<CondicaoModificador>();
+    public DbSet<CondicaoDesabilitacao> CondicaoDesabilitacoes => Set<CondicaoDesabilitacao>();
+    public DbSet<SheetLogEntry> SheetLogEntries => Set<SheetLogEntry>();
+    public DbSet<EncounterLogEntry> EncounterLogEntries => Set<EncounterLogEntry>();
     public DbSet<Encounter> Encounters => Set<Encounter>();
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
     public DbSet<EncounterParticipantCondition> EncounterParticipantConditions => Set<EncounterParticipantCondition>();
+    public DbSet<EncounterParticipantCondicao> EncounterParticipantCondicoes => Set<EncounterParticipantCondicao>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -539,6 +548,18 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
         });
 
+        builder.Entity<SheetLogEntry>(entity =>
+        {
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(l => l.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(l => l.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(l => l.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(l => l.Categoria).HasConversion<string>();
+            entity.Property(l => l.Acao).HasConversion<string>();
+            entity.HasIndex(l => new { l.CharacterSheetId, l.OccurredAt }).IsDescending(false, true);
+            entity.HasIndex(l => new { l.NpcSheetId, l.OccurredAt }).IsDescending(false, true);
+            entity.HasIndex(l => new { l.CreatureSheetId, l.OccurredAt }).IsDescending(false, true);
+        });
+
         builder.Entity<NpcAttribute>(entity =>
         {
             entity.HasIndex(a => new { a.NpcSheetId, a.Atributo }).IsUnique();
@@ -684,10 +705,37 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.ToTable(t => t.HasCheckConstraint("CK_CreatureTraits_ExactlyOneTraitSource", "num_nonnulls(\"TraitId\", \"CreatureExclusiveTraitId\") = 1"));
         });
 
+        builder.Entity<Condicao>(entity =>
+        {
+            entity.HasIndex(c => c.Nome).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+        builder.Entity<CondicaoModificador>(entity =>
+        {
+            entity.HasOne<Condicao>().WithMany().HasForeignKey(m => m.CondicaoId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(m => m.Alvo).HasConversion<string>();
+            entity.Property(m => m.TipoDeValor).HasConversion<string>();
+            entity.Property(m => m.Momento).HasConversion<string>();
+        });
+        builder.Entity<CondicaoDesabilitacao>(entity =>
+        {
+            entity.HasOne<Condicao>().WithMany().HasForeignKey(d => d.CondicaoId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(d => d.Categoria).HasConversion<string>();
+        });
+
         builder.Entity<Encounter>(entity =>
         {
             entity.HasOne<Campaign>().WithMany().HasForeignKey(e => e.CampaignId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(e => e.CurrentParticipantId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.RowVersion).IsRowVersion();
+        });
+
+        builder.Entity<EncounterLogEntry>(entity =>
+        {
+            entity.HasOne<Encounter>().WithMany().HasForeignKey(l => l.EncounterId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(l => l.Sequencia).ValueGeneratedOnAdd().UseIdentityByDefaultColumn();
+            entity.Property(l => l.Tipo).HasConversion<string>();
+            entity.HasIndex(l => new { l.EncounterId, l.Ordem });
         });
 
         builder.Entity<EncounterParticipant>(entity =>
@@ -700,5 +748,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<EncounterParticipantCondition>(entity =>
             entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade));
+
+        builder.Entity<EncounterParticipantCondicao>(entity =>
+        {
+            entity.HasOne<EncounterParticipant>().WithMany().HasForeignKey(c => c.EncounterParticipantId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(c => c.Modificadores).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<List<LinhaDeCondicaoAplicada>>.Converter, JsonbConversao<List<LinhaDeCondicaoAplicada>>.Comparer);
+            entity.Property(c => c.Desabilitacoes).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<Dictionary<CategoriaDesabilitavel, List<Guid>>>.Converter, JsonbConversao<Dictionary<CategoriaDesabilitavel, List<Guid>>>.Comparer);
+            entity.Property(c => c.AjustesAplicados).HasColumnType("jsonb")
+                .HasConversion(JsonbConversao<List<AjusteAplicado>>.Converter, JsonbConversao<List<AjusteAplicado>>.Comparer);
+        });
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}")]
-public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CharacterSheetStats stats) : ControllerBase
+public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost("weapons")]
     public async Task<ActionResult<CharacterWeaponResponse>> AddWeapon(Guid sheetId, AddCharacterWeaponRequest request)
@@ -315,7 +316,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, weapon.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.CharacterSheetId, weapon.Id) }, item, weapon.CharacterSheetId);
     }
 
     private async Task<CharacterArmorSlotResponse> ToArmorSlotResponseAsync(CharacterArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -327,7 +328,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, slot.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.CharacterSheetId, slot.Id) }, item, slot.CharacterSheetId);
     }
 
     private async Task<CharacterShieldResponse> ToShieldResponseAsync(CharacterShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -336,7 +337,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta, item, shield.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.CharacterSheetId, shield.Id) }, item, shield.CharacterSheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -347,6 +348,10 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var image = await db.Images.FindAsync(imageId.Value);
         return image is not null ? $"/images/{image.Path}" : null;
     }
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

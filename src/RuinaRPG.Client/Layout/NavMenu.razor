@@ -1,6 +1,8 @@
+@implements IDisposable
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
+@inject SecretNoteNotifier Notifier
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 @inject TokenAuthenticationStateProvider AuthProvider
@@ -37,7 +39,13 @@
             </AuthorizeView>
             <AuthorizeView Roles="Jogador" Context="jogadorContext">
                 <Authorized>
-                    <MudNavLink Href="minhas-campanhas" Icon="@Icons.Material.Filled.Groups" IconColor="Color.Primary">Minhas Campanhas</MudNavLink>
+                    <MudNavLink Href="minhas-campanhas" Icon="@Icons.Material.Filled.Groups" IconColor="Color.Primary">
+                        Minhas Campanhas
+                        @if (Notifier.TotalUnread > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="rr-unread-chip ml-2">@Notifier.TotalUnread</MudChip>
+                        }
+                    </MudNavLink>
                 </Authorized>
             </AuthorizeView>
             <MudNavLink Href="livro-de-regras" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Primary">Livro de Regras</MudNavLink>
@@ -48,6 +56,12 @@
 
 @code {
     [Parameter] public EventCallback OnLinkClicked { get; set; }
+
+    protected override void OnInitialized() => Notifier.Changed += OnNotifierChanged;
+
+    private void OnNotifierChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notifier.Changed -= OnNotifierChanged;
 
     private Task NotifyLinkClicked() => OnLinkClicked.InvokeAsync();
 

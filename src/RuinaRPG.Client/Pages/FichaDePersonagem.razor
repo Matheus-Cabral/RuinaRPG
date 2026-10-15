@@ -1,6 +1,9 @@
 @page "/fichas/{SheetId}"
 @implements IDisposable
 @inject HttpClient Http
+@inject IJSRuntime JS
+@inject SecretNoteNotifier Notifier
+@inject IDialogService Dialogs
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
@@ -15,10 +18,13 @@
 @using RuinaRPG.Domain.SpellsAndAbilities
 @using RuinaRPG.Client.Shared.Fields
 @using MudBlazor
+@using RuinaRPG.Contracts.Notifications
 @using System.ComponentModel.DataAnnotations
 
+<div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
 <Breadcrumbs Items="@Crumbs" />
 <h1>Ficha de Personagem</h1>
+<CondicoesAtivasAlert Url="@($"character-sheets/{SheetId}/condicoes-ativas")" Versao="_condicoesVersao" />
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
 
@@ -157,14 +163,13 @@
                     @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
                 </MudText>
                 <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:14rem" />
+                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:22rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
                 </div>
                 <MudText>VIS Atual: @_form.EAPAtual</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifySavedAsync" />
-                <MudText>Pontos de Ignição Total: @_form.PontosDeIgnicaoTotal</MudText>
+                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifyPontosDeIgnicaoChangedAsync" />
                 <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:16rem" />
+                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:22rem" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPiDeltaAsync">Aplicar</MudButton>
                 </div>
             </Section>
@@ -306,7 +311,7 @@
                             <td>
                                 <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
                                                          Nome="@affinity.Elemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "Elemento", v))"
-                                                         Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" />
+                                                         Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" ValorComCondicoes="@affinity.ElementoValorComCondicoes" />
                             </td>
                             <td>
                                 <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(affinity.Elemento, affinity.SegundaEssencia)"
@@ -375,6 +380,10 @@
                 <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
                 <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
                 <MudText>Mágico: @_modificadorDeDano.Arcano</MudText>
+            @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(_modificadorDeDano.DanoElemental))
+            {
+                <MudText>@linha</MudText>
+            }
             </Section>
         }
 
@@ -404,7 +413,7 @@
                     {
                         <tr>
                             <td>
-                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" />
+                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" /> <DesabilitadoChip Condicao="@weapon.DesabilitadoPor" />
                             </td>
                             <td>@(weapon.TipoDeDano ?? "—")</td>
                             <td>@(weapon.Alcance?.ToString() ?? "—")</td>
@@ -510,7 +519,7 @@
                             <td>
                                 @if (slot.Nome is not null)
                                 {
-                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" />
+                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" /> <DesabilitadoChip Condicao="@slot.DesabilitadoPor" />
                                 }
                                 else
                                 {
@@ -577,7 +586,7 @@
                     {
                         <tr>
                             <td>
-                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" />
+                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" /> <DesabilitadoChip Condicao="@shield.DesabilitadoPor" />
                             </td>
                             <td>@(shield.Categoria ?? "—")</td>
                             <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
@@ -665,15 +674,21 @@
                     @foreach (var spellAbility in _spellAbilities.Where(s => s.Tipo != "Passiva"))
                     {
                         <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)))</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton></td>
+                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade))) <DesabilitadoChip Condicao="@spellAbility.DesabilitadoPor" /></td>
+                            <td>
+                                @if (spellAbility.CriadaNaFicha && spellAbility.Tipo is "Magia" or "Habilidade")
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" Class="mr-1" OnClick="@(() => EditSpellAbilityAsync(spellAbility))">Editar</MudButton>
+                                }
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </MudSimpleTable>
         </Section>
 
-        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"character-sheets/{SheetId}/spell-abilities")" />
+        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"character-sheets/{SheetId}/spell-abilities")" Versao="_condicoesVersao" />
 
         <Section Title="Runas">
             <EditForm Model="_runeForm" OnValidSubmit="AddRuneAsync">
@@ -688,7 +703,7 @@
                     {
                         <tr>
                             <td>@if (rune.ImageUrl is not null) { <ClickableImage Src="@rune.ImageUrl" Width="60" /> }</td>
-                            <td>@rune.Nome</td>
+                            <td>@rune.Nome <DesabilitadoChip Condicao="@rune.DesabilitadoPor" /></td>
                             <td>@rune.Descricao</td>
                             <td>@rune.Grau</td>
                             <td>@RuneTipoRotulo.De(rune.Tipo)</td>
@@ -764,7 +779,7 @@
                         @foreach (var artifact in group)
                         {
                             <tr>
-                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
+                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> <DesabilitadoChip Condicao="@artifact.DesabilitadoPor" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
                                 </td>
                                 <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
                             </tr>
@@ -870,6 +885,8 @@
         </Section>
     </MudTabPanel>
 </MudTabs>
+
+</div>
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
@@ -980,13 +997,70 @@
     protected override void OnInitialized()
     {
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
+        // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
+        // trocar o campo que está sendo editado (RecargaAdiada).
+        _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado,
+            aoFalhar: falha => _ = AvisarFalhaDaRecargaAsync());
+        Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
     }
+
+    // Erro de uma recarga adiada (RecargaAdiada nunca chama isto depois do Dispose). Ninguém espera esta tarefa, então
+    // ela não pode falhar: se a página sair no meio-tempo, não há onde mostrar o erro.
+    private async Task AvisarFalhaDaRecargaAsync()
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
+                StateHasChanged();
+            });
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private RecargaAdiada _recarga = null!;
+    private int _condicoesVersao;
+
+    private void OnCondicoesAlteradas(CondicoesAlteradasNotification notificacao)
+    {
+        if (notificacao.Kind != "character" || notificacao.SheetId != SheetId)
+            return;
+
+        _ = InvokeAsync(async () =>
+        {
+            // O aviso e a lista de Passivas mudam já; a recarga da ficha espera se há um campo em edição.
+            _condicoesVersao++;
+            StateHasChanged();
+            try
+            {
+                await _recarga.SolicitarAsync();
+            }
+            catch (Exception)
+            {
+                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
+            }
+            StateHasChanged();
+        });
+    }
+
+    // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
+    private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
+    {
+        await LoadSheetAsync(); await LoadTabs2And3Async(); await LoadSpellAbilitiesAsync(); await LoadRunesAsync(); await LoadArtifactsAsync();
+        _penalidadesVersao++;
+        StateHasChanged();
+    });
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
+        Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
+        _recarga.Dispose();
     }
 
     protected override async Task OnInitializedAsync()
@@ -1106,13 +1180,13 @@
         _form.NucleosRankA = sheet.NucleosRankA;
         _form.NucleosRankS = sheet.NucleosRankS;
         _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
-        _form.PontosDeIgnicaoTotal = sheet.PontosDeIgnicaoTotal;
         _form.PontosDeIgnicaoBonusManual = sheet.PontosDeIgnicaoBonusManual;
         _form.PontosDePericiaBonusCritico = sheet.PontosDePericiaBonusCritico;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
         _form.EstresseAtual = sheet.EstresseAtual;
+        _form.GuardarAtuaisCarregados();
         _form.Cobertura = sheet.Cobertura;
         _form.Ciclos = sheet.Ciclos;
         _form.ArcaRolada = sheet.ArcaRolada;
@@ -1153,7 +1227,8 @@
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional);
+            _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional,
+            _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada, _form.EstresseAtualCarregado);
 
         var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1179,6 +1254,32 @@
     {
         _autoSave.NotifyChanged(SaveIfValidAsync);
         return Task.CompletedTask;
+    }
+
+    // O saldo de Pontos de Ignição tem endpoint próprio: o servidor o altera sozinho (nível, bônus
+    // manual, Magias/Habilidades), e o PUT genérico o ignora para que um formulário desatualizado nunca
+    // escreva por cima disso. Editar o campo à mão salva só ele.
+    private Task NotifyPontosDeIgnicaoChangedAsync()
+    {
+        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync, "pi");
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SavePontosDeIgnicaoAsync()
+    {
+        if (_form.PontosDeIgnicaoAtual is null)
+        {
+            _errorMessage = "Informe os Pontos de Ignição Atual.";
+            return false;
+        }
+
+        var response = await Http.PutAsJsonAsync($"character-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicaoAtual.Value);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
+
+        _errorMessage = null;
+        await RecarregarPontosDeIgnicaoAsync();
+        return true;
     }
 
     /// <summary>
@@ -1218,7 +1319,8 @@
     /// <summary>
     /// The "GM também pode conceder PI" manual bonus (1.b): applies a signed delta to
     /// PontosDeIgnicaoBonusManual and saves immediately, same pattern as ApplyXpDeltaAsync above.
-    /// PontosDeIgnicaoTotal is derived server-side from Nível + this bonus.
+    /// The server adds the same delta to PontosDeIgnicaoAtual; the reload inside SaveIfValidAsync
+    /// brings that value back into the form.
     /// </summary>
     private async Task ApplyPiDeltaAsync()
     {
@@ -1527,12 +1629,47 @@
         _spellAbilityForm.Descricao = "";
         _spellAbilityForm.Efeitos.Clear();
         await LoadSpellAbilitiesAsync();
+        await RecarregarPontosDeIgnicaoAsync();
     }
 
     private async Task DeleteSpellAbilityAsync(string id)
     {
         await Http.DeleteAsync($"character-sheets/{SheetId}/spell-abilities/{id}");
         await LoadSpellAbilitiesAsync();
+        await RecarregarPontosDeIgnicaoAsync();
+    }
+
+    private async Task EditSpellAbilityAsync(CharacterSpellAbilityResponse entrada)
+    {
+        var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
+            new DialogParameters<EditarMagiaHabilidadeDialog>
+            {
+                { x => x.SaveUrl, $"character-sheets/{SheetId}/spell-abilities/{entrada.Id}" },
+                { x => x.Nome, entrada.Nome }, { x => x.Tipo, entrada.Tipo }, { x => x.Grau, entrada.Grau },
+                { x => x.Descricao, entrada.Descricao }, { x => x.Efeitos, entrada.Efeitos },
+            },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+        {
+            await LoadSpellAbilitiesAsync();
+            await RecarregarPontosDeIgnicaoAsync();
+        }
+    }
+
+    /// <summary>
+    /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b), e é ela quem
+    /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
+    /// releitura falhar, o campo fica como está — a operação em si já deu certo.
+    /// </summary>
+    private async Task RecarregarPontosDeIgnicaoAsync()
+    {
+        var response = await Http.GetAsync($"character-sheets/{SheetId}");
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        if (sheet is not null)
+            _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
     }
 
     private async Task LoadRunesAsync()
@@ -1877,9 +2014,6 @@
         public int? NucleosRankS { get; set; }
         [Required(ErrorMessage = "Informe os Pontos de Ignição Atual.")]
         public int? PontosDeIgnicaoAtual { get; set; }
-        // PontosDeIgnicaoTotal is derived server-side (Nível + PontosDeIgnicaoBonusManual) — no
-        // longer directly editable, same treatment as Nível.
-        public int PontosDeIgnicaoTotal { get; set; }
         public int PontosDeIgnicaoBonusManual { get; set; }
         public int PontosDePericiaBonusCritico { get; set; }
         [Required(ErrorMessage = "Informe a Vitalidade.")]
@@ -1890,6 +2024,13 @@
         public int? AdrenalinaAtual { get; set; }
         [Required(ErrorMessage = "Informe o Estresse.")]
         public int? EstresseAtual { get; set; }
+        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
+        public int? VitalidadeAtualCarregada { get; private set; }
+        public int? FocoAtualCarregado { get; private set; }
+        public int? AdrenalinaAtualCarregada { get; private set; }
+        public int? EstresseAtualCarregado { get; private set; }
+        public void GuardarAtuaisCarregados() =>
+            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada, EstresseAtualCarregado) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual);
         public string Cobertura { get; set; } = "Nenhuma";
         public int Ciclos { get; set; }
         public int? ArcaRolada { get; set; }

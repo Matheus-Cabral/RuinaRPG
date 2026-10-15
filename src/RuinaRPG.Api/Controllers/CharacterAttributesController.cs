@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/attributes")]
-public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats) : ControllerBase
+public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterAttributeResponse>>> List(Guid sheetId)
@@ -36,12 +37,13 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
             .ToList();
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
+        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         return attributes
             .Select(a => new CharacterAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))))
+                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
             .ToList();
     }
 

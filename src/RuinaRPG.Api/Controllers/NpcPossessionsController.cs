@@ -1,3 +1,4 @@
+using RuinaRPG.Domain.Condicoes;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}")]
-public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.NpcSheetStats stats) : ControllerBase
+public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.EquipmentPenaltyService penalidades, RuinaRPG.Api.Services.NpcSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpPost("inventory")]
     public async Task<ActionResult<NpcInventoryItemResponse>> AddInventoryItem(Guid sheetId, AddNpcInventoryItemRequest request)
@@ -380,7 +381,7 @@ public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new NpcArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
         var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.NpcSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades };
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.NpcSheetId, artifact.Id) };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
@@ -399,6 +400,10 @@ public class NpcPossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         new(npcTrait.Id.ToString(), trait.Id.ToString(), trait.Nome, trait.Descricao,
             npcTrait.IsRacial ? 0 : trait.Custo, trait.Polaridade.ToString(), npcTrait.Especificacao,
             trait.RequerEspecificacao, npcTrait.IsRacial);
+
+    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
+    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
+        (await condicoes.ParaNpcAsync((await db.NpcSheets.FindAsync(sheetId))!)).DesabilitadoPor(categoria, linhaId);
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

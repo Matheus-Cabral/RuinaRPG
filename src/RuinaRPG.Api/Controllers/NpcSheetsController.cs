@@ -1,4 +1,3 @@
-using RuinaRPG.Domain.Rules.ReferenceData;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -8,9 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
@@ -25,7 +26,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
     // granted one already does — same reasoning as List below.
@@ -36,6 +37,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var gmId = CurrentUserId();
 
         var sheet = new NpcSheet { Id = Guid.NewGuid(), GmId = gmId };
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(sheet.Nivel, await tabelaDeNiveis.ObterAsync());
         db.NpcSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
@@ -129,6 +131,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.Propriedade = request.Propriedade;
         sheet.Estrela = estrela;
         sheet.HistoricoId = historicoId;
+        var nivelAntigo = sheet.Nivel;
         sheet.Nivel = request.Nivel;
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
@@ -142,12 +145,20 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         sheet.NucleosRankB = request.NucleosRankB;
         sheet.NucleosRankA = request.NucleosRankA;
         sheet.NucleosRankS = request.NucleosRankS;
-        sheet.PontosDeIgnicaoAtual = request.PontosDeIgnicaoAtual;
-        sheet.PontosDeIgnicaoTotal = request.PontosDeIgnicaoTotal;
-        sheet.VitalidadeAtual = request.VitalidadeAtual;
-        sheet.FocoAtual = request.FocoAtual;
-        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
-        sheet.EstresseAtual = request.EstresseAtual;
+        // Mesma regra do Personagem (Ficha de Personagem 1.b): o Atual acompanha o Nível. O Total do
+        // NPC deixou de ser editável na 1.5.0 — request.PontosDeIgnicaoTotal é aceito mas ignorado.
+        // request.PontosDeIgnicaoAtual também é aceito mas ignorado: a diferença de nível entra sobre o
+        // saldo guardado, para um formulário desatualizado não apagar um débito, uma devolução ou um
+        // ajuste de nível feito pelo servidor. A edição manual tem endpoint próprio (UpdatePontosDeIgnicao).
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(nivelAntigo, request.Nivel, tabela));
+        // Só o Atual que o jogador editou é gravado, e no máximo atual da ficha (AtualDoFormulario): o servidor também o
+        // escreve, e um formulário desatualizado não pode desfazer um ajuste nem devolver o que um corte tirou.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await stats.MaximosAsync(sheet, await condicoes.ParaNpcAsync(sheet));
+        sheet.VitalidadeAtual = AtualDoFormulario.EscolherNoMaximo(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada, vitalidadeMaximo);
+        sheet.FocoAtual = AtualDoFormulario.EscolherNoMaximo(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado, focoMaximo);
+        sheet.AdrenalinaAtual = AtualDoFormulario.EscolherNoMaximo(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada, adrenalinaMaximo);
+        sheet.EstresseAtual = AtualDoFormulario.EscolherNoMaximo(sheet.EstresseAtual, request.EstresseAtual, request.EstresseAtualCarregado, estresseMaximo);
         // Só rejeita quando o valor MUDA para fora da tabela: se o GM diminuiu o dado depois da rolagem,
         // a ficha continua podendo salvar os outros campos mantendo a mesma ArcaRolada.
         if (request.ArcaRolada != sheet.ArcaRolada)
@@ -295,6 +306,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (nivel < 1 || nivel > tabela.UltimoNivel)
             return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
 
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(sheet.Nivel, nivel, tabela));
         sheet.Nivel = nivel;
         sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, tabela.ComoXpPorNivel());
         await db.SaveChangesAsync();
@@ -315,9 +328,35 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         sheet.ExperienciaAtual = experienciaAtual;
         var tabela = await tabelaDeNiveis.ObterAsync();
-        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
+        var nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
+            PontosDeIgnicaoPorNivel.Delta(sheet.Nivel, nivel, tabela));
+        sheet.Nivel = nivel;
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);
+
+        return NoContent();
+    }
+
+    // Edição manual do saldo de Pontos de Ignição — fora do Update genérico pelo mesmo motivo de Nível e
+    // Experiência Atual terem os seus: o formulário inteiro não diz qual campo o usuário de fato mexeu, e
+    // um saldo desatualizado nele apagaria o que o servidor debitou ou devolveu. Não avisa os Encontros:
+    // eles não exibem Pontos de Ignição.
+    [HttpPut("{id}/pontos-de-ignicao")]
+    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        if (pontos < 0)
+            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
+
+        sheet.PontosDeIgnicaoAtual = pontos;
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -454,7 +493,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await stats.SubAtributosAsync(sheet);
+        return await stats.SubAtributosAsync(sheet, await condicoes.ParaNpcAsync(sheet));
     }
 
     /// <summary>
@@ -463,11 +502,28 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// extracted into NpcSheetStats, shared with the Passiva requisitos snapshot.
     /// Mirrors CharacterSheetsController.GetAttributeTotalAsync, scoped to NpcAttributes.
     /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos)
+    private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
         var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
-        return AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString()));
+        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
+            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
+    }
+
+    /// <summary>
+    /// As Condições ativas na ficha, com o que cada uma muda e os Turnos que faltam. Sempre vazia numa ficha do GM
+    /// (sem dono): as Condições de um participante dela só valem no resumo do encontro.
+    /// </summary>
+    [HttpGet("{id}/condicoes-ativas")]
+    public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
+    {
+        var sheet = await db.NpcSheets.FindAsync(id);
+        if (sheet is null)
+            return NotFound();
+
+        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
+            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+
+        return await condicoes.ListarDoNpcAsync(sheet);
     }
 
     /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
@@ -481,7 +537,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet));
+        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaNpcAsync(sheet)));
     }
 
     /// <summary>
@@ -499,12 +555,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var artefatos = await stats.ModificadoresAsync(sheet);
-        return new ModificadorDeDanoResponse(
-            Cortante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Cortante.ToString()),
-            Perfurante: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Perfurante.ToString()),
-            Contundente: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Contundente.ToString()),
-            Arcano: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Dano, TipoDeDano.Arcano.ToString()));
+        var efeitos = await condicoes.ParaNpcAsync(sheet);
+        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
     }
 
     // The GM's whole NPC roster/library, not scoped to any one player — GM-only, same reasoning as Create.
@@ -588,20 +640,6 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     }
 
     /// <summary>
-    /// Vocacao's C# member names are unaccented (Campeao, Cacador, ...) but IRulesDataProvider.Vocacoes
-    /// is parsed straight from the real Tabela de Vocação markdown, which uses the accented Portuguese
-    /// names (Campeão, Caçador). A raw .ToString() lookup would never match those two, silently
-    /// returning 0 for statusVida/statusFoco. Used ONLY for that lookup — mirrors
-    /// CharacterSheetsController.VocacaoTabelaName.
-    /// </summary>
-    private static string VocacaoTabelaName(Vocacao vocacao) => vocacao switch
-    {
-        Vocacao.Campeao => "Campeão",
-        Vocacao.Cacador => "Caçador",
-        _ => vocacao.ToString()
-    };
-
-    /// <summary>
     /// Same shape as CharacterSheetsController.ToResponseAsync's Graduação/máximo computation,
     /// now that NpcAttribute exists — vigorTotal/astuciaTotal are queried via GetAttributeTotalAsync,
     /// same as SubAttributes uses.
@@ -631,17 +669,8 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
 
-        // Totais exibidos: Artefatos + penalidades de equipamento ativas.
-        var artefatosParaMaximos = await stats.ModificadoresAsync(s);
-        var vigorTotal = await GetAttributeTotalAsync(s.Id, Atributo.Vigor, artefatosParaMaximos);
-        var astuciaTotal = await GetAttributeTotalAsync(s.Id, Atributo.Astucia, artefatosParaMaximos);
-        var (statusVida, statusFoco) = s.Vocacao is not null ? VidaEArcanaPorNivel.Vocacao(rules.Vocacoes, VocacaoTabelaName(s.Vocacao.Value), s.Nivel) : (0, 0);
-        var artefatoBonusParaAdrenalina = ArtifactBonusCalculator.Sum(artefatosParaMaximos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.Adrenalina);
-
-        var vitalidadeMaximo = ResourceMaximumCalculator.Vitalidade(vigorTotal, statusVida);
-        var focoMaximo = ResourceMaximumCalculator.Foco(astuciaTotal, statusFoco);
-        var adrenalinaMaximo = ResourceMaximumCalculator.Adrenalina(artefatoBonusParaAdrenalina);
-        var estresseMaximo = ResourceMaximumCalculator.Estresse();
+        // Totais exibidos: Artefatos + penalidades de equipamento ativas e as Condições ativas (Nenhum numa ficha do GM, sem dono).
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await stats.MaximosAsync(s, await condicoes.ParaNpcAsync(s));
 
         var campaignId = await db.CampaignAttachments
             .Where(a => a.NpcSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))

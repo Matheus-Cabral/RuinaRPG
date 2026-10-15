@@ -1,0 +1,75 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.SpellsAndAbilities
+@inject HttpClient Http
+@*
+    Edita uma Magia/Habilidade montada do zero numa ficha (Ficha de Personagem 4.b). Mesmos campos do
+    formulário "do zero" das fichas; a URL de gravação vem de fora para as três fichas usarem o mesmo
+    popup. O Gasto em PI é recalculado pela API, que acerta só a diferença no saldo da ficha.
+*@
+<MudDialog>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+        <MudTextField T="string" @bind-Value="_nome" Label="Nome" />
+        <MudSelect T="string" @bind-Value="_tipo" Label="Tipo">
+            <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+            <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_grau" Label="Grau" />
+        <MudTextField T="string" @bind-Value="_descricao" Label="Descrição" Lines="3" />
+        <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
+        <AddEfeitoForm Grau="_grau" EfeitosExistentes="@(_efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList())" OnAdicionar="OnEfeitoAdicionado" />
+        <EfeitosTable Efeitos="_efeitos" Grau="_grau" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_salvando" OnClick="SalvarAsync">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public string SaveUrl { get; set; } = "";
+    [Parameter] public string Nome { get; set; } = "";
+    [Parameter] public string Tipo { get; set; } = "Magia";
+    [Parameter] public int Grau { get; set; }
+    [Parameter] public string Descricao { get; set; } = "";
+    [Parameter] public List<SpellAbilityEffectResponse> Efeitos { get; set; } = new();
+
+    private string _nome = "", _tipo = "Magia", _descricao = "";
+    private int _grau;
+    private readonly List<EfeitoLinha> _efeitos = new();
+    private string? _errorMessage;
+    private bool _salvando;
+
+    protected override void OnInitialized()
+    {
+        _nome = Nome; _tipo = Tipo; _grau = Grau; _descricao = Descricao;
+        _efeitos.AddRange(Efeitos.Select(e => new EfeitoLinha(e.EfeitoNome, e.Quantidade, e.CustoPI)));
+    }
+
+    private void OnEfeitoAdicionado(List<EfeitoAdicionadoResult> resultados) =>
+        _efeitos.AddRange(resultados.Select(r => new EfeitoLinha(r.EfeitoNome, r.Quantidade, r.CustoPI)));
+
+    private async Task SalvarAsync()
+    {
+        _salvando = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync(SaveUrl, new UpdateSheetSpellAbilityRequest(_nome, _tipo, _grau, _descricao,
+                _efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList()));
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a alteração.";
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

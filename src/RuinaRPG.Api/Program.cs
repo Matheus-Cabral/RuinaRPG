@@ -7,6 +7,7 @@ using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
@@ -16,6 +17,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -47,8 +49,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddDbContext<RuinaRpgDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+// Log de ficha (Técnico R0012): o interceptor é por requisição (precisa saber quem está salvando), por isso
+// entra pelo provider do escopo. O ApiFactory dos testes de integração refaz este registro — manter os dois iguais.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentActor, HttpCurrentActor>();
+builder.Services.AddScoped<SheetLogDoServidor>();
+builder.Services.AddScoped<SheetLogInterceptor>();
+builder.Services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
+    .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
+    .AddInterceptors(sp.GetRequiredService<SheetLogInterceptor>()));
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
@@ -79,10 +88,16 @@ builder.Services.AddScoped<DurabilidadePorRankProvider>();
 builder.Services.AddScoped<TabelaDeAfinidadesProvider>();
 builder.Services.AddScoped<ITabelaDeNiveis, TabelaDeNiveis>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
+builder.Services.AddScoped<CondicoesAtivasDaFicha>();
 builder.Services.AddScoped<CharacterSheetStats>();
+builder.Services.AddScoped<EncounterLog>();
+builder.Services.AddScoped<EncounterTurnos>();
+builder.Services.AddScoped<CondicoesDoEncontro>();
+builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
 builder.Services.AddScoped<CreatureSheetStats>();
+builder.Services.AddScoped<ResumoDeFichaDoParticipante>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
 {
@@ -149,6 +164,7 @@ builder.Services
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -205,6 +221,7 @@ app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHub<EncounterHub>("/hubs/encounters");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (args.Contains("--migrate"))
 {

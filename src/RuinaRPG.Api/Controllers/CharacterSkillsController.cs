@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats) : ControllerBase
+public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
@@ -36,12 +37,13 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
         var linhas = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var artefatos = await stats.ModificadoresAsync(sheet);
+        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         var attributeTotals = await db.CharacterAttributes
             .Where(a => a.CharacterSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
+            .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
+                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
@@ -55,7 +57,7 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
                 var historicoBonus = HistoricoBonusCalculator.For(p.Id, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId);
                 var modificador = SkillFormulas.Modificador(gasto, historicoBonus);
                 var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
+                    ? efeitos.NaPericia(p.Chave, SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave)))
                     : (int?)null;
                 return new CharacterSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, historicoBonus > 0, p.Nome, p.Descricao);
             })

@@ -6,7 +6,7 @@
 
   
 
-> **Documentos relacionados**: jogadores só podem ser adicionados a uma campanha se já estiverem vinculados ao GM (ver "[[Requisitos - Convite de Jogador]]"). Fichas de personagem criadas aqui seguem "[[Requisitos - Ficha de Personagem]]". Itens anexáveis vêm de "[[Requisitos - Catálogo de Itens e Equipamentos]]". Fichas de criatura e de NPC anexáveis vêm de "Requisitos - Ficha de Criaturas" e "Requisitos - Ficha de NPCs" (documentos ainda não detalhados).
+> **Documentos relacionados**: jogadores só podem ser adicionados a uma campanha se já estiverem vinculados ao GM (ver "[[Requisitos - Convite de Jogador]]"). Fichas de personagem criadas aqui seguem "[[Requisitos - Ficha de Personagem]]". Itens anexáveis vêm de "[[Requisitos - Catálogo de Itens e Equipamentos]]". Fichas de criatura e de NPC anexáveis vêm de "Requisitos - Ficha de Criaturas" e "Requisitos - Ficha de NPCs" (documentos ainda não detalhados). Os Encontros da campanha (aba **Encontros**, com a lista em preparação/em andamento e a lista de finalizados) seguem "[[Requisitos - Gerenciador de Encontros]]", ver [[Requisitos - Gerenciador de Encontros#**R0009** - Encontros finalizados ficam em uma lista à parte.|R0009 do Gerenciador de Encontros]].
 
   
 
@@ -114,3 +114,19 @@ Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos
 > Na aba "Detalhes", seção "Editar Campanha", o GM edita o campo numérico **Bônus de carga dos personagens** (decimal, passo 1, **pode ser negativo**; padrão 0; limitado a −1000..1000, com erro 400 e mensagem em português fora disso), salvo pelo mesmo autosave de Nome e Descrição. Um ⓘ explica: o valor é somado ao Peso Máximo do inventário de todos os personagens da campanha, um número negativo reduz a capacidade, e NPCs e Criaturas não são afetados.
 >
 > O bônus é somado ao Peso Máximo de toda Ficha de Personagem da campanha (ver "[[Requisitos - Ficha de Personagem]]" 2.b, Movimentação) — tanto no Peso exibido na aba "Posses" quanto na penalidade de sobrepeso da Movimentação —, e o Peso Máximo resultante nunca fica abaixo de 0. Quando o bônus é diferente de 0, a ficha mostra a legenda "inclui +N da campanha" (ou "inclui −N da campanha") ao lado do Peso. Só o GM dono da campanha pode alterá-lo.
+
+# **R0015** - O jogador deve ser notificado quando recebe uma Nota Secreta.
+
+**Descrição**: Quando o GM publica uma Nota Secreta (R0011), cada jogador destinatário que estiver com o sistema aberto recebe, em qualquer página, um aviso visual e um aviso sonoro (`harp_notification.mp3`). O aviso visual informa a campanha de origem e é clicável: leva à aba Notas Secretas da tela do jogador naquela campanha (R0009). O texto da nota não aparece no aviso.
+
+O jogador também vê um contador de Notas Secretas não lidas: um indicador na barra superior e o total no item "Minhas Campanhas" do menu, a quantidade de cada campanha na lista de Minhas Campanhas, e a quantidade da campanha na própria aba Notas Secretas. Uma nota deixa de ser não lida quando o jogador abre a aba Notas Secretas daquela campanha — todas as notas dele ali passam a lidas de uma vez. O contador cobre quem não estava com o sistema aberto no momento do envio; o aviso sonoro não é reproduzido depois.
+
+Se o GM editar uma Nota Secreta e acrescentar um destinatário, esse jogador é notificado como se a nota fosse nova; os destinatários que já existiam não são notificados de novo e conservam o estado de leitura. Editar apenas o texto ou as imagens não notifica ninguém. Excluir a nota, remover um destinatário ou excluir a campanha apenas corrige o contador de quem a perdeu.
+
+Vale a mesma restrição de R0011: quem não é destinatário não recebe aviso nem contagem.
+
+> O navegador pode bloquear o aviso sonoro enquanto o jogador não tiver interagido com a página; o aviso visual aparece de qualquer forma.
+
+# **R0016** - O GM consulta o log de alterações de cada ficha.
+
+**Descrição**: Na lista de fichas de cada membro (aba Membros) e em cada linha de "Concessões existentes", um ícone ao lado da ficha — depois de "Nível x, Vocação (Linhagem)" — abre um popup com o log daquela ficha: todas as alterações feitas nela, pelo jogador ou pelo próprio GM, cada uma com data e hora, quem fez, a seção, o campo e o valor antes e depois. Textos longos (História, descrições) aparecem apenas como "alterado", sem o conteúdo; o diário do personagem não entra no log. As linhas vêm agrupadas por dia, da mais recente para a mais antiga, e o GM pode filtrar por período. Duas caixas de seleção, marcadas por padrão, mostram ou escondem as linhas de **Vitalidade, Foco e Adrenalina** atuais e, à parte, as de **Estresse** atual. O log vale para toda Ficha de Personagem e para as Fichas de NPC e de Criatura concedidas a um jogador (R0010); fichas de NPC/Criatura não concedidas não têm log. Só o GM vê o log — o jogador não tem acesso, nem ao da própria ficha. O registro começa na versão em que o recurso foi introduzido (não há histórico anterior) e é guardado enquanto a ficha existir. Ver "[[Requisitos - Modelo de Dados]]" (SheetLogEntries).

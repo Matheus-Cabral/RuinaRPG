@@ -2,11 +2,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -225,5 +228,39 @@ public class CharacterPassivasTests : IClassFixture<PostgresFixture>, IAsyncLife
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain($"Histórico: {historico.Nome}");
+    }
+
+    [Fact]
+    public async Task A_passiva_does_not_touch_the_Pontos_de_Ignicao_balance_even_at_zero()
+    {
+        var gm = await RegisterGmAndGetTokenAsync("PassGmPi", "passgmpi@teste.com");
+        var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "PassPlPi", "passplpi@teste.com");
+        var (sheetId, _) = await SetUpSheetInCampaignAsync(gm, playerId);
+        var passivaId = await CreatePassivaAsync(gm, "Sem PI", null);
+        await SetPiAsync(sheetId, 0);
+
+        var added = await AddFromBankAsync(gm, sheetId, passivaId);
+        added.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await GetPiAsync(sheetId)).Should().Be(0);
+
+        var criada = (await added.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!;
+        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/spell-abilities/{criada.Id}", gm)))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetPiAsync(sheetId)).Should().Be(0);
+    }
+
+    private async Task SetPiAsync(string sheetId, int pi)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        (await db.CharacterSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<int> GetPiAsync(string sheetId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        return (await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == Guid.Parse(sheetId))).PontosDeIgnicaoAtual;
     }
 }

@@ -1,5 +1,8 @@
 @page "/minhas-campanhas"
+@implements IDisposable
 @inject HttpClient Http
+@inject SecretNoteNotifier Notifier
+@using RuinaRPG.Client.Services
 @using RuinaRPG.Contracts.Campaigns
 @using MudBlazor
 
@@ -22,6 +25,12 @@
                 <MudCardContent>
                     <MudText Typo="Typo.h6">@campaign.Nome</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">@campaign.Descricao</MudText>
+                    @if (Notifier.UnreadFor(campaign.Id) is > 0 and var unread)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.MarkEmailUnread" Class="rr-unread-chip mt-2">
+                            @(unread == 1 ? "1 nota secreta não lida" : $"{unread} notas secretas não lidas")
+                        </MudChip>
+                    }
                 </MudCardContent>
                 <MudCardActions>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"campanhas/{campaign.Id}/jogador")">Abrir</MudButton>
@@ -41,7 +50,15 @@
     private List<CampaignResponse> _campaigns = new();
     private string? _errorMessage;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        Notifier.Changed += OnNotifierChanged;
+        return LoadAsync();
+    }
+
+    private void OnNotifierChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notifier.Changed -= OnNotifierChanged;
 
     private async Task LoadAsync()
     {

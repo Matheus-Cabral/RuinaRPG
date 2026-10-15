@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats) : ControllerBase
+public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
@@ -28,30 +29,8 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var porId = await pericias.PorIdAsync();
-        var ativas = porId.Values.Where(p => !p.IsDeleted && p.DisponivelParaCriaturas).ToList();
-        var linhas = await db.CreatureSkills.Where(s => s.CreatureSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
-
-        var artefatos = await stats.ModificadoresAsync(sheet);
-
-        var attributeTotals = await db.CreatureAttributes
-            .Where(a => a.CreatureSheetId == sheetId)
-            .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
-
-        return ativas
-            .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
-            .Select(p =>
-            {
-                linhas.TryGetValue(p.Id, out var s);
-                var gasto = s?.Gasto ?? 0;
-                var atributo = s?.AtributoEscolhido ?? SugeridoParaCriatura(p);
-                var modificador = SkillFormulas.Modificador(gasto, 0);
-                var total = atributo is not null && attributeTotals.TryGetValue(atributo.Value, out var atributoTotal)
-                    ? SkillFormulas.Total(modificador, atributoTotal, ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Pericia, p.Chave))
-                    : (int?)null;
-                return new CreatureSkillResponse(p.Chave, gasto, modificador, atributo?.ToString(), total, p.Nome, p.Descricao);
-            })
+        return (await stats.PericiasAsync(sheet, await condicoes.ParaCriaturaAsync(sheet)))
+            .Select(p => new CreatureSkillResponse(p.Chave, p.Gasto, p.Modificador, p.Atributo, p.Total, p.Nome, p.Descricao))
             .ToList();
     }
 
@@ -86,10 +65,6 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
 
         return NoContent();
     }
-
-    /// <summary>Atributo sugerido como Atributo de Criatura; nulo se a Criatura não tem esse Atributo.</summary>
-    private static AtributoCriatura? SugeridoParaCriatura(PericiaDefinicao p) =>
-        p.AtributoSugerido is { } a && Enum.TryParse<AtributoCriatura>(a.ToString(), out var c) ? c : null;
 
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
