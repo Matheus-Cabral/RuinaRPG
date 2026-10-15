@@ -501,6 +501,90 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
             Caso(Fixo("Maestria", ficha.OutraPericia, 9))); // Maestria de outra Perícia
     }
 
+    // ---------- Maestria restrita na aplicação ----------
+
+    /// <summary>A ficha ganha uma segunda Maestria igual a "Espadas" (13), "Lanças"; devolve os ids das duas.</summary>
+    private async Task<(string Espadas, string Lancas)> DuasMaestriasAsync(Mesa mesa, Ficha f)
+    {
+        await EnviarAsync(HttpMethod.Post, $"/api/{f.Rota}/{f.Id}/masteries", mesa.Gm, new { Nome = "Lanças", Pericia = f.Pericia, Atributo = "Forca", GastoMaestria = 3 });
+        var ids = (await JsonAsync(mesa.Gm, $"/api/{f.Rota}/{f.Id}/masteries")).EnumerateArray()
+            .ToDictionary(m => m.GetProperty("nome").GetString()!, m => m.GetProperty("id").GetString()!);
+        return (ids["Espadas"], ids["Lanças"]);
+    }
+
+    private async Task<Ficha> FichaAsync(Mesa mesa, string rota) =>
+        rota == Personagem ? await NovoPersonagemAsync(mesa) : await NovaFichaDoGmAsync(mesa, rota, concedida: true);
+
+    [Theory]
+    [InlineData(Personagem, "Pers")]
+    [InlineData(Npc, "Npc")]
+    [InlineData(Criatura, "Cri")]
+    public async Task Maestria_restrita_na_aplicacao_muda_so_as_Maestrias_escolhidas(string rota, string tag)
+    {
+        var mesa = await MesaAsync($"MaeRes{tag}");
+        var ficha = await FichaAsync(mesa, rota);
+        var (espadas, lancas) = await DuasMaestriasAsync(mesa, ficha);
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var antes = await NumerosAsync(ficha, mesa.Gm);
+        antes["Maestria:Lanças"].Should().Be(13);
+
+        // O diálogo de aplicar lista as Maestrias da ficha junto com os itens desabilitáveis.
+        var listadas = (await LerAsync<ItensDesabilitaveisResponse>(mesa.Gm, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis")).Maestrias;
+        listadas.Should().BeEquivalentTo([new MaestriaDaFichaDto(espadas, "Espadas", ficha.Pericia), new MaestriaDaFichaDto(lancas, "Lanças", ficha.Pericia)]);
+
+        var condicaoId = await CriarCondicaoAsync(mesa, "Treinado", null, Fixo("Pericia", null, 1), Fixo("Maestria", null, 2));
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", mesa.Gm,
+            new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: new() { [1] = [espadas] }), HttpStatusCode.Created);
+
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Pericia", 11), ("Maestria:Espadas", 15)));
+        (await LerAsync<List<CondicaoAtivaNaFichaResponse>>(mesa.Gm, $"/api/{rota}/{ficha.Id}/condicoes-ativas")).Single().Linhas
+            .Should().Equal($"Todas as Perícias +1", "Maestria Espadas +2");
+    }
+
+    [Fact]
+    public async Task Maestria_restrita_sem_escolha_vale_em_todas_como_antes()
+    {
+        var mesa = await MesaAsync("MaeTodas");
+        var ficha = await NovoPersonagemAsync(mesa);
+        await DuasMaestriasAsync(mesa, ficha);
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var antes = await NumerosAsync(ficha, mesa.Gm);
+
+        var condicaoId = await CriarCondicaoAsync(mesa, "Treinado", null, Fixo("Maestria", null, 2));
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", mesa.Gm,
+            new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: new() { [0] = [] }), HttpStatusCode.Created);
+
+        (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Maestria:Espadas", 15), ("Maestria:Lanças", 15)));
+    }
+
+    [Fact]
+    public async Task Maestria_escolhida_tem_de_ser_da_ficha_e_a_linha_tem_de_ser_de_Maestria()
+    {
+        var mesa = await MesaAsync("MaeErr");
+        var ficha = await NovoPersonagemAsync(mesa);
+        var outraFicha = await NovaFichaDoGmAsync(mesa, Npc, concedida: false);
+        var (espadas, _) = await DuasMaestriasAsync(mesa, ficha);
+        var deOutraFicha = (await JsonAsync(mesa.Gm, $"/api/{Npc}/{outraFicha.Id}/masteries")).EnumerateArray().First().GetProperty("id").GetString()!;
+        var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
+        var condicaoId = await CriarCondicaoAsync(mesa, "Treinado", null, Fixo("Pericia", null, 1), Fixo("Maestria", ficha.OutraPericia, 2));
+        var url = $"/api/encounters/{encounterId}/participants/{participantId}/condicoes";
+
+        foreach (var (escolha, motivo) in new (Dictionary<int, List<string>>, string)[]
+        {
+            (new() { [1] = [deOutraFicha] }, "Maestria de outra ficha"),
+            (new() { [1] = [Guid.NewGuid().ToString()] }, "Maestria que não existe"),
+            (new() { [1] = ["nao-e-guid"] }, "id inválido"),
+            (new() { [0] = [espadas] }, "a linha 0 não é de Maestria"),
+            (new() { [5] = [espadas] }, "a linha não existe"),
+            (new() { [1] = [espadas] }, "Espadas não é da Perícia da linha"),
+        })
+        {
+            var response = await _client.SendAsync(Authed(HttpMethod.Post, url, mesa.Gm, new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: escolha)));
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, motivo);
+        }
+        (await LerAsync<List<CondicaoAtivaNaFichaResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/condicoes-ativas")).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Fixo_e_percentual_juntos_e_duas_condicoes_no_mesmo_participante()
     {

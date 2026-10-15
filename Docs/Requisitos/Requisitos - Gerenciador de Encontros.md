@@ -112,6 +112,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 - mudar a **duração** em Turnos (no mínimo 1), que começa com a duração padrão da entrada, ou marcar **sem duração** (mesmo que a entrada tenha uma padrão): a Condição então dura até ser removida;
 - ajustar o **Valor** de cada modificador (nunca 0);
 - escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
+- restringir cada modificador de Maestria a Maestrias escolhidas da ficha do participante (só as da Perícia do modificador, quando ele tem uma); sem escolha, o modificador vale em todas, como na entrada. As Maestrias escolhidas aparecem pelo nome na explicação da Condição na ficha.
 
 A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
 

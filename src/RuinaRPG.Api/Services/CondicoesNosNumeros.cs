@@ -20,8 +20,9 @@ public static class CondicoesNosNumeros
     public static int NaPericia(this EfeitosDeCondicao efeitos, string chave, int total) =>
         efeitos.Ajustar(AlvoDeCondicao.Pericia, chave, total);
 
-    public static int NaMaestria(this EfeitosDeCondicao efeitos, string chaveDaPericia, int total) =>
-        efeitos.Ajustar(AlvoDeCondicao.Maestria, chaveDaPericia, total);
+    /// <summary><paramref name="maestriaId"/> é a linha de Maestria da ficha: uma linha restrita na aplicação só vale nas escolhidas.</summary>
+    public static int NaMaestria(this EfeitosDeCondicao efeitos, string chaveDaPericia, Guid maestriaId, int total) =>
+        efeitos.Ajustar(AlvoDeCondicao.Maestria, chaveDaPericia, total, maestriaId);
 
     /// <summary><paramref name="alvo"/> é uma constante de <see cref="SubAtributoAlvo"/>.</summary>
     public static int NoSubAtributo(this EfeitosDeCondicao efeitos, string alvo, int valor) =>

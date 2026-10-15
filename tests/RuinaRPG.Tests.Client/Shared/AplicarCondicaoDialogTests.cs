@@ -25,6 +25,9 @@ public class AplicarCondicaoDialogTests : MudBunitContext
     private static readonly CondicaoResponse Bencao = new("c2", "Bênção", "", "Bencao", null,
         new() { new("Atributo", "Forca", "Fixo", 1, null) }, new());
 
+    private static readonly CondicaoResponse Treino = new("c3", "Treino", "", "Bencao", null,
+        new() { new("Pericia", null, "Fixo", 1, null), new("Maestria", null, "Fixo", 2, null), new("Maestria", "luta", "Fixo", 1, null) }, new());
+
     private readonly List<string> _requests = new();
     private AplicarCondicaoRequest? _corpo;
     private HttpResponseMessage? _respostaDoPost;
@@ -42,7 +45,7 @@ public class AplicarCondicaoDialogTests : MudBunitContext
                 return _respostaDoPost ?? new HttpResponseMessage(HttpStatusCode.OK);
             }
             if (path == "condicoes")
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CondicaoResponse> { Veneno, Bencao }) };
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<CondicaoResponse> { Veneno, Bencao, Treino }) };
             if (path == "encounters/e1/participants/p1/itens-desabilitaveis" && _itensFalham)
                 return new HttpResponseMessage(HttpStatusCode.InternalServerError);
             if (path == "encounters/e1/participants/p1/itens-desabilitaveis")
@@ -51,7 +54,8 @@ public class AplicarCondicaoDialogTests : MudBunitContext
                 var categorias = new[] { "Arma", "Armadura", "Escudo", "Artefato", "Magia", "Habilidade", "Runa", "Passiva" }
                     .ToDictionary(c => c, _ => vazia);
                 categorias["Arma"] = new() { new("w1", "Espada"), new("w2", "Adaga") };
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new ItensDesabilitaveisResponse(categorias)) };
+                var maestrias = new List<MaestriaDaFichaDto> { new("m1", "Espadas", "atletismo"), new("m2", "Lanças", "atletismo"), new("m3", "Socos", "luta") };
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new ItensDesabilitaveisResponse(categorias, maestrias)) };
             }
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
         }));
@@ -225,5 +229,66 @@ public class AplicarCondicaoDialogTests : MudBunitContext
         await EscolherAsync(cut, Bencao);
 
         cut.Find("button:contains('Aplicar')").HasAttribute("disabled").Should().BeFalse();
+    }
+
+    // ---- Maestria restrita na aplicação ----
+
+    private static IRenderedComponent<MudSwitch<bool>> TodasAsMaestrias(IRenderedComponent<ContainerFragment> cut, int linha) =>
+        cut.FindComponents<MudSwitch<bool>>().Single(c => c.Instance.Label == $"Todas as Maestrias (linha {linha})");
+
+    [Fact]
+    public async Task A_Maestria_line_defaults_to_every_mastery_and_sends_no_choice()
+    {
+        var (cut, dialog) = await AbrirAsync();
+        await EscolherAsync(cut, Treino);
+
+        ((AngleSharp.Html.Dom.IHtmlInputElement)TodasAsMaestrias(cut, 2).Find("input")).IsChecked.Should().BeTrue();
+        cut.Find("button:contains('Aplicar')").Click();
+        await dialog.Result;
+
+        _corpo!.MaestriasEscolhidas.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Choosing_specific_masteries_sends_them_by_line_index()
+    {
+        var (cut, dialog) = await AbrirAsync();
+        await EscolherAsync(cut, Treino);
+
+        TodasAsMaestrias(cut, 2).Find("input").Change(false);
+        var select = cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Maestrias da linha 2");
+        await cut.InvokeAsync(() => select.Instance.SelectedValuesChanged.InvokeAsync(new[] { "m2" }));
+        cut.Find("button:contains('Aplicar')").Click();
+        await dialog.Result;
+
+        _corpo!.MaestriasEscolhidas.Should().BeEquivalentTo(new Dictionary<int, List<string>> { [1] = new() { "m2" } });
+    }
+
+    [Fact]
+    public async Task A_line_of_one_Pericia_lists_only_that_Pericias_masteries()
+    {
+        var (cut, _) = await AbrirAsync();
+        await EscolherAsync(cut, Treino);
+
+        TodasAsMaestrias(cut, 2).Find("input").Change(false);
+        TodasAsMaestrias(cut, 3).Find("input").Change(false);
+
+        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Maestrias da linha 2")
+            .FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Equal("m1", "m2", "m3");
+        cut.FindComponents<MudSelect<string>>().Single(c => c.Instance.Label == "Maestrias da linha 3")
+            .FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Equal("m3");
+    }
+
+    [Fact]
+    public async Task Specific_masteries_without_picking_any_is_refused_without_a_request()
+    {
+        var (cut, _) = await AbrirAsync();
+        await EscolherAsync(cut, Treino);
+        TodasAsMaestrias(cut, 2).Find("input").Change(false);
+
+        cut.Find("button:contains('Aplicar')").Click();
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Escolha ao menos uma Maestria na linha 2"));
+        _requests.Should().NotContain("POST encounters/e1/participants/p1/condicoes");
     }
 }

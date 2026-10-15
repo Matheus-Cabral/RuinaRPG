@@ -3,15 +3,36 @@ using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Persistence;
+using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Services;
 
 /// <summary>
 /// As linhas da ficha de um participante que uma Condição pode desabilitar, por categoria. Cada tipo de ficha
-/// tem as suas tabelas; um participante cuja ficha de origem sumiu devolve as oito categorias vazias.
+/// tem as suas tabelas; um participante cuja ficha de origem sumiu devolve as oito categorias vazias. Também lista as
+/// Maestrias da ficha, a que o GM pode restringir uma linha de Maestria ao aplicar a Condição.
 /// </summary>
-public class ItensDesabilitaveisDaFicha(RuinaRpgDbContext db)
+public class ItensDesabilitaveisDaFicha(RuinaRpgDbContext db, IPericiaCatalogo pericias)
 {
+    /// <summary>
+    /// As linhas de Maestria da ficha do participante (Id, Nome, chave da Perícia), na ordem do nome. As de uma Perícia
+    /// removida do catálogo ficam de fora, como na lista de Maestrias da ficha.
+    /// </summary>
+    public async Task<List<(Guid Id, string Nome, string Pericia)>> MaestriasAsync(EncounterParticipant participante)
+    {
+        var linhas =
+            participante.SourceCharacterSheetId is { } personagemId
+                ? await db.CharacterMasteries.Where(m => m.CharacterSheetId == personagemId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+            : participante.SourceNpcSheetId is { } npcId
+                ? await db.NpcMasteries.Where(m => m.NpcSheetId == npcId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+            : participante.SourceCreatureSheetId is { } criaturaId
+                ? await db.CreatureMasteries.Where(m => m.CreatureSheetId == criaturaId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+            : [];
+        var porId = await pericias.PorIdAsync();
+        return linhas.Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
+            .Select(m => (m.Id, m.Nome, porId[m.PericiaId].Chave)).OrderBy(m => m.Nome).ThenBy(m => m.Id).ToList();
+    }
+
     public async Task<Dictionary<CategoriaDesabilitavel, List<(Guid Id, string Nome)>>> ListarAsync(EncounterParticipant participante)
     {
         var porCategoria = Enum.GetValues<CategoriaDesabilitavel>().ToDictionary(c => c, _ => new List<(Guid Id, string Nome)>());

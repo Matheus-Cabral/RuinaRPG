@@ -7,6 +7,7 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Encounters;
+using RuinaRPG.Infrastructure.Condicoes;
 using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -61,6 +62,9 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         var (erro, desabilitacoes) = await ResolverDesabilitacoesAsync(participant, condicaoId, request.ItensDesabilitados ?? []);
         if (erro is not null)
             return BadRequest(erro);
+        var (erroDasMaestrias, maestrias) = await ResolverMaestriasAsync(participant, modificadores, request.MaestriasEscolhidas ?? []);
+        if (erroDasMaestrias is not null)
+            return BadRequest(erroDasMaestrias);
 
         var aplicada = new EncounterParticipantCondicao
         {
@@ -73,7 +77,7 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             AplicadaNoTurno = encounter!.CurrentRound,
             DuracaoTurnos = request.SemDuracao ? null : request.DuracaoTurnos ?? condicao.DuracaoPadraoTurnos,
             Modificadores = modificadores.Select((m, i) => new LinhaDeCondicaoAplicada(Guid.NewGuid(), m.Alvo, m.AlvoEspecifico, m.TipoDeValor,
-                ajustados.TryGetValue(i, out var valor) ? valor : m.Valor, m.Momento)).ToList(),
+                ajustados.TryGetValue(i, out var valor) ? valor : m.Valor, m.Momento, maestrias!.GetValueOrDefault(i))).ToList(),
             Desabilitacoes = desabilitacoes!,
         };
         db.EncounterParticipantCondicoes.Add(aplicada);
@@ -121,9 +125,11 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             return NotFound();
 
         var porCategoria = await itens.ListarAsync(participant);
+        var maestrias = await itens.MaestriasAsync(participant);
         return new ItensDesabilitaveisResponse(porCategoria.ToDictionary(
             c => c.Key.ToString(),
-            c => c.Value.Select(i => new ItemDesabilitavelDto(i.Id.ToString(), i.Nome)).ToList()));
+            c => c.Value.Select(i => new ItemDesabilitavelDto(i.Id.ToString(), i.Nome)).ToList()),
+            maestrias.Select(m => new MaestriaDaFichaDto(m.Id.ToString(), m.Nome, m.Pericia)).ToList());
     }
 
     /// <summary>
@@ -154,6 +160,43 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
                 if (!resultado[categoria].Contains(id))
                     resultado[categoria].Add(id);
             }
+        }
+        return (null, resultado);
+    }
+
+    /// <summary>
+    /// Por linha de Maestria (índice), as linhas de Maestria da ficha do participante a que o GM a restringiu. Lista vazia =
+    /// sem restrição. Cada id tem de ser de uma Maestria da ficha e, se a linha é de uma Perícia, de uma Maestria dela.
+    /// </summary>
+    private async Task<(string? Erro, Dictionary<int, List<Guid>>? Maestrias)> ResolverMaestriasAsync(
+        EncounterParticipant participant, List<CondicaoModificador> modificadores, Dictionary<int, List<string>> escolhidas)
+    {
+        var resultado = new Dictionary<int, List<Guid>>();
+        if (escolhidas.Count == 0)
+            return (null, resultado);
+
+        var daFicha = (await itens.MaestriasAsync(participant)).ToDictionary(m => m.Id);
+        foreach (var (indice, ids) in escolhidas)
+        {
+            if (indice < 0 || indice >= modificadores.Count)
+                return ($"Não existe a linha {indice} nesta condição.", null);
+            var linha = modificadores[indice];
+            if (linha.Alvo != AlvoDeCondicao.Maestria)
+                return ($"A linha {indice} desta condição não é de Maestria.", null);
+            if (ids.Count == 0)
+                continue;
+
+            var escolhidasDaLinha = new List<Guid>();
+            foreach (var texto in ids)
+            {
+                if (!Guid.TryParse(texto, out var id) || !daFicha.TryGetValue(id, out var maestria))
+                    return ($"A Maestria {texto} não é da ficha do participante.", null);
+                if (linha.AlvoEspecifico is not null && !string.Equals(linha.AlvoEspecifico, maestria.Pericia, StringComparison.OrdinalIgnoreCase))
+                    return ($"A Maestria {maestria.Nome} não é da Perícia da linha {indice}.", null);
+                if (!escolhidasDaLinha.Contains(id))
+                    escolhidasDaLinha.Add(id);
+            }
+            resultado[indice] = escolhidasDaLinha;
         }
         return (null, resultado);
     }

@@ -22,8 +22,10 @@ public sealed class EfeitosDeCondicao
     /// A soma dos percentuais nunca passa de −100: várias reduções juntas zeram o valor, não invertem o sinal.
     /// A linha casa quando o Alvo é igual e o AlvoEspecifico é nulo ou igual ao pedido (ignora caixa);
     /// um pedido sem alvo específico só casa com linhas gerais. Linhas de RecursoAtual nunca entram.
+    /// Uma linha de Maestria restrita (<see cref="ModificadorDeCondicao.Maestrias"/>) só casa quando
+    /// <paramref name="linhaDaFicha"/> é uma das Maestrias escolhidas.
     /// </summary>
-    public int Ajustar(AlvoDeCondicao alvo, string? alvoEspecifico, int valorBase)
+    public int Ajustar(AlvoDeCondicao alvo, string? alvoEspecifico, int valorBase, Guid? linhaDaFicha = null)
     {
         if (alvo == AlvoDeCondicao.RecursoAtual)
             return valorBase;
@@ -31,7 +33,7 @@ public sealed class EfeitosDeCondicao
         long fixos = 0, percentuais = 0;
         foreach (var linha in _ativas.SelectMany(a => a.Modificadores))
         {
-            if (!Casa(linha, alvo, alvoEspecifico))
+            if (!Casa(linha, alvo, alvoEspecifico, linhaDaFicha))
                 continue;
             if (linha.TipoDeValor == TipoDeValorDeCondicao.Fixo)
                 fixos += linha.Valor;
@@ -60,8 +62,9 @@ public sealed class EfeitosDeCondicao
         return null;
     }
 
-    public IReadOnlyList<ExplicacaoDeCondicao> Explicar(Func<string, string>? nomeDaPericia = null) =>
-        _ativas.Select(c => new ExplicacaoDeCondicao(c.Nome, LinhasDe(c, nomeDaPericia ?? (k => k)))).ToList();
+    /// <param name="nomeDaMaestria">O nome de uma linha de Maestria da ficha; null se não a conhece.</param>
+    public IReadOnlyList<ExplicacaoDeCondicao> Explicar(Func<string, string>? nomeDaPericia = null, Func<Guid, string?>? nomeDaMaestria = null) =>
+        _ativas.Select(c => new ExplicacaoDeCondicao(c.Nome, LinhasDe(c, nomeDaPericia ?? (k => k), nomeDaMaestria ?? (_ => null)))).ToList();
 
     public IReadOnlyList<(CondicaoAtiva Condicao, ModificadorDeCondicao Linha)> AjustesDeRecursoAtual(MomentoDeCondicao momento) =>
         _ativas
@@ -69,10 +72,11 @@ public sealed class EfeitosDeCondicao
             .Where(x => x.Linha.Alvo == AlvoDeCondicao.RecursoAtual && x.Linha.Momento == momento)
             .ToList();
 
-    private static bool Casa(ModificadorDeCondicao linha, AlvoDeCondicao alvo, string? alvoEspecifico) =>
+    private static bool Casa(ModificadorDeCondicao linha, AlvoDeCondicao alvo, string? alvoEspecifico, Guid? linhaDaFicha) =>
         linha.Alvo == alvo
         && (linha.AlvoEspecifico is null
-            || string.Equals(linha.AlvoEspecifico, alvoEspecifico, StringComparison.OrdinalIgnoreCase));
+            || string.Equals(linha.AlvoEspecifico, alvoEspecifico, StringComparison.OrdinalIgnoreCase))
+        && (linha.Maestrias is null || (linhaDaFicha is { } id && linha.Maestrias.Contains(id)));
 
     // Divisão com piso verdadeiro: o "/" do C# trunca rumo a zero.
     internal static long PisDaDivisao(long numerador, long divisor)
@@ -81,9 +85,9 @@ public sealed class EfeitosDeCondicao
         return numerador % divisor != 0 && (numerador < 0) != (divisor < 0) ? q - 1 : q;
     }
 
-    private static List<string> LinhasDe(CondicaoAtiva condicao, Func<string, string> nomeDaPericia)
+    private static List<string> LinhasDe(CondicaoAtiva condicao, Func<string, string> nomeDaPericia, Func<Guid, string?> nomeDaMaestria)
     {
-        var linhas = condicao.Modificadores.Select(m => TextoDaLinha(m, nomeDaPericia)).ToList();
+        var linhas = condicao.Modificadores.Select(m => TextoDaLinha(m, nomeDaPericia, nomeDaMaestria)).ToList();
 
         var categorias = condicao.Desabilitacoes.OrderBy(d => d.Key).Select(d =>
             d.Value.Count == 0 ? RotulosPt.Plural(d.Key) : $"{RotulosPt.Plural(d.Key)} (itens escolhidos)").ToList();
@@ -92,10 +96,17 @@ public sealed class EfeitosDeCondicao
         return linhas;
     }
 
-    private static string TextoDaLinha(ModificadorDeCondicao m, Func<string, string> nomeDaPericia)
+    private static string TextoDaLinha(ModificadorDeCondicao m, Func<string, string> nomeDaPericia, Func<Guid, string?> nomeDaMaestria)
     {
         var valor = Formatar(m);
         var e = m.AlvoEspecifico;
+        if (m.Alvo == AlvoDeCondicao.Maestria && m.Maestrias is { } escolhidas)
+        {
+            // Restrita na aplicação: cita as Maestrias da ficha pelo nome (em ordem alfabética), quando os conhece.
+            var nomes = escolhidas.Select(nomeDaMaestria).OfType<string>().Order(StringComparer.CurrentCulture).ToList();
+            return nomes.Count == 0 ? $"Maestrias escolhidas {valor}"
+                : $"{(nomes.Count == 1 ? "Maestria" : "Maestrias")} {string.Join(", ", nomes)} {valor}";
+        }
         return m.Alvo switch
         {
             AlvoDeCondicao.Atributo => $"{RotulosPt.Atributo(e)} {valor}",

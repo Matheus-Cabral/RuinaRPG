@@ -39,7 +39,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         await db.SaveChangesAsync();
 
         var porId = await pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheetId, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaNpcAsync(sheet));
+        var total = await ComputeTotalAsync(sheetId, mastery.Id, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaNpcAsync(sheet));
         return Created(string.Empty, ToResponse(mastery, total, porId));
     }
 
@@ -61,7 +61,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         var efeitos = await condicoes.ParaNpcAsync(sheet);
         foreach (var mastery in masteries)
         {
-            var total = await ComputeTotalAsync(sheetId, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
+            var total = await ComputeTotalAsync(sheetId, mastery.Id, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
             responses.Add(ToResponse(mastery, total, porId));
         }
 
@@ -91,7 +91,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
     /// Condições: o Atributo entra já ajustado pelas linhas de Atributo, e o total passa pelas linhas de Maestria
     /// daquela Perícia. (A fórmula da Maestria nunca somou Artefatos nem penalidades; isso não muda aqui.)
     /// </summary>
-    private async Task<int> ComputeTotalAsync(Guid sheetId, PericiaDefinicao pericia, Atributo atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
+    private async Task<int> ComputeTotalAsync(Guid sheetId, Guid maestriaId, PericiaDefinicao pericia, Atributo atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
     {
         var periciaId = pericia.Id;
         var skill = await db.NpcSkills.FirstOrDefaultAsync(s => s.NpcSheetId == sheetId && s.PericiaId == periciaId);
@@ -100,7 +100,7 @@ public class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo peric
         var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
         var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
         var atributoTotal = efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0));
-        return efeitos.NaMaestria(pericia.Chave, gastoMaestria + bruto + atributoTotal);
+        return efeitos.NaMaestria(pericia.Chave, maestriaId, gastoMaestria + bruto + atributoTotal);
     }
 
     private static NpcMasteryResponse ToResponse(NpcMastery m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>

@@ -45,7 +45,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
         await db.SaveChangesAsync();
 
         var porId = await pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheetId, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaCriaturaAsync(sheet));
+        var total = await ComputeTotalAsync(sheetId, mastery.Id, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaCriaturaAsync(sheet));
         return Created(string.Empty, ToResponse(mastery, total, porId));
     }
 
@@ -67,7 +67,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
         var efeitos = await condicoes.ParaCriaturaAsync(sheet);
         foreach (var mastery in masteries)
         {
-            var total = await ComputeTotalAsync(sheetId, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
+            var total = await ComputeTotalAsync(sheetId, mastery.Id, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
             responses.Add(ToResponse(mastery, total, porId));
         }
 
@@ -97,14 +97,14 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
     /// Condições: o Atributo entra já ajustado pelas linhas de Atributo, e o total passa pelas linhas de Maestria
     /// daquela Perícia. (A fórmula da Maestria nunca somou Artefatos nem penalidades; isso não muda aqui.)
     /// </summary>
-    private async Task<int> ComputeTotalAsync(Guid sheetId, PericiaDefinicao pericia, AtributoCriatura atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
+    private async Task<int> ComputeTotalAsync(Guid sheetId, Guid maestriaId, PericiaDefinicao pericia, AtributoCriatura atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
     {
         var periciaId = pericia.Id;
         var skill = await db.CreatureSkills.FirstOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == periciaId);
         var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
         var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, 0);
         var atributoTotal = efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0));
-        return efeitos.NaMaestria(pericia.Chave, gastoMaestria + bruto + atributoTotal);
+        return efeitos.NaMaestria(pericia.Chave, maestriaId, gastoMaestria + bruto + atributoTotal);
     }
 
     private static CreatureMasteryResponse ToResponse(CreatureMastery m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>

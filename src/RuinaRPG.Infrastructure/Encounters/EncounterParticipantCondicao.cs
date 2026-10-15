@@ -29,7 +29,11 @@ public class EncounterParticipantCondicao
     public List<AjusteAplicado> AjustesAplicados { get; set; } = [];
 }
 
-/// <summary>Uma linha da Condição aplicada; <c>LinhaId</c> é estável e identifica a linha em <see cref="AjusteAplicado"/>.</summary>
-public sealed record LinhaDeCondicaoAplicada(Guid LinhaId, AlvoDeCondicao Alvo, string? AlvoEspecifico, TipoDeValorDeCondicao TipoDeValor, int Valor, MomentoDeCondicao? Momento);
+/// <summary>
+/// Uma linha da Condição aplicada; <c>LinhaId</c> é estável e identifica a linha em <see cref="AjusteAplicado"/>.
+/// <c>Maestrias</c>: numa linha de Maestria, as linhas de Maestria da ficha a que o GM a restringiu ao aplicar (nulo = todas).
+/// </summary>
+public sealed record LinhaDeCondicaoAplicada(Guid LinhaId, AlvoDeCondicao Alvo, string? AlvoEspecifico, TipoDeValorDeCondicao TipoDeValor, int Valor, MomentoDeCondicao? Momento,
+    List<Guid>? Maestrias = null);
 
 public sealed record AjusteAplicado(Guid LinhaId, int Turno);

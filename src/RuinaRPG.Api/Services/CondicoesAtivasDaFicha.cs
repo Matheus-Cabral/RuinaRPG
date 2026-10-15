@@ -92,7 +92,7 @@ public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo peric
 
     private static CondicaoAtiva ComoAtiva(EncounterParticipantCondicao c) => new(
         c.Id, c.Nome,
-        c.Modificadores.Select(m => new ModificadorDeCondicao(m.Alvo, m.AlvoEspecifico, m.TipoDeValor, m.Valor, m.Momento)).ToList(),
+        c.Modificadores.Select(m => new ModificadorDeCondicao(m.Alvo, m.AlvoEspecifico, m.TipoDeValor, m.Valor, m.Momento, m.Maestrias?.ToHashSet())).ToList(),
         c.Desabilitacoes.ToDictionary(d => d.Key, d => (IReadOnlySet<Guid>)d.Value.ToHashSet()));
 
     private async Task<List<CondicaoAtivaNaFichaResponse>> ListarAsync(IReadOnlyList<Aplicada> ativas)
@@ -102,7 +102,13 @@ public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo peric
 
         // O texto cita a Perícia pelo nome; uma chave que saiu do catálogo aparece como está.
         var nomes = (await pericias.TodasAsync()).GroupBy(p => p.Chave, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Nome, StringComparer.OrdinalIgnoreCase);
-        var explicacoes = Efeitos(ativas).Explicar(chave => nomes.GetValueOrDefault(chave, chave));
+        // Uma linha de Maestria restrita na aplicação cita as Maestrias da ficha pelo nome atual.
+        var ids = ativas.SelectMany(a => a.Condicao.Modificadores).SelectMany(m => m.Maestrias ?? []).Distinct().ToList();
+        var maestrias = ids.Count == 0 ? new Dictionary<Guid, string>() : (await db.CharacterMasteries.Where(m => ids.Contains(m.Id)).Select(m => new { m.Id, m.Nome }).ToListAsync())
+            .Concat(await db.NpcMasteries.Where(m => ids.Contains(m.Id)).Select(m => new { m.Id, m.Nome }).ToListAsync())
+            .Concat(await db.CreatureMasteries.Where(m => ids.Contains(m.Id)).Select(m => new { m.Id, m.Nome }).ToListAsync())
+            .ToDictionary(m => m.Id, m => m.Nome);
+        var explicacoes = Efeitos(ativas).Explicar(chave => nomes.GetValueOrDefault(chave, chave), id => maestrias.GetValueOrDefault(id));
 
         // Explicar devolve uma explicação por Condição, na mesma ordem.
         return ativas.Select((a, i) => new CondicaoAtivaNaFichaResponse(a.Condicao.Nome, a.Condicao.Descricao, a.Condicao.Icone,

@@ -338,4 +338,49 @@ public class EfeitosDeCondicaoTests
         Assert.Equal(2, DuracaoDeCondicao.ValorDoAjuste(Atual("Vitalidade", 10, MomentoDeCondicao.AoAplicar, TipoDeValorDeCondicao.Percentual), 25));
         Assert.Equal(-25, DuracaoDeCondicao.ValorDoAjuste(Atual("Vitalidade", -100, MomentoDeCondicao.AoAplicar, TipoDeValorDeCondicao.Percentual), 25));
     }
+
+    // ---- Maestria restrita na aplicação (Gerenciador de Encontros) ----
+
+    private static ModificadorDeCondicao Restrita(string? pericia, int valor, params Guid[] maestrias) =>
+        new(AlvoDeCondicao.Maestria, pericia, TipoDeValorDeCondicao.Fixo, valor, null, maestrias.ToHashSet());
+
+    [Fact]
+    public void Linha_de_Maestria_restrita_so_vale_nas_Maestrias_escolhidas()
+    {
+        Guid escolhida = Guid.NewGuid(), outra = Guid.NewGuid();
+        var e = Efeitos(Cond("A", Restrita(null, 2, escolhida)));
+
+        Assert.Equal(12, e.Ajustar(AlvoDeCondicao.Maestria, "luta", 10, escolhida));
+        Assert.Equal(10, e.Ajustar(AlvoDeCondicao.Maestria, "luta", 10, outra));
+        Assert.Equal(10, e.Ajustar(AlvoDeCondicao.Maestria, "luta", 10)); // sem a linha da ficha, a restrita não casa
+    }
+
+    [Fact]
+    public void Linha_restrita_de_uma_Pericia_ainda_exige_a_Pericia()
+    {
+        var escolhida = Guid.NewGuid();
+        var e = Efeitos(Cond("A", Restrita("luta", 2, escolhida)));
+
+        Assert.Equal(12, e.Ajustar(AlvoDeCondicao.Maestria, "luta", 10, escolhida));
+        Assert.Equal(10, e.Ajustar(AlvoDeCondicao.Maestria, "arco", 10, escolhida));
+    }
+
+    [Fact]
+    public void Linha_sem_restricao_vale_em_toda_Maestria_como_antes()
+    {
+        var e = Efeitos(Cond("A", Fixo(AlvoDeCondicao.Maestria, null, 2), Restrita(null, 3, Guid.NewGuid())));
+
+        Assert.Equal(12, e.Ajustar(AlvoDeCondicao.Maestria, "luta", 10, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Explicar_cita_as_Maestrias_escolhidas_pelo_nome()
+    {
+        Guid a = Guid.NewGuid(), b = Guid.NewGuid();
+        var e = Efeitos(Cond("A", Restrita(null, 2, a, b), Restrita("luta", -1, a)));
+        var nomes = new Dictionary<Guid, string> { [a] = "Golpe Duplo", [b] = "Finta" };
+
+        Assert.Equal(["Maestrias Finta, Golpe Duplo +2", "Maestria Golpe Duplo −1"], e.Explicar(k => k, id => nomes.GetValueOrDefault(id))[0].Linhas);
+        Assert.Equal(["Maestrias escolhidas +2", "Maestrias escolhidas −1"], e.Explicar()[0].Linhas);
+    }
 }

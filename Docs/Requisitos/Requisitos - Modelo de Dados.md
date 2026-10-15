@@ -696,7 +696,7 @@ Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`,
 | Nome, Descricao, Icone | string | snapshot da entrada do catálogo |
 | AplicadaNoTurno | int | `CurrentRound` ao aplicar; 0 se na preparação (a contagem começa no Turno 1) |
 | DuracaoTurnos | int, nullable | a do catálogo, ou a escolhida ao aplicar; nulo = sem prazo |
-| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento}` com o valor como o GM ajustou; `LinhaId` (guid) é estável |
+| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento, Maestrias}` com o valor como o GM ajustou; `LinhaId` (guid) é estável; `Maestrias` (lista de ids de linhas de Maestria da ficha, ou nulo = todas) só numa linha de Maestria que o GM restringiu ao aplicar |
 | Desabilitacoes | jsonb | por categoria (`Arma`, `Armadura`, `Escudo`, `Artefato`, `Magia`, `Habilidade`, `Runa`, `Passiva`): lista vazia = a categoria inteira; senão os ids das linhas da ficha |
 | AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos (Turno 0 = linha "ao aplicar"; uma linha "a cada vez" roda no máximo uma vez por Turno, ver [[Requisitos - Gerenciador de Encontros]] R0013); começa vazia |
 

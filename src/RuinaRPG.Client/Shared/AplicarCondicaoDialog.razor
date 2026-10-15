@@ -8,7 +8,8 @@
 @*
     Gerenciador de Encontros: aplica uma Condição do catálogo a um participante. Escolha da Condição, Duração
     (começa na padrão do catálogo, pode ser limpa), o valor de cada linha (editável só para este participante) e,
-    por categoria que a Condição desabilita, "toda a categoria" ou linhas específicas da ficha dele.
+    por categoria que a Condição desabilita, "toda a categoria" ou linhas específicas da ficha dele, e, por linha de
+    Maestria, "todas as Maestrias" ou Maestrias específicas da ficha dele (as da Perícia da linha, se ela tiver uma).
     Fecha com sucesso depois do POST; um erro da API (ex.: condição repetida) fica no diálogo.
 *@
 <MudDialog>
@@ -37,6 +38,32 @@
                     <MudNumericField T="int" Label="Valor" Value="_valores[indice]" ValueChanged="@(v => _valores[indice] = v)"
                                      Style="max-width:8rem" aria-label="@($"Valor da linha {indice + 1}")" />
                 </div>
+                @if (linha.Alvo == "Maestria" && _itensCarregados)
+                {
+                    var maestrias = MaestriasDa(linha);
+                    <div class="ml-4">
+                        @if (maestrias.Count == 0)
+                        {
+                            <MudText Typo="Typo.caption">A ficha não tem Maestrias para esta linha.</MudText>
+                        }
+                        else
+                        {
+                            <MudSwitch T="bool" Label="@($"Todas as Maestrias (linha {indice + 1})")" Value="!_maestriasEscolhidas.ContainsKey(indice)"
+                                       ValueChanged="@(v => { if (v) _maestriasEscolhidas.Remove(indice); else _maestriasEscolhidas[indice] = new(); })" Color="Color.Primary" />
+                            @if (_maestriasEscolhidas.TryGetValue(indice, out var escolhidas))
+                            {
+                                <MudSelect T="string" Label="@($"Maestrias da linha {indice + 1}")" MultiSelection="true"
+                                           SelectedValues="@escolhidas" SelectedValuesChanged="@(v => _maestriasEscolhidas[indice] = v.ToHashSet())"
+                                           MultiSelectionTextFunc="@(ids => string.Join(", ", maestrias.Where(m => ids.Contains(m.Id)).Select(m => m.Nome)))">
+                                    @foreach (var maestria in maestrias)
+                                    {
+                                        <MudSelectItem T="string" Value="@maestria.Id">@maestria.Nome</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                        }
+                    </div>
+                }
             }
 
             @foreach (var categoria in _condicao.Desabilitacoes)
@@ -86,6 +113,9 @@
 
     private List<CondicaoResponse> _catalogo = new();
     private Dictionary<string, List<ItemDesabilitavelDto>> _itens = new();
+    private List<MaestriaDaFichaDto> _maestrias = new();
+    // Por linha de Maestria (índice) restrita a Maestrias específicas; uma linha fora daqui vale em todas.
+    private Dictionary<int, HashSet<string>> _maestriasEscolhidas = new();
     private CondicaoResponse? _condicao;
     private int? _duracao;
     private int[] _valores = [];
@@ -116,7 +146,9 @@
         if (!response.IsSuccessStatusCode)
             return; // _itensCarregados fica falso: o diálogo avisa e não deixa aplicar uma Condição que desabilita itens
 
-        _itens = (await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())?.Categorias ?? new();
+        var corpo = await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>();
+        _itens = corpo?.Categorias ?? new();
+        _maestrias = corpo?.Maestrias ?? new();
         _itensCarregados = true;
     }
 
@@ -124,6 +156,10 @@
         Task.FromResult(_catalogo.Where(c => string.IsNullOrWhiteSpace(texto) || c.Nome.Contains(texto, StringComparison.OrdinalIgnoreCase)));
 
     private List<ItemDesabilitavelDto> ItensDa(string categoria) => _itens.GetValueOrDefault(categoria) ?? new();
+
+    // As Maestrias da ficha a que a linha pode ser restrita: as da Perícia dela, ou todas se a linha vale em qualquer Perícia.
+    private List<MaestriaDaFichaDto> MaestriasDa(CondicaoModificadorDto linha) =>
+        _maestrias.Where(m => linha.AlvoEspecifico is null || string.Equals(m.Pericia, linha.AlvoEspecifico, StringComparison.OrdinalIgnoreCase)).ToList();
 
     private void Escolher(CondicaoResponse? condicao)
     {
@@ -133,6 +169,7 @@
         _valores = condicao?.Modificadores.Select(m => m.Valor).ToArray() ?? [];
         _categoriaInteira = condicao?.Desabilitacoes.ToDictionary(c => c, _ => true) ?? new();
         _itensEscolhidos = condicao?.Desabilitacoes.ToDictionary(c => c, _ => new HashSet<string>()) ?? new();
+        _maestriasEscolhidas = new();
         _errorMessage = null;
     }
 
@@ -169,10 +206,22 @@
             itens[categoria] = _itensEscolhidos[categoria].ToList();
         }
 
+        var maestrias = new Dictionary<int, List<string>>();
+        foreach (var (indice, escolhidas) in _maestriasEscolhidas.OrderBy(m => m.Key))
+        {
+            if (escolhidas.Count == 0)
+            {
+                _errorMessage = $"Escolha ao menos uma Maestria na linha {indice + 1} ou deixe-a valer em todas.";
+                return;
+            }
+            maestrias[indice] = escolhidas.ToList();
+        }
+
         _aplicando = true;
         try
         {
-            var request = new AplicarCondicaoRequest(_condicao.Id, _semDuracao ? null : _duracao, ajustados.Count > 0 ? ajustados : null, itens.Count > 0 ? itens : null, _semDuracao);
+            var request = new AplicarCondicaoRequest(_condicao.Id, _semDuracao ? null : _duracao, ajustados.Count > 0 ? ajustados : null, itens.Count > 0 ? itens : null, _semDuracao,
+                maestrias.Count > 0 ? maestrias : null);
             var response = await Http.PostAsJsonAsync($"encounters/{EncounterId}/participants/{ParticipantId}/condicoes", request);
             if (!response.IsSuccessStatusCode)
             {
