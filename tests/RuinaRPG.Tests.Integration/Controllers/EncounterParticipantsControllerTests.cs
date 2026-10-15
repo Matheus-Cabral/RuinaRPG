@@ -412,28 +412,8 @@ public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixtur
             .Select(c => c.Texto)
             .ToListAsync();
         condicoes.Should().BeEquivalentTo(new[] { "Enfraquecido", "Sangrando" });
-    }
-
-    [Fact]
-    public async Task Update_PV_on_a_live_sourced_participant_returns_400()
-    {
-        // R0003: PV/PF/PA are read-only on the Encounter screen for a live-sourced participant.
-        var gmToken = await RegisterGmAndGetTokenAsync("EpGm9", "ep9@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "EpPlayer9", "epplayer9@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Live");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Update Live");
-        var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
-        await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Editável", 25);
-
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
-            new AddParticipantRequest(sheetId, null, null, 8)));
-        var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
-
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{added!.Id}", gmToken,
-            new UpdateParticipantRequest(8, 5, null, null, 3, new List<string>())));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // A instância do GM é independente: a ficha de origem continua como estava.
+        (await db.NpcSheets.FindAsync(Guid.Parse(npcId)))!.VitalidadeAtual.Should().Be(30);
     }
 
     [Fact]

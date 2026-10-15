@@ -438,6 +438,36 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task A_live_sourced_participant_edits_PV_PF_PA_and_the_save_sends_the_loaded_values()
+    {
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        var cut = await RenderLoadedAsync();
+        cut.Markup.Should().NotContain("somente leitura");
+
+        // Lobo (p3) vem de uma ficha: PV 9, PF 0, PA 0.
+        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Editar").ElementAt(2).Click());
+        cut.Markup.Should().NotContain("edite a ficha diretamente");
+        var pv = cut.Find("#" + cut.FindAll("label").Single(l => l.TextContent.Trim() == "PV").GetAttribute("for"));
+        pv.Change("4");
+        cut.FindAll("form").Last().Submit();
+
+        cut.WaitForState(() => corpo is not null);
+        var json = System.Text.Json.JsonDocument.Parse(corpo!).RootElement;
+        json.GetProperty("pv").GetInt32().Should().Be(4);
+        json.GetProperty("pf").GetInt32().Should().Be(0);
+        json.GetProperty("pa").GetInt32().Should().Be(0);
+        json.GetProperty("pvCarregado").GetInt32().Should().Be(9);
+        json.GetProperty("pfCarregado").GetInt32().Should().Be(0);
+        json.GetProperty("paCarregado").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
     public async Task A_failed_remove_shows_the_api_message()
     {
         _participants = ComCondicoes(Veneno());

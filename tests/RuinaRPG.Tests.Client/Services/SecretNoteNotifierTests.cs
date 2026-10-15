@@ -56,6 +56,22 @@ public class SecretNoteNotifierTests
     }
 
     [Fact]
+    public async Task Start_without_secret_notes_connects_relays_conditions_and_never_loads_the_counts()
+    {
+        var notifier = CreateNotifier();
+        var received = new List<CondicoesAlteradasNotification>();
+        notifier.CondicoesAlteradas += received.Add;
+
+        await notifier.StartAsync(notasSecretas: false);
+        await _connection.RaiseChangedAsync();
+        await _connection.RaiseCondicoesAlteradasAsync(new("character", "s1"));
+
+        _connection.StartCount.Should().Be(1);
+        _requests.Should().BeEmpty();
+        received.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Starting_twice_opens_a_single_connection()
     {
         var notifier = CreateNotifier();

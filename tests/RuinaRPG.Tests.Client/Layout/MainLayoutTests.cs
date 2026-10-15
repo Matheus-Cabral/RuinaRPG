@@ -318,15 +318,23 @@ public class MainLayoutTests : MudBunitContext
         cut.WaitForAssertion(() => NotificationConnection.StartCount.Should().Be(1));
     }
 
+    // O GM também ouve o hub (a ficha aberta recarrega quando ele edita PV/PF/PA no encontro), mas não tem Notas Secretas.
     [Fact]
-    public async Task Does_not_start_the_notifier_for_a_GM()
+    public async Task Starts_the_notifier_for_a_GM_without_asking_for_secret_notes()
     {
         UseViewport(Breakpoint.Lg);
-        RegisterCommonServices(HttpFor("GM"));
-        RenderLayout();
-        await Task.Delay(100);
+        var pedidos = new List<string>();
+        RegisterCommonServices(FakeHttpMessageHandler.CreateClient(request =>
+        {
+            pedidos.Add(request.RequestUri!.AbsolutePath);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new MeResponse("u1", "Nick", "GM", false, null, false)) };
+        }));
+        var cut = RenderLayout();
+        cut.WaitForAssertion(() => NotificationConnection.StartCount.Should().Be(1));
 
-        NotificationConnection.StartCount.Should().Be(0);
+        await NotificationConnection.RaiseChangedAsync();
+
+        pedidos.Should().NotContain(p => p.EndsWith("secret-notes/unread"));
     }
 
     [Fact]

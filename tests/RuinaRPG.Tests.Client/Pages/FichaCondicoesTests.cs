@@ -22,11 +22,13 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// </summary>
 public class FichaCondicoesTests : MudBunitContext
 {
-    private sealed class FakeAuthStateProvider : AuthenticationStateProvider
+    private sealed class FakeAuthStateProvider(string papel) : AuthenticationStateProvider
     {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "GM") }, "test"))));
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, papel) }, "test"))));
     }
+
+    private string _papel = "GM";
 
     private readonly List<string> _requests = new();
     private Func<HttpRequestMessage, HttpResponseMessage?> _overrides = _ => null;
@@ -62,7 +64,7 @@ public class FichaCondicoesTests : MudBunitContext
     {
         _overrides = overrides ?? (_ => null);
         Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(Stub));
-        Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
+        Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider(_papel));
     }
 
     private static async Task GoToTabAsync<T>(IRenderedComponent<T> cut, string tab) where T : Microsoft.AspNetCore.Components.IComponent
@@ -277,9 +279,13 @@ public class FichaCondicoesTests : MudBunitContext
 
     // ---- recarga ao vivo ----
 
-    [Fact]
-    public async Task A_notification_for_this_sheet_reloads_the_sheet_and_the_alert_without_saving()
+    // O dono e o GM que tem a ficha aberta recebem o aviso (Condições, ou PV/PF/PA editados no encontro).
+    [Theory]
+    [InlineData("GM")]
+    [InlineData("Jogador")]
+    public async Task A_notification_for_this_sheet_reloads_the_sheet_and_the_alert_without_saving(string papel)
     {
+        _papel = papel;
         Prepare();
         var cut = await RenderPersonagemAsync();
         var armas = Contagem("/weapons");

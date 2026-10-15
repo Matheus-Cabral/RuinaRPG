@@ -139,11 +139,14 @@
         var me = response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<MeResponse>() : null;
         _mustChangePassword = me?.MustChangePassword == true;
 
-        // Campanha R0015: only a Jogador receives Notas Secretas. Running this on every navigation
-        // is what starts the notifier after login, stops it after logout, and restarts a
-        // connection that gave up reconnecting — StartAsync/StopAsync are both idempotent.
+        // Campanha R0015: only a Jogador receives Notas Secretas; the GM listens too, for the sheet
+        // events (an open sheet reloads when its PV/PF/PA change in an encounter). Running this on
+        // every navigation is what starts the notifier after login, stops it after logout, and
+        // restarts a connection that gave up reconnecting — StartAsync/StopAsync are both idempotent.
         if (me?.Role == "Jogador")
             await Notifier.StartAsync();
+        else if (me?.Role == "GM")
+            await Notifier.StartAsync(notasSecretas: false);
         else
             await Notifier.StopAsync();
     }

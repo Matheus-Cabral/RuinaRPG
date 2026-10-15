@@ -25,8 +25,9 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     public event Action<SecretNoteNotification>? Received;
 
     /// <summary>
-    /// The Condições acting on a sheet of this user changed (an encounter action). May be raised off the
-    /// renderer's context — use InvokeAsync. Subscribers pick out their own sheet by kind and id.
+    /// The server changed a sheet of this user (Condições acting on it, or PV/PF/PA edited by the GM in an
+    /// encounter — the GM gets it too): its numbers must be reloaded. May be raised off the renderer's context —
+    /// use InvokeAsync. Subscribers pick out their own sheet by kind and id.
     /// </summary>
     public event Action<CondicoesAlteradasNotification>? CondicoesAlteradas;
 
@@ -34,21 +35,23 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     /// Idempotent, and safe to call on every navigation: MainLayout does exactly that, which is
     /// also what brings a connection that gave up reconnecting back to life.
     /// </summary>
-    public Task StartAsync()
+    /// <param name="notasSecretas">False for a GM: only the sheet events, the unread counters are never loaded.</param>
+    public Task StartAsync(bool notasSecretas = true)
     {
         if (connection.IsActive)
             return Task.CompletedTask;
         if (_starting is { IsCompleted: false })
             return _starting;
-        return _starting = StartCoreAsync();
+        return _starting = StartCoreAsync(notasSecretas);
     }
 
-    private async Task StartCoreAsync()
+    private async Task StartCoreAsync(bool notasSecretas)
     {
-        await RefreshAsync();
+        Func<Task> refresh = notasSecretas ? RefreshAsync : () => Task.CompletedTask;
+        await refresh();
         try
         {
-            await connection.StartAsync(OnReceivedAsync, RefreshAsync, OnCondicoesAlteradasAsync);
+            await connection.StartAsync(OnReceivedAsync, refresh, OnCondicoesAlteradasAsync);
         }
         catch (Exception)
         {

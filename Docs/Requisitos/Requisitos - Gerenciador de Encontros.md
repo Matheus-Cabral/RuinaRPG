@@ -37,7 +37,7 @@
 
 O comportamento de PV/PF/PA difere conforme a origem do participante (R0002):
 
-- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA são **somente leitura** na tela do Encontro, refletindo em tempo real os valores salvos na ficha correspondente — o jogador atualiza a própria ficha durante o jogo, e o Encontro só exibe.
+- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA refletem em tempo real os valores salvos na ficha correspondente. O GM pode editá-los no Encontro, e a edição grava **na própria ficha**: cada valor fica no máximo que a ficha mostra com as Condições ativas (o mesmo limite do salvamento da ficha), e só o recurso que o GM de fato mudou é gravado — o que ele não tocou fica como está, então uma mudança simultânea do jogador não se perde. A alteração entra no log da ficha como feita pelo GM ("[[Requisitos - Campanha]]" R0016) e, com o Encontro em andamento, no log do Encontro (R0010), uma linha por recurso. A ficha aberta do dono, e a do GM, recarrega os valores na hora, pelo mesmo caminho da recarga por Condições (sem trocar o campo que está sendo editado).
 - **Ficha de NPC/Criatura do GM**: PV/PF/PA são uma **cópia independente** daquela instância, iniciando nos valores atuais da ficha original no momento em que foi adicionada ao Encontro, e editável livremente pelo GM ali. Alterações feitas no Encontro não se propagam de volta para a ficha original, e vice-versa.
 
   

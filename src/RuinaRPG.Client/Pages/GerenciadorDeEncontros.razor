@@ -111,9 +111,9 @@ else
                     @participant.Nome
                 </td>
                 <td>@participant.Iniciativa</td>
-                <td>@participant.PV @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.PF @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
-                <td>@participant.PA @(participant.IsLiveSourced ? "(somente leitura)" : "")</td>
+                <td>@participant.PV</td>
+                <td>@participant.PF</td>
+                <td>@participant.PA</td>
                 <td>@participant.AcoesRestantes</td>
                 <td>@CondicoesDe(participant)</td>
                 <td>
@@ -156,24 +156,16 @@ else
                                 <MudItem xs="12" md="2">
                                     <MudNumericField T="int" @bind-Value="_editParticipantForm.AcoesRestantes" Label="Ações Restantes (0-3)" Min="0" Max="3" />
                                 </MudItem>
-                                @if (participant.IsLiveSourced)
-                                {
-                                    <MudItem xs="12" md="8">
-                                        <MudText Color="Color.Secondary">PV/PF/PA somente leitura aqui — este participante vem de uma ficha vinculada; edite a ficha diretamente.</MudText>
-                                    </MudItem>
-                                }
-                                else
-                                {
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
-                                    </MudItem>
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
-                                    </MudItem>
-                                    <MudItem xs="12" md="2">
-                                        <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
-                                    </MudItem>
-                                }
+                                @* Vindo de uma ficha, PV/PF/PA mudam na própria ficha (o servidor grava só o que mudou aqui). *@
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
+                                </MudItem>
+                                <MudItem xs="12" md="2">
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
+                                </MudItem>
                                 <MudItem xs="12" md="2">
                                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Salvar</MudButton>
                                 </MudItem>
@@ -515,13 +507,15 @@ else
 
     private async Task SaveParticipantAsync(EncounterParticipantResponse participant)
     {
+        // Os valores com que o formulário abriu vão junto: numa ficha ligada, o servidor só grava o recurso mudado aqui.
         var request = new UpdateParticipantRequest(
             _editParticipantForm.Iniciativa,
-            participant.IsLiveSourced ? null : _editParticipantForm.PV,
-            participant.IsLiveSourced ? null : _editParticipantForm.PF,
-            participant.IsLiveSourced ? null : _editParticipantForm.PA,
+            _editParticipantForm.PV,
+            _editParticipantForm.PF,
+            _editParticipantForm.PA,
             _editParticipantForm.AcoesRestantes,
-            participant.Condicoes); // the edit form no longer touches Condições: the legacy texts go back as they are
+            participant.Condicoes, // the edit form no longer touches Condições: the legacy texts go back as they are
+            participant.PV, participant.PF, participant.PA);
 
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
         if (!response.IsSuccessStatusCode)

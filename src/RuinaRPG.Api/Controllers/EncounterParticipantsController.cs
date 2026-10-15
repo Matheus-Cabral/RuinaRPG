@@ -2,9 +2,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Domain.Encounters;
 using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.Persistence;
@@ -14,7 +17,9 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
-public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
+public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro,
+    CharacterSheetStats personagens, NpcSheetStats npcs, CreatureSheetStats criaturas, CondicoesAtivasDaFicha condicoes,
+    IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<EncounterParticipantsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
@@ -147,9 +152,6 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         var isLive = participant.SourceCharacterSheetId is not null
             || (participant.SourceNpcSheetId is not null && (await db.NpcSheets.FindAsync(participant.SourceNpcSheetId.Value))?.OwnerId is not null)
             || (participant.SourceCreatureSheetId is not null && (await db.CreatureSheets.FindAsync(participant.SourceCreatureSheetId.Value))?.OwnerId is not null);
-        if (isLive && (request.PV is not null || request.PF is not null || request.PA is not null))
-            return BadRequest("PV/PF/PA de um participante vindo de Ficha de Personagem são somente leitura aqui — edite a ficha diretamente.");
-
         var existingConditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
         // As condições de texto livre só podem ser reduzidas; as novas vêm do catálogo.
         if (request.Condicoes.Any(t => !existingConditions.Any(c => c.Texto == t)))
@@ -159,7 +161,10 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
 
         participant.Iniciativa = request.Iniciativa;
         participant.AcoesRestantes = request.AcoesRestantes;
-        if (!isLive)
+        FichaAlterada? fichaAlterada = null;
+        if (isLive)
+            fichaAlterada = await GravarNaFichaAsync(participant, request);
+        else
         {
             participant.PVAtual = request.PV;
             participant.PFAtual = request.PF;
@@ -170,10 +175,102 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         foreach (var texto in request.Condicoes)
             db.EncounterParticipantConditions.Add(new EncounterParticipantCondition { Id = Guid.NewGuid(), EncounterParticipantId = id, Texto = texto });
 
+        // A ficha ligada não muda o PV/PF/PA do participante (continua nulo): a linha do encontro de cada recurso
+        // alterado é a RecursoDaFicha que o SheetLogInterceptor monta, assinada pelo GM no log da ficha.
         await LogChangesAsync(encounter!, participant, antes, existingConditions.Select(c => c.Texto).ToList(), request.Condicoes);
 
         await db.SaveChangesAsync();
+        if (fichaAlterada is not null)
+            await AvisarFichaAlteradaAsync(fichaAlterada);
         return NoContent();
+    }
+
+    private sealed record FichaAlterada(string Kind, Guid Id, Guid OwnerId);
+
+    /// <summary>
+    /// Participante ligado a uma ficha (Personagem, NPC/Criatura concedida): o PV/PF/PA editado no encontro vai para o
+    /// Atual da ficha, no total que ela mostra com as Condições ativas (a regra do salvamento da ficha; sem piso, como
+    /// lá). Só o recurso que o GM mudou (enviado diferente do carregado no formulário) é gravado: o que ele não tocou
+    /// fica como está, e uma mudança simultânea do jogador não se perde. Null quando nada na ficha mudou.
+    /// </summary>
+    private async Task<FichaAlterada?> GravarNaFichaAsync(EncounterParticipant participant, UpdateParticipantRequest request)
+    {
+        static int? Editado(int? enviado, int? carregado) => enviado is { } valor && valor != carregado ? valor : null;
+        var (pv, pf, pa) = (Editado(request.PV, request.PVCarregado), Editado(request.PF, request.PFCarregado), Editado(request.PA, request.PACarregado));
+        if (pv is null && pf is null && pa is null)
+            return null;
+
+        var mudou = false;
+        int Novo(int guardado, int? editado, int maximo)
+        {
+            if (editado is not { } valor)
+                return guardado;
+            var novo = Math.Min(valor, maximo);
+            mudou |= novo != guardado;
+            return novo;
+        }
+
+        if (participant.SourceCharacterSheetId is { } personagemId && await db.CharacterSheets.FindAsync(personagemId) is { } personagem)
+        {
+            var (vitalidade, foco, adrenalina, _) = await personagens.MaximosAsync(personagem, await condicoes.ParaPersonagemAsync(personagem.Id));
+            personagem.VitalidadeAtual = Novo(personagem.VitalidadeAtual, pv, vitalidade);
+            personagem.FocoAtual = Novo(personagem.FocoAtual, pf, foco);
+            personagem.AdrenalinaAtual = Novo(personagem.AdrenalinaAtual, pa, adrenalina);
+            return mudou ? new FichaAlterada("character", personagem.Id, personagem.OwnerId) : null;
+        }
+        if (participant.SourceNpcSheetId is { } npcId && await db.NpcSheets.FindAsync(npcId) is { OwnerId: { } donoDoNpc } npc)
+        {
+            var (vitalidade, foco, adrenalina, _) = await npcs.MaximosAsync(npc, await condicoes.ParaNpcAsync(npc));
+            npc.VitalidadeAtual = Novo(npc.VitalidadeAtual, pv, vitalidade);
+            npc.FocoAtual = Novo(npc.FocoAtual, pf, foco);
+            npc.AdrenalinaAtual = Novo(npc.AdrenalinaAtual, pa, adrenalina);
+            return mudou ? new FichaAlterada("npc", npc.Id, donoDoNpc) : null;
+        }
+        if (participant.SourceCreatureSheetId is { } criaturaId && await db.CreatureSheets.FindAsync(criaturaId) is { OwnerId: { } donoDaCriatura } criatura)
+        {
+            var (vitalidade, foco, adrenalina) = await criaturas.MaximosAsync(criatura, await condicoes.ParaCriaturaAsync(criatura));
+            criatura.VitalidadeAtual = Novo(criatura.VitalidadeAtual, pv, vitalidade);
+            criatura.FocoAtual = Novo(criatura.FocoAtual, pf, foco);
+            criatura.AdrenalinaAtual = Novo(criatura.AdrenalinaAtual, pa, adrenalina);
+            return mudou ? new FichaAlterada("creature", criatura.Id, donoDaCriatura) : null;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Depois do salvamento: CondicoesAlteradas ao dono e ao GM (a ficha aberta recarrega os valores atuais, pelo mesmo
+    /// caminho adiado das Condições) e ParticipantsChanged a todo encontro com a ficha. Uma falha dos hubs vai para o
+    /// log da aplicação e nunca derruba a ação, já salva.
+    /// </summary>
+    private async Task AvisarFichaAlteradaAsync(FichaAlterada ficha)
+    {
+        foreach (var userId in new[] { ficha.OwnerId, CurrentGmId() })
+        {
+            try
+            {
+                await notificacoes.Clients.User(userId.ToString()).SendAsync(NotificationEvents.CondicoesAlteradas,
+                    new CondicoesAlteradasNotification(ficha.Kind, ficha.Id.ToString()));
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to push CondicoesAlteradas for sheet {SheetId}", ficha.Id);
+            }
+        }
+
+        var encounterIds = await db.EncounterParticipants
+            .Where(p => p.SourceCharacterSheetId == ficha.Id || p.SourceNpcSheetId == ficha.Id || p.SourceCreatureSheetId == ficha.Id)
+            .Select(p => p.EncounterId).Distinct().ToListAsync();
+        foreach (var encounterId in encounterIds)
+        {
+            try
+            {
+                await encontros.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
+            }
+        }
     }
 
     [HttpDelete("{id}")]
