@@ -23,6 +23,32 @@ public class CondicaoIconeTests
         CondicaoIcone.Chaves.Should().BeEquivalentTo(CondicaoIcones.Chaves);
     }
 
+    // As 20 primeiras já estão guardadas em Condições do catálogo: não mudam, nem de ordem; as novas vêm depois.
+    private static readonly string[] Originais =
+    [
+        "Veneno", "Fogo", "Gelo", "Atordoado", "Sangramento", "Escudo", "Lentidao", "Cegueira", "Medo", "Bencao",
+        "Maldicao", "Sono", "Enraizado", "Enfraquecido", "Fortalecido", "Queimadura", "Eletrificado", "Silenciado",
+        "Invisivel", "Marcado"
+    ];
+
+    [Fact]
+    public void The_set_is_large_keeps_the_original_keys_first_and_matches_the_API_list_in_order()
+    {
+        CondicaoIcones.Chaves.Count.Should().BeGreaterThanOrEqualTo(80);
+        CondicaoIcones.Chaves.Take(Originais.Length).Should().Equal(Originais);
+        CondicaoIcone.Chaves.Should().Equal(CondicaoIcones.Chaves);
+    }
+
+    [Fact]
+    public void Keys_are_ascii_identifiers_and_names_and_icons_are_all_distinct()
+    {
+        CondicaoIcones.Chaves.Should().OnlyHaveUniqueItems()
+            .And.OnlyContain(c => System.Text.RegularExpressions.Regex.IsMatch(c, "^[A-Z][A-Za-z]*$"));
+        CondicaoIcones.Chaves.Select(CondicaoIcone.Nome).Should().OnlyHaveUniqueItems();
+        CondicaoIcones.Chaves.Select(CondicaoIcone.Icone).Should().OnlyHaveUniqueItems()
+            .And.NotContain(MudBlazor.Icons.Material.Filled.Coronavirus, "o genérico é o da chave desconhecida");
+    }
+
     [Fact]
     public void An_unknown_key_falls_back_to_a_generic_icon_instead_of_throwing()
     {

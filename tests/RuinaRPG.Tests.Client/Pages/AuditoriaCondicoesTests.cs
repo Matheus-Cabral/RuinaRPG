@@ -124,6 +124,23 @@ public class AuditoriaCondicoesTests : MudBunitContext
     }
 
     [Fact]
+    public async Task The_icon_picker_is_a_collapsed_panel_whose_header_shows_the_chosen_icon()
+    {
+        var cut = await AbrirNovaAsync(RenderPage());
+
+        var cabecalho = cut.Find(".mud-expand-panel-header");
+        TextNormalization.Collapse(cabecalho.TextContent).Should().Contain("Ícone").And.Contain("Marcado");
+        cut.Find(".mud-expand-panel").ClassList.Should().NotContain("mud-panel-expanded", "o painel começa fechado");
+
+        cabecalho.Click();
+        cut.Find(".mud-expand-panel").ClassList.Should().Contain("mud-panel-expanded");
+        cut.Find("button[aria-label='Fogo']").Click();
+
+        TextNormalization.Collapse(cut.Find(".mud-expand-panel-header").TextContent).Should().Contain("Fogo").And.NotContain("Marcado");
+        cut.Find(".mud-expand-panel").ClassList.Should().Contain("mud-panel-expanded", "escolher um ícone mantém o painel aberto");
+    }
+
+    [Fact]
     public async Task A_403_on_save_shows_the_forbidden_alert_instead_of_the_page()
     {
         _escrita = _ => new HttpResponseMessage(HttpStatusCode.Forbidden);
@@ -176,6 +193,7 @@ public class AuditoriaCondicoesTests : MudBunitContext
         var cut = await AbrirNovaAsync(RenderPage());
         await cut.InvokeAsync(() => cut.FindComponents<MudTextField<string>>().First(c => c.Instance.Label == "Nome").Instance.ValueChanged.InvokeAsync("Veneno forte"));
         await cut.InvokeAsync(() => cut.FindComponents<MudTextField<string>>().First(c => c.Instance.Label == "Descrição").Instance.ValueChanged.InvokeAsync("Corrói"));
+        cut.Find(".mud-expand-panel-header").Click();
         cut.Find("button[aria-label='Fogo']").Click();
         await cut.InvokeAsync(() => cut.FindComponent<MudNumericField<int?>>().Instance.ValueChanged.InvokeAsync(3));
 

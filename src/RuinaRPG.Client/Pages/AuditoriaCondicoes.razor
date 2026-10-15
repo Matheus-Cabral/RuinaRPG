@@ -48,16 +48,36 @@ else
         <Section Title="@(_form.Id is null ? "Nova condição" : "Editar condição")">
             <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" />
             <MudTextField T="string" @bind-Value="_form.Descricao" Label="Descrição" Lines="3" />
-            <MudText Typo="Typo.subtitle2" Class="mt-2">Ícone</MudText>
-            <div class="d-flex flex-wrap">
-                @foreach (var chave in CondicaoIcones.Chaves)
-                {
-                    var escolhido = _form.Icone == chave;
-                    <MudIconButton Icon="@CondicaoIcone.Icone(chave)" title="@CondicaoIcone.Nome(chave)" aria-label="@CondicaoIcone.Nome(chave)"
-                                   Color="@(escolhido ? Color.Primary : Color.Default)" Variant="@(escolhido ? Variant.Filled : Variant.Text)"
-                                   OnClick="@(() => _form.Icone = chave)" />
-                }
-            </div>
+            @* São muitos ícones: a grade fica num painel fechado, cujo cabeçalho mostra o escolhido. *@
+            <MudExpansionPanels Class="mt-3" Elevation="0" Outlined="true">
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center" style="gap:8px">
+                            <MudText Typo="Typo.subtitle2">Ícone</MudText>
+                            @if (string.IsNullOrEmpty(_form.Icone))
+                            {
+                                <MudText Typo="Typo.body2">nenhum escolhido</MudText>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@CondicaoIcone.Icone(_form.Icone)" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@CondicaoIcone.Nome(_form.Icone)</MudText>
+                            }
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <div class="d-flex flex-wrap">
+                            @foreach (var chave in CondicaoIcones.Chaves)
+                            {
+                                var escolhido = _form.Icone == chave;
+                                <MudIconButton Icon="@CondicaoIcone.Icone(chave)" title="@CondicaoIcone.Nome(chave)" aria-label="@CondicaoIcone.Nome(chave)"
+                                               Color="@(escolhido ? Color.Primary : Color.Default)" Variant="@(escolhido ? Variant.Filled : Variant.Text)"
+                                               OnClick="@(() => _form.Icone = chave)" />
+                            }
+                        </div>
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
             <MudNumericField T="int?" @bind-Value="_form.DuracaoPadraoTurnos" Label="Duração padrão (Turnos, opcional)" Min="1" HelperText="Vazio = dura até ser removida." />
             <MudText Typo="Typo.subtitle2" Class="mt-2">Modificadores</MudText>
             <CondicaoModificadoresEditor Linhas="_form.Linhas" Pericias="Catalogo.Ativas" />
