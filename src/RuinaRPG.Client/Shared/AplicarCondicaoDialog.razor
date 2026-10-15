@@ -184,12 +184,14 @@
         if (_condicao is null || _aplicando)
             return;
 
-        // Só viajam os valores que o GM mudou; o resto fica com o do catálogo.
-        var ajustados = new Dictionary<int, int>();
+        // Só viajam os valores que o GM mudou; o resto fica com o do catálogo. Cada um leva a linha como o GM a viu,
+        // para o servidor recusar se a entrada mudou no catálogo enquanto isso.
+        var ajustados = new List<ValorAjustadoDto>();
         for (var i = 0; i < _valores.Length; i++)
         {
-            if (_valores[i] != _condicao.Modificadores[i].Valor)
-                ajustados[i] = _valores[i];
+            var linha = _condicao.Modificadores[i];
+            if (_valores[i] != linha.Valor)
+                ajustados.Add(new ValorAjustadoDto(i, linha.Alvo, linha.AlvoEspecifico, _valores[i]));
         }
 
         var itens = new Dictionary<string, List<string>>();

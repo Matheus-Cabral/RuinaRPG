@@ -153,4 +153,14 @@ public class CondicaoValidatorTests
     [Fact]
     public void A_value_outside_the_RecursoAtual_list_is_rejected() =>
         Validar(mods: [Mod(AlvoDeCondicao.RecursoAtual, "Mana", momento: MomentoDeCondicao.AoAplicar)]).Should().NotBeNull();
+
+    // O valor que o GM ajusta ao aplicar segue os mesmos limites da linha no catálogo.
+    [Theory]
+    [InlineData(TipoDeValorDeCondicao.Fixo, 0, "O valor de um modificador não pode ser zero.")]
+    [InlineData(TipoDeValorDeCondicao.Percentual, -101, "Um modificador percentual deve estar entre -100 e 1000.")]
+    [InlineData(TipoDeValorDeCondicao.Percentual, 1001, "Um modificador percentual deve estar entre -100 e 1000.")]
+    [InlineData(TipoDeValorDeCondicao.Percentual, -100, null)]
+    [InlineData(TipoDeValorDeCondicao.Fixo, -5000, null)]
+    public void ValidarValor_applies_the_bounds_of_the_line_kind(TipoDeValorDeCondicao tipo, int valor, string? esperado) =>
+        CondicaoValidator.ValidarValor(Mod(AlvoDeCondicao.Atributo, "Forca", valor, tipo)).Should().Be(esperado);
 }

@@ -167,7 +167,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<Postgr
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
 
         var response = await AplicarAsync(gm, encounterId, participantId,
-            new AplicarCondicaoRequest(condicao.Id, 5, new() { [1] = -25 }, null));
+            new AplicarCondicaoRequest(condicao.Id, 5, [new(1, "Atributo", "Vigor", -25)], null));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var snapshot = await LerAsync(participantId);
@@ -242,10 +242,62 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<Postgr
         var encounterId = await CreateEncounterAsync(gm);
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
 
-        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, new() { [0] = 0 }, null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, new() { [2] = 4 }, null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, new() { [-1] = 4 }, null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(0, "RecursoAtual", "Vitalidade", 0)], null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(2, "Atributo", "Vigor", 4)], null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(-1, "Atributo", "Vigor", 4)], null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, 0, null, null))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Apply_checks_an_adjusted_value_against_the_catalog_bounds_of_its_line()
+    {
+        var gm = await RegisterGmAsync("CpGmLim", "cplim@teste.com", auditor: true);
+        var condicao = await CriarNoCatalogoAsync(gm, Catalogo("Limites"));
+        var encounterId = await CreateEncounterAsync(gm);
+        var participantId = await AddNpcParticipantAsync(gm, encounterId);
+
+        foreach (var valor in new[] { -101, 1001 })
+        {
+            var response = await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(1, "Atributo", "Vigor", valor)], null));
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await response.Content.ReadAsStringAsync()).Should().Contain("Um modificador percentual deve estar entre -100 e 1000.");
+        }
+        var zero = await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(0, "RecursoAtual", "Vitalidade", 0)], null));
+        (await zero.Content.ReadAsStringAsync()).Should().Contain("O valor de um modificador não pode ser zero.");
+        var repetida = await AplicarAsync(gm, encounterId, participantId,
+            new AplicarCondicaoRequest(condicao.Id, null, [new(1, "Atributo", "Vigor", -20), new(1, "Atributo", "Vigor", -30)], null));
+        repetida.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Um fixo pode passar do percentual: o limite é o do tipo da linha.
+        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(0, "RecursoAtual", "Vitalidade", -2000)], null)))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Apply_with_an_adjusted_line_that_no_longer_matches_the_catalog_returns_409()
+    {
+        var gm = await RegisterGmAsync("CpGmIdt", "cpidt@teste.com", auditor: true);
+        var condicao = await CriarNoCatalogoAsync(gm, Catalogo("Mutante"));
+        var encounterId = await CreateEncounterAsync(gm);
+        var participantId = await AddNpcParticipantAsync(gm, encounterId);
+        // O GM abriu a escolha com a linha 1 = Vigor; enquanto escolhia, o catálogo trocou a ordem e o atributo.
+        var request = new AplicarCondicaoRequest(condicao.Id, null, [new(1, "Atributo", "Vigor", -20)], null);
+        var editada = Catalogo("Mutante") with
+        {
+            Modificadores = [new("Atributo", "Forca", "Percentual", -10, null), new("RecursoAtual", "Vitalidade", "Fixo", -2, "ACadaVez")],
+        };
+        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{condicao.Id}", gm, editada))).IsSuccessStatusCode.Should().BeTrue();
+
+        foreach (var pedido in new[] { request, request with { ValoresAjustados = [new(0, "Atributo", "Vigor", -20)] } })
+        {
+            var response = await AplicarAsync(gm, encounterId, participantId, pedido);
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            (await response.Content.ReadAsStringAsync()).Should().Contain("A Condição foi alterada no catálogo. Reabra a escolha.");
+        }
+        (await ListarAsync(gm, encounterId)).Single().CondicoesAplicadas.Should().BeEmpty();
+
+        (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, [new(0, "Atributo", "Forca", -20)], null)))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]

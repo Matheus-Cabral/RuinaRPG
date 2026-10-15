@@ -50,13 +50,20 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             return BadRequest("Informe a duração ou marque sem duração, não os dois.");
 
         var modificadores = await db.CondicaoModificadores.Where(m => m.CondicaoId == condicaoId).OrderBy(m => m.Ordem).ToListAsync();
-        var ajustados = request.ValoresAjustados ?? [];
-        foreach (var (indice, valor) in ajustados)
+        // Cada valor ajustado diz qual linha o GM viu; se a entrada mudou no catálogo desde então, a escolha é refeita.
+        // O valor segue os limites da linha no catálogo (CondicaoValidator).
+        var ajustados = new Dictionary<int, int>();
+        foreach (var ajuste in request.ValoresAjustados ?? [])
         {
-            if (indice < 0 || indice >= modificadores.Count)
-                return BadRequest($"Não existe a linha {indice} nesta condição.");
-            if (valor == 0)
-                return BadRequest("O valor ajustado não pode ser 0.");
+            if (ajuste.Linha < 0 || ajuste.Linha >= modificadores.Count)
+                return BadRequest($"Não existe a linha {ajuste.Linha} nesta condição.");
+            var linha = modificadores[ajuste.Linha];
+            if (ajuste.Alvo != linha.Alvo.ToString() || !string.Equals(ajuste.AlvoEspecifico, linha.AlvoEspecifico, StringComparison.OrdinalIgnoreCase))
+                return Conflict("A Condição foi alterada no catálogo. Reabra a escolha.");
+            if (!ajustados.TryAdd(ajuste.Linha, ajuste.Valor))
+                return BadRequest($"A linha {ajuste.Linha} foi ajustada mais de uma vez.");
+            if (CondicaoValidator.ValidarValor(new ModificadorDeCondicao(linha.Alvo, linha.AlvoEspecifico, linha.TipoDeValor, ajuste.Valor, linha.Momento)) is { } erroDoValor)
+                return BadRequest(erroDoValor);
         }
 
         var (erro, desabilitacoes) = await ResolverDesabilitacoesAsync(participant, condicaoId, request.ItensDesabilitados ?? []);

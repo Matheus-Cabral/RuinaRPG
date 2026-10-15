@@ -28,14 +28,26 @@ public static class CondicaoValidator
         {
             if ((m.Alvo == AlvoDeCondicao.RecursoAtual) != m.Momento.HasValue)
                 return "O momento é obrigatório para o valor atual de um recurso e não se aplica aos demais alvos.";
-            if (m.Valor == 0)
-                return "O valor de um modificador não pode ser zero.";
-            if (m.TipoDeValor == TipoDeValorDeCondicao.Percentual && m.Valor is < -100 or > 1000)
-                return "Um modificador percentual deve estar entre -100 e 1000.";
+            var erroValor = ValidarValor(m);
+            if (erroValor is not null)
+                return erroValor;
             var erroAlvo = ValidarAlvoEspecifico(m, periciaExiste);
             if (erroAlvo is not null)
                 return erroAlvo;
         }
+        return null;
+    }
+
+    /// <summary>
+    /// Os limites do valor de uma linha, pelo tipo dela; null quando válido. Vale também para o valor que o GM ajusta ao
+    /// aplicar a Condição no encontro.
+    /// </summary>
+    public static string? ValidarValor(ModificadorDeCondicao m)
+    {
+        if (m.Valor == 0)
+            return "O valor de um modificador não pode ser zero.";
+        if (m.TipoDeValor == TipoDeValorDeCondicao.Percentual && m.Valor is < -100 or > 1000)
+            return "Um modificador percentual deve estar entre -100 e 1000.";
         return null;
     }
 

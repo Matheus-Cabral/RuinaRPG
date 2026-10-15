@@ -110,7 +110,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 **Descrição**: Na preparação e em andamento, o GM aplica a um participante uma Condição do catálogo de "[[Requisitos - Auditoria de Regras]]" R0017. A Condição aplicada é uma **cópia independente**: editar ou excluir a entrada do catálogo depois não a altera. Ao aplicar, o GM pode:
 
 - mudar a **duração** em Turnos (no mínimo 1), que começa com a duração padrão da entrada, ou marcar **sem duração** (mesmo que a entrada tenha uma padrão): a Condição então dura até ser removida;
-- ajustar o **Valor** de cada modificador (nunca 0);
+- ajustar o **Valor** de cada modificador, com os mesmos limites da entrada no catálogo (nunca 0; um percentual fica entre −100 e 1000). Se a entrada mudou no catálogo enquanto o GM escolhia, a aplicação é recusada e ele reabre a escolha;
 - escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
 - restringir cada modificador de Maestria a Maestrias escolhidas da ficha do participante (só as da Perícia do modificador, quando ele tem uma); sem escolha, o modificador vale em todas, como na entrada. As Maestrias escolhidas aparecem pelo nome na explicação da Condição na ficha.
 

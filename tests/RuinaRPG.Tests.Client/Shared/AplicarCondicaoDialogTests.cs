@@ -132,7 +132,7 @@ public class AplicarCondicaoDialogTests : MudBunitContext
 
         _corpo!.CondicaoId.Should().Be("c1");
         _corpo.DuracaoTurnos.Should().Be(5);
-        _corpo.ValoresAjustados.Should().BeEquivalentTo(new Dictionary<int, int> { [1] = -8 });
+        _corpo.ValoresAjustados.Should().BeEquivalentTo(new List<ValorAjustadoDto> { new(1, "RecursoAtual", "Vitalidade", -8) });
         _corpo.ItensDesabilitados.Should().BeEquivalentTo(new Dictionary<string, List<string>> { ["Arma"] = new() { "w2" } });
     }
 
