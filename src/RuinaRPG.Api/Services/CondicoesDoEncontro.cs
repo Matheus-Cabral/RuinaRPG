@@ -22,7 +22,8 @@ namespace RuinaRPG.Api.Services;
 /// recalculado com as Condições que estarão ativas depois da ação (corte permanente, marcado como automático no log
 /// da ficha) e registra no log da ficha "Condição X aplicada/removida/expirada". Tudo entra no mesmo SaveChanges da
 /// ação, então o token de concorrência do encontro (409) protege também isto.</item>
-/// <item><see cref="NotificarAsync"/>, DEPOIS do salvamento: CondicoesAlteradas ao dono de cada ficha e
+/// <item><see cref="NotificarAsync"/>, DEPOIS do salvamento: CondicoesAlteradas ao dono de cada ficha (também num Turno
+/// novo, quando a ficha tem uma Condição de prazo ativa: o contador de Turnos restantes mudou) e
 /// ParticipantsChanged aos encontros dela. Uma falha dos hubs vai para o log da aplicação e nunca derruba a ação.</item>
 /// <item><see cref="AoMudarAVezAsync"/> e <see cref="AoAplicarAsync"/>, também antes do salvamento: o lado do tempo —
 /// expiração ao entrar num Turno novo e os ajustes de valor atual "ao aplicar" e "a cada vez" (Gerenciador de
@@ -110,6 +111,16 @@ public class CondicoesDoEncontro(
             }
             if (vencidas.Count > 0)
                 await AoMudarAtivacaoAsync(vencidas.Select(c => c.EncounterParticipantId).Distinct(), expiracao: true);
+
+            // Os Turnos restantes que a ficha mostra mudam a cada Turno novo: o dono de uma ficha com uma Condição de
+            // prazo ainda ativa é avisado, mesmo que nada mais tenha mudado.
+            var comPrazo = Aplicadas().Where(c => c.DuracaoTurnos is not null && CondicaoAplicadaMapper.Ativa(c, encounter.Status, encounter.CurrentRound))
+                .Select(c => c.EncounterParticipantId).ToHashSet();
+            foreach (var ficha in (await FichasAsync(comPrazo)).Keys)
+            {
+                if (await DonoAsync(ficha) is { } dono)
+                    _donosAAvisar[ficha] = dono;
+            }
         }
 
         foreach (var participante in participantes)

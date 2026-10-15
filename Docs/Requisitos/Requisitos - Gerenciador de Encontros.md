@@ -122,7 +122,7 @@ Uma Condição só está **ativa** com o Encontro em andamento e enquanto a dura
 
 # **R0012** - As Condições com duração expiram sozinhas.
 
-**Descrição**: Uma Condição com duração **N** Turnos, aplicada no Turno **T**, vale do Turno T até o Turno T + N − 1 e é retirada do participante quando o Encontro **entra** no Turno T + N. Uma Condição aplicada na preparação conta a partir do Turno 1. Os Turnos restantes exibidos (R0003) seguem a mesma conta, então o contador e a expiração sempre concordam.
+**Descrição**: Uma Condição com duração **N** Turnos, aplicada no Turno **T**, vale do Turno T até o Turno T + N − 1 e é retirada do participante quando o Encontro **entra** no Turno T + N. Uma Condição aplicada na preparação conta a partir do Turno 1. Os Turnos restantes exibidos (R0003) seguem a mesma conta, então o contador e a expiração sempre concordam. A cada Turno novo, o dono de uma ficha (R0011) com uma Condição de prazo ativa é avisado, para o contador da ficha acompanhar.
 
 A expiração acontece só ao entrar num Turno novo (pela **Próxima vez**, ao passar do último participante, ou ao remover o último participante da vez, R0008). **Vez anterior** nunca traz de volta uma Condição que expirou. Ao expirar, a ficha ligada ao participante volta aos valores sem ela, a expiração é registrada no log do Encontro (R0010) e no log da ficha como automática, e o dono da ficha é avisado.
 

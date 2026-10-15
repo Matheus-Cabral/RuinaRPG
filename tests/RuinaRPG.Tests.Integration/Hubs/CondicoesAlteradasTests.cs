@@ -249,6 +249,32 @@ public class CondicoesAlteradasTests : IClassFixture<PostgresFixture>, IAsyncLif
         caixa.Recebidas.Should().HaveCount(4).And.AllBeEquivalentTo(new CondicoesAlteradasNotification("character", sheetId));
     }
 
+    // O contador de Turnos restantes na ficha muda a cada Turno novo, mesmo sem a Condição expirar.
+    [Fact]
+    public async Task Num_Turno_novo_o_dono_e_avisado_se_tem_Condicao_com_duracao_e_sem_duracao_nao()
+    {
+        var mesa = await MesaAsync();
+        var sheetId = await PersonagemAsync(mesa);
+        var encounterId = await EncontroAsync(mesa);
+        var participantId = await ParticiparAsync(mesa, encounterId, new AddParticipantRequest(sheetId, null, null, 10));
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/start", mesa.Gm);
+        await using var dono = await ConectarAsync("/hubs/notifications", mesa.Jogador);
+        var caixa = new Caixa(dono);
+
+        await AplicarAsync(mesa, encounterId, participantId, await CondicaoAsync(mesa));
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("aplicar já avisa");
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", mesa.Gm); // Turno 2
+        (await caixa.EsperarAsync(StaysSilent)).Should().BeFalse("sem duração não há contador a atualizar");
+
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", mesa.Gm, new AplicarCondicaoRequest(await CondicaoAsync(mesa), 3, null, null));
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("aplicar já avisa");
+        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", mesa.Gm); // Turno 3: faltam 2
+        (await caixa.EsperarAsync(Arrives)).Should().BeTrue("o contador de Turnos restantes mudou");
+
+        await Task.Delay(StaysSilent);
+        caixa.Recebidas.Should().HaveCount(3).And.AllBeEquivalentTo(new CondicoesAlteradasNotification("character", sheetId));
+    }
+
     [Fact]
     public async Task O_grupo_do_encontro_recebe_ParticipantsChanged()
     {
