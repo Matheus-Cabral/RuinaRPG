@@ -120,7 +120,10 @@ public class AuditoriaCondicoesTests : MudBunitContext
         cut.Markup.Should().Contain("Auditoria: Condições");
         cut.Find("button[aria-label='O que são as Condições']").Click();
         var texto = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
-        texto.Should().Contain("durante um encontro").And.Contain("Efeitos").And.Contain("em andamento");
+        texto.Should().Contain("durante um encontro").And.Contain("Efeitos").And.Contain("em andamento")
+            .And.Contain("Valor atual de um recurso (dano ou cura por vez)").And.Contain("Total (máximo) de um recurso")
+            .And.Contain("Modificador de dano dos ataques").And.Contain("não a Vitalidade dela")
+            .And.Contain("painel Ícone");
     }
 
     [Fact]

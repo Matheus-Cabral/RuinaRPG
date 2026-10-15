@@ -95,6 +95,21 @@ else
     </MudStack>
 }
 
+<div class="d-flex align-center mt-3" style="gap:4px">
+    <MudText Typo="Typo.h6">Participantes</MudText>
+    <InfoPopup Title="PV, PF e PA no encontro">
+        <MudText>
+            PV, PF e PA de uma Ficha de Personagem, ou de um NPC ou Criatura concedido a um jogador, mudam na própria ficha
+            quando editados aqui. Cada valor fica no máximo que a ficha mostra com as Condições ativas, só o que você mudou é
+            gravado, e o jogador vê a mudança na ficha na hora.
+        </MudText>
+        <MudText Class="mt-2">
+            Um NPC ou Criatura do GM entra no encontro como uma cópia: os valores daqui são só desta instância e a ficha de
+            origem não muda.
+        </MudText>
+    </InfoPopup>
+</div>
+
 @* Com o combate, os botões da linha crescem: a tabela rola para o lado em vez de quebrar a linha. *@
 <div class="encontro-tabela">
 <MudSimpleTable Dense="true" Hover="true" Class="encontro-sem-quebra">

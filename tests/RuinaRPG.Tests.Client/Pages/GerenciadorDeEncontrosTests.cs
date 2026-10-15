@@ -468,6 +468,18 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task The_info_popup_explains_that_PV_PF_PA_of_a_linked_sheet_change_the_sheet()
+    {
+        var cut = await RenderLoadedAsync();
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='PV, PF e PA no encontro']").Click());
+
+        var texto = TextNormalization.Collapse(cut.Find(".mud-dialog-content").TextContent);
+        texto.Should().Contain("mudam na própria ficha").And.Contain("com as Condições ativas").And.Contain("na hora")
+            .And.Contain("NPC ou Criatura do GM");
+    }
+
+    [Fact]
     public async Task The_participants_table_scrolls_sideways_and_keeps_each_row_on_one_line()
     {
         var cut = await RenderLoadedAsync();
