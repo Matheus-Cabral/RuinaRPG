@@ -107,6 +107,8 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 
 **Descrição**: Em ambiente de **desenvolvimento**, migrations pendentes são aplicadas automaticamente na inicialização da Api. Em ambiente de **produção**, a aplicação de migrations é um passo explícito do processo de deploy — `make migrate` (R0008), não automático na inicialização — para evitar uma migration destrutiva rodar sem revisão prévia.
 
+**Versão 1.5.0**: esta versão traz migrations que o código usa já no primeiro request: todo salvamento de ficha grava o log de ficha ([[Requisitos - Campanha]] R0016, R0012 abaixo) e as tabelas de encontros e de Condições são novas. Em produção, portanto, `make migrate` deve rodar **logo após** `make deploy`, com os jogadores fora do aplicativo; enquanto ele não rodar, salvar uma ficha falha.
+
   
 
 # **R0010** - Hospedagem: VM Ubuntu Server num homelab Proxmox, atrás de um túnel Cloudflare.

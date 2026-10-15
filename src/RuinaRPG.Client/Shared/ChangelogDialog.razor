@@ -3,16 +3,15 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 1.4.4 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 1.5.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Notas Secretas:</b> o jogador é avisado na hora, com som, quando o Mestre envia uma Nota Secreta para ele, em qualquer página; o aviso leva direto às Notas Secretas da campanha, e um contador mostra as que ainda não foram lidas.</li>
-            <li><b>Afinidade Elemental:</b> Eficiência Elemental e Dano Elemental agora vêm da Tabela de Afinidades, conforme o valor da essência ou elemento da Afinidade escolhida (os valores das fichas podem mudar).</li>
-            <li><b>Sub-Atributos:</b> organizados em blocos, com a Defesa em coluna à direita e a Afinidade Elemental no fim; o estado da Cobertura ganhou uma cor de maior contraste.</li>
-            <li><b>Maestrias:</b> a seção de Maestrias das fichas saiu da aba Magias &amp; Habilidades e agora fica na aba Combate, abaixo de Armas.</li>
-            <li><b>Características:</b> o limite de Características Negativas passa a ser o dobro do de Positivas.</li>
-            <li><b>Anexos da campanha:</b> agrupados por tipo, com galeria de imagens e filtros por grupo; a busca não lista mais o que já está anexado.</li>
-            <li><b>Catálogo de Itens:</b> os campos de Subcategoria sugerem as subcategorias já existentes; Requisitos e Penalidade do equipamento aparecem no popup do item, e não mais na lista.</li>
-            <li><b>Banco de Magias e Habilidades:</b> filtros de Categoria, Vocação e Classe nas Passivas.</li>
+            <li><b>Características de Criatura:</b> a ficha de Criatura passa a escolher características só do catálogo de características de Criatura.</li>
+            <li><b>Pontos de Ignição:</b> o PI acompanha o nível. Ao subir de nível, o PI daquele nível é somado ao PI atual; ao perder um nível, é subtraído. O bônus manual soma no total e no valor atual. A linha de total saiu de Nível e Progressão. O PI atual agora é o saldo das Magias e Habilidades. Fichas antigas com PI 0 precisam ter o PI lançado antes de criar magias com custo.</li>
+            <li><b>Magias e Habilidades da ficha:</b> criar ou adicionar uma Magia/Habilidade na ficha é recusado se o custo em PI for maior que o PI atual; remover devolve o PI. Vale para fichas de Personagem, NPC e Criatura. As Magias e Habilidades montadas do zero na ficha agora podem ser editadas.</li>
+            <li><b>Log de ficha:</b> o Mestre abre, por um ícone na página da campanha, o histórico de alterações das fichas. Ele é agrupado por dia, tem filtro de datas e duas caixas de seleção (Vitalidade, Foco e Adrenalina; e Estresse). Só o Mestre vê.</li>
+            <li><b>Encontros:</b> o turno 0 é a fase de preparação. O encontro guarda de quem é a vez, com avançar, voltar e escolher. Há uma lista de Encontros finalizados, só para leitura, com Reabrir. O log do encontro começa no turno 1. Instâncias repetidas ganham número (Goblin 2).</li>
+            <li><b>Condições:</b> o Mestre escolhe a Condição numa lista com busca, num participante do encontro. A ficha só muda enquanto a Condição e o encontro estiverem ativos, e os jogadores veem as Condições na própria ficha. NPC ou Criatura do Mestre é afetado só no resumo; NPC ou Criatura entregue a um jogador é afetado na ficha.</li>
+            <li><b>Resumo da ficha no encontro:</b> o resumo de NPC e Criatura no encontro mostra os valores já com as Condições aplicadas.</li>
         </ul>
         @if (IsRulesAuditor)
         {
@@ -20,7 +19,8 @@
                sempre que uma versão mexer numa página de Auditoria; apague o bloco inteiro quando não mexer. *@
             <MudText Typo="Typo.subtitle1" Class="mt-3"><b>Para Auditores</b></MudText>
             <ul class="mt-1">
-                <li><b>Tabela de Afinidades:</b> nova página de Auditoria para criar, editar e excluir as linhas que definem Eficiência e Dano Elemental por valor de Afinidade; acima da maior linha valem os valores dela.</li>
+                <li><b>Características de Criatura:</b> a ficha de Criatura tem um atalho para a página de Auditoria de características de Criatura.</li>
+                <li><b>Auditoria de Condições:</b> nova página, em Auditoria, para ver e ajustar as Condições usadas nos encontros.</li>
             </ul>
         }
     </DialogContent>
