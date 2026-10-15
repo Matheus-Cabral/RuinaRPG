@@ -480,6 +480,36 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task A_reload_while_the_form_is_open_does_not_turn_the_untouched_values_into_edits()
+    {
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        var cut = await RenderLoadedAsync();
+        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Editar").ElementAt(2).Click());
+
+        // Com o formulário aberto, a ficha do Lobo muda (um tique de Condição, o jogador salvou) e a página recarrega.
+        _participants = Participants.Select(p => p.Id == "p3" ? p with { PV = 4, PF = 1, PA = 2 } : p).ToList();
+        await cut.InvokeAsync(() => EncounterConnection.RaiseChangedAsync());
+        cut.WaitForState(() => cut.Markup.Contains(">4<"));
+
+        // O GM só muda a Iniciativa.
+        var iniciativa = cut.Find("#" + cut.FindAll("label").Last(l => l.TextContent.Trim() == "Iniciativa").GetAttribute("for"));
+        iniciativa.Change("20");
+        cut.FindAll("form").Last().Submit();
+
+        cut.WaitForState(() => corpo is not null);
+        var json = System.Text.Json.JsonDocument.Parse(corpo!).RootElement;
+        foreach (var (campo, carregado) in new[] { ("pv", "pvCarregado"), ("pf", "pfCarregado"), ("pa", "paCarregado") })
+            json.GetProperty(campo).GetInt32().Should().Be(json.GetProperty(carregado).GetInt32(), $"{campo} não foi editado");
+        json.GetProperty("iniciativa").GetInt32().Should().Be(20);
+    }
+
+    [Fact]
     public async Task The_participants_table_scrolls_sideways_and_keeps_each_row_on_one_line()
     {
         var cut = await RenderLoadedAsync();

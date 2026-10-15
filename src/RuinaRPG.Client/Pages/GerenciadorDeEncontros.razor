@@ -516,6 +516,11 @@ else
         _editParticipantForm.PV = participant.PV;
         _editParticipantForm.PF = participant.PF;
         _editParticipantForm.PA = participant.PA;
+        // Guardados ao abrir: uma recarga com o formulário aberto troca _participants, e os valores novos não podem
+        // passar por "carregados" (o que o GM não mexeu pareceria editado e desfaria a mudança).
+        _editParticipantForm.PVCarregado = participant.PV;
+        _editParticipantForm.PFCarregado = participant.PF;
+        _editParticipantForm.PACarregado = participant.PA;
     }
 
     private void CancelEditParticipant()
@@ -533,7 +538,7 @@ else
             _editParticipantForm.PA,
             _editParticipantForm.AcoesRestantes,
             participant.Condicoes, // the edit form no longer touches Condições: the legacy texts go back as they are
-            participant.PV, participant.PF, participant.PA);
+            _editParticipantForm.PVCarregado, _editParticipantForm.PFCarregado, _editParticipantForm.PACarregado);
 
         var response = await Http.PutAsJsonAsync($"encounters/{EncounterId}/participants/{participant.Id}", request);
         if (!response.IsSuccessStatusCode)
@@ -565,5 +570,8 @@ else
         public int? PV { get; set; }
         public int? PF { get; set; }
         public int? PA { get; set; }
+        public int? PVCarregado { get; set; }
+        public int? PFCarregado { get; set; }
+        public int? PACarregado { get; set; }
     }
 }
