@@ -12,12 +12,13 @@
     opacity: 0.5;
 }
 
-/* A tabela não quebra a linha: botões e ícones ficam lado a lado e o contêiner rola para o lado. */
+/* A tabela não quebra a linha: botões e ícones ficam lado a lado e o contêiner rola para o lado. A linha do
+   formulário de edição (a célula com colspan) fica de fora: os campos dela podem quebrar. */
 .encontro-tabela {
     overflow-x: auto;
 }
 
 .encontro-tabela ::deep .encontro-sem-quebra th,
-.encontro-tabela ::deep .encontro-sem-quebra td {
+.encontro-tabela ::deep .encontro-sem-quebra td:not([colspan]) {
     white-space: nowrap;
 }
