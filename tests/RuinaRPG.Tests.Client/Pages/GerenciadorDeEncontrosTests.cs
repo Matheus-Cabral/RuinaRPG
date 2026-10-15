@@ -468,6 +468,15 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task The_participants_table_scrolls_sideways_and_keeps_each_row_on_one_line()
+    {
+        var cut = await RenderLoadedAsync();
+
+        // MudSimpleTable põe a classe no seu contêiner, por fora da <table>; o CSS a pega pelos th/td de dentro.
+        cut.FindAll(".encontro-tabela .encontro-sem-quebra table").Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task A_failed_remove_shows_the_api_message()
     {
         _participants = ComCondicoes(Veneno());

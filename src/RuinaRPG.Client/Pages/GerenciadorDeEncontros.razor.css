@@ -11,3 +11,13 @@
 ::deep .condicao-inativa {
     opacity: 0.5;
 }
+
+/* A tabela não quebra a linha: botões e ícones ficam lado a lado e o contêiner rola para o lado. */
+.encontro-tabela {
+    overflow-x: auto;
+}
+
+.encontro-tabela ::deep .encontro-sem-quebra th,
+.encontro-tabela ::deep .encontro-sem-quebra td {
+    white-space: nowrap;
+}

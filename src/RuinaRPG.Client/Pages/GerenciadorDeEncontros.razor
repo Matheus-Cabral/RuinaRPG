@@ -95,7 +95,9 @@ else
     </MudStack>
 }
 
-<MudSimpleTable Dense="true" Hover="true">
+@* Com o combate, os botões da linha crescem: a tabela rola para o lado em vez de quebrar a linha. *@
+<div class="encontro-tabela">
+<MudSimpleTable Dense="true" Hover="true" Class="encontro-sem-quebra">
     <thead><tr><th>Nome</th><th>Iniciativa</th><th>PV</th><th>PF</th><th>PA</th><th>Ações</th><th>Condições</th><th></th></tr></thead>
     <tbody>
         @for (var i = 0; i < _participants.Count; i++)
@@ -177,6 +179,7 @@ else
         }
     </tbody>
 </MudSimpleTable>
+</div>
 
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
