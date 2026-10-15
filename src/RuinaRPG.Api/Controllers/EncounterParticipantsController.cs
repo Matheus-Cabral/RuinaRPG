@@ -244,7 +244,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
     /// </summary>
     private async Task AvisarFichaAlteradaAsync(FichaAlterada ficha)
     {
-        foreach (var userId in new[] { ficha.OwnerId, CurrentGmId() })
+        foreach (var userId in new[] { ficha.OwnerId, CurrentGmId() }.Distinct())
         {
             try
             {
