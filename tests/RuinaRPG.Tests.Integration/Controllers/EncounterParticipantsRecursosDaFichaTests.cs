@@ -169,7 +169,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<PostgresF
         (await (await EnviarAsync(HttpMethod.Post, "/api/condicoes", mesa.Gm, new SalvarCondicaoRequest($"Lenta {mesa.Tag}", "Descrição.", "Veneno", null,
             [new CondicaoModificadorDto("RecursoTotal", recurso, "Fixo", valor, null)], []), HttpStatusCode.Created)).Content.ReadFromJsonAsync<CondicaoResponse>())!.Id;
 
-    private async Task<(Mesa Mesa, Ficha Ficha, string EncounterId, string ParticipantId)> CenaAsync(string tag, string rota = Personagem)
+    private async Task<(Mesa Mesa, Ficha Ficha, string EncounterId, string ParticipantId)> CenaAsync(string tag, string rota = Personagem, bool iniciar = true)
     {
         var mesa = await MesaAsync(tag);
         var ficha = await NovaFichaAsync(mesa, rota);
@@ -178,7 +178,8 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<PostgresF
         var request = new AddParticipantRequest(rota == Personagem ? ficha.Id : null, rota == Npc ? ficha.Id : null, rota == Criatura ? ficha.Id : null, 10);
         var participantId = (await (await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", mesa.Gm, request, HttpStatusCode.Created))
             .Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
-        await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/start", mesa.Gm, esperado: HttpStatusCode.NoContent);
+        if (iniciar)
+            await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/start", mesa.Gm, esperado: HttpStatusCode.NoContent);
         return (mesa, ficha, encounterId, participantId);
     }
 
@@ -248,6 +249,19 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<PostgresF
         // Abaixo do total: gravado como veio.
         await EditarAsync(mesa.Gm, encounterId, participantId, carregado: new Recursos(10, 14, 10), enviado: new Recursos(7, 14, 10));
         (await RecursosAsync(mesa, ficha)).Atual.Should().Be(new Recursos(7, 14, 10));
+    }
+
+    [Fact]
+    public async Task Na_preparacao_a_ficha_muda_e_o_log_da_ficha_registra_mas_o_do_encontro_nao()
+    {
+        var (mesa, ficha, encounterId, participantId) = await CenaAsync("Prep", iniciar: false);
+        await GuardarAtualAsync(ficha, new Recursos(16, 14, 10));
+
+        await EditarAsync(mesa.Gm, encounterId, participantId, carregado: new Recursos(16, 14, 10), enviado: new Recursos(11, 14, 10));
+
+        (await RecursosAsync(mesa, ficha)).Atual.Should().Be(new Recursos(11, 14, 10));
+        (await LogDaFichaAsync(mesa, ficha)).Should().ContainSingle(l => l.Campo == "Vitalidade" && l.ActorIsGm && l.ValorDepois == "11");
+        (await LogDoEncontroAsync(encounterId)).Should().BeEmpty("o log do encontro só registra com ele em andamento (R0010)");
     }
 
     [Fact]

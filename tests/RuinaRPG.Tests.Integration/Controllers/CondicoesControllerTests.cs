@@ -68,6 +68,19 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     private async Task<List<CondicaoResponse>> ListAsync(string token, string? nome = null) =>
         (await (await _client.SendAsync(Authed(HttpMethod.Get, "/api/condicoes" + (nome is null ? "" : $"?nome={nome}"), token))).Content.ReadFromJsonAsync<List<CondicaoResponse>>())!;
 
+    [Theory]
+    [InlineData("Hipnotizado")]
+    [InlineData("Carregando")]
+    public async Task A_key_from_the_larger_icon_set_is_accepted_and_kept(string icone)
+    {
+        var token = await RegisterGmAsync($"CondGmIc{icone}", $"condic{icone.ToLowerInvariant()}@teste.com", true);
+
+        var create = await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida($"Com ícone {icone}") with { Icone = icone }));
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await ListAsync(token)).Single(c => c.Nome == $"Com ícone {icone}").Icone.Should().Be(icone);
+    }
+
     [Fact]
     public async Task Crud_round_trip_with_two_modifiers_and_two_disables()
     {
