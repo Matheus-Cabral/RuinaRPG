@@ -121,6 +121,8 @@ public class LogDoEncontroAgrupadorTests
     [InlineData("AjusteDeCondicao", "Vitalidade")]
     [InlineData("AjusteDeCondicao", "Foco")]
     [InlineData("AjusteDeCondicao", "Adrenalina")]
+    [InlineData("RecursoDaFicha", "Arcana (PF)")]
+    [InlineData("AjusteDeCondicao", "Arcana (PF)")]
     public void The_resources_checkbox_hides_only_Vitalidade_Foco_Adrenalina_lines(string tipo, string campo)
     {
         var recurso = EmUtc(DateTime.UtcNow, tipo: tipo, campo: campo);

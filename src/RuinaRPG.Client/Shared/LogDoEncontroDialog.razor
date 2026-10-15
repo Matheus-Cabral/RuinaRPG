@@ -5,7 +5,7 @@
     Popup do log de um encontro (Gerenciador de Encontros R0010), só para o GM, no molde do LogDaFichaDialog.
     Lê GET encounters/{id}/log uma vez, ao abrir (o log do encontro é limitado), e filtra no cliente: o período e as duas caixas
     só escondem linhas. Mostra os dias no fuso do navegador e, em cada dia, Turno e vez na ordem em que aconteceram.
-    Não acompanha o hub: o popup é modal, então o log fica como estava ao abrir; reabrir mostra o mais novo.
+    Não acompanha o hub: o log fica como estava ao abrir; o botão Atualizar (ou reabrir) busca o mais novo, mantendo os filtros.
 *@
 <MudDialog>
     <TitleContent>
@@ -13,7 +13,12 @@
     </TitleContent>
     <DialogContent>
         <DismissibleAlert @bind-Message="_erro" Class="mb-3" />
-        <MudDateRangePicker Label="Período" Clearable="true" DateRange="_periodo" DateRangeChanged="PeriodoMudou" />
+        <div class="d-flex align-center">
+            <MudDateRangePicker Label="Período" Clearable="true" DateRange="_periodo" DateRangeChanged="PeriodoMudou" />
+            <MudTooltip Text="Atualizar">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" aria-label="Atualizar" Disabled="_carregando" OnClick="CarregarAsync" />
+            </MudTooltip>
+        </div>
         <div class="d-flex flex-wrap" style="gap:16px">
             <MudCheckBox T="bool" @bind-Value="_recursos" Label="Vitalidade, Foco e Adrenalina" />
             <MudCheckBox T="bool" @bind-Value="_estresse" Label="Estresse" />
@@ -72,9 +77,12 @@
     private List<EncounterLogEntryResponse> Visiveis =>
         LogDoEncontroAgrupador.Filtrar(_linhas, _periodo?.Start, _periodo?.End, _recursos, _estresse, TimeZoneInfo.Local);
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => CarregarAsync();
+
+    private async Task CarregarAsync()
     {
         _carregando = true;
+        _erro = null;
         try
         {
             var response = await Http.GetAsync($"encounters/{EncounterId}/log");
@@ -98,5 +106,10 @@
     private static DateTime LocalDe(EncounterLogEntryResponse linha) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(linha.OccurredAt, DateTimeKind.Utc), TimeZoneInfo.Local);
 
-    private void PeriodoMudou(DateRange? periodo) => _periodo = periodo;
+    private void PeriodoMudou(DateRange? periodo)
+    {
+        // O picker repete o evento ao receber de volta o valor que acabou de emitir.
+        if (periodo?.Start == _periodo?.Start && periodo?.End == _periodo?.End) return;
+        _periodo = periodo;
+    }
 }

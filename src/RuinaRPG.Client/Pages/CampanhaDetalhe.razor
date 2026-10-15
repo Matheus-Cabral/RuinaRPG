@@ -138,15 +138,15 @@
             <MudList T="string" Class="mt-3" data-testid="encontros-abertos">
                 @foreach (var encounter in _encounters.Where(e => e.Status != "Finalizado"))
                 {
-                    <MudListItem T="string">
-                        <MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink>
+                    <MudListItem T="string" OnClick="@(() => Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{encounter.Id}"))">
+                        <span @onclick:stopPropagation="true"><MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink></span>
                         <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">@(encounter.Status == "Preparacao" ? "Preparação" : $"Turno {encounter.CurrentRound}")</MudChip>
                         @if (encounter.Status != "Preparacao")
                         {
-                            <MudTooltip Text="Log do encontro">
+                            <span @onclick:stopPropagation="true"><MudTooltip Text="Log do encontro">
                                 <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
                                                OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
-                            </MudTooltip>
+                            </MudTooltip></span>
                         }
                     </MudListItem>
                 }
@@ -164,16 +164,16 @@
                     <MudList T="string" Class="mt-3">
                         @foreach (var encounter in _encounters.Where(e => e.Status == "Finalizado").OrderByDescending(e => e.FinalizadoEm))
                         {
-                            <MudListItem T="string">
-                                <MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink>
+                            <MudListItem T="string" OnClick="@(() => Navigation.NavigateTo($"campanhas/{CampaignId}/encontros/{encounter.Id}"))">
+                                <span @onclick:stopPropagation="true"><MudLink Href="@($"campanhas/{CampaignId}/encontros/{encounter.Id}")">@(encounter.Nome ?? "(sem nome)")</MudLink></span>
                                 @if (encounter.FinalizadoEm is { } fim)
                                 {
                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-2" Style="display:inline">Finalizado em @fim.ToLocalTime().ToString("dd/MM/yyyy")</MudText>
                                 }
-                                <MudTooltip Text="Log do encontro">
+                                <span @onclick:stopPropagation="true"><MudTooltip Text="Log do encontro">
                                     <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log do encontro"
                                                    OnClick="@(() => AbrirLogDoEncontroAsync(encounter))" />
-                                </MudTooltip>
+                                </MudTooltip></span>
                             </MudListItem>
                         }
                     </MudList>

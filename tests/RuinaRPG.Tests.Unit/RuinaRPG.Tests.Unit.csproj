@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Só a lógica pura do log do encontro (sem Blazor): o teste de deriva compara seus rótulos com o SheetLogMap, que o projeto de testes do Client não enxerga. -->
+    <Compile Include="..\..\src\RuinaRPG.Client\Shared\LogDoEncontroAgrupador.cs" Link="Linked\LogDoEncontroAgrupador.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\RuinaRPG.Domain\RuinaRPG.Domain.csproj" />
     <ProjectReference Include="..\..\src\RuinaRPG.Infrastructure\RuinaRPG.Infrastructure.csproj" />
   </ItemGroup>

@@ -5,9 +5,9 @@ namespace RuinaRPG.Client.Shared;
 /// <summary>Lógica pura do popup do log do encontro: filtra por período e recurso, agrupa por dia, Turno e vez e monta o texto de cada linha.</summary>
 public static class LogDoEncontroAgrupador
 {
-    // Os Campo exatos que o servidor grava: o rótulo da ficha (RecursoDaFicha e Atual guardado) e o PV/PF/PA da instância no encontro.
+    // Os Campo exatos que o servidor grava: o rótulo da ficha (RecursoDaFicha e Atual guardado; a Criatura chama o Foco de "Arcana (PF)") e o PV/PF/PA da instância no encontro.
     private static readonly HashSet<string> CamposDeVfa =
-        ["Vitalidade", "Foco (PF)", "Adrenalina (PA)", "Foco", "Adrenalina", "PV", "PF", "PA"];
+        ["Vitalidade", "Foco (PF)", "Arcana (PF)", "Adrenalina (PA)", "Foco", "Adrenalina", "PV", "PF", "PA"];
 
     private static bool EhLinhaDeRecurso(EncounterLogEntryResponse l) => l.Tipo is "RecursoDaFicha" or "CampoAlterado" or "AjusteDeCondicao";
 

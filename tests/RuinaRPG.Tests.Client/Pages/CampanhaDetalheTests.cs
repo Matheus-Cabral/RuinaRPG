@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Bunit;
 using Bunit.TestDoubles;
@@ -587,5 +588,38 @@ public class CampanhaDetalheTests : MudBunitContext
         await cut.InvokeAsync(() => cut.Find("button[aria-label='Log do encontro']").Click());
 
         dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Log do encontro — Ponte"));
+    }
+
+    [Fact]
+    public async Task The_Log_do_encontro_button_of_a_finished_encounter_opens_its_dialog()
+    {
+        var cut = RenderComEncontros(new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        var dialogos = Render<MudDialogProvider>();
+        await Task.Delay(100);
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] button[aria-label='Log do encontro']").Click());
+
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Log do encontro — Dragão"));
+    }
+
+    [Fact]
+    public async Task Clicking_the_row_navigates_to_the_encounter_but_clicking_the_Log_icon_does_not()
+    {
+        var cut = RenderComEncontros(
+            new EncounterResponse("e2", "Ponte", 4, 1, "EmAndamento", null, "p1"),
+            new EncounterResponse("e3", "Dragão", 6, 0, "Finalizado", new DateTime(2026, 10, 5, 15, 0, 0, DateTimeKind.Utc), "p2"));
+        Render<MudDialogProvider>();
+        await Task.Delay(100);
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var inicial = nav.Uri;
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-abertos'] button[aria-label='Log do encontro']").Click());
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] button[aria-label='Log do encontro']").Click());
+        nav.Uri.Should().Be(inicial);
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-abertos'] .mud-list-item").Click());
+        nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e2");
+        await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] .mud-list-item").Click());
+        nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e3");
     }
 }

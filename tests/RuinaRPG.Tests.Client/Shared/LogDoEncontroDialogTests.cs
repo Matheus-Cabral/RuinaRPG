@@ -127,4 +127,23 @@ public class LogDoEncontroDialogTests : MudBunitContext
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Não foi possível carregar o log do encontro."));
         cut.Markup.Should().NotContain("Nenhum evento registrado");
     }
+
+    [Fact]
+    public async Task Atualizar_reloads_the_log_keeping_the_filters()
+    {
+        var chamadas = 0;
+        RegisterHttp(_ => ++chamadas == 1
+            ? Json(new() { Linha(LocalParaUtc(new DateTime(2026, 10, 13, 10, 0, 0)), tipo: "Iniciado") })
+            : Json(new() { Linha(LocalParaUtc(new DateTime(2026, 10, 13, 10, 0, 0)), tipo: "Iniciado"), Linha(LocalParaUtc(new DateTime(2026, 10, 13, 10, 5, 0)), tipo: "Finalizado"),
+                           Linha(LocalParaUtc(new DateTime(2026, 10, 13, 10, 6, 0)), tipo: "CampoAlterado", campo: "PV", antes: "2", depois: "1") }));
+        var cut = await AbrirAsync();
+        cut.WaitForAssertion(() => cut.FindAll(".encontro-log-linha").Should().ContainSingle());
+        cut.FindComponents<MudCheckBox<bool>>().Single(c => c.Instance.Label == "Vitalidade, Foco e Adrenalina").Find("input").Change(false);
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Atualizar']").Click());
+
+        cut.WaitForAssertion(() => cut.FindAll(".encontro-log-linha").Should().HaveCount(2));
+        _requests.Should().HaveCount(2);
+        cut.Markup.Should().NotContain("PV: 2 → 1");
+    }
 }

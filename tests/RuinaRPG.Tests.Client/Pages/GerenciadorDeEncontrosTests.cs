@@ -296,6 +296,18 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
     }
 
     [Fact]
+    public async Task The_header_icon_opens_the_dialog_of_a_finished_encounter()
+    {
+        _status = "Finalizado"; _vezId = null;
+        _log = new() { new(1, DateTime.UtcNow, 1, null, "Finalizado", null, null, null, null, null) };
+        var cut = await RenderLoadedAsync();
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Log do encontro']").Click());
+
+        cut.WaitForAssertion(() => cut.Find(".mud-dialog").TextContent.Should().Contain("Log do encontro — Emboscada").And.Contain("Encontro finalizado"));
+    }
+
+    [Fact]
     public async Task An_API_error_on_a_turn_button_shows_the_message_in_the_alert()
     {
         _override = r => r.Method == HttpMethod.Post && r.RequestUri!.AbsolutePath.EndsWith("previous-turn")
