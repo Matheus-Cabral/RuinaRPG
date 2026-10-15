@@ -98,6 +98,7 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
     }
 
     [HttpDelete("condicoes/{condicaoAplicadaId}")]
+    [ConflitoDeConcorrenciaDoEncontro]
     public async Task<IActionResult> Remover(Guid encounterId, Guid participantId, Guid condicaoAplicadaId)
     {
         var (authError, encounter) = await CheckEncounterOwnershipAsync(encounterId);
@@ -115,7 +116,15 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         db.EncounterParticipantCondicoes.Remove(condicao);
         await log.RegistrarAsync(encounter!, EncounterLogTipo.CondicaoRemovida, participant.Nome, texto: condicao.Nome);
         await condicoesDoEncontro.AoMudarAtivacaoAsync([participantId]);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex) when (ex.Entries.All(e => e.Entity == condicao))
+        {
+            // Outra ação removeu a mesma Condição entre a leitura e o salvamento: para esta, ela já não existe.
+            return NotFound();
+        }
         await condicoesDoEncontro.NotificarAsync();
         return NoContent();
     }
