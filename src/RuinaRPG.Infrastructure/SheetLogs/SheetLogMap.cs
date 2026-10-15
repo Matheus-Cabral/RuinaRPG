@@ -63,7 +63,7 @@ public static class SheetLogMap
             ["EstresseAtual"] = "Estresse", ["SinaAtual"] = "Pontos de Sina", ["Cobertura"] = "Cobertura", ["Ciclos"] = "Ciclos",
             ["ArcaRolada"] = "Número rolado da Arca",
         };
-        // Circulo/Grau/EAPAtual/PontosDeIgnicaoTotal ainda existem na tabela, mas hoje são calculados e nenhum controller os grava.
+        // Circulo/Grau/EAPAtual/PontosDeIgnicaoTotal ainda existem na tabela, mas hoje são calculados; nenhuma edição de ficha os grava (só a cópia da concessão de NPC os repassa, numa ficha nova).
         var vestigiais = new[] { "EAPAtual", "Circulo", "Grau", "PontosDeIgnicaoTotal" };
         var recursos = new Dictionary<string, SheetLogCategoria>
         {

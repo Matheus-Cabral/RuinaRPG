@@ -1,6 +1,10 @@
-using System.Reflection;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Infrastructure.Diary;
+using RuinaRPG.Infrastructure.Encounters;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -11,18 +15,76 @@ namespace RuinaRPG.Tests.Unit.SheetLogs;
 
 public class SheetLogMapTests
 {
-    private static IEnumerable<Type> EntidadesDeFicha() =>
-        typeof(RuinaRpgDbContext).GetProperties()
-            .Where(p => p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
-            .Select(p => p.PropertyType.GetGenericArguments()[0])
-            .Where(t => t.Namespace is "RuinaRPG.Infrastructure.CharacterSheets" or "RuinaRPG.Infrastructure.NpcSheets" or "RuinaRPG.Infrastructure.CreatureSheets")
-            .Where(t => t.Name.StartsWith("Character") || t.Name.StartsWith("Npc") || t.Name.StartsWith("Creature"));
+    private static readonly Type[] Fichas = [typeof(CharacterSheet), typeof(NpcSheet), typeof(CreatureSheet)];
+
+    /// <summary>Tabelas que apontam para uma ficha (ou para uma filha dela) mas não entram no log, cada uma com o motivo.</summary>
+    private static readonly Dictionary<Type, string> ForaPorMotivo = new()
+    {
+        [typeof(SheetLogEntry)] = "é o próprio log; registrar a escrita do log nele mesmo seria recursivo",
+        [typeof(EncounterParticipant)] = "estado do encontro (FK de origem SetNull); a ficha original não muda",
+        [typeof(DiaryEntry)] = "o diário do personagem não entra no log (Campanha R0016)",
+        [typeof(CampaignAttachment)] = "vínculo de visibilidade da campanha, não conteúdo da ficha",
+    };
+
+    // O modelo sai do DbContext sem conectar: ler Model não abre conexão.
+    private static IModel Modelo()
+    {
+        var opcoes = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql("Host=unused").Options;
+        using var db = new RuinaRpgDbContext(opcoes);
+        return db.GetService<IDesignTimeModel>().Model;
+    }
+
+    private static bool Excluida(Type t) => ForaPorMotivo.ContainsKey(t) || SheetLogMap.ForaDoLog.Contains(t);
+
+    /// <summary>
+    /// Toda entidade com FK (obrigatória ou opcional, por navegação ou sombra) para uma ficha e, de forma transitiva,
+    /// toda com FK para uma dessas que entra no log (netas, como os Efeitos de uma Magia; o que pende de uma exclusão fica de fora com ela): uma neta nova também não pode passar batida.
+    /// </summary>
+    private static IReadOnlyCollection<Type> EntidadesDeFicha()
+    {
+        var modelo = Modelo();
+        var achadas = new HashSet<Type>();
+        bool cresceu;
+        do
+        {
+            cresceu = false;
+            foreach (var e in modelo.GetEntityTypes())
+            {
+                if (achadas.Contains(e.ClrType)) continue;
+                var alvos = e.GetForeignKeys().Select(fk => fk.PrincipalEntityType.ClrType).ToList();
+                if (alvos.Any(t => Fichas.Contains(t) || (achadas.Contains(t) && !Excluida(t)))) { achadas.Add(e.ClrType); cresceu = true; }
+            }
+        } while (cresceu);
+        foreach (var f in Fichas) achadas.Add(f); // as próprias fichas também precisam estar no mapa
+        return achadas;
+    }
 
     [Fact]
     public void Every_sheet_entity_is_either_mapped_or_explicitly_left_out()
     {
-        var semDestino = EntidadesDeFicha().Where(t => !SheetLogMap.Entidades.ContainsKey(t) && !SheetLogMap.ForaDoLog.Contains(t));
-        semDestino.Select(t => t.Name).Should().BeEmpty("toda tabela de ficha precisa estar no SheetLogMap ou em ForaDoLog");
+        var semDestino = EntidadesDeFicha().Where(t => !SheetLogMap.Entidades.ContainsKey(t) && !SheetLogMap.ForaDoLog.Contains(t) && !ForaPorMotivo.ContainsKey(t));
+        semDestino.Select(t => t.Name).Should().BeEmpty("toda tabela ligada a uma ficha precisa estar no SheetLogMap, em ForaDoLog ou em ForaPorMotivo");
+    }
+
+    [Fact]
+    public void An_exclusion_is_never_also_mapped_and_still_points_at_a_sheet()
+    {
+        var achadas = EntidadesDeFicha();
+        foreach (var (t, motivo) in ForaPorMotivo)
+        {
+            motivo.Should().NotBeNullOrWhiteSpace(t.Name);
+            SheetLogMap.Entidades.Should().NotContainKey(t);
+            achadas.Should().Contain(t, $"{t.Name} deixou de apontar para uma ficha: tire da lista de exclusões");
+        }
+        foreach (var t in SheetLogMap.ForaDoLog) achadas.Should().Contain(t);
+    }
+
+    [Fact]
+    public void Tables_that_hang_off_no_sheet_are_not_swept_in()
+    {
+        var achadas = EntidadesDeFicha().Select(t => t.Name).ToList();
+        achadas.Should().NotContain(["Condicao", "CondicaoModificador", "CondicaoDesabilitacao",
+            "EncounterParticipantCondicao", "EncounterLogEntry", "Encounter"]);
     }
 
     [Fact]
