@@ -152,10 +152,13 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         // ajuste de nível feito pelo servidor. A edição manual tem endpoint próprio (UpdatePontosDeIgnicao).
         sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Aplicar(sheet.PontosDeIgnicaoAtual,
             PontosDeIgnicaoPorNivel.Delta(nivelAntigo, request.Nivel, tabela));
-        sheet.VitalidadeAtual = request.VitalidadeAtual;
-        sheet.FocoAtual = request.FocoAtual;
-        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
-        sheet.EstresseAtual = request.EstresseAtual;
+        // Só o Atual que o jogador editou é gravado, e no máximo atual da ficha (AtualDoFormulario): o servidor também o
+        // escreve, e um formulário desatualizado não pode desfazer um ajuste nem devolver o que um corte tirou.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await stats.MaximosAsync(sheet, await condicoes.ParaNpcAsync(sheet));
+        sheet.VitalidadeAtual = AtualDoFormulario.EscolherNoMaximo(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada, vitalidadeMaximo);
+        sheet.FocoAtual = AtualDoFormulario.EscolherNoMaximo(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado, focoMaximo);
+        sheet.AdrenalinaAtual = AtualDoFormulario.EscolherNoMaximo(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada, adrenalinaMaximo);
+        sheet.EstresseAtual = AtualDoFormulario.EscolherNoMaximo(sheet.EstresseAtual, request.EstresseAtual, request.EstresseAtualCarregado, estresseMaximo);
         // Só rejeita quando o valor MUDA para fora da tabela: se o GM diminuiu o dado depois da rolagem,
         // a ficha continua podendo salvar os outros campos mantendo a mesma ArcaRolada.
         if (request.ArcaRolada != sheet.ArcaRolada)

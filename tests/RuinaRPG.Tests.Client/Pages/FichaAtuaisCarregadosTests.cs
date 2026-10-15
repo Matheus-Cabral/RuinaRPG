@@ -1,0 +1,122 @@
+using Bunit;
+using FluentAssertions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
+using RuinaRPG.Client.Pages;
+using RuinaRPG.Client.Services;
+using RuinaRPG.Contracts.Notifications;
+using RuinaRPG.Tests.Client.Shared;
+using System.Net;
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Xunit;
+
+namespace RuinaRPG.Tests.Client.Pages;
+
+/// <summary>
+/// O salvamento do formulário inteiro leva, ao lado de cada Atual, o valor com que a ficha foi carregada: o servidor só
+/// grava o Atual que o jogador editou (ele também escreve esses valores). O carregado acompanha cada releitura da ficha.
+/// </summary>
+public class FichaAtuaisCarregadosTests : MudBunitContext
+{
+    private sealed class FakeAuthStateProvider : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "GM") }, "test"))));
+    }
+
+    private static readonly string[] SingleObjectSuffixes =
+    {
+        "/attributes/budget", "/skills/budget", "/sub-attributes", "/modificador-de-dano",
+        "/racial-ability", "/racial-traits/pending", "/traits",
+    };
+
+    private static HttpResponseMessage Json(object body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
+
+    private readonly List<string> _corpos = new();
+    private object _ficha = new { };
+
+    private void Prepare()
+    {
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method == HttpMethod.Put && Regex.IsMatch(path, "-sheets/[^/]+$"))
+            {
+                _corpos.Add(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            if (request.Method != HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (path.EndsWith("/auth/me") || path.EndsWith("/level-up-notice"))
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (Regex.IsMatch(path, "-sheets/[^/]+$"))
+                return Json(_ficha);
+            return SingleObjectSuffixes.Any(path.EndsWith) ? Json(new { }) : Json(new List<object>());
+        }));
+        Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
+    }
+
+    private static object Ficha(int vitalidade, int foco, int adrenalina, int estresse) => new
+    {
+        OwnerId = "u1", VitalidadeAtual = vitalidade, FocoAtual = foco, AdrenalinaAtual = adrenalina, EstresseAtual = estresse,
+        VitalidadeMaximo = 30, FocoMaximo = 30, AdrenalinaMaximo = 30, EstresseMaximo = 30, Nivel = 1, Cobertura = "Nenhuma",
+    };
+
+    private IRenderedComponent<ComponentBase> RenderPagina(Type pagina) => pagina switch
+    {
+        _ when pagina == typeof(FichaDePersonagem) => Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1")),
+        _ when pagina == typeof(FichaDeNpc) => Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1")),
+        _ => Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1")),
+    };
+
+    private async Task EditarVitalidadeAsync(IRenderedComponent<ComponentBase> cut, int valor, int salvamentos)
+    {
+        var campo = cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == "Vitalidade");
+        await cut.InvokeAsync(() => campo.Instance.ValueChanged.InvokeAsync(valor));
+        cut.WaitForAssertion(() => _corpos.Should().HaveCount(salvamentos), TimeSpan.FromSeconds(3));
+    }
+
+    private static int Campo(string corpo, string nome) => JsonDocument.Parse(corpo).RootElement.GetProperty(nome).GetInt32();
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "character", true)]
+    [InlineData(typeof(FichaDeNpc), "npc", true)]
+    [InlineData(typeof(FichaDeCriatura), "creature", false)]
+    public async Task The_save_sends_the_loaded_values_and_a_reload_refreshes_them(Type pagina, string kind, bool temEstresse)
+    {
+        _ficha = Ficha(12, 9, 6, 3);
+        Prepare();
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+        var combate = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Combate");
+        await cut.InvokeAsync(() => combate.Click());
+
+        await EditarVitalidadeAsync(cut, 20, salvamentos: 1);
+
+        var primeiro = _corpos[0];
+        (Campo(primeiro, "vitalidadeAtual"), Campo(primeiro, "vitalidadeAtualCarregada")).Should().Be((20, 12));
+        (Campo(primeiro, "focoAtualCarregado"), Campo(primeiro, "adrenalinaAtualCarregada")).Should().Be((9, 6));
+        if (temEstresse)
+            Campo(primeiro, "estresseAtualCarregado").Should().Be(3);
+
+        // O servidor mudou os Atuais (ex.: um ajuste "a cada vez") e avisou: a ficha se relê.
+        _ficha = Ficha(7, 8, 5, 2);
+        await cut.InvokeAsync(() => NotificationConnection.RaiseCondicoesAlteradasAsync(new CondicoesAlteradasNotification(kind, "sheet-1")));
+        cut.WaitForAssertion(() => cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == "Vitalidade").Find("input").GetAttribute("value").Should().Be("7"));
+
+        await EditarVitalidadeAsync(cut, 4, salvamentos: 2);
+
+        var segundo = _corpos[1];
+        (Campo(segundo, "vitalidadeAtual"), Campo(segundo, "vitalidadeAtualCarregada")).Should().Be((4, 7));
+        (Campo(segundo, "focoAtual"), Campo(segundo, "focoAtualCarregado")).Should().Be((8, 8));
+        Campo(segundo, "adrenalinaAtualCarregada").Should().Be(5);
+        if (temEstresse)
+            Campo(segundo, "estresseAtualCarregado").Should().Be(2);
+    }
+}

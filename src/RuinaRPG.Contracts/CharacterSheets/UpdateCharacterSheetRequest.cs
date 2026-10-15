@@ -1,5 +1,9 @@
 namespace RuinaRPG.Contracts.CharacterSheets;
 
+/// <summary>
+/// Os <c>*AtualCarregad*</c> são os valores atuais que o formulário tinha ao carregar a ficha: o servidor só grava um
+/// Atual quando o enviado difere do carregado (o jogador de fato o editou). Sem eles (cliente antigo), grava sempre.
+/// </summary>
 public record UpdateCharacterSheetRequest(
     string? ImageId,
     string? Nome,
@@ -33,4 +37,8 @@ public record UpdateCharacterSheetRequest(
     int SinaAtual,
     string? HistoricoId,
     string? EquipmentKitId,
-    int AfinidadeAdicional);
+    int AfinidadeAdicional,
+    int? VitalidadeAtualCarregada = null,
+    int? FocoAtualCarregado = null,
+    int? AdrenalinaAtualCarregada = null,
+    int? EstresseAtualCarregado = null);

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -156,6 +157,34 @@ public class AtivacaoDeCondicoesTests : IClassFixture<PostgresFixture>, IAsyncLi
         var request = new SalvarCondicaoRequest($"{nome} {mesa.Tag}", "Descrição.", "Veneno", null,
             [new CondicaoModificadorDto("RecursoTotal", recurso, "Fixo", valor, null)], []);
         return (await (await EnviarAsync(HttpMethod.Post, "/api/condicoes", mesa.Gm, request, HttpStatusCode.Created)).Content.ReadFromJsonAsync<CondicaoResponse>())!.Id;
+    }
+
+    private async Task<string> CriarCondicaoAsync(Mesa mesa, string nome, params CondicaoModificadorDto[] linhas) =>
+        (await (await EnviarAsync(HttpMethod.Post, "/api/condicoes", mesa.Gm, new SalvarCondicaoRequest($"{nome} {mesa.Tag}", "Descrição.", "Veneno", null, [.. linhas], []), HttpStatusCode.Created))
+            .Content.ReadFromJsonAsync<CondicaoResponse>())!.Id;
+
+    /// <summary>O formulário de Informações Básicas como o cliente o carrega: o GET da ficha.</summary>
+    private async Task<JsonObject> FormularioAsync(Mesa mesa, Ficha f) =>
+        JsonNode.Parse(await (await EnviarAsync(HttpMethod.Get, $"/api/{f.Rota}/{f.Id}", mesa.Jogador, esperado: HttpStatusCode.OK)).Content.ReadAsStringAsync())!.AsObject();
+
+    private static readonly (string Campo, string Carregado)[] AtuaisCarregados =
+    [
+        ("vitalidadeAtual", "vitalidadeAtualCarregada"), ("focoAtual", "focoAtualCarregado"),
+        ("adrenalinaAtual", "adrenalinaAtualCarregada"), ("estresseAtual", "estresseAtualCarregado"),
+    ];
+
+    /// <summary>
+    /// O salvamento do formulário inteiro pelo jogador, como o cliente faz: os campos como carregados (com os Atuais
+    /// carregados ao lado) e o que <paramref name="editar"/> mudou.
+    /// </summary>
+    private Task SalvarFormularioAsync(Mesa mesa, Ficha f, JsonObject carregado, Action<JsonObject> editar)
+    {
+        var corpo = carregado.DeepClone().AsObject();
+        foreach (var (campo, nomeCarregado) in AtuaisCarregados)
+            if (carregado.ContainsKey(campo))
+                corpo[nomeCarregado] = carregado[campo]!.DeepClone();
+        editar(corpo);
+        return EnviarAsync(HttpMethod.Put, $"/api/{f.Rota}/{f.Id}", mesa.Jogador, corpo, HttpStatusCode.NoContent);
     }
 
     private async Task<string> NovoEncontroAsync(Mesa mesa) =>
@@ -330,5 +359,78 @@ public class AtivacaoDeCondicoesTests : IClassFixture<PostgresFixture>, IAsyncLi
         var log = await LerAsync<List<EncounterLogEntryResponse>>(mesa.Gm, $"/api/encounters/{encounterId}/log");
         log.Should().Contain(l => l.Tipo == "CondicaoAdicionada");
         log.Should().NotContain(l => l.Tipo == "RecursoDaFicha");
+    }
+
+    // ---------- formulário desatualizado (o PUT da ficha inteira) ----------
+
+    // O servidor escreve o Atual sozinho (linhas "a cada vez", corte ao mudar as Condições ativas). O formulário que o
+    // jogador carregou antes disso não pode desfazer a escrita ao salvar outro campo.
+    [Theory]
+    [InlineData(Personagem, "Pers")]
+    [InlineData(Npc, "Npc")]
+    public async Task Formulario_desatualizado_que_mudou_outro_campo_mantem_o_ajuste_a_cada_vez(string rota, string tag)
+    {
+        var (mesa, ficha, encounterId, participantId) = await CenaAsync($"FdTick{tag}", rota, iniciar: false);
+        await GuardarAtualAsync(ficha, new Recursos(16, 14, 10, 10));
+        await AplicarAsync(mesa, encounterId, participantId,
+            await CriarCondicaoAsync(mesa, "Sangria", new CondicaoModificadorDto("RecursoAtual", "Vitalidade", "Fixo", -3, "ACadaVez")));
+        await EncontroAsync(mesa, encounterId, "start");
+        (await RecursosAsync(mesa, ficha)).Atual.Vitalidade.Should().Be(13);
+        var formulario = await FormularioAsync(mesa, ficha);
+
+        await EncontroAsync(mesa, encounterId, "advance-turn");
+        (await RecursosAsync(mesa, ficha)).Atual.Vitalidade.Should().Be(10);
+        await SalvarFormularioAsync(mesa, ficha, formulario, f => f["nome"] = "Outro nome");
+
+        var (atual, _) = await RecursosAsync(mesa, ficha);
+        atual.Vitalidade.Should().Be(10, "o formulário não editou a Vitalidade; o ajuste do servidor fica");
+        (await FormularioAsync(mesa, ficha))["nome"]!.GetValue<string>().Should().Be("Outro nome");
+    }
+
+    [Theory]
+    [InlineData(Personagem, "Pers")]
+    [InlineData(Npc, "Npc")]
+    public async Task Formulario_desatualizado_nao_devolve_o_Atual_cortado_quando_a_Condicao_que_subia_o_total_sai(string rota, string tag)
+    {
+        var (mesa, ficha, encounterId, participantId) = await CenaAsync($"FdCorte{tag}", rota);
+        await GuardarAtualAsync(ficha, new Recursos(16, 14, 10, 10));
+        var aplicadaId = await AplicarAsync(mesa, encounterId, participantId, await CriarCondicaoAsync(mesa, "Vigoroso", "Adrenalina", 5));
+        await SalvarFormularioAsync(mesa, ficha, await FormularioAsync(mesa, ficha), f => f["adrenalinaAtual"] = 15);
+        (await RecursosAsync(mesa, ficha)).Atual.Adrenalina.Should().Be(15);
+        var formulario = await FormularioAsync(mesa, ficha);
+
+        await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
+        await SalvarFormularioAsync(mesa, ficha, formulario, f => f["nome"] = "Outro nome");
+
+        (await RecursosAsync(mesa, ficha)).Atual.Adrenalina.Should().Be(10, "o corte ao tirar a Condição é permanente");
+    }
+
+    [Theory]
+    [InlineData(Personagem, "Pers")]
+    [InlineData(Npc, "Npc")]
+    [InlineData(Criatura, "Cri")]
+    public async Task Editar_o_Atual_de_fato_salva_e_acima_do_total_fica_no_total(string rota, string tag)
+    {
+        var (mesa, ficha, _, _) = await CenaAsync($"FdEdita{tag}", rota);
+        await GuardarAtualAsync(ficha, new Recursos(16, 14, 10, rota == Criatura ? null : 10));
+
+        await SalvarFormularioAsync(mesa, ficha, await FormularioAsync(mesa, ficha), f => { f["vitalidadeAtual"] = 5; f["adrenalinaAtual"] = 99; });
+
+        var (atual, _) = await RecursosAsync(mesa, ficha);
+        (atual.Vitalidade, atual.Adrenalina).Should().Be((5, 10));
+    }
+
+    [Fact]
+    public async Task Cliente_antigo_sem_os_valores_carregados_continua_gravando_o_Atual_enviado()
+    {
+        var (mesa, ficha, _, _) = await CenaAsync("FdAntigo", Npc);
+        await GuardarAtualAsync(ficha, new Recursos(16, 14, 10, 10));
+        var formulario = await FormularioAsync(mesa, ficha);
+        await GuardarAtualAsync(ficha, new Recursos(3, 14, 10, 10));
+
+        formulario["nome"] = "Outro nome";
+        await EnviarAsync(HttpMethod.Put, $"/api/{ficha.Rota}/{ficha.Id}", mesa.Jogador, formulario, HttpStatusCode.NoContent);
+
+        (await RecursosAsync(mesa, ficha)).Atual.Vitalidade.Should().Be(16);
     }
 }

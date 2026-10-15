@@ -106,10 +106,12 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         // request.PontosDeIgnicao é aceito mas ignorado: o saldo só muda pelo endpoint próprio
         // (UpdatePontosDeIgnicao) e pelas Magias/Habilidades, para um formulário desatualizado não
         // apagar um débito ou uma devolução feita pelo servidor.
-        sheet.VitalidadeAtual = request.VitalidadeAtual;
-        sheet.FocoAtual = request.FocoAtual;
-        sheet.AdrenalinaAtual = request.AdrenalinaAtual;
         sheet.Cobertura = cobertura;
+        // Só o Atual que o jogador editou é gravado, e no máximo atual da ficha (AtualDoFormulario), como no NPC.
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
+        sheet.VitalidadeAtual = AtualDoFormulario.EscolherNoMaximo(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada, vitalidadeMaximo);
+        sheet.FocoAtual = AtualDoFormulario.EscolherNoMaximo(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado, focoMaximo);
+        sheet.AdrenalinaAtual = AtualDoFormulario.EscolherNoMaximo(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada, adrenalinaMaximo);
 
         await db.SaveChangesAsync();
         await NotifyAffectedEncountersAsync(id);

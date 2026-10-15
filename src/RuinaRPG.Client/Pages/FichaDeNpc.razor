@@ -1080,6 +1080,7 @@
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
         _form.EstresseAtual = sheet.EstresseAtual;
+        _form.GuardarAtuaisCarregados();
         _form.Cobertura = sheet.Cobertura;
         _form.Ciclos = sheet.Ciclos;
         _form.ArcaRolada = sheet.ArcaRolada;
@@ -1107,7 +1108,8 @@
             _form.Afinidade, _form.Propriedade, _form.Nivel!.Value, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual ?? 0,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoTotal, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
-            _form.Cobertura, _form.Ciclos, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional);
+            _form.Cobertura, _form.Ciclos, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional,
+            _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada, _form.EstresseAtualCarregado);
 
         var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1829,6 +1831,13 @@
         public int? AdrenalinaAtual { get; set; }
         [Required(ErrorMessage = "Informe o Estresse.")]
         public int? EstresseAtual { get; set; }
+        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
+        public int? VitalidadeAtualCarregada { get; private set; }
+        public int? FocoAtualCarregado { get; private set; }
+        public int? AdrenalinaAtualCarregada { get; private set; }
+        public int? EstresseAtualCarregado { get; private set; }
+        public void GuardarAtuaisCarregados() =>
+            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada, EstresseAtualCarregado) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual);
         public string Cobertura { get; set; } = "Nenhuma";
         public int Ciclos { get; set; }
         public int? ArcaRolada { get; set; }

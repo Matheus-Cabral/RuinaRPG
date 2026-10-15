@@ -296,11 +296,12 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // rejected, since a Máximo can legitimately shrink (e.g. unequipping an Artefato) out
         // from under an Atual that was valid a moment ago. O máximo aqui já conta as Condições ativas:
         // não se salva acima do total reduzido, e esse corte é uma mudança real, que fica.
+        // Um Atual que o jogador não editou fica com o valor guardado (AtualDoFormulario): o servidor também o escreve.
         var maximos = await ComputeResourceMaximumsAsync(sheet, vocacao, nivel);
-        sheet.VitalidadeAtual = Math.Min(request.VitalidadeAtual, maximos.Vitalidade);
-        sheet.FocoAtual = Math.Min(request.FocoAtual, maximos.Foco);
-        sheet.AdrenalinaAtual = Math.Min(request.AdrenalinaAtual, maximos.Adrenalina);
-        sheet.EstresseAtual = Math.Min(request.EstresseAtual, maximos.Estresse);
+        sheet.VitalidadeAtual = Math.Min(AtualDoFormulario.Escolher(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada), maximos.Vitalidade);
+        sheet.FocoAtual = Math.Min(AtualDoFormulario.Escolher(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado), maximos.Foco);
+        sheet.AdrenalinaAtual = Math.Min(AtualDoFormulario.Escolher(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada), maximos.Adrenalina);
+        sheet.EstresseAtual = Math.Min(AtualDoFormulario.Escolher(sheet.EstresseAtual, request.EstresseAtual, request.EstresseAtualCarregado), maximos.Estresse);
         // Só rejeita quando o valor MUDA para fora da tabela: se o GM diminuiu o dado depois da rolagem,
         // a ficha continua podendo salvar os outros campos mantendo a mesma ArcaRolada.
         if (request.ArcaRolada != sheet.ArcaRolada)

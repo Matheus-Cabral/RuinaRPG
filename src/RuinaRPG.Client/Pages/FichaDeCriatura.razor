@@ -884,6 +884,7 @@
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
+        _form.GuardarAtuaisCarregados();
         _form.Cobertura = sheet.Cobertura;
         _form.VitalidadeMaximo = sheet.VitalidadeMaximo;
         _form.FocoMaximo = sheet.FocoMaximo;
@@ -902,7 +903,8 @@
 
         var request = new UpdateCreatureSheetRequest(_form.ImageId, _form.Nome, _form.Raca, _form.Arquetipo, _form.SubArquetipo,
             _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicao!.Value,
-            _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura);
+            _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura,
+            _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada);
 
         var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}", request);
         if (!response.IsSuccessStatusCode)
@@ -1403,6 +1405,12 @@
         public int? FocoAtual { get; set; }
         [Required(ErrorMessage = "Informe a Adrenalina.")]
         public int? AdrenalinaAtual { get; set; }
+        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
+        public int? VitalidadeAtualCarregada { get; private set; }
+        public int? FocoAtualCarregado { get; private set; }
+        public int? AdrenalinaAtualCarregada { get; private set; }
+        public void GuardarAtuaisCarregados() =>
+            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual);
         public string Cobertura { get; set; } = "Nenhuma";
         public int VitalidadeMaximo { get; set; }
         public int FocoMaximo { get; set; }
