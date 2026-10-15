@@ -265,6 +265,46 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<PostgresF
     }
 
     [Fact]
+    public async Task Na_instancia_do_GM_um_formulario_desatualizado_mantem_o_tique_e_a_edicao_de_fato_salva()
+    {
+        var mesa = await MesaAsync("Inst");
+        var npcId = (await JsonDocument.ParseAsync(await (await EnviarAsync(HttpMethod.Post, "/api/npc-sheets", mesa.Gm)).Content.ReadAsStreamAsync())).RootElement.GetProperty("id").GetString()!;
+        var encounterId = (await (await EnviarAsync(HttpMethod.Post, $"/api/campaigns/{mesa.CampaignId}/encounters", mesa.Gm, new CreateEncounterRequest("Encontro")))
+            .Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
+        var participantId = (await (await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", mesa.Gm, new AddParticipantRequest(null, npcId, null, 10), HttpStatusCode.Created))
+            .Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
+        async Task GuardarNaInstanciaAsync(Recursos r)
+        {
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            var p = (await db.EncounterParticipants.FindAsync(Guid.Parse(participantId)))!;
+            (p.PVAtual, p.PFAtual, p.PAAtual) = (r.Vitalidade, r.Foco, r.Adrenalina);
+            await db.SaveChangesAsync();
+        }
+        async Task<Recursos> DaInstanciaAsync()
+        {
+            var p = (await LerAsync<List<EncounterParticipantResponse>>(mesa.Gm, $"/api/encounters/{encounterId}/participants")).Single();
+            return new Recursos(p.PV!.Value, p.PF!.Value, p.PA!.Value);
+        }
+        await GuardarNaInstanciaAsync(new Recursos(10, 6, 4));
+        var carregado = new Recursos(10, 6, 4);
+
+        // Um tique de veneno com o formulário do GM aberto; ele só muda a Iniciativa e salva o formulário de antes.
+        await GuardarNaInstanciaAsync(new Recursos(7, 6, 4));
+        await EditarAsync(mesa.Gm, encounterId, participantId, carregado, enviado: carregado);
+        (await DaInstanciaAsync()).Should().Be(new Recursos(7, 6, 4));
+
+        // Uma edição de fato é gravada (na instância, sem teto, como antes).
+        await EditarAsync(mesa.Gm, encounterId, participantId, carregado: new Recursos(7, 6, 4), enviado: new Recursos(30, 6, 1));
+        (await DaInstanciaAsync()).Should().Be(new Recursos(30, 6, 1));
+
+        // Cliente antigo, sem os carregados: o formulário inteiro é gravado.
+        await EnviarAsync(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{participantId}", mesa.Gm,
+            new UpdateParticipantRequest(10, 2, 3, 4, 3, []), HttpStatusCode.NoContent);
+        (await DaInstanciaAsync()).Should().Be(new Recursos(2, 3, 4));
+    }
+
+    [Fact]
     public async Task O_recurso_que_o_GM_nao_mudou_nao_e_gravado_e_a_mudanca_do_jogador_fica()
     {
         var (mesa, ficha, encounterId, participantId) = await CenaAsync("Conc");

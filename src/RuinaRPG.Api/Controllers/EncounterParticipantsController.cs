@@ -166,9 +166,11 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             fichaAlterada = await GravarNaFichaAsync(participant, request);
         else
         {
-            participant.PVAtual = request.PV;
-            participant.PFAtual = request.PF;
-            participant.PAAtual = request.PA;
+            // Instância do GM: os tiques de Condição também escrevem aqui. Com os carregados, só o valor que o GM mudou
+            // é gravado; sem eles (cliente antigo, ou carregado vazio) o valor vai como veio, como antes.
+            participant.PVAtual = DaInstancia(participant.PVAtual, request.PV, request.PVCarregado);
+            participant.PFAtual = DaInstancia(participant.PFAtual, request.PF, request.PFCarregado);
+            participant.PAAtual = DaInstancia(participant.PAAtual, request.PA, request.PACarregado);
         }
 
         db.EncounterParticipantConditions.RemoveRange(existingConditions);
@@ -184,6 +186,9 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             await AvisarFichaAlteradaAsync(fichaAlterada);
         return NoContent();
     }
+
+    private static int? DaInstancia(int? guardado, int? enviado, int? carregado) =>
+        carregado is null || enviado != carregado ? enviado : guardado;
 
     private sealed record FichaAlterada(string Kind, Guid Id, Guid OwnerId);
 

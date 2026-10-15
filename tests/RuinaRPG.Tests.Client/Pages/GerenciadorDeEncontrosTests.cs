@@ -479,8 +479,11 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
             .And.Contain("NPC ou Criatura do GM");
     }
 
-    [Fact]
-    public async Task A_reload_while_the_form_is_open_does_not_turn_the_untouched_values_into_edits()
+    // p3 (Lobo) vem de uma ficha; p1 (Aldric) é uma instância do GM: os dois mandam os valores da abertura do formulário.
+    [Theory]
+    [InlineData("p3", 2)]
+    [InlineData("p1", 0)]
+    public async Task A_reload_while_the_form_is_open_does_not_turn_the_untouched_values_into_edits(string id, int linha)
     {
         string? corpo = null;
         _override = r =>
@@ -490,10 +493,10 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
         };
         var cut = await RenderLoadedAsync();
-        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Editar").ElementAt(2).Click());
+        await cut.InvokeAsync(() => cut.FindAll("button").Where(b => b.TextContent.Trim() == "Editar").ElementAt(linha).Click());
 
-        // Com o formulário aberto, a ficha do Lobo muda (um tique de Condição, o jogador salvou) e a página recarrega.
-        _participants = Participants.Select(p => p.Id == "p3" ? p with { PV = 4, PF = 1, PA = 2 } : p).ToList();
+        // Com o formulário aberto, os valores mudam (um tique de Condição, o jogador salvou) e a página recarrega.
+        _participants = Participants.Select(p => p.Id == id ? p with { PV = 4, PF = 1, PA = 2 } : p).ToList();
         await cut.InvokeAsync(() => EncounterConnection.RaiseChangedAsync());
         cut.WaitForState(() => cut.Markup.Contains(">4<"));
 
