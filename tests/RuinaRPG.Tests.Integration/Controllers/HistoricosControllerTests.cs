@@ -12,69 +12,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class HistoricosControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public HistoricosControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-    }
 
     [Fact]
     public async Task List_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/historicos");
+        var response = await Client.GetAsync("/api/historicos");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -84,7 +28,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var token = await RegisterGmAndGetTokenAsync("HistGm1", "hist1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<HistoricoResponse>>();
@@ -100,7 +44,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm1", "histcrudgm1@teste.com");
         await GrantRulesAuditorAsync("histcrudgm1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Testado a Ferro", "Descrição de teste.", "Atletismo", "Acrobacia")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -108,7 +52,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         body!.Nome.Should().Be("Testado a Ferro");
         body.IsCustomized.Should().BeTrue();
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<HistoricoResponse>>();
         list!.Should().Contain(h => h.Nome == "Testado a Ferro");
     }
@@ -118,7 +62,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm2", "histcrudgm2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Não Deveria Salvar", "Teste.", "Atletismo", "Acrobacia")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -130,7 +74,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm3", "histcrudgm3@teste.com");
         await GrantRulesAuditorAsync("histcrudgm3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Perícia Repetida", "Teste.", "Atletismo", "Atletismo")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -142,7 +86,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm10", "histcrudgm10@teste.com");
         await GrantRulesAuditorAsync("histcrudgm10@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("   ", "Teste.", "Atletismo", "Acrobacia")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -154,7 +98,7 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm4", "histcrudgm4@teste.com");
         await GrantRulesAuditorAsync("histcrudgm4@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Perícia Inválida", "Teste.", "NaoExiste", "Acrobacia")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -165,15 +109,15 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm5", "histcrudgm5@teste.com");
         await GrantRulesAuditorAsync("histcrudgm5@teste.com");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Para Editar", "Antes.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
             new UpdateHistoricoRequest("Para Editar", "Depois.", "Atletismo", "Acrobacia")));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<HistoricoResponse>>();
         list!.Single(h => h.Id == created.Id).Descricao.Should().Be("Depois.");
     }
@@ -183,22 +127,22 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm6", "histcrudgm6@teste.com");
         await GrantRulesAuditorAsync("histcrudgm6@teste.com");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Para Editar Errado", "Teste.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
             new UpdateHistoricoRequest("Para Editar Errado", "Teste.", "Atletismo", "Atletismo")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private async Task<PericiaAuditoriaResponse> CreatePericiaAsync(string token, string nome) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
             new SalvarPericiaRequest(nome, null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>())!;
 
     private async Task RemovePericiaAsync(string token, int id) =>
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
     [Fact]
     public async Task UpdateHistorico_keeping_a_removed_Pericia_is_accepted_but_switching_to_another_removed_one_returns_400()
@@ -208,15 +152,15 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
         var seis = await CreatePericiaAsync(gmToken, "Perícia Seis Removida");
         var tres = await CreatePericiaAsync(gmToken, "Perícia Três Removida");
         var outra = await CreatePericiaAsync(gmToken, "Perícia Outra Removida");
-        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var created = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Com Removida", "Antes.", seis.Chave, tres.Chave)))).Content.ReadFromJsonAsync<HistoricoResponse>();
         await RemovePericiaAsync(gmToken, seis.Id);
         await RemovePericiaAsync(gmToken, tres.Id);
         await RemovePericiaAsync(gmToken, outra.Id);
 
-        var keep = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
+        var keep = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created!.Id}", gmToken,
             new UpdateHistoricoRequest("Com Removida Renomeada", "Depois.", seis.Chave, tres.Chave)));
-        var change = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created.Id}", gmToken,
+        var change = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/historicos/{created.Id}", gmToken,
             new UpdateHistoricoRequest("Com Removida Renomeada", "Depois.", outra.Chave, tres.Chave)));
 
         keep.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -228,14 +172,14 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm7", "histcrudgm7@teste.com");
         await GrantRulesAuditorAsync("histcrudgm7@teste.com");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Para Excluir", "Teste.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<HistoricoResponse>>();
         list!.Should().NotContain(h => h.Id == created.Id);
     }
@@ -257,21 +201,21 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm8", "histcrudgm8@teste.com");
         await GrantRulesAuditorAsync("histcrudgm8@teste.com");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Em Uso", "Teste.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "HistCrudPlayer8", "histcrudplayer8@teste.com");
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha Histórico", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha Histórico", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, UpdateWithHistorico(created!.Id)));
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, UpdateWithHistorico(created!.Id)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
 
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -281,17 +225,17 @@ public class HistoricosControllerTests : IClassFixture<BlankDatabaseFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("HistCrudGm9", "histcrudgm9@teste.com");
         await GrantRulesAuditorAsync("histcrudgm9@teste.com");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Em Uso NPC", "Teste.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        var npcCreateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var npcCreateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         var npc = await npcCreateResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npc!.Id}", gmToken, UpdateNpcWithHistorico(created!.Id)));
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npc!.Id}", gmToken, UpdateNpcWithHistorico(created!.Id)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created.Id}", gmToken));
 
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }

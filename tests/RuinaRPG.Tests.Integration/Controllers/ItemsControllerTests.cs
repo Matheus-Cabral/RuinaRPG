@@ -12,43 +12,16 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class ItemsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public ItemsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(codeMessage);
+        var codeResponse = await Client.SendAsync(codeMessage);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
@@ -86,7 +59,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
     [Fact]
     public async Task Create_without_a_token_returns_401()
     {
-        var response = await _client.PostAsJsonAsync("/api/items", MinimalItemGeral("Corda"));
+        var response = await Client.PostAsJsonAsync("/api/items", MinimalItemGeral("Corda"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -99,7 +72,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -111,7 +84,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -128,7 +101,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArma("Espada Curta")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
         body!.Tipo.Should().Be("Arma");
@@ -145,7 +118,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArmadura("Peitoral de Placas")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -164,7 +137,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalEscudo("Broquel")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -182,7 +155,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalArtefato("Anel do Vigor")) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -200,7 +173,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(MinimalItemGeral("Corda") with { Tipo = "NaoExiste" }) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -209,7 +182,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return await _client.SendAsync(message);
+        return await Client.SendAsync(message);
     }
 
     [Fact]
@@ -222,7 +195,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Nome == "Corda A");
@@ -241,7 +214,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorTokenA);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
@@ -257,7 +230,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?tipo=Arma");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().OnlyContain(i => i.Tipo == "Arma");
@@ -271,7 +244,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?subcategoria=Espadas&rank=F");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Nome == "Espada Curta");
@@ -289,7 +262,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items?nome=cerimonial");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Nome == "Espada Cerimonial");
@@ -309,13 +282,13 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var listResponse = await _client.SendAsync(listMessage);
+        var listResponse = await Client.SendAsync(listMessage);
         var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Nome == "Corda Reforçada" && i.Preco == 8);
     }
@@ -369,12 +342,12 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var listResponse = await _client.SendAsync(listMessage);
+        var listResponse = await Client.SendAsync(listMessage);
         var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Single(i => i.Id == itemId).CapacidadeExtra.Should().Be(8m);
     }
@@ -395,12 +368,12 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var listResponse = await _client.SendAsync(listMessage);
+        var listResponse = await Client.SendAsync(listMessage);
         var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Single(i => i.Id == itemId).Descricao.Should().Be("Agora com o fio recém-afiado.");
     }
@@ -417,7 +390,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{itemId}") { Content = JsonContent.Create(update) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenOther);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -431,13 +404,13 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
 
         var message = new HttpRequestMessage(HttpMethod.Delete, $"/api/items/{itemId}");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var listMessage = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         listMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var listResponse = await _client.SendAsync(listMessage);
+        var listResponse = await Client.SendAsync(listMessage);
         var body = await listResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().NotContain(i => i.Id == itemId);
     }
@@ -449,7 +422,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Delete, $"/api/items/{Guid.NewGuid()}");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -468,7 +441,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
         return body!.Id;
     }
@@ -481,7 +454,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -494,7 +467,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -509,7 +482,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -524,7 +497,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -537,7 +510,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -555,7 +528,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -569,14 +542,14 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var token = await RegisterGmAndGetTokenAsync("ItemGmOwnImg", "itemownimg@teste.com");
         var uploadMessage = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
         uploadMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var uploadResponse = await _client.SendAsync(uploadMessage);
+        var uploadResponse = await Client.SendAsync(uploadMessage);
         var uploadBody = await uploadResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
 
         var request = MinimalItemGeral("Corda") with { ImageId = uploadBody!.Id };
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ItemResponse>();
@@ -588,14 +561,14 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
     {
         var message = new HttpRequestMessage(HttpMethod.Put, $"/api/items/{id}") { Content = JsonContent.Create(request) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return await _client.SendAsync(message);
+        return await Client.SendAsync(message);
     }
 
     private async Task<List<ItemResponse>> ListItemsAsync(string token)
     {
         var message = new HttpRequestMessage(HttpMethod.Get, "/api/items");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         return (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
     }
 
@@ -783,7 +756,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/items") { Content = new StringContent(corpo.ToJsonString(), System.Text.Encoding.UTF8, "application/json") };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -819,7 +792,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         var token = await RegisterGmAndGetTokenAsync("ItemReqGm8", "itemreqgm8@teste.com");
         string chave, nome;
         int id;
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var p = await db.Pericias.Where(x => !x.IsDeleted).OrderBy(x => x.Id).FirstAsync();
@@ -831,7 +804,7 @@ public class ItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncL
         created.Requisitos!.Pericias.Should().HaveCount(1);
         created.PenalidadeDeRequisitos!.Pericias.Should().HaveCount(1);
 
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.Pericias.SingleAsync(x => x.Id == id)).IsDeleted = true;

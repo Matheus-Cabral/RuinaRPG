@@ -13,30 +13,12 @@ using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EncounterLogTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncounterLogTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private async Task<string> RegisterGmAsync(string nickname, string email)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
@@ -52,21 +34,21 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
 
     private async Task<string> CreateEncounterAsync(string gmToken)
     {
-        var campaign = await _client.SendAsync(Authed(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha Log", "")));
+        var campaign = await Client.SendAsync(Authed(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha Log", "")));
         var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest("Encontro Log")));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest("Encontro Log")));
         return (await response.Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
     }
 
     // GM-owned NPC with the given name; PV/PF/PA are copied to the participant once.
     private async Task<EncounterParticipantResponse> AddNpcAsync(string gmToken, string encounterId, string nome, int iniciativa)
     {
-        var npc = await _client.SendAsync(Authed(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var npc = await Client.SendAsync(Authed(HttpMethod.Post, "/api/npc-sheets", gmToken));
         var npcId = (await npc.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
-        await _client.SendAsync(Authed(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken, new UpdateNpcSheetRequest(
+        await Client.SendAsync(Authed(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken, new UpdateNpcSheetRequest(
             null, nome, "Humano", "Sinir", "Campeao", "Duelista", null, "Descrição de Teste",
             5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null, null, 0)));
-        var add = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        var add = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(null, npcId, null, iniciativa)));
         add.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await add.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!;
@@ -81,23 +63,23 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
     ];
 
     private async Task<HttpResponseMessage> PostAsync(string gmToken, string url) =>
-        await _client.SendAsync(Authed(HttpMethod.Post, url, gmToken));
+        await Client.SendAsync(Authed(HttpMethod.Post, url, gmToken));
 
     private async Task<List<EncounterLogEntryResponse>> GetLogAsync(string gmToken, string encounterId)
     {
-        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", gmToken));
+        var response = await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", gmToken));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<List<EncounterLogEntryResponse>>())!;
     }
 
     private Task<HttpResponseMessage> UpdateAsync(string gmToken, string encounterId, EncounterParticipantResponse p, int iniciativa, int? pv, int acoes, params string[] condicoes) =>
-        _client.SendAsync(Authed(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{p.Id}", gmToken,
+        Client.SendAsync(Authed(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{p.Id}", gmToken,
             new UpdateParticipantRequest(iniciativa, pv, p.PF, p.PA, acoes, condicoes.ToList())));
 
     // Free-text conditions can no longer be added through the API (they come from the catalog): seed the legacy rows directly.
     private async Task SeedLegacyConditionsAsync(EncounterParticipantResponse p, params string[] textos)
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         foreach (var texto in textos)
             db.EncounterParticipantConditions.Add(new() { Id = Guid.NewGuid(), EncounterParticipantId = Guid.Parse(p.Id), Texto = texto });
@@ -113,7 +95,7 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
         var a = await AddNpcAsync(gm, encounterId, "Alfa", 30);
         await SeedLegacyConditionsAsync(a, "Envenenado", "Cego");
         (await UpdateAsync(gm, encounterId, a, 25, 10, 3, "Envenenado")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{a.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{a.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         (await GetLogAsync(gm, encounterId)).Should().BeEmpty();
     }
@@ -233,7 +215,7 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
         await PostAsync(gm, $"/api/encounters/{encounterId}/start");
 
         await AddNpcAsync(gm, encounterId, "Gama", 10);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{a.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{a.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var log = (await GetLogAsync(gm, encounterId)).Skip(2).ToList();
         log.Select(e => e.Tipo).Should().Equal("ParticipanteAdicionado", "ParticipanteRemovido", "VezPassada");
@@ -244,11 +226,11 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
 
         // Removing the last of the order on turn wraps to a new Turno.
         await PostAsync(gm, $"/api/encounters/{encounterId}/turn/{b.Id}");
-        var gamaId = (await (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gm)))
+        var gamaId = (await (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gm)))
             .Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>())!.Single(p => p.Nome == "Gama").Id;
         await PostAsync(gm, $"/api/encounters/{encounterId}/turn/{gamaId}");
         var antes = (await GetLogAsync(gm, encounterId)).Count;
-        await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{gamaId}", gm));
+        await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{gamaId}", gm));
 
         log = (await GetLogAsync(gm, encounterId)).Skip(antes).ToList();
         log.Select(e => e.Tipo).Should().Equal("ParticipanteRemovido", "NovoTurno", "VezPassada");
@@ -302,7 +284,7 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
         var other = await RegisterGmAsync("LogGm11", "log11@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
 
-        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", other));
+        var response = await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", other));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -316,7 +298,7 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
         await PostAsync(gm, $"/api/encounters/{encounterId}/start");
         var antes = (await GetLogAsync(gm, encounterId)).Count;
 
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             // Ordem 3, 1, 2 added in that order, in one save, with random Ids.
@@ -344,7 +326,7 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
         await PostAsync(gm, $"/api/encounters/{encounterId}/advance-turn");
         var antes = (await GetLogAsync(gm, encounterId)).Count;
 
-        await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{b.Id}", gm));
+        await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{b.Id}", gm));
 
         var log = (await GetLogAsync(gm, encounterId)).Skip(antes).ToList();
         log.Select(e => e.Tipo).Should().Equal("ParticipanteRemovido", "NovoTurno", "VezPassada");
@@ -373,13 +355,13 @@ public class EncounterLogTests : IClassFixture<BlankDatabaseFixture>, IAsyncLife
     {
         var gm = await RegisterGmAsync("LogGm15", "log15@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
-        var code = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/invite-codes", gm)))
+        var code = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/invite-codes", gm)))
             .Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var player = (await (await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var player = (await (await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("LogPlayer15", "logp15@teste.com", "Senha!123", "Senha!123", code)))
             .Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
 
-        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", player));
+        var response = await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", player));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

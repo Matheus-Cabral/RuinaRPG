@@ -21,58 +21,15 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// E 45, D 80, C 125, B 180, A 245, S/SS Inquebrável). Tests that edit the table restore it after,
 /// since every Fact in this class shares one database.
 /// </summary>
-public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public DurabilidadePorRankItemsTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var meResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens!.AccessToken));
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
 
     private async Task<string> SetUpCharacterSheetAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
@@ -90,7 +47,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
     };
 
     private async Task<HttpResponseMessage> PostItemAsync(string gmToken, CreateItemRequest request) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
 
     private async Task<string> CreateItemAsync(string gmToken, string tipo, string? rank)
     {
@@ -102,7 +59,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
     /// <summary>Edits one row of the table directly (the Auditoria API is a later task) and returns an undo.</summary>
     private async Task<Func<Task>> SetRankAsync(RankDeItem rank, int? durabilidade, bool inquebravel)
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var row = await db.DurabilidadesPorRank.SingleAsync(d => d.Rank == rank);
         var (oldDurabilidade, oldInquebravel) = (row.Durabilidade, row.Inquebravel);
@@ -111,7 +68,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         await db.SaveChangesAsync();
         return async () =>
         {
-            using var undoScope = _factory.Services.CreateScope();
+            using var undoScope = Factory.Services.CreateScope();
             var undoDb = undoScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var undoRow = await undoDb.DurabilidadesPorRank.SingleAsync(d => d.Rank == rank);
             undoRow.Durabilidade = oldDurabilidade;
@@ -206,10 +163,10 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
 
         var update = new UpdateItemRequest("Armadura B", 3m, 30, null, null, null, "B", null, null, null, null, null, null,
             "Medio", 5, 1, 1, null, null, null, null, null);
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/items", gmToken))).Content.ReadFromJsonAsync<List<ItemResponse>>();
+        var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/items", gmToken))).Content.ReadFromJsonAsync<List<ItemResponse>>();
         var item = list!.Single(i => i.Id == itemId);
         item.Rank.Should().Be("B");
         item.DurabilidadeMaxima.Should().Be(180);
@@ -223,7 +180,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
 
         var update = new UpdateItemRequest("Escudo", 2m, 25, null, null, null, "Z", null, null, null, null, null, null,
             "Leve", null, null, null, 2, null, null, null, null);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/items/{itemId}", gmToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -236,7 +193,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<CharacterWeaponResponse>();
@@ -253,22 +210,22 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "DurRankPlayer2", "durrankplayer2@teste.com");
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
-        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
+        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
         var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
 
         var undo = await SetRankAsync(RankDeItem.C, 50, false);
         try
         {
-            var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
+            var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
                 .Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
             var weapon = list!.Single(w => w.Id == weaponId);
             weapon.DurabilidadeAtual.Should().Be(50);
             weapon.DurabilidadeMaxima.Should().Be(50);
 
-            var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 120));
+            var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 120));
             put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-            using var scope = _factory.Services.CreateScope();
+            using var scope = Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.CharacterWeapons.SingleAsync(w => w.Id == Guid.Parse(weaponId))).DurabilidadeAtual.Should().Be(50);
         }
@@ -285,22 +242,22 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "DurRankPlayer3", "durrankplayer3@teste.com");
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
-        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
+        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
         var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
 
         var undo = await SetRankAsync(RankDeItem.C, null, true);
         try
         {
-            var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 10));
+            var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{weaponId}/durabilidade", playerToken, 10));
             put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-            using (var scope = _factory.Services.CreateScope())
+            using (var scope = Factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
                 (await db.CharacterWeapons.SingleAsync(w => w.Id == Guid.Parse(weaponId))).DurabilidadeAtual.Should().Be(0);
             }
 
-            var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
+            var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
                 .Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
             var weapon = list!.Single(w => w.Id == weaponId);
             weapon.Inquebravel.Should().BeTrue();
@@ -321,10 +278,10 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         var armorId = await CreateItemAsync(gmToken, "Armadura", "E");
         var shieldId = await CreateItemAsync(gmToken, "Escudo", "S");
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorId)));
-        var addShield = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorId)));
+        var addShield = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldId)));
 
-        var slots = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken)))
+        var slots = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken)))
             .Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
         var capacete = slots!.Single(s => s.Slot == "Capacete");
         capacete.DurabilidadeAtual.Should().Be(45);
@@ -341,26 +298,26 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
     public async Task Npc_arsenal_resolves_the_max_from_the_Rank_and_reports_Inquebravel()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("DurRankNpc", "durranknpc@teste.com");
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
         var weaponItemId = await CreateItemAsync(gmToken, "Arma", "A");
         var shieldItemId = await CreateItemAsync(gmToken, "Escudo", "SS");
         var armorItemId = await CreateItemAsync(gmToken, "Armadura", "SS");
 
-        var weapon = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(weaponItemId))))
+        var weapon = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(weaponItemId))))
             .Content.ReadFromJsonAsync<NpcWeaponResponse>();
         weapon!.Rank.Should().Be("A");
         weapon.DurabilidadeAtual.Should().Be(245);
         weapon.DurabilidadeMaxima.Should().Be(245);
         weapon.Inquebravel.Should().BeFalse();
 
-        var shield = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId))))
+        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId))))
             .Content.ReadFromJsonAsync<NpcShieldResponse>();
         shield!.Inquebravel.Should().BeTrue();
         shield.DurabilidadeAtual.Should().Be(0);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Superior", gmToken, new UpdateNpcArmorSlotRequest(armorItemId)));
-        var slots = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/armor-slots", gmToken)))
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Superior", gmToken, new UpdateNpcArmorSlotRequest(armorItemId)));
+        var slots = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/armor-slots", gmToken)))
             .Content.ReadFromJsonAsync<List<NpcArmorSlotResponse>>();
         var superior = slots!.Single(s => s.Slot == "Superior");
         superior.Inquebravel.Should().BeTrue();
@@ -372,12 +329,12 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
     public async Task Creature_arsenal_resolves_the_max_from_the_Rank_and_reports_Inquebravel()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("DurRankCreature", "durrankcreature@teste.com");
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
         var weaponItemId = await CreateItemAsync(gmToken, "Arma", "B");
         var shieldItemId = await CreateItemAsync(gmToken, "Escudo", "S");
 
-        var weapon = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken,
+        var weapon = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/weapons", gmToken,
                 new AddCreatureWeaponRequest(weaponItemId, null, null, null, null))))
             .Content.ReadFromJsonAsync<CreatureWeaponResponse>();
         weapon!.Rank.Should().Be("B");
@@ -385,7 +342,7 @@ public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>
         weapon.DurabilidadeMaximo.Should().Be(180);
         weapon.Inquebravel.Should().BeFalse();
 
-        var shield = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId))))
+        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId))))
             .Content.ReadFromJsonAsync<CreatureShieldResponse>();
         shield!.Inquebravel.Should().BeTrue();
         shield.DurabilidadeAtual.Should().Be(0);

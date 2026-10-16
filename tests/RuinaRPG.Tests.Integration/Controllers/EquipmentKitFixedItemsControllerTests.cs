@@ -14,49 +14,15 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EquipmentKitFixedItemsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Url = "/api/equipment-kit-fixed-items";
-
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EquipmentKitFixedItemsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
 
     private async Task<string> RegisterAuditorAsync(string nickname)
     {
         var email = $"{nickname.ToLowerInvariant()}@teste.com";
         var token = await RegisterGmAndGetTokenAsync(nickname, email);
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
         user.IsRulesAuditor = true;
@@ -86,21 +52,21 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
 
     private async Task<EquipmentKitFixedItemResponse> CriarAsync(string token, CreateItemRequest request)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, request));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
     }
 
     private async Task<List<EquipmentKitFixedItemResponse>> ListarAsync(string token, string query = "")
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, Url + query, token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url + query, token));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<List<EquipmentKitFixedItemResponse>>())!;
     }
 
     private async Task<EquipmentKitResponse> CriarKitAsync(string token, string nome, List<EquipmentKitItemInput> items, List<EquipmentKitChoiceSlotInput>? slots = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", token,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", token,
             new CreateEquipmentKitRequest(nome, "Descrição", 0, items, slots ?? [])));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<EquipmentKitResponse>())!;
@@ -113,10 +79,10 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var fixo = await CriarAsync(auditor, ItemGeral(Unico("Corda")));
         var gm = await RegisterGmAndGetTokenAsync("FixosGmComum0", "fixosgmcomum0@teste.com");
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, Url, gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, gm, ItemGeral(Unico("Outra"))))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{fixo.Id}", gm, ItemGeral(fixo.Nome)))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url, gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, gm, ItemGeral(Unico("Outra"))))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{fixo.Id}", gm, ItemGeral(fixo.Nome)))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -166,10 +132,10 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var nome = Unico("Duplicado");
         await CriarAsync(token, ItemGeral(nome));
 
-        var duplicado = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, ItemGeral(nome)));
+        var duplicado = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, ItemGeral(nome)));
         duplicado.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        var outroTipo = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, Arma(nome)));
+        var outroTipo = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, Arma(nome)));
         outroTipo.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
@@ -187,7 +153,7 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
             PenalidadeDeRequisitos = new PenalidadeDeEquipamentoDto(Atributos: [new("Forca", valorPenalidade)]),
         };
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain(mensagem);
@@ -211,7 +177,7 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var todos = await ListarAsync(token, $"?q={marca}");
         todos.Select(f => f.Id).Should().Equal(corda.Id, armadura.Id, arma.Id); // ordenado por Nome: Corda, Gibao, Lamina
 
-        var invalido = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Url}?tipo=Coisa", token));
+        var invalido = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Url}?tipo=Coisa", token));
         invalido.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -221,7 +187,7 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var token = await RegisterAuditorAsync("FixosAuditor4");
         var nome = Unico("Incompleto");
         Guid id;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var fixo = new EquipmentKitFixedItem
@@ -242,7 +208,7 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
             Requisitos = new RequisitosDePassivaDto(Atributos: [new("Vigor", 3)]),
             PenalidadeDeRequisitos = new PenalidadeDeEquipamentoDto(Texto: "Lento"),
         };
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{id}", token, atualizado));
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{id}", token, atualizado));
         put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var depois = (await ListarAsync(token, $"?q={novoNome.Replace(" ", "%20")}")).Single();
@@ -262,7 +228,7 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var nome = Unico("Fixo");
         var fixo = await CriarAsync(token, Arma(nome));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{fixo.Id}", token, ItemGeral(nome)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{fixo.Id}", token, ItemGeral(nome)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("O Tipo de um item fixo não pode ser alterado.");
@@ -275,9 +241,9 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var a = await CriarAsync(token, ItemGeral(Unico("Fixo A")));
         var b = await CriarAsync(token, ItemGeral(Unico("Fixo B")));
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{Guid.NewGuid()}", token, ItemGeral("Qualquer")))).StatusCode
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{Guid.NewGuid()}", token, ItemGeral("Qualquer")))).StatusCode
             .Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{b.Id}", token, ItemGeral(a.Nome)))).StatusCode
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{b.Id}", token, ItemGeral(a.Nome)))).StatusCode
             .Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -292,11 +258,11 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
             [new EquipmentKitItemInput(usadoNoKit.Id, 1)],
             [new EquipmentKitChoiceSlotInput("Arma", "Arma", ["Arcos"], "F", 1, "Arcos", usadoNoBonus.Id, 5, null)]);
 
-        var r1 = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{usadoNoKit.Id}", token));
+        var r1 = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{usadoNoKit.Id}", token));
         r1.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await r1.Content.ReadAsStringAsync()).Should().Contain(nomeKit);
 
-        var r2 = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{usadoNoBonus.Id}", token));
+        var r2 = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{usadoNoBonus.Id}", token));
         r2.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await r2.Content.ReadAsStringAsync()).Should().Contain(nomeKit);
 
@@ -309,11 +275,11 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var token = await RegisterAuditorAsync("FixosAuditor7");
         var fixo = await CriarAsync(token, ItemGeral(Unico("Sem Uso")));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListarAsync(token, $"?q={fixo.Nome.Replace(" ", "%20")}")).Should().BeEmpty();
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -344,11 +310,11 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
         var token = await RegisterAuditorAsync($"FixosAuditorTipo{Guid.NewGuid():N}");
         var existente = await CriarAsync(token, ItemGeral(Unico("Existente")));
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, Arma(Unico("X")) with { Tipo = tipo }))).StatusCode
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token, Arma(Unico("X")) with { Tipo = tipo }))).StatusCode
             .Should().Be(HttpStatusCode.BadRequest);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{existente.Id}", token, ItemGeral(existente.Nome) with { Tipo = tipo }))).StatusCode
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{existente.Id}", token, ItemGeral(existente.Nome) with { Tipo = tipo }))).StatusCode
             .Should().Be(HttpStatusCode.BadRequest);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Url}?tipo={Uri.EscapeDataString(tipo)}", token))).StatusCode
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Url}?tipo={Uri.EscapeDataString(tipo)}", token))).StatusCode
             .Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -365,18 +331,18 @@ public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabase
             : await CriarKitAsync(token, Unico("Kit Excluido"), [new EquipmentKitItemInput(fixo.Id, 1)]);
 
         // Enquanto o kit está vivo, a referência continua dando 409.
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.Conflict);
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.EquipmentKitItems.CountAsync(i => i.FixedItemId == Guid.Parse(fixo.Id))
                 + await db.EquipmentKitChoiceSlots.CountAsync(s => s.BonusFixedItemId == Guid.Parse(fixo.Id))).Should().Be(1);
         }
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/equipment-kits/{kit.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/equipment-kits/{kit.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{fixo.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        await using var scope2 = _factory.Services.CreateAsyncScope();
+        await using var scope2 = Factory.Services.CreateAsyncScope();
         var db2 = scope2.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var kitId = Guid.Parse(kit.Id);
         if (comoBonus)

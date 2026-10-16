@@ -19,26 +19,8 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EncounterParticipantCondicoesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncounterParticipantCondicoesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private HttpRequestMessage Authed(HttpMethod method, string url, string token, object? body = null)
     {
@@ -51,11 +33,11 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
 
     private async Task<string> RegisterGmAsync(string nickname, string email, bool auditor = false)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         var token = (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         if (auditor)
         {
-            await using var scope = _factory.Services.CreateAsyncScope();
+            await using var scope = Factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
             user.IsRulesAuditor = true;
@@ -66,28 +48,28 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
 
     private async Task<string> CreateEncounterAsync(string gm)
     {
-        var campaign = await _client.SendAsync(Authed(HttpMethod.Post, "/api/campaigns", gm, new CreateCampaignRequest("Campanha Condições", "")));
+        var campaign = await Client.SendAsync(Authed(HttpMethod.Post, "/api/campaigns", gm, new CreateCampaignRequest("Campanha Condições", "")));
         var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gm, new CreateEncounterRequest("Encontro")));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gm, new CreateEncounterRequest("Encontro")));
         return (await response.Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
     }
 
     private async Task<string> CreateNpcSheetAsync(string gm)
     {
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, "/api/npc-sheets", gm));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, "/api/npc-sheets", gm));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateCreatureSheetAsync(string gm)
     {
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, "/api/creature-sheets", gm));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, "/api/creature-sheets", gm));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
     }
 
     private async Task<string> AddNpcParticipantAsync(string gm, string encounterId, string? npcId = null)
     {
         npcId ??= await CreateNpcSheetAsync(gm);
-        var add = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(null, npcId, null, 10)));
+        var add = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(null, npcId, null, 10)));
         add.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await add.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
     }
@@ -101,25 +83,25 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
 
     private async Task<CondicaoResponse> CriarNoCatalogoAsync(string auditor, SalvarCondicaoRequest request)
     {
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", auditor, request));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", auditor, request));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<CondicaoResponse>())!;
     }
 
     private Task<HttpResponseMessage> AplicarAsync(string gm, string encounterId, string participantId, AplicarCondicaoRequest request) =>
-        _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", gm, request));
+        Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes", gm, request));
 
     private async Task<List<EncounterParticipantResponse>> ListarAsync(string gm, string encounterId) =>
-        (await (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gm))).Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>())!;
+        (await (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gm))).Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>())!;
 
     private async Task<List<EncounterLogEntryResponse>> LogAsync(string gm, string encounterId) =>
-        (await (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", gm))).Content.ReadFromJsonAsync<List<EncounterLogEntryResponse>>())!;
+        (await (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/log", gm))).Content.ReadFromJsonAsync<List<EncounterLogEntryResponse>>())!;
 
-    private Task<HttpResponseMessage> PostAsync(string gm, string url) => _client.SendAsync(Authed(HttpMethod.Post, url, gm));
+    private Task<HttpResponseMessage> PostAsync(string gm, string url) => Client.SendAsync(Authed(HttpMethod.Post, url, gm));
 
     private async Task<EncounterParticipantCondicaoSnapshot> LerAsync(string participantId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var c = await db.EncounterParticipantCondicoes.AsNoTracking().SingleAsync(x => x.EncounterParticipantId == Guid.Parse(participantId));
         return new(c.Nome, c.Descricao, c.Icone, c.AplicadaNoTurno, c.DuracaoTurnos, c.CondicaoId,
@@ -225,7 +207,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
     {
         var gm = await RegisterGmAsync("CpGm4", "cp4@teste.com", auditor: true);
         var condicao = await CriarNoCatalogoAsync(gm, Catalogo("Apagada"));
-        await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{condicao.Id}", gm));
+        await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{condicao.Id}", gm));
         var encounterId = await CreateEncounterAsync(gm);
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
 
@@ -286,7 +268,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         {
             Modificadores = [new("Atributo", "Forca", "Percentual", -10, null), new("RecursoAtual", "Vitalidade", "Fixo", -2, "ACadaVez")],
         };
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{condicao.Id}", gm, editada))).IsSuccessStatusCode.Should().BeTrue();
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{condicao.Id}", gm, editada))).IsSuccessStatusCode.Should().BeTrue();
 
         foreach (var pedido in new[] { request, request with { ValoresAjustados = [new(0, "Atributo", "Vigor", -20)] } })
         {
@@ -333,10 +315,10 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var antes = await LerAsync(participantId);
 
         var editada = new SalvarCondicaoRequest("Editada", "Outra.", "Fogo", 9, [new CondicaoModificadorDto("Dano", null, "Fixo", 7, null)], ["Arma"]);
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{condicao.Id}", gm, editada))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{condicao.Id}", gm, editada))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await LerAsync(participantId)).Should().BeEquivalentTo(antes);
 
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{condicao.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{condicao.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await LerAsync(participantId)).Should().BeEquivalentTo(antes);
         var listada = (await ListarAsync(gm, encounterId)).Single().CondicoesAplicadas.Should().ContainSingle().Subject;
         listada.Nome.Should().Be("Original");
@@ -377,7 +359,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(comPrazo.Id, null, null, null));
         await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(semPrazo.Id, null, null, null));
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.EncounterParticipantCondicoes.Where(c => c.EncounterParticipantId == Guid.Parse(participantId)).Select(c => c.AplicadaNoTurno).ToListAsync()).Should().OnlyContain(t => t == 1);
@@ -385,14 +367,14 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var restantes = async () => (await ListarAsync(gm, encounterId)).Single().CondicoesAplicadas.ToDictionary(c => c.Nome, c => c.TurnosRestantes);
         (await restantes()).Should().BeEquivalentTo(new Dictionary<string, int?> { ["Com prazo"] = 3, ["Sem prazo"] = null });
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             await db.Encounters.Where(e => e.Id == Guid.Parse(encounterId)).ExecuteUpdateAsync(s => s.SetProperty(e => e.CurrentRound, 3));
         }
         (await restantes()).Should().BeEquivalentTo(new Dictionary<string, int?> { ["Com prazo"] = 1, ["Sem prazo"] = null });
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             await db.Encounters.Where(e => e.Id == Guid.Parse(encounterId)).ExecuteUpdateAsync(s => s.SetProperty(e => e.CurrentRound, 9));
@@ -409,13 +391,13 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var encounterId = await CreateEncounterAsync(gm);
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
         var aplicadaAntes = await (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(antes.Id, null, null, null))).Content.ReadFromJsonAsync<CondicaoAplicadaResponse>();
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicadaAntes!.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicadaAntes!.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await LogAsync(gm, encounterId)).Should().BeEmpty();
 
         await PostAsync(gm, $"/api/encounters/{encounterId}/start");
         var baseline = (await LogAsync(gm, encounterId)).Count;
         var aplicada = await (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(durante.Id, null, null, null))).Content.ReadFromJsonAsync<CondicaoAplicadaResponse>();
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicada!.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicada!.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var log = (await LogAsync(gm, encounterId)).Skip(baseline).ToList();
         log.Select(e => (e.Tipo, e.Texto)).Should().Equal(("CondicaoAdicionada", "Durante"), ("CondicaoRemovida", "Durante"));
@@ -437,7 +419,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
 
         var outra = await CriarNoCatalogoAsync(gm, Catalogo("Outra"));
         (await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(outra.Id, null, null, null))).StatusCode.Should().Be(HttpStatusCode.Conflict);
-        var remover = await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicada!.Id}", gm));
+        var remover = await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}/condicoes/{aplicada!.Id}", gm));
         remover.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await remover.Content.ReadAsStringAsync()).Should().Contain("Encontro finalizado.");
     }
@@ -454,10 +436,10 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var baseUrl = $"/api/encounters/{encounterId}/participants/{participantId}";
 
         (await AplicarAsync(outro, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, null, null))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"{baseUrl}/condicoes/{aplicada!.Id}", outro))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Get, $"{baseUrl}/itens-desabilitaveis", outro))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"{baseUrl}/condicoes/{Guid.NewGuid()}", gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{Guid.NewGuid()}/itens-desabilitaveis", gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"{baseUrl}/condicoes/{aplicada!.Id}", outro))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Get, $"{baseUrl}/itens-desabilitaveis", outro))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"{baseUrl}/condicoes/{Guid.NewGuid()}", gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{Guid.NewGuid()}/itens-desabilitaveis", gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -490,9 +472,9 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
         await AplicarAsync(gm, encounterId, participantId, new AplicarCondicaoRequest(condicao.Id, null, null, null));
 
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/encounters/{encounterId}/participants/{participantId}", gm))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         (await db.EncounterParticipantCondicoes.AnyAsync(c => c.EncounterParticipantId == Guid.Parse(participantId))).Should().BeFalse();
     }
@@ -503,7 +485,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var gm = await RegisterGmAsync("CpGm16", "cp16@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
         var participantId = await AddNpcParticipantAsync(gm, encounterId);
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.EncounterParticipantConditions.Add(new() { Id = Guid.NewGuid(), EncounterParticipantId = Guid.Parse(participantId), Texto = "Antiga 1" });
@@ -512,12 +494,12 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         }
         var url = $"/api/encounters/{encounterId}/participants/{participantId}";
 
-        var nova = await _client.SendAsync(Authed(HttpMethod.Put, url, gm, new UpdateParticipantRequest(10, null, null, null, 3, ["Antiga 1", "Nova"])));
+        var nova = await Client.SendAsync(Authed(HttpMethod.Put, url, gm, new UpdateParticipantRequest(10, null, null, null, 3, ["Antiga 1", "Nova"])));
         nova.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await nova.Content.ReadAsStringAsync()).Should().Contain("Novas condições vêm do catálogo.");
         (await ListarAsync(gm, encounterId)).Single().Condicoes.Should().BeEquivalentTo("Antiga 1", "Antiga 2");
 
-        var reduzir = await _client.SendAsync(Authed(HttpMethod.Put, url, gm, new UpdateParticipantRequest(10, null, null, null, 3, ["Antiga 2"])));
+        var reduzir = await Client.SendAsync(Authed(HttpMethod.Put, url, gm, new UpdateParticipantRequest(10, null, null, null, 3, ["Antiga 2"])));
         reduzir.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListarAsync(gm, encounterId)).Single().Condicoes.Should().Equal("Antiga 2");
     }
@@ -531,7 +513,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var participantId = await AddNpcParticipantAsync(gm, encounterId, npcId);
         var ids = await SemearNpcCompletoAsync(Guid.Parse(npcId));
 
-        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm));
+        var response = await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var corpo = (await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())!;
@@ -553,10 +535,10 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var gm = await RegisterGmAsync("CpGm18", "cp18@teste.com");
         var encounterId = await CreateEncounterAsync(gm);
         var criaturaId = await CreateCreatureSheetAsync(gm);
-        var add = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(null, null, criaturaId, 10)));
+        var add = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gm, new AddParticipantRequest(null, null, criaturaId, 10)));
         var participantId = (await add.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
         Guid natural, comItem;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var sheetId = Guid.Parse(criaturaId);
@@ -571,7 +553,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
             await db.SaveChangesAsync();
         }
 
-        var corpo = (await (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm))).Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())!;
+        var corpo = (await (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm))).Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())!;
 
         Par(corpo, "Arma").Should().BeEquivalentTo(new[] { (natural, "Mordida"), (comItem, "Lança") });
         Par(corpo, "Runa").Should().BeEmpty();
@@ -585,13 +567,13 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
         var npcId = await CreateNpcSheetAsync(gm);
         var participantId = await AddNpcParticipantAsync(gm, encounterId, npcId);
         await SemearNpcCompletoAsync(Guid.Parse(npcId));
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             await db.NpcSheets.Where(s => s.Id == Guid.Parse(npcId)).ExecuteDeleteAsync();
         }
 
-        var response = await _client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm));
+        var response = await Client.SendAsync(Authed(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{participantId}/itens-desabilitaveis", gm));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var corpo = (await response.Content.ReadFromJsonAsync<ItensDesabilitaveisResponse>())!;
@@ -610,7 +592,7 @@ public class EncounterParticipantCondicoesControllerTests : IClassFixture<BlankD
     // One row of each disableable kind on the NPC sheet, plus rows that must NOT be listed (empty armor slots, Racial spell).
     private async Task<Dictionary<string, Guid>> SemearNpcCompletoAsync(Guid npcSheetId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = (await db.NpcSheets.FindAsync(npcSheetId))!.GmId;
         var arma = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Espada", Peso = 1, Preco = 1 };

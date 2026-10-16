@@ -10,41 +10,14 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Penalidade automática de equipamento nos cálculos da Ficha de Criatura (Catálogo de Itens, Requisitos/Penalidade).</summary>
-public class CreatureEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CreatureEquipmentPenaltiesTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CreatureEquipmentPenaltiesTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private sealed record Ctx(string GmToken, string ViewerToken, string SheetId);
 
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
     private async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(method, url, token, body));
+        var response = await Client.SendAsync(AuthedRequest(method, url, token, body));
         response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} returned {(int)response.StatusCode}");
         return response;
     }
@@ -54,7 +27,7 @@ public class CreatureEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixtur
 
     private async Task<string> RegisterGmAsync(string nickname)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 

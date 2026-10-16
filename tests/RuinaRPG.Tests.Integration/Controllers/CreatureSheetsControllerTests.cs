@@ -14,87 +14,34 @@ using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CreatureSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CreatureSheetsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(codeMessage);
+        var codeResponse = await Client.SendAsync(codeMessage);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
     }
 
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private async Task AddMemberAsync(string gmToken, string campaignId, string playerId) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
     /// <summary>Grants a blank Creature sheet to playerId, via the real grants endpoint, and returns its Id.</summary>
     private async Task<string> GrantBlankCreatureAsync(string gmToken, string campaignId, string playerId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Creature", null)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Creature", null)));
         return (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
     }
 
@@ -105,7 +52,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task Create_without_a_token_returns_401()
     {
-        var response = await _client.PostAsync("/api/creature-sheets", null);
+        var response = await Client.PostAsync("/api/creature-sheets", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -115,7 +62,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm1", "criatura1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
@@ -130,7 +77,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm2", "criatura2@teste.com");
         var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "CreatureJogador2", "criaturajogador2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", jogadorToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", jogadorToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -141,7 +88,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm3", "criatura3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -153,7 +100,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmOther4", "criaturaother4@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -169,14 +116,14 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
 
-        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", playerToken));
+        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", playerToken));
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var update = ValidUpdate() with { Nome = "Companheira do Jogador" };
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", playerToken, update));
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", playerToken, update));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getAfter = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", playerToken));
+        var getAfter = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", playerToken));
         (await getAfter.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Nome.Should().Be("Companheira do Jogador");
     }
 
@@ -187,7 +134,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var (_, strangerToken) = await RegisterJogadorLinkedToAsync(gmToken, "CreatureJogadorGrant2", "creaturejogadorgrant2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken); // OwnerId stays null — never granted to anyone
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", strangerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", strangerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -198,11 +145,11 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm5", "criatura5@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, ValidUpdate()));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, ValidUpdate()));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await getResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.Nome.Should().Be("Lobo das Ruínas");
         body.Raca.Should().Be("Lobo");
@@ -213,11 +160,11 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     }
 
     private async Task<CreatureSheetResponse> GetCreatureAsync(string token, string sheetId) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", token)))
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", token)))
             .Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
 
     private Task<HttpResponseMessage> PutPontosDeIgnicaoAsync(string token, string sheetId, int pontos) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/pontos-de-ignicao", token, pontos));
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/pontos-de-ignicao", token, pontos));
 
     [Fact]
     public async Task Update_does_not_change_PontosDeIgnicao()
@@ -227,7 +174,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
         (await PutPontosDeIgnicaoAsync(gmToken, sheetId, 11)).EnsureSuccessStatusCode();
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, ValidUpdate()))).EnsureSuccessStatusCode();
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, ValidUpdate()))).EnsureSuccessStatusCode();
 
         (await GetCreatureAsync(gmToken, sheetId)).PontosDeIgnicao.Should().Be(11);
     }
@@ -284,10 +231,10 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmNivel1", "criaturanivel1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmToken, 5));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmToken, 5));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
+        var body = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
             .Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.Nivel.Should().Be(5);
         body.ExperienciaAtual.Should().Be(500);
@@ -302,10 +249,10 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmNivel2", "criaturanivel2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 750));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 750));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
+        var body = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken)))
             .Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.ExperienciaAtual.Should().Be(750);
         body.Nivel.Should().Be(6);
@@ -318,7 +265,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmNivelOther3", "criaturanivelother3@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmTokenOther, 5));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/nivel", gmTokenOther, 5));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -330,9 +277,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
         // 149 XP is one below Nível 3's threshold (150), keeping this at Nível 2 — same fixture
         // value Ficha de Personagem's own equivalent test uses.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 149));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 149));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/level-up-notice", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/level-up-notice", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
@@ -343,10 +290,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
     }
 
-
     private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
     {
-        var tabela = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
+        var tabela = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
         var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
         return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
     }
@@ -356,12 +302,12 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmLevelUp2", "criaturalevelup2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 149));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/experiencia-atual", gmToken, 149));
 
-        var dismissResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
+        var dismissResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
         dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var noticeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/level-up-notice", gmToken));
+        var noticeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/level-up-notice", gmToken));
         var body = await noticeResponse.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         body!.BonusTexts.Should().BeEmpty();
     }
@@ -373,7 +319,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmLevelUpOther3", "criaturalevelupother3@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/dismiss-level-up-notice", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/dismiss-level-up-notice", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -385,7 +331,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmOther6", "criaturaother6@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmTokenOther, ValidUpdate()));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmTokenOther, ValidUpdate()));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -396,7 +342,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm7", "criatura7@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -408,7 +354,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmOther8", "criaturaother8@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -418,7 +364,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGm9", "criatura9@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{Guid.NewGuid()}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{Guid.NewGuid()}", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -426,7 +372,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task Create_seeds_6_zeroed_attributes_20_zeroed_skills_and_3_armor_slots()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
 
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSeed1", "creatureseed1@teste.com");
@@ -455,9 +401,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         var update = ValidUpdate() with { ExperienciaAtual = 100 };
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.Abate.Should().Be(15);
         body.Assistencia.Should().Be(12);
@@ -477,9 +423,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         var update = ValidUpdate() with { Arquetipo = "Fisico", Nivel = 1 };
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(8);
         body.FocoMaximo.Should().Be(4);
@@ -492,13 +438,13 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmMaxArt1", "criaturamaxart1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
         var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
@@ -510,18 +456,18 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmDano1", "criaturadano1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var cortanteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var cortanteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, "Dano", "Cortante", 3, null)));
         var cortanteItemId = (await cortanteResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        var arcanoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var arcanoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, "Dano", "Arcano", 2, null)));
         var arcanoItemId = (await arcanoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(cortanteItemId)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(arcanoItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(cortanteItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(arcanoItemId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/modificador-de-dano", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/modificador-de-dano", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body2 = await response.Content.ReadFromJsonAsync<ModificadorDeDanoResponse>();
@@ -538,9 +484,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         var update = ValidUpdate() with { Arquetipo = "Arcano", Nivel = 1 };
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(4);
         body.FocoMaximo.Should().Be(8);
@@ -558,9 +504,9 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         var update = ValidUpdate() with { Arquetipo = "Fisico", Nivel = 1 }; // Fisico Nível 1 -> Vida 8, Arcana 4
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken, update));
 
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var sheetGuid = Guid.Parse(sheetId);
@@ -571,7 +517,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         body!.VitalidadeMaximo.Should().Be(18);
         body.FocoMaximo.Should().Be(10);
@@ -587,12 +533,12 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
             new UpdateCreatureAttributeRequest(4, 0, false)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
             new UpdateCreatureAttributeRequest(4, 0, false)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
@@ -608,20 +554,20 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
 
         // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
             new UpdateCreatureAttributeRequest(4, 0, false)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
             new UpdateCreatureAttributeRequest(4, 0, false)));
 
         // Prontidao Gasto 9 -> Modificador 3, Reflexos Gasto 6 -> Modificador 2, Fortitude Gasto 3 -> Modificador 1.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Prontidao", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Prontidao", gmToken,
             new UpdateCreatureSkillRequest(9, null)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Reflexos", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Reflexos", gmToken,
             new UpdateCreatureSkillRequest(6, null)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Fortitude", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/skills/Fortitude", gmToken,
             new UpdateCreatureSkillRequest(3, null)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
@@ -635,16 +581,16 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub9", "creaturesub9@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
             new UpdateCreatureAttributeRequest(4, 0, false)));
 
-        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, "SubAtributo", "Esquiva Natural", 3, null)));
         var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/artifacts", gmToken, new AddCreatureArtifactRequest(artifactItemId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos 0 + artefato 3 - 0 penalidade
@@ -652,7 +598,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
 
     private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, "Medio", 5, rf, rm, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
@@ -663,10 +609,10 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSub3", "creaturesub3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 3, rm: 2);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/armor-slots/Capacete", gmToken,
             new UpdateCreatureArmorSlotRequest(armorItemId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
@@ -681,7 +627,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("CreatureGmOtherSub4", "creatureothersub4@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -692,7 +638,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSubElemental", "creaturesubelemental@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
@@ -709,12 +655,12 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetA = await CreateSheetAsync(gmTokenA);
         var sheetB = await CreateSheetAsync(gmTokenB);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetA}", gmTokenA,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetA}", gmTokenA,
             ValidUpdate() with { Nome = "Creature A" }));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetB}", gmTokenB,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetB}", gmTokenB,
             ValidUpdate() with { Nome = "Creature B" }));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmTokenA));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmTokenA));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
@@ -732,7 +678,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var ownSheetId = await CreateSheetAsync(gmToken);
         var grantedSheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
         body!.Single(s => s.Id == ownSheetId).OwnerNickname.Should().BeNull();
@@ -748,18 +694,18 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheet2 = await CreateSheetAsync(gmToken);
 
         // Both creatures share Rank=F, but differ on Nome/Raca/Arquetipo
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet1}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet1}", gmToken,
             ValidUpdate() with { Nome = "Lobo das Ruínas", Raca = "Lobo", Arquetipo = "Fisico", Rank = "F", Nivel = 3 }));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet2}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheet2}", gmToken,
             ValidUpdate() with { Nome = "Dragão de Fogo", Raca = "Dragão", Arquetipo = "Arcano", Rank = "F", Nivel = 5 }));
 
         // Filter by Rank alone (shared field) should return both
-        var responseRankOnly = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets?rank=F", gmToken));
+        var responseRankOnly = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/creature-sheets?rank=F", gmToken));
         var bodyRankOnly = await responseRankOnly.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
         bodyRankOnly.Should().HaveCount(2);
 
         // Filter by all fields (Rank + Nome + Raca + Arquetipo) should return exactly 1
-        var responseAll = await _client.SendAsync(AuthedRequest(HttpMethod.Get,
+        var responseAll = await Client.SendAsync(AuthedRequest(HttpMethod.Get,
             "/api/creature-sheets?nome=Lobo&raca=Lobo&arquetipo=Fisico&rank=F", gmToken));
         var bodyAll = await responseAll.Content.ReadFromJsonAsync<List<CreatureSheetSummaryResponse>>();
         bodyAll.Should().HaveCount(1);
@@ -779,11 +725,11 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var grantedSheetId = await GrantBlankCreatureAsync(gmToken, campaignId, playerId);
         var ungrantedSheetId = await CreateSheetAsync(gmToken);
 
-        var grantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{grantedSheetId}", playerToken));
+        var grantedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{grantedSheetId}", playerToken));
         var granted = await grantedResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         granted!.CampaignId.Should().Be(campaignId);
 
-        var ungrantedResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{ungrantedSheetId}", gmToken));
+        var ungrantedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{ungrantedSheetId}", gmToken));
         var ungranted = await ungrantedResponse.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         ungranted!.CampaignId.Should().BeNull();
     }
@@ -797,7 +743,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmACreatureSheets{afinidade}", $"caminhoafinACreatureSheets{afinidade}@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
             ValidUpdate() with { Afinidade = afinidade }));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -809,7 +755,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("CaminhoAfinGmBCreatureSheets", "caminhoafinBCreatureSheets@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var entity = await db.CreatureSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
@@ -817,7 +763,7 @@ public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
             ValidUpdate() with { Afinidade = "Vida" }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);

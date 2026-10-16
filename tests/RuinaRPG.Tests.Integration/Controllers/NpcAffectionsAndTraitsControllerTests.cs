@@ -11,45 +11,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class NpcAffectionsAndTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcAffectionsAndTraitsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
@@ -60,7 +26,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
     // TraitId, no Especificacao required.
     private async Task<(string PositiveTraitId, string NegativeTraitId)> GetSeededTraitIdsAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var positive = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
         var negative = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Negativa && !t.RequerEspecificacao && t.Custo >= -3);
@@ -71,7 +37,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
     // directly by name, mirroring TraitSeedParserTests' own convention of referencing it verbatim.
     private async Task<Trait> GetTraitAsync(string nome)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         return await db.Traits.SingleAsync(t => t.Nome == nome);
     }
@@ -81,7 +47,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
     // apart when combined, safely exceeding the level-1 budget of 5.
     private async Task<List<(string Id, int Custo)>> GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade polaridade, int take)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         // Each candidate's own |Custo| must stay within the level-1 budget (5) on its own — the test
         // using this helper adds them one at a time and expects the FIRST to succeed, so a trait that
@@ -98,21 +64,21 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm1", "npcafftraitgm1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmToken,
             new AddNpcAffectionRequest("Amigo de infância", 5)));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<NpcAffectionResponse>();
         added!.Nome.Should().Be("Amigo de infância");
         added.Favorabilidade.Should().Be(5);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<NpcAffectionResponse>>();
         list!.Should().ContainSingle(a => a.Id == added.Id);
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/affections/{added.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/affections/{added.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<List<NpcAffectionResponse>>();
         listAfter!.Should().NotContain(a => a.Id == added.Id);
     }
@@ -124,15 +90,15 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var sheetId = await CreateSheetAsync(gmToken);
         var (positiveTraitId, negativeTraitId) = await GetSeededTraitIdsAsync();
 
-        var addPositiveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var addPositiveResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(positiveTraitId, null)));
         addPositiveResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var addNegativeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var addNegativeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(negativeTraitId, null)));
         addNegativeResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var addedNegative = await addNegativeResponse.Content.ReadFromJsonAsync<NpcTraitResponse>();
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var list = await listResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
         list!.Positivas.Should().ContainSingle(t => t.TraitId == positiveTraitId);
@@ -140,10 +106,10 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         list.TotalPositivas.Should().Be(list.Positivas.Sum(t => t.Custo));
         list.TotalNegativas.Should().Be(list.Negativas.Sum(t => t.Custo));
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/traits/{addedNegative!.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/traits/{addedNegative!.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
         listAfter!.Negativas.Should().NotContain(t => t.Id == addedNegative.Id);
     }
@@ -154,7 +120,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var gmToken = await RegisterGmAndGetTokenAsync("NpcAffGm3", "npcafftraitgm3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(Guid.NewGuid().ToString(), null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -168,11 +134,11 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Positiva, 2);
         top.Sum(t => t.Custo).Should().BeGreaterThan(5); // level-1 creation budget
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(top[0].Id, null)));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(top[1].Id, null)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -193,7 +159,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         foreach (var (id, custo) in candidatas)
         {
             var cabe = total + Math.Abs(custo) <= 10;
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
                 new AddNpcTraitRequest(id, null)));
             response.StatusCode.Should().Be(cabe ? HttpStatusCode.Created : HttpStatusCode.BadRequest);
             if (cabe) total += Math.Abs(custo); else rejeitadas++;
@@ -201,7 +167,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
 
         total.Should().BeGreaterThan(5, "o limite de Negativas passa do de Positivas (5)").And.BeLessThanOrEqualTo(10);
         rejeitadas.Should().BeGreaterThan(0, "alguma Negativa tem de ter estourado o limite de 10");
-        var lista = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken)))
+        var lista = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken)))
             .Content.ReadFromJsonAsync<NpcTraitsListResponse>();
         lista!.PontosDisponiveis.Should().Be(5);
         lista.PontosDisponiveisNegativas.Should().Be(10);
@@ -214,11 +180,11 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var sheetId = await CreateSheetAsync(gmToken);
         var alergia = await GetTraitAsync("Alergia");
 
-        var rejected = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var rejected = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(alergia.Id.ToString(), null)));
         rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(alergia.Id.ToString(), "Poeira")));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<NpcTraitResponse>();
@@ -233,27 +199,27 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var sheetId = await CreateSheetAsync(gmTokenOwner);
         var (positiveTraitId, _) = await GetSeededTraitIdsAsync();
 
-        var addAffection = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmTokenOwner, new AddNpcAffectionRequest("Rival", -2)));
+        var addAffection = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmTokenOwner, new AddNpcAffectionRequest("Rival", -2)));
         var affectionId = (await addAffection.Content.ReadFromJsonAsync<NpcAffectionResponse>())!.Id;
-        var addTrait = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmTokenOwner, new AddNpcTraitRequest(positiveTraitId, null)));
+        var addTrait = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmTokenOwner, new AddNpcTraitRequest(positiveTraitId, null)));
         var traitId = (await addTrait.Content.ReadFromJsonAsync<NpcTraitResponse>())!.Id;
 
-        var addAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmTokenOther, new AddNpcAffectionRequest("Rival", -2)));
+        var addAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affections", gmTokenOther, new AddNpcAffectionRequest("Rival", -2)));
         addAffectionResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listAffectionsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmTokenOther));
+        var listAffectionsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affections", gmTokenOther));
         listAffectionsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/affections/{affectionId}", gmTokenOther));
+        var deleteAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/affections/{affectionId}", gmTokenOther));
         deleteAffectionResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var addTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmTokenOther, new AddNpcTraitRequest(positiveTraitId, null)));
+        var addTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmTokenOther, new AddNpcTraitRequest(positiveTraitId, null)));
         addTraitResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listTraitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmTokenOther));
+        var listTraitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmTokenOther));
         listTraitsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/traits/{traitId}", gmTokenOther));
+        var deleteTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/traits/{traitId}", gmTokenOther));
         deleteTraitResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -264,7 +230,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
         var sheetId = await CreateSheetAsync(gmToken);
 
         string exclusiveId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
@@ -277,7 +243,7 @@ public class NpcAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabase
             exclusiveId = trait.Id.ToString();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/traits", gmToken,
             new AddNpcTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

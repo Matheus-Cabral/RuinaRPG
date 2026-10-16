@@ -11,76 +11,24 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Habilidades Passivas nas Fichas de NPC e de Criatura, e sua cópia numa concessão.</summary>
-public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class NpcCreaturePassivasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcCreaturePassivasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
     }
 
     // Mesma chamada de GrantBlankNpcAsync (NpcSpellAbilitiesControllerTests), com a ficha de origem informada.
     private async Task<string> GrantNpcAsync(string gmToken, string campaignId, string playerId, string? sourceSheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
             new GrantSheetRequest(playerId, "Npc", sourceSheetId)));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
@@ -88,15 +36,15 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
 
     private async Task PublishBankEntryAsync(string gmToken, string campaignId, string entryId)
     {
-        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attach = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, entryId, null)));
         var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
     }
 
     private async Task<string> CreatePassivaAsync(string gmToken, string nome, RequisitosDePassivaDto? requisitos)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, "Passiva", 0, "Descrição.", [], false, "Livre", requisitos)));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
@@ -109,12 +57,12 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var sheetId = await CreateNpcSheetAsync(gm);
         var passivaId = await CreatePassivaAsync(gm, "Nobreza", new RequisitosDePassivaDto(Vocacao: "Bruxo"));
 
-        var add = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)));
         add.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await add.Content.ReadAsStringAsync()).Should().Contain("Requisitos não cumpridos: Vocação: Bruxo");
 
-        var scratch = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+        var scratch = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(null, "P", "Passiva", 0, "d", [])));
         scratch.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await scratch.Content.ReadAsStringAsync()).Should().Contain("Passivas só são cadastradas no Banco de Magias e Habilidades.");
@@ -128,21 +76,21 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var ignorada = await CreatePassivaAsync(gm, "De Bruxo", new RequisitosDePassivaDto(Vocacao: "Bruxo", Estrela: "Sadir", Atributos: [new("Instinto", 99)]));
         var alta = await CreatePassivaAsync(gm, "Alta", new RequisitosDePassivaDto(Nivel: 30));
 
-        var aceita = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+        var aceita = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
             new AddCreatureSpellAbilityRequest(ignorada, null, null, null, null, null)));
         aceita.StatusCode.Should().Be(HttpStatusCode.Created);
         (await aceita.Content.ReadFromJsonAsync<CreatureSpellAbilityResponse>())!.RequisitosPendentes.Should().BeEmpty();
 
-        var bloqueada = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+        var bloqueada = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
             new AddCreatureSpellAbilityRequest(alta, null, null, null, null, null)));
         bloqueada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await bloqueada.Content.ReadAsStringAsync()).Should().Contain("Nível 30");
 
-        var scratch = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+        var scratch = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
             new AddCreatureSpellAbilityRequest(null, "P", "Passiva", 0, "d", [])));
         scratch.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var disponiveis = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/spell-abilities/passivas-disponiveis", gm)))
+        var disponiveis = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/spell-abilities/passivas-disponiveis", gm)))
             .Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         disponiveis!.Single(p => p.Entrada.Nome == "De Bruxo").Pendencias.Should().BeEmpty();
         disponiveis!.Single(p => p.Entrada.Nome == "Alta").Pendencias.Should().Equal("Nível 30");
@@ -158,11 +106,11 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var sheetId = await CreateNpcSheetAsync(gm);
         var passivaId = await CreatePassivaAsync(gm, "Vigilante", null);
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await second.Content.ReadAsStringAsync()).Should().Contain("Esta Passiva já está na ficha.");
@@ -175,11 +123,11 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var sheetId = await CreateCreatureSheetAsync(gm);
         var passivaId = await CreatePassivaAsync(gm, "Casco Duro", null);
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
             new AddCreatureSpellAbilityRequest(passivaId, null, null, null, null, null)));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/spell-abilities", gm,
             new AddCreatureSpellAbilityRequest(passivaId, null, null, null, null, null)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await second.Content.ReadAsStringAsync()).Should().Contain("Esta Passiva já está na ficha.");
@@ -191,15 +139,15 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var gm = await RegisterGmAndGetTokenAsync("NpcPassGm2", "npcpassgm2@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPassPl2", "npcpasspl2@teste.com");
         var campaignId = await CreateCampaignAsync(gm, "Campanha");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
         var sourceId = await CreateNpcSheetAsync(gm);
         var passivaId = await CreatePassivaAsync(gm, "Vigia", new RequisitosDePassivaDto(Nivel: 1));
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gm,
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)))).StatusCode.Should().Be(HttpStatusCode.Created);
 
         var grantedId = await GrantNpcAsync(gm, campaignId, playerId, sourceId);
 
-        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{grantedId}/spell-abilities", playerToken)))
+        var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{grantedId}/spell-abilities", playerToken)))
             .Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>();
         var copy = list!.Single(e => e.Nome == "Vigia");
         copy.Categoria.Should().Be("Livre");
@@ -212,17 +160,17 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var gm = await RegisterGmAndGetTokenAsync("NpcPassGm3", "npcpassgm3@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "NpcPassPl3", "npcpasspl3@teste.com");
         var campaignId = await CreateCampaignAsync(gm, "Campanha");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
         var grantedId = await GrantNpcAsync(gm, campaignId, playerId, null);
         var publica = await CreatePassivaAsync(gm, "Pública", null);
         await CreatePassivaAsync(gm, "Privada", null);
         await PublishBankEntryAsync(gm, campaignId, publica);
 
         var url = $"/api/npc-sheets/{grantedId}/spell-abilities/passivas-disponiveis";
-        var paraJogador = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, url, playerToken))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
+        var paraJogador = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, url, playerToken))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         paraJogador!.Select(p => p.Entrada.Nome).Should().Equal("Pública");
 
-        var paraGm = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, url, gm))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
+        var paraGm = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, url, gm))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         paraGm!.Select(p => p.Entrada.Nome).Should().BeEquivalentTo(["Pública", "Privada"]);
     }
 
@@ -232,18 +180,18 @@ public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAs
         var gm = await RegisterGmAndGetTokenAsync("NpcPassGm4", "npcpassgm4@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "NpcPassPl4", "npcpasspl4@teste.com");
         var campaignId = await CreateCampaignAsync(gm, "Campanha");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gm, new AddCampaignMemberRequest(playerId)));
         var sourceId = await CreateNpcSheetAsync(gm);
-        var create = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
+        var create = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
             new CreateSpellAbilityEntryRequest("Sentinela", "Passiva", 0, "Descrição.", [], false, "Vocacional", new RequisitosDePassivaDto(Nivel: 1))));
         var passivaId = (await create.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gm,
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gm,
             new AddNpcSpellAbilityRequest(passivaId, null, null, null, null, null)))).StatusCode.Should().Be(HttpStatusCode.Created);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{passivaId}", gm))).IsSuccessStatusCode.Should().BeTrue();
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{passivaId}", gm))).IsSuccessStatusCode.Should().BeTrue();
 
         await GrantNpcAsync(gm, campaignId, playerId, sourceId);
 
-        var bank = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Passiva", gm)))
+        var bank = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Passiva", gm)))
             .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         var recriada = bank!.Single(e => e.Nome == "Sentinela");
         recriada.Id.Should().NotBe(passivaId);

@@ -10,47 +10,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class InviteCodesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public InviteCodesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return message;
-    }
-
     private async Task<string> RegisterJogadorAsync(string gmToken, string nickname, string email)
     {
         var code = await GenerateCodeAsync(gmToken);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return tokens!.AccessToken;
@@ -59,7 +25,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     [Fact]
     public async Task Generate_without_a_token_returns_401()
     {
-        var response = await _client.PostAsync("/api/invite-codes", null);
+        var response = await Client.PostAsync("/api/invite-codes", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -69,7 +35,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("ConviteGm1", "convite1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<InviteCodeResponse>();
@@ -85,10 +51,10 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     {
         var tokenA = await RegisterGmAndGetTokenAsync("ConviteGmA", "convitea@teste.com");
         var tokenB = await RegisterGmAndGetTokenAsync("ConviteGmB", "conviteb@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", tokenA));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", tokenB));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", tokenA));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", tokenB));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", tokenA));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", tokenA));
 
         var body = await response.Content.ReadFromJsonAsync<List<InviteCodeResponse>>();
         body!.Should().HaveCount(1);
@@ -97,7 +63,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     [Fact]
     public async Task List_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/invite-codes");
+        var response = await Client.GetAsync("/api/invite-codes");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -108,7 +74,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("ConviteGmRole", "conviterole@teste.com");
         var jogadorToken = await RegisterJogadorAsync(gmToken, "ConviteRoleCheck", "conviterolecheck@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", jogadorToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", jogadorToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -119,7 +85,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
         var token = await RegisterGmAndGetTokenAsync("ExpiraGm1", "expiragm1@teste.com");
         var code = await GenerateCodeAsync(token);
 
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var inviteCode = await db.InviteCodes.SingleAsync(c => c.Code == code);
@@ -127,7 +93,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<InviteCodeResponse>>();
         var entry = body!.Single(c => c.Code == code);
@@ -137,7 +103,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
 
     private async Task<string> GenerateCodeAsync(string token)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", token));
         var body = await response.Content.ReadFromJsonAsync<InviteCodeResponse>();
         return body!.Code;
     }
@@ -148,10 +114,10 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
         var token = await RegisterGmAndGetTokenAsync("RevokeGm1", "revoke1@teste.com");
         var code = await GenerateCodeAsync(token);
 
-        var revoke = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+        var revoke = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
         revoke.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
+        var list = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/invite-codes", token));
         var body = await list.Content.ReadFromJsonAsync<List<InviteCodeResponse>>();
         body!.Single(c => c.Code == code).Status.Should().Be("Revogado");
     }
@@ -163,7 +129,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
         var tokenOther = await RegisterGmAndGetTokenAsync("RevokeOther", "revokeother@teste.com");
         var code = await GenerateCodeAsync(tokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", tokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", tokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -173,9 +139,9 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("RevokeTwice", "revoketwice@teste.com");
         var code = await GenerateCodeAsync(token);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/invite-codes/{code}/revoke", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -185,7 +151,7 @@ public class InviteCodesControllerTests : IClassFixture<BlankDatabaseFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("RevokeMissing", "revokemissing@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes/NOTAREAL/revoke", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes/NOTAREAL/revoke", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

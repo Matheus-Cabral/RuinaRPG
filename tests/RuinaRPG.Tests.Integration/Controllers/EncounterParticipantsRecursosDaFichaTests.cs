@@ -25,30 +25,11 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// log da ficha registra pelo GM, o encontro ganha uma linha por recurso, e o dono e o GM recebem CondicoesAlteradas.
 /// Toda ficha daqui tem Vigor 8 e Astúcia 7: totais Vitalidade 16, Foco 14, Adrenalina 10.
 /// </summary>
-public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EncounterParticipantsRecursosDaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
-
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncounterParticipantsRecursosDaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private static readonly TimeSpan Arrives = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StaysSilent = TimeSpan.FromSeconds(1);
@@ -75,7 +56,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null, HttpStatusCode? esperado = null)
     {
-        var response = await _client.SendAsync(Authed(method, url, token, body));
+        var response = await Client.SendAsync(Authed(method, url, token, body));
         if (esperado is { } status)
             response.StatusCode.Should().Be(status, $"{method} {url}: {await response.Content.ReadAsStringAsync()}");
         else
@@ -89,11 +70,11 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
     private async Task<string> GmAsync(bool auditor = false)
     {
         var nick = Unique("RfGm");
-        var gm = (await (await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123")))
+        var gm = (await (await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123")))
             .Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         if (auditor)
         {
-            await using var scope = _factory.Services.CreateAsyncScope();
+            await using var scope = Factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.Users.SingleAsync(u => u.Nickname == nick)).IsRulesAuditor = true; // o mesmo usuário mantém o catálogo de Condições
             await db.SaveChangesAsync();
@@ -105,7 +86,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
     {
         var code = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
         var nick = Unique("RfJg");
-        var tokens = (await (await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123", code)))
+        var tokens = (await (await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123", code)))
             .Content.ReadFromJsonAsync<AuthResponse>())!;
         return ((await LerAsync<MeResponse>(tokens.AccessToken, "/api/auth/me")).Id, tokens.AccessToken);
     }
@@ -137,7 +118,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
     /// <summary>Grava o Atual direto no banco, fora de uma requisição (não entra em log nenhum).</summary>
     private async Task GuardarAtualAsync(Ficha f, Recursos r)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         switch (f.Rota)
@@ -193,7 +174,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
 
     private async Task<List<RuinaRPG.Infrastructure.Encounters.EncounterLogEntry>> LogDoEncontroAsync(string encounterId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(encounterId);
         return await db.EncounterLogEntries.AsNoTracking().Where(l => l.EncounterId == id).ToListAsync();
@@ -202,10 +183,10 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
     private async Task<HubConnection> ConectarAsync(string token)
     {
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/notifications"), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, "/hubs/notifications"), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
         await connection.StartAsync();
@@ -275,7 +256,7 @@ public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankData
             .Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
         async Task GuardarNaInstanciaAsync(Recursos r)
         {
-            await using var scope = _factory.Services.CreateAsyncScope();
+            await using var scope = Factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var p = (await db.EncounterParticipants.FindAsync(Guid.Parse(participantId)))!;
             (p.PVAtual, p.PFAtual, p.PAAtual) = (r.Vitalidade, r.Foco, r.Adrenalina);

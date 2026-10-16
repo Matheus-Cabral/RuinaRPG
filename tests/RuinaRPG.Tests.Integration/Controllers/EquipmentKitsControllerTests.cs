@@ -12,81 +12,14 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EquipmentKitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EquipmentKitsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    // Mirrors the exact established helpers in CharacterSheetsControllerTests.cs — copy them
-    // verbatim (RegisterJogadorLinkedToAsync, CreateCampaignAsync) rather than reinventing a
-    // shorter path, since Create_for_a_campaign_member requires the OwnerId to be a real
-    // CampaignMember (CharacterSheetsController.Create enforces this).
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meBody = await (await _client.SendAsync(me)).Content.ReadFromJsonAsync<MeResponse>();
-        return (meBody!.Id, tokens.AccessToken);
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
 
     private async Task<string> CreateCharacterSheetAsync(string gmToken, string playerId, string campaignId)
     {
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await response.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
-    }
-
-    // Copied verbatim from HistoricosControllerTests.cs — this codebase's established way to grant
-    // the Rules Auditor role in a test (a direct DB write, not an API call — no grant endpoint exists,
-    // real grants happen via `make grant-rules-auditor`).
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
     }
 
     private static CreateEquipmentKitRequest ValidCreate(string fixedItemId) => new(
@@ -117,7 +50,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
 
     private async Task<EquipmentKitFixedItemResponse> CriarFixoAsync(string auditorToken, CreateItemRequest request)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", auditorToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", auditorToken, request));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<EquipmentKitFixedItemResponse>())!;
     }
@@ -129,7 +62,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
     public async Task List_is_open_to_any_authenticated_caller_and_returns_the_12_seeded_kits()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm1", "equipkits1@teste.com");
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitResponse>>();
@@ -141,7 +74,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
     public async Task Create_by_a_non_Auditor_GM_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm2", "equipkits2@teste.com");
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, ValidCreate(Guid.NewGuid().ToString())));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, ValidCreate(Guid.NewGuid().ToString())));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -156,7 +89,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         // Escudo/Artefato subtype, but ItemGeral has no such subtype to resolve options from, so
         // it's the one ItemTipo value that stays rejected here.
         var invalid = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Item Geral", "ItemGeral", null, "F", 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -171,7 +104,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         // via an exact-name (ordinal, case-sensitive) check rather than accepting any int cast to
         // a valid-looking ItemTipo.
         var invalid = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Numérico", "99", null, "F", 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -183,7 +116,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkits3d@teste.com");
 
         var invalid = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, "99")] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -195,7 +128,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitsarmor1@teste.com");
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, "Superior")] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var kit = await response.Content.ReadFromJsonAsync<EquipmentKitResponse>();
@@ -209,7 +142,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitsarmor2@teste.com");
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", null, null, 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -221,7 +154,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitsarmor3@teste.com");
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, null, 1, null, null, null, "Superior")] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -244,7 +177,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
                 new EquipmentKitChoiceSlotInput("Capacete 2", "Armadura", null, null, 1, null, null, null, "Capacete"),
             ]
         };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -263,7 +196,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
                 new EquipmentKitChoiceSlotInput("Superior", "Armadura", null, null, 1, null, null, null, "Superior"),
             ]
         };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -279,7 +212,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitstier1@teste.com");
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, "F", 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -295,7 +228,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync(email);
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Arma", "Arma", null, rank, 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("Rank inválido");
@@ -308,7 +241,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitstier2@teste.com");
 
         var request = (await ValidCreateAsync(gmToken)) with { ChoiceSlots = [new EquipmentKitChoiceSlotInput("Escudo", "Escudo", null, null, 1, null, null, null, null)] };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -327,7 +260,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
                 new EquipmentKitChoiceSlotInput("Artefato", "Artefato", null, null, 1, null, null, null, null),
             ]
         };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -339,7 +272,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkits4@teste.com");
 
         var fixo = await CriarFixoAsync(gmToken, FixoItemGeral(Unico("Mochila")));
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, ValidCreate(fixo.Id)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, ValidCreate(fixo.Id)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var kit = await response.Content.ReadFromJsonAsync<EquipmentKitResponse>();
@@ -352,15 +285,15 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm5", "equipkits5@teste.com");
         await GrantRulesAuditorAsync("equipkits5@teste.com");
-        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, await ValidCreateAsync(gmToken))))
+        var created = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, await ValidCreateAsync(gmToken))))
             .Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
         var corda = await CriarFixoAsync(gmToken, FixoItemGeral(Unico("Corda")));
         var updated = ValidCreate(corda.Id) with { Items = [new EquipmentKitItemInput(corda.Id, 2)], ChoiceSlots = [] };
-        var putResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created!.Id}", gmToken, updated));
+        var putResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created!.Id}", gmToken, updated));
         putResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken));
         var kit = (await listResponse.Content.ReadFromJsonAsync<List<EquipmentKitResponse>>())!.Single(k => k.Id == created.Id);
         kit.Items.Should().ContainSingle(i => i.Nome == corda.Nome && i.Qtd == 2);
         kit.ChoiceSlots.Should().BeEmpty();
@@ -371,7 +304,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitsGm6", "equipkits6@teste.com");
         await GrantRulesAuditorAsync("equipkits6@teste.com");
-        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, await ValidCreateAsync(gmToken))))
+        var created = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, await ValidCreateAsync(gmToken))))
             .Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "EquipKitsPlayer6", "equipkitsplayer6@teste.com");
@@ -379,7 +312,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         var sheetId = await CreateCharacterSheetAsync(gmToken, playerId, campaignId);
 
         // Directly through the DB, to isolate this test from the full choose-flow this same plan builds in Task 9.
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var s = await db.CharacterSheets.FindAsync(Guid.Parse(sheetId));
@@ -387,7 +320,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
             await db.SaveChangesAsync();
         }
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/equipment-kits/{created.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/equipment-kits/{created.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -400,7 +333,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         foreach (var fixedItemId in new[] { Guid.NewGuid().ToString(), "nao-e-um-guid", "" })
         {
             var request = ValidCreate(fixedItemId);
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, request));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await response.Content.ReadAsStringAsync()).Should().Contain("Item fixo não encontrado na base de itens fixos.");
@@ -417,7 +350,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         var baseRequest = ValidCreate(mochila.Id) with { ChoiceSlots = [] };
 
         async Task<HttpResponseMessage> Post(CreateEquipmentKitRequest r) =>
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, r));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, r));
 
         var semSlot = await Post(baseRequest with { Items = [new EquipmentKitItemInput(armadura.Id, 1)] });
         semSlot.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -446,7 +379,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         var baseRequest = ValidCreate(armadura1.Id) with { ChoiceSlots = [] };
 
         async Task<HttpResponseMessage> Post(CreateEquipmentKitRequest r) =>
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, r));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, r));
 
         var doisFixos = await Post(baseRequest with { Items = [new EquipmentKitItemInput(armadura1.Id, 1, "Superior"), new EquipmentKitItemInput(armadura2.Id, 1, "Superior")] });
         doisFixos.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -476,7 +409,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         var baseRequest = await ValidCreateAsync(gmToken);
 
         async Task<HttpResponseMessage> Post(string? subcategoria, string? bonusFixedItemId, int? bonusQtd) =>
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, baseRequest with
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, baseRequest with
             {
                 ChoiceSlots = [new EquipmentKitChoiceSlotInput("Arma à distância", "Arma", ["Arcos"], "F", 1, subcategoria, bonusFixedItemId, bonusQtd, null)],
             }));
@@ -505,21 +438,21 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         await GrantRulesAuditorAsync("equipkitsfixed5@teste.com");
         var antes = await CriarFixoAsync(gmToken, FixoItemGeral(Unico("Tocha")));
         var depois = await CriarFixoAsync(gmToken, FixoItemGeral(Unico("Lampiao")));
-        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
+        var created = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
             ValidCreate(antes.Id) with { ChoiceSlots = [] }))).Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created!.Id}", gmToken,
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created!.Id}", gmToken,
             new UpdateEquipmentKitRequest("Kit de Teste", "Descrição de teste", 10, [new EquipmentKitItemInput(depois.Id, 4)], [])));
         put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var kit = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken)))
+        var kit = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/equipment-kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitResponse>>())!.Single(k => k.Id == created.Id);
         var linha = kit.Items.Should().ContainSingle().Subject;
         linha.FixedItemId.Should().Be(depois.Id);
         linha.Nome.Should().Be(depois.Nome);
         linha.Qtd.Should().Be(4);
 
-        var invalido = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created.Id}", gmToken,
+        var invalido = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/equipment-kits/{created.Id}", gmToken,
             new UpdateEquipmentKitRequest("Kit de Teste", "Descrição de teste", 10, [new EquipmentKitItemInput(depois.Id, 0)], [])));
         invalido.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -532,7 +465,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
         var completo = await CriarFixoAsync(gmToken, FixoArma(Unico("Espada")));
         var incompletoNome = Unico("Incompleto");
         Guid incompletoId;
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var fixo = new RuinaRPG.Infrastructure.Rules.EquipmentKitFixedItem
@@ -545,7 +478,7 @@ public class EquipmentKitsControllerTests : IClassFixture<BlankDatabaseFixture>,
             incompletoId = fixo.Id;
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken,
             new CreateEquipmentKitRequest(Unico("Kit"), "D", 0,
                 [new EquipmentKitItemInput(completo.Id, 1), new EquipmentKitItemInput(incompletoId.ToString(), 3)], [])));
         response.StatusCode.Should().Be(HttpStatusCode.Created);

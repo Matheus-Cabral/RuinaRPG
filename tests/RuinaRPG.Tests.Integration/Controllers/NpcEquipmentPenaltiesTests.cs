@@ -11,41 +11,13 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Penalidade automática de equipamento nos cálculos da Ficha de NPC (Catálogo de Itens, Requisitos/Penalidade).</summary>
-public class NpcEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class NpcEquipmentPenaltiesTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcEquipmentPenaltiesTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
     private sealed record Ctx(string GmToken, string ViewerToken, string SheetId);
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
 
     private async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(method, url, token, body));
+        var response = await Client.SendAsync(AuthedRequest(method, url, token, body));
         response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} returned {(int)response.StatusCode}");
         return response;
     }
@@ -55,17 +27,17 @@ public class NpcEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, I
 
     private async Task<string> RegisterGmAsync(string nickname)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
-    private async Task<(string Id, string Token)> RegisterJogadorLinkedToAsync(string gmToken, string nickname)
+    private async Task<(string Id, string Token)> RegisterJogadorLinkedWithDefaultEmailAsync(string gmToken, string nickname)
     {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123", code));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, $"{nickname}@x.com", "Senha!123", "Senha!123", code));
         var tokens = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
+        var me = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
         return ((await me.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
@@ -192,7 +164,7 @@ public class NpcEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, I
     public async Task A_granted_npc_evaluates_requirements_for_the_player_too()
     {
         var gm = await RegisterGmAsync("PenNpc5Gm");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "PenNpc5Jog");
+        var (playerId, playerToken) = await RegisterJogadorLinkedWithDefaultEmailAsync(gm, "PenNpc5Jog");
         var campaign = (await (await SendOkAsync(HttpMethod.Post, "/api/campaigns", gm, new CreateCampaignRequest("Campanha", ""))).Content.ReadFromJsonAsync<CampaignResponse>())!;
         await SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaign.Id}/members", gm, new AddCampaignMemberRequest(playerId));
         var grant = (await (await SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaign.Id}/grants", gm, new GrantSheetRequest(playerId, "Npc", null))).Content.ReadFromJsonAsync<GrantSheetResponse>())!;
