@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class DurabilidadePorRankMigrationTests : IClassFixture<PostgresFixture>
+public class DurabilidadePorRankMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public DurabilidadePorRankMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public DurabilidadePorRankMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {
@@ -21,7 +21,7 @@ public class DurabilidadePorRankMigrationTests : IClassFixture<PostgresFixture>
         var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        // PostgresFixture is an IClassFixture: its single container/database is shared by every
+        // BlankDatabaseFixture is an IClassFixture: its single container/database is shared by every
         // fact in this class. Reset the tables this class touches so each test starts from the
         // empty state its body assumes, instead of depending on sibling-test ordering.
         await db.DurabilidadesPorRank.ExecuteDeleteAsync();

@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterAffectionAndTraitMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterAffectionAndTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterAffectionAndTraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterAffectionAndTraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_affection_and_trait_tables()

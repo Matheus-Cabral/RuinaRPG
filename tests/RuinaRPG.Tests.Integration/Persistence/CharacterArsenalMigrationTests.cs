@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterArsenalMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterArsenalMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterArsenalMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterArsenalMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_weapon_armor_and_shield_tables()

@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CreatureSheetMigrationTests : IClassFixture<PostgresFixture>
+public class CreatureSheetMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CreatureSheetMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CreatureSheetMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CreatureSheets_table_with_a_default_Nivel_of_1_and_a_null_OwnerId()

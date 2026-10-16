@@ -13,13 +13,13 @@ using RuinaRPG.Contracts.Notifications;
 
 namespace RuinaRPG.Tests.Integration.Hubs;
 
-public class NotificationHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NotificationHubTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public NotificationHubTests(PostgresFixture postgres) => _postgres = postgres;
+    public NotificationHubTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

@@ -14,13 +14,13 @@ using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CreatureSheetsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CreatureSheetsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CreatureSheetsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public CreatureSheetsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

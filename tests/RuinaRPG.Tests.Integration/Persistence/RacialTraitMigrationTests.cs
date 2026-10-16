@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RacialTraitMigrationTests : IClassFixture<PostgresFixture>
+public class RacialTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RacialTraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RacialTraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_RacialTraitOverride_table_and_the_IsRacial_RacialVariante_columns()

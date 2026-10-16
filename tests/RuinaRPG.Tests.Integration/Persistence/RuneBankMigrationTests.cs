@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Runes;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
+public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RuneBankMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RuneBankMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_rune_bank_table_and_the_new_columns()

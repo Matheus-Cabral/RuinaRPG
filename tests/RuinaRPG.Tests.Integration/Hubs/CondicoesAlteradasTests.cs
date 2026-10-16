@@ -22,13 +22,13 @@ namespace RuinaRPG.Tests.Integration.Hubs;
 /// Quando as Condições ativas de um participante ligado a uma ficha mudam, o dono da ficha recebe
 /// CondicoesAlteradas pelo NotificationHub e o grupo do encontro recebe ParticipantsChanged. Ninguém mais.
 /// </summary>
-public class CondicoesAlteradasTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CondicoesAlteradasTests(PostgresFixture postgres) => _postgres = postgres;
+    public CondicoesAlteradasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

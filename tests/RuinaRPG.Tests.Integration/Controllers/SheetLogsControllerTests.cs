@@ -14,13 +14,13 @@ using RuinaRPG.Infrastructure.SheetLogs;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Campanha R0016: consulta paginada do log de ficha, só para o GM.</summary>
-public class SheetLogsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public SheetLogsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public SheetLogsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

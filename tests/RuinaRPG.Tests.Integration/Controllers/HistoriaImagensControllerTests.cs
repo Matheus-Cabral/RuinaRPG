@@ -14,13 +14,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Aba Antecedentes (Personagem e NPC): a galeria de imagens da História (GET/PUT …/historia/imagens) e as
 /// imagens dentro do texto (PUT …/historia só mantém &lt;img&gt; de imagens do app que quem salva pode usar).
 /// </summary>
-public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class HistoriaImagensControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public HistoriaImagensControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public HistoriaImagensControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

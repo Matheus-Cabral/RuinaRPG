@@ -8,13 +8,13 @@ using RuinaRPG.Domain;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class AuthControllerMeTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class AuthControllerMeTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public AuthControllerMeTests(PostgresFixture postgres) => _postgres = postgres;
+    public AuthControllerMeTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

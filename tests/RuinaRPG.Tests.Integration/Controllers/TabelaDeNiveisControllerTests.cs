@@ -17,13 +17,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Auditoria da Tabela de Níveis. A tabela é global ao banco da classe: todo teste que a edita
 /// restaura o que mudou no finally, para os demais continuarem vendo 50 níveis e todas as colunas de sistema.
 /// </summary>
-public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class TabelaDeNiveisControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public TabelaDeNiveisControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public TabelaDeNiveisControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

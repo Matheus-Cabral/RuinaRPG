@@ -28,17 +28,17 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// a Maestria "Espadas" (3 + 0 + Força = 13); Artefatos de Dano Cortante +10 e Redução Física +4; e, onde a ficha
 /// tem Afinidades, a Afinidade Fogo com uma linha de Fogo valendo 6 (Eficiência 3 e Dano 3 na Tabela de Afinidades).
 /// </summary>
-public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CondicoesNaFichaTests(PostgresFixture postgres) => _postgres = postgres;
+    public CondicoesNaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

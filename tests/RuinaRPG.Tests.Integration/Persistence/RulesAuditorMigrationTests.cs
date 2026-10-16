@@ -5,11 +5,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RulesAuditorMigrationTests : IClassFixture<PostgresFixture>
+public class RulesAuditorMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RulesAuditorMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RulesAuditorMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_IsRulesAuditor_column_defaulted_to_false()

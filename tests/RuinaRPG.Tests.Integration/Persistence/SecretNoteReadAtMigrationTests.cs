@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SecretNoteReadAtMigrationTests : IClassFixture<PostgresFixture>
+public class SecretNoteReadAtMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SecretNoteReadAtMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SecretNoteReadAtMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migration_stamps_pre_existing_recipients_as_read_at_the_note_creation_time()

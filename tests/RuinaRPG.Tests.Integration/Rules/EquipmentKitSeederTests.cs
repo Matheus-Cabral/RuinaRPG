@@ -5,11 +5,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Rules;
 
-public class EquipmentKitSeederTests : IClassFixture<PostgresFixture>
+public class EquipmentKitSeederTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EquipmentKitSeederTests(PostgresFixture fixture) => _fixture = fixture;
+    public EquipmentKitSeederTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {
@@ -17,7 +17,7 @@ public class EquipmentKitSeederTests : IClassFixture<PostgresFixture>
         var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        // PostgresFixture is an IClassFixture: its single container/database is shared by every
+        // BlankDatabaseFixture is an IClassFixture: its single container/database is shared by every
         // fact in this class, and their execution order is not guaranteed to be declaration order.
         // Reset the table so each test starts from the empty state its body assumes, instead of
         // silently depending on a sibling test having (not) run first. EquipmentKitItems and

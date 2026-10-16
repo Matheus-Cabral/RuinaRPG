@@ -14,13 +14,13 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Habilidades Passivas na Ficha de Personagem: só do Banco, bloqueio por requisitos e aviso.</summary>
-public class CharacterPassivasTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CharacterPassivasTests(PostgresFixture postgres) => _postgres = postgres;
+    public CharacterPassivasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

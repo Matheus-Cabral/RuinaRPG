@@ -12,11 +12,11 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 // Fixture própria: o teste para o banco num ponto antigo do histórico de migrations, então não pode
 // dividir o banco com testes que já migraram até o fim.
-public class PericiasComoTabelaMigrationTests : IClassFixture<PostgresFixture>
+public class PericiasComoTabelaMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public PericiasComoTabelaMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public PericiasComoTabelaMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task PericiasComoTabela_keeps_the_values_written_under_the_enum_columns_and_restricts_deleting_a_pericia_in_use()

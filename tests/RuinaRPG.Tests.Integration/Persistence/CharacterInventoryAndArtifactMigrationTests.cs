@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterInventoryAndArtifactMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterInventoryAndArtifactMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_inventory_and_artifact_tables()

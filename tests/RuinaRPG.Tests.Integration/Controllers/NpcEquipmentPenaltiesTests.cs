@@ -11,13 +11,13 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Penalidade automática de equipamento nos cálculos da Ficha de NPC (Catálogo de Itens, Requisitos/Penalidade).</summary>
-public class NpcEquipmentPenaltiesTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NpcEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public NpcEquipmentPenaltiesTests(PostgresFixture postgres) => _postgres = postgres;
+    public NpcEquipmentPenaltiesTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

@@ -18,13 +18,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Auditoria da Tabela de Níveis: o último nível e os saldos por nível vêm da Tabela de Níveis do
 /// banco, não mais de um "50" fixo nem de regex sobre o texto de bônus.
 /// </summary>
-public class NivelLimitsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NivelLimitsTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public NivelLimitsTests(PostgresFixture postgres) => _postgres = postgres;
+    public NivelLimitsTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

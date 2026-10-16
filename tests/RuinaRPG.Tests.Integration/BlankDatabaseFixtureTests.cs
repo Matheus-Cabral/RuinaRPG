@@ -3,13 +3,13 @@ using Npgsql;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class PostgresFixtureTests
+public class BlankDatabaseFixtureTests
 {
     [Fact]
     public async Task Two_fixtures_share_one_container_but_get_separate_databases()
     {
-        var first = new PostgresFixture();
-        var second = new PostgresFixture();
+        var first = new BlankDatabaseFixture();
+        var second = new BlankDatabaseFixture();
         try
         {
             await first.InitializeAsync();

@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class DiaryEntryCharacterSheetForeignKeyMigrationTests : IClassFixture<PostgresFixture>
+public class DiaryEntryCharacterSheetForeignKeyMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public DiaryEntryCharacterSheetForeignKeyMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public DiaryEntryCharacterSheetForeignKeyMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Deleting_a_character_sheet_cascades_to_its_diary_entries()

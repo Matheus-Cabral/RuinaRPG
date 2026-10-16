@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
+public class NpcChildTableMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public NpcChildTableMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public NpcChildTableMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_all_14_npc_child_tables_and_each_round_trips_a_row()

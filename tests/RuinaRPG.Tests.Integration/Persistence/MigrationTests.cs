@@ -4,11 +4,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class MigrationTests : IClassFixture<PostgresFixture>
+public class MigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public MigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public MigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_AspNetUsers_and_RefreshTokens_tables()

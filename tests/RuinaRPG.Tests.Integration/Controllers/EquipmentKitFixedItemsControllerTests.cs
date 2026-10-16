@@ -14,15 +14,15 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EquipmentKitFixedItemsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EquipmentKitFixedItemsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Url = "/api/equipment-kit-fixed-items";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EquipmentKitFixedItemsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public EquipmentKitFixedItemsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

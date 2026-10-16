@@ -17,13 +17,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// PUT is gated to the Rules Auditor, same DB check as HistoricosController. Tests that mutate a
 /// row restore it afterwards, since every Fact in this class shares one database.
 /// </summary>
-public class DurabilidadesPorRankControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class DurabilidadesPorRankControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public DurabilidadesPorRankControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public DurabilidadesPorRankControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

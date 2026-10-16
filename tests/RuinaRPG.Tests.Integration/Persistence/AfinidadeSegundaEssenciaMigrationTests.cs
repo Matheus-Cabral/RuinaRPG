@@ -12,11 +12,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class AfinidadeSegundaEssenciaMigrationTests : IClassFixture<PostgresFixture>
+public class AfinidadeSegundaEssenciaMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public AfinidadeSegundaEssenciaMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public AfinidadeSegundaEssenciaMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migration_converts_legacy_rows_to_the_two_essencias()

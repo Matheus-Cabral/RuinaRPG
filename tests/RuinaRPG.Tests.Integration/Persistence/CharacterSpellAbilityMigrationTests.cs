@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterSpellAbilityMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterSpellAbilityMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterSpellAbilityMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterSpellAbilityMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_character_spell_ability_tables_with_a_cascading_effects_relationship()

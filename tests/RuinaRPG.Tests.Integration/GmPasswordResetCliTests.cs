@@ -13,13 +13,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class GmPasswordResetCliTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class GmPasswordResetCliTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public GmPasswordResetCliTests(PostgresFixture postgres) => _postgres = postgres;
+    public GmPasswordResetCliTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

@@ -4,11 +4,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SpellAbilityCriadaNaFichaMigrationTests : IClassFixture<PostgresFixture>
+public class SpellAbilityCriadaNaFichaMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SpellAbilityCriadaNaFichaMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SpellAbilityCriadaNaFichaMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_adds_CriadaNaFicha_false_by_default_to_the_three_sheet_spell_ability_tables()

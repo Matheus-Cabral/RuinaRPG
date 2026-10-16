@@ -11,11 +11,11 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 // Fixture própria: o teste para o banco num ponto antigo do histórico de migrations, então não pode
 // dividir o banco com testes que já migraram até o fim.
-public class DurabilidadeBackfillMigrationTests : IClassFixture<PostgresFixture>
+public class DurabilidadeBackfillMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public DurabilidadeBackfillMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public DurabilidadeBackfillMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task RemoveDurabilidadeMaximaDosItens_backfills_the_atual_of_weapons_whose_item_had_no_typed_maximum()

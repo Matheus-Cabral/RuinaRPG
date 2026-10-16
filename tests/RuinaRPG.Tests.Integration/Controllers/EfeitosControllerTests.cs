@@ -10,13 +10,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EfeitosControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EfeitosControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EfeitosControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public EfeitosControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {
@@ -211,7 +211,7 @@ public class EfeitosControllerTests : IClassFixture<PostgresFixture>, IAsyncLife
     }
 
     // The Efeitos table is shared across every test in this class (single Postgres container via
-    // PostgresFixture, never reset between tests), and List_is_seeded_with_51_effects asserts an
+    // BlankDatabaseFixture, never reset between tests), and List_is_seeded_with_51_effects asserts an
     // exact count. Any test that successfully creates a new catalog row must delete it again
     // before returning, so the shared count is restored regardless of test execution order.
     private async Task CleanUpCreatedEfeitoAsync(HttpResponseMessage createResponse, string gmToken)

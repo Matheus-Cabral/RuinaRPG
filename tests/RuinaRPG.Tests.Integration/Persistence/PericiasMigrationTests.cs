@@ -5,10 +5,10 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class PericiasMigrationTests : IClassFixture<PostgresFixture>
+public class PericiasMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
-    public PericiasMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    private readonly BlankDatabaseFixture _fixture;
+    public PericiasMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_seeds_the_39_pericias_with_the_legacy_ids_keys_and_names()

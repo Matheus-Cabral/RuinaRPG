@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterSheetMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterSheetMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterSheetMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterSheetMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CharacterSheets_table_with_a_default_Nivel_of_1()

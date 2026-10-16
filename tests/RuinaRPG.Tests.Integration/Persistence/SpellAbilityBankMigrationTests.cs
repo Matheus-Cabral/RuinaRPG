@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SpellAbilityBankMigrationTests : IClassFixture<PostgresFixture>
+public class SpellAbilityBankMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SpellAbilityBankMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SpellAbilityBankMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_bank_tables_with_a_cascading_effects_relationship()

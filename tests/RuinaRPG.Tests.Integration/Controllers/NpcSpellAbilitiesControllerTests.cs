@@ -11,13 +11,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcSpellAbilitiesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NpcSpellAbilitiesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public NpcSpellAbilitiesControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public NpcSpellAbilitiesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

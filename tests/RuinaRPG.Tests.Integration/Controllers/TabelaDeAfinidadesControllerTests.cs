@@ -17,15 +17,15 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// since every Fact in this class shares one database. Created rows use Afinidade 900+ so they never
 /// collide with the 22 seeded ones.
 /// </summary>
-public class TabelaDeAfinidadesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Url = "/api/tabela-de-afinidades";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public TabelaDeAfinidadesControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public TabelaDeAfinidadesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

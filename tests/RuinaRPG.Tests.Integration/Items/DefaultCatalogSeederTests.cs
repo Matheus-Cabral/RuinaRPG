@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Items;
 
-public class DefaultCatalogSeederTests : IClassFixture<PostgresFixture>
+public class DefaultCatalogSeederTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public DefaultCatalogSeederTests(PostgresFixture fixture) => _fixture = fixture;
+    public DefaultCatalogSeederTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {
@@ -19,7 +19,7 @@ public class DefaultCatalogSeederTests : IClassFixture<PostgresFixture>
         var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        // PostgresFixture is an IClassFixture: its single container/database is shared by every
+        // BlankDatabaseFixture is an IClassFixture: its single container/database is shared by every
         // fact in this class. Reset both tables so each test starts from the empty state its body
         // assumes, instead of depending on sibling-test ordering.
         await db.Items.ExecuteDeleteAsync();

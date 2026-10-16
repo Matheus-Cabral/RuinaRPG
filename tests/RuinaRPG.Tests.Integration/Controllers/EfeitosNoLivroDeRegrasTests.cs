@@ -19,13 +19,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Regras' Graus & Círculos document in sync — see
 /// docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
 /// </summary>
-public class EfeitosNoLivroDeRegrasTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EfeitosNoLivroDeRegrasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EfeitosNoLivroDeRegrasTests(PostgresFixture postgres) => _postgres = postgres;
+    public EfeitosNoLivroDeRegrasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class RulesAuditorCliTests : IClassFixture<PostgresFixture>
+public class RulesAuditorCliTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RulesAuditorCliTests(PostgresFixture fixture) => _fixture = fixture;
+    public RulesAuditorCliTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {

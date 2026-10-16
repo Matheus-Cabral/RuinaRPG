@@ -10,11 +10,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class HistoriaImagensMigrationTests : IClassFixture<PostgresFixture>
+public class HistoriaImagensMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public HistoriaImagensMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public HistoriaImagensMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private RuinaRpgDbContext NewContext() =>
         new(new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options);

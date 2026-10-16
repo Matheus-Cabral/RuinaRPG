@@ -7,15 +7,15 @@ using RuinaRPG.Contracts.Images;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class ImagesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
     private static readonly byte[] PngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
 
-    public ImagesControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public ImagesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

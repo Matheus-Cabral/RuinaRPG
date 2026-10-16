@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class DatabaseInitializerTests : IClassFixture<PostgresFixture>
+public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
 
-    public DatabaseInitializerTests(PostgresFixture postgres) => _postgres = postgres;
+    public DatabaseInitializerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     private ServiceProvider BuildServices() => new ServiceCollection()
         .AddDbContext<RuinaRpgDbContext>(o => o.UseNpgsql(_postgres.ConnectionString))

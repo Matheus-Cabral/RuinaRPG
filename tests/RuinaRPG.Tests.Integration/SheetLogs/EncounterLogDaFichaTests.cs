@@ -20,17 +20,17 @@ namespace RuinaRPG.Tests.Integration.SheetLogs;
 /// Gerenciador de Encontros R0010 / Técnico R0012: a Vitalidade, o Foco ou a Adrenalina de uma ficha que
 /// participa de um encontro em andamento, quando mudam, entram também no log desse encontro.
 /// </summary>
-public class EncounterLogDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncounterLogDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string RecursoDaFicha = "RecursoDaFicha";
     private const string NomeDoPersonagem = "Vann Astrel";
     private const string NomeDoNpc = "Sentinela da Ruína";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EncounterLogDaFichaTests(PostgresFixture postgres) => _postgres = postgres;
+    public EncounterLogDaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

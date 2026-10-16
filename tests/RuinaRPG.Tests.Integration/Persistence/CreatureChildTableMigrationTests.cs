@@ -13,11 +13,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
+public class CreatureChildTableMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CreatureChildTableMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CreatureChildTableMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_all_12_creature_child_tables_and_each_round_trips_a_row()

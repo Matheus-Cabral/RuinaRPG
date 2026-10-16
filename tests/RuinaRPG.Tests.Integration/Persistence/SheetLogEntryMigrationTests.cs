@@ -13,11 +13,11 @@ using RuinaRPG.Infrastructure.SheetLogs;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SheetLogEntryMigrationTests : IClassFixture<PostgresFixture>
+public class SheetLogEntryMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SheetLogEntryMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SheetLogEntryMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private static SheetLogEntry Entrada(Guid atorId, Guid? personagem = null, Guid? npc = null, Guid? criatura = null) => new()
     {

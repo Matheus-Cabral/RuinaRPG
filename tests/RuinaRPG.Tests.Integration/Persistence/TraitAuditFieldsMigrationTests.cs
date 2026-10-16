@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class TraitAuditFieldsMigrationTests : IClassFixture<PostgresFixture>
+public class TraitAuditFieldsMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TraitAuditFieldsMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public TraitAuditFieldsMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_new_Trait_audit_columns_defaulted_false_and_null()

@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CampaignBonusDeCargaMigrationTests : IClassFixture<PostgresFixture>
+public class CampaignBonusDeCargaMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CampaignBonusDeCargaMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CampaignBonusDeCargaMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {

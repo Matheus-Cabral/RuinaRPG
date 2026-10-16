@@ -21,13 +21,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// E 45, D 80, C 125, B 180, A 245, S/SS Inquebrável). Tests that edit the table restore it after,
 /// since every Fact in this class shares one database.
 /// </summary>
-public class DurabilidadePorRankItemsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class DurabilidadePorRankItemsTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public DurabilidadePorRankItemsTests(PostgresFixture postgres) => _postgres = postgres;
+    public DurabilidadePorRankItemsTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

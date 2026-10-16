@@ -6,11 +6,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EfeitoMigrationAndSeedTests : IClassFixture<PostgresFixture>
+public class EfeitoMigrationAndSeedTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EfeitoMigrationAndSeedTests(PostgresFixture fixture) => _fixture = fixture;
+    public EfeitoMigrationAndSeedTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Efeitos_table_and_SeedAsync_populates_it()

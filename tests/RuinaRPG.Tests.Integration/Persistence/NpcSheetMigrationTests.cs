@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class NpcSheetMigrationTests : IClassFixture<PostgresFixture>
+public class NpcSheetMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public NpcSheetMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public NpcSheetMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_NpcSheets_table_with_a_default_Nivel_of_1_and_a_null_OwnerId()

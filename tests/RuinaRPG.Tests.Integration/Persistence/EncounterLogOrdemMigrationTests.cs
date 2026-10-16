@@ -4,11 +4,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EncounterLogOrdemMigrationTests : IClassFixture<PostgresFixture>
+public class EncounterLogOrdemMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EncounterLogOrdemMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public EncounterLogOrdemMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_adds_Ordem_and_indexes_the_log_by_EncounterId_and_Ordem()

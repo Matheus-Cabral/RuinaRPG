@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CampaignAttachmentMigrationTests : IClassFixture<PostgresFixture>
+public class CampaignAttachmentMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CampaignAttachmentMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CampaignAttachmentMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CampaignAttachments_table()

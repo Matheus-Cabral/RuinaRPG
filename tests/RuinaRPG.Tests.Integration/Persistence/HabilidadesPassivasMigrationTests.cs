@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
+public class HabilidadesPassivasMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public HabilidadesPassivasMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public HabilidadesPassivasMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Categoria_and_requisitos_round_trip_on_the_bank_and_on_a_sheet_copy()

@@ -22,17 +22,17 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// ficha registra a Condição (pelo GM) e o corte (automático), e o corte não vira linha RecursoDaFicha no encontro.
 /// Toda ficha daqui tem Vigor 8 e Astúcia 7: totais Vitalidade 16, Foco 14, Adrenalina 10, Estresse 10.
 /// </summary>
-public class AtivacaoDeCondicoesTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class AtivacaoDeCondicoesTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public AtivacaoDeCondicoesTests(PostgresFixture postgres) => _postgres = postgres;
+    public AtivacaoDeCondicoesTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

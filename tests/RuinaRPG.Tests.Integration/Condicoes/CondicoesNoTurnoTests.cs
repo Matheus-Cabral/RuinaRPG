@@ -21,16 +21,16 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// das que têm duração em Turnos. Toda ficha daqui tem Vigor 8 e Astúcia 7: totais Vitalidade 16, Foco 14,
 /// Adrenalina 10, Estresse 10. "Aria" é a Ficha de Personagem do jogador; "Lobo" é um NPC do GM (instância no encontro).
 /// </summary>
-public class CondicoesNoTurnoTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CondicoesNoTurnoTests(PostgresFixture postgres) => _postgres = postgres;
+    public CondicoesNoTurnoTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

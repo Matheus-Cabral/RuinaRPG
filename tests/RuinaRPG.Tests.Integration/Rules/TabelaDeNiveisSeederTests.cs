@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Rules;
 
-public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
+public class TabelaDeNiveisSeederTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TabelaDeNiveisSeederTests(PostgresFixture fixture) => _fixture = fixture;
+    public TabelaDeNiveisSeederTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private RuinaRpgDbContext NewDb() =>
         new(new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options);

@@ -11,13 +11,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 // Requisitos - Habilidades Raciais R0005: a variante solar de Alóra só existe nas fichas depois que o
 // GM dá um nome a ela na página de Habilidades Raciais.
-public class VarianteSolarAloraControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class VarianteSolarAloraControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public VarianteSolarAloraControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public VarianteSolarAloraControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

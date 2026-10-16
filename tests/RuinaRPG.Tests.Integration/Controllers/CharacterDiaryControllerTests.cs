@@ -9,13 +9,13 @@ using RuinaRPG.Contracts.Diary;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterDiaryControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CharacterDiaryControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CharacterDiaryControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public CharacterDiaryControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

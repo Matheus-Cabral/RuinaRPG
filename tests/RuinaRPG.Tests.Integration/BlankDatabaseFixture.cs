@@ -3,7 +3,7 @@ using Testcontainers.PostgreSql;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class PostgresFixture : IAsyncLifetime
+public class BlankDatabaseFixture : IAsyncLifetime
 {
     // Booting a fresh Postgres container per test class (91 of them) overwhelms this host's Docker
     // daemon under xUnit's default parallelism (up to 4 concurrent container starts, on a 4-core

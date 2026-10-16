@@ -10,13 +10,13 @@ using RuinaRPG.Contracts.Runes;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class RuneBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class RuneBankControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public RuneBankControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public RuneBankControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

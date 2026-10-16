@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RulebookDocumentOverrideMigrationTests : IClassFixture<PostgresFixture>
+public class RulebookDocumentOverrideMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RulebookDocumentOverrideMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RulebookDocumentOverrideMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_RulebookDocumentOverrides_table_with_a_unique_Slug()

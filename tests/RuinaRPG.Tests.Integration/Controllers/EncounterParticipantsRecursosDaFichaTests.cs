@@ -25,17 +25,17 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// log da ficha registra pelo GM, o encontro ganha uma linha por recurso, e o dono e o GM recebem CondicoesAlteradas.
 /// Toda ficha daqui tem Vigor 8 e Astúcia 7: totais Vitalidade 16, Foco 14, Adrenalina 10.
 /// </summary>
-public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncounterParticipantsRecursosDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EncounterParticipantsRecursosDaFichaTests(PostgresFixture postgres) => _postgres = postgres;
+    public EncounterParticipantsRecursosDaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

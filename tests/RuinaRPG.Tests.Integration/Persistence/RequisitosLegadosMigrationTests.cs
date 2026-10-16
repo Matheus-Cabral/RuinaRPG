@@ -12,11 +12,11 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 // Fixture própria: o teste para o banco num ponto antigo do histórico de migrations, então não pode
 // dividir o banco com testes que já migraram até o fim.
-public class RequisitosLegadosMigrationTests : IClassFixture<PostgresFixture>
+public class RequisitosLegadosMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RequisitosLegadosMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RequisitosLegadosMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task The_three_legacy_fields_become_structured_requirements_and_penalty_text()

@@ -13,13 +13,13 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EncounterParticipantsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncounterParticipantsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public EncounterParticipantsControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public EncounterParticipantsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

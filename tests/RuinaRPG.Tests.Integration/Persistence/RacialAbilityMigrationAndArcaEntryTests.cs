@@ -10,11 +10,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<PostgresFixture>
+public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RacialAbilityMigrationAndArcaEntryTests(PostgresFixture fixture) => _fixture = fixture;
+    public RacialAbilityMigrationAndArcaEntryTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_RacialAbilityOverride_and_ArcaEntry_tables_and_the_ArcaRolada_columns()

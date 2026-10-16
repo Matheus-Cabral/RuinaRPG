@@ -24,16 +24,16 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// própria ficha seguem sem mudança. Toda ficha parte de Força 10, Agilidade 6, Vigor 8, Astúcia 7, uma Perícia sobre
 /// Força, um Artefato "Anel" (Dano Cortante +10), uma Arma equipada e uma Magia.
 /// </summary>
-public class ResumoDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
 
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public ResumoDaFichaTests(PostgresFixture postgres) => _postgres = postgres;
+    public ResumoDaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

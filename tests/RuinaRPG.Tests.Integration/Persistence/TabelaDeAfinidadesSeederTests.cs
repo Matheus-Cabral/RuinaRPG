@@ -6,7 +6,7 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class TabelaDeAfinidadesSeederTests : IClassFixture<PostgresFixture>
+public class TabelaDeAfinidadesSeederTests : IClassFixture<BlankDatabaseFixture>
 {
     private const string TresLinhas = """
         | Afinidade | Eficiência | Dano |
@@ -16,9 +16,9 @@ public class TabelaDeAfinidadesSeederTests : IClassFixture<PostgresFixture>
         | 2         | 1          | 1    |
         """;
 
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TabelaDeAfinidadesSeederTests(PostgresFixture fixture) => _fixture = fixture;
+    public TabelaDeAfinidadesSeederTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {

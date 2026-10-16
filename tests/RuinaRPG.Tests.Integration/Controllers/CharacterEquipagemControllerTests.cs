@@ -12,13 +12,13 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CharacterEquipagemControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CharacterEquipagemControllerTests(PostgresFixture postgres) => _postgres = postgres;
+    public CharacterEquipagemControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {
@@ -321,7 +321,7 @@ public class CharacterEquipagemControllerTests : IClassFixture<PostgresFixture>,
         // one independently for every GM that applies a kit containing it), so an unscoped Nome-only
         // lookup would collide with another test in this class that also grants a "Mochila" (e.g.
         // Choose_a_kit_with_no_choice_slots_places_every_fixed_item_and_adds_Ciclos above), since all
-        // Facts in this class share one Postgres database via PostgresFixture.
+        // Facts in this class share one Postgres database via BlankDatabaseFixture.
         var mochila = await db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>().SingleAsync(i => i.Nome == "Mochila" && i.GmId == gmId);
         var attachment = await db.CampaignAttachments.SingleAsync(a => a.CampaignId == Guid.Parse(campaignId) && a.ItemId == mochila.Id);
         attachment.IsPublic.Should().BeTrue();

@@ -14,13 +14,13 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Penalidade automática de equipamento nos cálculos da Ficha de Personagem (Catálogo de Itens, Requisitos/Penalidade).</summary>
-public class CharacterEquipmentPenaltiesTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CharacterEquipmentPenaltiesTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public CharacterEquipmentPenaltiesTests(PostgresFixture postgres) => _postgres = postgres;
+    public CharacterEquipmentPenaltiesTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

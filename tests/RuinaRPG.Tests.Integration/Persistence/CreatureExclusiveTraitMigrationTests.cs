@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CreatureExclusiveTraitMigrationTests : IClassFixture<PostgresFixture>
+public class CreatureExclusiveTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CreatureExclusiveTraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CreatureExclusiveTraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_CreatureExclusiveTraits_and_lets_a_CreatureTrait_reference_either_catalog()

@@ -17,14 +17,14 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// salvar logo antes do salvamento da requisição, sempre no mesmo ponto. Dois NPCs do GM, "A" (Iniciativa 20) e "B"
 /// (10); "A" tem uma Condição "Vitalidade atual −3 a cada vez" e PV 10.
 /// </summary>
-public class ConcorrenciaDoEncontroTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class ConcorrenciaDoEncontroTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private AntesDoSalvamento _gancho = null!;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public ConcorrenciaDoEncontroTests(PostgresFixture postgres) => _postgres = postgres;
+    public ConcorrenciaDoEncontroTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

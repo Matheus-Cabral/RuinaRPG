@@ -6,12 +6,12 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EquipmentKitSchemaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EquipmentKitSchemaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
 
-    public EquipmentKitSchemaTests(PostgresFixture postgres) => _postgres = postgres;
+    public EquipmentKitSchemaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

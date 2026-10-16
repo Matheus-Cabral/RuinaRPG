@@ -11,13 +11,13 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Habilidades Passivas nas Fichas de NPC e de Criatura, e sua cópia numa concessão.</summary>
-public class NpcCreaturePassivasTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NpcCreaturePassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public NpcCreaturePassivasTests(PostgresFixture postgres) => _postgres = postgres;
+    public NpcCreaturePassivasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {

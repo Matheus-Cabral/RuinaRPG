@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EncounterPhasesMigrationTests : IClassFixture<PostgresFixture>
+public class EncounterPhasesMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EncounterPhasesMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public EncounterPhasesMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migration_converts_existing_encounters_to_Preparacao_or_EmAndamento()

@@ -22,13 +22,13 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// FichaParaRequisitos snapshot consumed by Passiva requisitos (Task 5). Asserts the snapshot's
 /// numbers equal what the sheet's own endpoints already show, rather than re-deriving formulas.
 /// </summary>
-public class SheetStatsTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class SheetStatsTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
 {
-    private readonly PostgresFixture _postgres;
+    private readonly BlankDatabaseFixture _postgres;
     private ApiFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public SheetStatsTests(PostgresFixture postgres) => _postgres = postgres;
+    public SheetStatsTests(BlankDatabaseFixture postgres) => _postgres = postgres;
 
     public Task InitializeAsync()
     {
