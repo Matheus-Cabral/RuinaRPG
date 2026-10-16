@@ -20,9 +20,15 @@ public class ApiFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        Client?.Dispose();
-        if (Factory is not null)
-            await Factory.DisposeAsync();
-        await SharedPostgres.DropDatabaseAsync(_databaseName, ConnectionString);
+        try
+        {
+            Client?.Dispose();
+            if (Factory is not null)
+                await Factory.DisposeAsync();
+        }
+        finally
+        {
+            await SharedPostgres.DropDatabaseAsync(_databaseName, ConnectionString);
+        }
     }
 }

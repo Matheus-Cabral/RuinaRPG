@@ -1,5 +1,8 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration;
 
@@ -13,6 +16,11 @@ public class ApiTestBaseTests(ApiFixture fixture) : ApiTestBase(fixture)
         var campaignId = await CreateCampaignAsync(gmToken, "Base");
         await GrantRulesAuditorAsync("basegm@teste.com");
 
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            (await db.Users.SingleAsync(u => u.NormalizedEmail == "BASEGM@TESTE.COM")).IsRulesAuditor.Should().BeTrue();
+        }
         playerId.Should().NotBeNullOrEmpty();
         campaignId.Should().NotBeNullOrEmpty();
         var me = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", playerToken));
