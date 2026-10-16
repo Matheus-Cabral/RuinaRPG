@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RuinaRPG.Infrastructure.Auth;
@@ -15,6 +16,14 @@ namespace RuinaRPG.Tests.Integration;
 // DatabaseInitializer.InitializeAsync explicitly.
 public class ApiFactory(string connectionString) : WebApplicationFactory<Program>
 {
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        // "Testing" isn't Development, so the host no longer validates DI scopes on its own; keep the
+        // captive-dependency check the suite had before 2.0.0.
+        builder.UseDefaultServiceProvider(o => { o.ValidateScopes = true; o.ValidateOnBuild = true; });
+        return base.CreateHost(builder);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
