@@ -3,9 +3,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
-using RuinaRPG.Api;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
@@ -14,9 +11,9 @@ using RuinaRPG.Infrastructure.SheetLogs;
 namespace RuinaRPG.Tests.Integration;
 
 // "Testing" is neither Development nor Production: Program.cs skips its startup migrate/seed, so the
-// database must already be initialized (a clone of the template, see ApiFixture) — or, while
-// initializeDatabase is true, this factory initializes it once after the host starts.
-public class ApiFactory(string connectionString, bool initializeDatabase = true) : WebApplicationFactory<Program>
+// database must already be initialized (a clone of the template, see ApiFixture), or the caller must run
+// DatabaseInitializer.InitializeAsync explicitly.
+public class ApiFactory(string connectionString) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -49,15 +46,5 @@ public class ApiFactory(string connectionString, bool initializeDatabase = true)
                 options.MaxSizeMb = 10;
             });
         });
-    }
-
-    protected override IHost CreateHost(IHostBuilder builder)
-    {
-        var host = base.CreateHost(builder);
-        if (initializeDatabase)
-            // Task.Run leaves xUnit's MaxConcurrencySyncContext: blocking on it from a test's own context
-            // deadlocks once every worker thread is blocked here waiting for a continuation that needs one.
-            Task.Run(() => DatabaseInitializer.InitializeAsync(host.Services, NullLogger.Instance)).GetAwaiter().GetResult();
-        return host;
     }
 }

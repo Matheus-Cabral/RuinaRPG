@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using RuinaRPG.Api;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Persistence;
@@ -90,6 +92,7 @@ public class TabelaDeNiveisSeederTests : IClassFixture<BlankDatabaseFixture>
     public async Task Api_host_starts_with_the_table_seeded()
     {
         await using var factory = new ApiFactory(_fixture.ConnectionString);
+        await DatabaseInitializer.InitializeAsync(factory.Services, NullLogger.Instance);
         using var scope = factory.Services.CreateScope();
 
         var tabela = await scope.ServiceProvider.GetRequiredService<ITabelaDeNiveis>().ObterAsync();

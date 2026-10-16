@@ -14,7 +14,7 @@ public class ApiFixture : IAsyncLifetime
     {
         await TemplateDatabase.CloneAsync(_databaseName);
         ConnectionString = SharedPostgres.DatabaseConnectionString(await SharedPostgres.ServerConnectionStringAsync(), _databaseName);
-        Factory = new ApiFactory(ConnectionString, initializeDatabase: false);
+        Factory = new ApiFactory(ConnectionString);
         Client = Factory.CreateClient();
     }
 

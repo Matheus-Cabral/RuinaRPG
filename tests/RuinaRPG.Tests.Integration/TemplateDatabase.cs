@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
+using RuinaRPG.Api;
 
 namespace RuinaRPG.Tests.Integration;
 
@@ -33,8 +35,8 @@ public static class TemplateDatabase
         await SharedPostgres.ExecuteAdminAsync($"CREATE DATABASE \"{Name}\"");
         var connectionString = SharedPostgres.DatabaseConnectionString(await SharedPostgres.ServerConnectionStringAsync(), Name);
 
-        await using (var factory = new ApiFactory(connectionString, initializeDatabase: true))
-            _ = factory.Services; // starting the host runs DatabaseInitializer
+        await using (var factory = new ApiFactory(connectionString))
+            await DatabaseInitializer.InitializeAsync(factory.Services, NullLogger.Instance);
 
         NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
         await SharedPostgres.ExecuteAdminAsync($"ALTER DATABASE \"{Name}\" WITH IS_TEMPLATE true");
