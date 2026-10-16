@@ -10,46 +10,12 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CompendioControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CompendioControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return message;
-    }
-
     [Fact]
     public async Task Search_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/compendio/search?q=ambidestria");
+        var response = await Client.GetAsync("/api/compendio/search?q=ambidestria");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -59,7 +25,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var token = await RegisterGmAndGetTokenAsync("CompendioGm1", "compendio1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?q=Ambidestria", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?q=Ambidestria", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
@@ -71,7 +37,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var token = await RegisterGmAndGetTokenAsync("CompendioGm2", "compendio2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?q=Aumentar+Armadura", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?q=Aumentar+Armadura", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
         body!.Should().Contain(r => r.Categoria == "Efeito" && r.Titulo == "Aumentar Armadura");
@@ -82,7 +48,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var token = await RegisterGmAndGetTokenAsync("CompendioGm3", "compendio3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?categorias=Caracteristica", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search?categorias=Caracteristica", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
         body!.Should().OnlyContain(r => r.Categoria == "Caracteristica");
@@ -93,7 +59,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var token = await RegisterGmAndGetTokenAsync("CompendioGm4", "compendio4@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/compendio/search", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
         body!.Select(r => r.Categoria).Distinct().Should().HaveCountGreaterThan(1);
@@ -105,7 +71,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
         var gmToken = await RegisterGmAndGetTokenAsync("CompendioCreatureExclusiveGm", "compendiocreatureexclusive@teste.com");
         const string nome = "Casco Reforcado De Teste Unico";
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             db.Set<RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait>().Add(new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
@@ -119,7 +85,7 @@ public class CompendioControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/compendio/search?q={Uri.EscapeDataString(nome)}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/compendio/search?q={Uri.EscapeDataString(nome)}", gmToken));
 
         var results = await response.Content.ReadFromJsonAsync<List<CompendioSearchResultResponse>>();
         results!.Should().NotContain(r => r.Titulo == nome);

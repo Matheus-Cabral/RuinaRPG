@@ -9,73 +9,27 @@ using RuinaRPG.Contracts.Items;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterPossessionsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterPossessionsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco, string? imageId = null, string descricao = "Um item qualquer")
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor, string? imageId = null, string? descricao = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
@@ -94,13 +48,13 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
     }
 
     private async Task<string> CreateArmaItemAsync(string gmToken, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Arma", nome, 1.5m, 50, null, "Espadas", null, "F", "UmaMao", "2D6", 3, "19", 2, "Cortante", null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
@@ -113,7 +67,7 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
             new AddCharacterInventoryItemRequest(itemId, 3)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -131,9 +85,9 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer2", "possplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var itemId = await CreateItemGeralAsync(gmToken, "Tocha", 0.5m, 2);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 2)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 2)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
         body!.Should().ContainSingle(i => i.ItemId == itemId);
@@ -146,13 +100,13 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer3", "possplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var itemId = await CreateItemGeralAsync(gmToken, "Lanterna", 1m, 8);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>())!.Id;
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
         body!.Should().NotContain(i => i.Id == inventoryItemId);
     }
@@ -164,13 +118,13 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayerQtd1", "possplayerqtd1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", playerToken, 4));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", playerToken, 4));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
         var item = body!.Single(i => i.Id == inventoryItemId);
         item.Qtd.Should().Be(4);
@@ -185,11 +139,11 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken,
             new AddCharacterArtifactRequest(artifactItemId)));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
         body!.Should().HaveCount(1);
         var artifact = body!.Single();
@@ -210,12 +164,12 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var itemGeralId = await CreateItemGeralAsync(gmToken, "Corda Encantada", 1.5m, 5, imageId, "Brilha levemente no escuro.");
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2, imageId, "Um anel de ouro maciço.");
 
-        var inventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemGeralId, 1)));
+        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemGeralId, 1)));
         var inventoryBody = await inventoryResponse.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>();
         inventoryBody!.ImageUrl.Should().StartWith("/images/");
         inventoryBody.Descricao.Should().Be("Brilha levemente no escuro.");
 
-        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
         var artifactBody = await artifactResponse.Content.ReadFromJsonAsync<CharacterArtifactResponse>();
         artifactBody!.ImageUrl.Should().StartWith("/images/");
         artifactBody.Descricao.Should().Be("Um anel de ouro maciço.");
@@ -228,13 +182,13 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer5", "possplayer5@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel da Sorte", "Atributo", "Astucia", 1);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
         var artifactId = (await addResponse.Content.ReadFromJsonAsync<CharacterArtifactResponse>())!.Id;
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/artifacts/{artifactId}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/artifacts/{artifactId}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
         body!.Should().NotContain(a => a.Id == artifactId);
     }
@@ -249,11 +203,11 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var artifact2 = await CreateArtefatoItemAsync(gmToken, "Anel 2", "Atributo", "Forca", 1);
         var artifact3 = await CreateArtefatoItemAsync(gmToken, "Anel 3", "Atributo", "Agilidade", 1);
         var artifact4 = await CreateArtefatoItemAsync(gmToken, "Anel 4", "Atributo", "Astucia", 1);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact1)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact2)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact3)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact1)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact2)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact3)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact4)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifact4)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -267,30 +221,30 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1m, 5);
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2);
-        var addInventory = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        var addInventory = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addInventory.Content.ReadFromJsonAsync<CharacterInventoryItemResponse>())!.Id;
-        var addArtifact = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+        var addArtifact = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
         var artifactId = (await addArtifact.Content.ReadFromJsonAsync<CharacterArtifactResponse>())!.Id;
 
-        var addInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", otherToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        var addInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", otherToken, new AddCharacterInventoryItemRequest(itemId, 1)));
         addInventoryResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var listInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", otherToken));
+        var listInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", otherToken));
         listInventoryResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var updateInventoryQtdResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", otherToken, 3));
+        var updateInventoryQtdResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", otherToken, 3));
         updateInventoryQtdResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var deleteInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}", otherToken));
+        var deleteInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/inventory/{inventoryItemId}", otherToken));
         deleteInventoryResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var addArtifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", otherToken, new AddCharacterArtifactRequest(artifactItemId)));
+        var addArtifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", otherToken, new AddCharacterArtifactRequest(artifactItemId)));
         addArtifactResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var listArtifactsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", otherToken));
+        var listArtifactsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", otherToken));
         listArtifactsResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var deleteArtifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/artifacts/{artifactId}", otherToken));
+        var deleteArtifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/artifacts/{artifactId}", otherToken));
         deleteArtifactResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -304,7 +258,7 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var armaItemId = await CreateArmaItemAsync(gmToken, "Espada Longa");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
             new AddCharacterInventoryItemRequest(armaItemId, 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -317,7 +271,7 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer8", "possplayer8@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
             new AddCharacterInventoryItemRequest("not-a-guid", 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -330,7 +284,7 @@ public class CharacterPossessionsControllerTests : IClassFixture<BlankDatabaseFi
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "PossPlayer9", "possplayer9@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken,
             new AddCharacterArtifactRequest("not-a-guid")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

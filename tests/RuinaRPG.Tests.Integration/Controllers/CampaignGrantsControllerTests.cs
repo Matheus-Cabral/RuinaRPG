@@ -13,129 +13,71 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CampaignGrantsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
-            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        var meBody = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
-        return (meBody!.Id, tokens.AccessToken);
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private async Task AddMemberAsync(string gmToken, string campaignId, string playerId) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
     private async Task<NpcSheetResponse> GetNpcSheetAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!;
     }
 
     private async Task<List<NpcAttributeResponse>> GetNpcAttributesAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<NpcAttributeResponse>>())!;
     }
 
     private async Task SetNpcAttributeGastoAsync(string gmToken, string sheetId, string atributo, int gasto) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/{atributo}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/{atributo}", gmToken,
             new UpdateNpcAttributeRequest(gasto, 0, false)));
 
     private async Task SetNpcVocacaoAsync(string gmToken, string sheetId, string vocacao) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
                 1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0)));
 
     private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? segundaEssencia, int? segundaEssenciaValor, int? subElementoValor, int? experiencia) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
             new AddNpcAffinityRequest(elemento, elementoValor, segundaEssencia, segundaEssenciaValor, subElementoValor, experiencia)));
 
     private async Task<List<NpcAffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<NpcAffinityResponse>>())!;
     }
 
     private async Task<HttpResponseMessage> GrantAsync(string gmToken, string campaignId, GrantSheetRequest request) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, request));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, request));
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
     }
 
     private async Task<CreatureSheetResponse> GetCreatureSheetAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
     }
 
     private async Task<List<CreatureAttributeResponse>> GetCreatureAttributesAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>())!;
     }
 
     private async Task SetCreatureAttributeGastoAsync(string gmToken, string sheetId, string atributo, int gasto) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/{atributo}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/{atributo}", gmToken,
             new UpdateCreatureAttributeRequest(gasto, 0, false)));
 
     // Traits are seeded at app startup by TraitSeeder from Características.md — pull a real one
@@ -143,7 +85,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
     // approach as CreatureAffectionsAndTraitsControllerTests.GetSeededTraitIdsAsync.
     private async Task<string> GetSeededPositiveTraitIdAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var trait = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
         return trait.Id.ToString();
@@ -153,7 +95,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
     // — bypasses the CRUD controller to seed the second, genuinely separate catalog directly.
     private async Task<string> CreateExclusiveTraitDirectlyAsync(string nome, string descricao, int custo, RuinaRPG.Domain.Enums.Polaridade polaridade, bool requerEspecificacao)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
         {
@@ -170,11 +112,11 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
     }
 
     private async Task<HttpResponseMessage> AddCreatureTraitAsync(string gmToken, string sheetId, string traitId) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(traitId, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(traitId, null)));
 
     private async Task<CreatureTraitsListResponse> GetCreatureTraitsAsync(string gmToken, string sheetId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureTraitsListResponse>())!;
     }
 
@@ -240,15 +182,15 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         content.Add(fileContent, "file", "test.png");
         var upload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!;
-        var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
+        var image = (await (await Client.SendAsync(upload)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!;
+        var addRune = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
             new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id, Disciplina: "Adicao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
-        var runes = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
+        var runes = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
             .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
         runes!.Should().ContainSingle(r => r.Nome == "Runa Ilustrada" && r.ImageUrl == image.Url);
     }
@@ -261,14 +203,14 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Runa Tipo");
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
-        var addRune = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
+        var addRune = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
             new AddNpcRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra", Disciplina: "Manifestacao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
-        var runes = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
+        var runes = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
             .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
         runes!.Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra" && r.Disciplina == "Manifestacao");
     }
@@ -296,7 +238,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         copied.SubElemento.Should().Be("Curar");
         copied.SubElementoValor.Should().Be(2);
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var copiedRow = await db.NpcAffinities.AsNoTracking()
@@ -374,7 +316,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var normalTraitId = await GetSeededPositiveTraitIdAsync();
         var exclusiveTraitId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 2, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
         // O catálogo normal já não é concedido pela API: a linha legada entra direto no banco.
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
@@ -471,11 +413,11 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var response = await GrantAsync(gmToken, campaignA, new GrantSheetRequest(playerId, "Npc", null));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
-        var viewAResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignA}/player-view", playerToken));
+        var viewAResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignA}/player-view", playerToken));
         var viewA = await viewAResponse.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
         viewA!.MeusCompanheiros.Should().ContainSingle(c => c.Id == body!.SheetId);
 
-        var viewBResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignB}/player-view", playerToken));
+        var viewBResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignB}/player-view", playerToken));
         var viewB = await viewBResponse.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>();
         viewB!.MeusCompanheiros.Should().NotContain(c => c.Id == body!.SheetId);
     }
@@ -493,7 +435,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var creatureGrantResponse = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Creature", null));
         var creatureGrant = await creatureGrantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmToken));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<GrantSummaryResponse>>();
 
@@ -509,7 +451,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmTokenOther = await RegisterGmAndGetTokenAsync("GrantGmOther12", "grantother12@teste.com");
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Grant Lista Alheia");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/grants", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -522,7 +464,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant História");
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}/historia", gmToken, new UpdateHistoriaRequest("<p>Criado nas ruínas</p>")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}/historia", gmToken, new UpdateHistoriaRequest("<p>Criado nas ruínas</p>")));
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
@@ -537,7 +479,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
 
     private async Task SetSheetPiAsync(string tipo, string sheetId, int pi)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         if (tipo == "Npc")
             (await db.NpcSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
@@ -548,7 +490,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
 
     private async Task<(List<RuinaRPG.Infrastructure.SpellsAndAbilities.SpellAbilityBankEntry> Banco, List<RuinaRPG.Infrastructure.Campaigns.CampaignAttachment> Anexos)> BancoEAnexosAsync(string campaignId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var anexos = await db.CampaignAttachments.Where(a => a.CampaignId == Guid.Parse(campaignId) && a.SpellAbilityBankEntryId != null).ToListAsync();
         var gmId = await db.Campaigns.Where(c => c.Id == Guid.Parse(campaignId)).Select(c => c.GmId).SingleAsync();
@@ -569,7 +511,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         object addRequest = tipo == "Npc"
             ? new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())
             : new AddCreatureSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList());
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{rota}/{sourceId}/spell-abilities", gmToken, addRequest));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{rota}/{sourceId}/spell-abilities", gmToken, addRequest));
         var bancoAntes = (await BancoEAnexosAsync(campaignId)).Banco;
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, tipo, sourceId));
@@ -581,7 +523,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
 
         // A cópia concedida continua "montada na ficha": o jogador que a recebe pode editá-la (4.b).
         var copiaId = (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
-        var copiadas = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{rota}/{copiaId}/spell-abilities", gmToken));
+        var copiadas = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{rota}/{copiaId}/spell-abilities", gmToken));
         var criadasNaFicha = tipo == "Npc"
             ? (await copiadas.Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha))
             : (await copiadas.Content.ReadFromJsonAsync<List<CreatureSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha));
@@ -597,10 +539,10 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
         await SetSheetPiAsync("Npc", sourceId, 1000);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gmToken,
             new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())));
         var entryId = (await BancoEAnexosAsync(campaignId)).Banco.Single().Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, entryId.ToString(), null)));
 
         await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
@@ -619,7 +561,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
         Guid? identica = null;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var gmId = await db.NpcSheets.Where(n => n.Id == Guid.Parse(sourceId)).Select(n => n.GmId).SingleAsync();
@@ -646,7 +588,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         if (identica is not null)
             entrada.Id.Should().Be(identica.Value);
         anexos.Should().ContainSingle(a => a.SpellAbilityBankEntryId == entrada.Id && a.IsPublic);
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.NpcSpellAbilities.Where(s => s.NpcSheetId == Guid.Parse(body!.SheetId)).Select(s => s.SourceBankEntryId).SingleAsync())
@@ -662,7 +604,7 @@ public class CampaignGrantsControllerTests : IClassFixture<BlankDatabaseFixture>
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Grant Afinidade Adicional");
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sourceId}", gmToken,
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, "Campeao", null, null, null,
                 1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 3)));
 

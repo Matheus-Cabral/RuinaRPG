@@ -12,78 +12,23 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterSkillsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterSkillsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string tipoDeAlvo, string alvo, int valor)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", "Anel de Teste", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
     }
 
     private static UpdateCharacterSheetRequest UpdateWithHistorico(string? historicoId) => new(
@@ -97,7 +42,7 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer1", "skillplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
         body!.Should().HaveCount(39);
@@ -110,11 +55,11 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer2", "skillplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
             new UpdateCharacterSkillRequest(9, null)));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
         body!.Single(s => s.Pericia == "Atletismo").Modificador.Should().Be(3); // 9 / 3
     }
@@ -126,7 +71,7 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayerUnknown", "skillplayerunknown@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Inexistente", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Inexistente", playerToken,
             new UpdateCharacterSkillRequest(9, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -140,18 +85,18 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillHistPlayer1", "skillhistplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var historicoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Teste de Bônus na Perícia", "Descrição de teste.", "Arcano", "Biblioteca")));
         var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             UpdateWithHistorico(historico!.Id)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Arcano", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Arcano", playerToken,
             new UpdateCharacterSkillRequest(3, null)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Biblioteca", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Biblioteca", playerToken,
             new UpdateCharacterSkillRequest(3, null)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
         var arcano = body!.Single(s => s.Pericia == "Arcano");
@@ -173,17 +118,17 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         // Forca: Gasto 4, Bonus 0, no maestria -> Total 4 (AttributeTotalCalculator.Total)
-        var attrResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
+        var attrResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
             new UpdateCharacterAttributeRequest(4, 0, false)));
         attrResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Atletismo: Gasto 9 -> Modificador 3 (SkillFormulas.Modificador), Atributo escolhido Forca
-        var skillResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
+        var skillResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
             new UpdateCharacterSkillRequest(9, "Forca")));
         skillResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // A different skill never had an attribute chosen for it, and must stay that way.
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
 
         var atletismo = body!.Single(s => s.Pericia == "Atletismo");
@@ -204,15 +149,15 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayerArt1", "skillplayerart1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken,
             new UpdateCharacterAttributeRequest(4, 0, false)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", playerToken,
             new UpdateCharacterSkillRequest(9, "Forca")));
 
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Pericia", "Atletismo", 3);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(artifactItemId)));
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
         body!.Single(s => s.Pericia == "Atletismo").Total.Should().Be(10); // modificador 3 + atributo 4 + artefato 3
     }
@@ -224,15 +169,15 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer6", "skillplayer6@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var beforeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var beforeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var before = (await beforeResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>())!;
         before.Select(s => s.Pericia).Should().BeInAscendingOrder(StringComparer.Ordinal).And.HaveCount(39);
         before.Select(s => s.Pericia).Should().Equal(before.Select(s => s.Pericia).OrderBy(p => p, StringComparer.Ordinal));
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Sobrevivencia", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Sobrevivencia", playerToken,
             new UpdateCharacterSkillRequest(3, null)));
 
-        var afterResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
+        var afterResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken));
         var after = (await afterResponse.Content.ReadFromJsonAsync<List<CharacterSkillResponse>>())!;
         after.Select(s => s.Pericia).Should().Equal(before.Select(s => s.Pericia));
     }
@@ -245,7 +190,7 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer3b", "skillplayer3b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", otherToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", otherToken,
             new UpdateCharacterSkillRequest(9, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -259,7 +204,7 @@ public class CharacterSkillsControllerTests : IClassFixture<BlankDatabaseFixture
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "SkillPlayer5b", "skillplayer5b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", otherToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", otherToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

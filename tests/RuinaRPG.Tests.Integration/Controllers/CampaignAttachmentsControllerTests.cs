@@ -13,50 +13,8 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CampaignAttachmentsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CampaignAttachmentsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private static CreateItemRequest MinimalItemGeral(string nome) =>
         new("ItemGeral", nome, 0.5m, 5, null, "Equipamentos de Aventura", "Uma corda resistente.",
             null, null, null, null, null, null, null,
@@ -65,20 +23,20 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
 
     private async Task<string> CreateItemAsync(string gmToken, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItemGeral(nome)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, MinimalItemGeral(nome)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateBankEntryAsync(string gmToken, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
     }
 
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
             new CreateRuneBankEntryRequest(nome, "Descrição.", 1, Disciplina: "Adicao")));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
@@ -94,7 +52,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         content.Add(fileContent, "file", "test.png");
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
         return (body!.Id, body.Url);
     }
@@ -102,7 +60,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
     private async Task<string> CreateItemWithImageAsync(string gmToken, string nome, string imageId)
     {
         var request = MinimalItemGeral(nome) with { ImageId = imageId };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
@@ -116,34 +74,18 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
     }
 
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
-            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        var meBody = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
-        return (meBody!.Id, tokens.AccessToken);
-    }
-
     private async Task AddMemberAsync(string gmToken, string campaignId, string playerId) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
 
     [Fact]
     public async Task Attach_an_item_defaults_to_private()
@@ -152,7 +94,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Anexo");
         var itemId = await CreateItemAsync(gmToken, "Corda");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -168,7 +110,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm2", "att2@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Sem Alvo");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -181,7 +123,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Dois Alvos");
         var itemId = await CreateItemAsync(gmToken, "Corda");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, itemId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -193,7 +135,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm6", "att6@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha ItemId Malformado");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest("not-a-guid", null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -205,7 +147,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm7", "att7@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha ItemId Inexistente");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(Guid.NewGuid().ToString(), null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -217,14 +159,14 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm4", "att4@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle");
         var itemId = await CreateItemAsync(gmToken, "Corda");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
         var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
-        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        var toggleResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
         toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         body!.Should().ContainSingle(a => a.Id == attachmentId && a.IsPublic == true);
     }
@@ -235,18 +177,18 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttGm5", "att5@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Delete");
         var itemId = await CreateItemAsync(gmToken, "Corda");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
         var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/attachments/{attachmentId}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/attachments/{attachmentId}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         body!.Should().BeEmpty();
 
-        var itemsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/items", gmToken));
+        var itemsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/items", gmToken));
         var items = await itemsResponse.Content.ReadFromJsonAsync<List<ItemResponse>>();
         items!.Should().ContainSingle(i => i.Id == itemId);
     }
@@ -259,7 +201,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Alheia");
         var itemId = await CreateItemAsync(gmTokenOther, "Corda Alheia");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOther,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOther,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -272,7 +214,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com NPC");
         var npcId = await CreateNpcSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, npcId, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -288,27 +230,27 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttNpcGm2", "attnpc2@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle NPC");
         var npcId = await CreateNpcSheetAsync(gmToken);
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, npcId, null, null, null)));
         var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
         // Toggle both on
-        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+        var toggleResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
             new { nomePublico = true, imagemPublica = true }));
         toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         var attachment = body!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
         attachment.NpcNomePublico.Should().BeTrue();
         attachment.NpcImagemPublica.Should().BeTrue();
 
         // Toggle nome off, imagem on
-        var toggleResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+        var toggleResponse2 = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
             new { nomePublico = false, imagemPublica = true }));
         toggleResponse2.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse2 = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body2 = await listResponse2.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         var attachment2 = body2!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
         attachment2.NpcNomePublico.Should().BeFalse();
@@ -321,11 +263,11 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttNpcGm3", "attnpc3@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Item Bad Request");
         var itemId = await CreateItemAsync(gmToken, "Corda");
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
         var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
-        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
+        var toggleResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/npc-visibility", gmToken,
             new { nomePublico = true, imagemPublica = true }));
 
         toggleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -337,27 +279,27 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttCreatureGm1", "attcreature1@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Toggle Creature");
         var creatureId = await CreateCreatureSheetAsync(gmToken);
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, creatureId, null, null)));
         var attachmentId = (await createResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
         // Toggle both on
-        var toggleResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
+        var toggleResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
             new { nomePublico = true, imagemPublica = true }));
         toggleResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         var attachment = body!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
         attachment.CreatureNomePublico.Should().BeTrue();
         attachment.CreatureImagemPublica.Should().BeTrue();
 
         // Toggle nome off, imagem on
-        var toggleResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
+        var toggleResponse2 = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/creature-visibility", gmToken,
             new { nomePublico = false, imagemPublica = true }));
         toggleResponse2.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse2 = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse2 = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body2 = await listResponse2.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         var attachment2 = body2!.Should().ContainSingle(a => a.Id == attachmentId).Subject;
         attachment2.CreatureNomePublico.Should().BeFalse();
@@ -372,7 +314,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM NPC");
         var npcOfOther = await CreateNpcSheetAsync(gmTokenOther);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
             new AttachToCampaignRequest(null, npcOfOther, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -386,7 +328,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Creature");
         var creatureOfOther = await CreateCreatureSheetAsync(gmTokenOther);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
             new AttachToCampaignRequest(null, null, creatureOfOther, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -401,18 +343,18 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         await AddMemberAsync(gmToken, campaignId, playerId);
 
         // Grant flow inserts its own campaign-link CampaignAttachment row for the granted sheet.
-        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+        var grantResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
             new GrantSheetRequest(playerId, "Npc", null)));
         grantResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // A genuine, GM-authored display attachment of an NPC the GM still owns (not granted).
         var displayNpcId = await CreateNpcSheetAsync(gmToken);
-        var attachResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attachResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, displayNpcId, null, null, null)));
         attachResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var displayAttachmentId = (await attachResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
 
         body!.Should().ContainSingle(a => a.Id == displayAttachmentId);
@@ -427,7 +369,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Banco");
         var bankEntryOfOther = await CreateBankEntryAsync(gmTokenOther, "Bola de Fogo Alheia");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
             new AttachToCampaignRequest(null, null, null, bankEntryOfOther, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -441,7 +383,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Cross GM Imagem");
         var imageOfOther = await UploadImageAsync(gmTokenOther);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmTokenOwner,
             new AttachToCampaignRequest(null, null, null, null, imageOfOther)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -454,7 +396,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Banco Próprio");
         var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, bankEntryId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -469,7 +411,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Imagem Própria");
         var imageId = await UploadImageAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, imageId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -485,7 +427,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
         var itemId = await CreateItemWithImageAsync(gmToken, "Escudo Retumbante", imageId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -500,7 +442,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Item Sem Imagem");
         var itemId = await CreateItemAsync(gmToken, "Corda");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null)));
 
         var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
@@ -513,11 +455,11 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttNpcImgGm", "attnpcimg@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Com Imagem");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         var npcId = (await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.NpcSheets.NpcSheetResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken, NpcUpdateWithImage(imageId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken, NpcUpdateWithImage(imageId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, npcId, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -531,11 +473,11 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttCreatureImgGm", "attcreatureimg@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Criatura Com Imagem");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         var creatureId = (await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, CreatureUpdateWithImage(imageId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, CreatureUpdateWithImage(imageId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, creatureId, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -550,7 +492,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Imagem Direta");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, imageId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -565,7 +507,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Banco Sem Imagem");
         var bankEntryId = await CreateBankEntryAsync(gmToken, "Bola de Fogo");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, bankEntryId, null)));
 
         var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
@@ -579,7 +521,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Runa");
         var runeId = await CreateRuneEntryAsync(gmToken, "Runa do Fogo");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, runeId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -595,14 +537,14 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttRuneGm2", "attrune2@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Runa Pública");
         var runeId = await CreateRuneEntryAsync(gmToken, "Runa da Terra");
-        var attachResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attachResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, runeId)));
         var attachment = await attachResponse.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
 
-        var toggle = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachment!.Id}/visibility", gmToken, true));
+        var toggle = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachment!.Id}/visibility", gmToken, true));
 
         toggle.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var list = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await list.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         body!.Should().ContainSingle(a => a.Id == attachment.Id && a.Tipo == "RuneBankEntry" && a.IsPublic == true);
     }
@@ -613,17 +555,17 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("AttRuneImgGm1", "attruneimg1@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Runa Imagem");
         var (imageId, imageUrl) = await UploadImageWithUrlAsync(gmToken);
-        var comImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId, Disciplina: "Adicao")));
+        var comImagem = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest("Runa Ilustrada", "D.", 1, imageId, Disciplina: "Adicao")));
         var comImagemId = (await comImagem.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
         var semImagemId = await CreateRuneEntryAsync(gmToken, "Runa Nua");
 
-        var attachComImagem = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attachComImagem = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, comImagemId)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, semImagemId)));
 
         (await attachComImagem.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.ImageUrl.Should().Be(imageUrl);
-        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var list = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var body = await list.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
         body!.Should().ContainSingle(a => a.Nome == "Runa Ilustrada" && a.ImageUrl == imageUrl);
         body.Should().ContainSingle(a => a.Nome == "Runa Nua" && a.ImageUrl == null);
@@ -637,7 +579,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var campaignId = await CreateCampaignAsync(gmA, "Campanha A");
         var runaDoB = await CreateRuneEntryAsync(gmB, "Runa do B");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmA,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmA,
             new AttachToCampaignRequest(null, null, null, null, null, runaDoB)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -651,7 +593,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync($"AttRuneGm4{runeId.Length}", $"attrune4{runeId.Length}@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Runa Inválida");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, runeId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -665,7 +607,7 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
         var runeId = await CreateRuneEntryAsync(gmToken, "Runa");
         var itemId = await CreateItemAsync(gmToken, "Corda");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(itemId, null, null, null, null, runeId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -698,11 +640,11 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
             new AttachToCampaignRequest(null, null, null, null, null, runeId),
         })
         {
-            var attached = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+            var attached = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
             attached.StatusCode.Should().Be(HttpStatusCode.Created);
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
 
         list!.Select(a => (a.Tipo, a.SourceId)).Should().BeEquivalentTo(new[]
@@ -734,9 +676,9 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
             new AttachToCampaignRequest(null, null, null, bankEntryId, null),
             new AttachToCampaignRequest(null, null, null, null, null, runeId),
         })
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
 
         list!.Single(a => a.Tipo == "Item").Facets.Should().Be(new AttachmentFacets(ItemTipo: "ItemGeral", Subcategoria: "Equipamentos de Aventura"));
@@ -749,12 +691,12 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AttFacetGm2", "attfacet2@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Passiva");
-        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var created = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Pele de Pedra", "Passiva", 0, "Descrição.", [], Categoria: "Livre")));
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         var passivaId = (await created.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, passivaId, null)));
         var body = await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>();
 
@@ -775,9 +717,9 @@ public class CampaignAttachmentsControllerTests : IClassFixture<BlankDatabaseFix
             new AttachToCampaignRequest(null, null, creatureId, null, null),
             new AttachToCampaignRequest(null, null, null, null, imageId),
         })
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/attachments", gmToken));
         var list = await response.Content.ReadFromJsonAsync<List<CampaignAttachmentResponse>>();
 
         list.Should().HaveCount(3).And.OnlyContain(a => a.Facets == null);

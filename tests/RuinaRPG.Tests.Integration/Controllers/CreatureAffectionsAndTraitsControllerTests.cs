@@ -11,45 +11,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CreatureAffectionsAndTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CreatureAffectionsAndTraitsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id;
     }
 
@@ -60,7 +26,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
     // TraitId, no Especificacao required.
     private async Task<(string PositiveTraitId, string NegativeTraitId)> GetSeededTraitIdsAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var positive = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
         var negative = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Negativa && !t.RequerEspecificacao && t.Custo >= -3);
@@ -71,14 +37,14 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
     // directly by name, mirroring TraitSeedParserTests' own convention of referencing it verbatim.
     private async Task<Trait> GetTraitAsync(string nome)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         return await db.Traits.SingleAsync(t => t.Nome == nome);
     }
 
     private async Task<string> CreateExclusiveTraitDirectlyAsync(string nome, string descricao, int custo, RuinaRPG.Domain.Enums.Polaridade polaridade, bool requerEspecificacao)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
         {
@@ -100,21 +66,21 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm1", "creatureafftraitgm1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmToken,
             new AddCreatureAffectionRequest("Amigo de infância", 5)));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CreatureAffectionResponse>();
         added!.Nome.Should().Be("Amigo de infância");
         added.Favorabilidade.Should().Be(5);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<CreatureAffectionResponse>>();
         list!.Should().ContainSingle(a => a.Id == added.Id);
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/affections/{added.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/affections/{added.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<List<CreatureAffectionResponse>>();
         listAfter!.Should().NotContain(a => a.Id == added.Id);
     }
@@ -127,15 +93,15 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var positiveTraitId = await CreateExclusiveTraitDirectlyAsync("Couraça Viva", "Pele endurecida.", 2, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
         var negativeTraitId = await CreateExclusiveTraitDirectlyAsync("Lentidão Crônica", "Move-se devagar.", -2, RuinaRPG.Domain.Enums.Polaridade.Negativa, false);
 
-        var addPositiveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var addPositiveResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(positiveTraitId, null)));
         addPositiveResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var addNegativeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var addNegativeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(negativeTraitId, null)));
         addNegativeResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var addedNegative = await addNegativeResponse.Content.ReadFromJsonAsync<CreatureTraitResponse>();
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         list!.Positivas.Should().ContainSingle(t => t.TraitId == positiveTraitId);
@@ -143,10 +109,10 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         list.TotalPositivas.Should().Be(list.Positivas.Sum(t => t.Custo));
         list.TotalNegativas.Should().Be(list.Negativas.Sum(t => t.Custo));
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{addedNegative!.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{addedNegative!.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         listAfter!.Negativas.Should().NotContain(t => t.Id == addedNegative.Id);
     }
@@ -158,7 +124,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var sheetId = await CreateSheetAsync(gmToken);
         var (positiveTraitId, _) = await GetSeededTraitIdsAsync();
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(positiveTraitId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -171,7 +137,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureAffGm3", "creatureafftraitgm3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(Guid.NewGuid().ToString(), null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -189,11 +155,11 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         };
         top.Sum(t => t.Custo).Should().BeGreaterThan(5); // level-1 creation budget
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(top[0].Id, null)));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(top[1].Id, null)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -217,7 +183,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         foreach (var (id, custo) in candidatas)
         {
             var cabe = total + Math.Abs(custo) <= 10;
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
                 new AddCreatureTraitRequest(id, null)));
             response.StatusCode.Should().Be(cabe ? HttpStatusCode.Created : HttpStatusCode.BadRequest);
             if (cabe) total += Math.Abs(custo); else rejeitadas++;
@@ -225,7 +191,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
 
         total.Should().BeGreaterThan(5, "o limite de Negativas passa do de Positivas (5)").And.BeLessThanOrEqualTo(10);
         rejeitadas.Should().BeGreaterThan(0, "alguma Negativa tem de ter estourado o limite de 10");
-        var lista = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken)))
+        var lista = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken)))
             .Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         lista!.PontosDisponiveis.Should().Be(5);
         lista.PontosDisponiveisNegativas.Should().Be(10);
@@ -238,11 +204,11 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var sheetId = await CreateSheetAsync(gmToken);
         var alergiaId = await CreateExclusiveTraitDirectlyAsync("Alergia Bestial", "Reage a um elemento.", -1, RuinaRPG.Domain.Enums.Polaridade.Negativa, true);
 
-        var rejected = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var rejected = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(alergiaId, null)));
         rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(alergiaId, "Poeira")));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CreatureTraitResponse>();
@@ -256,7 +222,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var sheetId = await CreateSheetAsync(gmToken);
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -264,7 +230,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         created!.Nome.Should().Be("Regeneração Bestial");
         created.Custo.Should().Be(3);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         list!.Positivas.Should().ContainSingle(t => t.Nome == "Regeneração Bestial");
         list.TotalPositivas.Should().Be(3);
@@ -284,7 +250,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
 
         Guid legacyRowId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             legacyRowId = Guid.NewGuid();
@@ -295,14 +261,14 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
             });
             await db.SaveChangesAsync();
         }
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(exclusiveId, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(exclusiveId, null)));
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmToken));
         var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
         list!.Positivas.Should().HaveCount(2);
         list.TotalPositivas.Should().Be(4); // 1 (Alfabetizado) + 3 (Regeneração Bestial)
 
-        var deleteLegacy = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{legacyRowId}", gmToken));
+        var deleteLegacy = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{legacyRowId}", gmToken));
         deleteLegacy.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
@@ -313,7 +279,7 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var sheetId = await CreateSheetAsync(gmToken);
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Fúria Sazonal", "Muda de comportamento numa estação.", 1, RuinaRPG.Domain.Enums.Polaridade.Positiva, true);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
             new AddCreatureTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -327,27 +293,27 @@ public class CreatureAffectionsAndTraitsControllerTests : IClassFixture<BlankDat
         var sheetId = await CreateSheetAsync(gmTokenOwner);
         var positiveTraitId = await CreateExclusiveTraitDirectlyAsync("Olhar Hipnótico", "Fascina a presa.", 1, RuinaRPG.Domain.Enums.Polaridade.Positiva, false);
 
-        var addAffection = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmTokenOwner, new AddCreatureAffectionRequest("Rival", -2)));
+        var addAffection = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmTokenOwner, new AddCreatureAffectionRequest("Rival", -2)));
         var affectionId = (await addAffection.Content.ReadFromJsonAsync<CreatureAffectionResponse>())!.Id;
-        var addTrait = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmTokenOwner, new AddCreatureTraitRequest(positiveTraitId, null)));
+        var addTrait = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmTokenOwner, new AddCreatureTraitRequest(positiveTraitId, null)));
         var traitId = (await addTrait.Content.ReadFromJsonAsync<CreatureTraitResponse>())!.Id;
 
-        var addAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmTokenOther, new AddCreatureAffectionRequest("Rival", -2)));
+        var addAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/affections", gmTokenOther, new AddCreatureAffectionRequest("Rival", -2)));
         addAffectionResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listAffectionsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmTokenOther));
+        var listAffectionsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/affections", gmTokenOther));
         listAffectionsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/affections/{affectionId}", gmTokenOther));
+        var deleteAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/affections/{affectionId}", gmTokenOther));
         deleteAffectionResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var addTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmTokenOther, new AddCreatureTraitRequest(positiveTraitId, null)));
+        var addTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmTokenOther, new AddCreatureTraitRequest(positiveTraitId, null)));
         addTraitResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listTraitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmTokenOther));
+        var listTraitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/traits", gmTokenOther));
         listTraitsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{traitId}", gmTokenOther));
+        var deleteTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-sheets/{sheetId}/traits/{traitId}", gmTokenOther));
         deleteTraitResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

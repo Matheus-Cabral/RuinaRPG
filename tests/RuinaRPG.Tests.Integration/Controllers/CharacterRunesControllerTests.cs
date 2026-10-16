@@ -13,89 +13,43 @@ using RuinaRPG.Infrastructure.Runes;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterRunesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterRunesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId) =>
         (await SetUpSheetInCampaignAsync(gmToken, playerId)).SheetId;
 
     private async Task<(string SheetId, string CampaignId)> SetUpSheetInCampaignAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return ((await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, campaignId);
     }
 
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string descricao, int grau, string? tipo = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo, Disciplina: "Adicao")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken, new CreateRuneBankEntryRequest(nome, descricao, grau, null, tipo, Disciplina: "Adicao")));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
 
     private async Task PublishRuneToCampaignAsync(string gmToken, string campaignId, string runeEntryId)
     {
-        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attach = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, null, runeEntryId)));
         var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
     }
 
     private async Task<List<RuneBankEntryResponse>> BankOfAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rune-bank", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rune-bank", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>())!;
     }
 
     private async Task<List<RuneBankEntryResponse>> PublicRunesAsync(string token, string campaignId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-runes", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-runes", token));
         return (await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>())!;
     }
 
@@ -106,12 +60,12 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer1", "runeplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa do Fogo", "Queima o alvo.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterRuneResponse>>();
         body!.Should().ContainSingle(r => r.Nome == "Runa do Fogo" && r.Descricao == "Queima o alvo." && r.Grau == 1);
     }
@@ -123,10 +77,10 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer2", "runeplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa da Terra", "Endurece a pele.", 2, Disciplina: "Adicao")));
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterRuneResponse>>();
         body!.Should().ContainSingle(r => r.Nome == "Runa da Terra" && r.Descricao == "Endurece a pele." && r.Grau == 2);
@@ -139,14 +93,14 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer3", "runeplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa da Água", "Cura ferimentos leves.", 3, Disciplina: "Adicao")));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterRuneResponse>();
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterRuneResponse>>();
         body!.Should().NotContain(r => r.Id == added.Id);
     }
@@ -159,7 +113,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer4b", "runeplayer4b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", otherToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", otherToken,
             new AddCharacterRuneRequest("Runa do Vento", "Aumenta velocidade.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -171,11 +125,11 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("RuneGm5", "rune5@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RunePlayer5", "runeplayer5@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa do Fogo", "Queima o alvo.", 1, Disciplina: "Adicao")));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterRuneResponse>();
 
-        var update = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", playerToken,
+        var update = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/runes/{added!.Id}", playerToken,
             new { Nome = "Runa do Gelo", Descricao = "Congela.", Grau = 2 }));
 
         update.StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
@@ -188,7 +142,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneBkPlayer1", "runebkplayer1@teste.com");
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa do Fogo", "Queima o alvo.", 2, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -203,7 +157,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneBkPlayer2", "runebkplayer2@teste.com");
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa da Água", "Cura ferimentos leves.", 1, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -219,7 +173,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var entryId = await CreateRuneEntryAsync(gmToken, "Runa da Luz", "Ilumina a área.", 3);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -240,7 +194,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer1", "runetipoplayer1@teste.com");
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa Sombria", "Escura.", 2, null, null, "Negra", Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -257,7 +211,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer2", "runetipoplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa Comum", "Sem tipo.", 1, null, null, "", Disciplina: "Adicao")));
 
         (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.Nome == "Runa Comum" && r.Tipo == null);
@@ -270,7 +224,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneTipoPlayer3", "runetipoplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa", "D.", 1, null, null, "Branca", Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -288,9 +242,9 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var entryId = await CreateRuneEntryAsync(gmToken, "Runa Arcana da Luz", "Ilumina.", 1, "Arcana");
         await PublishRuneToCampaignAsync(gmToken, campaignId, entryId);
 
-        var doGm = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var doGm = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
-        var doJogador = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var doJogador = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
 
         (await doGm.Content.ReadFromJsonAsync<CharacterRuneResponse>())!.Tipo.Should().Be("Arcana");
@@ -318,13 +272,13 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var entryId = await CreateRuneEntryAsync(gmToken, "Runa Reservada", "Só depois de liberada.", 1);
 
-        var antes = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var antes = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
         antes.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         await PublishRuneToCampaignAsync(gmToken, campaignId, entryId);
 
-        var depois = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var depois = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
         depois.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -337,11 +291,11 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var entryId = await CreateRuneEntryAsync(gmToken, "Runa", "Desc.", 1);
 
-        var both = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var both = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa", "Desc.", 1, entryId)));
-        var neither = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var neither = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null)));
-        var partial = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var partial = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Só o nome", null, null)));
 
         both.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -358,7 +312,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, $"RuneBkPlayer6{entryId.Length}", $"runebkplayer6{entryId.Length}@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entryId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -373,7 +327,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var foreignEntry = await CreateRuneEntryAsync(otherGmToken, "Runa Alheia", "Do outro GM.", 1);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, foreignEntry)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -392,22 +346,22 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
             content.Add(new StringContent(campaignId), "campaignId");
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         var body = await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>();
         return (body!.Id, body.Url);
     }
 
     private async Task PublishImageToCampaignAsync(string gmToken, string campaignId, string imageId)
     {
-        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attach = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, imageId, null)));
         var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
     }
 
     private async Task<List<CharacterRuneResponse>> RunesOfAsync(string sheetId, string token)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/runes", token));
         return (await response.Content.ReadFromJsonAsync<List<CharacterRuneResponse>>())!;
     }
 
@@ -419,7 +373,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -434,7 +388,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "RuneImgPlayer2", "runeimgplayer2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa Nua", "Sem imagem.", 1, null, "", Disciplina: "Adicao")));
 
         (await RunesOfAsync(sheetId, playerToken)).Should().ContainSingle(r => r.Nome == "Runa Nua" && r.ImageUrl == null);
@@ -448,7 +402,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var (imageId, imageUrl) = await UploadImageAsync(gmToken);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa do GM", "Com imagem.", 2, null, imageId, Disciplina: "Adicao")));
 
         (await BankOfAsync(gmToken)).Should().ContainSingle(e => e.Nome == "Runa do GM" && e.ImageId == imageId && e.ImageUrl == imageUrl);
@@ -463,7 +417,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (imageId, imageUrl) = await UploadImageAsync(gmToken);
         await PublishImageToCampaignAsync(gmToken, campaignId, imageId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa Liberada", "Imagem do GM.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -478,12 +432,12 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (sheetId, campaignId) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var (naoAnexada, _) = await UploadImageAsync(gmToken);
         var (privada, _) = await UploadImageAsync(gmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, null, privada, null))); // anexada, mas privada
 
-        var semAnexo = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var semAnexo = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa", "X.", 1, null, naoAnexada, Disciplina: "Adicao")));
-        var comAnexoPrivado = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var comAnexoPrivado = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa", "X.", 1, null, privada, Disciplina: "Adicao")));
 
         semAnexo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -501,7 +455,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (imageId, _) = await UploadImageAsync(gmToken);
         await PublishImageToCampaignAsync(gmToken, otherCampaignId, imageId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
             new AddCharacterRuneRequest("Runa", "X.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -516,7 +470,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, $"RuneImgPlayer7{imageId.Length}", $"runeimgplayer7{imageId.Length}@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa", "X.", 1, null, imageId, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -529,11 +483,11 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneImgPlayer8", "runeimgplayer8@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
         var (imageId, imageUrl) = await UploadImageAsync(gmToken);
-        var entryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+        var entryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
             new CreateRuneBankEntryRequest("Runa Herdeira", "Herda a imagem.", 1, imageId, Disciplina: "Adicao")));
         var entry = (await entryResponse.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entry.Id)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -551,7 +505,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (imageId, _) = await UploadImageAsync(gmToken);
         var entryId = await CreateRuneEntryAsync(gmToken, "Runa", "Desc.", 1);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entryId, imageId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -564,7 +518,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneLinkPlayer", "runelinkplayer@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa Nova", "Criada do zero.", 1, null, Disciplina: "Adicao")));
         var created = (await response.Content.ReadFromJsonAsync<CharacterRuneResponse>())!;
 
@@ -574,7 +528,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
 
     private async Task<Guid?> SourceBankEntryIdAsync(string runeId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         return await db.CharacterRunes.Where(r => r.Id == Guid.Parse(runeId)).Select(r => r.SourceBankEntryId).SingleAsync();
     }
@@ -586,9 +540,9 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneDiscPl1", "runediscpl1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var semDisciplina = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var semDisciplina = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa", "Desc.", 1)));
-        var comDisciplina = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var comDisciplina = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa", "Desc.", 1, Disciplina: "Alteracao")));
 
         semDisciplina.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -604,7 +558,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneDiscPl5", "runediscpl5@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa", "Desc.", 1, Disciplina: "Bruxaria")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -618,7 +572,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneDiscPl2", "runediscpl2@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest("Runa Copiada", "Desc.", 1, Disciplina: "Emissao")));
 
         var bank = await BankOfAsync(gmToken);
@@ -631,10 +585,10 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("RuneDiscGm3", "runedisc3@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneDiscPl3", "runediscpl3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
-        var entry = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+        var entry = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
             new CreateRuneBankEntryRequest("Do Banco", "Desc.", 1, null, null, "Manifestacao")))).Content.ReadFromJsonAsync<RuneBankEntryResponse>();
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entry!.Id, Disciplina: "Adicao")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -648,7 +602,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "RuneDiscPl4", "runediscpl4@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var entryId = Guid.NewGuid();
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var gmId = await db.CharacterSheets.Where(s => s.Id == Guid.Parse(sheetId)).Join(db.Campaigns, s => s.CampaignId, c => c.Id, (s, c) => c.GmId).SingleAsync();
@@ -656,7 +610,7 @@ public class CharacterRunesControllerTests : IClassFixture<BlankDatabaseFixture>
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", gmToken,
             new AddCharacterRuneRequest(null, null, null, entryId.ToString())));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);

@@ -24,29 +24,10 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// própria ficha seguem sem mudança. Toda ficha parte de Força 10, Agilidade 6, Vigor 8, Astúcia 7, uma Perícia sobre
 /// Força, um Artefato "Anel" (Dano Cortante +10), uma Arma equipada e uma Magia.
 /// </summary>
-public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class ResumoDaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
-
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public ResumoDaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private sealed record Mesa(string Gm, Guid GmId, string Jogador, string JogadorId, string CampaignId, string Tag);
 
@@ -63,7 +44,7 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (body is not null)
             message.Content = JsonContent.Create(body);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         if (esperado is { } status)
             response.StatusCode.Should().Be(status, $"{method} {url}: {await response.Content.ReadAsStringAsync()}");
         else
@@ -81,10 +62,10 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
 
     private async Task<Mesa> MesaAsync(string tag)
     {
-        var registro = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"RsGm{tag}", $"rsgm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var registro = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"RsGm{tag}", $"rsgm{tag}@teste.com", "Senha!123", "Senha!123"));
         var gm = (await registro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         Guid gmId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == $"RSGM{tag}@TESTE.COM".ToUpperInvariant());
@@ -94,7 +75,7 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
         }
 
         var codigo = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var jogadorRegistro = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"RsJg{tag}", $"rsjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
+        var jogadorRegistro = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"RsJg{tag}", $"rsjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
         var jogador = (await jogadorRegistro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var jogadorId = (await LerAsync<MeResponse>(jogador, "/api/auth/me")).Id;
 
@@ -126,7 +107,7 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
             : "Atletismo";
         await EnviarAsync(HttpMethod.Put, $"/api/{rota}/{id}/skills/{chave}", mesa.Gm, new { Gasto = 1, AtributoEscolhido = "Forca" });
 
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var sheetId = Guid.Parse(id);
         var anel = new Artefato { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = $"Anel {mesa.Tag}", Peso = 0, Preco = 0, TipoDeAlvo = TipoDeAlvo.Dano, Alvo = "Cortante", Valor = 10 };
@@ -431,7 +412,7 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
         await EnviarAsync(HttpMethod.Get, url, outro.Gm, esperado: HttpStatusCode.NotFound);
         await EnviarAsync(HttpMethod.Get, url, mesa.Jogador, esperado: HttpStatusCode.Forbidden);
         await EnviarAsync(HttpMethod.Get, $"/api/encounters/{encounterId}/participants/{Guid.NewGuid()}/resumo", mesa.Gm, esperado: HttpStatusCode.NotFound);
-        (await _client.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -493,7 +474,7 @@ public class ResumoDaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLif
 
         async Task<(int Log, int Ficha, string Participante, string Condicoes)> EstadoAsync()
         {
-            await using var scope = _factory.Services.CreateAsyncScope();
+            await using var scope = Factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var pid = Guid.Parse(participantId);
             var p = await db.EncounterParticipants.AsNoTracking().SingleAsync(x => x.Id == pid);

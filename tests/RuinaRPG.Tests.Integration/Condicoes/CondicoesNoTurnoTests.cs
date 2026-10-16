@@ -21,29 +21,10 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// das que têm duração em Turnos. Toda ficha daqui tem Vigor 8 e Astúcia 7: totais Vitalidade 16, Foco 14,
 /// Adrenalina 10, Estresse 10. "Aria" é a Ficha de Personagem do jogador; "Lobo" é um NPC do GM (instância no encontro).
 /// </summary>
-public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CondicoesNoTurnoTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
-
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CondicoesNoTurnoTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     // ---------- infraestrutura ----------
 
@@ -72,7 +53,7 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null, HttpStatusCode? esperado = null)
     {
-        var response = await _client.SendAsync(Authed(method, url, token, body));
+        var response = await Client.SendAsync(Authed(method, url, token, body));
         if (esperado is { } status)
             response.StatusCode.Should().Be(status, $"{method} {url}: {await response.Content.ReadAsStringAsync()}");
         else
@@ -85,9 +66,9 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
 
     private async Task<Mesa> MesaAsync(string tag)
     {
-        var registro = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"TnGm{tag}", $"tngm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var registro = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"TnGm{tag}", $"tngm{tag}@teste.com", "Senha!123", "Senha!123"));
         var gm = (await registro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == $"TNGM{tag}@TESTE.COM".ToUpperInvariant());
@@ -96,7 +77,7 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
         }
 
         var codigo = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var jogadorRegistro = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"TnJg{tag}", $"tnjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
+        var jogadorRegistro = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"TnJg{tag}", $"tnjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
         var jogador = (await jogadorRegistro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var jogadorId = (await LerAsync<MeResponse>(jogador, "/api/auth/me")).Id;
 
@@ -122,7 +103,7 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
 
     private async Task GuardarAsync(Ficha f, Recursos r, string? nome = null)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         if (f.Rota == Personagem)
@@ -467,8 +448,8 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
         for (var tentativa = 0; tentativa < 15 && !conflito; tentativa++)
         {
             var resultados = await Task.WhenAll(
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)),
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)));
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)),
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)));
             resultados.Select(r => r.StatusCode).Should().OnlyContain(s => s == HttpStatusCode.NoContent || s == HttpStatusCode.Conflict);
             sucessos += resultados.Count(r => r.StatusCode == HttpStatusCode.NoContent);
             conflito |= resultados.Any(r => r.StatusCode == HttpStatusCode.Conflict);
@@ -494,8 +475,8 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
             await AplicarAsync(c, c.AriaId, await CondicaoAsync(c.Mesa, nome, Atual("Vitalidade", -1, "ACadaVez")));
 
             var resultados = await Task.WhenAll(
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)),
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)));
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)),
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/turn/{c.AriaId}", c.Mesa.Gm)));
 
             resultados.Select(r => r.StatusCode).Should().OnlyContain(s => s == HttpStatusCode.NoContent || s == HttpStatusCode.Conflict);
             resultados.Should().Contain(r => r.StatusCode == HttpStatusCode.NoContent);
@@ -524,9 +505,9 @@ public class CondicoesNoTurnoTests : IClassFixture<BlankDatabaseFixture>, IAsync
             var condicaoId = await CondicaoAsync(c.Mesa, nome, Atual("Vitalidade", -1, "AoAplicar"));
 
             var resultados = await Task.WhenAll(
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/participants/{c.LoboId}/condicoes", c.Mesa.Gm,
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/participants/{c.LoboId}/condicoes", c.Mesa.Gm,
                     new AplicarCondicaoRequest(condicaoId, null, null, null))),
-                _client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)));
+                Client.SendAsync(Authed(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/advance-turn", c.Mesa.Gm)));
 
             var (aplicar, avancar) = (resultados[0], resultados[1]);
             aplicar.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.Conflict);

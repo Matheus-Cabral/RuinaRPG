@@ -14,85 +14,39 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Habilidades Passivas na Ficha de Personagem: só do Banco, bloqueio por requisitos e aviso.</summary>
-public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterPassivasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterPassivasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<(string SheetId, string CampaignId)> SetUpSheetInCampaignAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return ((await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, campaignId);
     }
 
     private async Task PublishBankEntryAsync(string gmToken, string campaignId, string entryId)
     {
-        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var attach = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, entryId, null)));
         var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
     }
 
     private async Task<string> CreatePassivaAsync(string gmToken, string nome, RequisitosDePassivaDto? requisitos)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, "Passiva", 0, "Descrição.", [], false, "Livre", requisitos)));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
     }
 
     private Task<HttpResponseMessage> AddFromBankAsync(string token, string sheetId, string entryId) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
+        Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
             new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null)));
 
     private Task SetForcaAsync(string token, string sheetId, int gasto) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", token, new UpdateCharacterAttributeRequest(gasto, 0, false)));
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", token, new UpdateCharacterAttributeRequest(gasto, 0, false)));
 
     [Fact]
     public async Task Building_a_passiva_from_scratch_on_a_sheet_is_refused()
@@ -101,7 +55,7 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "PassPl1", "passpl1@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gm, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
             new AddCharacterSpellAbilityRequest(null, "P", "Passiva", 0, "d", [])));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -143,7 +97,7 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         created.RequisitosPendentes.Should().BeEmpty();
 
         await SetForcaAsync(playerToken, sheetId, 2);
-        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken)))
+        var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/spell-abilities", playerToken)))
             .Content.ReadFromJsonAsync<List<CharacterSpellAbilityResponse>>();
         list!.Single(e => e.Id == created.Id).RequisitosPendentes.Should().Equal("Força ≥ 4");
     }
@@ -184,15 +138,15 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var publica = await CreatePassivaAsync(gm, "Pública", new RequisitosDePassivaDto(Nivel: 20));
         await CreatePassivaAsync(gm, "Privada", null);
         await PublishBankEntryAsync(gm, campaignId, publica);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gm,
             new CreateSpellAbilityEntryRequest("Uma Magia", "Magia", 1, "d", [])));
 
         var url = $"/api/character-sheets/{sheetId}/spell-abilities/passivas-disponiveis";
-        var paraGm = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, url, gm))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
+        var paraGm = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, url, gm))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         paraGm!.Select(p => p.Entrada.Nome).Should().BeEquivalentTo(["Pública", "Privada"]);
         paraGm!.Single(p => p.Entrada.Nome == "Pública").Pendencias.Should().Equal("Nível 20");
 
-        var paraJogador = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, url, playerToken))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
+        var paraJogador = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, url, playerToken))).Content.ReadFromJsonAsync<List<PassivaDisponivelResponse>>();
         paraJogador!.Select(p => p.Entrada.Nome).Should().Equal("Pública");
     }
 
@@ -220,7 +174,7 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var gm = await RegisterGmAndGetTokenAsync("PassGm7", "passgm7@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gm, "PassPl7", "passpl7@teste.com");
         var (sheetId, _) = await SetUpSheetInCampaignAsync(gm, playerId);
-        var historicos = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gm))).Content.ReadFromJsonAsync<List<HistoricoResponse>>();
+        var historicos = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/historicos", gm))).Content.ReadFromJsonAsync<List<HistoricoResponse>>();
         var historico = historicos!.First();
         var passivaId = await CreatePassivaAsync(gm, "De Berço", new RequisitosDePassivaDto(HistoricoId: historico.Id));
 
@@ -244,14 +198,14 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         (await GetPiAsync(sheetId)).Should().Be(0);
 
         var criada = (await added.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!;
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/spell-abilities/{criada.Id}", gm)))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/spell-abilities/{criada.Id}", gm)))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await GetPiAsync(sheetId)).Should().Be(0);
     }
 
     private async Task SetPiAsync(string sheetId, int pi)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         (await db.CharacterSheets.FindAsync(Guid.Parse(sheetId)))!.PontosDeIgnicaoAtual = pi;
         await db.SaveChangesAsync();
@@ -259,7 +213,7 @@ public class CharacterPassivasTests : IClassFixture<BlankDatabaseFixture>, IAsyn
 
     private async Task<int> GetPiAsync(string sheetId)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         return (await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == Guid.Parse(sheetId))).PontosDeIgnicaoAtual;
     }

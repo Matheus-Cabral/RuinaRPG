@@ -28,30 +28,11 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// a Maestria "Espadas" (3 + 0 + Força = 13); Artefatos de Dano Cortante +10 e Redução Física +4; e, onde a ficha
 /// tem Afinidades, a Afinidade Fogo com uma linha de Fogo valendo 6 (Eficiência 3 e Dano 3 na Tabela de Afinidades).
 /// </summary>
-public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
-
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CondicoesNaFichaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     // ---------- infraestrutura ----------
 
@@ -79,7 +60,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null, HttpStatusCode? esperado = null)
     {
-        var response = await _client.SendAsync(Authed(method, url, token, body));
+        var response = await Client.SendAsync(Authed(method, url, token, body));
         if (esperado is { } status)
             response.StatusCode.Should().Be(status, $"{method} {url}: {await response.Content.ReadAsStringAsync()}");
         else
@@ -98,10 +79,10 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
 
     private async Task<Mesa> MesaAsync(string tag)
     {
-        var registro = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"CfGm{tag}", $"cfgm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var registro = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"CfGm{tag}", $"cfgm{tag}@teste.com", "Senha!123", "Senha!123"));
         var gm = (await registro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         Guid gmId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == $"CFGM{tag}@TESTE.COM".ToUpperInvariant());
@@ -111,7 +92,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
         }
 
         var codigo = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var jogadorRegistro = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"CfJg{tag}", $"cfjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
+        var jogadorRegistro = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"CfJg{tag}", $"cfjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
         var jogador = (await jogadorRegistro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var jogadorId = (await LerAsync<MeResponse>(jogador, "/api/auth/me")).Id;
 
@@ -156,7 +137,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
         await EnviarAsync(HttpMethod.Put, $"/api/{rota}/{id}/skills/{chave}", mesa.Gm, new { Gasto = 0, AtributoEscolhido = "Forca" });
         await EnviarAsync(HttpMethod.Post, $"/api/{rota}/{id}/masteries", mesa.Gm, new { Nome = "Espadas", Pericia = chave, Atributo = "Forca", GastoMaestria = 3 });
 
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var sheetId = Guid.Parse(id);
         var cortante = new Artefato { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = "Gume", Peso = 0, Preco = 0, TipoDeAlvo = TipoDeAlvo.Dano, Alvo = "Cortante", Valor = 10 };
@@ -579,7 +560,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
             (new() { [1] = [espadas] }, "Espadas não é da Perícia da linha"),
         })
         {
-            var response = await _client.SendAsync(Authed(HttpMethod.Post, url, mesa.Gm, new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: escolha)));
+            var response = await Client.SendAsync(Authed(HttpMethod.Post, url, mesa.Gm, new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: escolha)));
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, motivo);
         }
         (await LerAsync<List<CondicaoAtivaNaFichaResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/condicoes-ativas")).Should().BeEmpty();
@@ -842,7 +823,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
         // O teto do orçamento continua o mesmo: o que cabe sem Condição cabe, um ponto a mais não.
         var atributos = JsonSerializer.Deserialize<AttributePointBudgetResponse>(orcamentoDeAtributos, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         var livre = atributos.PontosDisponiveis - atributos.GastoTotal;
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre + 1, 0, false))))
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre + 1, 0, false))))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre, 0, false), HttpStatusCode.NoContent);
     }
@@ -868,7 +849,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
         (await TextoAsync(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities/passivas-disponiveis")).Should().Be(disponiveisAntes);
         var naFicha = await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities");
         naFicha.Single(e => e.Id == jaNaFicha).RequisitosPendentes.Should().BeEmpty("a Força sem Condições continua 10");
-        var recusada = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Jogador,
+        var recusada = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Jogador,
             new AddCharacterSpellAbilityRequest(pendente, null, null, null, null, null)));
         recusada.StatusCode.Should().Be(HttpStatusCode.BadRequest, "a Agilidade sem Condições continua 6");
         (await recusada.Content.ReadAsStringAsync()).Should().Contain("Agilidade ≥ 8");
@@ -932,7 +913,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
     /// <summary>As linhas da ficha como estão no banco (o que uma Condição nunca pode alterar).</summary>
     private async Task<string> GuardadoAsync(Ficha f)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         var sheet = await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == id);
@@ -1016,12 +997,12 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
         foreach (var intruso in new[] { outraMesa.Gm, outraMesa.Jogador })
         {
             // O mesmo resultado dos demais GETs calculados de cada controller.
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
-        (await _client.GetAsync($"/api/character-sheets/{personagem.Id}/condicoes-ativas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/condicoes-ativas", mesa.Gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.GetAsync($"/api/character-sheets/{personagem.Id}/condicoes-ativas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/condicoes-ativas", mesa.Gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     // ---------- Condições que desabilitam ----------
@@ -1047,7 +1028,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
     /// </summary>
     private async Task<Guid> AdicionarLinhaAsync(Mesa mesa, Ficha f, string categoria, string nome, bool penalizada = false, RuinaRPG.Domain.SpellsAndAbilities.RequisitosDePassiva? requisitos = null)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var sheetId = Guid.Parse(f.Id);
         var linhaId = Guid.NewGuid();
@@ -1117,7 +1098,7 @@ public class CondicoesNaFichaTests : IClassFixture<BlankDatabaseFixture>, IAsync
     /// <summary>O que o banco guarda das linhas de equipamento: equipado ou não, e qual Item cada slot de armadura veste.</summary>
     private async Task<List<string>> EstadoGuardadoAsync(Ficha f)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         var linhas = new List<string>();

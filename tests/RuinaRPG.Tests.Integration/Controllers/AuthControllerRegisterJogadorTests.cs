@@ -10,36 +10,17 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class AuthControllerRegisterJogadorTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public AuthControllerRegisterJogadorTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
     private async Task<(string Token, Guid GmId)> RegisterGmAsync(string nickname, string email)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
         me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
+        var meResponse = await Client.SendAsync(me);
         var meBody = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
 
         return (tokens.AccessToken, Guid.Parse(meBody!.Id));
@@ -49,7 +30,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         var body = await response.Content.ReadFromJsonAsync<InviteCodeResponse>();
         return body!.Code;
     }
@@ -60,14 +41,14 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
         var (gmToken, gmId) = await RegisterGmAsync("JogadorGm1", "jogadorgm1@teste.com");
         var code = await GenerateCodeAsync(gmToken);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador1", "jogador1@teste.com", "Senha!123", "Senha!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
         body!.AccessToken.Should().NotBeNullOrWhiteSpace();
 
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var jogador = await db.Users.SingleAsync(u => u.Nickname == "Jogador1");
         jogador.InvitedByGmId.Should().Be(gmId);
@@ -78,10 +59,10 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
     {
         var (gmToken, _) = await RegisterGmAsync("JogadorGm2", "jogadorgm2@teste.com");
         var code = await GenerateCodeAsync(gmToken);
-        await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador2", "jogador2@teste.com", "Senha!123", "Senha!123", code));
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador2b", "jogador2b@teste.com", "Senha!123", "Senha!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -90,7 +71,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
     [Fact]
     public async Task Register_jogador_with_a_nonexistent_code_returns_400()
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("JogadorNoCode", "jogadornocode@teste.com", "Senha!123", "Senha!123", "NAOEXIST"));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -103,9 +84,9 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
         var code = await GenerateCodeAsync(gmToken);
         var revoke = new HttpRequestMessage(HttpMethod.Post, $"/api/invite-codes/{code}/revoke");
         revoke.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        await _client.SendAsync(revoke);
+        await Client.SendAsync(revoke);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador3", "jogador3@teste.com", "Senha!123", "Senha!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -117,7 +98,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
         var (gmToken, _) = await RegisterGmAsync("JogadorGm4", "jogadorgm4@teste.com");
         var code = await GenerateCodeAsync(gmToken);
 
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var inviteCode = await db.InviteCodes.SingleAsync(c => c.Code == code);
@@ -125,7 +106,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador4", "jogador4@teste.com", "Senha!123", "Senha!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -137,7 +118,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
         var (gmToken, _) = await RegisterGmAsync("JogadorGm5", "jogadorgm5@teste.com");
         var code = await GenerateCodeAsync(gmToken);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest("Jogador5", "jogador5@teste.com", "Senha!123", "Outra!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -151,7 +132,7 @@ public class AuthControllerRegisterJogadorTests : IClassFixture<BlankDatabaseFix
         var (gmToken, _) = await RegisterGmAsync($"JogadorGm6{suffix}", $"jogadorgm6{suffix}@teste.com");
         var code = await GenerateCodeAsync(gmToken);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, $"jogador6{suffix}@teste.com", "Senha!123", "Senha!123", code));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

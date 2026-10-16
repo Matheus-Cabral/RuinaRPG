@@ -12,77 +12,31 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterAffinitiesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterAffinitiesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
 
         // Adepto libera Dobra+Consagração — cobre todas as combinações que os testes já existentes
         // usam: Fogo/Terra são Dobra, Curar/Aprimorar são Consagração.
         var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
             false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 100);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
         return sheetId;
     }
 
     private async Task<HttpResponseMessage> AddAsync(string token, string sheetId, string? elemento, string? segunda, int? subValor = null) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
             new AddCharacterAffinityRequest(elemento, null, segunda, null, subValor, null)));
 
     private async Task<List<CharacterAffinityResponse>> ListAsync(string token, string sheetId) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", token)))
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", token)))
             .Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>())!;
 
     [Fact]
@@ -92,12 +46,12 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer1", "affplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>();
         body!.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SegundaEssencia == "Vida" && a.SegundaEssenciaValor == 4
             && a.SubElemento == "Curar" && a.SubElementoValor == 2 && a.Experiencia == 10);
@@ -110,14 +64,14 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer3", "affplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Terra", 1, null, null, 1, 5)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>();
         body!.Should().NotContain(a => a.Id == added.Id);
     }
@@ -130,7 +84,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer4b", "affplayer4b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", otherToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", otherToken,
             new AddCharacterAffinityRequest("Terra", 1, null, null, 1, 5)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -144,7 +98,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer5b", "affplayer5b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", otherToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", otherToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -156,7 +110,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer6", "affplayer6@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest(null, null, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -173,7 +127,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer7", "affplayer7@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, null, null, null, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -189,11 +143,11 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer8", "affplayer8@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Terra", 5, "Vida", 4, 1, 8)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
@@ -204,7 +158,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         updated.SubElementoValor.Should().Be(1);
         updated.Experiencia.Should().Be(8);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affinities", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffinityResponse>>();
         body!.Should().ContainSingle(a => a.Id == added.Id && a.Elemento == "Terra" && a.SubElemento == "Aprimorar");
     }
@@ -216,11 +170,11 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer9", "affplayer9@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, "Vida", 4, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest(null, null, null, null, null, null)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
@@ -237,11 +191,11 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer10b", "affplayer10b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, null, null, 2, 10)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", otherToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", otherToken,
             new UpdateCharacterAffinityRequest("Terra", 1, null, null, 1, 1)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -254,7 +208,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer11", "affplayer11@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{Guid.NewGuid()}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{Guid.NewGuid()}", playerToken,
             new UpdateCharacterAffinityRequest("Terra", 1, null, null, 1, 1)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -267,12 +221,12 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer15", "affplayer15@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, "Vida", null, null, null)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         // Reenviar a mesma linha com o mesmo Sub-Elemento derivado não deve se auto-rejeitar como duplicata.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", 5, "Vida", null, null, null)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -285,14 +239,14 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer16", "affplayer16@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId); // Vocacao=Adepto
 
-        var addResponse1 = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
+        var addResponse1 = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
             new AddCharacterAffinityRequest("Fogo", 3, "Vida", null, null, null)));
         var row1 = await addResponse1.Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
         // Simulate a pre-existing duplicate SubElemento inserted directly in the DB, bypassing the
         // controller's own duplicate check entirely — the API now refuses to create this via HTTP.
         Guid row2Id;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             row2Id = Guid.NewGuid();
@@ -305,7 +259,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
 
         // Re-send row2 with the same (now-colliding) SubElemento, changing only Experiencia — the
         // pre-existing collision is not newly introduced, so it must be grandfathered through.
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2Id}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{row2Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", 1, "Vida", null, null, 7)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -386,7 +340,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var setVocacao = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
             false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 100);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, setVocacao));
 
         (await AddAsync(playerToken, sheetId, "Terra", "Mundano")).StatusCode.Should().Be(HttpStatusCode.Created);
         (await AddAsync(playerToken, sheetId, "Agua", "Alma")).StatusCode.Should().Be(HttpStatusCode.Created);
@@ -399,7 +353,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffEssLegP", "affesslegp@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var legacyId = Guid.NewGuid();
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
@@ -407,7 +361,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{legacyId}", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{legacyId}", playerToken,
             new UpdateCharacterAffinityRequest("Ar", 5, null, null, 3, 7)));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -422,10 +376,10 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var added = await (await AddAsync(playerToken, sheetId, "Fogo", "Vida")).Content.ReadFromJsonAsync<CharacterAffinityResponse>();
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", null, "Mundano", null, null, null)));
         var afterChange = (await ListAsync(playerToken, sheetId)).Single();
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", null, null, null, null, null)));
         var afterClear = (await ListAsync(playerToken, sheetId)).Single();
 
@@ -439,16 +393,16 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
     {
         var update = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
             false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, afinidadeAdicional);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
         response.EnsureSuccessStatusCode();
     }
 
     private async Task<HttpResponseMessage> AddValoresAsync(string token, string sheetId, string elemento, int elementoValor, string? segunda, int? segundaValor, int? subValor) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", token,
             new AddCharacterAffinityRequest(elemento, elementoValor, segunda, segundaValor, subValor, null)));
 
     private async Task<CharacterSheetResponse> GetSheetAsync(string token, string sheetId) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token)))
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token)))
             .Content.ReadFromJsonAsync<CharacterSheetResponse>())!;
 
     [Fact]
@@ -527,9 +481,9 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
 
         await SetVocacaoAsync(gmToken, sheetId, "Feiticeiro", 0); // gasto 6 > máximo 3, mas baixar o máximo não é bloqueado
 
-        var lower = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
+        var lower = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added!.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null)));
-        var higher = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
+        var higher = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affinities/{added.Id}", playerToken,
             new UpdateCharacterAffinityRequest("Fogo", 6, null, null, null, null)));
 
         lower.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -546,7 +500,7 @@ public class CharacterAffinitiesControllerTests : IClassFixture<BlankDatabaseFix
         var update = new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, "Feiticeiro", null, null, null,
             false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, -1);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", gmToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

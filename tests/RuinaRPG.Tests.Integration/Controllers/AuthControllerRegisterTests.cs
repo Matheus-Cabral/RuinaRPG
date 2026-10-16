@@ -5,33 +5,14 @@ using RuinaRPG.Contracts.Auth;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class AuthControllerRegisterTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public AuthControllerRegisterTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
     [Fact]
     public async Task Register_gm_with_valid_data_returns_201_and_tokens()
     {
         var request = new RegisterGmRequest("MestreTeste", "mestre@teste.com", "Senha!123", "Senha!123");
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", request);
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -44,7 +25,7 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
     {
         var request = new RegisterGmRequest("MestreTeste2", "mestre2@teste.com", "Senha!123", "OutraSenha!123");
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", request);
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -53,10 +34,10 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
     public async Task Register_gm_with_duplicate_email_returns_400()
     {
         var request = new RegisterGmRequest("Original", "duplicado@teste.com", "Senha!123", "Senha!123");
-        await _client.PostAsJsonAsync("/api/auth/register/gm", request);
+        await Client.PostAsJsonAsync("/api/auth/register/gm", request);
 
         var duplicate = new RegisterGmRequest("Duplicado", "duplicado@teste.com", "Senha!123", "Senha!123");
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", duplicate);
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", duplicate);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -67,11 +48,11 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
         // Login e Cadastro R0003: o Nickname é único no sistema. Case-insensitively so,
         // otherwise "Mestre" and "mestre" become two indistinguishable accounts.
         var first = new RegisterGmRequest("NickUnico", "nick.unico@teste.com", "Senha!123", "Senha!123");
-        var firstResponse = await _client.PostAsJsonAsync("/api/auth/register/gm", first);
+        var firstResponse = await Client.PostAsJsonAsync("/api/auth/register/gm", first);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var duplicate = new RegisterGmRequest("nickunico", "outro.nick@teste.com", "Senha!123", "Senha!123");
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", duplicate);
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", duplicate);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -83,7 +64,7 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
     {
         var request = new RegisterGmRequest(nickname, "nickvazio@teste.com", "Senha!123", "Senha!123");
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", request);
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -94,11 +75,11 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
         // A duplicate that slips into the database makes the nickname lookup ambiguous,
         // which turns every subsequent login for that nickname into a permanent 500.
         var first = new RegisterGmRequest("NickLogin", "nick.login@teste.com", "Senha!123", "Senha!123");
-        await _client.PostAsJsonAsync("/api/auth/register/gm", first);
-        await _client.PostAsJsonAsync("/api/auth/register/gm",
+        await Client.PostAsJsonAsync("/api/auth/register/gm", first);
+        await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest("NickLogin", "nick.login2@teste.com", "Senha!123", "Senha!123"));
 
-        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("NickLogin", "Senha!123"));
+        var login = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("NickLogin", "Senha!123"));
 
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -106,10 +87,10 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
     [Fact]
     public async Task Login_finds_the_user_regardless_of_nickname_casing()
     {
-        await _client.PostAsJsonAsync("/api/auth/register/gm",
+        await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest("NickCase", "nick.case@teste.com", "Senha!123", "Senha!123"));
 
-        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("nIcKcAsE", "Senha!123"));
+        var login = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("nIcKcAsE", "Senha!123"));
 
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -120,8 +101,8 @@ public class AuthControllerRegisterTests : IClassFixture<BlankDatabaseFixture>, 
         var first = new RegisterGmRequest(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail(), "Senha!123", "Senha!123");
         var second = new RegisterGmRequest(TestDataFaker.UniqueNickname(), TestDataFaker.UniqueEmail(), "Senha!123", "Senha!123");
 
-        var firstResponse = await _client.PostAsJsonAsync("/api/auth/register/gm", first);
-        var secondResponse = await _client.PostAsJsonAsync("/api/auth/register/gm", second);
+        var firstResponse = await Client.PostAsJsonAsync("/api/auth/register/gm", first);
+        var secondResponse = await Client.PostAsJsonAsync("/api/auth/register/gm", second);
 
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.Created);

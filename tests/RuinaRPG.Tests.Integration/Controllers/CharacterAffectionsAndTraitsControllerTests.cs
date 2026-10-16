@@ -12,60 +12,14 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CharacterAffectionsAndTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CharacterAffectionsAndTraitsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
+        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
         var campaignId = (await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
@@ -76,7 +30,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
     // TraitId, no Especificacao required.
     private async Task<(string PositiveTraitId, string NegativeTraitId)> GetSeededTraitIdsAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var positive = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3);
         var negative = await db.Traits.FirstAsync(t => t.Polaridade == RuinaRPG.Domain.Enums.Polaridade.Negativa && !t.RequerEspecificacao && t.Custo >= -3);
@@ -87,7 +41,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
     // directly by name, mirroring TraitSeedParserTests' own convention of referencing it verbatim.
     private async Task<Trait> GetTraitAsync(string nome)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         return await db.Traits.SingleAsync(t => t.Nome == nome);
     }
@@ -97,7 +51,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
     // apart when combined, safely exceeding the level-1 budget of 5.
     private async Task<List<(string Id, int Custo)>> GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade polaridade, int take)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         // Each candidate's own |Custo| must stay within the level-1 budget (5) on its own — the test
         // using this helper adds them one at a time and expects the FIRST to succeed, so a trait that
@@ -115,21 +69,21 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer1", "afftraitplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
             new AddCharacterAffectionRequest("Amigo de infância", 5)));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
         added!.Nome.Should().Be("Amigo de infância");
         added.Favorabilidade.Should().Be(5);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
         var list = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffectionResponse>>();
         list!.Should().ContainSingle(a => a.Id == added.Id);
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affections/{added.Id}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affections/{added.Id}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<List<CharacterAffectionResponse>>();
         listAfter!.Should().NotContain(a => a.Id == added.Id);
     }
@@ -141,18 +95,18 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer6", "afftraitplayer6@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
             new AddCharacterAffectionRequest("Amigo de infância", 5)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", playerToken,
             new UpdateCharacterAffectionRequest("Rival de infância", -3)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
         updated!.Nome.Should().Be("Rival de infância");
         updated.Favorabilidade.Should().Be(-3);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", playerToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffectionResponse>>();
         body!.Should().ContainSingle(a => a.Id == added.Id && a.Nome == "Rival de infância" && a.Favorabilidade == -3);
     }
@@ -165,11 +119,11 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer7b", "afftraitplayer7b@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken,
             new AddCharacterAffectionRequest("Mentor", 8)));
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", otherToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{added!.Id}", otherToken,
             new UpdateCharacterAffectionRequest("Impostor", 0)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -182,7 +136,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer5", "afftraitplayer5@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{Guid.NewGuid()}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/affections/{Guid.NewGuid()}", playerToken,
             new UpdateCharacterAffectionRequest("Ninguém", 0)));
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -196,15 +150,15 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var (positiveTraitId, negativeTraitId) = await GetSeededTraitIdsAsync();
 
-        var addPositiveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var addPositiveResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(positiveTraitId, null)));
         addPositiveResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var addNegativeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var addNegativeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(negativeTraitId, null)));
         addNegativeResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var addedNegative = await addNegativeResponse.Content.ReadFromJsonAsync<CharacterTraitResponse>();
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var list = await listResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
         list!.Positivas.Should().ContainSingle(t => t.TraitId == positiveTraitId);
@@ -212,10 +166,10 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         list.TotalPositivas.Should().Be(list.Positivas.Sum(t => t.Custo));
         list.TotalNegativas.Should().Be(list.Negativas.Sum(t => t.Custo));
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/traits/{addedNegative!.Id}", playerToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/traits/{addedNegative!.Id}", playerToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterDelete = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
+        var listAfterDelete = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
         var listAfter = await listAfterDelete.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
         listAfter!.Negativas.Should().NotContain(t => t.Id == addedNegative.Id);
     }
@@ -227,7 +181,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "AffPlayer3", "afftraitplayer3@teste.com");
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(Guid.NewGuid().ToString(), null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -242,11 +196,11 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var top = await GetTopCostTraitsAsync(RuinaRPG.Domain.Enums.Polaridade.Positiva, 2);
         top.Sum(t => t.Custo).Should().BeGreaterThan(5); // level-1 creation budget
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(top[0].Id, null)));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(top[1].Id, null)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -268,7 +222,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         foreach (var (id, custo) in candidatas)
         {
             var cabe = total + Math.Abs(custo) <= 10;
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
                 new AddCharacterTraitRequest(id, null)));
             response.StatusCode.Should().Be(cabe ? HttpStatusCode.Created : HttpStatusCode.BadRequest);
             if (cabe) total += Math.Abs(custo); else rejeitadas++;
@@ -276,7 +230,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
 
         total.Should().BeGreaterThan(5, "o limite de Negativas passa do de Positivas (5)").And.BeLessThanOrEqualTo(10);
         rejeitadas.Should().BeGreaterThan(0, "alguma Negativa tem de ter estourado o limite de 10");
-        var lista = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken)))
+        var lista = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken)))
             .Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
         lista!.PontosDisponiveis.Should().Be(5);
         lista.PontosDisponiveisNegativas.Should().Be(10);
@@ -290,7 +244,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var alergia = await GetTraitAsync("Alergia");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(alergia.Id.ToString(), null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -304,14 +258,14 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var alergia = await GetTraitAsync("Alergia");
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(alergia.Id.ToString(), "Poeira")));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await addResponse.Content.ReadFromJsonAsync<CharacterTraitResponse>();
         added!.Especificacao.Should().Be("Poeira");
         added.RequerEspecificacao.Should().BeTrue();
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
         var list = await listResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
         list!.Negativas.Should().ContainSingle(t => t.Id == added.Id && t.Especificacao == "Poeira");
     }
@@ -325,27 +279,27 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
         var (positiveTraitId, _) = await GetSeededTraitIdsAsync();
 
-        var addAffection = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken, new AddCharacterAffectionRequest("Rival", -2)));
+        var addAffection = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", playerToken, new AddCharacterAffectionRequest("Rival", -2)));
         var affectionId = (await addAffection.Content.ReadFromJsonAsync<CharacterAffectionResponse>())!.Id;
-        var addTrait = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddCharacterTraitRequest(positiveTraitId, null)));
+        var addTrait = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddCharacterTraitRequest(positiveTraitId, null)));
         var traitId = (await addTrait.Content.ReadFromJsonAsync<CharacterTraitResponse>())!.Id;
 
-        var addAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", otherToken, new AddCharacterAffectionRequest("Rival", -2)));
+        var addAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affections", otherToken, new AddCharacterAffectionRequest("Rival", -2)));
         addAffectionResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var listAffectionsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", otherToken));
+        var listAffectionsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/affections", otherToken));
         listAffectionsResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var deleteAffectionResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affections/{affectionId}", otherToken));
+        var deleteAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/affections/{affectionId}", otherToken));
         deleteAffectionResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var addTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", otherToken, new AddCharacterTraitRequest(positiveTraitId, null)));
+        var addTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", otherToken, new AddCharacterTraitRequest(positiveTraitId, null)));
         addTraitResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var listTraitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", otherToken));
+        var listTraitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", otherToken));
         listTraitsResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var deleteTraitResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/traits/{traitId}", otherToken));
+        var deleteTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/character-sheets/{sheetId}/traits/{traitId}", otherToken));
         deleteTraitResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -357,7 +311,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
         var sheetId = await SetUpSheetAsync(gmToken, playerId);
 
         string exclusiveId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var trait = new RuinaRPG.Infrastructure.Rules.CreatureExclusiveTrait
@@ -370,7 +324,7 @@ public class CharacterAffectionsAndTraitsControllerTests : IClassFixture<BlankDa
             exclusiveId = trait.Id.ToString();
         }
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken,
             new AddCharacterTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
