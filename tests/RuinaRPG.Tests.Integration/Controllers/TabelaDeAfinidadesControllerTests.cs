@@ -17,52 +17,10 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// since every Fact in this class shares one database. Created rows use Afinidade 900+ so they never
 /// collide with the 22 seeded ones.
 /// </summary>
-public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class TabelaDeAfinidadesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Url = "/api/tabela-de-afinidades";
 
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public TabelaDeAfinidadesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-    }
 
     private async Task<string> AuditorTokenAsync(string nickname, string email)
     {
@@ -72,26 +30,26 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
     }
 
     private async Task<List<LinhaDaTabelaDeAfinidadesResponse>> ListAsync(string token) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, Url, token)))
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url, token)))
             .Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
 
     private async Task<LinhaDaTabelaDeAfinidadesResponse> CreateAsync(string token, int afinidade, int eficiencia, int dano)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
             new SalvarLinhaDaTabelaDeAfinidadesRequest(afinidade, eficiencia, dano)));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<LinhaDaTabelaDeAfinidadesResponse>())!;
     }
 
     private Task DeleteAsync(string token, Guid id) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{id}", token));
+        Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{id}", token));
 
     [Fact]
     public async Task List_returns_the_rows_ordered_by_Afinidade_to_any_authenticated_user()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("AfinList1", "afinlist1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, Url, gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url, gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = (await response.Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
@@ -104,7 +62,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
     [Fact]
     public async Task List_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync(Url);
+        var response = await Client.GetAsync(Url);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -132,7 +90,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
     {
         var token = await AuditorTokenAsync("AfinCreate2", "afincreate2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
             new SalvarLinhaDaTabelaDeAfinidadesRequest(7, 1, 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -147,7 +105,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
     {
         var token = await AuditorTokenAsync($"AfinNeg{afinidade + 1}", $"afinneg{afinidade + 1}@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, token,
             new SalvarLinhaDaTabelaDeAfinidadesRequest(afinidade, eficiencia, dano)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -161,7 +119,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var criada = await CreateAsync(token, 910, 1, 1);
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(911, 8, 6)));
 
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -181,7 +139,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var criada = await CreateAsync(token, 920, 1, 1);
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(920, 9, 9)));
 
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -199,7 +157,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var criada = await CreateAsync(token, 930, 1, 1);
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(7, 1, 1)));
 
             response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -217,7 +175,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var criada = await CreateAsync(token, 940, 1, 1);
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", token,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(940, -1, 1)));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -234,9 +192,9 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var token = await AuditorTokenAsync("AfinUnknown1", "afinunknown1@teste.com");
         var id = Guid.NewGuid();
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{id}", token,
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{id}", token,
             new SalvarLinhaDaTabelaDeAfinidadesRequest(950, 1, 1)));
-        var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{id}", token));
+        var delete = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{id}", token));
 
         put.StatusCode.Should().Be(HttpStatusCode.NotFound);
         delete.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -248,7 +206,7 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var token = await AuditorTokenAsync("AfinDel1", "afindel1@teste.com");
         var criada = await CreateAsync(token, 960, 1, 1);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{criada.Id}", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{criada.Id}", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListAsync(token)).Should().NotContain(l => l.Id == criada.Id);
@@ -262,11 +220,11 @@ public class TabelaDeAfinidadesControllerTests : IClassFixture<BlankDatabaseFixt
         var criada = await CreateAsync(auditorToken, 970, 1, 1);
         try
         {
-            var post = await _client.SendAsync(AuthedRequest(HttpMethod.Post, Url, gmToken,
+            var post = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url, gmToken,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(971, 1, 1)));
-            var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", gmToken,
+            var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{Url}/{criada.Id}", gmToken,
                 new SalvarLinhaDaTabelaDeAfinidadesRequest(970, 2, 2)));
-            var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{criada.Id}", gmToken));
+            var delete = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"{Url}/{criada.Id}", gmToken));
 
             post.StatusCode.Should().Be(HttpStatusCode.Forbidden);
             put.StatusCode.Should().Be(HttpStatusCode.Forbidden);

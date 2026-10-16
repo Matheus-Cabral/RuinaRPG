@@ -8,75 +8,48 @@ using RuinaRPG.Contracts.Diary;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class SecretNoteUnreadTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class SecretNoteUnreadTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SecretNoteUnreadTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private static string Unique(string prefix) => prefix + Guid.NewGuid().ToString("N")[..10];
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
 
     private async Task<string> RegisterGmAsync()
     {
         var nick = Unique("Gm");
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
     private async Task<(string Id, string Token)> RegisterJogadorAsync(string gmToken)
     {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
         var nick = Unique("Jg");
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123", code));
         var tokens = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
+        var me = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
         return ((await me.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
     private async Task<string> CreateCampaignWithMembersAsync(string gmToken, string nome, params string[] memberIds)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
         var campaignId = (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
         foreach (var memberId in memberIds)
-            (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(memberId))))
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(memberId))))
                 .EnsureSuccessStatusCode();
         return campaignId;
     }
 
     private async Task CreateNoteAsync(string gmToken, string campaignId, params string[] recipientIds) =>
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/secret-notes", gmToken,
             new CreateSecretNoteRequest("Pista.", recipientIds.ToList(), [])))).EnsureSuccessStatusCode();
 
     private async Task<List<UnreadSecretNotesResponse>> UnreadAsync(string token)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/secret-notes/unread", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/secret-notes/unread", token));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<List<UnreadSecretNotesResponse>>())!;
     }
@@ -84,7 +57,7 @@ public class SecretNoteUnreadTests : IClassFixture<BlankDatabaseFixture>, IAsync
     [Fact]
     public async Task Unread_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/secret-notes/unread");
+        var response = await Client.GetAsync("/api/secret-notes/unread");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -121,8 +94,8 @@ public class SecretNoteUnreadTests : IClassFixture<BlankDatabaseFixture>, IAsync
         await CreateNoteAsync(gmToken, campanhaA, aId, bId);
         await CreateNoteAsync(gmToken, campanhaB, aId);
 
-        var first = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanhaA}/secret-notes/mark-read", aToken));
-        var second = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanhaA}/secret-notes/mark-read", aToken));
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanhaA}/secret-notes/mark-read", aToken));
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanhaA}/secret-notes/mark-read", aToken));
 
         first.StatusCode.Should().Be(HttpStatusCode.NoContent);
         second.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -137,7 +110,7 @@ public class SecretNoteUnreadTests : IClassFixture<BlankDatabaseFixture>, IAsync
         var (playerId, playerToken) = await RegisterJogadorAsync(gmToken);
         var campanha = await CreateCampaignWithMembersAsync(gmToken, "Campanha", playerId);
         await CreateNoteAsync(gmToken, campanha, playerId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanha}/secret-notes/mark-read", playerToken));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanha}/secret-notes/mark-read", playerToken));
 
         await CreateNoteAsync(gmToken, campanha, playerId);
 
@@ -151,8 +124,8 @@ public class SecretNoteUnreadTests : IClassFixture<BlankDatabaseFixture>, IAsync
         var (_, outsiderToken) = await RegisterJogadorAsync(gmToken);
         var campanha = await CreateCampaignWithMembersAsync(gmToken, "Campanha");
 
-        var forbidden = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanha}/secret-notes/mark-read", outsiderToken));
-        var notFound = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{Guid.NewGuid()}/secret-notes/mark-read", outsiderToken));
+        var forbidden = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campanha}/secret-notes/mark-read", outsiderToken));
+        var notFound = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{Guid.NewGuid()}/secret-notes/mark-read", outsiderToken));
 
         forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         notFound.StatusCode.Should().Be(HttpStatusCode.NotFound);

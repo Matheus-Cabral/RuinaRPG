@@ -9,48 +9,13 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class RulebookControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public RulebookControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
 
     [Fact]
     public async Task Get_without_a_token_returns_200()
     {
-        var response = await _client.GetAsync("/api/rulebook");
+        var response = await Client.GetAsync("/api/rulebook");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -60,7 +25,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm1", "rulebook1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
@@ -81,7 +46,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm2", "rulebook2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var caracteristicas = body!.Single(d => d.Slug == "caracteristicas");
@@ -94,7 +59,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm3", "rulebook3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var grausECirculos = body!.Single(d => d.Slug == "graus-e-circulos");
@@ -108,7 +73,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm4", "rulebook4@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var estrelas = body!.Single(d => d.Slug == "estrelas-alkerianas");
@@ -128,7 +93,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGm5", "rulebook5@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var historicos = body!.Single(d => d.Slug == "historicos");
@@ -151,27 +116,27 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     public async Task Historicos_omits_the_bonus_of_a_removed_Pericia()
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookGmRem", "rulebookrem@teste.com");
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKREM@TESTE.COM");
             user.IsRulesAuditor = true;
             await db.SaveChangesAsync();
         }
-        var seis = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+        var seis = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
             new SalvarPericiaRequest("Seis Sumida Livro", null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>();
-        var tres = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
+        var tres = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/pericias", token,
             new SalvarPericiaRequest("Três Sumida Livro", null, null, false)))).Content.ReadFromJsonAsync<PericiaAuditoriaResponse>();
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
             new CreateHistoricoRequest("Só Seis Some", "Um.", seis!.Chave, "Atletismo")));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
             new CreateHistoricoRequest("Os Dois Somem", "Dois.", "Acrobacia", tres!.Chave)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", token,
             new CreateHistoricoRequest("Nenhum Fica", "Três.", seis.Chave, tres.Chave)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{seis.Id}", token));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{tres.Id}", token));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{seis.Id}", token));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{tres.Id}", token));
 
-        var body = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token)))
+        var body = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token)))
             .Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
 
         var sections = body!.Single(d => d.Slug == "historicos").Sections;
@@ -187,23 +152,23 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     public async Task Historicos_reflects_a_catalog_edit_immediately()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookGm6", "rulebook6@teste.com");
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOK6@TESTE.COM");
         user.IsRulesAuditor = true;
         await db.SaveChangesAsync();
 
-        var createResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new RuinaRPG.Contracts.Rules.CreateHistoricoRequest("Recém Cadastrado", "Aparece na aba na hora.", "Atletismo", "Acrobacia")));
         var created = await createResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Rules.HistoricoResponse>();
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var historicos = body!.Single(d => d.Slug == "historicos");
         historicos.Sections.Should().Contain(s => s.Titulo == "Recém Cadastrado");
 
         // Cleanup so this created row can't affect other tests' section counts in this class.
-        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/historicos/{created!.Id}", gmToken));
     }
 
     [Fact]
@@ -211,7 +176,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var token = await RegisterGmAndGetTokenAsync("RulebookEquipGm1", "rulebookequip1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
 
         var documents = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         var equipagem = documents!.Single(d => d.Slug == "equipagem");
@@ -222,7 +187,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     private async Task<string> RegisterAuditorAsync(string username, string email)
     {
         var token = await RegisterGmAndGetTokenAsync(username, email);
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
         user.IsRulesAuditor = true;
@@ -232,14 +197,14 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
 
     private async Task<string> TabelaDeNiveisHtmlAsync(string token)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", token));
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
         return body!.Single(d => d.Slug == "tabela-de-niveis").IntroHtml ?? "";
     }
 
     private async Task<ColunaDeNivelResponse> CriarColunaAsync(string token, string nome, string tipo)
     {
-        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/tabela-de-niveis/colunas", token,
+        var created = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/tabela-de-niveis/colunas", token,
             new CriarColunaDeNivelRequest(nome, tipo)));
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         return (await created.Content.ReadFromJsonAsync<ColunaDeNivelResponse>())!;
@@ -247,14 +212,14 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
 
     private async Task SetValorAsync(string token, int nivel, Guid colunaId, int? valor)
     {
-        var r = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/tabela-de-niveis/{nivel}/valores/{colunaId}", token,
+        var r = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/tabela-de-niveis/{nivel}/valores/{colunaId}", token,
             new AtualizarValorDeNivelRequest(valor)));
         r.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     private async Task SetMostrarLimitesAsync(string token, bool valor)
     {
-        var r = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/tabela-de-niveis/config", token,
+        var r = await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/tabela-de-niveis/config", token,
             new AtualizarConfigDaTabelaDeNiveisRequest(valor)));
         r.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -336,8 +301,8 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         finally
         {
             await SetMostrarLimitesAsync(token, false);
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{fama.Id}", token));
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{teto.Id}", token));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{fama.Id}", token));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{teto.Id}", token));
         }
     }
 
@@ -355,7 +320,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         }
         finally
         {
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{coluna.Id}", token));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/tabela-de-niveis/colunas/{coluna.Id}", token));
         }
     }
 
@@ -363,7 +328,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     public async Task Get_reflects_a_saved_RulebookDocumentOverride_immediately_for_sistema_basico()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookGmOverride2", "rulebookgmoverride2@teste.com");
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMOVERRIDE2@TESTE.COM");
         user.IsRulesAuditor = true;
@@ -372,11 +337,11 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         var updateMessage = new HttpRequestMessage(HttpMethod.Put, "/api/rulebook-documents/sistema-basico");
         updateMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         updateMessage.Content = JsonContent.Create(new UpdateRulebookDocumentOverrideRequest("Texto Substituído Pelo Auditor Sistema Básico"));
-        await _client.SendAsync(updateMessage);
+        await Client.SendAsync(updateMessage);
 
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
 
             var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
             var sistemaBasico = body!.Single(d => d.Slug == "sistema-basico");
@@ -385,7 +350,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         finally
         {
             // Same cross-test leak concern as the tabela-de-niveis override test above.
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
         }
     }
 
@@ -393,7 +358,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     public async Task Get_reflects_a_saved_RulebookDocumentOverride_immediately_for_graus_e_circulos()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookGmOverride3", "rulebookgmoverride3@teste.com");
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMOVERRIDE3@TESTE.COM");
         user.IsRulesAuditor = true;
@@ -402,11 +367,11 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         var updateMessage = new HttpRequestMessage(HttpMethod.Put, "/api/rulebook-documents/graus-e-circulos");
         updateMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         updateMessage.Content = JsonContent.Create(new UpdateRulebookDocumentOverrideRequest("Texto Substituído Pelo Auditor Graus e Círculos"));
-        await _client.SendAsync(updateMessage);
+        await Client.SendAsync(updateMessage);
 
         try
         {
-            var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
+            var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook", gmToken));
 
             var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentResponse>>();
             var grausECirculos = body!.Single(d => d.Slug == "graus-e-circulos");
@@ -417,14 +382,14 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
             // Same cross-test leak concern as the tabela-de-niveis override test above — this is
             // exactly the leak that made GrausECirculos_IntroHtml_includes_the_two_reference_images
             // fail (0 sections instead of 9) before this cleanup was added.
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/graus-e-circulos", gmToken));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/graus-e-circulos", gmToken));
         }
     }
 
     [Fact]
     public async Task GetDocument_without_a_token_returns_only_that_document()
     {
-        var response = await _client.GetAsync("/api/rulebook/estrelas-alkerianas");
+        var response = await Client.GetAsync("/api/rulebook/estrelas-alkerianas");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<RulebookDocumentResponse>();
@@ -436,7 +401,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
     [Fact]
     public async Task GetDocument_with_an_unknown_slug_returns_404()
     {
-        var response = await _client.GetAsync("/api/rulebook/nao-existe");
+        var response = await Client.GetAsync("/api/rulebook/nao-existe");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -447,18 +412,18 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         // Ficha de Personagem R0001 1.a: o popup da Estrela lê este endpoint, então uma edição do
         // Auditor tem que aparecer aqui na hora.
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookGmOverrideEstrelas", "rulebookgmoverrideestrelas@teste.com");
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == "RULEBOOKGMOVERRIDEESTRELAS@TESTE.COM");
         user.IsRulesAuditor = true;
         await db.SaveChangesAsync();
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/estrelas-alkerianas", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/estrelas-alkerianas", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# 🌿 I — AEURER\n\nTexto novo de Aeurer pelo Auditor.")));
 
         try
         {
-            var body = await _client.GetFromJsonAsync<RulebookDocumentResponse>("/api/rulebook/estrelas-alkerianas");
+            var body = await Client.GetFromJsonAsync<RulebookDocumentResponse>("/api/rulebook/estrelas-alkerianas");
 
             var aeurer = body!.Sections.Single();
             aeurer.Titulo.Should().Contain("AEURER");
@@ -467,7 +432,7 @@ public class RulebookControllerTests : IClassFixture<BlankDatabaseFixture>, IAsy
         finally
         {
             // Same cleanup reasoning as Get_reflects_a_saved_RulebookDocumentOverride_immediately.
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/estrelas-alkerianas", gmToken));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/estrelas-alkerianas", gmToken));
         }
     }
 }

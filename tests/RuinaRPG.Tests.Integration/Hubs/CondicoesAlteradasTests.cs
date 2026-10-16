@@ -22,26 +22,8 @@ namespace RuinaRPG.Tests.Integration.Hubs;
 /// Quando as Condições ativas de um participante ligado a uma ficha mudam, o dono da ficha recebe
 /// CondicoesAlteradas pelo NotificationHub e o grupo do encontro recebe ParticipantsChanged. Ninguém mais.
 /// </summary>
-public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class CondicoesAlteradasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CondicoesAlteradasTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private static readonly TimeSpan Arrives = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StaysSilent = TimeSpan.FromSeconds(1);
@@ -59,7 +41,7 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null, HttpClient? client = null)
     {
-        var response = await (client ?? _client).SendAsync(Authed(method, url, token, body));
+        var response = await (client ?? Client).SendAsync(Authed(method, url, token, body));
         response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} devolveu {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         return response;
     }
@@ -70,7 +52,7 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
     {
         var code = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
         var nick = Unique("Jg");
-        var tokens = (await (await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123", code)))
+        var tokens = (await (await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123", code)))
             .Content.ReadFromJsonAsync<AuthResponse>())!;
         var me = (await (await EnviarAsync(HttpMethod.Get, "/api/auth/me", tokens.AccessToken)).Content.ReadFromJsonAsync<MeResponse>())!;
         return (me.Id, tokens.AccessToken);
@@ -79,9 +61,9 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
     private async Task<Mesa> MesaAsync()
     {
         var nick = Unique("Gm");
-        var gm = (await (await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123")))
+        var gm = (await (await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nick, $"{nick}@t.com", "Senha!123", "Senha!123")))
             .Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.Users.SingleAsync(u => u.Nickname == nick)).IsRulesAuditor = true;
@@ -116,10 +98,10 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
     private async Task<HubConnection> ConectarAsync(string hub, string token)
     {
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, hub), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, hub), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
         await connection.StartAsync();
@@ -232,7 +214,7 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
 
         // Só um ajuste que muda a ficha avisa: Vigor 8 dá total 16, e com 10 guardado o −1 leva a 9.
         await EnviarAsync(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", mesa.Gm, new { Gasto = 0, Bonus = 8, TemMaestria = true });
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.CharacterSheets.FindAsync(Guid.Parse(sheetId)))!.VitalidadeAtual = 10;
@@ -302,7 +284,7 @@ public class CondicoesAlteradasTests : IClassFixture<BlankDatabaseFixture>, IAsy
         var participantId = await ParticiparAsync(mesa, encounterId, new AddParticipantRequest(sheetId, null, null, 10));
         await EnviarAsync(HttpMethod.Post, $"/api/encounters/{encounterId}/start", mesa.Gm);
         var condicaoId = await CondicaoAsync(mesa);
-        await using var quebrado = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        await using var quebrado = Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
         {
             services.AddSingleton<IHubContext<NotificationHub>>(new HubQuebrado<NotificationHub>());
             services.AddSingleton<IHubContext<EncounterHub>>(new HubQuebrado<EncounterHub>());

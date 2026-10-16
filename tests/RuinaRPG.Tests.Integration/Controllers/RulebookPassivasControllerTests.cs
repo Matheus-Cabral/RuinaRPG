@@ -10,64 +10,37 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Requisitos - Livro de Regras R0010: a aba Habilidades Passivas, por papel e por campanha.</summary>
-public class RulebookPassivasControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class RulebookPassivasControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public RulebookPassivasControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private static HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
 
     private async Task<string> RegisterGmAsync(string tag)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"LivroGm{tag}", $"livrogm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"LivroGm{tag}", $"livrogm{tag}@teste.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
     private async Task<(string Id, string Token)> RegisterJogadorAsync(string gmToken, string tag)
     {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"LivroPl{tag}", $"livropl{tag}@teste.com", "Senha!123", "Senha!123", code));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"LivroPl{tag}", $"livropl{tag}@teste.com", "Senha!123", "Senha!123", code));
         var tokens = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
+        var me = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens.AccessToken));
         return ((await me.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome, string? memberId = null)
+    private async Task<string> CreateCampaignWithOptionalMemberAsync(string gmToken, string nome, string? memberId = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
         var id = (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
         if (memberId is not null)
-            await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{id}/members", gmToken, new AddCampaignMemberRequest(memberId)));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{id}/members", gmToken, new AddCampaignMemberRequest(memberId)));
         return id;
     }
 
     private async Task<string> CreateEntryAsync(string gmToken, string nome, string tipo, string? categoria, RequisitosDePassivaDto? requisitos = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, tipo, tipo == "Passiva" ? 0 : 1, "Descrição de " + nome, [], false, categoria, requisitos)));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
@@ -75,16 +48,16 @@ public class RulebookPassivasControllerTests : IClassFixture<BlankDatabaseFixtur
 
     private async Task AttachAsync(string gmToken, string campaignId, string entryId, bool publica)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, entryId, null)));
         var attachmentId = (await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
         if (publica)
-            await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
     }
 
     private async Task<List<PassivaDoLivroResponse>> GetAsync(string token, string? campaignId = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook/passivas" + (campaignId is null ? "" : $"?campaignId={campaignId}"), token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook/passivas" + (campaignId is null ? "" : $"?campaignId={campaignId}"), token));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<List<PassivaDoLivroResponse>>())!;
     }
@@ -92,8 +65,8 @@ public class RulebookPassivasControllerTests : IClassFixture<BlankDatabaseFixtur
     [Fact]
     public async Task Anonymous_is_unauthorized_and_the_public_rulebook_still_answers()
     {
-        (await _client.GetAsync("/api/rulebook/passivas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await _client.GetAsync("/api/rulebook/graus-e-circulos")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Client.GetAsync("/api/rulebook/passivas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.GetAsync("/api/rulebook/graus-e-circulos")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -119,8 +92,8 @@ public class RulebookPassivasControllerTests : IClassFixture<BlankDatabaseFixtur
     {
         var gm = await RegisterGmAsync("B");
         var (playerId, player) = await RegisterJogadorAsync(gm, "B");
-        var campanha = await CreateCampaignAsync(gm, "Campanha B", playerId);
-        var outraCampanha = await CreateCampaignAsync(gm, "Campanha B2", playerId);
+        var campanha = await CreateCampaignWithOptionalMemberAsync(gm, "Campanha B", playerId);
+        var outraCampanha = await CreateCampaignWithOptionalMemberAsync(gm, "Campanha B2", playerId);
         var publica = await CreateEntryAsync(gm, "Pública", "Passiva", "Vocacional");
         var privada = await CreateEntryAsync(gm, "Privada", "Passiva", "Livre");
         var naoAnexada = await CreateEntryAsync(gm, "Não Anexada", "Passiva", "Livre");
@@ -142,12 +115,12 @@ public class RulebookPassivasControllerTests : IClassFixture<BlankDatabaseFixtur
         var gm = await RegisterGmAsync("C");
         var (_, player) = await RegisterJogadorAsync(gm, "C");
         var outroGm = await RegisterGmAsync("C2");
-        var alheia = await CreateCampaignAsync(outroGm, "Campanha Alheia");
+        var alheia = await CreateCampaignWithOptionalMemberAsync(outroGm, "Campanha Alheia");
         await AttachAsync(outroGm, alheia, await CreateEntryAsync(outroGm, "Segredo", "Passiva", "Livre"), publica: true);
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook/passivas", player))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={Guid.NewGuid()}", player))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={alheia}", player))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook/passivas", player))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={Guid.NewGuid()}", player))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/rulebook/passivas?campaignId={alheia}", player))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

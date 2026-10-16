@@ -8,58 +8,25 @@ using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class NpcPossessionsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcPossessionsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
 
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
     private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco, string? imageId = null, string descricao = "Um item qualquer")
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor, string? imageId = null, string? descricao = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
@@ -78,7 +45,7 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildImageUpload() };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
     }
 
@@ -89,7 +56,7 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
         var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
             new AddNpcInventoryItemRequest(itemId, 3)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -106,9 +73,9 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm2", "npcposs2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var itemId = await CreateItemGeralAsync(gmToken, "Tocha", 0.5m, 2);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 2)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 2)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<NpcInventoryItemResponse>>();
         body!.Should().ContainSingle(i => i.ItemId == itemId);
@@ -120,13 +87,13 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm3", "npcposs3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var itemId = await CreateItemGeralAsync(gmToken, "Lanterna", 1m, 8);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 1)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<NpcInventoryItemResponse>())!.Id;
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcInventoryItemResponse>>();
         body!.Should().NotContain(i => i.Id == inventoryItemId);
     }
@@ -137,13 +104,13 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGmQtd1", "npcpossqtd1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var itemId = await CreateItemGeralAsync(gmToken, "Corda", 1.5m, 5);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 1)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addResponse.Content.ReadFromJsonAsync<NpcInventoryItemResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmToken, 4));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmToken, 4));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmToken));
         var updatedBody = await listResponse.Content.ReadFromJsonAsync<List<NpcInventoryItemResponse>>();
         var item = updatedBody!.Single(i => i.Id == inventoryItemId);
         item.Qtd.Should().Be(4);
@@ -157,11 +124,11 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmToken);
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken,
             new AddNpcArtifactRequest(artifactItemId)));
         addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcArtifactResponse>>();
         body!.Should().HaveCount(1);
         var artifact = body!.Single();
@@ -181,12 +148,12 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var itemGeralId = await CreateItemGeralAsync(gmToken, "Corda Encantada", 1.5m, 5, imageId, "Brilha levemente no escuro.");
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel do Poder", "Atributo", "Vigor", 2, imageId, "Um anel de ouro maciço.");
 
-        var inventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemGeralId, 1)));
+        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken, new AddNpcInventoryItemRequest(itemGeralId, 1)));
         var inventoryBody = await inventoryResponse.Content.ReadFromJsonAsync<NpcInventoryItemResponse>();
         inventoryBody!.ImageUrl.Should().StartWith("/images/");
         inventoryBody.Descricao.Should().Be("Brilha levemente no escuro.");
 
-        var artifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
+        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
         var artifactBody = await artifactResponse.Content.ReadFromJsonAsync<NpcArtifactResponse>();
         artifactBody!.ImageUrl.Should().StartWith("/images/");
         artifactBody.Descricao.Should().Be("Um anel de ouro maciço.");
@@ -198,13 +165,13 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm5", "npcposs5@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         var artifactItemId = await CreateArtefatoItemAsync(gmToken, "Anel da Sorte", "Atributo", "Astucia", 1);
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
         var artifactId = (await addResponse.Content.ReadFromJsonAsync<NpcArtifactResponse>())!.Id;
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/artifacts/{artifactId}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/artifacts/{artifactId}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcArtifactResponse>>();
         body!.Should().NotContain(a => a.Id == artifactId);
     }
@@ -218,11 +185,11 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var artifact2 = await CreateArtefatoItemAsync(gmToken, "Anel 2", "Atributo", "Forca", 1);
         var artifact3 = await CreateArtefatoItemAsync(gmToken, "Anel 3", "Atributo", "Agilidade", 1);
         var artifact4 = await CreateArtefatoItemAsync(gmToken, "Anel 4", "Atributo", "Astucia", 1);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact1)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact2)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact3)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact1)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact2)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact3)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact4)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifact4)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -235,30 +202,30 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var sheetId = await CreateSheetAsync(gmTokenOwner);
         var itemId = await CreateItemGeralAsync(gmTokenOwner, "Corda", 1m, 5);
         var artifactItemId = await CreateArtefatoItemAsync(gmTokenOwner, "Anel do Poder", "Atributo", "Vigor", 2);
-        var addInventory = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOwner, new AddNpcInventoryItemRequest(itemId, 1)));
+        var addInventory = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOwner, new AddNpcInventoryItemRequest(itemId, 1)));
         var inventoryItemId = (await addInventory.Content.ReadFromJsonAsync<NpcInventoryItemResponse>())!.Id;
-        var addArtifact = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOwner, new AddNpcArtifactRequest(artifactItemId)));
+        var addArtifact = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOwner, new AddNpcArtifactRequest(artifactItemId)));
         var artifactId = (await addArtifact.Content.ReadFromJsonAsync<NpcArtifactResponse>())!.Id;
 
-        var addInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOther, new AddNpcInventoryItemRequest(itemId, 1)));
+        var addInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOther, new AddNpcInventoryItemRequest(itemId, 1)));
         addInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOther));
+        var listInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/inventory", gmTokenOther));
         listInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var updateInventoryQtdResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmTokenOther, 3));
+        var updateInventoryQtdResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}/qtd", gmTokenOther, 3));
         updateInventoryQtdResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteInventoryResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}", gmTokenOther));
+        var deleteInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/inventory/{inventoryItemId}", gmTokenOther));
         deleteInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var addArtifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOther, new AddNpcArtifactRequest(artifactItemId)));
+        var addArtifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOther, new AddNpcArtifactRequest(artifactItemId)));
         addArtifactResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var listArtifactsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOther));
+        var listArtifactsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/artifacts", gmTokenOther));
         listArtifactsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var deleteArtifactResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/artifacts/{artifactId}", gmTokenOther));
+        var deleteArtifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/artifacts/{artifactId}", gmTokenOther));
         deleteArtifactResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -268,7 +235,7 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm8", "npcposs8@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
             new AddNpcInventoryItemRequest("not-a-guid", 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -280,7 +247,7 @@ public class NpcPossessionsControllerTests : IClassFixture<BlankDatabaseFixture>
         var gmToken = await RegisterGmAndGetTokenAsync("NpcPossGm9", "npcposs9@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken,
             new AddNpcArtifactRequest("not-a-guid")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

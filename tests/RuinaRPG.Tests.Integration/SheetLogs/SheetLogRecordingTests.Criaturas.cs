@@ -144,7 +144,7 @@ public partial class SheetLogRecordingTests
         {
             Id = Guid.NewGuid(), Nome = "Couraça Viva do Log", Descricao = "Pele endurecida.", Custo = 2, Polaridade = Polaridade.Positiva, RequerEspecificacao = false,
         };
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.Set<CreatureExclusiveTrait>().Add(exclusiva);
@@ -187,7 +187,7 @@ public partial class SheetLogRecordingTests
     {
         var c = await CenarioAsync("Pericia");
         PericiaDefinicao pericia;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
             pericia = await scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().Pericias.AsNoTracking().SingleAsync(p => p.Chave == "Atletismo");
 
         var novas = await NovasAsync(c.SheetId, () =>

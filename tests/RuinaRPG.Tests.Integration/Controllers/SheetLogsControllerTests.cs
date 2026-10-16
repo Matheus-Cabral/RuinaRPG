@@ -14,26 +14,8 @@ using RuinaRPG.Infrastructure.SheetLogs;
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 /// <summary>Campanha R0016: consulta paginada do log de ficha, só para o GM.</summary>
-public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class SheetLogsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SheetLogsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private sealed record Cenario(string GmToken, string PlayerToken, Guid PlayerId, string CampaignId, Guid SheetId);
 
@@ -41,7 +23,7 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var message = new HttpRequestMessage(HttpMethod.Get, url);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return _client.SendAsync(message);
+        return Client.SendAsync(message);
     }
 
     private async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
@@ -50,14 +32,14 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (body is not null)
             message.Content = JsonContent.Create(body);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} respondeu {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         return response;
     }
 
     private async Task<string> RegisterGmAsync(string nickname)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, $"{nickname.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
@@ -66,7 +48,7 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     {
         var codeResponse = await SendOkAsync(HttpMethod.Post, "/api/invite-codes", gmToken);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, $"{nickname.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123", code));
         var token = (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var me = await (await SendOkAsync(HttpMethod.Get, "/api/auth/me", token)).Content.ReadFromJsonAsync<MeResponse>();
@@ -101,7 +83,7 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
 
     private async Task InserirAsync(IEnumerable<SheetLogEntry> linhas)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         db.SheetLogEntries.AddRange(linhas);
         await db.SaveChangesAsync();
@@ -121,7 +103,7 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
     [Fact]
     public async Task A_request_without_a_token_gets_401()
     {
-        var response = await _client.GetAsync(Url(Guid.NewGuid()));
+        var response = await Client.GetAsync(Url(Guid.NewGuid()));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -179,7 +161,7 @@ public class SheetLogsControllerTests : IClassFixture<BlankDatabaseFixture>, IAs
             Linha(c.SheetId, empate.AddMinutes(5), campo: "depois")]);
 
         List<SheetLogEntry> doBanco;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             doBanco = await db.SheetLogEntries.AsNoTracking().Where(l => l.CharacterSheetId == c.SheetId).ToListAsync();

@@ -7,43 +7,8 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class SpellAbilityBankPassivaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class SpellAbilityBankPassivaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SpellAbilityBankPassivaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
 
     private static RequisitosDePassivaDto RequisitosCompletos() => new(
         Nivel: 3, Vocacao: "Feiticeiro", Classe: "Elementalista", Linhagem: "Humano", Variante: "Sinir",
@@ -51,7 +16,7 @@ public class SpellAbilityBankPassivaTests : IClassFixture<BlankDatabaseFixture>,
         Atributos: [new("Forca", 4)], SubAtributos: [new("Iniciativa", 2)], Pericias: [new("Atletismo", 5)]);
 
     private Task<HttpResponseMessage> PostAsync(string token, CreateSpellAbilityEntryRequest body) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, body));
+        Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, body));
 
     [Fact]
     public async Task Creates_a_passiva_with_categoria_and_requisitos_and_lists_it_under_the_Passiva_filter()
@@ -68,7 +33,7 @@ public class SpellAbilityBankPassivaTests : IClassFixture<BlankDatabaseFixture>,
         body.GastoEmPI.Should().Be(0);
         body.Requisitos.Should().BeEquivalentTo(RequisitosCompletos() with { HistoricoId = null });
 
-        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Passiva", gm)))
+        var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Passiva", gm)))
             .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         list!.Should().ContainSingle(e => e.Nome == "Pele de Pedra");
     }
@@ -113,11 +78,11 @@ public class SpellAbilityBankPassivaTests : IClassFixture<BlankDatabaseFixture>,
         var created = (await (await PostAsync(gm, new CreateSpellAbilityEntryRequest("P", "Passiva", 0, "d", [], false, "Livre", new RequisitosDePassivaDto(Nivel: 2))))
             .Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!;
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{created.Id}", gm,
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{created.Id}", gm,
             new UpdateSpellAbilityEntryRequest("P", "Magia", 1, "d", [], false, null, null)));
         put.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var list = await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", gm))).Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
+        var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", gm))).Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         var entry = list!.Single(e => e.Id == created.Id);
         entry.Tipo.Should().Be("Magia");
         entry.Categoria.Should().BeNull();

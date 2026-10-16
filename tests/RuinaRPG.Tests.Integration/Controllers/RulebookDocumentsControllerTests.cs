@@ -10,50 +10,8 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class RulebookDocumentsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public RulebookDocumentsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RuinaRPG.Contracts.Auth.RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-    }
 
     [Fact]
     public async Task List_returns_the_3_documents_all_default_when_no_override_exists()
@@ -61,7 +19,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm1", "rulebookdocgm1@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
@@ -76,7 +34,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm2", "rulebookdocgm2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# Novo texto")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -87,7 +45,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm6", "rulebookdocgm6@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -98,13 +56,13 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm3", "rulebookdocgm3@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm3@teste.com");
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# Sistema Básico Editado\n\nTexto novo do Auditor.")));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         try
         {
-            var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
+            var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
             var body = await listResponse.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
             var edited = body!.Single(d => d.Slug == "sistema-basico");
             edited.IsDefault.Should().BeFalse();
@@ -115,7 +73,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
             // This class shares one Postgres instance across every test in it (IClassFixture, no
             // per-test reset) — clean up so this override can't leak into another test that expects
             // the embedded default for "sistema-basico" (e.g. List_returns_the_3_documents...).
-            await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
         }
     }
 
@@ -125,7 +83,7 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm4", "rulebookdocgm4@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm4@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/caracteristicas", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/caracteristicas", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# Não permitido")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -136,13 +94,13 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
     {
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm5", "rulebookdocgm5@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm5@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/sistema-basico", gmToken,
             new UpdateRulebookDocumentOverrideRequest("| Custom |")));
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/sistema-basico", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/rulebook-documents", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<RulebookDocumentOverrideResponse>>();
         body!.Single(d => d.Slug == "sistema-basico").IsDefault.Should().BeTrue();
     }
@@ -153,9 +111,9 @@ public class RulebookDocumentsControllerTests : IClassFixture<BlankDatabaseFixtu
         var gmToken = await RegisterGmAndGetTokenAsync("RulebookDocGm9", "rulebookdocgm9@teste.com");
         await GrantRulesAuditorAsync("rulebookdocgm9@teste.com");
 
-        var put = await _client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/tabela-de-niveis", gmToken,
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/rulebook-documents/tabela-de-niveis", gmToken,
             new UpdateRulebookDocumentOverrideRequest("# Não")));
-        var delete = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/tabela-de-niveis", gmToken));
+        var delete = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, "/api/rulebook-documents/tabela-de-niveis", gmToken));
 
         put.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         delete.StatusCode.Should().Be(HttpStatusCode.BadRequest);

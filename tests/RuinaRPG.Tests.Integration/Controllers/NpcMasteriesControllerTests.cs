@@ -10,55 +10,13 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class NpcMasteriesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcMasteriesControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
 
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
     }
 
     private static UpdateNpcSheetRequest UpdateWithHistorico(string? historicoId) => new(
@@ -71,12 +29,12 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var gmToken = await RegisterGmAndGetTokenAsync("NpcMasteryGm1", "npcmastery1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Nome == "Maestria em Pontaria" && m.Pericia == "Pontaria" && m.Atributo == "Destreza" && m.GastoMaestria == 3);
     }
@@ -88,18 +46,18 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         await GrantRulesAuditorAsync("npcmasteryhistgm1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var historicoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
+        var historicoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/historicos", gmToken,
             new CreateHistoricoRequest("Teste de Bônus Maestria NPC", "Descrição de teste.", "Pontaria", "Furtividade")));
         var historico = await historicoResponse.Content.ReadFromJsonAsync<HistoricoResponse>();
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
             UpdateWithHistorico(historico!.Id)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Pontaria", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Pontaria", gmToken,
             new UpdateNpcSkillRequest(9, null)));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Destreza", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Destreza", gmToken,
             new UpdateNpcAttributeRequest(4, 0, false)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Teste Maestria Bônus NPC", "Pontaria", "Destreza", 2)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -113,10 +71,10 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var gmToken = await RegisterGmAndGetTokenAsync("NpcMasteryGm2", "npcmastery2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Maestria em Furtividade", "Furtividade", "Agilidade", 2)));
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Nome == "Maestria em Furtividade" && m.Pericia == "Furtividade" && m.Atributo == "Agilidade" && m.GastoMaestria == 2);
@@ -128,14 +86,14 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var gmToken = await RegisterGmAndGetTokenAsync("NpcMasteryGm3", "npcmastery3@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Maestria em Investigação", "Investigacao", "Astucia", 1)));
         var added = await addResponse.Content.ReadFromJsonAsync<NpcMasteryResponse>();
 
-        var deleteResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/masteries/{added!.Id}", gmToken));
+        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}/masteries/{added!.Id}", gmToken));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().NotContain(m => m.Id == added.Id);
     }
@@ -147,7 +105,7 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcMasteryGmOther4", "npcmasteryother4@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmTokenOther,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmTokenOther,
             new AddNpcMasteryRequest("Maestria em Atletismo", "Atletismo", "Vigor", 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -160,16 +118,16 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var sheetId = await CreateSheetAsync(gmToken);
 
         // Bruto[Pontaria] = Modificador(9) = 3
-        var skillUpdate = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Pontaria", gmToken,
+        var skillUpdate = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Pontaria", gmToken,
             new UpdateNpcSkillRequest(9, null)));
         skillUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // AtributoTotal[Destreza] = 4 (Gasto 4, Bonus 0, sem maestria)
-        var attributeUpdate = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Destreza", gmToken,
+        var attributeUpdate = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Destreza", gmToken,
             new UpdateNpcAttributeRequest(4, 0, false)));
         attributeUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 5)));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var added = await response.Content.ReadFromJsonAsync<NpcMasteryResponse>();
@@ -177,7 +135,7 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         // Total = GastoMaestria (5) + Bruto[Pontaria] (3) + AtributoTotal[Destreza] (4) = 12
         added!.Total.Should().Be(12);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().ContainSingle(m => m.Id == added.Id && m.Total == 12);
     }
@@ -192,11 +150,11 @@ public class NpcMasteriesControllerTests : IClassFixture<BlankDatabaseFixture>, 
         var gmToken = await RegisterGmAndGetTokenAsync("NpcMasteryGm6", "npcmastery6@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/masteries", gmToken,
             new AddNpcMasteryRequest("Maestria Inválida", "999", "Destreza", 3)));
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/masteries", gmToken));
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await listResponse.Content.ReadFromJsonAsync<List<NpcMasteryResponse>>();
         body!.Should().BeEmpty();

@@ -8,37 +8,12 @@ using RuinaRPG.Contracts.Players;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class PlayersControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public PlayersControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return message;
-    }
 
     private async Task<string> RegisterGmAsync(string nickname, string email)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return tokens!.AccessToken;
@@ -46,10 +21,10 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
 
     private async Task<string> RegisterJogadorAsync(string gmToken, string nickname, string email)
     {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return tokens!.AccessToken;
@@ -58,7 +33,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
     [Fact]
     public async Task Search_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/players");
+        var response = await Client.GetAsync("/api/players");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -69,7 +44,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var gmToken = await RegisterGmAsync("PlayersGmRole", "playersgmrole@teste.com");
         var jogadorToken = await RegisterJogadorAsync(gmToken, "PlayersRoleCheck", "playersrolecheck@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", jogadorToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", jogadorToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -81,7 +56,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         await RegisterJogadorAsync(gmToken, "PlayerOne", "playerone@teste.com");
         await RegisterJogadorAsync(gmToken, "PlayerTwo", "playertwo@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>();
         body!.Select(p => p.Nickname).Should().BeEquivalentTo("PlayerOne", "PlayerTwo");
@@ -95,7 +70,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         await RegisterJogadorAsync(gmTokenA, "PlayerA", "playera@teste.com");
         await RegisterJogadorAsync(gmTokenB, "PlayerB", "playerb@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmTokenA));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmTokenA));
 
         var body = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>();
         body!.Select(p => p.Nickname).Should().BeEquivalentTo("PlayerA");
@@ -107,7 +82,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var gmToken = await RegisterGmAsync("PlayersGm2", "playersgm2@teste.com");
         await RegisterJogadorAsync(gmToken, "FindableNickname", "findable@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players?q=findable", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players?q=findable", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>();
         body!.Should().ContainSingle(p => p.Nickname == "FindableNickname");
@@ -119,7 +94,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var gmToken = await RegisterGmAsync("PlayersGm3", "playersgm3@teste.com");
         await RegisterJogadorAsync(gmToken, "EmailMatch", "unique-mailbox@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players?q=unique-mailbox", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players?q=unique-mailbox", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>();
         body!.Should().ContainSingle(p => p.Nickname == "EmailMatch");
@@ -130,7 +105,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
     {
         var gmToken = await RegisterGmAsync("ResetGm1", "resetgm1@teste.com");
         await RegisterJogadorAsync(gmToken, "ResetPlayer1", "resetplayer1@teste.com");
-        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
+        var players = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
         var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
 
         var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
@@ -138,11 +113,11 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
             Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
         };
         reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var resetResponse = await _client.SendAsync(reset);
+        var resetResponse = await Client.SendAsync(reset);
 
         resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var login = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("ResetPlayer1", "NovaSenha!456"));
+        var login = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("ResetPlayer1", "NovaSenha!456"));
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -152,7 +127,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
         var gmTokenOwner = await RegisterGmAsync("ResetOwner", "resetowner@teste.com");
         var gmTokenOther = await RegisterGmAsync("ResetOther", "resetother@teste.com");
         await RegisterJogadorAsync(gmTokenOwner, "ResetPlayer2", "resetplayer2@teste.com");
-        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmTokenOwner));
+        var players = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmTokenOwner));
         var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
 
         var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
@@ -160,7 +135,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
             Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
         };
         reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmTokenOther);
-        var response = await _client.SendAsync(reset);
+        var response = await Client.SendAsync(reset);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -170,7 +145,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
     {
         var gmToken = await RegisterGmAsync("ResetGm3", "resetgm3@teste.com");
         await RegisterJogadorAsync(gmToken, "ResetPlayer3", "resetplayer3@teste.com");
-        var players = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
+        var players = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/players", gmToken));
         var playerId = (await players.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>())!.Single().Id;
 
         var reset = new HttpRequestMessage(HttpMethod.Post, $"/api/players/{playerId}/reset-password")
@@ -178,7 +153,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
             Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "Outra!789"))
         };
         reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var response = await _client.SendAsync(reset);
+        var response = await Client.SendAsync(reset);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -193,7 +168,7 @@ public class PlayersControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyn
             Content = JsonContent.Create(new ResetPlayerPasswordRequest("NovaSenha!456", "NovaSenha!456"))
         };
         reset.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var response = await _client.SendAsync(reset);
+        var response = await Client.SendAsync(reset);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

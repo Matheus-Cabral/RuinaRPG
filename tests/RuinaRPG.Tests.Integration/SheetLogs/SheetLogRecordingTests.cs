@@ -20,42 +20,15 @@ using RuinaRPG.Infrastructure.SheetLogs;
 namespace RuinaRPG.Tests.Integration.SheetLogs;
 
 /// <summary>Campanha R0016 / Técnico R0012: o interceptor grava o log de ficha no mesmo salvamento da alteração.</summary>
-public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SheetLogRecordingTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private static string Rotulo<T>(string propriedade) => SheetLogMap.Entidades[typeof(T)].Campos[propriedade];
     private static string Secao<T>() => SheetLogMap.Entidades[typeof(T)].Secao;
 
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
     private async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
     {
-        var response = await _client.SendAsync(AuthedRequest(method, url, token, body));
+        var response = await Client.SendAsync(AuthedRequest(method, url, token, body));
         response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} respondeu {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         return response;
     }
@@ -65,7 +38,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
 
     private async Task<(string Token, Guid Id)> RegisterGmAsync(string nickname)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, $"{nickname.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123"));
         var token = (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         return (token, await MeIdAsync(token));
@@ -75,7 +48,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
     {
         var codeResponse = await SendOkAsync(HttpMethod.Post, "/api/invite-codes", gmToken);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, $"{nickname.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123", code));
         var token = (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         return (token, await MeIdAsync(token));
@@ -113,7 +86,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
 
     private async Task<List<SheetLogEntry>> LogAsync(Func<SheetLogEntry, bool> daFicha)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         return (await db.SheetLogEntries.AsNoTracking().OrderBy(l => l.OccurredAt).ToListAsync()).Where(daFicha).ToList();
     }
@@ -357,7 +330,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
         var c = await CenarioAsync("Historico");
         await PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate());
         Guid historicoId; string historicoNome;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var historico = await db.Historicos.AsNoTracking().OrderBy(h => h.Nome).FirstAsync(h => !h.IsDeleted);
@@ -417,7 +390,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
     public async Task A_failed_save_leaves_no_log()
     {
         var c = await CenarioAsync("Falha");
-        await using var comAtor = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor>(_ => new FixedActor(c.GmId))));
+        await using var comAtor = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor>(_ => new FixedActor(c.GmId))));
 
         // Controle: neste mesmo arranjo, um salvamento que dá certo grava o log.
         var doControle = await NovasAsync(c.SheetId, async () =>
@@ -456,7 +429,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
     public async Task A_fault_while_building_the_log_does_not_fail_the_save()
     {
         var c = await CenarioAsync("Defeito");
-        await using var comDefeito = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor, BrokenActor>()));
+        await using var comDefeito = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor, BrokenActor>()));
 
         var novas = await NovasAsync(c.SheetId, async () =>
         {
@@ -474,7 +447,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
     public async Task Retrying_a_failed_save_writes_each_log_row_once()
     {
         var c = await CenarioAsync("Retry");
-        await using var comAtor = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor>(_ => new FixedActor(c.GmId))));
+        await using var comAtor = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped<ICurrentActor>(_ => new FixedActor(c.GmId))));
 
         var novas = await NovasAsync(c.SheetId, async () =>
         {
@@ -500,7 +473,7 @@ public partial class SheetLogRecordingTests : IClassFixture<BlankDatabaseFixture
 
         var novas = await NovasAsync(c.SheetId, async () =>
         {
-            await using var scope = _factory.Services.CreateAsyncScope();
+            await using var scope = Factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.CharacterSheets.SingleAsync(s => s.Id == c.SheetId)).Nome = "Alterado pelo servidor";
             await db.SaveChangesAsync();

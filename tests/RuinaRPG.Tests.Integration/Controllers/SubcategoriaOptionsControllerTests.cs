@@ -9,63 +9,19 @@ using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class SubcategoriaOptionsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SubcategoriaOptionsControllerTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    // Copied verbatim from HistoricosControllerTests.cs's established pattern — no grant endpoint
-    // exists, real grants happen via `make grant-rules-auditor`.
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-    }
 
     [Fact]
     public async Task List_is_open_to_any_authenticated_caller_and_filters_by_Tipo_and_Facet()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm1", "subcat1@teste.com");
         await GrantRulesAuditorAsync("subcat1@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Varinha")));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Categoria", "Mágica")));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Armadura", "Familia", "Couro")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Varinha")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Categoria", "Mágica")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Armadura", "Familia", "Couro")));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=Arma&facet=Familia", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=Arma&facet=Familia", gmToken));
 
         var options = await response.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>();
         options!.Should().ContainSingle(o => o.Valor == "Varinha");
@@ -77,7 +33,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm2", "subcat2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Arcos")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Arcos")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -88,10 +44,10 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm3", "subcat3@teste.com");
         await GrantRulesAuditorAsync("subcat3@teste.com");
 
-        var badTipo = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("ItemGeral", "Familia", "X")));
+        var badTipo = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("ItemGeral", "Familia", "X")));
         badTipo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var badFacet = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "NaoExiste", "X")));
+        var badFacet = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "NaoExiste", "X")));
         badFacet.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -103,7 +59,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm6", "subcat6@teste.com");
         await GrantRulesAuditorAsync("subcat6@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Adaga - Curva")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Adaga - Curva")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -119,7 +75,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm7", "subcat7@teste.com");
         await GrantRulesAuditorAsync("subcat7@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Espadas, Adagas")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "Espadas, Adagas")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -133,7 +89,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm8", "subcat8@teste.com");
         await GrantRulesAuditorAsync("subcat8@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("99", "Familia", "X")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("99", "Familia", "X")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -145,7 +101,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm9", "subcat9@teste.com");
         await GrantRulesAuditorAsync("subcat9@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "5", "X")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "5", "X")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -159,9 +115,9 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm10", "subcat10@teste.com");
         await GrantRulesAuditorAsync("subcat10@teste.com");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "ValorParaFiltroNumerico")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "ValorParaFiltroNumerico")));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=99&facet=Familia", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=99&facet=Familia", gmToken));
 
         var options = await response.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>();
         options!.Should().Contain(o => o.Valor == "ValorParaFiltroNumerico");
@@ -180,7 +136,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync(nickname, email);
         await GrantRulesAuditorAsync(email);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", valor)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", valor)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -191,7 +147,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm12", "subcat12@teste.com");
         await GrantRulesAuditorAsync("subcat12@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "  Arcos  ")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "  Arcos  ")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = await response.Content.ReadFromJsonAsync<SubcategoriaOptionResponse>();
@@ -204,7 +160,7 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm13", "subcat13@teste.com");
         await GrantRulesAuditorAsync("subcat13@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "   ")));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Arma", "Familia", "   ")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -214,17 +170,17 @@ public class SubcategoriaOptionsControllerTests : IClassFixture<BlankDatabaseFix
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SubcatGm4", "subcat4@teste.com");
         await GrantRulesAuditorAsync("subcat4@teste.com");
-        var created = await (await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Escudo", "Familia", "Rodela"))))
+        var created = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/subcategoria-options", gmToken, new CreateSubcategoriaOptionRequest("Escudo", "Familia", "Rodela"))))
             .Content.ReadFromJsonAsync<SubcategoriaOptionResponse>();
 
         var otherGmToken = await RegisterGmAndGetTokenAsync("SubcatGm5", "subcat5@teste.com");
-        var forbidden = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/subcategoria-options/{created!.Id}", otherGmToken));
+        var forbidden = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/subcategoria-options/{created!.Id}", otherGmToken));
         forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var deleted = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/subcategoria-options/{created.Id}", gmToken));
+        var deleted = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/subcategoria-options/{created.Id}", gmToken));
         deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=Escudo&facet=Familia", gmToken));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/subcategoria-options?tipo=Escudo&facet=Familia", gmToken));
         var options = await listResponse.Content.ReadFromJsonAsync<List<SubcategoriaOptionResponse>>();
         options!.Should().NotContain(o => o.Id == created.Id);
     }

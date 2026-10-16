@@ -6,25 +6,13 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EquipmentKitSchemaTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EquipmentKitSchemaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-
-    public EquipmentKitSchemaTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync() => _factory.DisposeAsync().AsTask();
 
     [Fact]
     public async Task EquipmentKit_with_a_fixed_item_and_a_choice_slot_round_trips()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
 
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit de Teste", Descricao = "Descrição de teste", Ciclos = 5 };
@@ -45,7 +33,7 @@ public class EquipmentKitSchemaTests : IClassFixture<BlankDatabaseFixture>, IAsy
     [Fact]
     public async Task Two_fixed_items_with_the_same_name_and_type_violate_the_unique_index()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var nome = $"Duplicado {Guid.NewGuid()}";
         db.EquipmentKitFixedItems.Add(NovoFixo(nome));
@@ -60,7 +48,7 @@ public class EquipmentKitSchemaTests : IClassFixture<BlankDatabaseFixture>, IAsy
     [Fact]
     public async Task Deleting_a_fixed_item_referenced_by_a_kit_item_is_restricted()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         var fixo = NovoFixo($"Referenciado {Guid.NewGuid()}");
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = $"Kit {Guid.NewGuid()}", Descricao = "d", Ciclos = 1 };

@@ -15,20 +15,8 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Rules;
 
-public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>, IAsyncLifetime
+public class EquipmentKitGrantServiceTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly BlankDatabaseFixture _postgres;
-    private ApiFactory _factory = null!;
-
-    public EquipmentKitGrantServiceTests(BlankDatabaseFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync() => _factory.DisposeAsync().AsTask();
 
     // Item.GmId and Campaign.GmId both carry a real DB-level FK to AspNetUsers, and
     // CampaignAttachment.CampaignId/ItemId carry real FKs to Campaigns/Items — a bare
@@ -96,7 +84,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_fixed_weapon_missing_from_the_gms_catalog_is_created_complete_instead_of_failing()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmArmaFixa");
         var nome = Unico("Espada Curta");
@@ -130,7 +118,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task An_item_geral_is_created_with_the_fixed_items_weight_price_and_subcategoria_not_zeros()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmItemGeralFixo");
         var nome = Unico("Corda");
@@ -156,7 +144,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task An_existing_gm_item_with_the_same_name_and_type_is_reused_and_not_modified()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmReusaItem");
         var nome = Unico("Mochila");
@@ -184,7 +172,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task The_same_name_with_another_type_in_the_gms_catalog_is_not_reused()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmOutroTipo");
         var nome = Unico("Lamina");
@@ -212,7 +200,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_gm_who_renamed_or_deleted_their_copy_gets_a_fresh_complete_copy_and_never_another_gms_item()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmA = await NewGmAsync(db, "GmCopiaA");
         var gmB = await NewGmAsync(db, "GmCopiaB");
@@ -264,7 +252,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_fixed_armadura_is_granted_to_its_armor_slot()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmArmaduraFixa");
         var nome = Unico("Gibao");
@@ -291,7 +279,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_fixed_item_with_incomplete_details_is_still_granted_name_only()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmIncompleto");
         var nome = Unico("Item Incompleto");
@@ -315,7 +303,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_slot_bonus_comes_from_its_fixed_item()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusFixo");
         var bow = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = Unico("Arco"), Subcategoria = "Arcos", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -347,7 +335,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task A_legacy_kit_item_without_a_fixed_item_fails_with_a_message_asking_for_make_migrate()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmKitLegado");
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
@@ -366,7 +354,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_rejects_a_missing_choice_slot_selection()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = Guid.NewGuid();
         var kit = new EquipmentKit { Id = Guid.NewGuid(), Nome = "Kit", Descricao = "D", Ciclos = 0 };
@@ -385,7 +373,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_rejects_a_choice_selection_outside_the_slot_s_filter()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmForaDoFiltro");
         var outOfTierWeapon = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Espada Lendária", Subcategoria = "Espadas", Rank = RankDeItem.S, Peso = 1, Preco = 0 };
@@ -406,7 +394,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_grants_the_conditional_bonus_only_when_the_matching_alternative_is_chosen()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusCondicional");
         var bow = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco de Teste", Subcategoria = "Arcos", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -440,7 +428,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_does_not_grant_the_conditional_bonus_when_a_non_matching_alternative_is_chosen()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusNaoCondicional");
         var sling = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Funda de Teste", Subcategoria = "Fundas e Baladeiras", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -469,7 +457,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task ResolveEligibleOptionsAsync_matches_by_parsed_Familia_for_items_built_by_the_constructor()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmFamiliaParse");
         var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -490,7 +478,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task ResolveEligibleOptionsAsync_still_matches_the_legacy_raw_Subcategoria_string()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmLegacyRaw");
         var arco = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arco Legado", Subcategoria = "Arcos", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -510,7 +498,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task ResolveEligibleOptionsAsync_resolves_Armadura_Escudo_and_Artefato_choice_slots()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmArmaduraEscudoArtefato");
         var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Peso = 1, Preco = 0 };
@@ -535,7 +523,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_carries_the_slot_s_ArmorSlot_through_to_the_grant_for_a_chosen_Armadura()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmArmorSlotCarry");
         var armadura = new Armadura { Id = Guid.NewGuid(), GmId = gmId, Nome = "Armadura Teste", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Rank = RankDeItem.E, Peso = 1, Preco = 0 };
@@ -566,7 +554,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task ResolveEligibleOptionsAsync_parsed_Familia_match_does_not_cross_Tipos()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmFamiliaCrossTipo");
         var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -589,7 +577,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_grants_the_conditional_bonus_when_the_match_is_via_parsed_Familia()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusFamilia");
         var varinha = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Varinha Composta", Subcategoria = "Equipamento inicial - Arma - Mágica - Varinha", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -625,7 +613,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task BuildPlanAsync_does_not_grant_the_conditional_bonus_when_the_parsed_Familia_match_crosses_Tipos()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmBonusFamiliaCrossTipo");
         var armaMisComposta = new Arma { Id = Guid.NewGuid(), GmId = gmId, Nome = "Arma Mal-Composta", Subcategoria = "Equipamento inicial - Armadura - Leve - Couro", Rank = RankDeItem.F, Peso = 1, Preco = 0 };
@@ -653,7 +641,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task UpsertCampaignAttachmentAsync_creates_a_public_attachment_when_none_exists()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmUpsertNovo");
         var campaignId = await NewCampaignAsync(db, gmId);
@@ -673,7 +661,7 @@ public class EquipmentKitGrantServiceTests : IClassFixture<BlankDatabaseFixture>
     [Fact]
     public async Task UpsertCampaignAttachmentAsync_flips_an_existing_private_attachment_to_public()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var gmId = await NewGmAsync(db, "GmUpsertFlip");
         var campaignId = await NewCampaignAsync(db, gmId);
