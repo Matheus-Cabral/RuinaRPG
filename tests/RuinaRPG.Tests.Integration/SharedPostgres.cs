@@ -42,6 +42,37 @@ public static class SharedPostgres
     {
         if (connectionString is not null)
             NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
-        await ExecuteAdminAsync($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)");
+        await RetryOn55006Async(
+            () => ExecuteAdminAsync($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)"),
+            $"drop of database {database}",
+            rethrowOnFinalFailure: false);
+    }
+
+    // DROP/CREATE DATABASE can raise 55006 ("being accessed by other users") while pooled backends of a
+    // just-cleared pool are still exiting. A leftover database in the throwaway container is harmless
+    // (rethrowOnFinalFailure: false); a missing clone is not (true).
+    internal static async Task RetryOn55006Async(Func<Task> action, string description, bool rethrowOnFinalFailure)
+    {
+        const int attempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await action();
+                return;
+            }
+            catch (PostgresException e) when (e.SqlState == "55006")
+            {
+                if (attempt < attempts)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    continue;
+                }
+                if (rethrowOnFinalFailure)
+                    throw;
+                await Console.Error.WriteLineAsync($"SharedPostgres: {description} gave up after {attempts} attempts (55006): {e.MessageText}");
+                return;
+            }
+        }
     }
 }

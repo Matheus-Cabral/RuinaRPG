@@ -22,7 +22,10 @@ public static class TemplateDatabase
         await CloneLock.WaitAsync();
         try
         {
-            await SharedPostgres.ExecuteAdminAsync($"CREATE DATABASE \"{databaseName}\" TEMPLATE \"{Name}\"");
+            await SharedPostgres.RetryOn55006Async(
+                () => SharedPostgres.ExecuteAdminAsync($"CREATE DATABASE \"{databaseName}\" TEMPLATE \"{Name}\""),
+                $"clone {databaseName}",
+                rethrowOnFinalFailure: true);
         }
         finally
         {
@@ -40,5 +43,7 @@ public static class TemplateDatabase
 
         NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
         await SharedPostgres.ExecuteAdminAsync($"ALTER DATABASE \"{Name}\" WITH IS_TEMPLATE true");
+        // Nothing may ever hold a connection on the template, or CREATE DATABASE ... TEMPLATE fails.
+        await SharedPostgres.ExecuteAdminAsync($"ALTER DATABASE \"{Name}\" WITH ALLOW_CONNECTIONS false");
     }
 }
