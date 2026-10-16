@@ -178,6 +178,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Production and Development keep 10/min (Técnico R0006); the integration tests raise it, since one
+// host now serves a whole test class.
+var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 10);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -185,7 +188,7 @@ builder.Services.AddRateLimiter(options =>
         partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         factory: _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 10,
+            PermitLimit = loginPermitLimit,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));

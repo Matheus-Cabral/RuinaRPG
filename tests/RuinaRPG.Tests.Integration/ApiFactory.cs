@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using RuinaRPG.Api;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Persistence;
@@ -9,10 +13,17 @@ using RuinaRPG.Infrastructure.SheetLogs;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class ApiFactory(string connectionString) : WebApplicationFactory<Program>
+// "Testing" is neither Development nor Production: Program.cs skips its startup migrate/seed, so the
+// database must already be initialized (a clone of the template, see ApiFixture) — or, while
+// initializeDatabase is true, this factory initializes it once after the host starts.
+public class ApiFactory(string connectionString, bool initializeDatabase = true) : WebApplicationFactory<Program>
 {
-    protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+        // One host serves a whole test class; production's 10 logins/min would throttle it.
+        builder.UseSetting("RateLimiting:LoginPermitLimit", "100000");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<RuinaRpgDbContext>>();
@@ -22,10 +33,8 @@ public class ApiFactory(string connectionString) : WebApplicationFactory<Program
                 .UseNpgsql(connectionString)
                 .AddInterceptors(sp.GetRequiredService<SheetLogInterceptor>()));
 
-            // Jwt options have no appsettings defaults (they're env-var-only in prod, per the
-            // "no secret hardcoded" constraint - see docker-compose.yml's Jwt__* mappings). The
-            // test host has no such env vars, so supply non-secret test-fixture values here,
-            // mirroring the pattern already used in JwtTokenServiceTests.
+            // Jwt options are env-var-only in prod (docker-compose.yml's Jwt__* mappings); supply
+            // non-secret test values, as JwtTokenServiceTests does.
             services.Configure<JwtOptions>(options =>
             {
                 options.SigningKey = "integration-test-signing-key-needs-32-bytes-minimum";
@@ -33,19 +42,22 @@ public class ApiFactory(string connectionString) : WebApplicationFactory<Program
                 options.Audience = "RuinaRPG.Tests";
             });
 
-            // Storage:ImagesPath has no appsettings default that's writable inside the test
-            // container (Program.cs falls back to "/images", the production container-only
-            // path). Point it at a temp directory instead, mirroring the JwtOptions override
-            // above.
+            // Program.cs falls back to "/images", a container-only path; use a temp directory.
             services.Configure<ImageStorageOptions>(options =>
             {
                 options.ImagesPath = Path.Combine(Path.GetTempPath(), "ruinarpg-test-images");
                 options.MaxSizeMb = 10;
             });
-
-            using var scope = services.BuildServiceProvider().CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            db.Database.Migrate();
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        if (initializeDatabase)
+            // Task.Run leaves xUnit's MaxConcurrencySyncContext: blocking on it from a test's own context
+            // deadlocks once every worker thread is blocked here waiting for a continuation that needs one.
+            Task.Run(() => DatabaseInitializer.InitializeAsync(host.Services, NullLogger.Instance)).GetAwaiter().GetResult();
+        return host;
     }
 }

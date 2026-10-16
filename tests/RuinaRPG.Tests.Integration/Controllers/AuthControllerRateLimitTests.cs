@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using RuinaRPG.Contracts.Auth;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -9,6 +11,7 @@ public class AuthControllerRateLimitTests : IClassFixture<PostgresFixture>, IAsy
 {
     private readonly PostgresFixture _postgres;
     private ApiFactory _factory = null!;
+    private WebApplicationFactory<Program> _productionLimitFactory = null!;
     private HttpClient _client = null!;
 
     public AuthControllerRateLimitTests(PostgresFixture postgres) => _postgres = postgres;
@@ -16,14 +19,30 @@ public class AuthControllerRateLimitTests : IClassFixture<PostgresFixture>, IAsy
     public Task InitializeAsync()
     {
         _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
+        // Production's 10 logins/min (Técnico R0006); ApiFactory raises it for every other class.
+        _productionLimitFactory = _factory.WithWebHostBuilder(b => b.UseSetting("RateLimiting:LoginPermitLimit", "10"));
+        _client = _productionLimitFactory.CreateClient();
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
+        await _productionLimitFactory.DisposeAsync();
+        await _factory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Testing_environment_does_not_throttle_logins()
+    {
+        using var client = _factory.CreateClient();
+        var request = new LoginRequest("NoThrottleTest", "WrongPassword!");
+        HttpResponseMessage? lastResponse = null;
+
+        for (var i = 0; i < 15; i++)
+            lastResponse = await client.PostAsJsonAsync("/api/auth/login", request);
+
+        lastResponse!.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
     }
 
     [Fact]
