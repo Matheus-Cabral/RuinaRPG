@@ -9,6 +9,8 @@ using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
+using RuinaRPG.Contracts;
+using RuinaRPG.Domain;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.Rules.Niveis;
@@ -216,6 +218,8 @@ app.UseCors("Default");
 // reachable form; the bare /health stays for container-internal healthchecks.
 app.MapGet("/health", () => Results.Ok("OK"));
 app.MapGet("/api/health", () => Results.Ok("OK"));
+// Read by the client to notice a new deploy (Técnico R0014); anonymous like /api/health.
+app.MapGet("/api/version", () => new VersionResponse(AppVersionInfo.Current, BuildInfo.ShaOf(typeof(Program).Assembly)));
 
 app.UseAuthentication();
 app.UseAuthorization();
