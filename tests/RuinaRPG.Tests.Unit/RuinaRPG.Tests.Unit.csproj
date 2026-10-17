@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\RuinaRPG.Domain\RuinaRPG.Domain.csproj" />
     <ProjectReference Include="..\..\src\RuinaRPG.Infrastructure\RuinaRPG.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\tools\RuinaRPG.Smoke\RuinaRPG.Smoke.csproj" />
   </ItemGroup>
 
 </Project>
