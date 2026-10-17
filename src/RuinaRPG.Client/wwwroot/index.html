@@ -43,7 +43,14 @@
     </div>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
-      window.ruinaVersion = { onFocus: function (ref) { window.addEventListener('focus', function () { ref.invokeMethodAsync('OnFocusAsync'); }); } };
+      window.ruinaVersion = {
+        _ref: null,
+        onFocus: function (ref) {
+          var first = window.ruinaVersion._ref === null;
+          window.ruinaVersion._ref = ref;
+          if (first) window.addEventListener('focus', function () { window.ruinaVersion._ref.invokeMethodAsync('OnFocusAsync'); });
+        }
+      };
     </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>

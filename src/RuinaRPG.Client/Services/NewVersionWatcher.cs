@@ -27,6 +27,7 @@ public sealed class NewVersionWatcher(HttpClient http, string clientSha) : IAsyn
         catch (HttpRequestException) { }
         catch (NotSupportedException) { }
         catch (JsonException) { }
+        catch (OperationCanceledException) { } // timeout (TaskCanceledException) or a cancelled retry delay
     }
 
     public void Start()
@@ -35,7 +36,14 @@ public sealed class NewVersionWatcher(HttpClient http, string clientSha) : IAsyn
         var timer = _timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
         _ = Task.Run(async () =>
         {
-            try { while (await timer.WaitForNextTickAsync()) await CheckAsync(); }
+            try
+            {
+                while (await timer.WaitForNextTickAsync())
+                {
+                    try { await CheckAsync(); }
+                    catch (Exception) { } // one failed tick must not end the polling
+                }
+            }
             catch (ObjectDisposedException) { }
         });
     }

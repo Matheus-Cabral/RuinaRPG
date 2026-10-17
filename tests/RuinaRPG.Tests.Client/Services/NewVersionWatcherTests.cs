@@ -60,4 +60,19 @@ public class NewVersionWatcherTests
         var watcher = Watcher("aaaaaaa", () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("not json") });
         await watcher.Invoking(w => w.CheckAsync()).Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task Timeout_is_ignored_and_a_later_check_still_raises()
+    {
+        var fail = true;
+        var watcher = Watcher("aaaaaaa", () => fail ? throw new TaskCanceledException() : Api("bbbbbbb"));
+        var raised = 0;
+        watcher.NewVersionAvailable += () => raised++;
+
+        await watcher.Invoking(w => w.CheckAsync()).Should().NotThrowAsync();
+        fail = false;
+        await watcher.CheckAsync();
+
+        raised.Should().Be(1);
+    }
 }
