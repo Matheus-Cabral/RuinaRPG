@@ -8,7 +8,8 @@
 #   deploy.sh backup               pg_dump + images volume into $RUINA_BACKUP_DIR/<timestamp>-<sha7>
 #   deploy.sh restore <dir>        loads a backup back (database in one transaction, then images); with an
 #                                  active color it runs under maintenance: nginx answers 503 and the color
-#                                  stops during the restore, then comes back (even if the restore failed)
+#                                  stops during the restore, then comes back (even if the restore failed).
+#                                  No safety copy is taken: run `deploy.sh backup` first if needed
 #   deploy.sh status               color state and the newest backups
 #   deploy.sh migrate              migrations + seeders with the active color's image
 #   deploy.sh exec-api <args…>     dotnet RuinaRPG.Api.dll <args…> inside the active color
@@ -362,11 +363,13 @@ restore_backup() {
   start_db || return 1
   log "restaurando o banco de $dir"
   # One transaction: the dump is first turned into SQL (a corrupt dump fails here, before anything is
-  # touched), then schema drop + load commit together or not at all.
-  compose exec -T db sh -c 'set -e; f="$(mktemp)"; trap "rm -f $f" EXIT
-    pg_restore --clean --if-exists --no-owner -f "$f"
-    { echo "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"; cat "$f"; } |
-      psql -q -1 -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ruinarpg >/dev/null' < "$dir/db.dump" || return 1
+  # touched), then schema drop + load commit together or not at all. psql's -1 only covers -c/-f
+  # actions, never a script on stdin. The SQL file is removed whatever happens.
+  compose exec -T db sh -c 'f=/tmp/ruina-restore.sql; rm -f "$f"
+    pg_restore --clean --if-exists --no-owner -f "$f" &&
+      psql -q -1 -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ruinarpg \
+        -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" -f "$f" >/dev/null
+    rc=$?; rm -f "$f"; exit $rc' < "$dir/db.dump" || return 1
   log "restaurando as imagens de $dir"
   if [[ -s "$dir/images.tar" ]]; then
     docker run --rm -i -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/* && tar -C /images -xf -' < "$dir/images.tar" || return 1
@@ -444,15 +447,22 @@ undo_switch() {
 # Brings api-$1 (release $2) back in front and stops api-$3. With a backup ($4, window mode) the
 # database goes back to it under maintenance first; without one nothing is restored, so rows written
 # since the switch survive. Every step returns: this runs under || (and from the EXIT trap).
+# Before restoring, the data about to be discarded is copied. $5=required (on demand): if the copy
+# fails, return 3 with nothing restored. Otherwise (a failing deploy) the copy is best effort and
+# never blocks the restore.
 return_to() {
-  local color="$1" sha="$2" from="$3" backup="${4:-}"
+  local color="$1" sha="$2" from="$3" backup="${4:-}" copy="${5:-best-effort}"
   log "voltando para api-$color ($sha)"
   if [[ -n "$backup" ]]; then
     enter_maintenance || { log "ERRO: nginx recusou a configuração de manutenção"; return 1; }
     compose stop "api-$from" || log "aviso: api-$from não parou"
-    # The restore discards everything written since the backup: keep a copy first.
-    make_backup || { log "ERRO: não foi possível salvar os dados que a restauração descartaria"; return 1; }
-    log "dados descartados pelo rollback salvos em $BACKUP_DIR"
+    if make_backup; then
+      log "dados descartados pelo rollback salvos em $BACKUP_DIR"
+    elif [[ "$copy" == required ]]; then
+      return 3
+    else
+      log "aviso: cópia de segurança falhou; restaurando mesmo assim"
+    fi
     restore_backup "$backup" || return 1
   fi
   start_color "$color" || return 1
@@ -460,6 +470,15 @@ return_to() {
   point_upstream_at "$color" || return 1
   point_client_at "$sha" || { log "ERRO: webroot/current não aponta para $sha"; return 1; }
   compose stop "api-$from" || log "aviso: api-$from não parou"
+}
+
+# Nothing was restored yet: put api-$1 back in front instead of leaving the site in maintenance.
+safety_copy_failed() {
+  local from="$1"
+  log "ERRO: a cópia dos dados que o rollback descartaria falhou; voltando para api-$from"
+  { start_color "$from" && wait_healthy "$from" && point_upstream_at "$from"; } ||
+    rollback_failed "$CURRENT_SHA" none
+  die "cópia de segurança falhou; nada foi alterado"
 }
 
 # A zero-downtime rollback never stops api-$2 before the switch succeeds, so it can keep serving.
@@ -634,7 +653,10 @@ cmd_rollback() {
   set_color_tag "$back" "$sha"
   save_state
   start_db
-  if ! return_to "$back" "$sha" "$from" "$backup"; then
+  local rc=0
+  return_to "$back" "$sha" "$from" "$backup" required || rc=$?
+  if (( rc == 3 )); then safety_copy_failed "$from"; fi
+  if (( rc != 0 )); then
     [[ -z "$backup" ]] || rollback_failed "$sha" none
     zero_downtime_rollback_failed "$back" "$from"
   fi
@@ -663,7 +685,7 @@ main() {
     status) cmd_status ;;
     migrate) cmd_migrate ;;
     exec-api) cmd_exec_api "$@" ;;
-    *) die "uso: deploy.sh {deploy <sha> [--window]|rollback|backup|restore <dir> (em manutenção)|status|migrate|exec-api <args…>}" ;;
+    *) die "uso: deploy.sh {deploy <sha> [--window]|rollback|backup|restore <dir> (em manutenção, sem cópia de segurança)|status|migrate|exec-api <args…>}" ;;
   esac
 }
 

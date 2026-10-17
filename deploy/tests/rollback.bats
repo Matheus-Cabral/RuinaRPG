@@ -72,6 +72,20 @@ psql_count() {
   [ "$output" = '"OK"' ]
 }
 
+@test "a failed safety copy aborts the rollback and the current color keeps serving" {
+  # A file where the backup directory should be: make_backup fails, the window backup (absolute path
+  # in the state) is still valid.
+  touch "$BATS_FILE_TMPDIR/not-a-dir"
+  RUINA_BACKUP_DIR="$BATS_FILE_TMPDIR/not-a-dir/backups" run "$RUINA_REPO_DIR/deploy/deploy.sh" rollback
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cópia de segurança falhou; nada foi alterado"* ]]
+  grep -qx 'ACTIVE=green' "$RUINA_STATE_DIR/colors.env"
+  grep -qx 'MODE=window' "$RUINA_STATE_DIR/colors.env"
+  run curl -fsS "http://127.0.0.1:18089/api/health"
+  [ "$output" = '"OK"' ]
+}
+
 @test "rollback after a window deploy restores that window's backup and retags the previous color" {
   docker compose -p "$RUINA_PROJECT" exec -T db sh -c 'psql -U "$POSTGRES_USER" -d ruinarpg -c "INSERT INTO smoke_marker VALUES (2)"'
   # The previous color's tag must come from PREVIOUS_SHA, not from whatever colors.env holds.
@@ -117,6 +131,24 @@ psql_count() {
   bad="$BATS_FILE_TMPDIR/corrupt"; mkdir -p "$bad"
   head -c "$(( $(stat -c %s "$good/db.dump") / 2 ))" "$good/db.dump" > "$bad/db.dump"
   cp "$good/images.tar" "$bad/images.tar"
+  run "$RUINA_REPO_DIR/deploy/deploy.sh" restore "$bad"
+  echo "$output"
+  [ "$status" -ne 0 ]
+  run psql_count
+  [ "$output" = "2" ]
+  run curl -fsS "http://127.0.0.1:18089/api/health"
+  [ "$output" = '"OK"' ]
+}
+
+@test "a dump that fails while loading leaves the data intact" {
+  # Converts to SQL fine, but its GRANT names a role the target cluster no longer has.
+  bad="$BATS_FILE_TMPDIR/fails-at-load"; mkdir -p "$bad"
+  db() { docker compose -p "$RUINA_PROJECT" exec -T db sh -c "psql -q -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" $*"; }
+  db '-d ruinarpg -c "CREATE ROLE ghost_role" -c "CREATE DATABASE scratch"'
+  db '-d scratch -c "CREATE TABLE t(x int)" -c "GRANT SELECT ON t TO ghost_role"'
+  docker compose -p "$RUINA_PROJECT" exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc scratch' > "$bad/db.dump"
+  db '-d ruinarpg -c "DROP DATABASE scratch" -c "DROP ROLE ghost_role"'
+  : > "$bad/images.tar"
   run "$RUINA_REPO_DIR/deploy/deploy.sh" restore "$bad"
   echo "$output"
   [ "$status" -ne 0 ]
