@@ -1,0 +1,3 @@
+# Mudanças de dados permitidas entre o snapshot A (antes) e B (depois do deploy).
+# Formato: lista de { table, columns: [..] | "*", change: altered|lost, reason }
+changes: []

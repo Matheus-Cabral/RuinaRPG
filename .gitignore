@@ -16,3 +16,5 @@ obj/
 !.env.example
 .worktrees/
 tools/bench/results/
+deploy/tests/.bats/
+deploy/state/
