@@ -47,5 +47,5 @@ command -v dotnet >/dev/null && dotnet --version | grep -q '^8\.' || {
 }
 
 echo
-echo "Chave publica de DUMP (cole no passo 4 de producao.md, prefixo `... gate.sh dump-only`):"
+echo 'Chave publica de DUMP (cole no passo 4 de producao.md, prefixo: ... gate.sh dump-only):'
 cat "$KEY.pub"

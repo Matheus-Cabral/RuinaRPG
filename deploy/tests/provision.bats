@@ -95,3 +95,11 @@ PFX_DUMP='command="sudo /opt/ruinarpg/gate.sh dump-only",no-pty,no-port-forwardi
   grep -q 'cron' "$P/runner-cleanup.sh"; ! grep -q 'systemd timer' "$P/runner-cleanup.sh"
   grep -A1 'created=' "$P/runner-cleanup.sh" | grep -q '|| continue'
 }
+
+@test "setup-runner.sh final message evaluates cleanly and mentions dump-only" {
+  line="$(grep -m1 '^echo .Chave publica de DUMP' "$P/setup-runner.sh")"
+  run --separate-stderr bash -c "$line"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [[ "$output" == *"gate.sh dump-only"* ]]
+}
