@@ -31,5 +31,6 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddScoped<INotificationConnection, SignalRNotificationConnection>();
 builder.Services.AddTransient<IEncounterConnection, SignalREncounterConnection>();
 builder.Services.AddScoped<SecretNoteNotifier>();
+builder.Services.AddScoped(sp => new NewVersionWatcher(sp.GetRequiredService<HttpClient>(), RuinaRPG.Domain.BuildInfo.ShaOf(typeof(App).Assembly)));
 
 await builder.Build().RunAsync();

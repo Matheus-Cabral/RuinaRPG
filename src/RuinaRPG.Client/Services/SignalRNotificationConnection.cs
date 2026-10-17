@@ -3,7 +3,7 @@ using RuinaRPG.Contracts.Notifications;
 
 namespace RuinaRPG.Client.Services;
 
-public sealed class SignalRNotificationConnection(HttpClient http, AuthStateService authState) : INotificationConnection
+public sealed class SignalRNotificationConnection(HttpClient http, AuthStateService authState, NewVersionWatcher watcher) : INotificationConnection
 {
     private HubConnection? _connection;
 
@@ -26,6 +26,7 @@ public sealed class SignalRNotificationConnection(HttpClient http, AuthStateServ
         connection.On(NotificationEvents.SecretNotesChanged, onChanged);
         connection.On(NotificationEvents.CondicoesAlteradas, onCondicoes);
         connection.Reconnected += _ => onChanged();
+        connection.Reconnected += _ => watcher.CheckAsync();
 
         _connection = connection;
         await connection.StartAsync();
