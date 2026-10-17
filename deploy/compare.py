@@ -8,6 +8,11 @@ from collections import Counter, defaultdict
 import yaml
 
 SAMPLE = 20
+_MISSING = object()
+
+
+class InfraError(Exception):
+    """Problem with the inputs (not a data finding): exit code 2."""
 
 
 def load(path):
@@ -22,8 +27,21 @@ def load(path):
             if o["pk"] is None:
                 multi[o["table"]][json.dumps(row, sort_keys=True)] += 1
             else:
-                keyed[(o["table"], str(o["pk"]))] = row
+                key = (o["table"], str(o["pk"]))
+                if key in keyed:
+                    raise InfraError(f"chave duplicada {key} em {path}")
+                keyed[key] = row
     return keyed, multi
+
+
+def validate(allow):
+    for e in allow:
+        c = e.get("columns", "*") if isinstance(e, dict) else None
+        ok = (isinstance(e, dict) and isinstance(e.get("table"), str)
+              and e.get("change") in ("altered", "lost")
+              and (c == "*" or (isinstance(c, list) and all(isinstance(x, str) for x in c))))
+        if not ok:
+            raise InfraError(f"entrada inválida na allowlist: {e!r}")
 
 
 def allowed(allow, table, change, cols):
@@ -42,10 +60,29 @@ def main():
     ap.add_argument("--markdown")
     args = ap.parse_args()
 
-    ka, ma = load(args.a)
-    kb, mb = load(args.b)
-    with open(args.allowlist, encoding="utf-8") as f:
-        allow = (yaml.safe_load(f) or {}).get("changes") or []
+    try:
+        ka, ma = load(args.a)
+        kb, mb = load(args.b)
+        with open(args.allowlist, encoding="utf-8") as f:
+            allow = (yaml.safe_load(f) or {}).get("changes") or []
+        validate(allow)
+        if not ka and not ma:
+            raise InfraError("snapshot A está vazio")
+    except InfraError as e:
+        print(f"ERRO: {e}", file=sys.stderr)
+        return 2
+    cols_a = defaultdict(set)
+    for (t, _), r in ka.items():
+        cols_a[t].update(r)
+    for t, ca in ma.items():
+        for k in ca:
+            cols_a[t].update(json.loads(k))
+    proj = defaultdict(Counter)
+    for t, cb in mb.items():
+        for k, n in cb.items():
+            r = json.loads(k)
+            proj[t][json.dumps({c: r[c] for c in r if c in cols_a[t]}, sort_keys=True)] += n
+    mb = proj
 
     # table -> {"lost": [pk], "altered": [(pk, cols)]}
     found = defaultdict(lambda: {"lost": [], "altered": []})
@@ -54,7 +91,7 @@ def main():
         if rb is None:
             found[t]["lost"].append(pk)
             continue
-        diff = sorted(c for c, v in ra.items() if c in rb and rb[c] != v)
+        diff = sorted(c for c, v in ra.items() if rb.get(c, _MISSING) != v)
         if diff:
             found[t]["altered"].append((pk, diff))
     for t, ca in ma.items():

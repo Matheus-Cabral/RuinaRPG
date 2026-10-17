@@ -69,5 +69,35 @@ class CompareTests(unittest.TestCase):
     def test_type_drift_is_not_a_finding(self):
         self.assertEqual(run([row("Users", "1", N=1)], [row("Users", "1", N="1")])[0], 0)
 
+    def test_dropped_column_counts_as_altered(self):
+        code, out = run([row("Users", "1", Name="a", Age="3")], [row("Users", "1", Name="a")])
+        self.assertEqual(code, 1); self.assertIn("Age", out)
+        allow = """
+        changes:
+          - { table: Users, columns: [Age], change: altered, reason: drop }
+        """
+        self.assertEqual(run([row("Users", "1", Name="a", Age="3")], [row("Users", "1", Name="a")], allow)[0], 0)
+
+    def test_duplicate_key_is_infrastructure_error(self):
+        dup = [row("Users", "1", Name="a"), row("Users", "1", Name="b")]
+        self.assertEqual(run(dup, [row("Users", "1", Name="a")])[0], 2)
+        self.assertEqual(run([row("Users", "1", Name="a")], dup)[0], 2)
+
+    def test_empty_snapshot_a_is_infrastructure_error(self):
+        self.assertEqual(run([], [row("Users", "1", Name="a")])[0], 2)
+
+    def test_pkless_new_column_in_b_is_ignored(self):
+        a = [row("Log", None, Msg="a")]
+        b = [row("Log", None, Msg="a", Extra="x")]
+        self.assertEqual(run(a, b)[0], 0)
+
+    def test_malformed_allowlist_fails_closed(self):
+        base = [row("Users", "1", Name="a")]
+        for bad in ("{ table: Users, columns: Name, change: altered, reason: x }",
+                    "{ table: Users, columns: [Name], change: removed, reason: x }",
+                    "{ table: Users, columns: [1], change: altered, reason: x }"):
+            code, out = run(base, base, "changes:\n  - " + bad + "\n")
+            self.assertEqual(code, 2, bad)
+
 if __name__ == "__main__":
     unittest.main()

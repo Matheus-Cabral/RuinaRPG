@@ -24,6 +24,10 @@ tables="$(psqlq -F $'\t' -c "
   WHERE c.relkind IN ('r','p') AND c.relname <> '__EFMigrationsHistory'
   ORDER BY c.relname")"
 
+[[ -n "$tables" ]] || { echo "nenhuma tabela encontrada em public: snapshot vazio" >&2; exit 1; }
+
+# Each table is read in its own psql session (not one snapshot transaction); that is fine
+# because the production clone is quiescent while it is fingerprinted.
 : > "$out"
 while IFS=$'\t' read -r table pkcols; do
   [[ -n "$table" ]] || continue
@@ -32,7 +36,7 @@ while IFS=$'\t' read -r table pkcols; do
   else
     pkexpr="concat_ws('|'"
     IFS=',' read -ra cols <<< "$pkcols"
-    for c in "${cols[@]}"; do pkexpr+=", x.\"$c\"::text"; done
+    for c in "${cols[@]}"; do pkexpr+=", replace(replace(x.\"$c\"::text, '\\', '\\\\'), '|', '\\|')"; done
     pkexpr+=")"
   fi
   psqlq -c "SELECT json_build_object('table', '$table', 'pk', $pkexpr, 'row', (SELECT jsonb_object_agg(key, value) FROM jsonb_each_text(to_jsonb(x))))::text FROM \"$table\" x" >> "$out"
