@@ -1,0 +1,7 @@
+**/bin
+**/obj
+**/TestResults
+.git
+deploy/state
+deploy/tests/.bats
+tools/bench/results
