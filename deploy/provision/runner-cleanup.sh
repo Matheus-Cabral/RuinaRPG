@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
 # Roda NO RUNNER (192.168.80.16) como ghrunner, semanalmente (cron, veja runner.md).
 # O clone.sh nao faz prune (seria global no host), entao a limpeza periodica e feita aqui.
+#
+#   runner-cleanup.sh [colors.env…]
+#
+# Cada argumento e o deploy/state/colors.env de um checkout que faz deploy neste host (por exemplo
+# /home/pro/RuinaRPG/deploy/state/colors.env, a stack de dev): as imagens de CURRENT_SHA e
+# PREVIOUS_SHA desses arquivos nunca sao removidas, mesmo paradas ha mais de 7 dias, porque sao
+# a release ativa e o alvo do rollback. Um arquivo listado que nao pode ser lido aborta tudo antes
+# de remover qualquer imagem.
 set -euo pipefail
+
+keep=" "
+for f in "$@"; do
+  [[ -r "$f" ]] || { echo "estado ilegivel: $f; nenhuma imagem removida" >&2; exit 1; }
+  for key in CURRENT_SHA PREVIOUS_SHA; do
+    v="$(sed -n "s/^$key=//p" "$f" | tail -1)"
+    [[ -z "$v" ]] || keep+="$v "
+  done
+done
 
 docker builder prune -f --filter until=168h
 
@@ -11,6 +28,7 @@ used="$(docker ps -a --format '{{.Image}}' | sort -u)"
 docker image ls --format '{{.Repository}}:{{.Tag}} {{.ID}}' |
   grep -E '^ruinarpg-(api|client|smoke)[:-]' |
   while read -r ref id; do
+    [[ "$keep" == *" ${ref##*:} "* ]] && continue
     grep -qxF -e "$ref" -e "$id" <<< "$used" && continue
     created="$(date -d "$(docker image inspect -f '{{.Created}}' "$id")" +%s)" || continue
     (( created < cutoff )) || continue

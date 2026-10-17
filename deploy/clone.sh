@@ -23,7 +23,7 @@
 #   RUINA_CLONE_PROJECT  compose project, must start with ruinarpg-clone or ruinarpg-bats (ruinarpg-clone)
 #   RUINA_CLONE_PORT     127.0.0.1 port of the clone's nginx (8089)
 #   RUINA_OFFSITE_DIR    where each dump is kept as an off-machine backup (/var/backups/ruinarpg-offsite)
-#   RUINA_KEEP_OFFSITE   how many of those to keep (5)
+#   RUINA_KEEP_OFFSITE   how many of those to keep (5; deploy.yml's -pos-deploy copies are counted apart)
 #   RUINA_HEAD_SMOKE_CMD test hook only: replaces the smoke of the head deploy (RUINA_SMOKE_CMD of deploy.sh)
 set -euo pipefail
 shopt -s inherit_errexit
@@ -128,12 +128,15 @@ do_dump() {
   mv "$RUINA_OFFSITE_DIR/.$name.partial" "$RUINA_OFFSITE_DIR/$name"
   echo "cópia fora da máquina: $RUINA_OFFSITE_DIR/$name"
   echo "$name" > "$WD/offsite-name"
-  # Names start with a UTC timestamp: reverse name order is newest first.
-  ls -1 "$RUINA_OFFSITE_DIR" | { grep -E '^[0-9]{8}T[0-9]{6}Z-' || true; } | sort -r |
+  # Names start with a UTC timestamp: reverse name order is newest first. Only clone copies count
+  # here; deploy.yml keeps its own -pos-deploy copies, five of each.
+  ls -1 "$RUINA_OFFSITE_DIR" | { grep -E '^[0-9]{8}T[0-9]{6}Z-clone-' || true; } | sort -r |
     tail -n +$((RUINA_KEEP_OFFSITE + 1)) | while IFS= read -r old; do
       echo "removendo cópia antiga $old"
       rm -rf "${RUINA_OFFSITE_DIR:?}/$old"
     done
+  # A copy killed halfway stays hidden as .<name>.partial; drop it once it is over a day old.
+  find "$RUINA_OFFSITE_DIR" -mindepth 1 -maxdepth 1 -type d -name '.*.partial' -mtime +0 -exec rm -rf {} +
 }
 
 # Sets "$1"="$2" in the env file, replacing the line or appending it.

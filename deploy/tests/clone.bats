@@ -128,6 +128,10 @@ teardown_file() {
   # a different head sha whose images are $SHA's (helpers' teardown removes these tags).
   for i in api client smoke; do docker tag "ruinarpg-$i:$SHA" "ruinarpg-$i:$BROKEN_SHA"; done
   before="$(ls -1 "$RUINA_OFFSITE_DIR")"
+  # deploy.yml's post-deploy copies are counted separately and never pruned by clone.sh; a partial
+  # copy older than a day (a run killed mid-copy) is.
+  mkdir "$RUINA_OFFSITE_DIR/20200101T000000Z-pos-deploy" "$RUINA_OFFSITE_DIR/.20200101T000000Z-clone-x.partial"
+  touch -d '2 days ago' "$RUINA_OFFSITE_DIR/.20200101T000000Z-clone-x.partial"
   RUINA_HEAD_SMOKE_CMD="$BATS_TEST_DIRNAME/fixtures/delete-users-smoke.sh" \
     run "$RUINA_REPO_DIR/deploy/clone.sh" run "$SHA" "$BROKEN_SHA" "$wd"
   echo "$output"; cat "$wd/report.md" "$wd"/logs/*.log || true
@@ -140,8 +144,10 @@ teardown_file() {
   [ -z "$(leftovers)" ]
   [ ! -e "$wd/repo" ]
   # Pruned to the newest one, which is not the previous run's.
-  [ "$(ls -1 "$RUINA_OFFSITE_DIR" | wc -l)" -eq 1 ]
-  [ "$(ls -1 "$RUINA_OFFSITE_DIR")" != "$before" ]
+  [ "$(ls -1 "$RUINA_OFFSITE_DIR" | grep -c -- '-clone-')" -eq 1 ]
+  [ "$(ls -1 "$RUINA_OFFSITE_DIR" | grep -- '-clone-')" != "$before" ]
+  [ -d "$RUINA_OFFSITE_DIR/20200101T000000Z-pos-deploy" ]
+  [ ! -e "$RUINA_OFFSITE_DIR/.20200101T000000Z-clone-x.partial" ]
 }
 
 @test "bootstrap: a base without deploy/deploy.sh is fingerprinted from the restored dump and forces a window" {

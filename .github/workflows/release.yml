@@ -65,12 +65,13 @@ jobs:
       - name: Teardown do clone
         if: always()
         run: deploy/clone.sh teardown "$RUNNER_TEMP/clone-${{ github.run_id }}"
-      # Postgres DETAIL lines can carry row values (e-mails, …): never upload them.
-      - name: Remover linhas DETAIL dos logs
+      # Postgres DETAIL and CONTEXT lines can carry row values (e-mails, a whole row from psql COPY, …):
+      # never upload them.
+      - name: Remover linhas DETAIL e CONTEXT dos logs
         if: always()
         run: |
           find "$RUNNER_TEMP/clone-${{ github.run_id }}/logs" "$RUNNER_TEMP/report.md" -type f \
-            -exec sed -i '/DETAIL:/d' {} + 2>/dev/null || true
+            -exec sed -i -e '/DETAIL:/d' -e '/CONTEXT:/d' {} + 2>/dev/null || true
       - if: always()
         uses: actions/upload-artifact@v4
         with:

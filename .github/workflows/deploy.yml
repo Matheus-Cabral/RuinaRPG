@@ -40,7 +40,8 @@ jobs:
           test -n "$DEPLOY_SSH_KEY" && test -n "$PROD_SSH_KNOWN_HOSTS"
           # A unix socket path must fit in 108 bytes.
           test "${#d}" -lt 90 || { echo "RUNNER_TEMP longo demais para o socket do ssh-agent: $d" >&2; exit 1; }
-          eval "$(ssh-agent -s -a "$d/agent.sock" -t 3600)" >/dev/null
+          # Long enough for a window deploy with a slow build; the key is removed at the end of the job anyway.
+          eval "$(ssh-agent -s -a "$d/agent.sock" -t 7200)" >/dev/null
           echo "PROD_SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
           printf '%s\n' "$DEPLOY_SSH_KEY" | SSH_AUTH_SOCK="$d/agent.sock" ssh-add -q -
           # IdentitiesOnly needs an IdentityFile: the public half selects the agent's key and nothing else.
@@ -82,9 +83,12 @@ jobs:
           mkdir -p "$off/.$name.partial" && chmod 700 "$off"
           ssh -F "$PROD_SSH_CONFIG" ruinarpg-prod dump | tar -C "$off/.$name.partial" -xf -
           mv "$off/.$name.partial" "$off/$name"
-          # Names start with a UTC timestamp (clone.sh's copies too): keep the newest five.
-          find "$off" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9]{8}T[0-9]{6}Z-[^/]*' -printf '%f\n' |
+          # Names start with a UTC timestamp: keep the newest five post-deploy copies. clone.sh's copies
+          # (-clone-<sha>) are counted and pruned by clone.sh, never here.
+          find "$off" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9]{8}T[0-9]{6}Z-pos-deploy' -printf '%f\n' |
             sort -r | tail -n +6 | while IFS= read -r old; do rm -rf "${off:?}/$old"; done
+          # A copy killed halfway (cancelled job, dropped connection) stays hidden; drop it after a day.
+          find "$off" -mindepth 1 -maxdepth 1 -type d -name '.*.partial' -mtime +0 -exec rm -rf {} +
       - name: Resultado no PR
         if: always() && steps.pr.outputs.number != ''
         run: |

@@ -103,3 +103,44 @@ PFX_DUMP='command="sudo /opt/ruinarpg/gate.sh dump-only",no-pty,no-port-forwardi
   [ -z "$stderr" ]
   [[ "$output" == *"gate.sh dump-only"* ]]
 }
+
+@test "deploy.yml: agent lifetime covers a long deploy; offsite copies counted by suffix; stale partials pruned" {
+  grep -qF 'ssh-agent -s -a "$d/agent.sock" -t 7200' "$W/deploy.yml"
+  grep -qF -- "-pos-deploy" "$W/deploy.yml"
+  grep -qE 'regex .*pos-deploy' "$W/deploy.yml"
+  grep -qF -- "-name '.*.partial' -mtime +0" "$W/deploy.yml"
+}
+
+@test "release.yml strips CONTEXT lines as well as DETAIL before uploading" {
+  grep -qF "/DETAIL:/d" "$W/release.yml"
+  grep -qF "/CONTEXT:/d" "$W/release.yml"
+}
+
+@test "runner-cleanup.sh never removes the images a state file names as current or previous" {
+  bin="$BATS_TEST_TMPDIR/bin"; mkdir -p "$bin"
+  calls="$BATS_TEST_TMPDIR/calls"; : > "$calls"
+  cat > "$bin/docker" <<FAKE
+#!/usr/bin/env bash
+case "\$1 \$2" in
+  "builder prune") ;;
+  "ps -a") ;;
+  "image ls") printf '%s\n' "ruinarpg-api:aaa id-a" "ruinarpg-client:bbb id-b" "ruinarpg-smoke:ccc id-c" "ruinarpg-api:ddd id-d" ;;
+  "image inspect") echo 2020-01-01T00:00:00Z ;;
+  "image rm") echo "rm \$3" >> "$calls" ;;
+esac
+FAKE
+  chmod +x "$bin/docker"
+  s1="$BATS_TEST_TMPDIR/one.env" s2="$BATS_TEST_TMPDIR/two.env"
+  printf 'ACTIVE=blue\nCURRENT_SHA=aaa\nPREVIOUS_SHA=\n' > "$s1"
+  printf 'ACTIVE=green\nCURRENT_SHA=ddd\nPREVIOUS_SHA=bbb\n' > "$s2"
+  PATH="$bin:$PATH" run bash "$P/runner-cleanup.sh" "$s1" "$s2"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$calls")" = "rm ruinarpg-smoke:ccc" ]
+  # A state file that cannot be read: nothing is removed.
+  : > "$calls"
+  PATH="$bin:$PATH" run bash "$P/runner-cleanup.sh" "$s1" "$BATS_TEST_TMPDIR/missing.env"
+  [ "$status" -ne 0 ]
+  [ ! -s "$calls" ]
+  grep -qF /home/pro/RuinaRPG/deploy/state/colors.env "$P/runner.md"
+}
