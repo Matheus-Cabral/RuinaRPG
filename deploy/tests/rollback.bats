@@ -45,6 +45,9 @@ psql_count() {
   [ "$status" -ne 0 ]
   [[ "${lines[-1]}" == *"rollback=ok"* ]]
   [[ "${lines[-1]}" == *"active=green"* ]]
+  # The restore point is the backup taken inside the window, the one RESULT reports.
+  bk="${lines[-1]#*backup=}"; bk="${bk%% *}"
+  [[ "$output" == *"restaurando o banco de $bk"* ]]
   run psql_count
   [ "$output" = "1" ]
   run curl -fsS "http://127.0.0.1:18089/api/health"
@@ -52,6 +55,21 @@ psql_count() {
   # The failed deploy must not have replaced the restore point of the deploy that is still live.
   grep -qx 'MODE=window' "$RUINA_STATE_DIR/colors.env"
   grep -qx "BLUE_TAG=$SHA" "$RUINA_STATE_DIR/colors.env"
+}
+
+@test "rollback refuses, changing nothing, when the window backup is gone" {
+  wb="$(sed -n 's/^WINDOW_BACKUP=//p' "$RUINA_STATE_DIR/colors.env")"
+  [ -d "$wb" ]
+  mv "$wb" "$wb.moved"
+  run "$RUINA_REPO_DIR/deploy/deploy.sh" rollback
+  mv "$wb.moved" "$wb"
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"nada foi alterado"* ]]
+  grep -qx 'ACTIVE=green' "$RUINA_STATE_DIR/colors.env"
+  grep -qx "BLUE_TAG=$SHA" "$RUINA_STATE_DIR/colors.env"
+  run curl -fsS "http://127.0.0.1:18089/api/health"
+  [ "$output" = '"OK"' ]
 }
 
 @test "rollback after a window deploy restores that window's backup and retags the previous color" {
@@ -62,6 +80,10 @@ psql_count() {
   echo "$output"
   [ "$status" -eq 0 ]
   [[ "${lines[-1]}" == "RESULT mode=window sha=$SHA active=blue "*" rollback=ok" ]]
+  # What the restore discards is kept in a fresh backup.
+  [[ "$output" == *"dados descartados pelo rollback salvos em "* ]]
+  saved="$(sed -n 's/.*dados descartados pelo rollback salvos em //p' <<<"$output" | tail -1)"
+  [ -s "$saved/db.dump" ]
   grep -qx "BLUE_TAG=$SHA" "$RUINA_STATE_DIR/colors.env"
   grep -qx 'ACTIVE=blue' "$RUINA_STATE_DIR/colors.env"
   run psql_count
@@ -88,6 +110,20 @@ psql_count() {
   [ "$output" = '"OK"' ]
   run docker compose -p "$RUINA_PROJECT" ps --status running --services
   [[ "$output" != *"api-green"* ]]
+}
+
+@test "a corrupt dump fails the restore and leaves the data intact" {
+  good="$("$RUINA_REPO_DIR/deploy/deploy.sh" backup)"
+  bad="$BATS_FILE_TMPDIR/corrupt"; mkdir -p "$bad"
+  head -c "$(( $(stat -c %s "$good/db.dump") / 2 ))" "$good/db.dump" > "$bad/db.dump"
+  cp "$good/images.tar" "$bad/images.tar"
+  run "$RUINA_REPO_DIR/deploy/deploy.sh" restore "$bad"
+  echo "$output"
+  [ "$status" -ne 0 ]
+  run psql_count
+  [ "$output" = "2" ]
+  run curl -fsS "http://127.0.0.1:18089/api/health"
+  [ "$output" = '"OK"' ]
 }
 
 @test "rollback with nothing to go back to is refused" {

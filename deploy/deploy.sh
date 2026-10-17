@@ -6,7 +6,9 @@
 #                                  migrate and switch (for migrations the old release cannot run against)
 #   deploy.sh rollback             back to the previous release (a window rollback restores its backup)
 #   deploy.sh backup               pg_dump + images volume into $RUINA_BACKUP_DIR/<timestamp>-<sha7>
-#   deploy.sh restore <dir>        loads a backup back (database and images)
+#   deploy.sh restore <dir>        loads a backup back (database in one transaction, then images); with an
+#                                  active color it runs under maintenance: nginx answers 503 and the color
+#                                  stops during the restore, then comes back (even if the restore failed)
 #   deploy.sh status               color state and the newest backups
 #   deploy.sh migrate              migrations + seeders with the active color's image
 #   deploy.sh exec-api <args…>     dotnet RuinaRPG.Api.dll <args…> inside the active color
@@ -115,6 +117,9 @@ other_color() { if [[ "$1" == blue ]]; then echo green; else echo blue; fi; }
 acquire_lock() {
   exec 9>"$RUINA_STATE_DIR/deploy.lock"
   flock -n 9 || die "outro deploy em andamento"
+  # The state read at startup may predate a deploy that held the lock meanwhile.
+  # shellcheck source=/dev/null
+  source "$STATE_FILE"
   give_state_to_owner
 }
 
@@ -295,44 +300,50 @@ prune_images() {
 # ---------------------------------------------------------------- backup / restore
 
 # Writes into a hidden .partial directory and renames it at the end, so a failed backup never counts
-# as one of the kept backups.
+# as one of the kept backups. Every step returns: a rollback calls this under ||, where errexit is off.
 make_backup() {
-  local label="inicial" dir partial saved_umask
+  local label="inicial" dir partial
   [[ -n "$CURRENT_SHA" ]] && label="${CURRENT_SHA:0:7}"
-  # Dumps hold every account's password hash: owner-only, even when root's umask is 022.
-  saved_umask="$(umask)"
-  umask 077
   dir="$RUINA_BACKUP_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$label"
+  # Never reuse a name: it could be the protected window backup.
+  while [[ -e "$dir" ]]; do sleep 1; dir="$RUINA_BACKUP_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$label"; done
   partial="$RUINA_BACKUP_DIR/.$(basename "$dir").partial"
   log "backup em $dir"
-  mkdir -p "$RUINA_BACKUP_DIR"
-  chmod 700 "$RUINA_BACKUP_DIR"
-  rm -rf "$partial" && mkdir "$partial"
-  start_db
-  compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc ruinarpg' </dev/null > "$partial/db.dump"
-  # Before the first deploy the images volume does not exist yet (and creating it outside compose
-  # would leave it unlabeled), so there is nothing to archive.
-  if docker volume inspect "${RUINA_PROJECT}_images" >/dev/null 2>&1; then
-    docker run --rm -v "${RUINA_PROJECT}_images:/images:ro" "$BUSYBOX" tar -C /images -cf - . > "$partial/images.tar"
-  else
-    : > "$partial/images.tar"
-  fi
-  printf '%s\n' "$CURRENT_SHA" > "$partial/sha"
-  rm -rf "$dir" && mv "$partial" "$dir"
-  umask "$saved_umask"
-  prune_backups
+  # Dumps hold every account's password hash: owner-only, even when root's umask is 022. The subshell
+  # scopes the umask.
+  (
+    umask 077
+    mkdir -p "$RUINA_BACKUP_DIR" && chmod 700 "$RUINA_BACKUP_DIR" && rm -rf "$partial" && mkdir "$partial" || exit 1
+    start_db || exit 1
+    compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc ruinarpg' </dev/null > "$partial/db.dump" || exit 1
+    # Before the first deploy the images volume does not exist yet (and creating it outside compose
+    # would leave it unlabeled), so there is nothing to archive.
+    if docker volume inspect "${RUINA_PROJECT}_images" >/dev/null 2>&1; then
+      docker run --rm -v "${RUINA_PROJECT}_images:/images:ro" "$BUSYBOX" tar -C /images -cf - . > "$partial/images.tar" || exit 1
+    else
+      : > "$partial/images.tar" || exit 1
+    fi
+    printf '%s\n' "$CURRENT_SHA" > "$partial/sha" && mv "$partial" "$dir"
+  ) || { log "ERRO: backup falhou: $dir"; return 1; }
+  prune_backups || log "aviso: poda de backups falhou"
   BACKUP_DIR="$dir"
 }
 
-# Names start with a UTC timestamp, so reverse name order is newest first; anything else in the
-# directory is left alone.
+# Keeps the newest $RUINA_KEEP_BACKUPS plus the restore points the state still needs (the window
+# backup, the last deploy's backup, the running deploy's window backup), which never count. Names
+# start with a UTC timestamp, so reverse name order is newest first; anything else is left alone.
 prune_backups() {
-  local name
-  ls -1 "$RUINA_BACKUP_DIR" | { grep -E '^[0-9]{8}T[0-9]{6}Z-' || true; } | sort -r | tail -n +$((RUINA_KEEP_BACKUPS + 1)) |
-    while IFS= read -r name; do
-      log "removendo backup antigo $name"
-      rm -rf "${RUINA_BACKUP_DIR:?}/$name"
-    done
+  local name n=0 protected=" "
+  for name in "$WINDOW_BACKUP" "$LAST_BACKUP" "$RUN_WINDOW_BACKUP"; do
+    [[ -n "$name" ]] && protected+="$(basename "$name") "
+  done
+  while IFS= read -r name; do
+    [[ "$protected" == *" $name "* ]] && continue
+    n=$((n + 1))
+    (( n <= RUINA_KEEP_BACKUPS )) && continue
+    log "removendo backup antigo $name"
+    rm -rf "${RUINA_BACKUP_DIR:?}/$name"
+  done < <(ls -1 "$RUINA_BACKUP_DIR" | { grep -E '^[0-9]{8}T[0-9]{6}Z-' || true; } | sort -r)
 }
 
 # ---------------------------------------------------------------- subcommands
@@ -343,15 +354,19 @@ cmd_backup() {
   echo "$BACKUP_DIR" >&3
 }
 
-# The schema is dropped first: --clean only drops what the dump contains, so tables a newer migration
+# The schema is dropped first: --clean alone only drops what the dump contains, so tables a newer migration
 # created would survive and break the next migrate. Every step returns: rollbacks call this under ||.
 restore_backup() {
   local dir="$1"
   [[ -f "$dir/db.dump" && -f "$dir/images.tar" ]] || { log "ERRO: backup inválido: $dir"; return 1; }
   start_db || return 1
   log "restaurando o banco de $dir"
-  compose exec -T db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ruinarpg -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"' </dev/null || return 1
-  compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d ruinarpg --clean --if-exists --no-owner' < "$dir/db.dump" || return 1
+  # One transaction: the dump is first turned into SQL (a corrupt dump fails here, before anything is
+  # touched), then schema drop + load commit together or not at all.
+  compose exec -T db sh -c 'set -e; f="$(mktemp)"; trap "rm -f $f" EXIT
+    pg_restore --clean --if-exists --no-owner -f "$f"
+    { echo "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"; cat "$f"; } |
+      psql -q -1 -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ruinarpg >/dev/null' < "$dir/db.dump" || return 1
   log "restaurando as imagens de $dir"
   if [[ -s "$dir/images.tar" ]]; then
     docker run --rm -i -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/* && tar -C /images -xf -' < "$dir/images.tar" || return 1
@@ -360,9 +375,23 @@ restore_backup() {
   fi
 }
 
+# Under maintenance with the active color stopped, so nothing writes while the data is replaced. The
+# color comes back either way: a failed restore leaves the previous data (one transaction).
 cmd_restore() {
+  local dir="${1:-}" ok=1
+  [[ -f "$dir/db.dump" && -f "$dir/images.tar" ]] || die "backup inválido: $dir"
   acquire_lock
-  restore_backup "${1:-}" || die "restauração falhou"
+  if [[ "$ACTIVE" == none ]]; then
+    restore_backup "$dir" || die "restauração falhou"
+    log "restauração concluída"
+    return
+  fi
+  enter_maintenance || die "nginx recusou a configuração de manutenção; nada foi alterado"
+  compose stop "api-$ACTIVE" || log "aviso: api-$ACTIVE não parou"
+  restore_backup "$dir" || ok=""
+  { start_color "$ACTIVE" && wait_healthy "$ACTIVE" && point_upstream_at "$ACTIVE"; } ||
+    die "api-$ACTIVE não voltou após a restauração; o nginx está em manutenção. Rode deploy.sh status"
+  [[ -n "$ok" ]] || die "restauração falhou; os dados anteriores foram mantidos e api-$ACTIVE voltou"
   log "restauração concluída"
 }
 
@@ -421,6 +450,9 @@ return_to() {
   if [[ -n "$backup" ]]; then
     enter_maintenance || { log "ERRO: nginx recusou a configuração de manutenção"; return 1; }
     compose stop "api-$from" || log "aviso: api-$from não parou"
+    # The restore discards everything written since the backup: keep a copy first.
+    make_backup || { log "ERRO: não foi possível salvar os dados que a restauração descartaria"; return 1; }
+    log "dados descartados pelo rollback salvos em $BACKUP_DIR"
     restore_backup "$backup" || return 1
   fi
   start_color "$color" || return 1
@@ -428,6 +460,18 @@ return_to() {
   point_upstream_at "$color" || return 1
   point_client_at "$sha" || { log "ERRO: webroot/current não aponta para $sha"; return 1; }
   compose stop "api-$from" || log "aviso: api-$from não parou"
+}
+
+# A zero-downtime rollback never stops api-$2 before the switch succeeds, so it can keep serving.
+zero_downtime_rollback_failed() {
+  local back="$1" from="$2"
+  if [[ -n "$UPSTREAM_SWITCHED" ]] && ! { point_upstream_at "$from" && point_client_at "$CURRENT_SHA"; }; then
+    rollback_failed "$CURRENT_SHA" none
+  fi
+  compose stop "api-$back" || log "aviso: api-$back não parou"
+  log "ERRO: rollback falhou; api-$from continua servindo"
+  result "$CURRENT_SHA" "$ACTIVE" none failed
+  exit 2
 }
 
 rollback_failed() {
@@ -489,15 +533,16 @@ smoke_failed() {
 
 # ---------------------------------------------------------------- deploy
 
-# Window mode, before migrating: nginx answers 503, the backup taken now is the restore point of a
-# window rollback, and the old color stops so it never sees the migrated schema.
+# Window mode, before migrating: nginx answers 503, the old color stops so it never sees the migrated
+# schema, and the backup taken then is the restore point of a window rollback.
 open_window() {
   enter_maintenance || die "nginx recusou a configuração de manutenção"
-  make_backup
-  RUN_WINDOW_BACKUP="$BACKUP_DIR" LAST_BACKUP="$BACKUP_DIR"
+  # Stopped before the backup, so nothing writes after it is taken.
   log "parando api-$OLD"
   OLD_STOPPED=1
   compose stop "api-$OLD"
+  make_backup
+  RUN_WINDOW_BACKUP="$BACKUP_DIR" LAST_BACKUP="$BACKUP_DIR"
 }
 
 # A window needs an old color to stop and an nginx to answer 503; without them it is a first deploy.
@@ -581,7 +626,8 @@ cmd_rollback() {
   RUN_MODE="${MODE:-zero-downtime}"
   if [[ "$RUN_MODE" == window ]]; then
     backup="$WINDOW_BACKUP"
-    [[ -n "$backup" ]] || die "o deploy em janela não registrou o backup da janela"
+    [[ -n "$backup" ]] || die "o deploy em janela não registrou o backup da janela; nada foi alterado"
+    [[ -f "$backup/db.dump" && -f "$backup/images.tar" ]] || die "backup da janela não existe mais: $backup; nada foi alterado"
   fi
   log "rollback ($RUN_MODE): api-$from -> api-$back ($sha)"
   # The stopped color's tag may be stale; compose starts it with whatever colors.env says.
@@ -589,13 +635,8 @@ cmd_rollback() {
   save_state
   start_db
   if ! return_to "$back" "$sha" "$from" "$backup"; then
-    if [[ -z "$UPSTREAM_SWITCHED" ]]; then
-      compose stop "api-$back" || true
-      log "ERRO: rollback falhou antes da troca; api-$from continua servindo"
-      result "$CURRENT_SHA" "$ACTIVE" none failed
-      exit 2
-    fi
-    rollback_failed "$sha" none
+    [[ -z "$backup" ]] || rollback_failed "$sha" none
+    zero_downtime_rollback_failed "$back" "$from"
   fi
   ACTIVE="$back" CURRENT_SHA="$sha" PREVIOUS_SHA="" PREVIOUS_COLOR=none MODE="" WINDOW_BACKUP=""
   save_state
@@ -622,7 +663,7 @@ main() {
     status) cmd_status ;;
     migrate) cmd_migrate ;;
     exec-api) cmd_exec_api "$@" ;;
-    *) die "uso: deploy.sh {deploy <sha> [--window]|rollback|backup|restore <dir>|status|migrate|exec-api <args…>}" ;;
+    *) die "uso: deploy.sh {deploy <sha> [--window]|rollback|backup|restore <dir> (em manutenção)|status|migrate|exec-api <args…>}" ;;
   esac
 }
 

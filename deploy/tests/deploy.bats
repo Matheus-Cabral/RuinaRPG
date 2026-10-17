@@ -33,9 +33,11 @@ load helpers
   [[ "$output" == *"api-green"* ]]
 }
 
-@test "backup writes db.dump and images.tar and keeps the newest five" {
+@test "backup writes db.dump and images.tar and keeps the newest five plus the last deploy's" {
+  last="$(sed -n 's/^LAST_BACKUP=//p' "$RUINA_STATE_DIR/colors.env")"
   for i in 1 2 3 4 5 6; do "$RUINA_REPO_DIR/deploy/deploy.sh" backup >/dev/null; sleep 1; done
-  [ "$(ls -1 "$RUINA_BACKUP_DIR" | wc -l)" -eq 5 ]
+  [ "$(ls -1 "$RUINA_BACKUP_DIR" | wc -l)" -eq 6 ]
+  [ -d "$last" ]
   newest="$RUINA_BACKUP_DIR/$(ls -1t "$RUINA_BACKUP_DIR" | head -1)"
   [ -s "$newest/db.dump" ] && [ -f "$newest/images.tar" ]
   [ "$(cat "$newest/sha")" = "$SHA" ]
@@ -73,6 +75,14 @@ load helpers
   [ "$output" = "c" ]
 }
 
+@test "prune_backups never removes the window backup or the last deploy's backup" {
+  d="$BATS_TEST_TMPDIR/prune"; mkdir -p "$d"
+  for n in 1 2 3 4 5; do mkdir "$d/2026010${n}T000000Z-abc"; done
+  run bash -c 'source "$1" && RUINA_BACKUP_DIR="$2" RUINA_KEEP_BACKUPS=2 WINDOW_BACKUP="$2/20260101T000000Z-abc" LAST_BACKUP="$2/20260102T000000Z-abc" prune_backups' _ "$RUINA_REPO_DIR/deploy/deploy.sh" "$d"
+  [ "$status" -eq 0 ]
+  [ "$(ls -1 "$d" | tr '\n' ' ')" = "20260101T000000Z-abc 20260102T000000Z-abc 20260104T000000Z-abc 20260105T000000Z-abc " ]
+}
+
 @test "status prints the color state and the recent backups" {
   run "$RUINA_REPO_DIR/deploy/deploy.sh" status
   [ "$status" -eq 0 ]
@@ -80,11 +90,13 @@ load helpers
   [[ "$output" == *"$(ls -1 "$RUINA_BACKUP_DIR" | sort -r | head -1)"* ]]
 }
 
-@test "restore loads a backup back while the active color keeps serving" {
+@test "restore runs under maintenance and brings the active color back" {
   newest="$RUINA_BACKUP_DIR/$(ls -1 "$RUINA_BACKUP_DIR" | sort -r | head -1)"
   run "$RUINA_REPO_DIR/deploy/deploy.sh" restore "$newest"
   echo "$output"
   [ "$status" -eq 0 ]
+  [[ "$output" == *"nginx -> manutenção"* ]]
+  [[ "$output" == *"nginx -> api-green"* ]]
   run curl -fsS "http://127.0.0.1:18089/api/health"
   [ "$output" = '"OK"' ]
 }
