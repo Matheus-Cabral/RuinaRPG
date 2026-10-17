@@ -2,12 +2,18 @@
 # Validates a release against a copy of production (Técnico R0013), on the self-hosted runner.
 #
 #   clone.sh run <base-sha> <head-sha> <workdir>
+#   clone.sh teardown <workdir>    removes what a run left behind (the workflow's `if: always()` step:
+#                                  a cancelled job may kill the run before its EXIT trap finishes)
 #
 # Pulls a production dump through the gate, restores it into a throwaway compose project, deploys the
 # base (main) and then the head with deploy.sh — this checkout's deploy.sh, the one under review —
 # fingerprints the data before and after the head deploy, compares them against the head's
 # deploy/data-changes.yml, and checks whether the base API still runs against the migrated database.
 # The clone is always torn down (EXIT trap).
+#
+# Bootstrap: a base without deploy/deploy.sh (1.5.0, before the blue-green pipeline existed) cannot be
+# deployed by deploy.sh. Then the worktree starts at the head, fingerprint A is taken from the restored
+# dump itself, the base deploy and the compat check are skipped, and compat is forced to `janela`.
 #
 # Writes into <workdir>: report.md (Markdown for the PR comment), compat (`ok` or `janela`), logs/<step>.log.
 # Exit: 0 ok; 1 validation failure (head deploy/smoke failed, data findings); 2 infrastructure error.
@@ -35,9 +41,9 @@ SOURCE_REPO="$(cd "$here/.." && pwd)"
 : "${RUINA_HEALTH_TIMEOUT:=120}"
 BUSYBOX="busybox:1.36"
 
-BASE="" HEAD="" WD="" REPORT="" RC=0 FAILED_STEP="" TORN_DOWN=""
+BASE="" HEAD="" WD="" REPORT="" RC=0 FAILED_STEP="" TORN_DOWN="" BOOTSTRAP=""
 
-usage() { echo "uso: clone.sh run <base-sha> <head-sha> <workdir>" >&2; exit 2; }
+usage() { echo "uso: clone.sh run <base-sha> <head-sha> <workdir> | clone.sh teardown <workdir>" >&2; exit 2; }
 fatal() { echo "ERRO: $*" >&2; exit 2; }
 
 validate_config() {
@@ -141,7 +147,7 @@ set_env() {
 }
 
 do_checkout() {
-  git -C "$SOURCE_REPO" worktree add --detach "$WD/repo" "$BASE"
+  git -C "$SOURCE_REPO" worktree add --detach "$WD/repo" "$1"
   cp "$WD/repo/.env.example" "$WD/repo/.env"
   chmod 600 "$WD/repo/.env"
   set_env "$WD/repo/.env" ASPNETCORE_ENVIRONMENT Production
@@ -259,7 +265,10 @@ do_teardown() {
 
 on_exit() {
   local rc=$?
-  trap - EXIT INT TERM
+  # Ignore further signals (not reset them): a cancelled job sends more than one, and a second one
+  # must not kill the teardown halfway.
+  trap - EXIT
+  trap '' INT TERM
   [[ -n "$TORN_DOWN" ]] && exit "$rc"
   TORN_DOWN=1
   (( RC != 0 )) || RC="$rc"
@@ -319,21 +328,72 @@ cmd_run() {
 
   ( remove_project ) >> "$WD/logs/teardown.log" 2>&1 || true
 
+  # An unknown base would otherwise look like a base without deploy.sh.
+  if ! git -C "$SOURCE_REPO" rev-parse --verify --quiet "$BASE^{commit}" >/dev/null; then
+    note "- base: FALHOU (commit desconhecido)"
+    FAILED_STEP=base RC=2
+    exit 2
+  fi
+  git -C "$SOURCE_REPO" cat-file -e "$BASE:deploy/deploy.sh" 2>/dev/null || BOOTSTRAP=1
+
   step dump infra do_dump
-  step checkout infra do_checkout
-  step restore infra do_restore
-  step base infra do_deploy "$BASE"
+  if [[ -n "$BOOTSTRAP" ]]; then
+    note "- bootstrap: a versão base não tem deploy/deploy.sh — fingerprint A tirado do dump restaurado; compat forçado para janela"
+    step checkout infra do_checkout "$HEAD"
+    step restore infra do_restore
+  else
+    step checkout infra do_checkout "$BASE"
+    step restore infra do_restore
+    step base infra do_deploy "$BASE"
+  fi
   step fingerprint-a infra do_fingerprint a
+  # Every failure of the head deploy counts as a validation failure (exit 1), including infrastructure
+  # causes such as a failed image build or pull: deploy.sh's exit code does not tell them apart.
   step head validation do_deploy_head
   step fingerprint-b infra do_fingerprint b
   step compare passthrough do_compare
-  step compat infra do_compat
+  if [[ -n "$BOOTSTRAP" ]]; then
+    echo janela > "$WD/compat"
+    note "- compat: janela (bootstrap: não verificada)"
+  else
+    step compat infra do_compat
+  fi
   log "clone validado: base $BASE, head $HEAD, compat $(cat "$WD/compat")"
+}
+
+cmd_teardown() {
+  (( $# == 1 )) || usage
+  WD="$1"
+  validate_config
+  require_cmd docker
+  require_cmd git
+  require_cmd flock
+  [[ -d "$WD" ]] || { log "nada a remover: $WD não existe"; WD=""; }
+  if [[ -n "$WD" ]]; then
+    WD="$(cd "$WD" && pwd)"
+    mkdir -p "$WD/logs"
+  fi
+  export_clone_env
+  # A run still tearing itself down holds the lock; wait for it, but never forever.
+  exec 8> "${TMPDIR:-/tmp}/$RUINA_CLONE_PROJECT.lock"
+  flock -w 600 8 || log "aviso: lock de $RUINA_CLONE_PROJECT ocupado; removendo mesmo assim"
+  if [[ -z "$WD" ]]; then
+    remove_project || fatal "o projeto $RUINA_CLONE_PROJECT não foi removido por completo"
+    return
+  fi
+  local rc=0
+  set +e
+  ( do_teardown ) >> "$WD/logs/teardown.log" 2>&1
+  rc=$?
+  set -e
+  (( rc == 0 )) || fatal "teardown incompleto; veja $WD/logs/teardown.log"
+  log "clone $RUINA_CLONE_PROJECT removido"
 }
 
 main() {
   case "${1:-}" in
     run) shift; cmd_run "$@" ;;
+    teardown) shift; cmd_teardown "$@" ;;
     *) usage ;;
   esac
 }

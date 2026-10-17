@@ -44,6 +44,14 @@ teardown_file() {
   dir="$("$RUINA_REPO_DIR/deploy/deploy.sh" backup)"
   [ -s "$dir/db.dump" ]
   echo "$dir" > "$BATS_FILE_TMPDIR/dumpdir"
+  # A "1.5.0-like" base: $SHA without deploy/deploy.sh, made without moving the test repo's HEAD.
+  export GIT_INDEX_FILE="$BATS_FILE_TMPDIR/old.index"
+  git -C "$RUINA_REPO_DIR" read-tree "$SHA"
+  git -C "$RUINA_REPO_DIR" rm -q --cached deploy/deploy.sh
+  tree="$(git -C "$RUINA_REPO_DIR" write-tree)"
+  unset GIT_INDEX_FILE
+  git -C "$RUINA_REPO_DIR" -c user.name=bats -c user.email=bats@localhost commit-tree "$tree" -p "$SHA" -m "sem deploy.sh" > "$BATS_FILE_TMPDIR/oldbase"
+  ! git -C "$RUINA_REPO_DIR" cat-file -e "$(cat "$BATS_FILE_TMPDIR/oldbase"):deploy/deploy.sh"
 }
 
 @test "clone refuses a project name that is not a throwaway one" {
@@ -65,6 +73,27 @@ teardown_file() {
   grep -q "sem acesso" "$wd/logs/dump.log"
   [ ! -e "$wd/repo" ] && [ ! -e "$wd/dump" ] && [ ! -e "$wd/dump.tar" ]
   [ -z "$(leftovers)" ]
+}
+
+@test "clone teardown refuses a project name that is not a throwaway one" {
+  clone_env
+  RUINA_CLONE_PROJECT=ruinarpg run "$RUINA_REPO_DIR/deploy/clone.sh" teardown "$BATS_FILE_TMPDIR/wd0"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"RUINA_CLONE_PROJECT"* ]]
+}
+
+@test "clone teardown removes what a killed run left behind" {
+  clone_env
+  wd="$BATS_FILE_TMPDIR/wd-killed"
+  mkdir -p "$wd/dump" "$wd/backups" "$wd/logs"; echo x > "$wd/dump.tar"; echo x > "$wd/fingerprint-a.jsonl"
+  docker volume create "$(clone_project)_images" >/dev/null
+  docker run -d --name "$(clone_project)-stray" --label "com.docker.compose.project=$(clone_project)" busybox:1.36 sleep 600 >/dev/null
+  run "$RUINA_REPO_DIR/deploy/clone.sh" teardown "$wd"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ -z "$(leftovers)" ]
+  [ ! -e "$wd/dump" ] && [ ! -e "$wd/dump.tar" ] && [ ! -e "$wd/backups" ] && [ ! -e "$wd/fingerprint-a.jsonl" ]
+  [ -d "$wd/logs" ]
 }
 
 @test "clone run passes for an unchanged version and reports compat ok" {
@@ -113,4 +142,21 @@ teardown_file() {
   # Pruned to the newest one, which is not the previous run's.
   [ "$(ls -1 "$RUINA_OFFSITE_DIR" | wc -l)" -eq 1 ]
   [ "$(ls -1 "$RUINA_OFFSITE_DIR")" != "$before" ]
+}
+
+@test "bootstrap: a base without deploy/deploy.sh is fingerprinted from the restored dump and forces a window" {
+  clone_env
+  wd="$BATS_FILE_TMPDIR/wd3"
+  old="$(cat "$BATS_FILE_TMPDIR/oldbase")"
+  run "$RUINA_REPO_DIR/deploy/clone.sh" run "$old" "$SHA" "$wd"
+  echo "$output"; cat "$wd/report.md" "$wd"/logs/*.log || true
+  [ "$status" -eq 0 ]
+  grep -q "bootstrap: a versão base não tem deploy/deploy.sh" "$wd/report.md"
+  grep -qx '\*\*Resultado: OK\*\*' "$wd/report.md"
+  [ "$(cat "$wd/compat")" = janela ]
+  [ ! -e "$wd/logs/base.log" ]
+  grep -q "sha=$SHA" "$wd/logs/head.log"
+  [ -s "$wd/logs/fingerprint-a.log" ] && [ -s "$wd/logs/compare.log" ]
+  [ -z "$(leftovers)" ]
+  [ ! -e "$wd/repo" ]
 }

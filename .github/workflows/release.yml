@@ -61,39 +61,60 @@ jobs:
           echo "compat=$(cat "$wd/compat" 2>/dev/null || echo ok)" >> "$GITHUB_OUTPUT"
           cp "$wd/report.md" "$RUNNER_TEMP/report.md" || true
           exit $code
+      # A cancelled job can kill clone.sh before its EXIT trap finishes the teardown.
+      - name: Teardown do clone
+        if: always()
+        run: deploy/clone.sh teardown "$RUNNER_TEMP/clone-${{ github.run_id }}"
+      # Postgres DETAIL lines can carry row values (e-mails, …): never upload them.
+      - name: Remover linhas DETAIL dos logs
+        if: always()
+        run: |
+          find "$RUNNER_TEMP/clone-${{ github.run_id }}/logs" "$RUNNER_TEMP/report.md" -type f \
+            -exec sed -i '/DETAIL:/d' {} + 2>/dev/null || true
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: clone-logs
           path: ${{ runner.temp }}/clone-${{ github.run_id }}/logs
+          retention-days: 3
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: clone-report
           path: ${{ runner.temp }}/report.md
+          retention-days: 3
 
+  # GitHub-hosted on purpose: the merge token must never reach the self-hosted runner, where PR code runs
+  # as the runner's user. Needs no checkout — only gh and the clone report. A superseded (cancelled) run
+  # reports nothing; the run that replaced it does.
   report:
     needs: [gate, ci, clone]
-    if: always() && github.event_name == 'pull_request' && needs.gate.result == 'success'
-    runs-on: [self-hosted, ruinarpg]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.gate.result == 'success' }}
+    runs-on: ubuntu-latest
     permissions:
       pull-requests: write
       contents: write
     env:
       GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+      GH_REPO: ${{ github.repository }}
       PR: ${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: clone-report, path: report }
         continue-on-error: true
       - name: Rótulo de janela
         if: needs.clone.result == 'success'
+        env:
+          COMPAT: ${{ needs.clone.outputs.compat }}
         run: |
-          if [ "${{ needs.clone.outputs.compat }}" = "janela" ]; then gh pr edit "$PR" --add-label deploy:janela; else gh pr edit "$PR" --remove-label deploy:janela || true; fi
-      - name: Sucesso → auto-merge
+          if [ "$COMPAT" = "janela" ]; then gh pr edit "$PR" --add-label deploy:janela; else gh pr edit "$PR" --remove-label deploy:janela || true; fi
+      # A failed validation turns the PR into a draft; a passing one (e.g. after a fix) makes it ready again
+      # and enables auto-merge — GitHub does not auto-merge a draft.
+      - name: Sucesso → pronto e auto-merge
         if: needs.ci.result == 'success' && needs.clone.result == 'success'
-        run: gh pr merge "$PR" --auto --merge
+        run: |
+          if [ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" = true ]; then gh pr ready "$PR"; fi
+          gh pr merge "$PR" --auto --merge
       - name: Falha → comentário e rascunho
         if: needs.ci.result != 'success' || needs.clone.result != 'success'
         run: |
@@ -107,4 +128,4 @@ jobs:
             echo "Logs completos: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } > comment.md
           gh pr comment "$PR" --body-file comment.md
-          gh pr ready "$PR" --undo
+          if [ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" != true ]; then gh pr ready "$PR" --undo; fi
