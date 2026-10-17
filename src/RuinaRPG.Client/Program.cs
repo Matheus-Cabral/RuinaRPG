@@ -22,9 +22,11 @@ var apiBaseAddress = builder.Configuration["ApiBaseAddress"] ?? "/";
 var httpClientBaseAddress = new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBaseAddress);
 
 builder.Services.AddTransient<BearerTokenHandler>();
+builder.Services.AddTransient(_ => new RetryHandler());
 builder.Services
     .AddHttpClient("Api", client => client.BaseAddress = httpClientBaseAddress)
-    .AddHttpMessageHandler<BearerTokenHandler>();
+    .AddHttpMessageHandler<BearerTokenHandler>()
+    .AddHttpMessageHandler<RetryHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 builder.Services.AddScoped<INotificationConnection, SignalRNotificationConnection>();
 builder.Services.AddTransient<IEncounterConnection, SignalREncounterConnection>();
