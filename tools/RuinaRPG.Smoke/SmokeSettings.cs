@@ -4,6 +4,12 @@ namespace RuinaRPG.Smoke;
 
 public record SmokeSettings(string BaseUrl, string ConnectionString, JwtOptions Jwt)
 {
+    /// <summary>
+    /// Prazo total do smoke (SMOKE_DEADLINE_SECONDS, padrão 4 min): abaixo do timeout que o deploy.sh
+    /// impõe ao smoke inteiro (RUINA_SMOKE_TIMEOUT, 300 s), para que o relatório chegue antes do corte.
+    /// </summary>
+    public TimeSpan Deadline { get; init; } = TimeSpan.FromMinutes(4);
+
     public static SmokeSettings FromEnvironment(IReadOnlyDictionary<string, string?> env)
     {
         string Required(string name) =>
@@ -21,6 +27,13 @@ public record SmokeSettings(string BaseUrl, string ConnectionString, JwtOptions 
             Issuer = Required("JWT_ISSUER"),
             Audience = Required("JWT_AUDIENCE"),
         };
-        return new SmokeSettings(Required("SMOKE_BASE_URL"), connection, jwt);
+        var settings = new SmokeSettings(Required("SMOKE_BASE_URL"), connection, jwt);
+        if (env.TryGetValue("SMOKE_DEADLINE_SECONDS", out var raw) && !string.IsNullOrWhiteSpace(raw))
+        {
+            if (!int.TryParse(raw, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var seconds) || seconds < 1)
+                throw new InvalidOperationException($"SMOKE_DEADLINE_SECONDS deve ser um inteiro >= 1: {raw}");
+            settings = settings with { Deadline = TimeSpan.FromSeconds(seconds) };
+        }
+        return settings;
     }
 }

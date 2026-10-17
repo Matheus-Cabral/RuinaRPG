@@ -28,4 +28,23 @@ public class SmokeSettingsTests
         var act = () => SmokeSettings.FromEnvironment(env);
         act.Should().Throw<InvalidOperationException>().WithMessage("*JWT_SIGNING_KEY*");
     }
+
+    [Fact]
+    public void Deadline_defaults_to_four_minutes_and_can_be_set_in_seconds()
+    {
+        SmokeSettings.FromEnvironment(Env()).Deadline.Should().Be(TimeSpan.FromMinutes(4));
+        var env = Env(); env["SMOKE_DEADLINE_SECONDS"] = "90";
+        SmokeSettings.FromEnvironment(env).Deadline.Should().Be(TimeSpan.FromSeconds(90));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("abc")]
+    [InlineData("-5")]
+    public void Rejects_an_invalid_deadline(string value)
+    {
+        var env = Env(); env["SMOKE_DEADLINE_SECONDS"] = value;
+        var act = () => SmokeSettings.FromEnvironment(env);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*SMOKE_DEADLINE_SECONDS*");
+    }
 }

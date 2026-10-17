@@ -30,7 +30,7 @@ public class SmokeRunTests(ApiFixture fixture) : ApiTestBase(fixture)
         var jwt = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
         var plan = await SmokePlan.BuildAsync(db);
 
-        var failures = await SmokeRunner.RunAsync(Client, jwt, db, plan);
+        var failures = await SmokeRunner.RunAsync(Client, jwt, db, plan, TimeSpan.FromMinutes(4));
 
         plan.Should().Contain(r => r.Path == $"/api/campaigns/{campaignId}/members");
         plan.Should().Contain(r => r.Path.StartsWith("/api/npc-sheets/"));
@@ -49,7 +49,7 @@ public class SmokeRunTests(ApiFixture fixture) : ApiTestBase(fixture)
         var jwt = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
         var gmId = (await db.Users.SingleAsync(u => u.Email == "smokegm2@teste.com")).Id;
 
-        var failures = await SmokeRunner.RunAsync(Client, jwt, db, [new SmokeRequest(gmId, "/api/does-not-exist")]);
+        var failures = await SmokeRunner.RunAsync(Client, jwt, db, [new SmokeRequest(gmId, "/api/does-not-exist")], TimeSpan.FromMinutes(4));
 
         failures.Should().ContainSingle().Which.Should().Be("404 /api/does-not-exist");
     }

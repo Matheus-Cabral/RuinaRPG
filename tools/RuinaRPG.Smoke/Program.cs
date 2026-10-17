@@ -15,7 +15,7 @@ var jwt = new JwtTokenService(Options.Create(settings.Jwt));
 using var http = new HttpClient { BaseAddress = new Uri(settings.BaseUrl), Timeout = TimeSpan.FromSeconds(30) };
 
 var plan = await SmokePlan.BuildAsync(db);
-var failures = await SmokeRunner.RunAsync(http, jwt, db, plan);
+var failures = await SmokeRunner.RunAsync(http, jwt, db, plan, settings.Deadline);
 foreach (var f in failures) Console.WriteLine(f);
 Console.WriteLine(failures.Count == 0 ? $"OK {plan.Count} requests" : $"FAILED {failures.Count}/{plan.Count}");
 return failures.Count == 0 ? 0 : 1;
