@@ -1,0 +1,58 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, ruinarpg]
+    environment: production
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+    steps:
+      - name: PR e modo
+        id: pr
+        run: |
+          pr=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number // empty')
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+          window=""
+          if [ -n "$pr" ] && gh pr view "$pr" -R "${{ github.repository }}" --json labels --jq '.labels[].name' | grep -qx 'deploy:janela'; then window="--window"; fi
+          echo "window=$window" >> "$GITHUB_OUTPUT"
+      - name: Deploy
+        id: deploy
+        env:
+          WINDOW: ${{ steps.pr.outputs.window }}
+        run: |
+          set -o pipefail
+          # The gate's grammar is exact: no trailing space when there is no --window.
+          cmd="deploy ${{ github.sha }}"
+          if [ -n "$WINDOW" ]; then cmd="$cmd $WINDOW"; fi
+          ssh -o BatchMode=yes deploy@192.168.80.10 "$cmd" | tee "$RUNNER_TEMP/deploy.log"
+      - name: Cópia do backup fora da máquina
+        if: always()
+        run: |
+          set -o pipefail
+          # Dumps hold every account's password hash: owner-only.
+          umask 077
+          off=/var/backups/ruinarpg-offsite
+          name="$(date -u +%Y%m%dT%H%M%SZ)-pos-deploy"
+          # Hidden while incomplete, so a failed copy never counts as one of the kept ones.
+          mkdir -p "$off/.$name.partial" && chmod 700 "$off"
+          ssh -o BatchMode=yes deploy@192.168.80.10 dump | tar -C "$off/.$name.partial" -xf -
+          mv "$off/.$name.partial" "$off/$name"
+          # Names start with a UTC timestamp (clone.sh's copies too): keep the newest five.
+          find "$off" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9]{8}T[0-9]{6}Z-[^/]*' -printf '%f\n' |
+            sort -r | tail -n +6 | while IFS= read -r old; do rm -rf "${off:?}/$old"; done
+      - name: Resultado no PR
+        if: always() && steps.pr.outputs.number != ''
+        run: |
+          { echo "## Deploy em produção: ${{ steps.deploy.outcome }}"; echo '```'; tail -n 20 "$RUNNER_TEMP/deploy.log" 2>/dev/null; echo '```'; } > c.md
+          gh pr comment "${{ steps.pr.outputs.number }}" -R "${{ github.repository }}" --body-file c.md
