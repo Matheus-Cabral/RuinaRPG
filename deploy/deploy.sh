@@ -2,6 +2,9 @@
 # Blue-green deploy of RuinaRPG (Técnico R0013–R0016).
 #
 #   deploy.sh deploy <sha>         zero-downtime: builds, migrates, starts the idle color, switches nginx
+#   deploy.sh deploy <sha> --window maintenance window: nginx answers 503, backup, old color stopped, then
+#                                  migrate and switch (for migrations the old release cannot run against)
+#   deploy.sh rollback             back to the previous release (a window rollback restores its backup)
 #   deploy.sh backup               pg_dump + images volume into $RUINA_BACKUP_DIR/<timestamp>-<sha7>
 #   deploy.sh restore <dir>        loads a backup back (database and images)
 #   deploy.sh status               color state and the newest backups
@@ -43,14 +46,17 @@ STATE_KEYS=(ACTIVE BLUE_TAG GREEN_TAG CURRENT_SHA PREVIOUS_SHA PREVIOUS_COLOR LA
 MAINTENANCE_UPSTREAM="127.0.0.1:8081"
 BUSYBOX="busybox:1.36"
 
-# Set during a deploy, read by the EXIT trap (undo_on_failure).
-OLD="" NEW="" OLD_TAG="" UNDO_ARMED="" UPSTREAM_SWITCHED="" CLIENT_SWITCHED=""
+# Set during a deploy, read by the EXIT trap (undo_on_failure). OLD_STOPPED: a window stopped the old
+# color, so undoing means restoring RUN_WINDOW_BACKUP, not just pointing nginx back.
+OLD="" NEW="" OLD_TAG="" UNDO_ARMED="" UPSTREAM_SWITCHED="" CLIENT_SWITCHED="" OLD_STOPPED=""
+RUN_MODE=zero-downtime RUN_WINDOW_BACKUP="" DEPLOY_SHA=""
 
+# No leading zeros: bash arithmetic reads 010 as octal.
 validate_config() {
   [[ "$RUINA_KEEP_BACKUPS" =~ ^[1-9][0-9]*$ ]] || die "RUINA_KEEP_BACKUPS deve ser um inteiro >= 1"
   local var
   for var in RUINA_KEEP_RELEASES RUINA_HEALTH_TIMEOUT RUINA_DRAIN_SECONDS; do
-    [[ "${!var}" =~ ^[0-9]+$ ]] || die "$var deve ser um inteiro >= 0"
+    [[ "${!var}" =~ ^(0|[1-9][0-9]*)$ ]] || die "$var deve ser um inteiro >= 0"
   done
 }
 
@@ -214,19 +220,30 @@ reload_web() {
 
 # The reload is asynchronous; wait until a request through nginx reaches an API again.
 wait_web() {
-  local deadline=$((SECONDS + 30))
-  until [[ "$(compose exec -T web wget -qO- -T 2 http://127.0.0.1/api/health 2>/dev/null)" == '"OK"' ]]; do
-    (( SECONDS < deadline )) || die "nginx não respondeu após a troca"
+  local deadline=$((SECONDS + 30)) body
+  while (( SECONDS < deadline )); do
+    body="$(compose exec -T web wget -qO- -T 2 http://127.0.0.1/api/health 2>/dev/null || true)"
+    [[ "$body" == '"OK"' ]] && return 0
     sleep 1
   done
+  return 1
 }
 
+# Returns instead of dying: the rollback paths call it and must report, not abort.
 point_upstream_at() {
   log "nginx -> api-$1"
   UPSTREAM_SWITCHED=1
   write_upstream "api-$1:8080"
-  reload_web || die "nginx recusou a nova configuração"
-  wait_web
+  reload_web || { log "ERRO: nginx recusou a nova configuração"; return 1; }
+  wait_web || { log "ERRO: nginx não respondeu após a troca para api-$1"; return 1; }
+}
+
+# The maintenance server answers 503 with X-Ruina-Manutencao; the client retries on it.
+enter_maintenance() {
+  log "nginx -> manutenção"
+  UPSTREAM_SWITCHED=1
+  write_upstream "$MAINTENANCE_UPSTREAM"
+  reload_web
 }
 
 run_smoke() {
@@ -326,19 +343,26 @@ cmd_backup() {
   echo "$BACKUP_DIR" >&3
 }
 
-cmd_restore() {
-  local dir="${1:-}"
-  [[ -f "$dir/db.dump" && -f "$dir/images.tar" ]] || die "backup inválido: $dir"
-  acquire_lock
-  start_db
+# The schema is dropped first: --clean only drops what the dump contains, so tables a newer migration
+# created would survive and break the next migrate. Every step returns: rollbacks call this under ||.
+restore_backup() {
+  local dir="$1"
+  [[ -f "$dir/db.dump" && -f "$dir/images.tar" ]] || { log "ERRO: backup inválido: $dir"; return 1; }
+  start_db || return 1
   log "restaurando o banco de $dir"
-  compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d ruinarpg --clean --if-exists --no-owner' < "$dir/db.dump"
+  compose exec -T db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ruinarpg -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"' </dev/null || return 1
+  compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d ruinarpg --clean --if-exists --no-owner' < "$dir/db.dump" || return 1
   log "restaurando as imagens de $dir"
   if [[ -s "$dir/images.tar" ]]; then
-    docker run --rm -i -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/* && tar -C /images -xf -' < "$dir/images.tar"
+    docker run --rm -i -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/* && tar -C /images -xf -' < "$dir/images.tar" || return 1
   else
-    docker run --rm -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/*'
+    docker run --rm -v "${RUINA_PROJECT}_images:/images" "$BUSYBOX" sh -c 'rm -rf /images/*' || return 1
   fi
+}
+
+cmd_restore() {
+  acquire_lock
+  restore_backup "${1:-}" || die "restauração falhou"
   log "restauração concluída"
 }
 
@@ -364,60 +388,139 @@ cmd_exec_api() {
 }
 
 result() {
-  echo "RESULT mode=zero-downtime sha=$1 active=$2 backup=$LAST_BACKUP smoke=$3 rollback=none" >&3
+  echo "RESULT mode=$RUN_MODE sha=$1 active=$2 backup=$LAST_BACKUP smoke=$3 rollback=$4" >&3
 }
 
-# Puts back whatever this deploy already changed: the upstream, the client, the new color and its tag.
-# The tag matters because the stopped color is the next rollback target (Task 9).
+# ---------------------------------------------------------------- rollback
+
+# Zero-downtime undo, while the old color is still running: puts back the upstream and the client and
+# stops the new color. Fails (after doing everything it can) if nginx does not serve the old color again.
 undo_switch() {
+  local rc=0
   if [[ -n "$UPSTREAM_SWITCHED" ]]; then
     if [[ "$OLD" != none ]]; then write_upstream "api-$OLD:8080"; else write_upstream "$MAINTENANCE_UPSTREAM"; fi
-    reload_web || log "aviso: nginx não recarregou o upstream restaurado"
+    if ! reload_web; then
+      log "ERRO: nginx não recarregou o upstream restaurado"; rc=1
+    elif [[ "$OLD" != none ]] && ! wait_web; then
+      log "ERRO: o nginx não está servindo api-$OLD após desfazer a troca"; rc=1
+    fi
   fi
   if [[ -n "$CLIENT_SWITCHED" && "$OLD" != none ]]; then
-    point_client_at "$CURRENT_SHA" || log "aviso: webroot/current não foi restaurado"
+    point_client_at "$CURRENT_SHA" || { log "ERRO: webroot/current não foi restaurado"; rc=1; }
   fi
   compose stop "api-$NEW" || log "aviso: api-$NEW não parou"
-  set_color_tag "$NEW" "$OLD_TAG"
-  save_state
+  return "$rc"
 }
 
-# EXIT trap: any failure between starting the new color and committing the switch (migrations,
-# health check, nginx) leaves the old color serving.
+# Brings api-$1 (release $2) back in front and stops api-$3. With a backup ($4, window mode) the
+# database goes back to it under maintenance first; without one nothing is restored, so rows written
+# since the switch survive. Every step returns: this runs under || (and from the EXIT trap).
+return_to() {
+  local color="$1" sha="$2" from="$3" backup="${4:-}"
+  log "voltando para api-$color ($sha)"
+  if [[ -n "$backup" ]]; then
+    enter_maintenance || { log "ERRO: nginx recusou a configuração de manutenção"; return 1; }
+    compose stop "api-$from" || log "aviso: api-$from não parou"
+    restore_backup "$backup" || return 1
+  fi
+  start_color "$color" || return 1
+  wait_healthy "$color" || { log "ERRO: api-$color não respondeu ao health check"; return 1; }
+  point_upstream_at "$color" || return 1
+  point_client_at "$sha" || { log "ERRO: webroot/current não aponta para $sha"; return 1; }
+  compose stop "api-$from" || log "aviso: api-$from não parou"
+}
+
+rollback_failed() {
+  log "ERRO: rollback falhou; o nginx pode estar em manutenção. Rode deploy.sh status e restaure manualmente (deploy.sh restore <backup>)."
+  result "$1" "$ACTIVE" "$2" failed
+  exit 2
+}
+
+# Takes this deploy back. Before the old color was stopped, undoing the switch is enough; after (window),
+# the database goes back to the backup taken inside the window. The new color's tag goes back too: the
+# stopped color is the next rollback target.
+roll_back() {
+  local sha="$1" smoke="$2" ok=1
+  if [[ -n "$OLD_STOPPED" ]]; then
+    return_to "$OLD" "$CURRENT_SHA" "$NEW" "$RUN_WINDOW_BACKUP" || ok=""
+  else
+    undo_switch || ok=""
+  fi
+  set_color_tag "$NEW" "$OLD_TAG"
+  save_state
+  [[ -n "$ok" ]] || rollback_failed "$sha" "$smoke"
+  log "rollback concluído: api-$OLD servindo $CURRENT_SHA"
+  result "$sha" "$OLD" "$smoke" ok
+  exit 1
+}
+
+# EXIT trap: any failure between arming and committing the switch (migrations, health check, nginx)
+# puts the old release back.
 undo_on_failure() {
   local rc=$?
   [[ -n "$UNDO_ARMED" && $rc -ne 0 ]] || return 0
   UNDO_ARMED=""
   log "deploy falhou: desfazendo a troca para api-$NEW"
-  undo_switch
+  roll_back "$DEPLOY_SHA" none
 }
 
-# Smoke failed after the switch: traffic goes back to the old color. Restoring the database is the
-# rollback of Task 9; on a first deploy there is nothing to go back to, so the new color stays.
+# Captures what the undo needs before anything changes, so no failure can leave the stopped color's
+# tag at the new sha.
+arm_undo() {
+  OLD_TAG="$(color_tag "$NEW")"
+  trap undo_on_failure EXIT
+  UNDO_ARMED=1
+}
+
+# Smoke failed after the switch: back to the old release. On a first deploy there is nothing to go
+# back to, so the new color stays.
 smoke_failed() {
   local sha="$1"
   log "smoke falhou em api-$NEW"
   UNDO_ARMED=""
-  if [[ "$OLD" != none ]]; then
-    undo_switch
-  else
-    ACTIVE="$NEW" CURRENT_SHA="$sha" MODE=zero-downtime
+  [[ "$OLD" != none ]] || {
+    ACTIVE="$NEW" CURRENT_SHA="$sha" MODE="$RUN_MODE"
     save_state
-  fi
-  result "$sha" "$ACTIVE" failed
-  exit 1
+    result "$sha" "$ACTIVE" failed none
+    exit 1
+  }
+  roll_back "$sha" failed
 }
 
-# Smoke passed: let in-flight requests on the old color finish, then stop it and record the switch.
+# ---------------------------------------------------------------- deploy
+
+# Window mode, before migrating: nginx answers 503, the backup taken now is the restore point of a
+# window rollback, and the old color stops so it never sees the migrated schema.
+open_window() {
+  enter_maintenance || die "nginx recusou a configuração de manutenção"
+  make_backup
+  RUN_WINDOW_BACKUP="$BACKUP_DIR" LAST_BACKUP="$BACKUP_DIR"
+  log "parando api-$OLD"
+  OLD_STOPPED=1
+  compose stop "api-$OLD"
+}
+
+# A window needs an old color to stop and an nginx to answer 503; without them it is a first deploy.
+choose_mode() {
+  RUN_MODE="$1"
+  if [[ "$RUN_MODE" == window ]] && { [[ "$OLD" == none ]] || ! web_is_running; }; then
+    log "sem cor ativa atrás do nginx: deploy sem janela"
+    RUN_MODE=zero-downtime
+  fi
+}
+
+# Smoke passed: in zero-downtime mode let in-flight requests on the old color finish, then stop it.
+# nginx and the client already serve the new color, so nothing after this may abort before save_state.
 # Pruning is housekeeping; its failure must not turn a finished deploy into a failed one.
 finish_deploy() {
   local sha="$1"
-  if [[ "$OLD" != none ]]; then
+  if [[ "$OLD" != none && -z "$OLD_STOPPED" ]]; then
     log "drenando api-$OLD por ${RUINA_DRAIN_SECONDS}s"
     sleep "$RUINA_DRAIN_SECONDS"
-    compose stop "api-$OLD"
+    compose stop "api-$OLD" || log "aviso: api-$OLD não parou; pare manualmente"
   fi
-  PREVIOUS_SHA="$CURRENT_SHA" PREVIOUS_COLOR="$OLD" CURRENT_SHA="$sha" ACTIVE="$NEW" MODE=zero-downtime
+  PREVIOUS_SHA="$CURRENT_SHA" PREVIOUS_COLOR="$OLD" CURRENT_SHA="$sha" ACTIVE="$NEW"
+  MODE="$RUN_MODE" WINDOW_BACKUP="$RUN_WINDOW_BACKUP"
   save_state
   prune_releases || log "aviso: poda de releases do cliente falhou"
   prune_images || log "aviso: poda de imagens falhou"
@@ -425,9 +528,13 @@ finish_deploy() {
 }
 
 cmd_deploy() {
-  local sha
-  [[ -n "${1:-}" ]] || die "uso: deploy.sh deploy <sha>"
-  [[ "${2:-}" != --window ]] || die "--window ainda não implementado"
+  local sha mode=zero-downtime
+  [[ -n "${1:-}" ]] || die "uso: deploy.sh deploy <sha> [--window]"
+  case "${2:-}" in
+    "") ;;
+    --window) mode=window ;;
+    *) die "opção desconhecida: $2" ;;
+  esac
   acquire_lock
   checkout_sha "$1"
   sha="$DEPLOY_SHA"
@@ -441,17 +548,17 @@ cmd_deploy() {
 
   OLD="$ACTIVE"
   NEW="$(other_color "$OLD")"
-  OLD_TAG="$(color_tag "$NEW")"
-  log "cor ativa: $OLD; nova cor: $NEW"
+  choose_mode "$mode"
+  log "modo $RUN_MODE; cor ativa: $OLD; nova cor: $NEW"
+  arm_undo
   set_color_tag "$NEW" "$sha"
   save_state
 
   start_db
-  trap undo_on_failure EXIT
-  UNDO_ARMED=1
+  [[ "$RUN_MODE" != window ]] || open_window
   run_migrations "$NEW"
   start_color "$NEW"
-  wait_healthy "$NEW" || die "health check falhou: api-$NEW não respondeu em ${RUINA_HEALTH_TIMEOUT}s; nada foi trocado"
+  wait_healthy "$NEW" || die "health check falhou: api-$NEW não respondeu em ${RUINA_HEALTH_TIMEOUT}s"
 
   # Upstream first: if nginx refuses it, the client was never switched.
   point_upstream_at "$NEW"
@@ -461,7 +568,39 @@ cmd_deploy() {
   if ! run_smoke "$NEW" "$sha"; then smoke_failed "$sha"; fi
   UNDO_ARMED=""
   finish_deploy "$sha"
-  result "$sha" "$NEW" ok
+  result "$sha" "$NEW" ok none
+}
+
+# On demand, from the state: back to PREVIOUS_SHA on PREVIOUS_COLOR. A window deploy is rolled back
+# with its window backup (rows written since are lost); a zero-downtime one restores nothing. One level
+# only: afterwards there is no previous release to go back to.
+cmd_rollback() {
+  acquire_lock
+  [[ "$ACTIVE" != none && "$PREVIOUS_COLOR" != none && -n "$PREVIOUS_SHA" ]] || die "não há deploy anterior para voltar"
+  local back="$PREVIOUS_COLOR" from="$ACTIVE" sha="$PREVIOUS_SHA" backup=""
+  RUN_MODE="${MODE:-zero-downtime}"
+  if [[ "$RUN_MODE" == window ]]; then
+    backup="$WINDOW_BACKUP"
+    [[ -n "$backup" ]] || die "o deploy em janela não registrou o backup da janela"
+  fi
+  log "rollback ($RUN_MODE): api-$from -> api-$back ($sha)"
+  # The stopped color's tag may be stale; compose starts it with whatever colors.env says.
+  set_color_tag "$back" "$sha"
+  save_state
+  start_db
+  if ! return_to "$back" "$sha" "$from" "$backup"; then
+    if [[ -z "$UPSTREAM_SWITCHED" ]]; then
+      compose stop "api-$back" || true
+      log "ERRO: rollback falhou antes da troca; api-$from continua servindo"
+      result "$CURRENT_SHA" "$ACTIVE" none failed
+      exit 2
+    fi
+    rollback_failed "$sha" none
+  fi
+  ACTIVE="$back" CURRENT_SHA="$sha" PREVIOUS_SHA="" PREVIOUS_COLOR=none MODE="" WINDOW_BACKUP=""
+  save_state
+  log "rollback concluído: api-$back servindo $sha"
+  result "$sha" "$back" none ok
 }
 
 main() {
@@ -477,12 +616,13 @@ main() {
   init_state
   case "$cmd" in
     deploy) cmd_deploy "$@" ;;
+    rollback) cmd_rollback ;;
     backup) cmd_backup ;;
     restore) cmd_restore "$@" ;;
     status) cmd_status ;;
     migrate) cmd_migrate ;;
     exec-api) cmd_exec_api "$@" ;;
-    *) die "uso: deploy.sh {deploy <sha>|backup|restore <dir>|status|migrate|exec-api <args…>}" ;;
+    *) die "uso: deploy.sh {deploy <sha> [--window]|rollback|backup|restore <dir>|status|migrate|exec-api <args…>}" ;;
   esac
 }
 

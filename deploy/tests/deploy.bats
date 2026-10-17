@@ -55,6 +55,14 @@ load helpers
   RUINA_HEALTH_TIMEOUT=abc run "$RUINA_REPO_DIR/deploy/deploy.sh" status
   [ "$status" -ne 0 ]
   [[ "$output" == *"RUINA_HEALTH_TIMEOUT"* ]]
+  # Leading zeros: bash arithmetic would read 010 as octal 8.
+  RUINA_HEALTH_TIMEOUT=010 run "$RUINA_REPO_DIR/deploy/deploy.sh" status
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"RUINA_HEALTH_TIMEOUT"* ]]
+  RUINA_KEEP_BACKUPS=05 run "$RUINA_REPO_DIR/deploy/deploy.sh" status
+  [ "$status" -ne 0 ]
+  RUINA_DRAIN_SECONDS=0 run "$RUINA_REPO_DIR/deploy/deploy.sh" status
+  [ "$status" -eq 0 ]
 }
 
 @test "select_prunable keeps the newest N plus the current and previous" {
