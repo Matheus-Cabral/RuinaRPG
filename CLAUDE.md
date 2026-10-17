@@ -16,8 +16,9 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 ## Build, test, and run
 
 - `dotnet build` — builds the whole solution. It is expected to finish with **0 warnings, 0 errors**; treat a new warning as a failure.
-- `dotnet test` — runs `tests/RuinaRPG.Tests.Unit` and `tests/RuinaRPG.Tests.Integration`. **Requires a running Docker daemon**: the integration tests spin up a real PostgreSQL via Testcontainers. Narrow a run with `dotnet test --filter FullyQualifiedName~SomeTests`.
-- `cp .env.example .env && make deploy` — brings the full stack (`db`, `api`, `nginx`) up locally on <http://localhost>. `/api/health` should answer `OK`.
+- `dotnet test` — runs `tests/RuinaRPG.Tests.Unit`, `tests/RuinaRPG.Tests.Client` and `tests/RuinaRPG.Tests.Integration`. **Requires a running Docker daemon**: the integration tests spin up a real PostgreSQL via Testcontainers. Narrow a run with `dotnet test --filter FullyQualifiedName~SomeTests`.
+- Pipeline tests: `deploy/tests/run-bats.sh` (bats; optionally pass specific `.bats` files) and `python3 -m unittest deploy/tests/test_compare.py`.
+- `cp .env.example .env && make deploy` — `make deploy` calls `deploy/deploy.sh deploy "$(git rev-parse HEAD)"` (blue-green: `db`, `api-blue`/`api-green`, `web`) and brings the stack up locally on <http://localhost>. `/api/health` should answer `OK`.
 - EF Core migrations: `dotnet ef migrations add <Name> --project src/RuinaRPG.Infrastructure --startup-project src/RuinaRPG.Api --output-dir Persistence/Migrations`.
 
 **TDD is mandatory** (`Docs/Requisitos/Requisitos - Técnico.md` R0011): write the failing test first, then the minimum code to pass it — for every unit of behavior, not just the convenient ones.
@@ -26,16 +27,18 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 
 | Target | Effect |
 |---|---|
-| `make deploy` (or `make up`) | Builds the images and starts all containers. |
-| `make down` | Stops the containers, keeping images and volumes. |
+| `make deploy` (or `make up`) | `deploy/deploy.sh deploy <HEAD sha>`: builds, migrates, starts the idle color, switches nginx. Manual path; the normal deploy is the pipeline. |
+| `make down` | `docker compose down`: stops the containers, keeping images and volumes. |
 | `make clean` | Removes containers, locally-built images and orphans. **Keeps** the named `pgdata`/`images` volumes. |
 | `make clean-data` | Same as `clean`, but **also deletes the named data volumes**. Destructive — data is gone. |
 | `make logs` | Follows the container logs. |
-| `make migrate` | Applies pending EF Core migrations against the running stack. |
+| `make migrate` | `deploy/deploy.sh migrate`: migrations + seeders with the active color's image. |
+| `make status` / `make rollback` | `deploy.sh status` (colors, newest backups) / `deploy.sh rollback` (previous release; a window deploy restores its window backup). |
+| `make grant-rules-auditor`, `revoke-rules-auditor`, `reset-gm-password` | `EMAIL=...`; run in the active color via `deploy.sh exec-api`. |
 
 ### Development vs. Production
 
-`.env.example` defaults to `ASPNETCORE_ENVIRONMENT=Development`, which is right for local work: pending migrations are applied automatically at API startup and Swagger is exposed. A **real deploy must set `ASPNETCORE_ENVIRONMENT=Production`**, and there migrations are never automatic (Técnico R0009) — `make migrate` becomes a mandatory explicit step after `make deploy`. Every secret comes from environment variables (Técnico R0003); the API refuses to start if the `Jwt__*` variables are missing or the signing key is shorter than 32 bytes.
+`.env.example` defaults to `ASPNETCORE_ENVIRONMENT=Development`, which is right for local work: pending migrations are applied automatically at API startup and Swagger is exposed. A **real deploy must set `ASPNETCORE_ENVIRONMENT=Production`**, and there migrations are never automatic at API startup (Técnico R0009) — `deploy.sh` runs them in a one-off container with the new image before switching colors (`make migrate` re-runs them manually). The normal production deploy is the pipeline (Técnico R0013–R0016): PR to `main` → CI + clone of production → auto-merge → `deploy.yml` via the SSH gate; see `deploy/provision/README.md`. Migrations must stay backward compatible with the previous release, or the PR gets the `deploy:janela` label. Every secret comes from environment variables (Técnico R0003); the API refuses to start if the `Jwt__*` variables are missing or the signing key is shorter than 32 bytes.
 
 ## Repository structure
 
@@ -55,7 +58,7 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
   - `Requisitos - Campanha.md` — the hub tying players, sheets, and library content together: membership, per-attachment public/private visibility, granting NPC/Criatura sheets to players as pets/summons, the GM-only diary, and player-targeted secret notes.
   - `Requisitos - Convite de Jogador.md`, `Requisitos - Gerenciador de Encontros.md`, `Requisitos - Compêndio de Regras.md` — invite-code flow, GM-only combat/initiative state tracker, and a read-only searchable index over `Docs/Sistema RPG/`.
   - `Requisitos - Login e Cadastro.md` — the three unauthenticated pages (landing, login, signup with GM/Player tabs).
-  - `Requisitos - Técnico.md` — chosen stack (ASP.NET Core 8 + EF Core/Npgsql/PostgreSQL + SignalR + Blazor WebAssembly, self-hosted via Docker/nginx), solution layout (Domain/Infrastructure/Contracts/Api/Client/Tests), env vars, auth/authorization model, and deploy notes (host only needs git/docker/make; hosted on a Proxmox-homelab Ubuntu VM behind a Cloudflare Tunnel).
+  - `Requisitos - Técnico.md` — chosen stack (ASP.NET Core 8 + EF Core/Npgsql/PostgreSQL + SignalR + Blazor WebAssembly, self-hosted via Docker/nginx), blue-green deploy pipeline (R0013–R0016), solution layout (Domain/Infrastructure/Contracts/Api/Client/Tests), env vars, auth/authorization model, and deploy notes (host only needs git/docker/make; hosted on a Proxmox-homelab Ubuntu VM behind a Cloudflare Tunnel).
   - `Requisitos - Modelo de Dados.md` — the relational schema (Postgres via EF Core) implementing all of the above: entities, columns, FKs. Non-functional like Técnico; states 3 recurring linking patterns (independent copy / live catalog reference / live-link to another sheet) once in a legend rather than re-explaining them per table — read that legend first. This and Técnico are what `src/` implements — keep the schema here and the EF Core model in sync.
 
 ### Code
@@ -66,7 +69,10 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 - `src/RuinaRPG.Api` — ASP.NET Core 8 Web API (controllers), the composition root in `Program.cs`.
 - `src/RuinaRPG.Client` — Blazor WebAssembly 8 standalone app, served by nginx.
 - `tests/RuinaRPG.Tests.Unit`, `tests/RuinaRPG.Tests.Integration` — xUnit; the integration project drives the real API over HTTP against a Testcontainers PostgreSQL.
-- `infra/nginx/` — the nginx image that builds the Blazor client, serves it, and reverse-proxies `/api/` and `/hubs/` to the API.
+- `infra/client/` — Dockerfile that builds the Blazor client; the result is published to versioned releases under the nginx webroot. `deploy/nginx/` holds the long-lived nginx config (static client, `/api/` and `/hubs/` proxy to the active color).
+- `deploy/` — `deploy.sh` (blue-green deploy, backup/restore, rollback), `gate.sh` (SSH forced command), `clone.sh` (release validation against a production clone), `fingerprint.sh`/`compare.py`/`data-changes.yml`, `provision/` (one-time runbooks), `tests/` (bats + python).
+- `tools/RuinaRPG.Smoke` — read-only smoke run after deploys and in the clone.
+- `.github/workflows/` — `release.yml` (PR validation, auto-merge) and `deploy.yml` (production deploy).
 
 ## Conventions to follow when editing `Docs/`
 

@@ -33,11 +33,15 @@ src/
   RuinaRPG.Contracts       Records de request/response compartilhados entre API e cliente
   RuinaRPG.Api             Web API (controllers) — composition root em Program.cs
   RuinaRPG.Client          Blazor WebAssembly, servido pelo nginx
+tools/
+  RuinaRPG.Smoke           Smoke somente-leitura usado pelo deploy e pela validação do release
+deploy/                    deploy.sh (blue-green), gate.sh, clone.sh, nginx/, provision/, tests/
+.github/workflows/         release.yml (validação do PR) e deploy.yml (produção)
 tests/
   RuinaRPG.Tests.Unit
   RuinaRPG.Tests.Integration
   RuinaRPG.Tests.Client
-infra/nginx/               Imagem nginx: builda o cliente Blazor, serve estático e faz proxy de /api/ e /hubs/
+infra/client/              Build do cliente Blazor (publicado em releases versionados servidos pelo nginx de deploy/nginx/)
 ```
 
 Sete arquivos de `Docs/Sistema RPG/` (`Ruína RPG - Sistema Básico.md`, `Tabela de Níveis.md`, `Tabela de Vocação.md`, `Tabela de Arquetipos.md`, `Tabela de Circulo e Grau por EAP.md`, `Tabelas de XP, Atributos, Características e EAP.md`, `GRAUS & CÍRCULOS.md`) são embarcados como build resources em `RuinaRPG.Infrastructure` e parseados em runtime por `IRulesDataProvider` — editar a estrutura de tabelas neles pode quebrar a API, não só a documentação.
@@ -48,7 +52,7 @@ Pré-requisitos: [Docker](https://docs.docker.com/get-docker/) e `make`.
 
 ```bash
 cp .env.example .env
-make deploy   # builda as imagens e sobe db, api e nginx
+make deploy   # chama deploy/deploy.sh: builda as imagens e sobe db, api (blue/green) e nginx
 ```
 
 A aplicação fica disponível em <http://localhost>, e `/api/health` deve responder `OK`.
@@ -57,22 +61,27 @@ A aplicação fica disponível em <http://localhost>, e `/api/health` deve respo
 
 | Alvo | Efeito |
 |---|---|
-| `make deploy` (ou `make up`) | Builda as imagens e sobe todos os containers. |
+| `make deploy` (ou `make up`) | Chama `deploy/deploy.sh deploy <sha do HEAD>`: builda, migra e troca a cor ativa. Caminho manual. |
 | `make down` | Para os containers, mantendo imagens e volumes. |
 | `make clean` | Remove containers, imagens locais e órfãos. **Mantém** os volumes nomeados (`pgdata`/`images`). |
 | `make clean-data` | Igual a `clean`, mas **também apaga os volumes de dados nomeados**. Destrutivo — os dados se vão. |
 | `make logs` | Segue os logs dos containers. |
-| `make migrate` | Aplica as migrations do EF Core pendentes contra a stack em execução. |
+| `make migrate` | `deploy/deploy.sh migrate`: migrations e seeders com a imagem da cor ativa. |
+| `make status` | Cor ativa, releases e backups mais recentes. |
+| `make rollback` | Volta para a release anterior (num deploy em janela, restaura o backup da janela). |
+| `make grant-rules-auditor` / `revoke-rules-auditor` / `reset-gm-password` | `EMAIL=...`; rodam na cor ativa via `deploy.sh exec-api`. |
 
 ### Desenvolvimento vs. Produção
 
-`.env.example` vem com `ASPNETCORE_ENVIRONMENT=Development`, o modo certo para rodar local: migrations pendentes são aplicadas automaticamente na subida da API e o Swagger fica exposto. **Um deploy real deve usar `ASPNETCORE_ENVIRONMENT=Production`**, onde as migrations nunca são automáticas — `make migrate` se torna um passo explícito obrigatório depois de `make deploy`. Todo segredo vem de variáveis de ambiente; a API se recusa a iniciar se as variáveis `Jwt__*` estiverem ausentes ou a chave de assinatura tiver menos de 32 bytes.
+`.env.example` vem com `ASPNETCORE_ENVIRONMENT=Development`, o modo certo para rodar local: migrations pendentes são aplicadas automaticamente na subida da API e o Swagger fica exposto. **Um deploy real deve usar `ASPNETCORE_ENVIRONMENT=Production`**, onde as migrations nunca são automáticas na subida da API: o `deploy.sh` as executa, com a imagem nova, antes de trocar a cor ativa (`make migrate` serve para reaplicá-las manualmente). Todo segredo vem de variáveis de ambiente; a API se recusa a iniciar se as variáveis `Jwt__*` estiverem ausentes ou a chave de assinatura tiver menos de 32 bytes.
 
 ## Build e testes
 
 ```bash
 dotnet build   # builda a solução inteira — deve terminar com 0 warnings, 0 errors
-dotnet test    # roda os testes unitários e de integração
+dotnet test    # roda os testes unitários, de cliente e de integração
+deploy/tests/run-bats.sh                     # testes bats do pipeline (deploy, gate, clone...)
+python3 -m unittest deploy/tests/test_compare.py   # comparador de impressões digitais
 ```
 
 `dotnet test` **requer um daemon Docker em execução**: os testes de integração sobem um PostgreSQL real via Testcontainers. Para restringir a execução:
@@ -91,6 +100,20 @@ dotnet ef migrations add <Nome> \
   --startup-project src/RuinaRPG.Api \
   --output-dir Persistence/Migrations
 ```
+
+## Deploy e releases (2.0.0)
+
+O deploy normal é automático (`Docs/Requisitos/Requisitos - Técnico.md`, R0013-R0016); o provisionamento único das máquinas, chaves e segredos está em [`deploy/provision/README.md`](deploy/provision/README.md).
+
+**O que acontece num PR para `main`** (`release.yml`, só PRs do dono): CI completo, depois um clone descartável com um dump real da produção, onde o `main` e o PR são implantados em sequência; as impressões digitais dos dados antes/depois, o smoke somente-leitura e a compatibilidade da versão anterior com o novo schema são conferidos. Aprovado: o PR sai de rascunho e o auto-merge é habilitado. Ao entrar na `main`, `deploy.yml` implanta em produção (blue-green, sem downtime; com o rótulo `deploy:janela`, em janela de manutenção), faz smoke, e reverte sozinho se algo falhar.
+
+**Lendo uma validação reprovada**: o PR vira rascunho e recebe um comentário "Validação do release falhou" com o resultado do `ci` e do `clone` e o relatório do clone (etapa que falhou, achados de perda/alteração de dados). Dados que mudam de propósito devem ser declarados em `deploy/data-changes.yml`. Os logs completos ficam no link da execução e no artefato `clone-logs` (3 dias).
+
+**Ensaio sem PR**: Actions > `release` > *Run workflow* (`workflow_dispatch`, opcionalmente informando o sha) roda a mesma validação, sem comentar nem fazer merge.
+
+**Caminho manual de emergência** (na VM de produção, no checkout): `make deploy`, `make migrate`, `make status`, `make rollback`; `deploy/deploy.sh deploy <sha> --window` para uma janela, `deploy/deploy.sh backup` e `deploy/deploy.sh restore <diretório>` (sob manutenção).
+
+**Backups**: em produção, `/var/backups/ruinarpg` (`root`, `0700`; um por deploy, os 5 mais recentes, mais o da janela e o do último deploy); nesta VM, cópias de cada dump em `/var/backups/ruinarpg-offsite` (5 mais recentes).
 
 ## Documentação
 

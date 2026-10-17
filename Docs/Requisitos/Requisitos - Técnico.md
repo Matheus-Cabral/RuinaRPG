@@ -81,9 +81,11 @@
 
 Um `docker-compose.yml` define os serviços:
 
-- **api**: a aplicação ASP.NET Core.
+- **api-blue** e **api-green**: duas "cores" da aplicação ASP.NET Core; só uma serve por vez e a outra é a destinada ao próximo deploy (R0014).
 - **db**: PostgreSQL, com volume nomeado para persistência dos dados.
-- **nginx**: serve os arquivos estáticos do Blazor WebAssembly, atua como reverse proxy para a **api**, e serve as imagens do volume de armazenamento (R0001).
+- **web** (nginx de longa duração): serve os arquivos estáticos do Blazor WebAssembly a partir de releases versionados, atua como reverse proxy para a cor ativa da api, e serve as imagens do volume de armazenamento (R0001).
+
+O deploy normal é o pipeline (R0013–R0015). O build do cliente fica em `infra/client/` e a configuração do nginx em `deploy/nginx/`.
 
 Volumes nomeados separados para os dados do Postgres e para as imagens armazenadas, para facilitar backup independente de cada um.
 
@@ -93,11 +95,13 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 
 **Descrição**: Um `Makefile` na raiz do projeto expõe os comandos operacionais mais comuns como alvos de `make`, entre eles:
 
-- `make deploy` (ou `make up`): builda as imagens e sobe todos os containers.
+- `make deploy` (ou `make up`): caminho manual de emergência — chama `deploy/deploy.sh deploy <sha do HEAD>` (R0014). O deploy normal é o pipeline (R0013–R0015).
 - `make down`: para os containers.
 - `make clean`: remove containers, imagens e volumes não utilizados (sem apagar os volumes nomeados de dados/imagens, salvo um alvo separado e explícito para isso).
-- `make migrate`: aplica migrations pendentes em produção (ver "Aplicação de migrations do EF Core" abaixo).
-- `make grant-rules-auditor EMAIL=...` / `make revoke-rules-auditor EMAIL=...`: designa (ou revoga) uma conta de GM, localizada pelo e-mail (case-insensitive), como Auditor de Regras. Tem efeito imediato — checado a cada requisição direto no banco, sem precisar relogar. Conceder é recusado se a conta indicada não for de GM; revogar é sempre aceito.
+- `make migrate`: chama `deploy/deploy.sh migrate`, que aplica migrations e seeders pendentes com a imagem da cor ativa (ver "Aplicação de migrations do EF Core" abaixo). É o caminho manual; no deploy normal o `deploy.sh` já migra.
+- `make status`: mostra a cor ativa, as releases e os backups mais recentes (`deploy.sh status`).
+- `make rollback`: volta para a release anterior (`deploy.sh rollback`, R0015).
+- `make grant-rules-auditor EMAIL=...` / `make revoke-rules-auditor EMAIL=...` (executados na cor ativa via `deploy.sh exec-api`): designa (ou revoga) uma conta de GM, localizada pelo e-mail (case-insensitive), como Auditor de Regras. Tem efeito imediato — checado a cada requisição direto no banco, sem precisar relogar. Conceder é recusado se a conta indicada não for de GM; revogar é sempre aceito.
 - `make reset-gm-password EMAIL=...`: recuperação de senha de GM (ver "[[Requisitos - Login e Cadastro]]" R0005) — localiza a conta de GM pelo e-mail, gera uma senha temporária e imprime o Nickname e a senha no console. Também revoga todos os refresh tokens ativos daquela conta e marca a conta para exigir troca de senha no próximo login.
 - `make logs`: acompanha os logs dos containers.
 
@@ -105,9 +109,11 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 
 # **R0009** - Aplicação de migrations do EF Core.
 
-**Descrição**: Em ambiente de **desenvolvimento**, migrations pendentes são aplicadas automaticamente na inicialização da Api. Em ambiente de **produção**, a aplicação de migrations é um passo explícito do processo de deploy — `make migrate` (R0008), não automático na inicialização — para evitar uma migration destrutiva rodar sem revisão prévia.
+**Descrição**: Em ambiente de **desenvolvimento**, migrations pendentes são aplicadas automaticamente na inicialização da Api. Em ambiente de **produção**, a aplicação de migrations nunca é automática na inicialização: o `deploy/deploy.sh` a executa como passo explícito do deploy, num container avulso com a **imagem nova** (`--migrate`), **antes** da troca de cor — para evitar uma migration destrutiva rodar sem revisão prévia (o pipeline a valida contra um clone da produção, R0013). `make migrate` (R0008) continua existindo como caminho manual.
 
-**Versão 1.5.0**: esta versão traz migrations que o código usa já no primeiro request: todo salvamento de ficha grava o log de ficha ([[Requisitos - Campanha]] R0016, R0012 abaixo) e as tabelas de encontros e de Condições são novas. Em produção, portanto, `make migrate` deve rodar **logo após** `make deploy`, com os jogadores fora do aplicativo; enquanto ele não rodar, salvar uma ficha falha.
+Como a cor antiga segue atendendo enquanto a migration roda, toda migration deve ser retrocompatível com a release anterior; quando não for, o PR recebe o rótulo `deploy:janela` e o deploy ocorre em janela de manutenção (R0014).
+
+**Versão 1.5.0**: esta versão traz migrations que o código usa já no primeiro request: todo salvamento de ficha grava o log de ficha ([[Requisitos - Campanha]] R0016, R0012 abaixo) e as tabelas de encontros e de Condições são novas. Por isso o `deploy.sh` migra antes de colocar a cor nova na frente do nginx; no caminho manual antigo (`make deploy` seguido de `make migrate`) salvar uma ficha falhava enquanto a migration não rodasse. A 1.5.0 não tem `deploy/deploy.sh`: o primeiro release do pipeline é validado em modo de bootstrap e roda em janela (R0013).
 
   
 
@@ -117,6 +123,7 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 
 Implicações para o deploy:
 
+- O deploy é disparado pelo runner na VM de desenvolvimento (`192.168.80.16`) e chega à produção (`192.168.80.10`) por SSH, apenas através do porteiro (R0016).
 - O **nginx** (R0007) não precisa gerenciar certificado TLS próprio nem terminar HTTPS para o domínio público — a Cloudflare faz a terminação TLS na borda do túnel. O nginx atende em HTTP simples na rede interna do homelab.
 - `Cors__AllowedOrigins` (R0003) deve incluir o domínio público servido através do túnel Cloudflare, além de qualquer origem de desenvolvimento local.
 
@@ -140,3 +147,51 @@ Implicações para o deploy:
 - O que entra no log, e com qual rótulo, é definido numa tabela única no código (`SheetLogMap`): cada tabela de ficha e cada coluna dela tem um rótulo, está marcada como texto longo (registrado sem o conteúdo) ou está na lista de ignoradas. **Uma tabela ou coluna de ficha nova precisa ser acrescentada a essa tabela** — um teste automatizado falha enquanto ela não estiver classificada.
 - Operações em massa que não passam pelo rastreador do EF Core (`ExecuteUpdate`, `ExecuteDelete`, SQL direto) **não** disparam o interceptor e, portanto, não geram log. O único uso atual sobre tabelas de ficha é o do Auditor de Regras ao remover uma Perícia, que zera o Gasto dela em todas as fichas ([[Requisitos - Auditoria de Regras]]): é manutenção do catálogo, não edição de ficha, e fica fora do log de propósito. Uma nova operação em massa sobre tabelas de ficha deve decidir explicitamente se precisa registrar log.
 - Uma coluna zerada pelo próprio banco quando a linha que ela referencia é apagada (`ON DELETE SET NULL`: a imagem, o Histórico ou a Equipagem de uma ficha) também não passa pelo interceptor e não é registrada, como a operação em massa acima.
+
+  
+
+# **R0013** - Releases validados contra um clone da produção.
+
+**Descrição**: Todo PR para `main` (somente de branch do próprio repositório e do dono) passa pelo workflow `release.yml`, que só libera o merge depois de:
+
+- **CI**: `dotnet build -warnaserror`, os testes unitários, de cliente e de integração, os testes do pipeline (`python3 -m unittest deploy/tests/test_compare.py` e `deploy/tests/run-bats.sh`).
+- **Clone com dados reais**: `deploy/clone.sh` obtém um dump da produção pelo porteiro (R0016), restaura-o num projeto Compose descartável e faz nele o deploy da `main` (base) e, em seguida, o do PR (head) com o `deploy.sh` do próprio PR. Cada dump também fica guardado fora da máquina de produção (`/var/backups/ruinarpg-offsite`, os 5 mais recentes).
+- **Impressão digital dos dados** antes e depois do deploy do head: perda ou alteração de dados fora do que está declarado em `deploy/data-changes.yml` reprova o release.
+- **Smoke somente-leitura** (`tools/RuinaRPG.Smoke`) contra a cor nova.
+- **Compatibilidade da versão anterior**: a API da base precisa continuar rodando sobre o schema já migrado. Se não rodar, o resultado é `janela` e o PR ganha o rótulo `deploy:janela` (R0014).
+
+Reprovação: o PR recebe um comentário com o diagnóstico (a falha de cada etapa e o relatório do clone) e volta a rascunho. Aprovação: o PR sai de rascunho e o auto-merge é habilitado. O clone é sempre desmontado ao fim, mesmo se o job for cancelado. Ensaio sem PR: `workflow_dispatch` do `release.yml` (informando o sha) roda a validação sem comentar nem fazer merge.
+
+Quando a base não tem `deploy/deploy.sh` (a 1.5.0), o clone entra em modo de **bootstrap**: parte do head, tira a impressão digital A do próprio dump restaurado, pula o deploy da base e a verificação de compatibilidade, e força `janela`.
+
+  
+
+# **R0014** - Deploy blue-green sem downtime.
+
+**Descrição**: Após o merge, `deploy.yml` (um deploy por vez, ambiente `production`) pede à produção `deploy <sha da main>` (R0016), que executa `deploy/deploy.sh deploy <sha>`:
+
+- Existem duas cores da API (`api-blue`, `api-green`). O deploy builda as imagens do sha, roda as migrations e seeders com a imagem nova, sobe a cor ociosa, espera o health check e só então troca o upstream do **nginx** (de longa duração, apenas recarregado — nunca recriado) para ela. A cor antiga é drenada por 30 s e parada.
+- O cliente Blazor é publicado em releases versionados (`webroot/releases/<sha>`) e o `webroot/current` é trocado por symlink atômico; mantêm-se as 3 últimas releases e imagens (mais a atual e a anterior).
+- **Migration incompatível** (rótulo `deploy:janela`, ou `deploy <sha> --window`): abre-se uma **janela de manutenção** — o nginx passa a responder **503 com o cabeçalho `X-Ruina-Manutencao`**, a cor antiga é parada, faz-se o backup da janela, migra-se e troca-se a cor.
+- **Cliente**: o `RetryHandler` retenta, sem mostrar mensagem, qualquer requisição que receba o 503 de manutenção (e GET/HEAD em outros 502/503 ou falhas de rede), por até 90 s. Conexões SignalR reconectam por até **5 minutos** (`LongReconnectPolicy`). O `NewVersionWatcher` compara o sha do cliente com o de `GET /api/version` (a cada 5 minutos, ao reconectar e ao focar a aba) e exibe o aviso "Nova versão disponível" (`NewVersionNotice`, com ícone do MudBlazor).
+
+  
+
+# **R0015** - Backups e rollback.
+
+**Descrição**: 
+
+- **Backup antes de cada deploy**: `deploy.sh` grava `pg_dump` e o volume de imagens em `/var/backups/ruinarpg/<timestamp>-<sha7>` (diretório `root` `0700`, os dumps têm o hash das senhas). Mantêm-se **5** na produção — o backup da janela e o do último deploy nunca contam nem são podados — e **5** cópias fora da máquina nesta VM (R0013).
+- **Smoke pós-deploy** na própria produção, contra a cor nova, antes de a cor antiga ser parada.
+- **Rollback automático**: qualquer falha entre o início da troca e o smoke (migration, health check, nginx, smoke) devolve a release anterior. No modo **sem downtime** o rollback **nunca restaura dados** (só reaponta nginx e cliente e para a cor nova, preservando o que foi escrito). No modo **janela** restaura o backup tirado dentro da janela, sob manutenção.
+- **Rollback sob demanda** (`deploy.sh rollback` / `make rollback`): volta um nível, para a release anterior. Num deploy em janela restaura o backup da janela e, antes, **salva uma cópia dos dados que serão descartados** (se a cópia falhar, nada é alterado).
+- `deploy.sh restore <backup>` carrega um backup de volta de forma atômica (o banco numa transação, depois as imagens), sob manutenção, sem cópia de segurança prévia.
+- Uma falha irrecuperável deixa o nginx em manutenção e é reportada; `deploy.sh status` mostra o estado e os backups.
+
+  
+
+# **R0016** - Porteiro de comando forçado.
+
+**Descrição**: O pipeline só alcança a produção por SSH com chaves cujo `authorized_keys` impõe um comando forçado (`sudo /opt/ruinarpg/gate.sh`, `deploy/gate.sh`). O porteiro aceita somente `dump`, `status` e `deploy <sha de 40 hex que já está na origin/main> [--window]`, validados por uma gramática exata antes de qualquer execução; todo o resto é recusado. O `sudoers` autoriza apenas o porteiro (preservando só `SSH_ORIGINAL_COMMAND`).
+
+Há **duas chaves**: a de **dump**, no disco do runner (onde roda código de PR), é forçada a `gate.sh dump-only` e nunca faz deploy; a de **deploy** existe somente como segredo do Environment `production` e vive num `ssh-agent` apenas durante o job de deploy. O token de merge fica fora do runner (o job `report` roda em máquina hospedada pelo GitHub). Riscos aceitos e o passo a passo de provisionamento estão em `deploy/provision/README.md`.

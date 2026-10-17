@@ -1,7 +1,9 @@
-.PHONY: deploy up down clean clean-data logs migrate grant-rules-auditor revoke-rules-auditor reset-gm-password
+.PHONY: deploy up down clean clean-data logs migrate status rollback grant-rules-auditor revoke-rules-auditor reset-gm-password
 
+# Caminho manual (emergência/local): o deploy normal é o pipeline (Técnico R0013-R0015).
+# deploy.sh builda as imagens, migra e troca a cor ativa do nginx (blue-green).
 deploy up:
-	docker compose --env-file .env up --build -d
+	deploy/deploy.sh deploy "$$(git rev-parse HEAD)"
 
 down:
 	docker compose down
@@ -20,17 +22,25 @@ logs:
 	docker compose logs -f
 
 migrate:
-	docker compose exec api dotnet RuinaRPG.Api.dll --migrate
+	deploy/deploy.sh migrate
+
+# Cor ativa, releases e os backups mais recentes.
+status:
+	deploy/deploy.sh status
+
+# Volta para a release anterior (um nível). Num deploy em janela, restaura o backup da janela.
+rollback:
+	deploy/deploy.sh rollback
 
 grant-rules-auditor:
-	docker compose exec api dotnet RuinaRPG.Api.dll --grant-rules-auditor $(EMAIL)
+	deploy/deploy.sh exec-api --grant-rules-auditor $(EMAIL)
 
 revoke-rules-auditor:
-	docker compose exec api dotnet RuinaRPG.Api.dll --revoke-rules-auditor $(EMAIL)
+	deploy/deploy.sh exec-api --revoke-rules-auditor $(EMAIL)
 
 # Prints a temporary password for the GM account with this email — that GM must log in with it
 # and will be forced to set a new password before using the rest of the panel. No mailing service
 # is configured (Técnico R0003), so it's up to the operator to hand the temporary password to the
 # GM out-of-band.
 reset-gm-password:
-	docker compose exec api dotnet RuinaRPG.Api.dll --reset-gm-password $(EMAIL)
+	deploy/deploy.sh exec-api --reset-gm-password $(EMAIL)
