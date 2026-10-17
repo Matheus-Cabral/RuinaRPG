@@ -1,7 +1,19 @@
 # Producao (192.168.80.10)
 
-Rode como um usuario com sudo, dentro de um checkout do repositorio na branch `release/2.0.0`
-(ex.: `/home/ruina/RuinaRPG`; veja a parte C se ele ainda estiver na `main`/1.5.0).
+Rode como um usuario com sudo, dentro do checkout do repositorio com `deploy/` (ex.: `/home/ruina/RuinaRPG`; faca a Parte 0 primeiro).
+
+## Parte 0: trazer `deploy/` ao checkout (producao ainda na 1.5.0)
+
+O checkout de producao e a `main` (1.5.0) e nao tem `deploy/`, que a Parte A usa. Traga so a pasta `deploy`
+como arquivos nao rastreados, como o dono do checkout (`ruina`):
+
+0. ```bash
+   sudo -u ruina git -C /home/ruina/RuinaRPG fetch origin
+   sudo -u ruina git -C /home/ruina/RuinaRPG archive origin/release/2.0.0 deploy | sudo -u ruina tar -x -C /home/ruina/RuinaRPG
+   ```
+   Isto reaproveita os volumes `ruinarpg_pgdata` e `ruinarpg_images` pelo servico `db` do compose antigo.
+   Para o passo H: rode `sudo -u ruina rm -rf /home/ruina/RuinaRPG/deploy` (arquivos nao rastreados) antes de trocar para o checkout real.
+   **Verificacao:** `ls /home/ruina/RuinaRPG/deploy/deploy.sh` existe.
 
 ## Parte A: gate e sudoers
 
@@ -26,7 +38,7 @@ Rode como um usuario com sudo, dentro de um checkout do repositorio na branch `r
 3. Prepare o `authorized_keys` do `deploy`:
    ```bash
    sudo install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
-   sudo install -m 600 -o deploy -g deploy /dev/null /home/deploy/.ssh/authorized_keys
+   [ -f /home/deploy/.ssh/authorized_keys ] || sudo install -m 600 -o deploy -g deploy /dev/null /home/deploy/.ssh/authorized_keys
    ```
    **Verificacao:** `sudo ls -l /home/deploy/.ssh/authorized_keys` mostra `-rw------- deploy deploy`.
 
@@ -51,19 +63,9 @@ Rode como um usuario com sudo, dentro de um checkout do repositorio na branch `r
    ```
    **Verificacao:** `sudo wc -l /home/deploy/.ssh/authorized_keys` imprime `2`.
 
-## Parte C: antes do primeiro ensaio (producao ainda na 1.5.0)
+## Parte C: testar o caminho do gate (antes do primeiro ensaio)
 
-O checkout de producao e a `main` (1.5.0) e nao tem `deploy/`. Para o `dump` funcionar nos ensaios,
-traga so a pasta `deploy` como arquivos nao rastreados (o passo H troca isto pelo checkout real):
-
-6. ```bash
-   git -C /home/ruina/RuinaRPG fetch origin
-   git -C /home/ruina/RuinaRPG archive origin/release/2.0.0 deploy | sudo -u ruina tar -x -C /home/ruina/RuinaRPG
-   ```
-   Isto reaproveita os volumes `ruinarpg_pgdata` e `ruinarpg_images` pelo servico `db` do compose antigo.
-   **Verificacao:** `ls /home/ruina/RuinaRPG/deploy/deploy.sh` existe.
-
-7. Teste o caminho do gate como root (sem SSH):
+6. Teste o caminho do gate como root (sem SSH):
    ```bash
    sudo env SSH_ORIGINAL_COMMAND=status /opt/ruinarpg/gate.sh
    sudo env SSH_ORIGINAL_COMMAND=dump /opt/ruinarpg/gate.sh dump-only | tar -t

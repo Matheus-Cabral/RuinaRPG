@@ -5,9 +5,9 @@ nao provisiona a si mesmo. Cada passo tem uma linha **Verificacao**; so siga adi
 
 ## Ordem
 
-1. [`producao.md`](producao.md), parte A (producao `192.168.80.10`): usuario `deploy`, gate, sudoers.
+1. [`producao.md`](producao.md), parte 0 (trazer `deploy/` ao checkout 1.5.0) e parte A (producao `192.168.80.10`): usuario `deploy`, gate, sudoers.
 2. [`runner.md`](runner.md) (esta VM, `192.168.80.16`): usuario `ghrunner`, runner, chave de dump, limpeza.
-3. [`producao.md`](producao.md), parte B: autorizar a chave de dump; parte C: preparar o primeiro ensaio.
+3. [`producao.md`](producao.md), parte B: autorizar a chave de dump; parte C: testar o caminho do gate para o primeiro ensaio.
 4. [`github.md`](github.md): Environment `production`, segredos, protecao da `main`, label.
 
 ## Duas chaves SSH

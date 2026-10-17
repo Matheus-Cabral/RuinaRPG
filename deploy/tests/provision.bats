@@ -69,3 +69,29 @@ PFX_DUMP='command="sudo /opt/ruinarpg/gate.sh dump-only",no-pty,no-port-forwardi
   grep -qF 192.168.80.10 "$P/setup-runner.sh"
   grep -qF 192.168.80.10 "$BATS_TEST_DIRNAME/../clone.sh"
 }
+
+@test "dump key is pasted in producao.md step 4 (dump-only prefix), never step 5" {
+  ! grep -q 'passo 5' "$P/setup-runner.sh"
+  grep -q 'passo 4 de producao.md' "$P/setup-runner.sh"
+  grep -q 'gate.sh dump-only' "$P/setup-runner.sh"
+}
+
+@test "producao.md: Parte 0 comes before Parte A; git runs as ruina; authorized_keys not truncated" {
+  a="$(grep -n '^## Parte 0' "$P/producao.md" | cut -d: -f1)"
+  b="$(grep -n '^## Parte A' "$P/producao.md" | cut -d: -f1)"
+  [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ]
+  grep -qF 'sudo -u ruina git -C /home/ruina/RuinaRPG fetch origin' "$P/producao.md"
+  ! grep -q '^   git -C /home/ruina' "$P/producao.md"
+  grep -qF '[ -f /home/deploy/.ssh/authorized_keys ] || sudo install' "$P/producao.md"
+}
+
+@test "runner.md checks the host key fingerprint and fixes home permissions" {
+  grep -qF 'ssh-keygen -lF 192.168.80.10' "$P/runner.md"
+  grep -qF 'chmod 755 /home/pro' "$P/runner.md"
+  grep -qF 'chmod go-w ~/.bashrc ~/.profile' "$P/runner.md"
+}
+
+@test "runner-cleanup.sh skips on inspect failure and header says cron" {
+  grep -q 'cron' "$P/runner-cleanup.sh"; ! grep -q 'systemd timer' "$P/runner-cleanup.sh"
+  grep -A1 'created=' "$P/runner-cleanup.sh" | grep -q '|| continue'
+}

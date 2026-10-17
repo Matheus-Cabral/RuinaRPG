@@ -4,7 +4,12 @@
    ```bash
    chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
    ```
-   **Verificacao:** `stat -c '%a' ~/.ssh ~/.ssh/authorized_keys` imprime `700` e `600`.
+   Tambem feche o home e os arquivos de shell, que estavam 777:
+   ```bash
+   chmod 755 /home/pro
+   chmod go-w ~/.bashrc ~/.profile
+   ```
+   **Verificacao:** `stat -c '%a' ~/.ssh ~/.ssh/authorized_keys /home/pro ~/.bashrc ~/.profile` imprime `700`, `600`, `755` e dois valores sem escrita para grupo/outros (ex.: `644`).
 
 2. Crie o usuario do runner e de acesso ao docker:
    ```bash
@@ -51,6 +56,13 @@
    ```
    **Verificacao:** `sudo -u ghrunner crontab -l` mostra a linha; `sudo -u ghrunner /home/ghrunner/runner-cleanup.sh` termina sem erro.
 
-8. Depois de autorizar a chave de dump em producao (`producao.md`, parte B), teste:
+8. Confira a chave do host de producao (o `setup-runner.sh` a registrou sem verificar, trust-on-first-use):
+   ```bash
+   sudo -u ghrunner ssh-keygen -lF 192.168.80.10
+   ```
+   e, em producao, `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`.
+   **Verificacao:** as duas impressoes digitais (`SHA256:...`) sao identicas. Se diferirem, apague a linha com `sudo -u ghrunner ssh-keygen -R 192.168.80.10` e investigue.
+
+9. Depois de autorizar a chave de dump em producao (`producao.md`, parte B), teste:
    `sudo -iu ghrunner ssh deploy@192.168.80.10 status`.
    **Verificacao:** imprime o status do gate (e nao pede senha).
