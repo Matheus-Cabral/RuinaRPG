@@ -80,25 +80,31 @@ to 1.5.0 either without migrating or by restoring the pre-deploy backup. This go
 ### B.3 Equivalence proof
 
 `tools/migrations/verificar-baseline.sh <ref-1.5.0>` (committed, kept until H is done) runs in a
-throwaway Postgres container (`docker run`, own name and port, removed at the end) and builds three
-databases:
+throwaway Postgres container (`docker run`, own name and port, removed at the end) and builds four
+databases. The old side always comes from a temporary `git worktree` of the 1.5.0 ref, the new side from
+the working tree:
 
-- **A**: `--migrate` from a temporary `git worktree` of the 1.5.0 ref (old chain + seeders);
-- **B**: `--migrate` from the working tree (baseline + seeders);
-- **C**: copy of A, then `--migrate` from the working tree (rewrite + seeders), i.e. the upgrade path.
+- **A0**: `dotnet ef database update` from the old side (old chain only, no seeders);
+- **B0**: `dotnet ef database update` from the new side (baseline only, no seeders);
+- **A**: `--migrate` from the old side (old chain + seeders);
+- **C**: copy of A (`CREATE DATABASE ... TEMPLATE`), then `--migrate` from the new side (rewrite +
+  seeders), i.e. the upgrade path production takes.
 
-Then it compares `pg_dump` outputs (plain format, `--no-owner --no-privileges`, with
-`__EFMigrationsHistory` excluded from both schema and data):
+The seeders create rows with `Guid.NewGuid()` and timestamps, so two independently seeded databases can
+never be byte-identical; that is why the A-vs-B comparison uses migrations only (A0/B0), where the only
+data is the `InsertData` of `Pericias`. Comparisons, with `pg_dump --no-owner --no-privileges` in plain
+format and `__EFMigrationsHistory` excluded from schema and data:
 
-- `--schema-only` A vs B: **must be identical** (the roadmap's byte-identical criterion);
-- full dump (schema + data) A vs B and A vs C: **must be identical**;
-- C's `__EFMigrationsHistory` holds only the baseline row.
+- `--schema-only` A0 vs B0: **must be identical** (the roadmap's byte-identical criterion);
+- full dump (schema + data) A0 vs B0: **must be identical** (proves the `Pericias` seed survived);
+- full dump A vs C: **must be identical** (the upgrade changes no row, and the 2.0.0 seeders find
+  nothing to add);
+- C's `__EFMigrationsHistory` equals B0's (the baseline row only, once the squash is in).
 
-The script exits non-zero on any difference and prints the diff. Rows are dumped in a deterministic order
-(`pg_dump` with each table's data sorted, or a normalization step that sorts each `COPY` block) so that
-physical row order never causes a false difference. The `Jwt__*` and connection variables it needs are
-set to throwaway values inside the script. It is run during B and again in H's rehearsals; it is not part
-of CI (it needs the old ref and is useless after the cutover).
+Before diffing, each `COPY` block's rows are sorted, so physical row order never causes a false
+difference. The script exits non-zero on any difference and prints the diff. The `Jwt__*`, connection
+and environment variables it needs are set to throwaway values inside the script. It is run during B and
+again in H's rehearsals; it is not part of CI (it needs the old ref and is useless after the cutover).
 
 ### B.4 Tests
 
@@ -149,7 +155,7 @@ in H's rehearsals, since production is never contacted while implementing.
 
 ## Success criteria
 
-- `verificar-baseline.sh` exits 0: schema A = B byte for byte; full dumps A = B = C; C's history is the
+- `verificar-baseline.sh` exits 0: schema and full dump A0 = B0; full dump A = C; C's history is the
   baseline row only.
 - The seven rewrite tests pass; the kept persistence tests pass unweakened; the whole suite passes.
 - `dotnet build --no-incremental`: 0 warnings, 0 errors, and faster than the baseline (number recorded).
