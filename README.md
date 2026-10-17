@@ -111,7 +111,7 @@ O deploy normal é automático (`Docs/Requisitos/Requisitos - Técnico.md`, R001
 
 **Ensaio sem PR**: Actions > `release` > *Run workflow* (`workflow_dispatch`, opcionalmente informando o sha) roda a mesma validação, sem comentar nem fazer merge.
 
-**Caminho manual de emergência** (na VM de produção, no checkout): `make deploy`, `make migrate`, `make status`, `make rollback`; `deploy/deploy.sh deploy <sha> --window` para uma janela, `deploy/deploy.sh backup` e `deploy/deploy.sh restore <diretório>` (sob manutenção).
+**Caminho manual de emergência** (na VM de produção, no checkout, sempre com `sudo`: `ruina` não está no grupo `docker`): `sudo make deploy`, `sudo make migrate`, `sudo make status`, `sudo make rollback`; `sudo deploy/deploy.sh deploy <sha> --window` para uma janela, `sudo deploy/deploy.sh backup` e `sudo deploy/deploy.sh restore <diretório>` (sob manutenção). `make deploy` implanta o HEAD como está (sem fetch nem checkout) e recusa um checkout com alterações locais em arquivos versionados. O log de cada deploy, rollback e restore fica em `deploy/state/deploy.log`.
 
 **Backups**: em produção, `/var/backups/ruinarpg` (`root`, `0700`; um por deploy, os 5 mais recentes, mais o da janela e o do último deploy); nesta VM, cópias de cada dump em `/var/backups/ruinarpg-offsite` (5 mais recentes).
 

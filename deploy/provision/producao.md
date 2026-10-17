@@ -82,3 +82,15 @@ ssh deploy@192.168.80.10 bash          # comando recusado
 ssh deploy@192.168.80.10 dump | tar -t # db.dump e images.tar
 ```
 **Verificacao:** os tres primeiros comportam-se como indicado; `deploy` com a chave de dump e sempre recusado.
+
+## Caminho manual (emergencia)
+
+`ruina` nao esta no grupo `docker`: na producao o caminho manual e sempre com `sudo`, no checkout:
+```bash
+cd /home/ruina/RuinaRPG
+sudo make status
+sudo make rollback
+sudo make deploy            # implanta o HEAD como esta; recusa alteracoes locais em arquivos versionados
+sudo deploy/deploy.sh restore /var/backups/ruinarpg/<backup>
+```
+O log de cada `deploy`, `rollback` e `restore` (incluindo os do pipeline) fica em `deploy/state/deploy.log`.

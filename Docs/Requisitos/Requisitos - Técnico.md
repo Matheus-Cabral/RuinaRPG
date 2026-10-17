@@ -154,7 +154,7 @@ Implicações para o deploy:
 
 **Descrição**: Todo PR para `main` (somente de branch do próprio repositório e do dono) passa pelo workflow `release.yml`, que só libera o merge depois de:
 
-- **CI**: `dotnet build -warnaserror`, os testes unitários, de cliente e de integração, os testes do pipeline (`python3 -m unittest deploy/tests/test_compare.py` e `deploy/tests/run-bats.sh`).
+- **CI**: `dotnet build -warnaserror`, os testes unitários, de cliente e de integração, os testes do pipeline (`python3 -m unittest deploy/tests/test_compare.py` e as suítes bats `gate.bats` e `fingerprint.bats`). As suítes bats que sobem stacks Docker (`deploy.bats`, `rollback.bats`, `clone.bats`) e a `provision.bats` rodam localmente (`deploy/tests/run-bats.sh`) e nos ensaios, não no CI.
 - **Clone com dados reais**: `deploy/clone.sh` obtém um dump da produção pelo porteiro (R0016), restaura-o num projeto Compose descartável e faz nele o deploy da `main` (base) e, em seguida, o do PR (head) com o `deploy.sh` do próprio PR. Cada dump também fica guardado fora da máquina de produção (`/var/backups/ruinarpg-offsite`, os 5 mais recentes).
 - **Impressão digital dos dados** antes e depois do deploy do head: perda ou alteração de dados fora do que está declarado em `deploy/data-changes.yml` reprova o release.
 - **Smoke somente-leitura** (`tools/RuinaRPG.Smoke`) contra a cor nova.
@@ -182,7 +182,8 @@ Quando a base não tem `deploy/deploy.sh` (a 1.5.0), o clone entra em modo de **
 **Descrição**: 
 
 - **Backup antes de cada deploy**: `deploy.sh` grava `pg_dump` e o volume de imagens em `/var/backups/ruinarpg/<timestamp>-<sha7>` (diretório `root` `0700`, os dumps têm o hash das senhas). Mantêm-se **5** na produção — o backup da janela e o do último deploy nunca contam nem são podados — e **5** cópias fora da máquina nesta VM (R0013).
-- **Smoke pós-deploy** na própria produção, contra a cor nova, antes de a cor antiga ser parada.
+- **Smoke pós-deploy** na própria produção, contra a cor nova, antes de a cor antiga ser parada. O smoke inteiro tem prazo (`RUINA_SMOKE_TIMEOUT`, 300 s; o próprio smoke para de enviar requisições aos 4 minutos e reporta os paths restantes): estourar o prazo é uma falha do smoke e dispara o rollback.
+- **Execução independente do chamador**: `deploy`, `rollback` e `restore` não morrem se o canal SSH do pipeline cair no meio (uma queda nunca pula o rollback automático), e cada execução, com a saída do docker, fica em `deploy/state/deploy.log` na produção.
 - **Rollback automático**: qualquer falha entre o início da troca e o smoke (migration, health check, nginx, smoke) devolve a release anterior. No modo **sem downtime** o rollback **nunca restaura dados** (só reaponta nginx e cliente e para a cor nova, preservando o que foi escrito). No modo **janela** restaura o backup tirado dentro da janela, sob manutenção.
 - **Rollback sob demanda** (`deploy.sh rollback` / `make rollback`): volta um nível, para a release anterior. Num deploy em janela restaura o backup da janela e, antes, **salva uma cópia dos dados que serão descartados** (se a cópia falhar, nada é alterado).
 - `deploy.sh restore <backup>` carrega um backup de volta de forma atômica (o banco numa transação, depois as imagens), sob manutenção, sem cópia de segurança prévia.
