@@ -43,3 +43,9 @@ FAKE
 @test "dump streams a tar of the backup" { SSH_ORIGINAL_COMMAND="dump" run bash -c "$GATE | tar -tf -"; [[ "$output" == *"db.dump"* ]]; grep -qx backup "$CALLS"; }
 @test "dump stdout carries only the tar"  { SSH_ORIGINAL_COMMAND="dump" bash -c "$GATE 2>/dev/null" > "$T/out.tar"; tar -xOf "$T/out.tar" ./db.dump | grep -qx data; }
 @test "status is passed through"         { SSH_ORIGINAL_COMMAND="status" run "$GATE"; [ "$status" -eq 0 ]; grep -qx "status" "$CALLS"; }
+
+@test "rejects non-ASCII 'hex' under a UTF-8 locale" {
+  locale -a | grep -qi '^en_US.utf8$' || skip "locale en_US.UTF-8 ausente"
+  w=$(printf 'é%.0s' {1..40}); LC_ALL=en_US.UTF-8 SSH_ORIGINAL_COMMAND="deploy $w" run "$GATE"
+  [ "$status" -eq 2 ]; [ ! -s "$CALLS" ]
+}

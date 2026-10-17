@@ -3,16 +3,25 @@
 # deploy <40-hex sha that is on origin/main> [--window]. Everything else is refused before anything runs.
 # Self-contained on purpose: it is a security boundary, so it sources nothing.
 set -euo pipefail
+# Bracket expressions are locale dependent (UTF-8 lets [0-9a-f] match é, ², fullwidth digits).
+export LC_ALL=C
 
-RUINA_REPO_DIR="${RUINA_REPO_DIR:-/home/ruina/RuinaRPG}"
-RUINA_DEPLOY="${RUINA_DEPLOY:-$RUINA_REPO_DIR/deploy/deploy.sh}"
-RUINA_SKIP_FETCH="${RUINA_SKIP_FETCH:-0}"
+if (( EUID == 0 )); then
+  # Production: ignore any override. The sudoers entry must env_keep SSH_ORIGINAL_COMMAND only, no SETENV.
+  RUINA_REPO_DIR=/home/ruina/RuinaRPG
+  RUINA_DEPLOY="$RUINA_REPO_DIR/deploy/deploy.sh"
+  RUINA_SKIP_FETCH=0
+else
+  RUINA_REPO_DIR="${RUINA_REPO_DIR:-/home/ruina/RuinaRPG}"
+  RUINA_DEPLOY="${RUINA_DEPLOY:-$RUINA_REPO_DIR/deploy/deploy.sh}"
+  RUINA_SKIP_FETCH="${RUINA_SKIP_FETCH:-0}"
+fi
 
 refuse() { echo "comando recusado" >&2; exit 2; }
 
 cmd="${SSH_ORIGINAL_COMMAND-}"
 # The regex is the grammar, applied to the whole string before any splitting.
-[[ "$cmd" =~ ^(dump|status|deploy\ [0-9a-f]{40}(\ --window)?)$ ]] || refuse
+[[ "$cmd" =~ ^(dump|status|deploy\ [0123456789abcdef]{40}(\ --window)?)$ ]] || refuse
 
 read -r -a words <<< "$cmd"
 
@@ -40,8 +49,15 @@ case "${words[0]}" in
     if [[ "$RUINA_SKIP_FETCH" != 1 ]]; then
       git_as_owner fetch --quiet origin >&2 || { echo "git fetch falhou" >&2; exit 1; }
     fi
-    git_as_owner merge-base --is-ancestor "$sha" origin/main 2>/dev/null || { echo "sha não está na main" >&2; exit 3; }
-    exec "$RUINA_DEPLOY" deploy "$sha" "${words[@]:2}"
+    rc=0
+    git_as_owner merge-base --is-ancestor "$sha" origin/main >&2 || rc=$?
+    case "$rc" in
+      0) ;;
+      1) echo "sha não está na main" >&2; exit 3 ;;
+      *) echo "git merge-base falhou (código $rc)" >&2; exit 1 ;;
+    esac
+    # The gate already fetched.
+    RUINA_SKIP_FETCH=1 exec "$RUINA_DEPLOY" deploy "$sha" "${words[@]:2}"
     ;;
 esac
 refuse
