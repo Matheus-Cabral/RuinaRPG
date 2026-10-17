@@ -20,7 +20,7 @@ public sealed class SignalRNotificationConnection(HttpClient http, AuthStateServ
             {
                 options.AccessTokenProvider = async () => await authState.GetAccessTokenAsync();
             })
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new LongReconnectPolicy())
             .Build();
         connection.On(NotificationEvents.SecretNoteReceived, onReceived);
         connection.On(NotificationEvents.SecretNotesChanged, onChanged);
