@@ -14,6 +14,8 @@
 # `git checkout`, which rewrites this file, and bash reads a script lazily — by the time main runs,
 # the whole file has been parsed, so the run finishes on the version that started it.
 set -euo pipefail
+# Without this, a failing command inside $( ) is ignored and the substitution just returns its output.
+shopt -s inherit_errexit
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -30,6 +32,8 @@ RUINA_STATE_DIR="$RUINA_REPO_DIR/deploy/state"
 : "${RUINA_HEALTH_TIMEOUT:=120}"
 : "${RUINA_DRAIN_SECONDS:=30}"
 : "${RUINA_SKIP_FETCH:=0}"
+# Images are host-wide: the tests turn this off so they never prune another deploy's images.
+: "${RUINA_PRUNE_IMAGES:=1}"
 export RUINA_REPO_DIR RUINA_PROJECT RUINA_ENV_FILE RUINA_STATE_DIR
 
 STATE_FILE="$RUINA_STATE_DIR/colors.env"
@@ -38,6 +42,17 @@ STATE_KEYS=(ACTIVE BLUE_TAG GREEN_TAG CURRENT_SHA PREVIOUS_SHA PREVIOUS_COLOR LA
 # nginx's maintenance server (deploy/nginx/default.conf): a valid upstream before any color exists.
 MAINTENANCE_UPSTREAM="127.0.0.1:8081"
 BUSYBOX="busybox:1.36"
+
+# Set during a deploy, read by the EXIT trap (undo_on_failure).
+OLD="" NEW="" OLD_TAG="" UNDO_ARMED="" UPSTREAM_SWITCHED="" CLIENT_SWITCHED=""
+
+validate_config() {
+  [[ "$RUINA_KEEP_BACKUPS" =~ ^[1-9][0-9]*$ ]] || die "RUINA_KEEP_BACKUPS deve ser um inteiro >= 1"
+  local var
+  for var in RUINA_KEEP_RELEASES RUINA_HEALTH_TIMEOUT RUINA_DRAIN_SECONDS; do
+    [[ "${!var}" =~ ^[0-9]+$ ]] || die "$var deve ser um inteiro >= 0"
+  done
+}
 
 # ---------------------------------------------------------------- state
 
@@ -54,6 +69,17 @@ init_state() {
     save_state
   fi
   [[ -f "$UPSTREAM_FILE" ]] || write_upstream "$MAINTENANCE_UPSTREAM"
+  give_state_to_owner
+}
+
+repo_owner() { stat -c %U "$RUINA_REPO_DIR"; }
+
+# Run as root by the production gate, the files would end up root-owned and the owner's manual
+# `make` path could no longer write them.
+give_state_to_owner() {
+  if (( EUID == 0 )); then
+    chown -R "$(repo_owner):" "$RUINA_STATE_DIR"
+  fi
 }
 
 # colors.env is only read, never bind-mounted, so an atomic replace is safe here.
@@ -61,6 +87,7 @@ save_state() {
   local key
   for key in "${STATE_KEYS[@]}"; do printf '%s=%s\n' "$key" "${!key}"; done > "$STATE_FILE.tmp"
   mv "$STATE_FILE.tmp" "$STATE_FILE"
+  give_state_to_owner
 }
 
 # Rewritten in place (truncate + write), never mv: web bind-mounts this file and the mount pins the inode.
@@ -75,11 +102,14 @@ set_color_tag() {
   esac
 }
 
-other_color() { [[ "$1" == blue ]] && echo green || echo blue; }
+color_tag() { if [[ "$1" == blue ]]; then echo "$BLUE_TAG"; else echo "$GREEN_TAG"; fi; }
+
+other_color() { if [[ "$1" == blue ]]; then echo green; else echo blue; fi; }
 
 acquire_lock() {
   exec 9>"$RUINA_STATE_DIR/deploy.lock"
   flock -n 9 || die "outro deploy em andamento"
+  give_state_to_owner
 }
 
 # ---------------------------------------------------------------- git and images
@@ -87,19 +117,24 @@ acquire_lock() {
 # The checkout belongs to the repo owner; when the gate runs us as root, git must not leave root-owned files.
 git_as_owner() {
   if (( EUID == 0 )); then
-    sudo -u "$(stat -c %U "$RUINA_REPO_DIR")" git -C "$RUINA_REPO_DIR" "$@"
+    sudo -H -u "$(repo_owner)" git -C "$RUINA_REPO_DIR" "$@"
   else
     git -C "$RUINA_REPO_DIR" "$@"
   fi
 }
 
-# Prints the full sha so image tags never depend on how the caller abbreviated it.
+# Sets DEPLOY_SHA to the full sha, so image tags never depend on how the caller abbreviated it.
+# Every step dies loudly: images are tagged with this sha and reused forever, so building the wrong
+# tree under it would be permanent.
 checkout_sha() {
   local full
-  [[ "$RUINA_SKIP_FETCH" == 1 ]] || git_as_owner fetch --quiet origin
+  if [[ "$RUINA_SKIP_FETCH" != 1 ]]; then
+    git_as_owner fetch --quiet origin || die "git fetch falhou"
+  fi
   full="$(git_as_owner rev-parse --verify --quiet "$1^{commit}")" || die "commit desconhecido: $1"
-  git_as_owner checkout --quiet --detach "$full"
-  echo "$full"
+  git_as_owner checkout --quiet --detach "$full" || die "checkout falhou: $full"
+  [[ "$(git_as_owner rev-parse HEAD)" == "$full" ]] || die "checkout falhou: HEAD não é $full"
+  DEPLOY_SHA="$full"
 }
 
 # A tag that already exists is reused: images are immutable per sha, and rebuilding takes minutes.
@@ -187,14 +222,10 @@ wait_web() {
 }
 
 point_upstream_at() {
-  local previous
-  previous="$(cat "$UPSTREAM_FILE")"
   log "nginx -> api-$1"
+  UPSTREAM_SWITCHED=1
   write_upstream "api-$1:8080"
-  if ! reload_web; then
-    printf '%s\n' "$previous" > "$UPSTREAM_FILE"
-    die "nginx recusou a nova configuração; upstream anterior restaurado"
-  fi
+  reload_web || die "nginx recusou a nova configuração"
   wait_web
 }
 
@@ -210,27 +241,35 @@ run_smoke() {
 
 # ---------------------------------------------------------------- pruning
 
-# Keeps the newest $RUINA_KEEP_RELEASES client releases, and always the active and previous ones.
+# Reads names newest first and prints those to remove: everything beyond the newest $1, except the
+# current ($2) and previous ($3) releases, which a rollback needs.
+select_prunable() {
+  local keep="$1" cur="$2" prev="$3" n=0 name
+  while IFS= read -r name; do
+    [[ -n "$name" && "$name" != "<none>" ]] || continue
+    n=$((n + 1))
+    (( n <= keep )) && continue
+    [[ "$name" == "$cur" || "$name" == "$prev" ]] && continue
+    printf '%s\n' "$name"
+  done
+}
+
 prune_releases() {
-  CLIENT_TAG="$CURRENT_SHA" compose run --rm --no-deps -e "KEEP=$RUINA_KEEP_RELEASES" -e "CUR=$CURRENT_SHA" -e "PREV=$PREVIOUS_SHA" \
-    client-build sh -c '
-      cd /webroot/releases || exit 0
-      n=0
-      for r in $(ls -1t); do
-        n=$((n + 1))
-        [ "$n" -le "$KEEP" ] && continue
-        { [ "$r" = "$CUR" ] || [ "$r" = "$PREV" ]; } && continue
-        rm -rf "$r"
-      done'
+  local stale
+  stale="$(CLIENT_TAG="$CURRENT_SHA" compose run --rm -T --no-deps client-build ls -1t /webroot/releases |
+    select_prunable "$RUINA_KEEP_RELEASES" "$CURRENT_SHA" "$PREVIOUS_SHA")"
+  [[ -n "$stale" ]] || return 0
+  log "removendo releases antigas do cliente: $(echo $stale)"
+  # shellcheck disable=SC2086 # names are shas, one word each
+  CLIENT_TAG="$CURRENT_SHA" compose run --rm --no-deps client-build sh -c 'cd /webroot/releases && rm -rf -- "$@"' sh $stale
 }
 
 # Same rule for images; `docker image ls` lists newest first.
 prune_images() {
-  local n=0 tag
-  for tag in $(docker image ls ruinarpg-api --format '{{.Tag}}'); do
-    n=$((n + 1))
-    (( n <= RUINA_KEEP_RELEASES )) && continue
-    [[ "$tag" == "$CURRENT_SHA" || "$tag" == "$PREVIOUS_SHA" || "$tag" == "<none>" ]] && continue
+  local tag
+  [[ "$RUINA_PRUNE_IMAGES" == 1 ]] || return 0
+  for tag in $(docker image ls ruinarpg-api --format '{{.Tag}}' |
+               select_prunable "$RUINA_KEEP_RELEASES" "$CURRENT_SHA" "$PREVIOUS_SHA"); do
     log "removendo imagens de $tag"
     docker rmi "ruinarpg-api:$tag" "ruinarpg-client:$tag" "ruinarpg-smoke:$tag" >/dev/null 2>&1 || true
   done
@@ -241,12 +280,16 @@ prune_images() {
 # Writes into a hidden .partial directory and renames it at the end, so a failed backup never counts
 # as one of the kept backups.
 make_backup() {
-  local label="inicial" dir partial
+  local label="inicial" dir partial saved_umask
   [[ -n "$CURRENT_SHA" ]] && label="${CURRENT_SHA:0:7}"
+  # Dumps hold every account's password hash: owner-only, even when root's umask is 022.
+  saved_umask="$(umask)"
+  umask 077
   dir="$RUINA_BACKUP_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$label"
   partial="$RUINA_BACKUP_DIR/.$(basename "$dir").partial"
   log "backup em $dir"
   mkdir -p "$RUINA_BACKUP_DIR"
+  chmod 700 "$RUINA_BACKUP_DIR"
   rm -rf "$partial" && mkdir "$partial"
   start_db
   compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc ruinarpg' </dev/null > "$partial/db.dump"
@@ -259,6 +302,7 @@ make_backup() {
   fi
   printf '%s\n' "$CURRENT_SHA" > "$partial/sha"
   rm -rf "$dir" && mv "$partial" "$dir"
+  umask "$saved_umask"
   prune_backups
   BACKUP_DIR="$dir"
 }
@@ -323,17 +367,41 @@ result() {
   echo "RESULT mode=zero-downtime sha=$1 active=$2 backup=$LAST_BACKUP smoke=$3 rollback=none" >&3
 }
 
+# Puts back whatever this deploy already changed: the upstream, the client, the new color and its tag.
+# The tag matters because the stopped color is the next rollback target (Task 9).
+undo_switch() {
+  if [[ -n "$UPSTREAM_SWITCHED" ]]; then
+    if [[ "$OLD" != none ]]; then write_upstream "api-$OLD:8080"; else write_upstream "$MAINTENANCE_UPSTREAM"; fi
+    reload_web || log "aviso: nginx não recarregou o upstream restaurado"
+  fi
+  if [[ -n "$CLIENT_SWITCHED" && "$OLD" != none ]]; then
+    point_client_at "$CURRENT_SHA" || log "aviso: webroot/current não foi restaurado"
+  fi
+  compose stop "api-$NEW" || log "aviso: api-$NEW não parou"
+  set_color_tag "$NEW" "$OLD_TAG"
+  save_state
+}
+
+# EXIT trap: any failure between starting the new color and committing the switch (migrations,
+# health check, nginx) leaves the old color serving.
+undo_on_failure() {
+  local rc=$?
+  [[ -n "$UNDO_ARMED" && $rc -ne 0 ]] || return 0
+  UNDO_ARMED=""
+  log "deploy falhou: desfazendo a troca para api-$NEW"
+  undo_switch
+}
+
 # Smoke failed after the switch: traffic goes back to the old color. Restoring the database is the
 # rollback of Task 9; on a first deploy there is nothing to go back to, so the new color stays.
 smoke_failed() {
-  local old="$1" new="$2" sha="$3"
-  log "smoke falhou em api-$new"
-  if [[ "$old" != none ]]; then
-    point_client_at "$CURRENT_SHA"
-    point_upstream_at "$old"
-    compose stop "api-$new"
+  local sha="$1"
+  log "smoke falhou em api-$NEW"
+  UNDO_ARMED=""
+  if [[ "$OLD" != none ]]; then
+    undo_switch
   else
-    ACTIVE="$new" CURRENT_SHA="$sha" MODE=zero-downtime
+    ACTIVE="$NEW" CURRENT_SHA="$sha" MODE=zero-downtime
     save_state
   fi
   result "$sha" "$ACTIVE" failed
@@ -341,26 +409,28 @@ smoke_failed() {
 }
 
 # Smoke passed: let in-flight requests on the old color finish, then stop it and record the switch.
+# Pruning is housekeeping; its failure must not turn a finished deploy into a failed one.
 finish_deploy() {
-  local old="$1" new="$2" sha="$3"
-  if [[ "$old" != none ]]; then
-    log "drenando api-$old por ${RUINA_DRAIN_SECONDS}s"
+  local sha="$1"
+  if [[ "$OLD" != none ]]; then
+    log "drenando api-$OLD por ${RUINA_DRAIN_SECONDS}s"
     sleep "$RUINA_DRAIN_SECONDS"
-    compose stop "api-$old"
+    compose stop "api-$OLD"
   fi
-  PREVIOUS_SHA="$CURRENT_SHA" PREVIOUS_COLOR="$old" CURRENT_SHA="$sha" ACTIVE="$new" MODE=zero-downtime
+  PREVIOUS_SHA="$CURRENT_SHA" PREVIOUS_COLOR="$OLD" CURRENT_SHA="$sha" ACTIVE="$NEW" MODE=zero-downtime
   save_state
-  prune_releases
-  prune_images
-  log "deploy concluído: api-$new servindo $sha"
+  prune_releases || log "aviso: poda de releases do cliente falhou"
+  prune_images || log "aviso: poda de imagens falhou"
+  log "deploy concluído: api-$NEW servindo $sha"
 }
 
 cmd_deploy() {
-  local sha="${1:-}" old new
-  [[ -n "$sha" ]] || die "uso: deploy.sh deploy <sha>"
+  local sha
+  [[ -n "${1:-}" ]] || die "uso: deploy.sh deploy <sha>"
   [[ "${2:-}" != --window ]] || die "--window ainda não implementado"
   acquire_lock
-  sha="$(checkout_sha "$sha")"
+  checkout_sha "$1"
+  sha="$DEPLOY_SHA"
 
   make_backup
   LAST_BACKUP="$BACKUP_DIR"
@@ -369,26 +439,29 @@ cmd_deploy() {
   build_images "$sha"
   publish_client "$sha"
 
-  old="$ACTIVE"
-  new="$(other_color "$old")"
-  log "cor ativa: $old; nova cor: $new"
-  set_color_tag "$new" "$sha"
+  OLD="$ACTIVE"
+  NEW="$(other_color "$OLD")"
+  OLD_TAG="$(color_tag "$NEW")"
+  log "cor ativa: $OLD; nova cor: $NEW"
+  set_color_tag "$NEW" "$sha"
   save_state
 
   start_db
-  run_migrations "$new"
-  start_color "$new"
-  if ! wait_healthy "$new"; then
-    compose stop "api-$new"
-    die "health check falhou: api-$new não respondeu em ${RUINA_HEALTH_TIMEOUT}s; nada foi trocado"
-  fi
+  trap undo_on_failure EXIT
+  UNDO_ARMED=1
+  run_migrations "$NEW"
+  start_color "$NEW"
+  wait_healthy "$NEW" || die "health check falhou: api-$NEW não respondeu em ${RUINA_HEALTH_TIMEOUT}s; nada foi trocado"
 
+  # Upstream first: if nginx refuses it, the client was never switched.
+  point_upstream_at "$NEW"
+  CLIENT_SWITCHED=1
   point_client_at "$sha"
-  point_upstream_at "$new"
 
-  run_smoke "$new" "$sha" || smoke_failed "$old" "$new" "$sha"
-  finish_deploy "$old" "$new" "$sha"
-  result "$sha" "$new" ok
+  if ! run_smoke "$NEW" "$sha"; then smoke_failed "$sha"; fi
+  UNDO_ARMED=""
+  finish_deploy "$sha"
+  result "$sha" "$NEW" ok
 }
 
 main() {
@@ -399,6 +472,8 @@ main() {
   exec 3>&1 1>&2
   require_cmd docker
   require_cmd flock
+  if (( EUID == 0 )); then require_cmd sudo; fi
+  validate_config
   init_state
   case "$cmd" in
     deploy) cmd_deploy "$@" ;;
@@ -411,4 +486,5 @@ main() {
   esac
 }
 
-main "$@"; exit
+# Sourcing (the bats unit tests do) only defines the functions.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; exit; fi

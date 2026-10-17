@@ -18,10 +18,16 @@ setup_file() {
   git clone --quiet --shared "$REPO" "$clone"
   (cd "$REPO" && overlay_code_under_test "$clone")
 
-  export SHA BROKEN_SHA
+  # BROKEN_SHA: an empty commit whose API image the tests fake. CONFLICT_SHA: changes README.md, so
+  # checking it out fails while README.md has local edits.
+  export SHA BROKEN_SHA CONFLICT_SHA
   SHA="$(git -C "$clone" rev-parse HEAD)"
   git -C "$clone" -c user.name=bats -c user.email=bats@localhost commit --quiet --allow-empty -m broken
   BROKEN_SHA="$(git -C "$clone" rev-parse HEAD)"
+  git -C "$clone" checkout --quiet --detach "$SHA"
+  echo conflict >> "$clone/README.md"
+  git -C "$clone" -c user.name=bats -c user.email=bats@localhost commit --quiet -m conflict -- README.md
+  CONFLICT_SHA="$(git -C "$clone" rev-parse HEAD)"
   git -C "$clone" checkout --quiet --detach "$SHA"
 
   sed -e 's/^ASPNETCORE_ENVIRONMENT=.*/ASPNETCORE_ENVIRONMENT=Production/' \
@@ -35,9 +41,9 @@ setup_file() {
   export RUINA_BACKUP_DIR="$BATS_FILE_TMPDIR/backups"
   export RUINA_SKIP_FETCH=1
   export RUINA_DRAIN_SECONDS=0
-  # Images are host-wide, not per project: a small keep would let the test prune ruinarpg-* images
-  # that belong to a real deploy on this host.
-  export RUINA_KEEP_RELEASES=1000
+  # Images are host-wide, not per project: pruning them here could remove the ruinarpg-* images of a
+  # real deploy on this host. The selection rule is unit-tested instead (select_prunable).
+  export RUINA_PRUNE_IMAGES=0
   export BATS_FILE_TMPDIR
 
   docker image inspect busybox:1.36 >/dev/null 2>&1 || docker pull -q busybox:1.36 >/dev/null
@@ -45,9 +51,12 @@ setup_file() {
 
 # Images tagged with $SHA are NOT removed: the clone's HEAD is the working repo's HEAD, so they are the
 # very images the next test run and the real deploy of this commit reuse (rebuilding takes minutes).
-# Only the tags invented for $BROKEN_SHA (a commit that exists only in the clone) are dropped.
+# Only tags for $BROKEN_SHA/$CONFLICT_SHA (commits that exist only in the clone) are dropped.
 teardown_file() {
   docker compose -p "$RUINA_PROJECT" -f "$RUINA_REPO_DIR/docker-compose.yml" \
     --env-file "$RUINA_REPO_DIR/.env" --profile tools down --volumes --remove-orphans
-  docker rmi "ruinarpg-api:$BROKEN_SHA" "ruinarpg-client:$BROKEN_SHA" "ruinarpg-smoke:$BROKEN_SHA" >/dev/null 2>&1 || true
+  local s
+  for s in "$BROKEN_SHA" "$CONFLICT_SHA"; do
+    docker rmi "ruinarpg-api:$s" "ruinarpg-client:$s" "ruinarpg-smoke:$s" >/dev/null 2>&1 || true
+  done
 }
