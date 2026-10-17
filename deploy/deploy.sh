@@ -16,6 +16,12 @@
 #
 # Configuration comes from the environment; the defaults are production's.
 #
+# deploy, rollback and restore outlive their caller: in production stderr is the SSH channel of the
+# pipeline, which can drop mid-run. They ignore SIGPIPE, never die writing a log line, and keep the
+# whole run (docker output included) in deploy/state/deploy.log. A HUP/INT/TERM during a deploy becomes
+# a failure that the undo handles; rollback and restore, which are themselves the recovery paths, ignore
+# those signals once they start changing things.
+#
 # Everything lives in functions and `main` is called from the very last line: `deploy` runs
 # `git checkout`, which rewrites this file, and bash reads a script lazily — by the time main runs,
 # the whole file has been parsed, so the run finishes on the version that started it.
@@ -37,6 +43,8 @@ RUINA_STATE_DIR="$RUINA_REPO_DIR/deploy/state"
 : "${RUINA_KEEP_RELEASES:=3}"
 : "${RUINA_HEALTH_TIMEOUT:=120}"
 : "${RUINA_DRAIN_SECONDS:=30}"
+# The whole smoke, in seconds. It runs after nginx switched, so it must never hang the deploy.
+: "${RUINA_SMOKE_TIMEOUT:=300}"
 : "${RUINA_SKIP_FETCH:=0}"
 # Images are host-wide: the tests turn this off so they never prune another deploy's images.
 : "${RUINA_PRUNE_IMAGES:=1}"
@@ -53,10 +61,16 @@ BUSYBOX="busybox:1.36"
 # color, so undoing means restoring RUN_WINDOW_BACKUP, not just pointing nginx back.
 OLD="" NEW="" OLD_TAG="" UNDO_ARMED="" UPSTREAM_SWITCHED="" CLIENT_SWITCHED="" OLD_STOPPED=""
 RUN_MODE=zero-downtime RUN_WINDOW_BACKUP="" DEPLOY_SHA=""
+# The tee that copies this run's output into deploy.log (start_run_log); RESTORE_MAINTENANCE: a restore
+# has put nginx in maintenance and not brought the active color back yet (restore_on_exit).
+OUTPUT_PID="" RESTORE_MAINTENANCE=""
+# Rotated past this size, keeping one older file.
+RUN_LOG_MAX_BYTES=$((10 * 1024 * 1024))
 
 # No leading zeros: bash arithmetic reads 010 as octal.
 validate_config() {
   [[ "$RUINA_KEEP_BACKUPS" =~ ^[1-9][0-9]*$ ]] || die "RUINA_KEEP_BACKUPS deve ser um inteiro >= 1"
+  [[ "$RUINA_SMOKE_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || die "RUINA_SMOKE_TIMEOUT deve ser um inteiro >= 1"
   local var
   for var in RUINA_KEEP_RELEASES RUINA_HEALTH_TIMEOUT RUINA_DRAIN_SECONDS; do
     [[ "${!var}" =~ ^(0|[1-9][0-9]*)$ ]] || die "$var deve ser um inteiro >= 0"
@@ -138,13 +152,20 @@ git_as_owner() {
 # Sets DEPLOY_SHA to the full sha, so image tags never depend on how the caller abbreviated it.
 # Every step dies loudly: images are tagged with this sha and reused forever, so building the wrong
 # tree under it would be permanent.
+# The build context is the working tree, so local edits to tracked files would be built and tagged as
+# the sha; untracked files are left alone (.dockerignore keeps the build context clean of them). A
+# checkout already at the sha (`make deploy` on a dev branch) is not detached.
 checkout_sha() {
   local full
+  git_as_owner diff --quiet && git_as_owner diff --cached --quiet ||
+    die "o checkout tem alterações locais em arquivos versionados; faça commit ou descarte-as (git status)"
   if [[ "$RUINA_SKIP_FETCH" != 1 ]]; then
     git_as_owner fetch --quiet origin || die "git fetch falhou"
   fi
   full="$(git_as_owner rev-parse --verify --quiet "$1^{commit}")" || die "commit desconhecido: $1"
-  git_as_owner checkout --quiet --detach "$full" || die "checkout falhou: $full"
+  if [[ "$(git_as_owner rev-parse HEAD)" != "$full" ]]; then
+    git_as_owner checkout --quiet --detach "$full" || die "checkout falhou: $full"
+  fi
   [[ "$(git_as_owner rev-parse HEAD)" == "$full" ]] || die "checkout falhou: HEAD não é $full"
   DEPLOY_SHA="$full"
 }
@@ -179,7 +200,7 @@ publish_client() {
 start_db() { compose up -d --wait db; }
 
 # Runs with the target image while the old color still serves: migrations must stay backward
-# compatible with the previous release (Técnico R0016).
+# compatible with the previous release (Técnico R0009, R0014).
 run_migrations() {
   log "migrations e seeders com api-$1"
   compose run --rm --no-deps "api-$1" --migrate
@@ -252,24 +273,44 @@ enter_maintenance() {
   reload_web
 }
 
+# Bounded by RUINA_SMOKE_TIMEOUT: nginx already serves the new color, so a hung smoke must turn into a
+# failed one (and a rollback), not a stuck deploy. timeout kills the whole process group it starts.
 run_smoke() {
-  local color="$1" sha="$2"
-  log "smoke contra api-$color"
+  local color="$1" sha="$2" rc=0
+  log "smoke contra api-$color (até ${RUINA_SMOKE_TIMEOUT}s)"
   if [[ -n "${RUINA_SMOKE_CMD:-}" ]]; then
-    RUINA_COLOR="$color" bash -c "$RUINA_SMOKE_CMD"
+    RUINA_COLOR="$color" timeout -k 10 "$RUINA_SMOKE_TIMEOUT" bash -c "$RUINA_SMOKE_CMD" </dev/null || rc=$?
   else
-    SMOKE_TAG="$sha" SMOKE_BASE_URL="http://api-$color:8080" compose run --rm --no-deps smoke
+    compose_cmd
+    SMOKE_TAG="$sha" SMOKE_BASE_URL="http://api-$color:8080" \
+      timeout -k 10 "$RUINA_SMOKE_TIMEOUT" "${COMPOSE_CMD[@]}" run --rm -T --no-deps smoke </dev/null || rc=$?
   fi
+  if (( rc == 124 || rc == 137 )); then
+    log "ERRO: smoke excedeu ${RUINA_SMOKE_TIMEOUT}s"
+    remove_smoke_containers
+  fi
+  return "$rc"
+}
+
+# A killed `compose run` may leave its container behind.
+remove_smoke_containers() {
+  local ids
+  ids="$(docker ps -aq --filter "label=com.docker.compose.project=$RUINA_PROJECT" \
+    --filter "label=com.docker.compose.service=smoke" 2>/dev/null || true)"
+  # shellcheck disable=SC2086 # container ids, one word each
+  [[ -z "$ids" ]] || docker rm -f $ids >/dev/null 2>&1 || log "aviso: container do smoke não foi removido"
 }
 
 # ---------------------------------------------------------------- pruning
 
 # Reads names newest first and prints those to remove: everything beyond the newest $1, except the
-# current ($2) and previous ($3) releases, which a rollback needs.
+# current ($2) and previous ($3) releases, which a rollback needs. Only full shas are releases: any
+# other name (1.5.0's `latest`, a hand-made tag, <none>) is neither counted nor removed. The class is
+# spelled out because [0-9a-f] is locale dependent.
 select_prunable() {
   local keep="$1" cur="$2" prev="$3" n=0 name
   while IFS= read -r name; do
-    [[ -n "$name" && "$name" != "<none>" ]] || continue
+    [[ "$name" =~ ^[0123456789abcdef]{40}$ ]] || continue
     n=$((n + 1))
     (( n <= keep )) && continue
     [[ "$name" == "$cur" || "$name" == "$prev" ]] && continue
@@ -332,7 +373,8 @@ make_backup() {
 
 # Keeps the newest $RUINA_KEEP_BACKUPS plus the restore points the state still needs (the window
 # backup, the last deploy's backup, the running deploy's window backup), which never count. Names
-# start with a UTC timestamp, so reverse name order is newest first; anything else is left alone.
+# start with a UTC timestamp, so reverse name order is newest first; anything else is left alone,
+# except a hidden .partial left by a backup that died halfway, removed once it is over a day old.
 prune_backups() {
   local name n=0 protected=" "
   for name in "$WINDOW_BACKUP" "$LAST_BACKUP" "$RUN_WINDOW_BACKUP"; do
@@ -345,6 +387,7 @@ prune_backups() {
     log "removendo backup antigo $name"
     rm -rf "${RUINA_BACKUP_DIR:?}/$name"
   done < <(ls -1 "$RUINA_BACKUP_DIR" | { grep -E '^[0-9]{8}T[0-9]{6}Z-' || true; } | sort -r)
+  find "$RUINA_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name '.*.partial' -mtime +0 -exec rm -rf {} +
 }
 
 # ---------------------------------------------------------------- subcommands
@@ -384,18 +427,34 @@ cmd_restore() {
   local dir="${1:-}" ok=1
   [[ -f "$dir/db.dump" && -f "$dir/images.tar" ]] || die "backup inválido: $dir"
   acquire_lock
+  trap '' HUP INT TERM
   if [[ "$ACTIVE" == none ]]; then
     restore_backup "$dir" || die "restauração falhou"
     log "restauração concluída"
     return
   fi
+  RESTORE_MAINTENANCE=1
+  trap restore_on_exit EXIT
   enter_maintenance || die "nginx recusou a configuração de manutenção; nada foi alterado"
   compose stop "api-$ACTIVE" || log "aviso: api-$ACTIVE não parou"
   restore_backup "$dir" || ok=""
-  { start_color "$ACTIVE" && wait_healthy "$ACTIVE" && point_upstream_at "$ACTIVE"; } ||
-    die "api-$ACTIVE não voltou após a restauração; o nginx está em manutenção. Rode deploy.sh status"
+  { start_color "$ACTIVE" && wait_healthy "$ACTIVE" && point_upstream_at "$ACTIVE"; } || {
+    log "ERRO: api-$ACTIVE não voltou após a restauração; o nginx pode estar em manutenção. Rode deploy.sh status e suba api-$ACTIVE manualmente (deploy.sh restore <backup> de novo)."
+    exit 2
+  }
+  RESTORE_MAINTENANCE=""
   [[ -n "$ok" ]] || die "restauração falhou; os dados anteriores foram mantidos e api-$ACTIVE voltou"
   log "restauração concluída"
+}
+
+# EXIT trap of a restore that failed after enter_maintenance may have written upstream.conf: the file
+# goes back to the active color, so it never names maintenance once the restore is over (the next
+# nginx reload or restart serves api-$ACTIVE).
+restore_on_exit() {
+  local rc=$?
+  [[ -n "$RESTORE_MAINTENANCE" && $rc -ne 0 ]] || return 0
+  RESTORE_MAINTENANCE=""
+  write_upstream "api-$ACTIVE:8080"
 }
 
 cmd_status() {
@@ -419,8 +478,13 @@ cmd_exec_api() {
   compose exec -T "api-$ACTIVE" dotnet RuinaRPG.Api.dll "$@" >&3
 }
 
+# Always the last thing a run prints (every caller exits right after): this run's output is drained
+# first, so no docker line can land after it. Never fatal, like log.
 result() {
-  echo "RESULT mode=$RUN_MODE sha=$1 active=$2 backup=$LAST_BACKUP smoke=$3 rollback=$4" >&3
+  local line="RESULT mode=$RUN_MODE sha=$1 active=$2 backup=$LAST_BACKUP smoke=$3 rollback=$4"
+  drain_run_log
+  if [[ -n "${RUINA_LOG_FILE:-}" ]]; then printf '%s\n' "$line" >> "$RUINA_LOG_FILE" 2>/dev/null || true; fi
+  printf '%s\n' "$line" >&3 2>/dev/null || true
 }
 
 # ---------------------------------------------------------------- rollback
@@ -504,6 +568,8 @@ rollback_failed() {
 # stopped color is the next rollback target.
 roll_back() {
   local sha="$1" smoke="$2" ok=1
+  # The undo runs to the end: a second signal must not leave it halfway.
+  trap '' HUP INT TERM
   if [[ -n "$OLD_STOPPED" ]]; then
     return_to "$OLD" "$CURRENT_SHA" "$NEW" "$RUN_WINDOW_BACKUP" || ok=""
   else
@@ -523,7 +589,8 @@ undo_on_failure() {
   local rc=$?
   [[ -n "$UNDO_ARMED" && $rc -ne 0 ]] || return 0
   UNDO_ARMED=""
-  log "deploy falhou: desfazendo a troca para api-$NEW"
+  trap '' HUP INT TERM
+  log "deploy falhou (código $rc): desfazendo a troca para api-$NEW"
   roll_back "$DEPLOY_SHA" none
 }
 
@@ -631,6 +698,8 @@ cmd_deploy() {
 
   if ! run_smoke "$NEW" "$sha"; then smoke_failed "$sha"; fi
   UNDO_ARMED=""
+  # Committed: nginx and the client serve the new color, so nothing may stop the run before save_state.
+  trap '' HUP INT TERM
   finish_deploy "$sha"
   result "$sha" "$NEW" ok none
 }
@@ -648,6 +717,8 @@ cmd_rollback() {
     [[ -n "$backup" ]] || die "o deploy em janela não registrou o backup da janela; nada foi alterado"
     [[ -f "$backup/db.dump" && -f "$backup/images.tar" ]] || die "backup da janela não existe mais: $backup; nada foi alterado"
   fi
+  # Itself the recovery path: once it starts changing things it runs to the end.
+  trap '' HUP INT TERM
   log "rollback ($RUN_MODE): api-$from -> api-$back ($sha)"
   # The stopped color's tag may be stale; compose starts it with whatever colors.env says.
   set_color_tag "$back" "$sha"
@@ -666,12 +737,54 @@ cmd_rollback() {
   result "$sha" "$back" none ok
 }
 
+# For the commands that change production (deploy, rollback, restore). Their stderr may be an SSH
+# channel that closes mid-run (the pipeline's runner died, the connection dropped): writing to it must
+# never kill the run, or the undo is skipped. So SIGPIPE is ignored, log() is never fatal and writes
+# its lines straight to the caller's stderr (fd 4) and to deploy.log, and every other byte of output
+# (docker's, bash's own errors) goes through a tee that appends it to deploy.log and forwards it to
+# fd 4 for as long as fd 4 accepts it. The tee ignores HUP/INT/TERM, so it outlives a dropped
+# terminal too. HUP/INT/TERM become exits with the usual codes, which reach undo_on_failure.
+start_run_log() {
+  mkdir -p "$RUINA_STATE_DIR"
+  RUINA_LOG_FILE="$RUINA_STATE_DIR/deploy.log"
+  if [[ -f "$RUINA_LOG_FILE" ]] && (( $(stat -c %s "$RUINA_LOG_FILE") > RUN_LOG_MAX_BYTES )); then
+    mv -f "$RUINA_LOG_FILE" "$RUINA_LOG_FILE.1"
+  fi
+  trap '' PIPE
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  exec 4>&2
+  # shellcheck disable=SC2034 # read by log() (lib.sh)
+  RUINA_LOG_FD=4
+  exec 1> >(trap '' HUP INT TERM; exec tee -a --output-error=warn "$RUINA_LOG_FILE" >&4 2>/dev/null) 2>&1
+  OUTPUT_PID=$!
+  log "== deploy.sh $* (pid $$)"
+}
+
+# Closes this run's side of the tee and lets it flush, so nothing it forwards lands after the RESULT
+# line. Bounded: a stray process still holding the pipe must not hang the run.
+drain_run_log() {
+  [[ -n "$OUTPUT_PID" ]] || return 0
+  exec 1>&4 2>&4
+  local _
+  for _ in {1..50}; do
+    kill -0 "$OUTPUT_PID" 2>/dev/null || break
+    sleep 0.1
+  done
+  OUTPUT_PID=""
+}
+
 main() {
   local cmd="${1:-}"
   (( $# )) && shift
   # Results (RESULT line, backup dir, status) go to fd 3 = the real stdout; everything else, including
   # docker's own output, goes to stderr so the RESULT line stays the last thing printed.
-  exec 3>&1 1>&2
+  exec 3>&1
+  case "$cmd" in
+    deploy|rollback|restore) start_run_log "$cmd" "$@" ;;
+    *) exec 1>&2 ;;
+  esac
   require_cmd docker
   require_cmd flock
   if (( EUID == 0 )); then require_cmd sudo; fi

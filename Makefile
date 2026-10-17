@@ -1,9 +1,10 @@
 .PHONY: deploy up down clean clean-data logs migrate status rollback grant-rules-auditor revoke-rules-auditor reset-gm-password
 
 # Caminho manual (emergência/local): o deploy normal é o pipeline (Técnico R0013-R0015).
-# deploy.sh builda as imagens, migra e troca a cor ativa do nginx (blue-green).
+# deploy.sh builda as imagens, migra e troca a cor ativa do nginx (blue-green). Faz o deploy do HEAD
+# como está (sem fetch nem checkout); recusa um checkout com alterações locais em arquivos versionados.
 deploy up:
-	deploy/deploy.sh deploy "$$(git rev-parse HEAD)"
+	RUINA_SKIP_FETCH=1 deploy/deploy.sh deploy "$$(git rev-parse HEAD)"
 
 down:
 	docker compose down

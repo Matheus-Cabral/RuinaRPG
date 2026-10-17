@@ -17,16 +17,20 @@ setup_file() {
   local clone="$BATS_FILE_TMPDIR/repo"
   git clone --quiet --shared "$REPO" "$clone"
   (cd "$REPO" && overlay_code_under_test "$clone")
+  # deploy.sh refuses a dirty tracked tree (the build context is the working tree); the overlay is the
+  # code under test, not a local edit, so git is told to look past it.
+  git -C "$clone" ls-files -m -z | xargs -0 -r git -C "$clone" update-index --skip-worktree --
 
-  # BROKEN_SHA: an empty commit whose API image the tests fake. CONFLICT_SHA: changes README.md, so
-  # checking it out fails while README.md has local edits.
+  # BROKEN_SHA: an empty commit whose API image the tests fake. CONFLICT_SHA: adds conflict.txt, so
+  # checking it out fails while an untracked conflict.txt is in the way.
   export SHA BROKEN_SHA CONFLICT_SHA
   SHA="$(git -C "$clone" rev-parse HEAD)"
   git -C "$clone" -c user.name=bats -c user.email=bats@localhost commit --quiet --allow-empty -m broken
   BROKEN_SHA="$(git -C "$clone" rev-parse HEAD)"
   git -C "$clone" checkout --quiet --detach "$SHA"
-  echo conflict >> "$clone/README.md"
-  git -C "$clone" -c user.name=bats -c user.email=bats@localhost commit --quiet -m conflict -- README.md
+  echo conflict > "$clone/conflict.txt"
+  git -C "$clone" add conflict.txt
+  git -C "$clone" -c user.name=bats -c user.email=bats@localhost commit --quiet -m conflict
   CONFLICT_SHA="$(git -C "$clone" rev-parse HEAD)"
   git -C "$clone" checkout --quiet --detach "$SHA"
 
