@@ -5,3 +5,5 @@
 deploy/state
 deploy/tests/.bats
 tools/bench/results
+.env
+.env.*
