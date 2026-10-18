@@ -87,6 +87,8 @@ Um `docker-compose.yml` define os serviços:
 
 O deploy normal é o pipeline (R0013–R0015). O build do cliente fica em `infra/client/` e a configuração do nginx em `deploy/nginx/`.
 
+O nginx entrega o cliente comprimido: os arquivos de `_framework` saem do `.gz` gerado pelo publish (`gzip_static`) e o restante do texto (CSS/JS fora de `_framework` e o JSON da api) é comprimido na hora, exceto `/api/auth/` (tokens) e `/hubs/`. Toda resposta do cliente e das imagens leva `Cache-Control` explícito: `no-cache` (revalidação por ETag) para tudo cujo nome não muda entre versões — inclusive `index.html` e `blazor.boot.json` —, um ano `immutable` só para os `dotnet.*.<hash>.js` de `_framework`, e `private`, um ano, `immutable` para `/images/` (cada upload ganha um nome novo). Assim nenhum navegador nem a borda do Cloudflare serve um arquivo antigo depois de um deploy.
+
 Volumes nomeados separados para os dados do Postgres e para as imagens armazenadas, para facilitar backup independente de cada um.
 
   

@@ -40,7 +40,7 @@ jobs:
       - run: dotnet test tests/RuinaRPG.Tests.Client --no-build
       - run: dotnet test tests/RuinaRPG.Tests.Integration --no-build
       - run: python3 -m unittest deploy/tests/test_compare.py
-      - run: deploy/tests/run-bats.sh deploy/tests/gate.bats deploy/tests/fingerprint.bats
+      - run: deploy/tests/run-bats.sh deploy/tests/gate.bats deploy/tests/fingerprint.bats deploy/tests/nginx.bats
 
   clone:
     needs: ci
