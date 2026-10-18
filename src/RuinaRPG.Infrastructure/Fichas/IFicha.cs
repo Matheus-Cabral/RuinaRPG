@@ -11,6 +11,9 @@ public interface IFicha
     Guid Id { get; }
     int Nivel { get; set; }
     Guid? ImageId { get; set; }
+
+    /// <summary>Cobertura atual (2.b), que soma na Defesa Natural.</summary>
+    Cobertura Cobertura { get; set; }
 }
 
 /// <summary>Uma ficha com Variante de Linhagem, que dá os traços raciais (Personagem e NPC; a Criatura não tem).</summary>
