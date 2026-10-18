@@ -66,6 +66,8 @@ Measured on this VM, 2026-10-18, on `062f0ac` (see also `2026-10-16-versao-2-0-0
   application/json image/svg+xml text/plain`, `gzip_proxied any`: on-the-fly compression for the text
   files without a `.gz` and for `/api/` JSON.
 - `/hubs/` gets `gzip off` (SignalR negotiates its own transport).
+- `/api/auth/` gets `gzip off`: its responses carry tokens next to request-derived data, the shape
+  BREACH attacks compression on (refinement found while planning).
 - `gzip_vary on`: `Vary: Accept-Encoding` on every compressible response, so Cloudflare keeps the
   compressed and plain variants apart.
 - A request without `Accept-Encoding: gzip` gets the plain file, as today.
@@ -98,12 +100,15 @@ The three Dockerfiles are replaced by one multi-stage file:
 
 - `restore` (`mcr.microsoft.com/dotnet/sdk:8.0`): copies only the
   `.csproj` files of `src/*` and `tools/RuinaRPG.Smoke` (no test projects) to their paths, then runs
-  `dotnet restore` for `src/RuinaRPG.Api`, `src/RuinaRPG.Client` and `tools/RuinaRPG.Smoke` with
-  `RUN --mount=type=cache,id=ruinarpg-nuget,target=/root/.nuget/packages`.
+  `dotnet restore` for `src/RuinaRPG.Api`, `src/RuinaRPG.Client` and `tools/RuinaRPG.Smoke`. The restored
+  packages stay **in the layer** (reused until a `.csproj` changes); a BuildKit cache mount on NuGet's
+  **http-cache** (`/root/.local/share/NuGet/http-cache`) saves the downloads when one does. Refinement
+  found while planning: with the packages folder itself on a cache mount, a partial prune could leave the
+  restore layer cached and the packages gone, and the `--no-restore` build would fail.
 - `build` (from `restore`, `ARG GIT_SHA=dev`): copies `src/`, `tools/RuinaRPG.Smoke/` and `Docs/Sistema RPG/`
   (embedded resources of Infrastructure), then in **one** `RUN` (same cache mount) publishes the three
   projects with `-c Release --no-restore -p:SourceRevisionId=$GIT_SHA` to `/out/api`, `/out/client` and
-  `/out/smoke`. MSBuild compiles each shared project once and reuses it for the next publish.
+  `/out/smoke` (no cache mount: the packages come from the `restore` layer). MSBuild compiles each shared project once and reuses it for the next publish.
 - `api` (`mcr.microsoft.com/dotnet/aspnet:8.0`): `/out/api` in `/app`, `EXPOSE 8080`,
   `ENTRYPOINT ["dotnet", "RuinaRPG.Api.dll"]` — same as today.
 - `client` (`alpine:3.20`): `/out/client/wwwroot` in `/app/wwwroot` — same as today.
@@ -131,6 +136,12 @@ pixel (RGBA) is identical. Other images are not touched.
 
 ### C.4 Measurement (`tools/bench/`)
 
+The stack-based bench scripts still use the pre-F layout (`compose.bench.yml` overrides an `nginx` service
+that no longer exists), so they are rebuilt first around `deploy.sh`: a shared clone of the repo at a
+given ref, deployed with `RUINA_PROJECT=ruinarpg-bench` on `127.0.0.1:8088`, torn down with its volumes.
+Because the ref is a parameter, "before" (`3040ed0`) and "after" are measured with the same harness.
+`compose.bench.yml` is removed.
+
 - `measure-load.sh`: per page, besides today's localhost first render, records **bytes transferred**
   (sum of the Playwright response sizes, with `Accept-Encoding` as the browser sends it) and **first
   render on a throttled network** (Chromium network emulation: 20 Mbit/s down, 40 ms latency), cold and
@@ -147,9 +158,12 @@ pixel (RGBA) is identical. Other images are not touched.
 
 No code change up front. After C.1, an endpoint is fixed in C only if it is still **above 30 ms p50**
 through nginx and a profile shows the cause (N+1 queries, missing `AsNoTracking`, work repeated per
-request). The one candidate today is `/api/rulebook`: if the cost is the renderer redoing its work per
-request, the rendered documents are cached in memory for the process lifetime (they come from embedded
-resources that only change with a deploy); if the cost is serialization or size, nothing changes.
+request). The one candidate today is `/api/rulebook`. Correction found while planning: `RulebookRenderer`
+is not a pure function of embedded resources — it reads the Rules Auditor's Markdown overrides and the
+live Traits, Historicos, EquipmentKits and level tables on every request — so its documents must **not**
+be cached across requests. The only cache allowed is a memo of the pure Markdown-to-sections step
+(`SplitIntoSections`, keyed by its full input, bounded), which cannot change any output. If the profile
+shows the cost elsewhere (database reads, serialization, size), nothing changes in C.
 
 ## Tests
 
@@ -163,9 +177,9 @@ TDD: each test below is written and seen failing before the change it covers.
   and `Vary: Accept-Encoding` with `Accept-Encoding: gzip`; plain body without it; `.wasm` content type;
   `/hubs/` never compressed; the SPA fallback is `index.html` with `no-cache`. Uses its own container
   names and network and removes them.
-- **`deploy.sh` bats:** the tests that stub `docker build` assert `-f deploy/Dockerfile` with
-  `--target api|client|smoke` and the same `GIT_SHA` for all three, and that an existing tag still skips
-  the build.
+- **`deploy.sh` bats:** a unit test (sourcing `deploy.sh` with a `docker` shell function, like the
+  existing `select_prunable` test) asserts `-f deploy/Dockerfile` with `--target api|client|smoke` and the
+  same `GIT_SHA` for all three, and that an existing tag still skips the build.
 - **Image equivalence** (one-off script under `tools/bench/` or `tools/`, run during C, not in CI): builds
   the three images from the old Dockerfiles (parent commit) and from `deploy/Dockerfile` with the same
   `GIT_SHA`, exports each image's filesystem, and compares file lists and contents; any byte difference
