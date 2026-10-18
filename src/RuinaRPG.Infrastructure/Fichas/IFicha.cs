@@ -21,3 +21,21 @@ public interface IPericiaDaFicha<TAtributo> : ILinhaDaFicha where TAtributo : st
     int Gasto { get; set; }
     TAtributo? AtributoEscolhido { get; set; }
 }
+
+/// <summary>Uma linha de Atributo da ficha (CharacterAttribute, NpcAttribute, CreatureAttribute).</summary>
+public interface IAtributoDaFicha<TAtributo> : ILinhaDaFicha where TAtributo : struct, Enum
+{
+    TAtributo Atributo { get; set; }
+    int Gasto { get; set; }
+    int Bonus { get; set; }
+    bool TemMaestria { get; set; }
+}
+
+/// <summary>Uma Maestria da ficha (CharacterMastery, NpcMastery, CreatureMastery).</summary>
+public interface IMaestriaDaFicha<TAtributo> : ILinhaDaFicha where TAtributo : struct, Enum
+{
+    string Nome { get; set; }
+    int PericiaId { get; set; }
+    TAtributo Atributo { get; set; }
+    int GastoMaestria { get; set; }
+}

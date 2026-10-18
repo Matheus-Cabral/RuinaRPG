@@ -1,14 +1,12 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
-using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -19,33 +17,31 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/skills")]
-public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo, RuinaRPG.Api.Services.CharacterSheetStats stats)
+    : PericiasDaFichaController<CharacterSheet, CharacterSkill, Atributo, CharacterSkillResponse, UpdateCharacterSkillRequest>(db, pericias, tabelaDeNiveis, tipo)
 {
-    [HttpGet]
-    public async Task<ActionResult<List<CharacterSkillResponse>>> List(Guid sheetId)
+    protected override DbSet<CharacterSkill> Linhas => Db.CharacterSkills;
+
+    protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateCharacterSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
+
+    // Cálculo próprio do Personagem, mantido como estava até o núcleo de stats compartilhado (spec D.4).
+    protected override async Task<List<CharacterSkillResponse>> ListarAsync(CharacterSheet sheet)
     {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var porId = await pericias.PorIdAsync();
+        var sheetId = sheet.Id;
+        var porId = await Pericias.PorIdAsync();
         var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
-        var linhas = await db.CharacterSkills.Where(s => s.SheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
+        var linhas = await Db.CharacterSkills.Where(s => s.SheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
+        var efeitos = await Tipo.CondicoesAsync(sheet);
         var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
-        var attributeTotals = await db.CharacterAttributes
+        var attributeTotals = await Db.CharacterAttributes
             .Where(a => a.SheetId == sheetId)
             .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
 
-        var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
+        var historico = sheet.HistoricoId is null ? null : await Db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
         return ativas
             .OrderBy(p => p.Nome, StringComparer.CurrentCulture)
@@ -67,58 +63,19 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
     [HttpGet("budget")]
     public async Task<ActionResult<SkillPointBudgetResponse>> Budget(Guid sheetId)
     {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+        var (ficha, erro) = await FichaEditavelAsync(sheetId);
+        if (erro is not null)
+            return erro;
+        var sheet = ficha!;
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var gastoBruto = await db.CharacterSkills
-            .Where(s => s.SheetId == sheetId && !db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))
+        var gastoBruto = await Db.CharacterSkills
+            .Where(s => s.SheetId == sheetId && !Db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))
             .SumAsync(s => s.Gasto);
         // Pontos ganhos por Acerto Crítico não vêm do orçamento por Nível — subtraídos do Gasto
         // Total para não acusar "acima do máximo" por um ganho legítimo (2.d).
         var gastoTotal = gastoBruto - sheet.PontosDePericiaBonusCritico;
-        var tabela = await tabelaDeNiveis.ObterAsync();
+        var tabela = await TabelaDeNiveis.ObterAsync();
         var pontosDisponiveis = SkillPointBudgetCalculator.Compute(sheet.Nivel, tabela);
         return new SkillPointBudgetResponse(gastoTotal, pontosDisponiveis);
     }
-
-    [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateCharacterSkillRequest request)
-    {
-        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
-        var def = await pericias.AtivaPorChaveAsync(pericia);
-        if (def is null)
-            return NotFound();
-
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        var gastoAtual = await db.CharacterSkills.Where(s => s.SheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
-        if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, request.Gasto, tabela.Limite(ChavesDeNivel.MaxPericia, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
-            return BadRequest(erroDeLimite);
-
-        var skill = await db.CharacterSkills.SingleOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == def.Id);
-        if (skill is null)
-        {
-            skill = new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheetId, PericiaId = def.Id };
-            db.CharacterSkills.Add(skill);
-        }
-        skill.Gasto = request.Gasto;
-        skill.AtributoEscolhido = Enum.TryParse<Atributo>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
-        await db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

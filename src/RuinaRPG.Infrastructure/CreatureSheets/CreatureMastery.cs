@@ -4,7 +4,7 @@ using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureMastery : ILinhaDaFicha
+public class CreatureMastery : IMaestriaDaFicha<AtributoCriatura>
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

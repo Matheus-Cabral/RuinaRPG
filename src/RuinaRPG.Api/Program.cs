@@ -1,11 +1,14 @@
 using RuinaRPG.Api;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Infrastructure.CharacterSheets;
+using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
+using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
@@ -99,6 +102,9 @@ builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
 builder.Services.AddScoped<CreatureSheetStats>();
+builder.Services.AddScoped<ITipoDeFicha<CharacterSheet>, TipoPersonagem>();
+builder.Services.AddScoped<ITipoDeFicha<NpcSheet>, TipoNpc>();
+builder.Services.AddScoped<ITipoDeFicha<CreatureSheet>, TipoCriatura>();
 builder.Services.AddScoped<ResumoDeFichaDoParticipante>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>

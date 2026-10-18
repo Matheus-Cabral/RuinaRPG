@@ -175,3 +175,15 @@ A missed target is reported to the user, as in C, without tuning beyond the plan
 - Merging the per-kind tables or any other schema change.
 - Fixing accidental divergences (listed for the user, D.5).
 - Encounters, campaigns, auth, catalogs: no per-kind duplication there.
+
+## Divergências encontradas
+
+Divergências acidentais entre os tipos de ficha achadas ao consolidar (D.5): o comportamento de hoje foi
+mantido; fica para o usuário decidir depois.
+
+- Maestrias/PUT `{id}`: só o Personagem edita uma Maestria existente; NPC e Criatura só criam e apagam, embora
+  Ficha de Criaturas 4.e diga "mesma estrutura do Personagem" (mantido via endpoint só na subclasse
+  `CharacterMasteriesController`).
+- Perícias/GET `budget`: só o Personagem tem o orçamento de pontos de Perícia; NPC e Criatura não têm o
+  endpoint, embora Atributos tenha `budget` nos três tipos (mantido via endpoint só na subclasse
+  `CharacterSkillsController`).

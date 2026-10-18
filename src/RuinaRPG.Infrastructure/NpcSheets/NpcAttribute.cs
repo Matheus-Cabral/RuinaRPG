@@ -3,7 +3,7 @@ using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcAttribute : ILinhaDaFicha
+public class NpcAttribute : IAtributoDaFicha<Atributo>
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }
