@@ -292,4 +292,5 @@ public sealed record SlotLido(string Slot, string? ItemId, string? Nome, int? Du
 public sealed record EscudoLido(string Id, string ItemId, string Nome, int? BonusDefesa, bool IsEquipped, int DurabilidadeAtual, int DurabilidadeMaxima,
     string? ImageUrl, string? Descricao, List<string>? RequisitosPendentes);
 public sealed record ArtefatoLido(string Id, string Nome, List<string>? Penalidade);
-public sealed record FichaLida(string Id, string? EquipmentKitId, int Ciclos);
+public sealed record FichaLida(string Id, string? EquipmentKitId, int Ciclos, string? Nome, int Nivel, int ExperienciaAtual, string? CampaignId, string? OwnerId, int AdrenalinaMaximo);
+public sealed record ResumoDeFichaLido(string Id, string? OwnerNickname);

@@ -13,10 +13,15 @@ using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 
+using RuinaRPG.Tests.Integration.Controllers.Fichas;
+
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
+public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTesteNpc>(fixture)
 {
+    protected override Task DefinirXpAsync(FichaDeTeste f, int xp) =>
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}/experiencia-atual", f.GmToken, xp));
+
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
@@ -46,7 +51,7 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         return (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
     }
 
-    private static UpdateNpcSheetRequest ValidUpdate() => new(
+    internal static UpdateNpcSheetRequest ValidUpdate() => new(
         null, "Sentinela da Ruína", "Humano", "Sinir", "Campeao", "Duelista", null, "Guardiã do Portal",
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null, null, 0);
 
@@ -59,20 +64,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
-    public async Task Create_returns_201_with_Nivel_1()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGm1", "npc1@teste.com");
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.Nivel.Should().Be(1);
-        body.Nome.Should().BeNull();
-        body.OwnerId.Should().BeNull();
-    }
-
-    [Fact]
     public async Task Create_by_a_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGm2", "npc2@teste.com");
@@ -81,63 +72,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", jogadorToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Get_by_the_owning_gm_returns_200()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGm3", "npc3@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Get_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwner4", "npcowner4@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOther4", "npcother4@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmTokenOther));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Get_and_Update_by_the_player_the_sheet_was_granted_to_both_succeed()
-    {
-        // Requisitos - Campanha R0010: a granted NPC/Criatura "usa o mesmo modelo de edição" as
-        // the player's own Ficha de Personagem — the owning player, not just the GM, can edit it.
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrant1", "npcgmgrant1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorGrant1", "npcjogadorgrant1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC Grant");
-        await AddMemberAsync(gmToken, campaignId, playerId);
-        var sheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
-
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken));
-        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var update = ValidUpdate() with { Nome = "Companheiro do Jogador" };
-        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", playerToken, update));
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        var getAfter = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", playerToken));
-        (await getAfter.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Nome.Should().Be("Companheiro do Jogador");
-    }
-
-    [Fact]
-    public async Task Get_by_a_jogador_the_sheet_was_never_granted_to_returns_404()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmGrant2", "npcgmgrant2@teste.com");
-        var (_, strangerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcJogadorGrant2", "npcjogadorgrant2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken); // OwnerId stays null — never granted to anyone
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", strangerToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -346,80 +280,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         body.Assistencia.Should().BeNull();
     }
 
-    [Fact]
-    public async Task UpdateNivel_pulls_ExperienciaAtual_to_that_levels_minimum_XP()
-    {
-        // Real thresholds from "Tabelas de XP, Atributos, Características e EAP": Nível 4's is
-        // 500 — the XP that first reaches Nível 5.
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmNivel1", "npcnivel1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/nivel", gmToken, 5));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var body = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
-            .Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.Nivel.Should().Be(5);
-        body.ExperienciaAtual.Should().Be(500);
-    }
-
-    [Fact]
-    public async Task UpdateExperienciaAtual_pulls_Nivel_via_the_same_rule_as_Ficha_de_Personagem()
-    {
-        // 750 is Nível 5's own threshold — reaching it exactly already counts as Nível 6 (same
-        // "reaching it exactly already counts" rule NivelCalculator applies for Ficha de
-        // Personagem).
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmNivel2", "npcnivel2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 750));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var body = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken)))
-            .Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.ExperienciaAtual.Should().Be(750);
-        body.Nivel.Should().Be(6);
-    }
-
-    [Fact]
-    public async Task UpdateNivel_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmNivelOwner3", "npcnivelowner3@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmNivelOther3", "npcnivelother3@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/nivel", gmTokenOther, 5));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task LevelUpNotice_lists_bonus_text_for_every_level_gained_since_the_last_dismissal()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp1", "npclevelup1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        // 149 XP is one below Nível 3's threshold (150), keeping this at Nível 2 — same fixture
-        // value Ficha de Personagem's own equivalent test uses.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 149));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
-
-        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().OnlyContain(t => !t.Contains("<br>"));
-        // Auditoria da Tabela de Níveis: numeric bonuses are rendered as "<nome da coluna>: +N"
-        // (column names are free text the Auditor can edit, so they can't be singularized), and
-        // the same column across the levels gained at once is summed into a single line.
-        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 1, 2);
-        body.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
-    }
-
-
-    private async Task<int> PontosDeAtributoAcumuladosAsync(string token, int primeiroNivel, int ultimoNivel)
-    {
-        var tabela = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
-        var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
-        return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
-    }
 
     [Fact]
     public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
@@ -435,78 +295,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
         var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
         body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
-    }
-
-    [Fact]
-    public async Task Dismiss_stops_the_dismissed_levels_from_reappearing()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp2", "npclevelup2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 149));
-
-        var dismissResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
-        dismissResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        var noticeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
-        var body = await noticeResponse.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        body!.BonusTexts.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task Dismiss_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmLevelUpOwner3", "npclevelupowner3@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmLevelUpOther3", "npclevelupother3@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmTokenOther));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Update_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwner6", "npcowner6@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOther6", "npcother6@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmTokenOther, ValidUpdate()));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Delete_by_the_owning_gm_returns_204()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGm7", "npc7@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    }
-
-    [Fact]
-    public async Task Delete_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwner8", "npcowner8@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOther8", "npcother8@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/npc-sheets/{sheetId}", gmTokenOther));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Get_a_nonexistent_sheet_returns_404()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGm9", "npc9@teste.com");
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{Guid.NewGuid()}", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -687,23 +475,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
         body.Should().HaveCount(1);
         body![0].Id.Should().Be(sheetIdA);
-    }
-
-    [Fact]
-    public async Task List_shows_OwnerNickname_for_a_granted_sheet_and_null_for_the_GMs_own()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmListOwner", "npcgmlistowner@teste.com");
-        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "NpcGmListOwnerPlayer", "npcgmlistownerplayer@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha List Owner");
-        await AddMemberAsync(gmToken, campaignId, playerId);
-        var ownSheetId = await CreateSheetAsync(gmToken);
-        var grantedSheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/npc-sheets", gmToken));
-
-        var body = await response.Content.ReadFromJsonAsync<List<NpcSheetSummaryResponse>>();
-        body!.Single(s => s.Id == ownSheetId).OwnerNickname.Should().BeNull();
-        body!.Single(s => s.Id == grantedSheetId).OwnerNickname.Should().Be("NpcGmListOwnerPlayer");
     }
 
     [Fact]
@@ -903,54 +674,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
-    public async Task SubAttributes_computes_from_attributes_and_arsenal()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub1", "npcsub1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.Movimentacao.Should().Be(8); // (4*2) + 0 artefato - 0 sobrepeso (nothing carried yet)
-    }
-
-    [Fact]
-    public async Task SubAttributes_includes_Bruto_Prontidao_Reflexos_and_Fortitude_from_their_skill_Modificador()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub4", "npcsub4@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
-
-        // Prontidao Gasto 9 -> Modificador 3, Reflexos Gasto 6 -> Modificador 2, Fortitude Gasto 3 -> Modificador 1.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Prontidao", gmToken,
-            new UpdateNpcSkillRequest(9, null)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Reflexos", gmToken,
-            new UpdateNpcSkillRequest(6, null)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Fortitude", gmToken,
-            new UpdateNpcSkillRequest(3, null)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.Iniciativa.Should().Be(7); // agilidade 4 + brutoProntidao 3 + 0 artefato
-        body.EsquivaNatural.Should().Be(6); // agilidade 4 + brutoReflexos 2 + 0 artefatos - 0 penalidade
-        body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 + 0 escudo + 0 artefatos + 0 cobertura
-    }
-
-    [Fact]
     public async Task SubAttributes_includes_the_Historico_bonus_on_Prontidao_and_Reflexos()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSubHist1", "npcsubhist1@teste.com");
@@ -994,50 +717,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         body!.Iniciativa.Should().Be(9); // agilidade 4 + brutoProntidao ((9+6)/3=5) + 0 artefato
         body.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos ((6+3)/3=3) + 0 artefatos - 0 penalidade
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 (no bonus) + 0 escudo + 0 artefatos + 0 cobertura
-    }
-
-    [Fact]
-    public async Task SubAttributes_sums_an_equipped_SubAtributo_Artefato_into_the_matching_term()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub9", "npcsub9@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
-
-        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Artefato", "Amuleto de Reflexos", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "SubAtributo", "Esquiva Natural", 3, null)));
-        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos 0 + artefato 3 - 0 penalidade
-    }
-
-    private async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Armadura", "Peitoral de Testes", 3m, 30, null, null, null, null, null, null, null, null, null, null, "Medio", 5, rf, rm, null, null, null, null, null)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    [Fact]
-    public async Task SubAttributes_includes_equipped_armor_RF_and_RM()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSub2", "npcsub2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 3, rm: 2);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete", gmToken,
-            new UpdateNpcArmorSlotRequest(armorItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.ReducaoFisica.Should().Be(3);
-        body.ReducaoMagica.Should().Be(2);
     }
 
     private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, decimal? capacidadeExtra = null)
@@ -1168,18 +847,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
-    public async Task SubAttributes_by_a_different_gm_returns_404()
-    {
-        var gmTokenOwner = await RegisterGmAndGetTokenAsync("NpcGmOwnerSub3", "npcownersub3@teste.com");
-        var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcGmOtherSub3", "npcothersub3@teste.com");
-        var sheetId = await CreateSheetAsync(gmTokenOwner);
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmTokenOther));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
     public async Task Get_computes_vitalidade_and_foco_maximo_from_vigor_astucia_and_vocacao()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmMax1", "npcmax1@teste.com");
@@ -1205,70 +872,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         body.FocoMaximo.Should().Be(10);
         body.AdrenalinaMaximo.Should().Be(10); // 10 + Artefato bonus (nenhum equipado aqui → 0; ver o teste dedicado abaixo)
         body.EstresseMaximo.Should().Be(10); // flat
-    }
-
-    [Fact]
-    public async Task Get_computes_AdrenalinaMaximo_with_an_equipped_SubAtributo_Artefato()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmMax2", "npcmax2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Bracelete de Vigor", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "SubAtributo", "Adrenalina", 5, null)));
-        var artifactItemId = (await artifactResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(artifactItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-
-        var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
-    }
-
-    [Fact]
-    public async Task ModificadorDeDano_sums_equipped_Dano_Artefatos_per_TipoDeDano()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmDano1", "npcdano1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var cortanteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Anel Cortante", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "Dano", "Cortante", 3, null)));
-        var cortanteItemId = (await cortanteResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        var arcanoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", "Anel Arcano", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "Dano", "Arcano", 2, null)));
-        var arcanoItemId = (await arcanoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(cortanteItemId)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/artifacts", gmToken, new AddNpcArtifactRequest(arcanoItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/modificador-de-dano", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body2 = await response.Content.ReadFromJsonAsync<ModificadorDeDanoResponse>();
-        body2!.Cortante.Should().Be(3);
-        body2.Arcano.Should().Be(2);
-        body2.Perfurante.Should().Be(0);
-        body2.Contundente.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task CampaignId_is_populated_for_a_granted_sheet_and_null_for_an_ungranted_one()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcCampaignIdGm1", "npccampaignid1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "NpcCampaignIdPlayer1", "npccampaignidplayer1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha NPC CampaignId");
-        await AddMemberAsync(gmToken, campaignId, playerId);
-        var grantedSheetId = await GrantBlankNpcAsync(gmToken, campaignId, playerId);
-        var ungrantedSheetId = await CreateSheetAsync(gmToken); // read helper: POST npc-sheets, no update needed
-
-        var grantedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{grantedSheetId}", playerToken));
-        var granted = await grantedResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        granted!.CampaignId.Should().Be(campaignId);
-
-        var ungrantedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{ungrantedSheetId}", gmToken));
-        var ungranted = await ungrantedResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        ungranted!.CampaignId.Should().BeNull();
     }
 
     // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
