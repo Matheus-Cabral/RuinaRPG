@@ -684,6 +684,8 @@ public sealed class PericiasDaFichaTestesCriatura(ApiFixture f) : PericiasDaFich
 
 Same procedure as Task 11 Steps 3–5 (inventory already written; update its destination column) for Possessions / AffectionsAndTraits, SpellAbilities, Runes, Affinities, Equipagem, Passivas, and the shared parts of the three `*SheetsControllerTests`. Commit: `test: demais testes por tipo de ficha em classes genéricas`.
 
+Also in this task (cosmetic leftovers carried from sub-projects 0+A into D, tests only): remove stale "copied verbatim" / "none share a base class" / "via BlankDatabaseFixture" comments in converted test classes; remove unused usings in `tests/`; lift `GrantRulesAuditorAndReturnEmailAsync` (duplicated in 3 classes) into `ApiTestBase`; rename the `_postgres` field that holds an `ApiFixture` in `AuthControllerRateLimitTests` and `ConcorrenciaDoEncontroTests` to `_fixture`. Separate commit: `test: limpezas adiadas do A`.
+
 ---
 
 ### Task 13: Measurements and docs
