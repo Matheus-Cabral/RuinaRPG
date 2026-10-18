@@ -115,6 +115,8 @@ Como a cor antiga segue atendendo enquanto a migration roda, toda migration deve
 
 **Versão 1.5.0**: esta versão traz migrations que o código usa já no primeiro request: todo salvamento de ficha grava o log de ficha ([[Requisitos - Campanha]] R0016, R0012 abaixo) e as tabelas de encontros e de Condições são novas. Por isso o `deploy.sh` migra antes de colocar a cor nova na frente do nginx; no caminho manual antigo (`make deploy` seguido de `make migrate`) salvar uma ficha falhava enquanto a migration não rodasse. A 1.5.0 não tem `deploy/deploy.sh`: o primeiro release do pipeline é validado em modo de bootstrap e roda em janela (R0013).
 
+**Versão 2.0.0**: as 84 migrations da 1.5.0 foram consolidadas numa única migration de baseline (`20261017120000_Baseline_2_0_0`), que cria o mesmo schema e as mesmas Perícias base. O `--migrate` reconhece um banco que está exatamente na 1.5.0 e troca o histórico de migrations dele pela baseline, sem tocar em schema nem dados; qualquer outro estado antigo (parte da cadeia, migrations desconhecidas) é recusado sem alterar nada, e o deploy aborta. Migrations novas entram por cima da baseline, como antes.
+
   
 
 # **R0010** - Hospedagem: VM Ubuntu Server num homelab Proxmox, atrás de um túnel Cloudflare.

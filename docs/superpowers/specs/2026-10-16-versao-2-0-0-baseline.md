@@ -59,3 +59,24 @@ Measured on `46d6bc3` (release/2.0.0), same VM, three full runs plus one slice r
 One non-timeout failure appeared in run 1: `TabelaDeNiveisConfigMigrationTests` reported a class-cleanup error (`DROP DATABASE ... WITH (FORCE)` -> Postgres 55006 "being accessed by other users"). It passed when rerun alone, and runs 2 and 3 were clean; it is a rare race in the class-database teardown, recorded and not chased in A.
 
 The "Regeneração Bestial" name collision seen before A is not reproducible after A: 5/5 runs of the three classes involved pass.
+
+## After B (migration squash)
+
+Measured on `978348f` (release/2.0.0), same VM, one run.
+
+| Area | Metric | After A | After B |
+|---|---|---|---|
+| Build | `dotnet build --no-incremental` (s) | 74.9 / 128.5 / 72.9 | 32.5 (0 warnings) |
+| Tests | Integration, one process: time (s) | 453.1 / 432.9 / 432.5 | 289.6 |
+| Tests | Integration, one process: result | 1806 passed | 1811 passed, 0 failed (of 1811) |
+| Code size | migrations | 169 files, 9.6 MB | 3 files, 512K |
+| Code size | test projects `.cs` lines | Unit 6695; Client 17334; Integration 40305 | Unit 6830; Client 17591; Integration 40102 |
+
+`verificar-baseline.sh 729dac9`:
+
+```
+OK    schema: cadeia da 1.5.0 = baseline
+OK    dump completo (migrations): cadeia da 1.5.0 = baseline
+OK    dump completo (com seeders): 1.5.0 = 1.5.0 atualizada
+OK    histórico: atualizado = novo
+```

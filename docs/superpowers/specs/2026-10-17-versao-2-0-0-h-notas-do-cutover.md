@@ -48,3 +48,9 @@ H's spec must turn them into its runbook.
     - `git checkout <1.5.0 sha>` (`deploy/state` is gitignored and survives).
     - `docker start ruinarpg-api-1 ruinarpg-nginx-1`.
 12. **Before the first automated deploy (2.0.1).** Critical #1 (the dropped-SSH undo) is fixed in this F fix wave. Verify it is merged before relying on deploy.yml.
+
+## From sub-project B (migration squash)
+
+- Requirement 1 above is done: `DatabaseInitializer` calls `HistoricoDeMigracoes150.ConsolidarAsync` before `MigrateAsync`, so the `--migrate` that `deploy.sh` runs converts the 1.5.0 history to the baseline `20261017120000_Baseline_2_0_0` in one transaction, and refuses any other old state without changing anything.
+- Every rehearsal runs `tools/migrations/verificar-baseline.sh <1.5.0 sha>` and requires four `OK` lines.
+- Rollback to 1.5.0: after the cutover the history holds only the baseline row, which 1.5.0 does not know. A 1.5.0 API still runs (Production never migrates at startup and the schema is identical), but 1.5.0's `--migrate` (`make migrate`, `make deploy` of 1.5.0) would try to recreate the whole schema and fail. So the rollback in step 11 must restore the pre-cutover backup (as written) and must never run 1.5.0's migrate against the converted database.

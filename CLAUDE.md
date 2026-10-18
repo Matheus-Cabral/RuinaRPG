@@ -19,7 +19,7 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 - `dotnet test` — runs `tests/RuinaRPG.Tests.Unit`, `tests/RuinaRPG.Tests.Client` and `tests/RuinaRPG.Tests.Integration`. **Requires a running Docker daemon**: the integration tests spin up a real PostgreSQL via Testcontainers. Narrow a run with `dotnet test --filter FullyQualifiedName~SomeTests`.
 - Pipeline tests: `deploy/tests/run-bats.sh` (bats; optionally pass specific `.bats` files) and `python3 -m unittest deploy/tests/test_compare.py`.
 - `cp .env.example .env && make deploy` — `make deploy` calls `deploy/deploy.sh deploy "$(git rev-parse HEAD)"` (blue-green: `db`, `api-blue`/`api-green`, `web`) and brings the stack up locally on <http://localhost>. `/api/health` should answer `OK`.
-- EF Core migrations: `dotnet ef migrations add <Name> --project src/RuinaRPG.Infrastructure --startup-project src/RuinaRPG.Api --output-dir Persistence/Migrations`.
+- EF Core migrations: `dotnet ef migrations add <Name> --project src/RuinaRPG.Infrastructure --startup-project src/RuinaRPG.Api --output-dir Persistence/Migrations`. Since 2.0.0 the chain starts at one baseline (`20261017120000_Baseline_2_0_0`); `--migrate` converts a 1.5.0 history to it (`HistoricoDeMigracoes150`, Técnico R0009).
 
 **TDD is mandatory** (`Docs/Requisitos/Requisitos - Técnico.md` R0011): write the failing test first, then the minimum code to pass it — for every unit of behavior, not just the convenient ones.
 
