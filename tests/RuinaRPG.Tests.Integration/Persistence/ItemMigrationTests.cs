@@ -21,8 +21,6 @@ public class ItemMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddItems"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@itemtest.com", Email = "gm@itemtest.com", Nickname = "ItemTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

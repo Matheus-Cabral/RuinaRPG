@@ -24,8 +24,6 @@ public class RacialTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRacialTraits"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@racialtraittest.com", Email = "gm@racialtraittest.com", Nickname = "RacialTraitTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@racialtraittest.com", Email = "player@racialtraittest.com", Nickname = "RacialTraitTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

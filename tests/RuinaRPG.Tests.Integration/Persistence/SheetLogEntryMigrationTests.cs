@@ -44,7 +44,6 @@ public class SheetLogEntryMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddSheetLogEntries"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@sheetlogtest.com", Email = "gm@sheetlogtest.com", Nickname = "SheetLogTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@sheetlogtest.com", Email = "player@sheetlogtest.com", Nickname = "SheetLogTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

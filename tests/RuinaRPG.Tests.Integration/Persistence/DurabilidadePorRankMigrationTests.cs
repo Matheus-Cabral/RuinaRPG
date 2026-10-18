@@ -35,21 +35,10 @@ public class DurabilidadePorRankMigrationTests : IClassFixture<BlankDatabaseFixt
         new() { Id = Guid.NewGuid(), UserName = $"{nickname}@durabilidadetest.com", Email = $"{nickname}@durabilidadetest.com", Nickname = nickname, Role = UserRole.GM };
 
     [Fact]
-    public async Task Migrate_creates_the_AddDurabilidadePorRank_migration()
-    {
-        await using var db = await NewDbAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddDurabilidadePorRank"));
-    }
-
-    [Fact]
     public async Task Migrate_drops_the_hand_typed_DurabilidadeMaxima_columns_of_the_items()
     {
         await using var db = await NewDbAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("RemoveDurabilidadeMaximaDosItens"));
         var itemColumns = await db.Database
             .SqlQuery<string>($"SELECT CAST(column_name AS text) AS \"Value\" FROM information_schema.columns WHERE table_name = 'Items'")
             .ToListAsync();

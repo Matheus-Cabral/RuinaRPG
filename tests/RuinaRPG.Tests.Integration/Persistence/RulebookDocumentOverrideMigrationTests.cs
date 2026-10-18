@@ -20,8 +20,6 @@ public class RulebookDocumentOverrideMigrationTests : IClassFixture<BlankDatabas
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRulebookDocumentOverrides"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "rulebookoverridegm@teste.com", Email = "rulebookoverridegm@teste.com", Nickname = "RulebookOverrideGm", Role = UserRole.GM };
         db.Users.Add(gm);

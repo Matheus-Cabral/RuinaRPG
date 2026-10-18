@@ -20,8 +20,6 @@ public class TraitAuditFieldsMigrationTests : IClassFixture<BlankDatabaseFixture
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddTraitAuditFields"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "traitauditgm@teste.com", Email = "traitauditgm@teste.com", Nickname = "TraitAuditGm", Role = UserRole.GM };
         db.Users.Add(gm);

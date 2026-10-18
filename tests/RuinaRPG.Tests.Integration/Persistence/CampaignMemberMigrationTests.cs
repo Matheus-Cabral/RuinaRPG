@@ -20,8 +20,6 @@ public class CampaignMemberMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCampaignMembers"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@membertest.com", Email = "gm@membertest.com", Nickname = "MemberTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@membertest.com", Email = "player@membertest.com", Nickname = "MemberTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

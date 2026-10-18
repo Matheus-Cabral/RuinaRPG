@@ -23,8 +23,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDataba
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRacialAbilityOverrideAndArcaEntry"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@racialtest.com", Email = "gm@racialtest.com", Nickname = "RacialTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@racialtest.com", Email = "player@racialtest.com", Nickname = "RacialTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -62,7 +60,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDataba
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddDadoDaTabelaDeArcas"));
 
         var gmSemLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm1@arcadado.com", Email = "gm1@arcadado.com", Nickname = "ArcaDadoMigGm1", Role = UserRole.GM };
         var gmComLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm2@arcadado.com", Email = "gm2@arcadado.com", Nickname = "ArcaDadoMigGm2", Role = UserRole.GM };

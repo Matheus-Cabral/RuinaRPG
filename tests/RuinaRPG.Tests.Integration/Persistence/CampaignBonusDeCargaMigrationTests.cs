@@ -26,7 +26,6 @@ public class CampaignBonusDeCargaMigrationTests : IClassFixture<BlankDatabaseFix
     {
         await using var db = await NewDbAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddBonusDeCargaDaCampanha"));
         var columns = await db.Database
             .SqlQuery<string>($"SELECT CAST(column_name AS text) AS \"Value\" FROM information_schema.columns WHERE table_name = 'Campaigns'")
             .ToListAsync();

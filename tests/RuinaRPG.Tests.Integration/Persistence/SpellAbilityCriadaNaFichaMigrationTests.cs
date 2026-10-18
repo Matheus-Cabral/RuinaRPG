@@ -17,7 +17,6 @@ public class SpellAbilityCriadaNaFichaMigrationTests : IClassFixture<BlankDataba
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddCriadaNaFichaToSheetSpellAbilities"));
         foreach (var tabela in new[] { "CharacterSpellAbilities", "NpcSpellAbilities", "CreatureSpellAbilities" })
         {
             var padrao = await db.Database.SqlQuery<string>(

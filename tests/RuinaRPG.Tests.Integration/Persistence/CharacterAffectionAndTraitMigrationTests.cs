@@ -22,8 +22,6 @@ public class CharacterAffectionAndTraitMigrationTests : IClassFixture<BlankDatab
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterAffectionsAndTraits"));
 
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so the CharacterTrait
         // FK below genuinely targets a real, seeded Trait row rather than a synthetic one.

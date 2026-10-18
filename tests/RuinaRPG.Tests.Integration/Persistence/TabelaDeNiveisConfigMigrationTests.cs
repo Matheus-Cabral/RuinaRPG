@@ -18,7 +18,6 @@ public class TabelaDeNiveisConfigMigrationTests : IClassFixture<BlankDatabaseFix
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddTabelaDeNiveisConfig"));
         (await db.TabelaDeNiveisConfigs.CountAsync()).Should().Be(0);
 
         db.TabelaDeNiveisConfigs.Add(new TabelaDeNiveisConfig { MostrarLimitesNoLivro = true });

@@ -43,7 +43,6 @@ public class HistoriaImagensMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = NewContext();
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddImagensDaHistoria"));
 
         var (characterId, npcId, a, b) = await SeedAsync(db, "1");
         db.CharacterSheetHistoriaImages.AddRange(

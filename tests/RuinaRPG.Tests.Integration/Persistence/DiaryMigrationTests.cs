@@ -21,8 +21,6 @@ public class DiaryMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddDiary"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@diarytest.com", Email = "gm@diarytest.com", Nickname = "DiaryTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

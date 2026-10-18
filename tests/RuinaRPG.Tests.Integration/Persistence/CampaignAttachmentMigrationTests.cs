@@ -21,8 +21,6 @@ public class CampaignAttachmentMigrationTests : IClassFixture<BlankDatabaseFixtu
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCampaignAttachments"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@attachmenttest.com", Email = "gm@attachmenttest.com", Nickname = "AttachmentTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

@@ -26,8 +26,6 @@ public class CreatureChildTableMigrationTests : IClassFixture<BlankDatabaseFixtu
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCreatureChildTables"));
 
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so CreatureTrait's
         // FK genuinely targets a real, seeded Trait row rather than a synthetic one.

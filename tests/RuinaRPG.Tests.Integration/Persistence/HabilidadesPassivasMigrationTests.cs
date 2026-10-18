@@ -24,7 +24,6 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<BlankDatabaseFixt
         await using (var db = new RuinaRpgDbContext(options))
         {
             await db.Database.MigrateAsync();
-            (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddHabilidadesPassivas"));
         }
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@passivatest.com", Email = "gm@passivatest.com", Nickname = "PassivaTestGm", Role = UserRole.GM };

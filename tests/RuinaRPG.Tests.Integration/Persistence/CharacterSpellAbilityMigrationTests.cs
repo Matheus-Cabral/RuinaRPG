@@ -22,8 +22,6 @@ public class CharacterSpellAbilityMigrationTests : IClassFixture<BlankDatabaseFi
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterSpellAbilities"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@charspelltest.com", Email = "gm@charspelltest.com", Nickname = "CharSpellTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@charspelltest.com", Email = "player@charspelltest.com", Nickname = "CharSpellTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

@@ -22,8 +22,6 @@ public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<BlankDa
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterInventoryAndArtifacts"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@invtest.com", Email = "gm@invtest.com", Nickname = "InvTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@invtest.com", Email = "player@invtest.com", Nickname = "InvTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

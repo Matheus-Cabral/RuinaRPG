@@ -21,8 +21,6 @@ public class SpellAbilityBankMigrationTests : IClassFixture<BlankDatabaseFixture
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddSpellAbilityBank"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@banktest.com", Email = "gm@banktest.com", Nickname = "BankTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

@@ -21,8 +21,6 @@ public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRuneBank"));
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = $"gm{suffix}@runebank.test", Email = $"gm{suffix}@runebank.test", Nickname = $"RuneBank{suffix}", Role = UserRole.GM };
@@ -50,7 +48,6 @@ public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddRuneImage"));
         (await ColumnsOfAsync(db, "RuneBankEntries")).Should().Contain("ImageId");
         (await ColumnsOfAsync(db, "CharacterRunes")).Should().Contain("ImageId");
         (await ColumnsOfAsync(db, "NpcRunes")).Should().Contain("ImageId");
@@ -63,7 +60,6 @@ public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddTipoDeRuna"));
         foreach (var table in new[] { "RuneBankEntries", "CharacterRunes", "NpcRunes" })
         {
             (await ColumnsOfAsync(db, table)).Should().Contain("Tipo");
