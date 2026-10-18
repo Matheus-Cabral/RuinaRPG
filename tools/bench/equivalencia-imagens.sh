@@ -48,10 +48,10 @@ for t in api client smoke; do
   manifest "ruinarpg-eq-new-$t:$tag" > "$tmp/new-$t"
   diff -u "$tmp/old-$t" "$tmp/new-$t" > "$tmp/diff-$t" || true
   # Expected: the old smoke Dockerfile never passed GIT_SHA, so its RuinaRPG assemblies carried no
-  # SourceRevisionId; the shared build stamps all three images alike.
+  # SourceRevisionId; the shared build stamps all three images alike (the .pdb ids change along with the assemblies).
   if [[ "$t" == smoke ]]; then
-    grep -E '^[-+]app/RuinaRPG\.[A-Za-z.]+\.dll ' "$tmp/diff-$t" | sed 's/^/esperado: /' || true
-    unexpected="$(grep -E '^[-+][^-+]' "$tmp/diff-$t" | grep -vE '^[-+]app/RuinaRPG\.[A-Za-z.]+\.dll ' || true)"
+    grep -E '^[-+]app/RuinaRPG\.[A-Za-z.]+\.(dll|pdb) ' "$tmp/diff-$t" | sed 's/^/esperado: /' || true
+    unexpected="$(grep -E '^[-+][^-+]' "$tmp/diff-$t" | grep -vE '^[-+]app/RuinaRPG\.[A-Za-z.]+\.(dll|pdb) ' || true)"
   else
     unexpected="$(grep -E '^[-+][^-+]' "$tmp/diff-$t" || true)"
   fi
