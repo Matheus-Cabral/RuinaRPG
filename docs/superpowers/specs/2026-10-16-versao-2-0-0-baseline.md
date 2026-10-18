@@ -105,3 +105,21 @@ Measured on `76868d1` (release/2.0.0), same VM, one run each, with the deploy-ba
 Image sizes are KiB (bytes / 1024): `favicon.png` 607001 -> 545514 bytes, `logo-grande.png` 653705 -> 602119 bytes (the Before column of the original spec table, 596 / 640, used a different rounding). The other latency endpoints stayed under 20 %, except sub-10 ms ones within single-run noise, e.g. `/api/traits` 4.96 -> 6.09 ms.
 
 Success criteria of the spec: first-visit transfer <= 7168 KB was **met** (5834 KB, -59 %). Warm build stage <= half of the before value (<= 90.5 s of 181 s) was **missed**: 110 s (-39 %); per the plan nothing was tuned to chase it. The cold full deploy still improved (287.8 -> 238.8 s) and the one-line-change deploy went from 211.3 to 137.7 s. `/api/rulebook`: p50 0.0698 s is above the 30 ms threshold, so it was profiled (temporary `Stopwatch` instrumentation, since reverted). Per request (warm, ~75 ms inside the test host) the Markdown step (`SplitIntoSections`, all documents) costs only ~12-15 ms; `BuildEquipagemAsync` alone costs ~45 ms, from per-kit database queries (an N+1 over `EquipmentKits`), not from Markdown. The Markdown memo of the plan therefore does not apply and no code was changed; the Equipagem queries are a candidate for a later round.
+
+## After D (backend consolidation)
+
+Measured on `57b4ba7` (release/2.0.0) with `tools/bench/` (`depois-d`), same VM, one run each. "Before D" is `288fd0b` (`antes-d`).
+
+**Line-count method (same for both columns):** `git ls-files '<dir>/*.cs' | xargs cat | wc -l`, evaluated at `288fd0b` and at HEAD (by reading each tracked `.cs` blob with `git show`), for (a) `src/RuinaRPG.Api/Controllers` + `src/RuinaRPG.Api/Services` and (b) `tests/RuinaRPG.Tests.Integration`. The 15 813 / 40 139 in the D spec were computed slightly differently; re-measured with this method at `288fd0b` they come out the same (15 813 / 40 139), so before and after are comparable.
+
+| Metric | Before D | After D | Target | Result |
+|---|---|---|---|---|
+| Lines in `Controllers/` + `Services/` | 15 813 | 13 191 (-16.6 %) | <= 11 500 | **missed** |
+| Lines in `Tests.Integration/` | 40 139 | 34 312 (-14.5 %) | <= 34 000 | **missed** (312 lines over) |
+| `/api/rulebook` p50 through nginx | 74.2 ms (`antes-d.txt`); 69.8 ms in C's run | 45.7 ms (42.5 ms in the Task 2 run, `depois-d-rulebook.txt`) | < 30 ms | **missed** |
+| Integration wall time | 283.7 s (1812 tests) | 312.1 s (2045 tests) | no regression | **regressed** in total (+10 %), with +233 tests (+12.9 %); per test 0.157 -> 0.153 s |
+| `dotnet build --no-incremental` | 62.6 s, 0 warnings | 63.4 s, 0 warnings | no regression | met |
+
+Other numbers: whole `Api` project 16 318 -> 13 702 lines; Unit 964 -> 964 tests, Client 936 -> 936, Integration 1812 -> 2045 (tests per kind grew, none removed). HttpClient timeouts 0 in all three. The other API endpoints stayed within single-run noise of the before values (sub-10 ms ones +/- 1 ms; `/api/items` 18.9 -> 21.2 ms, `/api/creature-sheets/{id}` 13.1 -> 14.5 ms).
+
+Targets were reported as measured, not tuned. The rulebook gain (74 -> 46 ms) comes from batching the Equipagem queries; where the rest goes was not profiled again in D (the profile under "After C" put the Markdown step at ~12-15 ms). The integration wall time grew because the suite now runs more cases (every shared case runs for each of the three kinds). Success criteria otherwise: build 0 warnings / 0 errors, whole suite green, `verificar-baseline.sh 729dac9` exit 0, `git diff ed7a447 -- src/RuinaRPG.Contracts src/RuinaRPG.Client` empty, route inventory and rulebook frozen output unchanged.

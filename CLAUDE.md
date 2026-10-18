@@ -67,6 +67,7 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 - `src/RuinaRPG.Infrastructure` — EF Core `RuinaRpgDbContext`, ASP.NET Core Identity entities, migrations, JWT/refresh-token services.
 - `src/RuinaRPG.Contracts` — request/response records shared by the API and the client.
 - `src/RuinaRPG.Api` — ASP.NET Core 8 Web API (controllers), the composition root in `Program.cs`.
+  - `Controllers/Fichas/` holds the generic sheet controllers (one abstract base per feature, e.g. `FichasController`, `PericiasDaFichaController`), each closed per kind (Personagem, NPC, Criatura) by an `ITipoDeFicha` adapter (`TipoPersonagem`, `TipoNpc`, `TipoCriatura`); kind-only endpoints stay in the per-kind subclasses. `Services/FichaStats.cs` is the shared derived-stats calculator (per-kind hooks such as `CargaAsync`).
 - `src/RuinaRPG.Client` — Blazor WebAssembly 8 standalone app, served by nginx.
 - `tests/RuinaRPG.Tests.Unit`, `tests/RuinaRPG.Tests.Client`, `tests/RuinaRPG.Tests.Integration` — xUnit; the client project tests the Blazor client, and the integration project drives the real API over HTTP against a Testcontainers PostgreSQL.
 - `deploy/Dockerfile` — the one multi-stage build of the three deploy images (targets `api`, `client`, `smoke`): restored and compiled once per deploy; the client is published to versioned releases under the nginx webroot. `deploy/nginx/` holds the long-lived nginx config (static client, compression and cache headers, `/api/` and `/hubs/` proxy to the active color).

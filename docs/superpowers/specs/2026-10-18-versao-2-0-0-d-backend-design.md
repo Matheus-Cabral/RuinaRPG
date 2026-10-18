@@ -178,6 +178,8 @@ A missed target is reported to the user, as in C, without tuning beyond the plan
 
 ## Divergências encontradas
 
+> Esta lista é para o usuário decidir depois do D; nenhuma divergência foi corrigida no D.
+
 Divergências acidentais entre os tipos de ficha achadas ao consolidar (D.5): o comportamento de hoje foi
 mantido; fica para o usuário decidir depois.
 
