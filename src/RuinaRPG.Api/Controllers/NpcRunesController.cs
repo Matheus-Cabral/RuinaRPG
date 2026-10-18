@@ -36,7 +36,7 @@ public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.Cond
             return BadRequest("Informe exatamente um: Nome, Descricao e Grau para montar do zero, ou SourceBankEntryId.");
 
         // A NPC sheet has no CampaignId column: the campaign of a granted NPC is resolved through the
-        // grant-link CampaignAttachment (same rule NpcSpellAbilitiesController uses). Only a Jogador
+        // grant-link CampaignAttachment (same rule as the NPC hook CampanhaDaFichaAsync of MagiasDaFichaController). Only a Jogador
         // (caller != GM) ever needs it.
         Guid? campaignId = null;
         if (callerId != sheet.GmId)

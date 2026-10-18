@@ -47,6 +47,15 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "POST", "spell-abilities", 403 }, { "npc", "POST", "spell-abilities", 404 }, { "creature", "POST", "spell-abilities", 404 },
         { "character", "PUT", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "PUT", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "PUT", $"spell-abilities/{Guid.Empty}", 404 },
         { "character", "DELETE", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "DELETE", $"spell-abilities/{Guid.Empty}", 404 },
+        { "character", "GET", "runes", 403 }, { "npc", "GET", "runes", 404 },
+        { "character", "POST", "runes", 403 }, { "npc", "POST", "runes", 404 },
+        { "character", "DELETE", $"runes/{Guid.Empty}", 403 }, { "npc", "DELETE", $"runes/{Guid.Empty}", 404 },
+        { "character", "GET", "affinities", 403 }, { "npc", "GET", "affinities", 404 },
+        { "character", "POST", "affinities", 403 }, { "npc", "POST", "affinities", 404 },
+        { "character", "PUT", $"affinities/{Guid.Empty}", 403 }, { "npc", "PUT", $"affinities/{Guid.Empty}", 404 },
+        { "character", "DELETE", $"affinities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"affinities/{Guid.Empty}", 404 },
+        { "character", "GET", "equipagem/kits", 403 }, { "npc", "GET", "equipagem/kits", 404 },
+        { "character", "POST", "equipagem/choose", 403 }, { "npc", "POST", "equipagem/choose", 404 },
     };
 
     // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
@@ -56,6 +65,7 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0, ItemId = Guid.Empty.ToString(),
         Qtd = 1, DT = 0, ArtifactItemId = Guid.Empty.ToString(), Favorabilidade = 0, TraitId = Guid.Empty.ToString(), GratuitaTraitNome = "Golpe",
         Tipo = "Magia", Grau = 1, Descricao = "Golpe", Efeitos = Array.Empty<object>(),
+        KitId = Guid.Empty.ToString(), ChoiceSelections = Array.Empty<object>(),
     };
 
     [Theory]
