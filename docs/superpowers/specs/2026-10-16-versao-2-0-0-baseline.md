@@ -108,7 +108,7 @@ Success criteria of the spec: first-visit transfer <= 7168 KB was **met** (5834 
 
 ## After D (backend consolidation)
 
-Measured on `57b4ba7` (release/2.0.0) with `tools/bench/` (`depois-d`), same VM, one run each. "Before D" is `288fd0b` (`antes-d`).
+Measured on `76c7763` (release/2.0.0; differs from `57b4ba7` only by docs) with `tools/bench/` (`depois-d`), same VM, one run each. "Before D" is `288fd0b` (`antes-d`).
 
 **Line-count method (same for both columns):** `git ls-files '<dir>/*.cs' | xargs cat | wc -l`, evaluated at `288fd0b` and at HEAD (by reading each tracked `.cs` blob with `git show`), for (a) `src/RuinaRPG.Api/Controllers` + `src/RuinaRPG.Api/Services` and (b) `tests/RuinaRPG.Tests.Integration`. The 15 813 / 40 139 in the D spec were computed slightly differently; re-measured with this method at `288fd0b` they come out the same (15 813 / 40 139), so before and after are comparable.
 

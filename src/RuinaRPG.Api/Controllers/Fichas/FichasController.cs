@@ -121,7 +121,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
         return NoContent();
     }
 
-    /// <summary>Apaga a ficha (NPC e Criatura: quem pode editá-la; o Personagem tem o seu, só do Mestre da campanha).</summary>
+    /// <summary>Apaga a ficha (NPC e Criatura: quem pode editá-la; o Personagem tem o seu, só do Mestre da campanha). Só para NPC/Criatura: não usar no Personagem (o delete dele é só do Mestre).</summary>
     protected async Task<IActionResult> ApagarAsync(Guid id)
     {
         if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
@@ -138,7 +138,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     // inteiro, sem como distinguir "o GM acabou de editar o Nível" de "o Nível não foi tocado". Por isso o cliente chama
     // um endpoint ou o outro, dizendo qual campo de fato quer (FichaDeNpc.razor / FichaDeCriatura.razor).
 
-    /// <summary>Define o Nível e leva a Experiência Atual ao mínimo dele.</summary>
+    /// <summary>Define o Nível e leva a Experiência Atual ao mínimo dele. Só para NPC/Criatura: o Nível do Personagem é calculado, não usar nele.</summary>
     protected async Task<IActionResult> DefinirNivelAsync(Guid id, int nivel)
     {
         if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
@@ -157,7 +157,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
         return NoContent();
     }
 
-    /// <summary>Define a Experiência Atual e recalcula o Nível por ela.</summary>
+    /// <summary>Define a Experiência Atual e recalcula o Nível por ela. Só para NPC/Criatura: o Nível do Personagem é calculado, não usar nele.</summary>
     protected async Task<IActionResult> DefinirExperienciaAtualAsync(Guid id, int experienciaAtual)
     {
         if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))

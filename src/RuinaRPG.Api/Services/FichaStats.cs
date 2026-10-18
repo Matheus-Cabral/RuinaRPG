@@ -65,6 +65,7 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     where TSlot : class, ISlotDeArmaduraDaFicha
     where TArtefato : class, IArtefatoDaFicha
 {
+    // Falham cedo (TypeInitializationException) se o enum de atributos da ficha não tiver algum desses nomes.
     private static readonly TAtributo Agilidade = Enum.Parse<TAtributo>(nameof(Atributo.Agilidade));
     private static readonly TAtributo Vigor = Enum.Parse<TAtributo>(nameof(Atributo.Vigor));
     private static readonly TAtributo Forca = Enum.Parse<TAtributo>(nameof(Atributo.Forca));

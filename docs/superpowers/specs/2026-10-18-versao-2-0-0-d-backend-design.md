@@ -48,8 +48,9 @@ counting changed lines of a diff:
 
 ### D.1 Shared entity interfaces and the `SheetId` rename
 
-- `IFicha` is implemented by `CharacterSheet`, `NpcSheet` and `CreatureSheet`: `Id`, `OwnerId`, `GmId`
-  and whatever else the generic code reads (e.g. `Nivel` where all three have it).
+- `IFicha` is implemented by `CharacterSheet`, `NpcSheet` and `CreatureSheet`: `Id`, `Nivel` and
+  `ImageId` (plus `Cobertura`). `OwnerId`/`GmId` and the authorization rules are not on `IFicha`: they live in
+  the adapter `ITipoDeFicha`, because `CharacterSheet` has no `GmId`.
 - Each per-kind child entity implements one interface per feature (`IPericiaDaFicha<TAtributo>`,
   `IAtributoDaFicha`, `IMaestriaDaFicha`, `IArmaDaFicha`, `IItemDaFicha`, …) with `Id`, `SheetId` and the
   fields shared by every kind that has the feature. Kind-only fields stay off the interface; a type that
