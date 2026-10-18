@@ -16,8 +16,10 @@ using RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTestePersonagem>(fixture)
+public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuNpcTestes<TipoDeTestePersonagem>(fixture)
 {
+    protected override object AtualizacaoValida() => ValidUpdate();
+
     protected override Task DefinirXpAsync(FichaDeTeste f, int xp) =>
         Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{f.SheetId}", f.Token, ValidUpdate() with { ExperienciaAtual = xp }));
 
@@ -273,21 +275,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
     }
 
     [Fact]
-    public async Task Update_with_a_Variante_that_does_not_belong_to_the_Linhagem_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdate4", "sheetupdate4@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdate4", "sheetplayerupdate4@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Invalid");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var invalid = ValidUpdate() with { Linhagem = "Humano", Variante = "Yavos" }; // Yavos belongs to Nephrytes
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
     public async Task EAPAtual_is_the_level_base_plus_the_Ambares_by_Rank()
     {
         // Ficha de Personagem 1.b: "Segue a tabela ... e é somado pelo resultado de Âmbares
@@ -427,25 +414,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
     }
 
     [Fact]
-    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp4", "sheetlevelup4@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerLevelUp4", "sheetplayerlevelup4@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha LevelUp 4");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/dismiss-level-up-notice", playerToken));
-
-        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { ExperienciaAtual = 150 }));
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/level-up-notice", playerToken));
-
-        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
-        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
-    }
-
-    [Fact]
     public async Task Dismiss_by_an_unrelated_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmLevelUp3", "sheetlevelup3@teste.com");
@@ -520,21 +488,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    [Fact]
-    public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdEst", "sheetupdest@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdEst", "sheetplayerupdest@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Estrela Invalida");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var invalid = ValidUpdate() with { Estrela = "Xyz" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
     [Theory]
     [InlineData(-1)]
     [InlineData(4)]
@@ -573,83 +526,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
     }
 
     [Fact]
-    public async Task Update_with_a_garbage_HistoricoId_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist1", "sheetupdhist1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist1", "sheetplayerupdhist1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Invalido");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var invalid = ValidUpdate() with { HistoricoId = "not-a-guid" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_with_a_HistoricoId_that_does_not_exist_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist2", "sheetupdhist2@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist2", "sheetplayerupdhist2@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Inexistente");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var invalid = ValidUpdate() with { HistoricoId = Guid.NewGuid().ToString() };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_persists_a_valid_HistoricoId()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmUpdHist3", "sheetupdhist3@teste.com");
-        using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var historico = await db.Historicos.FirstAsync();
-
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerUpdHist3", "sheetplayerupdhist3@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Update Historico Valido");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var update = ValidUpdate() with { HistoricoId = historico.Id.ToString() };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
-        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        body!.HistoricoId.Should().Be(historico.Id.ToString());
-    }
-
-    [Fact]
-    public async Task Update_never_changes_EquipmentKitId_even_if_the_request_tries_to()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitImmutableGm", "equipkitimmutable@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "EquipKitImmutablePlayer", "equipkitimmutableplayer@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Equip Kit Imutavel");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
-        var before = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        before!.EquipmentKitId.Should().BeNull();
-
-        // ValidUpdate() (this file's existing helper) doesn't carry a real EquipmentKitId — the
-        // request contract simply has no field for it, since Update never accepts one; this test
-        // only confirms the response surfaces the sheet's real (still-null) value after an
-        // unrelated update.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
-
-        var afterResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
-        var after = await afterResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        after!.EquipmentKitId.Should().BeNull();
-    }
-
-    [Fact]
     public async Task GetSheet_surfaces_the_sheet_s_real_EquipmentKitId_once_one_is_set()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitRealGm", "equipkitreal@teste.com");
@@ -671,25 +547,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         body!.EquipmentKitId.Should().Be(kitId.ToString());
-    }
-
-    [Fact]
-    public async Task Update_accepts_any_Afinidade_whatever_the_Vocacao()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmAfin1", "sheetafin1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerAfin1", "sheetplayerafin1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Afinidade 1");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        // Vocacao=Campeao não liberava Fogo (Dobra) pelo mapa antigo — a restrição foi removida.
-        var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
-        var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        body!.Afinidade.Should().Be("Fogo");
     }
 
     [Fact]
@@ -834,106 +691,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
         body.ReducaoMagica.Should().Be(0); // unaffected — different Alvo
     }
 
-    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, decimal? capacidadeExtra = null)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("ItemGeral", nome, peso, 5, null, "Diversos", "Um item qualquer",
-                null, null, null, null, null, null, null,
-                null, null, null, null,
-                null, null, null, null, capacidadeExtra)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    private async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
-                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
-                null, null, null, null,
-                null, null, null, null, null)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    private async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
-                null, null, null, null, null, null, null,
-                "Leve", null, null, null,
-                2, null, null, null, null)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_includes_Inventario_items()
-    {
-        // The bug this task fixes: PesoAtual used to only sum Armas/Armaduras/Escudos, never the
-        // Inventário list, contradicting Requisitos - Ficha de Personagem 2.b's own formula text.
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso1", "sheetpeso1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso1", "sheetplayerpeso1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 1");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        var itemId = await CreateItemGeralAsync(gmToken, "Corda", peso: 2m);
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
-            new AddCharacterInventoryItemRequest(itemId, 3)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(6m); // 2 * 3
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_excludes_equipped_weapons_and_shields_but_includes_unequipped_ones()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso2", "sheetpeso2@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso2", "sheetplayerpeso2@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 2");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var equippedWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Equipada", peso: 1.5m);
-        var addEquippedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(equippedWeaponItemId)));
-        var equippedWeaponId = (await addEquippedResponse.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/weapons/{equippedWeaponId}", playerToken, true));
-
-        var reserveWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Reserva", peso: 1.5m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(reserveWeaponItemId)));
-
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, "Escudo Guardado", peso: 2m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(3.5m); // 1.5 (unequipped reserve weapon) + 2 (unequipped shield) — the equipped weapon is excluded
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_never_counts_armor()
-    {
-        // A CharacterArmorSlot with an ItemId is inherently worn — no unequipped state exists for
-        // armor, so it never contributes to PesoAtual.
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso3", "sheetpeso3@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso3", "sheetplayerpeso3@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 3");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 0, rm: 0);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken,
-            new UpdateCharacterArmorSlotRequest(armorItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(0m);
-    }
-
     private async Task<(string SheetId, string PlayerToken, string CampaignId, string GmToken)> NewSheetWithForcaVigorAsync(string tag, int forcaVigor)
     {
         var gmToken = await RegisterGmAndGetTokenAsync($"SheetGmBc{tag}", $"sheetbc{tag}@teste.com");
@@ -1002,30 +759,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
         var withBonus = await GetSubAttributesAsync(sheetId, playerToken);
         withBonus.PesoMaximo.Should().Be(4m);
         withBonus.Movimentacao.Should().Be(8);
-    }
-
-    [Fact]
-    public async Task SubAttributes_Capacidade_Extra_raises_PesoMaximo_and_its_own_Peso_is_excluded_from_PesoAtual()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmPeso4", "sheetpeso4@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerPeso4", "sheetplayerpeso4@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Peso 4");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
-
-        var mochilaItemId = await CreateItemGeralAsync(gmToken, "Mochila", peso: 1m, capacidadeExtra: 10m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken,
-            new AddCharacterInventoryItemRequest(mochilaItemId, 2)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(0m); // the 2 mochilas' own Peso (1*2=2) is excluded
-        body.PesoMaximo.Should().Be(24m); // floor((4+4)/2)=4, + (10*2)=20
     }
 
     [Fact]
@@ -1123,24 +856,6 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaTestes<Ti
         var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
         body!.EficienciaElemental.Should().Be(0);
         body.DanoElemental.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task RacialAbility_is_null_before_a_Variante_is_chosen_and_populated_after()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("SheetGmRacial1", "sheetracial1@teste.com");
-        var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerRacial1", "sheetplayerracial1@teste.com");
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha Racial");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-
-        var beforeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
-        (await beforeResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().BeNull();
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos" }));
-
-        var afterResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-ability", playerToken));
-        (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
     }
 
     [Fact]

@@ -17,8 +17,10 @@ using RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTesteNpc>(fixture)
+public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuNpcTestes<TipoDeTesteNpc>(fixture)
 {
+    protected override object AtualizacaoValida() => ValidUpdate();
+
     protected override Task DefinirXpAsync(FichaDeTeste f, int xp) =>
         Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}/experiencia-atual", f.GmToken, xp));
 
@@ -111,71 +113,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTe
     }
 
     [Fact]
-    public async Task Update_with_a_garbage_HistoricoId_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist1", "npcupdhist1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var invalid = ValidUpdate() with { HistoricoId = "not-a-guid" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_with_a_HistoricoId_that_does_not_exist_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist2", "npcupdhist2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var invalid = ValidUpdate() with { HistoricoId = Guid.NewGuid().ToString() };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_persists_a_valid_HistoricoId()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmUpdHist3", "npcupdhist3@teste.com");
-        await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
-        var historico = await db.Historicos.FirstAsync();
-
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var update = ValidUpdate() with { HistoricoId = historico.Id.ToString() };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.HistoricoId.Should().Be(historico.Id.ToString());
-    }
-
-    [Fact]
-    public async Task Update_never_changes_EquipmentKitId_even_if_the_request_tries_to()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipKitImmutableGm", "equipkitimmutable@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-        var before = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        before!.EquipmentKitId.Should().BeNull();
-
-        // ValidUpdate() (this file's existing helper) doesn't carry a real EquipmentKitId — the
-        // request contract simply has no field for it, since Update never accepts one; this test
-        // only confirms the response surfaces the sheet's real (still-null) value after an
-        // unrelated update.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate()));
-
-        var afterResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-        var after = await afterResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        after!.EquipmentKitId.Should().BeNull();
-    }
-
-    [Fact]
     public async Task GetSheet_surfaces_the_sheet_s_real_EquipmentKitId_once_one_is_set()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EquipKitRealGm", "equipkitreal@teste.com");
@@ -194,18 +131,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTe
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
         var body = await response.Content.ReadFromJsonAsync<NpcSheetResponse>();
         body!.EquipmentKitId.Should().Be(kitId.ToString());
-    }
-
-    [Fact]
-    public async Task Update_with_a_garbage_Estrela_returns_400_instead_of_silently_saving_null()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmEst2", "npcest2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var invalid = ValidUpdate() with { Estrela = "Xyz" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Theory]
@@ -280,50 +205,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTe
         body.Assistencia.Should().BeNull();
     }
 
-
-    [Fact]
-    public async Task LevelUpNotice_after_jumping_from_Nivel_1_to_3_sums_Pontos_de_Atributo_into_one_line()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmLevelUp4", "npclevelup4@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/dismiss-level-up-notice", gmToken));
-
-        // 150 XP é o limiar do Nível 3: pula direto do Nível 1 para o 3.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/experiencia-atual", gmToken, 150));
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/level-up-notice", gmToken));
-
-        var body = await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>();
-        var esperado = await PontosDeAtributoAcumuladosAsync(gmToken, 2, 3);
-        body!.BonusTexts.Should().ContainSingle(t => t.StartsWith("Pontos de Atributo:")).Which.Should().Be($"Pontos de Atributo: +{esperado}");
-    }
-
-    [Fact]
-    public async Task Update_with_a_Variante_that_does_not_belong_to_the_Linhagem_returns_400()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGm10", "npc10@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var invalid = ValidUpdate() with { Linhagem = "Humano", Variante = "Yavos" }; // Yavos belongs to Nephrytes
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, invalid));
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Update_accepts_any_Afinidade_whatever_the_Vocacao()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin1", "npcafin1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        // Vocacao=Campeao não liberava Fogo (Dobra) pelo mapa antigo — a restrição foi removida.
-        var update = ValidUpdate() with { Vocacao = "Campeao", Afinidade = "Fogo" };
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
-        var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.Afinidade.Should().Be("Fogo");
-    }
 
     [Fact]
     public async Task Update_allows_an_Afinidade_liberada_pela_Vocacao_atual()
@@ -530,21 +411,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTe
     }
 
     [Fact]
-    public async Task RacialAbility_is_null_before_a_Variante_is_chosen_and_populated_after()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmRacial1", "npcracial1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var beforeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
-        (await beforeResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().BeNull();
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate() with { Linhagem = "Nephrytes", Variante = "Yavos" }));
-
-        var afterResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-ability", gmToken));
-        (await afterResponse.Content.ReadFromJsonAsync<RacialAbilityResponse>())!.Nome.Should().Be("Racial (Sobre Voo)");
-    }
-
-    [Fact]
     public async Task RacialAbility_resolves_the_Arca_for_a_Humano_sheet_that_has_rolled()
     {
         // NOTE: the plan brief's literal test text reused "NpcGmRacial1"/"npcracial1@teste.com" —
@@ -717,114 +583,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaTestes<TipoDeTe
         body!.Iniciativa.Should().Be(9); // agilidade 4 + brutoProntidao ((9+6)/3=5) + 0 artefato
         body.EsquivaNatural.Should().Be(7); // agilidade 4 + brutoReflexos ((6+3)/3=3) + 0 artefatos - 0 penalidade
         body.DefesaNatural.Should().Be(5); // vigor 4 + brutoFortitude 1 (no bonus) + 0 escudo + 0 artefatos + 0 cobertura
-    }
-
-    private async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, decimal? capacidadeExtra = null)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("ItemGeral", nome, peso, 5, null, "Diversos", "Um item qualquer",
-                null, null, null, null, null, null, null,
-                null, null, null, null,
-                null, null, null, null, capacidadeExtra)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    private async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
-                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
-                null, null, null, null,
-                null, null, null, null, null)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    private async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new RuinaRPG.Contracts.Items.CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
-                null, null, null, null, null, null, null,
-                "Leve", null, null, null,
-                2, null, null, null, null)));
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Items.ItemResponse>())!.Id;
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_includes_Inventario_items()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso1", "npcpeso1@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        var itemId = await CreateItemGeralAsync(gmToken, "Corda", peso: 2m);
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
-            new AddNpcInventoryItemRequest(itemId, 3)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(6m);
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_excludes_equipped_weapons_and_shields_but_includes_unequipped_ones()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso2", "npcpeso2@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        var equippedWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Equipada", peso: 1.5m);
-        var addEquippedResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(equippedWeaponItemId)));
-        var equippedWeaponId = (await addEquippedResponse.Content.ReadFromJsonAsync<NpcWeaponResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/weapons/{equippedWeaponId}", gmToken, true));
-
-        var reserveWeaponItemId = await CreateArmaItemAsync(gmToken, "Espada Reserva", peso: 1.5m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(reserveWeaponItemId)));
-
-        var shieldItemId = await CreateEscudoItemAsync(gmToken, "Escudo Guardado", peso: 2m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(3.5m);
-    }
-
-    [Fact]
-    public async Task SubAttributes_PesoAtual_never_counts_armor()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso3", "npcpeso3@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-        var armorItemId = await CreateArmaduraItemAsync(gmToken, rf: 0, rm: 0);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Capacete", gmToken,
-            new UpdateNpcArmorSlotRequest(armorItemId)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(0m);
-    }
-
-    [Fact]
-    public async Task SubAttributes_Capacidade_Extra_raises_PesoMaximo_and_its_own_Peso_is_excluded_from_PesoAtual()
-    {
-        var gmToken = await RegisterGmAndGetTokenAsync("NpcGmPeso4", "npcpeso4@teste.com");
-        var sheetId = await CreateSheetAsync(gmToken);
-
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
-
-        var mochilaItemId = await CreateItemGeralAsync(gmToken, "Mochila", peso: 1m, capacidadeExtra: 10m);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/inventory", gmToken,
-            new AddNpcInventoryItemRequest(mochilaItemId, 2)));
-
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-        body!.PesoAtual.Should().Be(0m);
-        body.PesoMaximo.Should().Be(24m);
     }
 
     [Fact]
