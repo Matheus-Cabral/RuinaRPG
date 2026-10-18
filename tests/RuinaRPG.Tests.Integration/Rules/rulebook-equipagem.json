@@ -1,0 +1,19 @@
+{
+  "Slug": "equipagem",
+  "Titulo": "Equipagem",
+  "IntroHtml": "\u003Cp\u003EEQUIPAGEM\u003C/p\u003E\n\u003Cp\u003EA Equipagem representa os recursos que o personagem possui no in\u00EDcio da aventura, adquiridos ao longo da vida e das experi\u00EAncias que teve at\u00E9 aquele momento.\u003C/p\u003E\n\u003Cp\u003ECada personagem escolhe uma Equipagem durante sua cria\u00E7\u00E3o.\u003C/p\u003E\n\u003Chr /\u003E\n",
+  "Sections": [
+    {
+      "Id": "aa-kit-de-teste",
+      "Titulo": "Aa Kit de Teste",
+      "Html": "Simples\u003Cul\u003E\u003Cli\u003EPedra legada x1\u003C/li\u003E\u003C/ul\u003E",
+      "Grupo": null
+    },
+    {
+      "Id": "zz-kit-de-teste",
+      "Titulo": "Zz Kit de Teste",
+      "Html": "Linha 1\u003Cbr /\u003ELinha 2 \u0026amp; \u0026lt;b\u0026gt;\u003Cul\u003E\u003Cli\u003ECorda de teste x2\u003C/li\u003E\u003Cli\u003ETocha legada x3\u003C/li\u003E\u003Cli\u003EArma simples (escolha)\u003C/li\u003E\u003Cli\u003EArmadura (escolha) \u2014 \u002B1 Corda de teste se escolher da subcategoria Leve\u003C/li\u003E\u003C/ul\u003E\u003Cp\u003E\u003Cem\u003E\u002B2 Ciclos\u003C/em\u003E\u003C/p\u003E",
+      "Grupo": null
+    }
+  ]
+}
