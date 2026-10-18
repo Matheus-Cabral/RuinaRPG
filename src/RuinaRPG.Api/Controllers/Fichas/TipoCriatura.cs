@@ -8,7 +8,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Ficha de Criatura: editável pelo Mestre ou pelo jogador que a recebeu; acesso negado é 404.</summary>
-public class TipoCriatura(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<CreatureSheet>
+public sealed class TipoCriatura(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<CreatureSheet>
 {
     public async Task<CreatureSheet?> CarregarAsync(Guid sheetId) => await db.CreatureSheets.FindAsync(sheetId);
 

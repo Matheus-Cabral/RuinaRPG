@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -12,14 +13,42 @@ public abstract class FichaControllerBase<TSheet>(ITipoDeFicha<TSheet> tipo) : C
 
     protected Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 
-    /// <summary>Carrega e autoriza na ordem de sempre: ficha inexistente → 404; sem permissão → Negado.</summary>
-    protected async Task<(TSheet? Ficha, ActionResult? Erro)> FichaEditavelAsync(Guid sheetId)
+    /// <summary>
+    /// Carrega e autoriza na ordem de sempre: ficha inexistente → 404; sem permissão → Negado. Uso:
+    /// <c>if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha)) return erro;</c>
+    /// </summary>
+    protected async Task<AcessoAFicha> FichaEditavelAsync(Guid sheetId)
     {
         var ficha = await Tipo.CarregarAsync(sheetId);
         if (ficha is null)
-            return (null, NotFound());
+            return new AcessoAFicha(NotFound());
         if (!await Tipo.PodeEditarAsync(ficha, CurrentUserId()))
-            return (null, Tipo.Negado(this));
-        return (ficha, null);
+            return new AcessoAFicha(Tipo.Negado(this));
+        return new AcessoAFicha(ficha);
+    }
+
+    /// <summary>Resultado de <see cref="FichaEditavelAsync"/>: a ficha editável, ou o erro a devolver no lugar dela.</summary>
+    protected sealed class AcessoAFicha
+    {
+        private readonly TSheet? ficha;
+        private readonly ActionResult? erro;
+
+        public AcessoAFicha(TSheet ficha) => this.ficha = ficha;
+
+        public AcessoAFicha(ActionResult erro) => this.erro = erro;
+
+        /// <summary>true com o erro a devolver; false com a ficha, nunca nula.</summary>
+        public bool Negado([NotNullWhen(true)] out ActionResult? erro, [NotNullWhen(false)] out TSheet? ficha)
+        {
+            if (this.ficha is { } carregada)
+            {
+                erro = null;
+                ficha = carregada;
+                return false;
+            }
+            erro = this.erro ?? throw new InvalidOperationException("AcessoAFicha sem ficha e sem erro.");
+            ficha = null;
+            return true;
+        }
     }
 }

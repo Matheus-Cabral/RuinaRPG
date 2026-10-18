@@ -9,7 +9,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Ficha de Personagem: editável pelo dono ou pelo Mestre da campanha; acesso negado é 403.</summary>
-public class TipoPersonagem(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<CharacterSheet>
+public sealed class TipoPersonagem(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<CharacterSheet>
 {
     public async Task<CharacterSheet?> CarregarAsync(Guid sheetId) => await db.CharacterSheets.FindAsync(sheetId);
 

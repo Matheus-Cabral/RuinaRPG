@@ -17,6 +17,18 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "PUT", "skills/Atletismo", 403 }, { "npc", "PUT", "skills/Atletismo", 404 }, { "creature", "PUT", "skills/Atletismo", 404 },
         { "character", "GET", "attributes", 403 }, { "npc", "GET", "attributes", 404 }, { "creature", "GET", "attributes", 404 },
         { "character", "GET", "masteries", 403 }, { "npc", "GET", "masteries", 404 }, { "creature", "GET", "masteries", 404 },
+        { "character", "PUT", "attributes/Forca", 403 }, { "npc", "PUT", "attributes/Forca", 404 }, { "creature", "PUT", "attributes/Forca", 404 },
+        { "character", "GET", "attributes/budget", 403 }, { "npc", "GET", "attributes/budget", 404 }, { "creature", "GET", "attributes/budget", 404 },
+        { "character", "POST", "masteries", 403 }, { "npc", "POST", "masteries", 404 }, { "creature", "POST", "masteries", 404 },
+        { "character", "DELETE", $"masteries/{Guid.Empty}", 403 }, { "npc", "DELETE", $"masteries/{Guid.Empty}", 404 }, { "creature", "DELETE", $"masteries/{Guid.Empty}", 404 },
+        { "character", "PUT", $"masteries/{Guid.Empty}", 403 },
+    };
+
+    // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
+    private static readonly object Corpo = new
+    {
+        Gasto = 1, AtributoEscolhido = (string?)null, Bonus = 0, TemMaestria = false,
+        Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0,
     };
 
     [Theory]
@@ -25,7 +37,7 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
     {
         var sheetId = await CriarFichaDeOutroMestreAsync(tipo);
         var intruso = await RegisterGmAndGetTokenAsync($"intruso{Guid.NewGuid():N}"[..20], $"{Guid.NewGuid():N}@x.com");
-        var corpo = metodo == "PUT" ? new { Gasto = 1, AtributoEscolhido = (string?)null } : null;
+        var corpo = metodo is "PUT" or "POST" ? Corpo : null;
         var resposta = await Client.SendAsync(AuthedRequest(new HttpMethod(metodo), $"/api/{tipo}-sheets/{sheetId}/{sufixo}", intruso, corpo));
         Assert.Equal(status, (int)resposta.StatusCode);
     }

@@ -19,7 +19,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo, RuinaRPG.Api.Services.CharacterSheetStats stats)
     : AtributosDaFichaController<CharacterSheet, CharacterAttribute, Atributo, CharacterAttributeResponse, UpdateCharacterAttributeRequest>(db, tabelaDeNiveis, tipo)
 {
-    protected override DbSet<CharacterAttribute> Linhas => Db.CharacterAttributes;
 
     protected override (int Gasto, int Bonus, bool TemMaestria) Ler(UpdateCharacterAttributeRequest request) => (request.Gasto, request.Bonus, request.TemMaestria);
 

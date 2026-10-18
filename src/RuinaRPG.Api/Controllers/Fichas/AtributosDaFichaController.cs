@@ -21,7 +21,7 @@ public abstract class AtributosDaFichaController<TSheet, TLinha, TAtributo, TRes
     protected ITabelaDeNiveis TabelaDeNiveis { get; } = tabelaDeNiveis;
 
     /// <summary>As linhas de Atributo deste tipo de ficha (CharacterAttributes, NpcAttributes, CreatureAttributes).</summary>
-    protected abstract DbSet<TLinha> Linhas { get; }
+    protected DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
     /// <summary>A lista de Atributos da ficha já calculada, no record de resposta do tipo.</summary>
     protected abstract Task<List<TResponse>> ListarAsync(TSheet ficha);
@@ -34,11 +34,10 @@ public abstract class AtributosDaFichaController<TSheet, TLinha, TAtributo, TRes
     [HttpGet]
     public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
-        return await ListarAsync(ficha!);
+        return await ListarAsync(ficha);
     }
 
     /// <summary>
@@ -48,22 +47,19 @@ public abstract class AtributosDaFichaController<TSheet, TLinha, TAtributo, TRes
     [HttpGet("budget")]
     public async Task<ActionResult<AttributePointBudgetResponse>> Budget(Guid sheetId)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var gastoTotal = await Linhas.Where(a => a.SheetId == sheetId).SumAsync(a => a.Gasto);
         var tabela = await TabelaDeNiveis.ObterAsync();
-        return new AttributePointBudgetResponse(gastoTotal, PontosDisponiveis(ficha!, tabela));
+        return new AttributePointBudgetResponse(gastoTotal, PontosDisponiveis(ficha, tabela));
     }
 
     [HttpPut("{atributo}")]
     public async Task<IActionResult> Update(Guid sheetId, TAtributo atributo, TUpdate request)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
-        var sheet = ficha!;
 
         var (gasto, bonus, temMaestria) = Ler(request);
         var attribute = await Linhas.SingleAsync(a => a.SheetId == sheetId && a.Atributo.Equals(atributo));

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
@@ -16,9 +15,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class NpcMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<NpcSheet> tipo)
     : MaestriasDaFichaController<NpcSheet, NpcMastery, NpcSkill, NpcAttribute, Atributo, NpcMasteryResponse, AddNpcMasteryRequest>(db, pericias, tipo)
 {
-    protected override DbSet<NpcMastery> Linhas => Db.NpcMasteries;
-    protected override DbSet<NpcSkill> LinhasDePericia => Db.NpcSkills;
-    protected override DbSet<NpcAttribute> LinhasDeAtributo => Db.NpcAttributes;
 
     protected override NpcMastery Nova(Guid sheetId, string nome, int periciaId, Atributo atributo, int gastoMaestria) =>
         new() { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, PericiaId = periciaId, Atributo = atributo, GastoMaestria = gastoMaestria };

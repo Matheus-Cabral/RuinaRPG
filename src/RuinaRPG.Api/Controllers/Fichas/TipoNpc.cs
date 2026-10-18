@@ -8,7 +8,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Ficha de NPC: editável pelo Mestre ou pelo jogador que a recebeu; acesso negado é 404.</summary>
-public class TipoNpc(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<NpcSheet>
+public sealed class TipoNpc(RuinaRpgDbContext db, CondicoesAtivasDaFicha condicoes) : ITipoDeFicha<NpcSheet>
 {
     public async Task<NpcSheet?> CarregarAsync(Guid sheetId) => await db.NpcSheets.FindAsync(sheetId);
 

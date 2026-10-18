@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Domain.CreatureSheets;
@@ -16,9 +15,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<CreatureSheet> tipo)
     : MaestriasDaFichaController<CreatureSheet, CreatureMastery, CreatureSkill, CreatureAttribute, AtributoCriatura, CreatureMasteryResponse, AddCreatureMasteryRequest>(db, pericias, tipo)
 {
-    protected override DbSet<CreatureMastery> Linhas => Db.CreatureMasteries;
-    protected override DbSet<CreatureSkill> LinhasDePericia => Db.CreatureSkills;
-    protected override DbSet<CreatureAttribute> LinhasDeAtributo => Db.CreatureAttributes;
 
     protected override CreatureMastery Nova(Guid sheetId, string nome, int periciaId, AtributoCriatura atributo, int gastoMaestria) =>
         new() { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, PericiaId = periciaId, Atributo = atributo, GastoMaestria = gastoMaestria };

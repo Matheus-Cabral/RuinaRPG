@@ -20,7 +20,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo, RuinaRPG.Api.Services.CharacterSheetStats stats)
     : PericiasDaFichaController<CharacterSheet, CharacterSkill, Atributo, CharacterSkillResponse, UpdateCharacterSkillRequest>(db, pericias, tabelaDeNiveis, tipo)
 {
-    protected override DbSet<CharacterSkill> Linhas => Db.CharacterSkills;
 
     protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateCharacterSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
 
@@ -63,10 +62,8 @@ public sealed class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCata
     [HttpGet("budget")]
     public async Task<ActionResult<SkillPointBudgetResponse>> Budget(Guid sheetId)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
-        var sheet = ficha!;
 
         var gastoBruto = await Db.CharacterSkills
             .Where(s => s.SheetId == sheetId && !Db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))

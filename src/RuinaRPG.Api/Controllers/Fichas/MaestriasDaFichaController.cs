@@ -25,9 +25,9 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     protected IPericiaCatalogo Pericias { get; } = pericias;
 
     /// <summary>As Maestrias deste tipo de ficha (CharacterMasteries, NpcMasteries, CreatureMasteries).</summary>
-    protected abstract DbSet<TMaestria> Linhas { get; }
-    protected abstract DbSet<TSkill> LinhasDePericia { get; }
-    protected abstract DbSet<TLinhaDeAtributo> LinhasDeAtributo { get; }
+    protected DbSet<TMaestria> Linhas => Db.Set<TMaestria>();
+    protected DbSet<TSkill> LinhasDePericia => Db.Set<TSkill>();
+    protected DbSet<TLinhaDeAtributo> LinhasDeAtributo => Db.Set<TLinhaDeAtributo>();
 
     /// <summary>Uma Maestria nova do tipo (as entidades têm Nome required, então não servem para new()).</summary>
     protected abstract TMaestria Nova(Guid sheetId, string nome, int periciaId, TAtributo atributo, int gastoMaestria);
@@ -39,10 +39,8 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     [HttpPost]
     public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
-        var sheet = ficha!;
 
         var (nome, chave, atributoPedido, gastoMaestria) = Ler(request);
         var pericia = await Pericias.AtivaPorChaveAsync(chave);
@@ -50,9 +48,9 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
             return BadRequest(PericiaOuAtributoDesconhecido);
         if (!Enum.TryParse<TAtributo>(atributoPedido, out var atributo) || !Enum.IsDefined(atributo))
             return BadRequest(PericiaOuAtributoDesconhecido);
-        // R0005's "lista fixa mais curta" — only Perícias flagged DisponivelParaCriaturas have a seeded
-        // CreatureSkill row; without this check a valid-but-disallowed Perícia (e.g. Alquimia)
-        // would pass the lookup above and then 500 in ComputeTotalAsync's SingleAsync.
+        // A "lista fixa mais curta" da R0005: só Perícias marcadas DisponivelParaCriaturas têm linha de
+        // CreatureSkill semeada; sem esta checagem, uma Perícia válida mas não permitida (ex.: Alquimia)
+        // passaria pela busca acima e daria 500 no SingleAsync de ComputeTotalAsync.
         if (Tipo.SoPericiasDeCriatura && !pericia.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
@@ -68,10 +66,8 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     [HttpGet]
     public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
-        var sheet = ficha!;
 
         var porId = await Pericias.PorIdAsync();
         var masteries = (await Linhas.Where(m => m.SheetId == sheetId).ToListAsync())
@@ -91,8 +87,7 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid sheetId, Guid id)
     {
-        var (_, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;
 
         var mastery = await Linhas.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);

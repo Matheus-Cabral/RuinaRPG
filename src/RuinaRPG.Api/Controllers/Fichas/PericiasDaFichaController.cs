@@ -21,7 +21,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
     protected ITabelaDeNiveis TabelaDeNiveis { get; } = tabelaDeNiveis;
 
     /// <summary>As linhas de Perícia deste tipo de ficha (CharacterSkills, NpcSkills, CreatureSkills).</summary>
-    protected abstract DbSet<TSkill> Linhas { get; }
+    protected DbSet<TSkill> Linhas => Db.Set<TSkill>();
 
     /// <summary>A lista de Perícias da ficha já calculada, no record de resposta do tipo.</summary>
     protected abstract Task<List<TResponse>> ListarAsync(TSheet ficha);
@@ -31,11 +31,10 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
     [HttpGet]
     public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
-        return await ListarAsync(ficha!);
+        return await ListarAsync(ficha);
     }
 
     [HttpPut("{pericia}")]
@@ -46,8 +45,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
         if (def is null)
             return NotFound();
 
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var (gasto, atributoEscolhido) = Ler(request);
@@ -58,7 +56,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
         {
             var tabela = await TabelaDeNiveis.ObterAsync();
             var gastoAtual = await Linhas.Where(s => s.SheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
-            if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, gasto, tabela.Limite(ChavesDeNivel.MaxPericia, ficha!.Nivel), ficha.Nivel) is { } erroDeLimite)
+            if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, gasto, tabela.Limite(ChavesDeNivel.MaxPericia, ficha.Nivel), ficha.Nivel) is { } erroDeLimite)
                 return BadRequest(erroDeLimite);
         }
 

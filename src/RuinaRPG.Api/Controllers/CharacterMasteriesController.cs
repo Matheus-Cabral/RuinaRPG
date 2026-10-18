@@ -16,9 +16,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<CharacterSheet> tipo)
     : MaestriasDaFichaController<CharacterSheet, CharacterMastery, CharacterSkill, CharacterAttribute, Atributo, CharacterMasteryResponse, AddCharacterMasteryRequest>(db, pericias, tipo)
 {
-    protected override DbSet<CharacterMastery> Linhas => Db.CharacterMasteries;
-    protected override DbSet<CharacterSkill> LinhasDePericia => Db.CharacterSkills;
-    protected override DbSet<CharacterAttribute> LinhasDeAtributo => Db.CharacterAttributes;
 
     protected override CharacterMastery Nova(Guid sheetId, string nome, int periciaId, Atributo atributo, int gastoMaestria) =>
         new() { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, PericiaId = periciaId, Atributo = atributo, GastoMaestria = gastoMaestria };
@@ -33,10 +30,8 @@ public sealed class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaC
     [HttpPut("{id}")]
     public async Task<ActionResult<CharacterMasteryResponse>> Update(Guid sheetId, Guid id, UpdateCharacterMasteryRequest request)
     {
-        var (ficha, erro) = await FichaEditavelAsync(sheetId);
-        if (erro is not null)
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
-        var sheet = ficha!;
 
         var pericia = await Pericias.AtivaPorChaveAsync(request.Pericia);
         if (pericia is null)
