@@ -73,7 +73,7 @@ public interface ISlotDeArmaduraDaFicha : ILinhaDaFicha
     int? DurabilidadeAtual { get; set; }
 }
 
-/// <summary>Um Item Geral no inventário da ficha (CharacterInventoryItem, NpcInventoryItem).</summary>
+/// <summary>Um Item do Catálogo no inventário da ficha (CharacterInventoryItem, NpcInventoryItem).</summary>
 public interface IItemDoInventarioDaFicha : ILinhaDaFicha
 {
     Guid ItemId { get; set; }

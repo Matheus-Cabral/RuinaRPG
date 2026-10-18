@@ -18,7 +18,7 @@ public sealed class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRa
     : ArsenalDaFichaController<NpcSheet, NpcWeapon, NpcArmorSlot, NpcShield, NpcWeaponResponse, NpcArmorSlotResponse, NpcShieldResponse, AddNpcWeaponRequest, UpdateNpcArmorSlotRequest, AddNpcShieldRequest>(
         db, durabilidades, penalidades, tipo)
 {
-    protected override Task<ActionResult?> PreencherArmaAsync(NpcWeapon arma, AddNpcWeaponRequest request) => PreencherArmaDoCatalogoAsync(arma, request.ItemId);
+    protected override Task<ActionResult?> PreencherArmaAsync(NpcWeapon arma, AddNpcWeaponRequest request) => PreencherArmaDoCatalogoAsync(request.ItemId, LigarAoCatalogo(arma));
 
     protected override async Task<ActionResult?> AjustarDurabilidadeDaArmaAsync(NpcWeapon arma, int durabilidadeAtual)
     {

@@ -37,9 +37,7 @@ public sealed class CreatureTraitsController(RuinaRpgDbContext db, ITabelaDeNive
     /// </summary>
     protected override async Task<int> SomaDoCustoAsync(Guid sheetId, Polaridade polaridade)
     {
-        var rows = await Linhas.Where(t => t.SheetId == sheetId && t.Polaridade == polaridade).ToListAsync();
-        var normalIds = rows.Where(r => r.TraitId is not null).Select(r => r.TraitId!.Value).ToList();
-        var exclusiveIds = rows.Where(r => r.CreatureExclusiveTraitId is not null).Select(r => r.CreatureExclusiveTraitId!.Value).ToList();
+        var (normalIds, exclusiveIds) = IdsPorCatalogo(await Linhas.Where(t => t.SheetId == sheetId && t.Polaridade == polaridade).ToListAsync());
 
         var normalTotal = await Db.Traits.Where(t => normalIds.Contains(t.Id)).SumAsync(t => t.Custo);
         var exclusiveTotal = await Db.Set<CreatureExclusiveTrait>().Where(t => exclusiveIds.Contains(t.Id)).SumAsync(t => t.Custo);
@@ -52,8 +50,7 @@ public sealed class CreatureTraitsController(RuinaRpgDbContext db, ITabelaDeNive
     protected override async Task<List<(CreatureTrait Linha, CaracteristicaDoCatalogo Caracteristica)>> LinhasComCatalogoAsync(Guid sheetId)
     {
         var creatureTraits = await Linhas.Where(t => t.SheetId == sheetId).ToListAsync();
-        var normalIds = creatureTraits.Where(t => t.TraitId is not null).Select(t => t.TraitId!.Value).ToList();
-        var exclusiveIds = creatureTraits.Where(t => t.CreatureExclusiveTraitId is not null).Select(t => t.CreatureExclusiveTraitId!.Value).ToList();
+        var (normalIds, exclusiveIds) = IdsPorCatalogo(creatureTraits);
 
         var normalById = await Db.Traits.Where(t => normalIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
         var exclusiveById = await Db.Set<CreatureExclusiveTrait>().Where(t => exclusiveIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id);
@@ -69,6 +66,11 @@ public sealed class CreatureTraitsController(RuinaRpgDbContext db, ITabelaDeNive
         }
         return rows;
     }
+
+    /// <summary>Os Ids de catálogo das linhas, separados pelo catálogo para onde cada uma aponta: normal (TraitId) e exclusivo.</summary>
+    private static (List<Guid> Normais, List<Guid> Exclusivos) IdsPorCatalogo(List<CreatureTrait> linhas) =>
+        (linhas.Where(t => t.TraitId is not null).Select(t => t.TraitId!.Value).ToList(),
+         linhas.Where(t => t.CreatureExclusiveTraitId is not null).Select(t => t.CreatureExclusiveTraitId!.Value).ToList());
 
     protected override CreatureTraitResponse Resposta(CreatureTrait linha, CaracteristicaDoCatalogo caracteristica, int custo) =>
         new(linha.Id.ToString(), caracteristica.Id.ToString(), caracteristica.Nome, caracteristica.Descricao, custo, caracteristica.Polaridade.ToString(), linha.Especificacao, caracteristica.RequerEspecificacao);

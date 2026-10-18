@@ -18,7 +18,7 @@ public sealed class CharacterArsenalController(RuinaRpgDbContext db, Durabilidad
     : ArsenalDaFichaController<CharacterSheet, CharacterWeapon, CharacterArmorSlot, CharacterShield, CharacterWeaponResponse, CharacterArmorSlotResponse, CharacterShieldResponse, AddCharacterWeaponRequest, UpdateCharacterArmorSlotRequest, AddCharacterShieldRequest>(
         db, durabilidades, penalidades, tipo)
 {
-    protected override Task<ActionResult?> PreencherArmaAsync(CharacterWeapon arma, AddCharacterWeaponRequest request) => PreencherArmaDoCatalogoAsync(arma, request.ItemId);
+    protected override Task<ActionResult?> PreencherArmaAsync(CharacterWeapon arma, AddCharacterWeaponRequest request) => PreencherArmaDoCatalogoAsync(request.ItemId, LigarAoCatalogo(arma));
 
     protected override async Task<ActionResult?> AjustarDurabilidadeDaArmaAsync(CharacterWeapon arma, int durabilidadeAtual)
     {

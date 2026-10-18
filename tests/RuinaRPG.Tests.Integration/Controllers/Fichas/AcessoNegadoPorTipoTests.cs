@@ -41,6 +41,12 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "POST", "traits", 403 }, { "npc", "POST", "traits", 404 }, { "creature", "POST", "traits", 404 },
         { "character", "DELETE", $"traits/{Guid.Empty}", 403 }, { "npc", "DELETE", $"traits/{Guid.Empty}", 404 }, { "creature", "DELETE", $"traits/{Guid.Empty}", 404 },
         { "character", "POST", "racial-traits/resolve", 403 }, { "npc", "POST", "racial-traits/resolve", 404 },
+        // Magias e Habilidades: o Personagem nega os dois GET com 404 (e não 403) — divergência acidental mantida.
+        { "character", "GET", "spell-abilities", 404 }, { "npc", "GET", "spell-abilities", 404 }, { "creature", "GET", "spell-abilities", 404 },
+        { "character", "GET", "spell-abilities/passivas-disponiveis", 404 }, { "npc", "GET", "spell-abilities/passivas-disponiveis", 404 }, { "creature", "GET", "spell-abilities/passivas-disponiveis", 404 },
+        { "character", "POST", "spell-abilities", 403 }, { "npc", "POST", "spell-abilities", 404 }, { "creature", "POST", "spell-abilities", 404 },
+        { "character", "PUT", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "PUT", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "PUT", $"spell-abilities/{Guid.Empty}", 404 },
+        { "character", "DELETE", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "DELETE", $"spell-abilities/{Guid.Empty}", 404 },
     };
 
     // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
@@ -49,6 +55,7 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         Gasto = 1, AtributoEscolhido = (string?)null, Bonus = 0, TemMaestria = false,
         Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0, ItemId = Guid.Empty.ToString(),
         Qtd = 1, DT = 0, ArtifactItemId = Guid.Empty.ToString(), Favorabilidade = 0, TraitId = Guid.Empty.ToString(), GratuitaTraitNome = "Golpe",
+        Tipo = "Magia", Grau = 1, Descricao = "Golpe", Efeitos = Array.Empty<object>(),
     };
 
     [Theory]

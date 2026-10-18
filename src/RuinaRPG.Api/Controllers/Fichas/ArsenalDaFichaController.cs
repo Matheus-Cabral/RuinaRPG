@@ -284,10 +284,6 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
         return NoContent();
     }
 
-    /// <summary>Liga a Arma nova à Arma do Catálogo pedida, com a Durabilidade cheia do Rank; ou o 400 do ItemId.</summary>
-    protected Task<ActionResult?> PreencherArmaDoCatalogoAsync(IEquipavelDoCatalogo arma, string? itemIdPedido) =>
-        PreencherArmaDoCatalogoAsync(itemIdPedido, LigarAoCatalogo(arma));
-
     /// <summary>
     /// Confere a Arma do Catálogo pedida e entrega a <paramref name="ligar"/> o ItemId e a Durabilidade cheia do Rank;
     /// ou devolve o 400 do ItemId.
@@ -310,7 +306,8 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     private Task<TEscudoResponse> RespostaDeEscudoAsync(TSheet ficha, TEscudo shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela) =>
         RespostaDoCatalogoAsync<Escudo, TEscudoResponse>(ficha, shield.ItemId, shield.Id, CategoriaDesabilitavel.Escudo, tabela, e => e.Rank, (item, d) => RespostaDeEscudo(shield, item, d));
 
-    private static Action<Guid, int> LigarAoCatalogo(IEquipavelDoCatalogo linha) =>
+    /// <summary>Grava na linha o ItemId e a Durabilidade que <see cref="PreencherArmaDoCatalogoAsync"/> entrega.</summary>
+    protected static Action<Guid, int> LigarAoCatalogo(IEquipavelDoCatalogo linha) =>
         (itemId, durabilidade) => (linha.ItemId, linha.DurabilidadeAtual) = (itemId, durabilidade);
 
     private async Task<ActionResult?> PreencherDoCatalogoAsync<TItem>(string? itemIdPedido, Func<TItem, RankDeItem?> rank, string naoEncontrado, Action<Guid, int> ligar)
