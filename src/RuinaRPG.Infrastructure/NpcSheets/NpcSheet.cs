@@ -3,7 +3,7 @@ using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcSheet : IFicha
+public class NpcSheet : IFichaComVariante
 {
     // 1.a Identidade
     public Guid Id { get; set; }

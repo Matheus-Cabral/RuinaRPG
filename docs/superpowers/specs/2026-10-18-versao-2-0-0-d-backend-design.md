@@ -187,3 +187,9 @@ mantido; fica para o usuário decidir depois.
 - Perícias/GET `budget`: só o Personagem tem o orçamento de pontos de Perícia; NPC e Criatura não têm o
   endpoint, embora Atributos tenha `budget` nos três tipos (mantido via endpoint só na subclasse
   `CharacterSkillsController`).
+- Afeições/PUT `affections/{id}`: só o Personagem edita uma Afeição existente; NPC e Criatura só criam e apagam,
+  embora Ficha de Criaturas 5.c diga "sem alteração em relação ao Personagem" e a Ficha de NPCs não mude 5.c
+  (mantido via endpoint só na subclasse `CharacterAffectionsController`).
+- Inventário/POST `inventory`: o Personagem só aceita Item Geral ("Item Geral não encontrado.", Ficha de Personagem
+  5.a); o NPC aceita qualquer Item do Catálogo, inclusive Arma/Armadura/Escudo/Artefato ("Item não encontrado."),
+  embora a Ficha de NPCs não mude 5.a (mantido via hook `ConferirItemAsync` de `InventarioDaFichaController`).

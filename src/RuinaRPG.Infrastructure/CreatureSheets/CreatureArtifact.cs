@@ -1,7 +1,7 @@
 using RuinaRPG.Infrastructure.Fichas;
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureArtifact : ILinhaDaFicha
+public class CreatureArtifact : IArtefatoDaFicha
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

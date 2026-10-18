@@ -338,7 +338,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
         where TItem : Item
     {
         var item = await Db.Set<TItem>().SingleAsync(i => i.Id == itemId);
-        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
+        var imageUrl = await UrlDaImagemAsync(Db, item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank(item), tabela);
         var desabilitadoPor = await DesabilitadoPorAsync(ficha, categoria, linhaId);
         var avaliacao = await Penalidades.AvaliarAsync(item, FichaSemPenalidades(ficha));
@@ -350,13 +350,4 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
 
     private Func<Task<FichaParaRequisitos>> FichaSemPenalidades(TSheet ficha) =>
         () => _fichaSemPenalidades ??= FichaParaRequisitosAsync(ficha);
-
-    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
-    {
-        if (imageId is null)
-            return null;
-
-        var image = await Db.Images.FindAsync(imageId.Value);
-        return image is not null ? $"/images/{image.Path}" : null;
-    }
 }

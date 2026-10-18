@@ -1,4 +1,5 @@
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Domain.Enums;
 
 namespace RuinaRPG.Infrastructure.Fichas;
 
@@ -8,6 +9,12 @@ public interface IFicha
     Guid Id { get; }
     int Nivel { get; set; }
     Guid? ImageId { get; set; }
+}
+
+/// <summary>Uma ficha com Variante de Linhagem, que dá os traços raciais (Personagem e NPC; a Criatura não tem).</summary>
+public interface IFichaComVariante : IFicha
+{
+    Variante? Variante { get; set; }
 }
 
 /// <summary>Uma linha de uma tabela por tipo de ficha (CharacterSkill, NpcSkill, …).</summary>
@@ -64,4 +71,30 @@ public interface ISlotDeArmaduraDaFicha : ILinhaDaFicha
     ArmorSlotType Slot { get; set; }
     Guid? ItemId { get; set; }
     int? DurabilidadeAtual { get; set; }
+}
+
+/// <summary>Um Item Geral no inventário da ficha (CharacterInventoryItem, NpcInventoryItem).</summary>
+public interface IItemDoInventarioDaFicha : ILinhaDaFicha
+{
+    Guid ItemId { get; set; }
+    int Qtd { get; set; }
+}
+
+/// <summary>Um Artefato da ficha (CharacterArtifact, NpcArtifact, CreatureArtifact).</summary>
+public interface IArtefatoDaFicha : ILinhaDaFicha
+{
+    Guid ArtifactItemId { get; set; }
+}
+
+/// <summary>
+/// Uma Característica da ficha tirada do catálogo comum (CharacterTrait, NpcTrait), que pode ser um traço racial.
+/// A CreatureTrait fica de fora: aponta para um de dois catálogos (TraitId ou CreatureExclusiveTraitId).
+/// </summary>
+public interface ICaracteristicaDaFicha : ILinhaDaFicha
+{
+    Guid TraitId { get; set; }
+    Polaridade Polaridade { get; set; }
+    string? Especificacao { get; set; }
+    bool IsRacial { get; set; }
+    Variante? RacialVariante { get; set; }
 }

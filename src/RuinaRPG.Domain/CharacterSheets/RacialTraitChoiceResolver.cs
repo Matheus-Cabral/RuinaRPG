@@ -9,7 +9,7 @@ public sealed record RacialTraitResolutionResult(List<RacialTraitOption>? Grants
 /// <summary>
 /// Validates and resolves a player's/GM's racial-characteristic pick against a Variante's
 /// RacialTraitSlots (default from RacialTraitLookup or GM-overridden) — pure, no I/O, so both
-/// CharacterPossessionsController and NpcPossessionsController can share it.
+/// CharacterRacialTraitsController and NpcRacialTraitsController can share it.
 /// </summary>
 public static class RacialTraitChoiceResolver
 {

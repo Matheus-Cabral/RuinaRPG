@@ -4,7 +4,7 @@ using RuinaRPG.Domain.Enums;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcTrait : ILinhaDaFicha
+public class NpcTrait : ICaracteristicaDaFicha
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

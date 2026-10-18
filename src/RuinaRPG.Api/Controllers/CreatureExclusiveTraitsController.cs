@@ -12,9 +12,9 @@ namespace RuinaRPG.Api.Controllers;
 
 /// <summary>
 /// A second, genuinely separate characteristic catalog — only a Ficha de Criatura's "add
-/// characteristic" picker (CreaturePossessionsController.AddTrait) ever resolves an Id against
-/// this table. TraitsController, CompendioController, CharacterPossessionsController and
-/// NpcPossessionsController never read this table at all — that is what keeps a row created here
+/// characteristic" picker (CreatureTraitsController.AddTrait) ever resolves an Id against
+/// this table. TraitsController, CompendioController, CharacterTraitsController and
+/// NpcTraitsController never read this table at all — that is what keeps a row created here
 /// out of the Livro de Regras/Compêndio and unreachable from Personagem/NPC, by construction
 /// rather than by a filter. Global catalog (no owning GmId), same access model as Trait: List
 /// open to any authenticated caller, Create/Update/Delete gated to the Rules Auditor.

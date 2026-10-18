@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using RuinaRPG.Infrastructure.Fichas;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers.Fichas;
 
@@ -25,6 +26,16 @@ public abstract class FichaControllerBase<TSheet>(ITipoDeFicha<TSheet> tipo) : C
         if (!await Tipo.PodeEditarAsync(ficha, CurrentUserId()))
             return new AcessoAFicha(Tipo.Negado(this));
         return new AcessoAFicha(ficha);
+    }
+
+    /// <summary>A URL pública da imagem (<c>/images/&lt;Path&gt;</c>), ou null se não há imagem.</summary>
+    protected static async Task<string?> UrlDaImagemAsync(RuinaRpgDbContext db, Guid? imageId)
+    {
+        if (imageId is null)
+            return null;
+
+        var image = await db.Images.FindAsync(imageId.Value);
+        return image is not null ? $"/images/{image.Path}" : null;
     }
 
     /// <summary>Resultado de <see cref="FichaEditavelAsync"/>: a ficha editável, ou o erro a devolver no lugar dela.</summary>

@@ -7,7 +7,7 @@ namespace RuinaRPG.Api.Controllers;
 /// <summary>
 /// Resolves the effective RacialTraitSlots for a Variante — the GM's RacialTraitOverride when one
 /// exists, otherwise RacialTraitLookup's hardcoded default. Shared by
-/// CharacterPossessionsController and NpcPossessionsController (both need the same "which options
+/// CharacterRacialTraitsController and NpcRacialTraitsController (both need the same "which options
 /// can be picked right now" answer to check pending state and validate a resolve request).
 /// </summary>
 internal static class RacialTraitOverrideResolver
