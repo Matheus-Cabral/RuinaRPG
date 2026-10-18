@@ -35,13 +35,12 @@ src/
   RuinaRPG.Client          Blazor WebAssembly, servido pelo nginx
 tools/
   RuinaRPG.Smoke           Smoke somente-leitura usado pelo deploy e pela validação do release
-deploy/                    deploy.sh (blue-green), gate.sh, clone.sh, nginx/, provision/, tests/
+deploy/                    deploy.sh (blue-green), Dockerfile (as três imagens), gate.sh, clone.sh, nginx/, provision/, tests/
 .github/workflows/         release.yml (validação do PR) e deploy.yml (produção)
 tests/
   RuinaRPG.Tests.Unit
   RuinaRPG.Tests.Integration
   RuinaRPG.Tests.Client
-infra/client/              Build do cliente Blazor (publicado em releases versionados servidos pelo nginx de deploy/nginx/)
 ```
 
 Sete arquivos de `Docs/Sistema RPG/` (`Ruína RPG - Sistema Básico.md`, `Tabela de Níveis.md`, `Tabela de Vocação.md`, `Tabela de Arquetipos.md`, `Tabela de Circulo e Grau por EAP.md`, `Tabelas de XP, Atributos, Características e EAP.md`, `GRAUS & CÍRCULOS.md`) são embarcados como build resources em `RuinaRPG.Infrastructure` e parseados em runtime por `IRulesDataProvider` — editar a estrutura de tabelas neles pode quebrar a API, não só a documentação.

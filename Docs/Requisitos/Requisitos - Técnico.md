@@ -77,7 +77,7 @@
 
 # **R0007** - O deploy roda inteiramente em containers, sem dependências manuais no host.
 
-**Descrição**: Um sistema recém-instalado só precisa ter **git**, **docker** (com o plugin Compose) e **make** para rodar o deploy completo — nada de SDK do .NET, Node, PostgreSQL etc. instalado diretamente no host. Cada serviço builda sua própria imagem a partir de um `Dockerfile` que instala tudo que precisa (runtime do .NET, dependências do build, etc.); nenhuma etapa de instalação manual é necessária além dessas três ferramentas.
+**Descrição**: Um sistema recém-instalado só precisa ter **git**, **docker** (com o plugin Compose) e **make** para rodar o deploy completo — nada de SDK do .NET, Node, PostgreSQL etc. instalado diretamente no host. As imagens da api, do cliente e do smoke saem de um único `deploy/Dockerfile` de vários estágios, que instala tudo que precisa (runtime do .NET, dependências do build, etc.) e compila a solução uma vez por deploy; nenhuma etapa de instalação manual é necessária além dessas três ferramentas.
 
 Um `docker-compose.yml` define os serviços:
 
@@ -85,7 +85,7 @@ Um `docker-compose.yml` define os serviços:
 - **db**: PostgreSQL, com volume nomeado para persistência dos dados.
 - **web** (nginx de longa duração): serve os arquivos estáticos do Blazor WebAssembly a partir de releases versionados, atua como reverse proxy para a cor ativa da api, e serve as imagens do volume de armazenamento (R0001).
 
-O deploy normal é o pipeline (R0013–R0015). O build do cliente fica em `infra/client/` e a configuração do nginx em `deploy/nginx/`.
+O deploy normal é o pipeline (R0013–R0015). O build das imagens fica em `deploy/Dockerfile` e a configuração do nginx em `deploy/nginx/`.
 
 O nginx entrega o cliente comprimido: os arquivos de `_framework` saem do `.gz` gerado pelo publish (`gzip_static`) e o restante do texto (CSS/JS fora de `_framework` e o JSON da api) é comprimido na hora, exceto `/api/auth/` (tokens) e `/hubs/`. Toda resposta do cliente e das imagens leva `Cache-Control` explícito: `no-cache` (revalidação por ETag) para tudo cujo nome não muda entre versões — inclusive `index.html` e `blazor.boot.json` —, um ano `immutable` só para os `dotnet.*.<hash>.js` de `_framework`, e `private`, um ano, `immutable` para `/images/` (cada upload ganha um nome novo). Assim nenhum navegador nem a borda do Cloudflare serve um arquivo antigo depois de um deploy.
 

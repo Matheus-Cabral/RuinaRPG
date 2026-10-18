@@ -69,7 +69,7 @@ Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, disti
 - `src/RuinaRPG.Api` — ASP.NET Core 8 Web API (controllers), the composition root in `Program.cs`.
 - `src/RuinaRPG.Client` — Blazor WebAssembly 8 standalone app, served by nginx.
 - `tests/RuinaRPG.Tests.Unit`, `tests/RuinaRPG.Tests.Client`, `tests/RuinaRPG.Tests.Integration` — xUnit; the client project tests the Blazor client, and the integration project drives the real API over HTTP against a Testcontainers PostgreSQL.
-- `infra/client/` — Dockerfile that builds the Blazor client; the result is published to versioned releases under the nginx webroot. `deploy/nginx/` holds the long-lived nginx config (static client, `/api/` and `/hubs/` proxy to the active color).
+- `deploy/Dockerfile` — the one multi-stage build of the three deploy images (targets `api`, `client`, `smoke`): restored and compiled once per deploy; the client is published to versioned releases under the nginx webroot. `deploy/nginx/` holds the long-lived nginx config (static client, compression and cache headers, `/api/` and `/hubs/` proxy to the active color).
 - `deploy/` — `deploy.sh` (blue-green deploy, backup/restore, rollback), `gate.sh` (SSH forced command), `clone.sh` (release validation against a production clone), `fingerprint.sh`/`compare.py`/`data-changes.yml`, `provision/` (one-time runbooks), `tests/` (bats + python).
 - `tools/RuinaRPG.Smoke` — read-only smoke run after deploys and in the clone.
 - `.github/workflows/` — `release.yml` (PR validation, auto-merge) and `deploy.yml` (production deploy).
