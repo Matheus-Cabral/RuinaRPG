@@ -56,7 +56,29 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "DELETE", $"affinities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"affinities/{Guid.Empty}", 404 },
         { "character", "GET", "equipagem/kits", 403 }, { "npc", "GET", "equipagem/kits", 404 },
         { "character", "POST", "equipagem/choose", 403 }, { "npc", "POST", "equipagem/choose", 404 },
+        // Endpoints da própria ficha (rotas com {id}; sufixo vazio é a ficha em si).
+        { "character", "GET", "sub-attributes", 403 }, { "npc", "GET", "sub-attributes", 404 }, { "creature", "GET", "sub-attributes", 404 },
+        { "character", "GET", "condicoes-ativas", 403 }, { "npc", "GET", "condicoes-ativas", 404 }, { "creature", "GET", "condicoes-ativas", 404 },
+        { "character", "GET", "equipment-penalties", 403 }, { "npc", "GET", "equipment-penalties", 404 }, { "creature", "GET", "equipment-penalties", 404 },
+        { "character", "GET", "modificador-de-dano", 403 }, { "npc", "GET", "modificador-de-dano", 404 }, { "creature", "GET", "modificador-de-dano", 404 },
+        { "character", "GET", "level-up-notice", 403 }, { "npc", "GET", "level-up-notice", 404 }, { "creature", "GET", "level-up-notice", 404 },
+        { "character", "POST", "dismiss-level-up-notice", 403 }, { "npc", "POST", "dismiss-level-up-notice", 404 }, { "creature", "POST", "dismiss-level-up-notice", 404 },
+        { "character", "PUT", "pontos-de-ignicao", 403 }, { "npc", "PUT", "pontos-de-ignicao", 404 }, { "creature", "PUT", "pontos-de-ignicao", 404 },
+        { "npc", "PUT", "nivel", 404 }, { "creature", "PUT", "nivel", 404 },
+        { "npc", "PUT", "experiencia-atual", 404 }, { "creature", "PUT", "experiencia-atual", 404 },
+        // O Personagem nega a leitura da ficha, da Habilidade Racial, das Variantes e da galeria da História com 404.
+        { "character", "GET", "", 404 }, { "npc", "GET", "", 404 }, { "creature", "GET", "", 404 },
+        { "character", "GET", "racial-ability", 404 }, { "npc", "GET", "racial-ability", 404 },
+        { "character", "GET", "variantes-liberadas", 404 }, { "npc", "GET", "variantes-liberadas", 404 },
+        { "character", "GET", "historia/imagens", 404 }, { "npc", "GET", "historia/imagens", 404 },
+        { "character", "PUT", "historia", 403 }, { "npc", "PUT", "historia", 404 },
+        { "character", "PUT", "historia/imagens", 403 }, { "npc", "PUT", "historia/imagens", 404 },
+        // Apagar: o Personagem só pelo Mestre da campanha (404 para outro Mestre); NPC/Criatura como os demais.
+        { "character", "DELETE", "", 404 }, { "npc", "DELETE", "", 404 }, { "creature", "DELETE", "", 404 },
     };
+
+    // Endpoints cujo corpo é um número só (Nível, Experiência Atual, Pontos de Ignição).
+    private static readonly HashSet<string> CorpoNumerico = ["pontos-de-ignicao", "nivel", "experiencia-atual"];
 
     // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
     private static readonly object Corpo = new
@@ -66,6 +88,7 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         Qtd = 1, DT = 0, ArtifactItemId = Guid.Empty.ToString(), Favorabilidade = 0, TraitId = Guid.Empty.ToString(), GratuitaTraitNome = "Golpe",
         Tipo = "Magia", Grau = 1, Descricao = "Golpe", Efeitos = Array.Empty<object>(),
         KitId = Guid.Empty.ToString(), ChoiceSelections = Array.Empty<object>(),
+        Historia = "", ImageIds = Array.Empty<string>(),
     };
 
     [Theory]
@@ -74,8 +97,9 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
     {
         var sheetId = await CriarFichaDeOutroMestreAsync(tipo);
         var intruso = await RegisterGmAndGetTokenAsync($"intruso{Guid.NewGuid():N}"[..20], $"{Guid.NewGuid():N}@x.com");
-        var corpo = metodo is "PUT" or "POST" ? Corpo : null;
-        var resposta = await Client.SendAsync(AuthedRequest(new HttpMethod(metodo), $"/api/{tipo}-sheets/{sheetId}/{sufixo}", intruso, corpo));
+        var corpo = metodo is "PUT" or "POST" ? (CorpoNumerico.Contains(sufixo) ? 1 : Corpo) : null;
+        var rota = sufixo == "" ? $"/api/{tipo}-sheets/{sheetId}" : $"/api/{tipo}-sheets/{sheetId}/{sufixo}";
+        var resposta = await Client.SendAsync(AuthedRequest(new HttpMethod(metodo), rota, intruso, corpo));
         Assert.Equal(status, (int)resposta.StatusCode);
     }
 
