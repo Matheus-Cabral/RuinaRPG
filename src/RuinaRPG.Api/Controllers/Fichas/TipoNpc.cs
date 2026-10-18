@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
@@ -14,6 +15,14 @@ public sealed class TipoNpc(RuinaRpgDbContext db, CondicoesAtivasDaFicha condico
 
     public Task<bool> PodeEditarAsync(NpcSheet sheet, Guid userId) =>
         Task.FromResult(GrantedSheetAuthorization.CanEdit(userId, sheet.OwnerId, sheet.GmId));
+
+    public Task<Guid> MestreAsync(NpcSheet sheet) => Task.FromResult(sheet.GmId);
+
+    public async Task<Guid?> CampanhaAsync(NpcSheet sheet) =>
+        await db.CampaignAttachments
+            .Where(a => a.NpcSheetId == sheet.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
+            .Select(a => (Guid?)a.CampaignId)
+            .FirstOrDefaultAsync();
 
     public ActionResult Negado(ControllerBase controller) => controller.NotFound();
 

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -31,15 +30,6 @@ public sealed class CreatureSpellAbilitiesController(RuinaRpgDbContext db, Creat
         new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, efeitos, e.Categoria?.ToString(), requisitos, pendentes, CriadaNaFicha: e.CriadaNaFicha, DesabilitadoPor: desabilitadoPor);
 
     protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(CreatureSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
-
-    protected override Task<Guid> MestreDaFichaAsync(CreatureSheet ficha) => Task.FromResult(ficha.GmId);
-
-    // A ficha de Criatura não tem coluna CampaignId: a campanha de uma ficha concedida sai do CampaignAttachment de vínculo.
-    protected override async Task<Guid?> CampanhaDaFichaAsync(CreatureSheet ficha) =>
-        await Db.CampaignAttachments
-            .Where(a => a.CreatureSheetId == ficha.Id && Db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == ficha.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
 
     // Criada numa Ficha de Criatura, a cópia no banco já nasce marcada como Magia/Habilidade de Criatura.
     protected override bool CopiaNoBancoDeCriatura => true;

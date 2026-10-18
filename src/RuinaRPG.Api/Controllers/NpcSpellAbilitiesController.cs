@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.NpcSheets;
@@ -31,15 +30,6 @@ public sealed class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetSt
         new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, efeitos, e.Categoria?.ToString(), requisitos, pendentes, CriadaNaFicha: e.CriadaNaFicha, DesabilitadoPor: desabilitadoPor);
 
     protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(NpcSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
-
-    protected override Task<Guid> MestreDaFichaAsync(NpcSheet ficha) => Task.FromResult(ficha.GmId);
-
-    // A ficha de NPC não tem coluna CampaignId: a campanha de uma ficha concedida sai do CampaignAttachment de vínculo.
-    protected override async Task<Guid?> CampanhaDaFichaAsync(NpcSheet ficha) =>
-        await Db.CampaignAttachments
-            .Where(a => a.NpcSheetId == ficha.Id && Db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == ficha.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
 
     protected override int PontosDeIgnicao(NpcSheet ficha) => ficha.PontosDeIgnicaoAtual;
 

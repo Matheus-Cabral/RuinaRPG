@@ -18,9 +18,6 @@ public abstract class TracosRaciaisDaFichaController<TSheet, TLinha>(RuinaRpgDbC
 {
     protected RuinaRpgDbContext Db { get; } = db;
 
-    /// <summary>O Mestre cujas personalizações de traço racial valem para a ficha (Personagem: o da campanha; NPC: o dono da ficha).</summary>
-    protected abstract Task<Guid> MestreDaFichaAsync(TSheet ficha);
-
     /// <summary>
     /// Se a Variante atual da ficha ainda tem uma escolha de traço racial pendente (Ruína RPG - Sistema Básico.md §7,
     /// "Característica Gratuita"/"Obrigatória"). Variante null (ainda não escolhida) nunca está pendente: não há o que resolver.
@@ -91,7 +88,7 @@ public abstract class TracosRaciaisDaFichaController<TSheet, TLinha>(RuinaRpgDbC
 
     private async Task<RacialTraitSlots> SlotsAsync(TSheet sheet, Variante variante)
     {
-        var gmId = await MestreDaFichaAsync(sheet);
+        var gmId = await Tipo.MestreAsync(sheet);
         var over = await Db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == gmId && o.Variante == variante);
         return RacialTraitOverrideResolver.Resolve(over, variante);
     }

@@ -28,15 +28,6 @@ public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(Ru
 
     protected abstract TResponse Resposta(TLinha runa, string? imageUrl, string? desabilitadoPor);
 
-    /// <summary>O Mestre dono do banco da ficha: o da campanha (Personagem) ou o da própria ficha (NPC).</summary>
-    protected abstract Task<Guid> MestreDaFichaAsync(TSheet ficha);
-
-    /// <summary>
-    /// A campanha onde o jogador escolhe do banco e publica a cópia: a da ficha (Personagem) ou a da concessão,
-    /// resolvida pelo CampaignAttachment de vínculo (NPC, que não tem coluna CampaignId) — null se não há.
-    /// </summary>
-    protected abstract Task<Guid?> CampanhaDaFichaAsync(TSheet ficha);
-
     [HttpPost]
     public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
     {
@@ -52,10 +43,10 @@ public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(Ru
 
         // Só o jogador (quem chama não é o Mestre) precisa da campanha — tanto para escolher do banco (só as
         // entradas públicas nela) quanto para usar imagens dela e publicar depois a cópia que vai para o banco.
-        var gmId = await MestreDaFichaAsync(sheet);
+        var gmId = await Tipo.MestreAsync(sheet);
         Guid? campaignId = null;
         if (callerId != gmId)
-            campaignId = await CampanhaDaFichaAsync(sheet);
+            campaignId = await Tipo.CampanhaAsync(sheet);
 
         string nome, descricao;
         int grau;

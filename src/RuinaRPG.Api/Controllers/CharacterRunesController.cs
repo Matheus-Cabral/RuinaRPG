@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -21,9 +20,4 @@ public sealed class CharacterRunesController(RuinaRpgDbContext db, ITipoDeFicha<
 
     protected override CharacterRuneResponse Resposta(CharacterRune r, string? imageUrl, string? desabilitadoPor) =>
         new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, imageUrl, RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina), DesabilitadoPor: desabilitadoPor);
-
-    protected override async Task<Guid> MestreDaFichaAsync(CharacterSheet ficha) =>
-        await Db.Campaigns.Where(c => c.Id == ficha.CampaignId).Select(c => c.GmId).SingleAsync();
-
-    protected override Task<Guid?> CampanhaDaFichaAsync(CharacterSheet ficha) => Task.FromResult<Guid?>(ficha.CampaignId);
 }

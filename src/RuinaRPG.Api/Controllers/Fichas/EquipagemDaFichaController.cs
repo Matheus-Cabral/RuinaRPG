@@ -25,22 +25,13 @@ public abstract class EquipagemDaFichaController<TSheet, TArma, TSlot, TEscudo, 
     protected RuinaRpgDbContext Db { get; } = db;
     protected EquipmentKitGrantService GrantService { get; } = grantService;
 
-    /// <summary>O Mestre de quem vêm os itens elegíveis: o da campanha (Personagem) ou o da própria ficha (NPC).</summary>
-    protected abstract Task<Guid> MestreDaFichaAsync(TSheet ficha);
-
-    /// <summary>
-    /// A campanha onde os itens concedidos viram anexo: a da ficha (Personagem) ou a da concessão, resolvida pelo
-    /// CampaignAttachment de vínculo (NPC) — null se não há, e aí nada é anexado.
-    /// </summary>
-    protected abstract Task<Guid?> CampanhaDaFichaAsync(TSheet ficha);
-
     [HttpGet("kits")]
     public async Task<ActionResult<List<EquipmentKitOptionResponse>>> ListKits(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
-        return await BuildOptionsAsync(await MestreDaFichaAsync(sheet));
+        return await BuildOptionsAsync(await Tipo.MestreAsync(sheet));
     }
 
     [HttpPost("choose")]
@@ -60,7 +51,7 @@ public abstract class EquipagemDaFichaController<TSheet, TArma, TSlot, TEscudo, 
 
         var fixedItems = await Db.EquipmentKitItems.Where(i => i.KitId == kitId).ToListAsync();
         var choiceSlots = await Db.EquipmentKitChoiceSlots.Where(s => s.KitId == kitId).ToListAsync();
-        var (plan, error) = await GrantService.BuildPlanAsync(kit, fixedItems, choiceSlots, await MestreDaFichaAsync(sheet), request.ChoiceSelections ?? []);
+        var (plan, error) = await GrantService.BuildPlanAsync(kit, fixedItems, choiceSlots, await Tipo.MestreAsync(sheet), request.ChoiceSelections ?? []);
         if (plan is null)
             return BadRequest(error);
 
@@ -74,7 +65,7 @@ public abstract class EquipagemDaFichaController<TSheet, TArma, TSlot, TEscudo, 
             await AddGrantAsync(sheetId, grant);
 
         // Um NPC do próprio Mestre ainda não concedido não tem campanha: aí não há o que anexar (não é erro).
-        var campaignId = await CampanhaDaFichaAsync(sheet);
+        var campaignId = await Tipo.CampanhaAsync(sheet);
         if (campaignId is not null)
         {
             foreach (var itemId in plan.Grants.Select(g => g.ItemId).Distinct())

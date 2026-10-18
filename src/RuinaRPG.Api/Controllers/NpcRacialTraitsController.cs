@@ -12,5 +12,4 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class NpcRacialTraitsController(RuinaRpgDbContext db, ITipoDeFicha<NpcSheet> tipo)
     : TracosRaciaisDaFichaController<NpcSheet, NpcTrait>(db, tipo)
 {
-    protected override Task<Guid> MestreDaFichaAsync(NpcSheet ficha) => Task.FromResult(ficha.GmId);
 }

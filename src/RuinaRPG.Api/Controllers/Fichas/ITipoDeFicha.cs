@@ -13,6 +13,19 @@ public interface ITipoDeFicha<TSheet> where TSheet : class, IFicha
     /// <summary>Se o usuário pode editar a ficha (Personagem: dono ou Mestre da campanha; NPC/Criatura: GrantedSheetAuthorization).</summary>
     Task<bool> PodeEditarAsync(TSheet sheet, Guid userId);
 
+    /// <summary>
+    /// O Mestre da ficha — dono do banco, dos itens e das personalizações de traço racial que valem para ela:
+    /// o da campanha (Personagem) ou o da própria ficha (NPC/Criatura).
+    /// </summary>
+    Task<Guid> MestreAsync(TSheet sheet);
+
+    /// <summary>
+    /// A campanha da ficha: a coluna CampaignId (Personagem) ou a da concessão (NPC/Criatura, que não têm a coluna):
+    /// o CampaignAttachment de vínculo numa campanha da qual o dono atual é membro — null se não há (ficha do
+    /// próprio Mestre, ainda não concedida).
+    /// </summary>
+    Task<Guid?> CampanhaAsync(TSheet sheet);
+
     /// <summary>Resposta para acesso negado: Personagem 403 (Forbid), NPC/Criatura 404 (NotFound).</summary>
     ActionResult Negado(ControllerBase controller);
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -25,7 +26,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
+public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes, ITipoDeFicha<CreatureSheet> tipo) : ControllerBase
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -435,10 +436,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         // Totais exibidos com as Condições ativas (Nenhum numa ficha do GM, sem dono). A Criatura não tem Estresse.
         var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(s, await condicoes.ParaCriaturaAsync(s));
 
-        var campaignId = await db.CampaignAttachments
-            .Where(a => a.CreatureSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
+        var campaignId = await tipo.CampanhaAsync(s);
 
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -31,11 +30,6 @@ public sealed class CharacterSpellAbilitiesController(RuinaRpgDbContext db, Char
         new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, efeitos, e.Categoria?.ToString(), requisitos, pendentes, CriadaNaFicha: e.CriadaNaFicha, DesabilitadoPor: desabilitadoPor);
 
     protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(CharacterSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
-
-    protected override async Task<Guid> MestreDaFichaAsync(CharacterSheet ficha) =>
-        await Db.Campaigns.Where(c => c.Id == ficha.CampaignId).Select(c => c.GmId).SingleAsync();
-
-    protected override Task<Guid?> CampanhaDaFichaAsync(CharacterSheet ficha) => Task.FromResult<Guid?>(ficha.CampaignId);
 
     protected override int PontosDeIgnicao(CharacterSheet ficha) => ficha.PontosDeIgnicaoAtual;
 

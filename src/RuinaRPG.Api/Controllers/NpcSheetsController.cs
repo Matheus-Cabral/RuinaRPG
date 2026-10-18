@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
@@ -26,7 +27,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
+public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes, ITipoDeFicha<NpcSheet> tipo) : ControllerBase
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
     // granted one already does — same reasoning as List below.
@@ -278,10 +279,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (CurrentUserId() == sheet.GmId)
             return null;
 
-        return await db.CampaignAttachments
-            .Where(a => a.NpcSheetId == sheet.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
+        return await tipo.CampanhaAsync(sheet);
     }
 
     // NPCs (unlike Ficha de Personagem, where Nível is calculated-only from Experiência Atual)
@@ -672,10 +670,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         // Totais exibidos: Artefatos + penalidades de equipamento ativas e as Condições ativas (Nenhum numa ficha do GM, sem dono).
         var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await stats.MaximosAsync(s, await condicoes.ParaNpcAsync(s));
 
-        var campaignId = await db.CampaignAttachments
-            .Where(a => a.NpcSheetId == s.Id && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == s.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
+        var campaignId = await tipo.CampanhaAsync(s);
 
         return new NpcSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,

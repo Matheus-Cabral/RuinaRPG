@@ -13,11 +13,13 @@ public sealed class TipoPersonagem(RuinaRpgDbContext db, CondicoesAtivasDaFicha 
 {
     public async Task<CharacterSheet?> CarregarAsync(Guid sheetId) => await db.CharacterSheets.FindAsync(sheetId);
 
-    public async Task<bool> PodeEditarAsync(CharacterSheet sheet, Guid userId)
-    {
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        return CharacterSheetAuthorization.CanEdit(userId, sheet.OwnerId, campaignGmId);
-    }
+    public async Task<bool> PodeEditarAsync(CharacterSheet sheet, Guid userId) =>
+        CharacterSheetAuthorization.CanEdit(userId, sheet.OwnerId, await MestreAsync(sheet));
+
+    public async Task<Guid> MestreAsync(CharacterSheet sheet) =>
+        await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
+
+    public Task<Guid?> CampanhaAsync(CharacterSheet sheet) => Task.FromResult<Guid?>(sheet.CampaignId);
 
     public ActionResult Negado(ControllerBase controller) => controller.Forbid();
 

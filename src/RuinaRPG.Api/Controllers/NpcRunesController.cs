@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Infrastructure.NpcSheets;
@@ -21,14 +20,4 @@ public sealed class NpcRunesController(RuinaRpgDbContext db, ITipoDeFicha<NpcShe
 
     protected override NpcRuneResponse Resposta(NpcRune r, string? imageUrl, string? desabilitadoPor) =>
         new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, imageUrl, RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina), DesabilitadoPor: desabilitadoPor);
-
-    protected override Task<Guid> MestreDaFichaAsync(NpcSheet ficha) => Task.FromResult(ficha.GmId);
-
-    // A ficha de NPC não tem coluna CampaignId: a campanha de uma ficha concedida sai do CampaignAttachment de
-    // vínculo (a mesma regra do CampanhaDaFichaAsync de NpcSpellAbilitiesController).
-    protected override async Task<Guid?> CampanhaDaFichaAsync(NpcSheet ficha) =>
-        await Db.CampaignAttachments
-            .Where(a => a.NpcSheetId == ficha.Id && Db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == ficha.OwnerId))
-            .Select(a => (Guid?)a.CampaignId)
-            .FirstOrDefaultAsync();
 }

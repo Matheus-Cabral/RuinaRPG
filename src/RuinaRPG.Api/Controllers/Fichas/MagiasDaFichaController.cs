@@ -43,15 +43,6 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
     /// <summary>O retrato da ficha SEM penalidades de equipamento usado para conferir Requisitos (o Stats do tipo).</summary>
     protected abstract Task<FichaParaRequisitos> FichaParaRequisitosAsync(TSheet ficha);
 
-    /// <summary>O Mestre dono do banco da ficha: o da campanha (Personagem) ou o da própria ficha (NPC/Criatura).</summary>
-    protected abstract Task<Guid> MestreDaFichaAsync(TSheet ficha);
-
-    /// <summary>
-    /// A campanha onde o jogador escolhe do banco e publica a cópia: a da ficha (Personagem) ou a da concessão,
-    /// resolvida pelo CampaignAttachment de vínculo (NPC/Criatura, que não têm coluna CampaignId) — null se não há.
-    /// </summary>
-    protected abstract Task<Guid?> CampanhaDaFichaAsync(TSheet ficha);
-
     /// <summary>O saldo de Pontos de Ignição da ficha (PontosDeIgnicaoAtual; PontosDeIgnicao na Criatura).</summary>
     protected abstract int PontosDeIgnicao(TSheet ficha);
 
@@ -74,10 +65,10 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
         // Só o jogador (quem chama não é o Mestre) precisa da campanha — tanto para escolher do banco (só as
         // entradas públicas nela) quanto para publicar depois a cópia que vai para o banco.
-        var gmId = await MestreDaFichaAsync(sheet);
+        var gmId = await Tipo.MestreAsync(sheet);
         Guid? campaignId = null;
         if (CurrentUserId() != gmId)
-            campaignId = await CampanhaDaFichaAsync(sheet);
+            campaignId = await Tipo.CampanhaAsync(sheet);
 
         string nome; SpellAbilityTipo tipo; int grau; string descricao; List<SpellAbilityEffectRequest> efeitos;
         Guid? sourceBankEntryId = null;
@@ -219,11 +210,11 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
         // Mesmo alcance do Add: o GM vê todas as Passivas do próprio banco; o jogador, só as públicas na
         // campanha — sem campanha, nenhuma.
-        var gmId = await MestreDaFichaAsync(sheet);
+        var gmId = await Tipo.MestreAsync(sheet);
         var query = Db.SpellAbilityBankEntries.Where(e => e.GmId == gmId && e.Tipo == SpellAbilityTipo.Passiva);
         if (CurrentUserId() != gmId)
         {
-            var campaignId = await CampanhaDaFichaAsync(sheet);
+            var campaignId = await Tipo.CampanhaAsync(sheet);
             if (campaignId is null)
                 return new List<PassivaDisponivelResponse>();
             query = query.Where(e => Db.CampaignAttachments.Any(a => a.CampaignId == campaignId && a.IsPublic && a.SpellAbilityBankEntryId == e.Id));
