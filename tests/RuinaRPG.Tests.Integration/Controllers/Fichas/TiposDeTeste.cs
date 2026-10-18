@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using FluentAssertions;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -65,7 +66,7 @@ public sealed class TipoDeTestePersonagem : ITipoDeTestePersonagemOuNpc
         var (gm, email) = await t.MestreAsync();
         var (playerId, playerToken) = await t.JogadorAsync(gm);
         var campaignId = await t.CampanhaComMembroAsync(gm, playerId);
-        var sheet = await t.EnviarAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gm, new CreateCharacterSheetRequest(playerId));
+        var sheet = await t.SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gm, new CreateCharacterSheetRequest(playerId));
         return new FichaDeTeste(gm, email, playerToken, (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id);
     }
 
@@ -86,7 +87,7 @@ public sealed class TipoDeTesteNpc : ITipoDeTestePersonagemOuNpc
     public async Task<FichaDeTeste> CriarFichaAsync(TestesDeFicha t)
     {
         var (gm, email) = await t.MestreAsync();
-        var response = await t.EnviarAsync(HttpMethod.Post, "/api/npc-sheets", gm);
+        var response = await t.SendOkAsync(HttpMethod.Post, "/api/npc-sheets", gm);
         return new FichaDeTeste(gm, email, gm, (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id);
     }
 
@@ -109,7 +110,7 @@ public sealed class TipoDeTesteCriatura : ITipoDeTeste
     public async Task<FichaDeTeste> CriarFichaAsync(TestesDeFicha t)
     {
         var (gm, email) = await t.MestreAsync();
-        var response = await t.EnviarAsync(HttpMethod.Post, "/api/creature-sheets", gm);
+        var response = await t.SendOkAsync(HttpMethod.Post, "/api/creature-sheets", gm);
         return new FichaDeTeste(gm, email, gm, (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!.Id);
     }
 
@@ -134,13 +135,19 @@ public abstract class TestesDeFicha(ApiFixture fixture) : ApiTestBase(fixture)
     internal Task<(string PlayerId, string Token)> JogadorAsync(string gmToken) =>
         RegisterJogadorLinkedToAsync(gmToken, Apelido("jog"), $"{Guid.NewGuid():N}@teste.com");
 
-    internal Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null) =>
-        Client.SendAsync(AuthedRequest(method, url, token, body));
+    /// <summary>Envia e afirma que deu certo: a montagem das fichas usa isto, e os testes de penalidade também.</summary>
+    protected internal async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
+    {
+        var response = await Client.SendAsync(AuthedRequest(method, url, token, body));
+        response.IsSuccessStatusCode.Should().BeTrue($"{method} {url} returned {(int)response.StatusCode}");
+        return response;
+    }
 
     internal async Task<string> CampanhaComMembroAsync(string gmToken, string playerId)
     {
-        var campaignId = await CreateCampaignAsync(gmToken, "Campanha");
-        await EnviarAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId));
+        var campaign = await SendOkAsync(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", ""));
+        var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        await SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId));
         return campaignId;
     }
 
@@ -149,7 +156,7 @@ public abstract class TestesDeFicha(ApiFixture fixture) : ApiTestBase(fixture)
         var (gm, email) = await MestreAsync();
         var (playerId, playerToken) = await JogadorAsync(gm);
         var campaignId = await CampanhaComMembroAsync(gm, playerId);
-        var grant = await EnviarAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gm, new GrantSheetRequest(playerId, tipo, null));
+        var grant = await SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gm, new GrantSheetRequest(playerId, tipo, null));
         return new FichaDeTeste(gm, email, playerToken, (await grant.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId);
     }
 }
