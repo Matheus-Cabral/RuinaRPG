@@ -22,7 +22,6 @@ public class TraitMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         db.Traits.Add(new Trait { Id = Guid.NewGuid(), Nome = "Teste", Descricao = "Descrição de teste", Custo = 2, Polaridade = Polaridade.Positiva });
         await db.SaveChangesAsync();
 

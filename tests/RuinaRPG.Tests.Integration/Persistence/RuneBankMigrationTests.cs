@@ -21,7 +21,6 @@ public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = $"gm{suffix}@runebank.test", Email = $"gm{suffix}@runebank.test", Nickname = $"RuneBank{suffix}", Role = UserRole.GM };
         db.Users.Add(gm);

@@ -22,7 +22,6 @@ public class CreatureExclusiveTraitMigrationTests : IClassFixture<BlankDatabaseF
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var exclusiveTrait = new CreatureExclusiveTrait
         {
             Id = Guid.NewGuid(),

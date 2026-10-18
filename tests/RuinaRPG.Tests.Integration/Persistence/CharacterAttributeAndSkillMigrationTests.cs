@@ -22,7 +22,6 @@ public class CharacterAttributeAndSkillMigrationTests : IClassFixture<BlankDatab
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@attrtest.com", Email = "gm@attrtest.com", Nickname = "AttrTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@attrtest.com", Email = "player@attrtest.com", Nickname = "AttrTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
         db.Users.AddRange(gm, player);

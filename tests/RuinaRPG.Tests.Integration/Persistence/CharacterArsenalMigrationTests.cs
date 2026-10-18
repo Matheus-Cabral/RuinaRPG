@@ -24,7 +24,6 @@ public class CharacterArsenalMigrationTests : IClassFixture<BlankDatabaseFixture
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@arsenaltest.com", Email = "gm@arsenaltest.com", Nickname = "ArsenalTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@arsenaltest.com", Email = "player@arsenaltest.com", Nickname = "ArsenalTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
         db.Users.AddRange(gm, player);

@@ -15,7 +15,7 @@ stacks) have their `__EFMigrationsHistory` rewritten automatically by `--migrate
 are not touched. Same behavior for the end user; nothing in the schema or data changes.
 
 Gains: smaller build (the Infrastructure project compiles 169 fewer files), a faster template database in
-the integration tests (one migration instead of 84), 50 test classes that only exercise history removed.
+the integration tests (one migration instead of 84), 6 test classes that only exercise history removed, and the migration-name assertions dropped from the rest.
 
 ## Findings that drive B
 

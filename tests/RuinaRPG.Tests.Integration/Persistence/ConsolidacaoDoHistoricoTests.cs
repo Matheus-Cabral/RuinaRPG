@@ -143,8 +143,12 @@ public class ConsolidacaoDoHistoricoTests
             await DefinirHistoricoAsync(db, Historico(estado));
             var antes = await LinhasDoHistoricoAsync(db);
 
-            await FluentActions.Awaiting(() => HistoricoDeMigracoes150.ConsolidarAsync(db, NullLogger.Instance))
+            var erro = await FluentActions.Awaiting(() => HistoricoDeMigracoes150.ConsolidarAsync(db, NullLogger.Instance))
                 .Should().ThrowAsync<InvalidOperationException>().WithMessage("*1.5.0*Nada foi alterado*");
+            if (estado == "parcial")
+                erro.Which.Message.Should().Contain($"Faltando da 1.5.0: {HistoricoDeMigracoes150.Ids[^1]}");
+            if (estado == "desconhecida")
+                erro.Which.Message.Should().Contain("Inesperadas: 20261015000000_Desconhecida");
 
             (await LinhasDoHistoricoAsync(db)).Should().Equal(antes);
             (await GmAsync(db, gm.Id)).Should().NotBeNull();

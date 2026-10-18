@@ -1,4 +1,8 @@
-﻿using System;
+﻿// Baseline editada à mão. NÃO regenerar nem re-consolidar com `dotnet ef migrations add`.
+// - 26 defaults de coluna e a ordem física das colunas são herdados da cadeia de migrations da 1.5.0.
+// - O InsertData de Pericias foi copiado da migration AddPericias.
+// Qualquer mudança neste arquivo precisa passar por `tools/migrations/verificar-baseline.sh 729dac9`.
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 

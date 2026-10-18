@@ -109,7 +109,7 @@ public static class HistoricoDeMigracoes150
             var connection = (NpgsqlConnection)db.Database.GetDbConnection();
             await using var transaction = await connection.BeginTransactionAsync();
 
-            await using (var existe = new NpgsqlCommand("SELECT to_regclass('public.\"__EFMigrationsHistory\"') IS NOT NULL", connection, transaction))
+            await using (var existe = new NpgsqlCommand("SELECT to_regclass('\"__EFMigrationsHistory\"') IS NOT NULL", connection, transaction))
             {
                 if (!(bool)(await existe.ExecuteScalarAsync())!)
                     return;
@@ -157,8 +157,19 @@ public static class HistoricoDeMigracoes150
         }
     }
 
-    private static InvalidOperationException Recusa(List<string> aplicadas) => new(
-        $"O histórico de migrations não está na 1.5.0 nem na 2.0.0: esperado exatamente as {Ids.Count} migrations da 1.5.0 " +
-        $"(última {Ids[^1]}) ou a baseline {Baseline}; encontradas {aplicadas.Count}, a mais recente {aplicadas.Max(StringComparer.Ordinal)}. " +
-        "Nada foi alterado.");
+    private static InvalidOperationException Recusa(List<string> aplicadas)
+    {
+        var faltando = Ids.Except(aplicadas).Order(StringComparer.Ordinal).ToList();
+        var inesperadas = aplicadas.Except(Ids).Order(StringComparer.Ordinal).ToList();
+        return new(
+            $"O histórico de migrations não está na 1.5.0 nem na 2.0.0: esperado exatamente as {Ids.Count} migrations da 1.5.0 " +
+            $"(última {Ids[^1]}) ou a baseline {Baseline}; encontradas {aplicadas.Count}, a mais recente {aplicadas.Max(StringComparer.Ordinal)}. " +
+            $"Faltando da 1.5.0: {Lista(faltando)}. Inesperadas: {Lista(inesperadas)}. " +
+            "Um banco anterior à 1.5.0 precisa ser atualizado com a 1.5.0 antes. " +
+            "Nada foi alterado.");
+    }
+
+    private static string Lista(List<string> ids) => ids.Count == 0
+        ? "nenhuma"
+        : string.Join(", ", ids.Take(10)) + (ids.Count > 10 ? $" (+{ids.Count - 10})" : "");
 }

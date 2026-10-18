@@ -72,6 +72,8 @@ Measured on `978348f` (release/2.0.0), same VM, one run.
 | Code size | migrations | 169 files, 9.6 MB | 3 files, 512K |
 | Code size | test projects `.cs` lines | Unit 6695; Client 17334; Integration 40305 | Unit 6830; Client 17591; Integration 40102 |
 
+Build: one run with warm NuGet/SDK caches, against multi-run values in the After A column; treat the gain as indicative.
+
 `verificar-baseline.sh 729dac9`:
 
 ```

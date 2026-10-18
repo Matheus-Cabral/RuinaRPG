@@ -20,7 +20,6 @@ public class ImageMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@imgtest.com", Email = "gm@imgtest.com", Nickname = "ImgTestGm", Role = UserRole.GM };
         db.Users.Add(gm);
         await db.SaveChangesAsync();

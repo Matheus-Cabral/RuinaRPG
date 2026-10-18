@@ -26,8 +26,17 @@ trap cleanup EXIT
 
 step() { printf '== %s\n' "$*" >&2; }
 
+run_logged() {
+  local log="$work/$1.log"; shift
+  if ! "$@" >"$log" 2>&1; then
+    cat "$log" >&2
+    printf 'falhou: %s\n' "$*" >&2
+    exit 1
+  fi
+}
+
 step "worktree de $ref"
-git -C "$root" worktree add --detach "$work/old" "$ref" >/dev/null 2>&1
+run_logged worktree git -C "$root" worktree add --detach "$work/old" "$ref"
 
 step "postgres descartável ($name)"
 docker run -d --name "$name" -e POSTGRES_PASSWORD=verificar -p 127.0.0.1::5432 "$image" >/dev/null
@@ -48,15 +57,6 @@ for db in a0 b0 a; do psql_ -c "CREATE DATABASE $db"; done
 export ASPNETCORE_ENVIRONMENT=Production
 export Jwt__SigningKey="verificar-baseline-chave-descartavel-0123456789"
 export Jwt__Issuer=verificar Jwt__Audience=verificar
-
-run_logged() {
-  local log="$work/$1.log"; shift
-  if ! "$@" >"$log" 2>&1; then
-    cat "$log" >&2
-    printf 'falhou: %s\n' "$*" >&2
-    exit 1
-  fi
-}
 
 ef_update() {
   step "dotnet ef database update ($2)"

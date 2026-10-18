@@ -20,7 +20,6 @@ public class CreatureSheetMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@creaturesheettest.com", Email = "gm@creaturesheettest.com", Nickname = "CreatureSheetTestGm", Role = UserRole.GM };
         db.Users.Add(gm);
         await db.SaveChangesAsync();

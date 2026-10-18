@@ -24,7 +24,6 @@ public class NpcChildTableMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so NpcTrait's FK
         // genuinely targets a real, seeded Trait row rather than a synthetic one.
         var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");

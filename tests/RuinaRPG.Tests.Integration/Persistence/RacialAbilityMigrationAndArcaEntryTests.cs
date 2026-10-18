@@ -23,7 +23,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDataba
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@racialtest.com", Email = "gm@racialtest.com", Nickname = "RacialTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@racialtest.com", Email = "player@racialtest.com", Nickname = "RacialTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
         db.Users.AddRange(gm, player);
@@ -59,7 +58,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDataba
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
 
         var gmSemLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm1@arcadado.com", Email = "gm1@arcadado.com", Nickname = "ArcaDadoMigGm1", Role = UserRole.GM };
         var gmComLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm2@arcadado.com", Email = "gm2@arcadado.com", Nickname = "ArcaDadoMigGm2", Role = UserRole.GM };

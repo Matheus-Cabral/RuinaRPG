@@ -19,7 +19,6 @@ public class EfeitoMigrationAndSeedTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         await EfeitoSeeder.SeedAsync(db);
 
         var todos = await db.Efeitos.Where(e => !e.IsDeleted).ToListAsync();

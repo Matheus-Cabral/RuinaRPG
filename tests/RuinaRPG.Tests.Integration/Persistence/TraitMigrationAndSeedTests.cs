@@ -22,7 +22,6 @@ public class TraitMigrationAndSeedTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
         var result = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
 

@@ -18,7 +18,6 @@ public class RulesAuditorMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "auditortest@teste.com", Email = "auditortest@teste.com", Nickname = "AuditorMigrationTest", Role = RuinaRPG.Domain.Enums.UserRole.GM };
         db.Users.Add(user);
         await db.SaveChangesAsync();
