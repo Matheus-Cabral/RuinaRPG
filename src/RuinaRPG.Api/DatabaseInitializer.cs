@@ -8,15 +8,17 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api;
 
-/// Applies pending migrations and runs every seeder/backfill, in order. The one place that knows the
-/// sequence: `--migrate` (Production, Técnico R0009), Development startup and the integration-test
-/// template database all call it.
+/// Consolidates a 1.5.0 migration history into the 2.0.0 baseline, applies pending migrations and
+/// runs every seeder/backfill, in order. The one place that knows the sequence: `--migrate`
+/// (Production, Técnico R0009), Development startup and the integration-test template database all
+/// call it.
 public static class DatabaseInitializer
 {
     public static async Task InitializeAsync(IServiceProvider services, ILogger logger)
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        await HistoricoDeMigracoes150.ConsolidarAsync(db, logger);
         await db.Database.MigrateAsync();
 
         var traitSeed = await TraitSeeder.SeedAsync(db, RulesDataProvider.ReadResource("Caracteristicas.md"));

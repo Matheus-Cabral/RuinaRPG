@@ -5,7 +5,7 @@ using RuinaRPG.Api;
 namespace RuinaRPG.Tests.Integration;
 
 // Migrated and seeded once per test run (through the API's own DatabaseInitializer, via ApiFactory), then
-// cloned by every ApiFixture - so no class pays for 169 migrations and seven seeders again.
+// cloned by every ApiFixture - so no class pays for the migrations and seeders again.
 public static class TemplateDatabase
 {
     public const string Name = "ruinarpg_template";

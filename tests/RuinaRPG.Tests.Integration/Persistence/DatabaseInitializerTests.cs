@@ -61,4 +61,26 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
 
         (await CountSeededTablesAsync(services)).Should().Equal(first);
     }
+
+    [Fact]
+    public async Task Initializing_a_1_5_0_database_consolidates_its_history_and_keeps_the_data()
+    {
+        await using var services = BuildServices();
+        await DatabaseInitializer.InitializeAsync(services, NullLogger.Instance);
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM \"__EFMigrationsHistory\"");
+            foreach (var id in HistoricoDeMigracoes150.Ids)
+                await db.Database.ExecuteSqlAsync($"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({id}, '8.0.10')");
+        }
+        var before = await CountSeededTablesAsync(services);
+
+        await DatabaseInitializer.InitializeAsync(services, NullLogger.Instance);
+
+        await using var check = services.CreateAsyncScope();
+        var migrated = check.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        (await migrated.Database.GetAppliedMigrationsAsync()).Should().Equal(HistoricoDeMigracoes150.Baseline);
+        (await CountSeededTablesAsync(services)).Should().Equal(before);
+    }
 }

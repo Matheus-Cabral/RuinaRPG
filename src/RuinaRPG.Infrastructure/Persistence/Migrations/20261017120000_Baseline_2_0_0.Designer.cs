@@ -12,8 +12,8 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RuinaRpgDbContext))]
-    [Migration("20261014004619_AddEncounterRowVersion")]
-    partial class AddEncounterRowVersion
+    [Migration("20261017120000_Baseline_2_0_0")]
+    partial class Baseline_2_0_0
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1004,6 +1004,101 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("RacialTraitOverrides");
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.Condicao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DuracaoPadraoTurnos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Icone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("Condicoes");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoDesabilitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CondicaoId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CondicaoId");
+
+                    b.ToTable("CondicaoDesabilitacoes");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoModificador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Alvo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AlvoEspecifico")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CondicaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Momento")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TipoDeValor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Valor")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CondicaoId");
+
+                    b.ToTable("CondicaoModificadores");
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1647,6 +1742,55 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("SourceNpcSheetId");
 
                     b.ToTable("EncounterParticipants");
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondicao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AjustesAplicados")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("AplicadaNoTurno")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CondicaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Desabilitacoes")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DuracaoTurnos")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EncounterParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Icone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Modificadores")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncounterParticipantId");
+
+                    b.ToTable("EncounterParticipantCondicoes");
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondition", b =>
@@ -3054,6 +3198,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Automatico")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Campo")
                         .HasColumnType("text");
 
@@ -3679,6 +3826,24 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoDesabilitacao", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Condicoes.Condicao", null)
+                        .WithMany()
+                        .HasForeignKey("CondicaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Condicoes.CondicaoModificador", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Condicoes.Condicao", null)
+                        .WithMany()
+                        .HasForeignKey("CondicaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureAffection", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
@@ -3950,6 +4115,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("SourceNpcSheetId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondicao", b =>
+                {
+                    b.HasOne("RuinaRPG.Infrastructure.Encounters.EncounterParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterParticipantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Encounters.EncounterParticipantCondition", b =>

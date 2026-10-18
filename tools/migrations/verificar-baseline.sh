@@ -32,11 +32,13 @@ git -C "$root" worktree add --detach "$work/old" "$ref" >/dev/null 2>&1
 step "postgres descartável ($name)"
 docker run -d --name "$name" -e POSTGRES_PASSWORD=verificar -p 127.0.0.1::5432 "$image" >/dev/null
 port="$(docker port "$name" 5432/tcp | head -1 | sed 's/.*://')"
+# Via TCP: o servidor temporário do initdb da imagem só escuta no socket Unix, então o pg_isready
+# pelo socket podia passar antes da hora e falhar (calado) quando ele desligava.
 for _ in $(seq 1 60); do
-  docker exec "$name" pg_isready -U postgres -q && break
+  docker exec "$name" pg_isready -h 127.0.0.1 -U postgres -q && break
   sleep 1
 done
-docker exec "$name" pg_isready -U postgres -q
+docker exec "$name" pg_isready -h 127.0.0.1 -U postgres >&2
 
 psql_() { docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres -qAt "$@"; }
 cs() { printf 'Host=127.0.0.1;Port=%s;Database=%s;Username=postgres;Password=verificar' "$port" "$1"; }
