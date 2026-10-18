@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/lib.sh"
-cd "$BENCH_ROOT"
-base=http://localhost:8088
-
-bench_compose up -d --build > /dev/null
-trap 'bench_compose down --volumes > /dev/null' EXIT
-for _ in $(seq 1 60); do curl -fs "$base/api/health" > /dev/null && break; sleep 2; done
+base="$BENCH_URL"
+bench_clone "$BENCH_REF"
+trap bench_teardown EXIT
+bench_deploy > "$RESULTS_DIR/$LABEL-latency-deploy.log" 2>&1
 
 json() { curl -fs -H 'Content-Type: application/json' "$@"; }
 token=$(json -X POST "$base/api/auth/register/gm" \
@@ -21,8 +19,10 @@ endpoints=(
   "/api/rulebook" "/api/compendio/search?q=fogo"
 )
 for e in "${endpoints[@]}"; do
-  curl -fs -o /dev/null "${auth[@]}" "$base$e"   # warm-up, also fails fast on a wrong route
-  times=$(for _ in $(seq 1 50); do curl -s -o /dev/null -w '%{time_total}\n' "${auth[@]}" "$base$e"; done | sort -n)
+  curl -fs -o /dev/null --compressed "${auth[@]}" "$base$e"   # warm-up, also fails fast on a wrong route
+  times=$(for _ in $(seq 1 50); do curl -s -o /dev/null -w '%{http_code} %{time_total}\n' --compressed "${auth[@]}" "$base$e"; done)
+  if grep -qv '^200 ' <<< "$times"; then echo "measure-api-latency.sh: $e answered non-200: $(grep -v '^200 ' <<< "$times" | head -1)" >&2; exit 1; fi
+  times=$(cut -d' ' -f2 <<< "$times" | sort -n)
   p50=$(sed -n 25p <<< "$times"); p95=$(sed -n 48p <<< "$times")
   name=$(sed -E 's#/[0-9a-f-]{36}#/{id}#g; s#\?.*##' <<< "$e")
   record "latency.$name" "p50=${p50}s p95=${p95}s"

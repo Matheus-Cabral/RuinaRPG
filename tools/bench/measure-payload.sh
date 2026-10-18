@@ -15,4 +15,7 @@ done
 record "payload.framework.files" "${#files[@]}"
 record "payload.framework.raw.kb" "$(( raw / 1024 ))"
 record "payload.framework.gzip.kb" "$(( gz / 1024 ))"
-record "payload.served.encoding" "nginx serves raw files today (no gzip/brotli configured)"
+sdk_gz=$(find "$fw" -type f -name '*.gz' -printf '%s\n' | awk '{s+=$1} END {print s+0}')
+sdk_br=$(find "$fw" -type f -name '*.br' -printf '%s\n' | awk '{s+=$1} END {print s+0}')
+record "payload.framework.sdk-gz.kb" "$(( sdk_gz / 1024 ))"
+record "payload.framework.sdk-br.kb" "$(( sdk_br / 1024 ))"

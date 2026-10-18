@@ -1,5 +1,0 @@
-# Bench override: the bench stack listens on 8088 so it never collides with the user's stack on 80.
-services:
-  nginx:
-    ports: !override
-      - "8088:80"
