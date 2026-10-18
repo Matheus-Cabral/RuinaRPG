@@ -1,7 +1,7 @@
 using RuinaRPG.Infrastructure.Fichas;
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcShield : ILinhaDaFicha
+public class NpcShield : IEquipavelDoCatalogo
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

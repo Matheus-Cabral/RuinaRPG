@@ -1,3 +1,5 @@
+using RuinaRPG.Domain.CharacterSheets;
+
 namespace RuinaRPG.Infrastructure.Fichas;
 
 /// <summary>Uma ficha (Personagem, NPC ou Criatura) vista pelo código genérico do D.</summary>
@@ -38,4 +40,28 @@ public interface IMaestriaDaFicha<TAtributo> : ILinhaDaFicha where TAtributo : s
     int PericiaId { get; set; }
     TAtributo Atributo { get; set; }
     int GastoMaestria { get; set; }
+}
+
+/// <summary>Uma linha do Arsenal que se equipa (Arma ou Escudo), uma de cada vez por ficha.</summary>
+public interface IEquipavelDaFicha : ILinhaDaFicha
+{
+    bool IsEquipped { get; set; }
+}
+
+/// <summary>
+/// Um equipável sempre ligado ao Catálogo, com Durabilidade (Escudos; Armas de Personagem e NPC).
+/// A Arma da Criatura fica de fora: pode ser ataque natural, sem ItemId nem Durabilidade (Ficha de Criaturas R0006 3.a).
+/// </summary>
+public interface IEquipavelDoCatalogo : IEquipavelDaFicha
+{
+    Guid ItemId { get; set; }
+    int DurabilidadeAtual { get; set; }
+}
+
+/// <summary>Um slot de Armadura da ficha (CharacterArmorSlot, NpcArmorSlot, CreatureArmorSlot); vazio quando ItemId é null.</summary>
+public interface ISlotDeArmaduraDaFicha : ILinhaDaFicha
+{
+    ArmorSlotType Slot { get; set; }
+    Guid? ItemId { get; set; }
+    int? DurabilidadeAtual { get; set; }
 }

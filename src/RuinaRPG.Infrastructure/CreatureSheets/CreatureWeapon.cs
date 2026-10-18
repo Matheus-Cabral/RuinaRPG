@@ -3,7 +3,7 @@ using RuinaRPG.Domain.Items;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureWeapon : ILinhaDaFicha
+public class CreatureWeapon : IEquipavelDaFicha
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

@@ -3,7 +3,7 @@ using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureArmorSlot : ILinhaDaFicha
+public class CreatureArmorSlot : ISlotDeArmaduraDaFicha
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }
