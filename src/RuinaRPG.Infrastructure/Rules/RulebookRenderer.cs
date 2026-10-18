@@ -211,17 +211,24 @@ public class RulebookRenderer(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNive
         var (intro, _) = SplitIntoSections(RulesDataProvider.ReadResource("Equipagem.md"), splitLevel: 1);
 
         var kits = await db.EquipmentKits.Where(k => !k.IsDeleted).OrderBy(k => k.Nome).ToListAsync();
+        var kitIds = kits.Select(k => k.Id).ToList();
+
+        // Uma consulta por tabela para todos os kits (antes: três por kit). A ordem relativa dos itens
+        // de cada kit é a da busca, como era na consulta por kit.
+        var itensPorKit = (await db.EquipmentKitItems.Where(i => kitIds.Contains(i.KitId)).ToListAsync()).ToLookup(i => i.KitId);
+        var slotsPorKit = (await db.EquipmentKitChoiceSlots.Where(s => kitIds.Contains(s.KitId)).ToListAsync()).ToLookup(s => s.KitId);
+
+        // O nome vem do item fixo ligado; a linha legada (sem FixedItemId) cai no Nome antigo.
+        var fixoIds = itensPorKit.SelectMany(g => g).Select(i => i.FixedItemId)
+            .Concat(slotsPorKit.SelectMany(g => g).Select(s => s.BonusFixedItemId)).OfType<Guid>().Distinct().ToList();
+        var nomesDosFixos = await db.EquipmentKitFixedItems.Where(f => fixoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nome);
+        string NomeDe(Guid? fixoId, string? legado) => fixoId is { } id && nomesDosFixos.TryGetValue(id, out var nome) ? nome : legado ?? "";
 
         var sections = new List<RulebookSection>();
         foreach (var kit in kits)
         {
-            var items = await db.EquipmentKitItems.Where(i => i.KitId == kit.Id).ToListAsync();
-            var slots = await db.EquipmentKitChoiceSlots.Where(s => s.KitId == kit.Id).ToListAsync();
-
-            // O nome vem do item fixo ligado; a linha legada (sem FixedItemId) cai no Nome antigo.
-            var fixoIds = items.Select(i => i.FixedItemId).Concat(slots.Select(s => s.BonusFixedItemId)).OfType<Guid>().ToList();
-            var nomesDosFixos = await db.EquipmentKitFixedItems.Where(f => fixoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nome);
-            string NomeDe(Guid? fixoId, string? legado) => fixoId is { } id && nomesDosFixos.TryGetValue(id, out var nome) ? nome : legado ?? "";
+            var items = itensPorKit[kit.Id];
+            var slots = slotsPorKit[kit.Id];
 
             var html = WebUtility.HtmlEncode(kit.Descricao).Replace("\n", "<br />") + "<ul>"
                 + string.Join("", items.Select(i => $"<li>{WebUtility.HtmlEncode(NomeDe(i.FixedItemId, i.Nome))} x{i.Qtd}</li>"))
