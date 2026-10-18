@@ -82,3 +82,26 @@ OK    dump completo (migrations): cadeia da 1.5.0 = baseline
 OK    dump completo (com seeders): 1.5.0 = 1.5.0 atualizada
 OK    histórico: atualizado = novo
 ```
+
+## After C (deploy and load performance)
+
+Measured on `76868d1` (release/2.0.0), same VM, one run each, with the deploy-based harness of `tools/bench/`
+(the stack is deployed by the ref's own `deploy.sh`). "Before" is `3040ed0` measured with the same harness.
+
+| Area | Metric | Before C (`3040ed0`) | After C |
+|---|---|---|---|
+| Load | first visit, bytes on the wire (KB) | 14253 | 5834 |
+| Load | repeat visit, bytes on the wire (KB) | 0 | 3 |
+| Load | first render, localhost, cold / warm (s) | 3.33 / 1.33 | 2.32 / 1.34 |
+| Load | first render, 20 Mbit/s + 40 ms, cold / warm (s) | 7.64 / 1.52 | 3.80 / 1.52 |
+| Deploy | full `deploy.sh deploy`, cold (s) | 287.8 | 238.8 |
+| Deploy | build stage, cold (s) | 233 | 192 |
+| Deploy | full `deploy.sh deploy`, one-line Api change (s) | 211.3 | 137.7 |
+| Deploy | build stage, one-line Api change (s) | 181 | 110 |
+| Client payload | `_framework` raw / SDK `.gz` / SDK `.br` (KB) | 14192 / 5768 / 4084 | 14192 / 5768 / 4084 (unchanged; the gain is in what nginx sends) |
+| API latency | `/api/rulebook` p50 / p95 through nginx (s) | 0.0718 / 0.0809 | 0.0698 / 0.0747 |
+| Images | `favicon.png` / `logo-grande.png` (KB) | 593 / 638 | 533 / 588 |
+
+Image sizes are KiB (bytes / 1024): `favicon.png` 607001 -> 545514 bytes, `logo-grande.png` 653705 -> 602119 bytes (the Before column of the original spec table, 596 / 640, used a different rounding). No other latency endpoint moved by more than 20 % (the small ones, such as `/api/traits` 4.96 -> 6.09 ms, are within single-run noise).
+
+Success criteria of the spec: first-visit transfer <= 7168 KB was **met** (5834 KB, -59 %). Warm build stage <= half of the before value (<= 90.5 s of 181 s) was **missed**: 110 s (-39 %); per the plan nothing was tuned to chase it. The cold full deploy still improved (287.8 -> 238.8 s) and the one-line-change deploy went from 211.3 to 137.7 s. `/api/rulebook`: p50 0.0698 s is above the 30 ms threshold, so it was profiled (temporary `Stopwatch` instrumentation, since reverted). Per request (warm, ~75 ms inside the test host) the Markdown step (`SplitIntoSections`, all documents) costs only ~12-15 ms; `BuildEquipagemAsync` alone costs ~45 ms, from per-kit database queries (an N+1 over `EquipmentKits`), not from Markdown. The Markdown memo of the plan therefore does not apply and no code was changed; the Equipagem queries are a candidate for a later round.
