@@ -252,7 +252,7 @@ public class CharacterAffinitiesControllerTests(ApiFixture fixture) : ApiTestBas
             row2Id = Guid.NewGuid();
             db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
             {
-                Id = row2Id, CharacterSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
+                Id = row2Id, SheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
             });
             await db.SaveChangesAsync();
         }
@@ -357,7 +357,7 @@ public class CharacterAffinitiesControllerTests(ApiFixture fixture) : ApiTestBas
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             db.CharacterAffinities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity
-                { Id = legacyId, CharacterSheetId = Guid.Parse(sheetId), Elemento = RuinaRPG.Domain.CharacterSheets.Elemento.Ar, SubElemento = RuinaRPG.Domain.CharacterSheets.SubElemento.Curar });
+                { Id = legacyId, SheetId = Guid.Parse(sheetId), Elemento = RuinaRPG.Domain.CharacterSheets.Elemento.Ar, SubElemento = RuinaRPG.Domain.CharacterSheets.SubElemento.Curar });
             await db.SaveChangesAsync();
         }
 

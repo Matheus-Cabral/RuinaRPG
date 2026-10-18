@@ -39,8 +39,8 @@ public class CharacterAffectionAndTraitMigrationTests : IClassFixture<BlankDatab
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.Set<CharacterAffection>().Add(new CharacterAffection { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
-        db.Set<CharacterTrait>().Add(new CharacterTrait { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
+        db.Set<CharacterAffection>().Add(new CharacterAffection { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
+        db.Set<CharacterTrait>().Add(new CharacterTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
         await db.SaveChangesAsync();
 
         (await db.Set<CharacterAffection>().CountAsync()).Should().Be(1);

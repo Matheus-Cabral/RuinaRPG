@@ -165,9 +165,9 @@ public static class SheetLogMap
         {
             var (kind, fk) = tipo.Name switch
             {
-                var n when n.StartsWith("Character") => (SheetLogKind.Character, "CharacterSheetId"),
-                var n when n.StartsWith("Npc") => (SheetLogKind.Npc, "NpcSheetId"),
-                _ => (SheetLogKind.Creature, "CreatureSheetId"),
+                var n when n.StartsWith("Character") => (SheetLogKind.Character, "SheetId"),
+                var n when n.StartsWith("Npc") => (SheetLogKind.Npc, "SheetId"),
+                _ => (SheetLogKind.Creature, "SheetId"),
             };
             var fora = new List<string> { "Id", fk };
             if (ignorados is not null) fora.AddRange(ignorados);

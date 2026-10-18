@@ -1,9 +1,10 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureSheet
+public class CreatureSheet : IFicha
 {
     public Guid Id { get; set; }
     public Guid GmId { get; set; }

@@ -378,9 +378,9 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         var gmToken = await RegisterGmAndGetTokenAsync("CreatureGmSeed1", "creatureseed1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var attributes = await db.CreatureAttributes.Where(a => a.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
-        var skills = await db.CreatureSkills.Where(s => s.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
-        var armorSlots = await db.CreatureArmorSlots.Where(a => a.CreatureSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var attributes = await db.CreatureAttributes.Where(a => a.SheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.CreatureSkills.Where(s => s.SheetId == Guid.Parse(sheetId)).ToListAsync();
+        var armorSlots = await db.CreatureArmorSlots.Where(a => a.SheetId == Guid.Parse(sheetId)).ToListAsync();
 
         // AtributoCriatura has 6 members (not Atributo's 8).
         attributes.Should().HaveCount(6);
@@ -510,9 +510,9 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var sheetGuid = Guid.Parse(sheetId);
-            var vigor = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetGuid && a.Atributo == AtributoCriatura.Vigor);
+            var vigor = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetGuid && a.Atributo == AtributoCriatura.Vigor);
             vigor.Gasto = 5; // Vigor total = 5 (sem maestria/bonus) -> Vitalidade = 5*2 + 8 = 18
-            var astucia = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetGuid && a.Atributo == AtributoCriatura.Astucia);
+            var astucia = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetGuid && a.Atributo == AtributoCriatura.Astucia);
             astucia.Gasto = 3; // Astúcia total = 3 -> Foco = 3*2 + 4 = 10
             await db.SaveChangesAsync();
         }

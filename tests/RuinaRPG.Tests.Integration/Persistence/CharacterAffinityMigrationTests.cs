@@ -33,7 +33,7 @@ public class CharacterAffinityMigrationTests : IClassFixture<BlankDatabaseFixtur
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
+        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAffinities.CountAsync()).Should().Be(1);

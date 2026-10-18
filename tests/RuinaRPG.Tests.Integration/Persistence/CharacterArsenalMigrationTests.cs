@@ -37,8 +37,8 @@ public class CharacterArsenalMigrationTests : IClassFixture<BlankDatabaseFixture
         db.Set<Arma>().Add(weaponItem);
         await db.SaveChangesAsync();
 
-        db.CharacterWeapons.Add(new CharacterWeapon { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
-        db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = ArmorSlotType.Capacete });
+        db.CharacterWeapons.Add(new CharacterWeapon { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
+        db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = ArmorSlotType.Capacete });
         await db.SaveChangesAsync();
 
         (await db.CharacterWeapons.CountAsync()).Should().Be(1);

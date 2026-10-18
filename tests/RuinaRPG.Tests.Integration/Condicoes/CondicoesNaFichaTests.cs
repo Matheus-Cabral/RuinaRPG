@@ -146,21 +146,21 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         foreach (var artefato in new[] { cortante, reducao })
         {
             if (rota == Personagem)
-                db.CharacterArtifacts.Add(new CharacterArtifact { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.CharacterArtifacts.Add(new CharacterArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
             else if (rota == Npc)
-                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
             else
-                db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
         }
         if (rota == Personagem)
         {
             (await db.CharacterSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
         }
         else if (rota == Npc)
         {
             (await db.NpcSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
         }
         await db.SaveChangesAsync();
 
@@ -917,10 +917,10 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         var sheet = await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == id);
-        var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.CharacterSheetId == id).OrderBy(a => a.Atributo).ToListAsync();
-        var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.CharacterSheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
-        var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.CharacterSheetId == id).OrderBy(m => m.Id).ToListAsync();
-        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.CharacterSheetId == id).OrderBy(a => a.Id).ToListAsync();
+        var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Atributo).ToListAsync();
+        var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.SheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
+        var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.SheetId == id).OrderBy(m => m.Id).ToListAsync();
+        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Id).ToListAsync();
         return JsonSerializer.Serialize(new { sheet, atributos, pericias, maestrias, afinidades });
     }
 
@@ -1054,25 +1054,25 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         switch (f.Rota, categoria)
         {
-            case (Personagem, "Arma"): db.CharacterWeapons.Add(new CharacterWeapon { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Personagem, "Escudo"): db.CharacterShields.Add(new CharacterShield { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Personagem, "Artefato"): db.CharacterArtifacts.Add(new CharacterArtifact { Id = linhaId, CharacterSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Personagem, "Arma"): db.CharacterWeapons.Add(new CharacterWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Escudo"): db.CharacterShields.Add(new CharacterShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Artefato"): db.CharacterArtifacts.Add(new CharacterArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Personagem, "Armadura"):
-                var slotP = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotP = await db.CharacterArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotP.ItemId = item!.Id; linhaId = slotP.Id; break;
-            case (Personagem, "Runa"): db.CharacterRunes.Add(new CharacterRune { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
-            case (Npc, "Arma"): db.NpcWeapons.Add(new NpcWeapon { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Npc, "Escudo"): db.NpcShields.Add(new NpcShield { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Npc, "Artefato"): db.NpcArtifacts.Add(new NpcArtifact { Id = linhaId, NpcSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Personagem, "Runa"): db.CharacterRunes.Add(new CharacterRune { Id = linhaId, SheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Npc, "Arma"): db.NpcWeapons.Add(new NpcWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Escudo"): db.NpcShields.Add(new NpcShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Artefato"): db.NpcArtifacts.Add(new NpcArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Npc, "Armadura"):
-                var slotN = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotN = await db.NpcArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotN.ItemId = item!.Id; linhaId = slotN.Id; break;
-            case (Npc, "Runa"): db.NpcRunes.Add(new NpcRune { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
-            case (Criatura, "Arma"): db.CreatureWeapons.Add(new CreatureWeapon { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Criatura, "Escudo"): db.CreatureShields.Add(new CreatureShield { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Criatura, "Artefato"): db.CreatureArtifacts.Add(new CreatureArtifact { Id = linhaId, CreatureSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Npc, "Runa"): db.NpcRunes.Add(new NpcRune { Id = linhaId, SheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Criatura, "Arma"): db.CreatureWeapons.Add(new CreatureWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Escudo"): db.CreatureShields.Add(new CreatureShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Artefato"): db.CreatureArtifacts.Add(new CreatureArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Criatura, "Armadura"):
-                var slotC = await db.CreatureArmorSlots.SingleAsync(a => a.CreatureSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotC = await db.CreatureArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotC.ItemId = item!.Id; linhaId = slotC.Id; break;
             default:
                 var tipo = categoria switch
@@ -1084,11 +1084,11 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
                     _ => throw new ArgumentException(categoria)
                 };
                 if (f.Rota == Personagem)
-                    db.CharacterSpellAbilities.Add(new CharacterSpellAbility { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.CharacterSpellAbilities.Add(new CharacterSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 else if (f.Rota == Npc)
-                    db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 else
-                    db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = linhaId, CreatureSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 break;
         }
         await db.SaveChangesAsync();
@@ -1104,24 +1104,24 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var linhas = new List<string>();
         if (f.Rota == Personagem)
         {
-            linhas.AddRange((await db.CharacterWeapons.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CharacterShields.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CharacterArmorSlots.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.CharacterArtifacts.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.CharacterWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CharacterArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         else if (f.Rota == Npc)
         {
-            linhas.AddRange((await db.NpcWeapons.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.NpcShields.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.NpcArmorSlots.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.NpcArtifacts.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.NpcWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.NpcArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         else
         {
-            linhas.AddRange((await db.CreatureWeapons.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CreatureShields.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CreatureArmorSlots.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.CreatureArtifacts.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.CreatureWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CreatureArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         return linhas.Order().ToList();
     }

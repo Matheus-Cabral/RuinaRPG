@@ -58,7 +58,7 @@ public class TraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
             {
-                Id = Guid.NewGuid(), CreatureSheetId = Guid.Parse(sheetId), TraitId = Guid.Parse(created!.Id),
+                Id = Guid.NewGuid(), SheetId = Guid.Parse(sheetId), TraitId = Guid.Parse(created!.Id),
                 Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
             });
             await db.SaveChangesAsync();

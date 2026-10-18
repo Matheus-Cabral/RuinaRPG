@@ -50,7 +50,7 @@ public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var gastoTotal = await db.CreatureAttributes.Where(a => a.CreatureSheetId == sheetId).SumAsync(a => a.Gasto);
+        var gastoTotal = await db.CreatureAttributes.Where(a => a.SheetId == sheetId).SumAsync(a => a.Gasto);
         var tabela = await tabelaDeNiveis.ObterAsync();
         return new AttributePointBudgetResponse(gastoTotal, CreatureAttributePointBudgetCalculator.Compute(sheet.Rank, sheet.Nivel, tabela));
     }
@@ -65,7 +65,7 @@ public class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         attribute.Gasto = request.Gasto;
         attribute.Bonus = request.Bonus;
         attribute.TemMaestria = request.TemMaestria;

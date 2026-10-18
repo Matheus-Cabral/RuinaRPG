@@ -493,7 +493,7 @@ public class CharacterSpellAbilitiesControllerTests(ApiFixture fixture) : ApiTes
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.CharacterSpellAbilities.Add(new RuinaRPG.Infrastructure.CharacterSheets.CharacterSpellAbility
             {
-                Id = legadaId, CharacterSheetId = Guid.Parse(sheetId), Nome = "Antiga", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia,
+                Id = legadaId, SheetId = Guid.Parse(sheetId), Nome = "Antiga", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia,
                 Grau = 1, GastoEmPI = 9, Custo = 12, Descricao = "anterior à 1.5.0",
             });
             await db.SaveChangesAsync();

@@ -45,15 +45,15 @@ public class HistoriaImagensMigrationTests : IClassFixture<BlankDatabaseFixture>
 
         var (characterId, npcId, a, b) = await SeedAsync(db, "1");
         db.CharacterSheetHistoriaImages.AddRange(
-            new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = a, Ordem = 1 },
-            new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = b, Ordem = 0 });
+            new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = a, Ordem = 1 },
+            new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = b, Ordem = 0 });
         db.NpcSheetHistoriaImages.AddRange(
-            new NpcSheetHistoriaImage { NpcSheetId = npcId, ImageId = a, Ordem = 0 },
-            new NpcSheetHistoriaImage { NpcSheetId = npcId, ImageId = b, Ordem = 1 });
+            new NpcSheetHistoriaImage { SheetId = npcId, ImageId = a, Ordem = 0 },
+            new NpcSheetHistoriaImage { SheetId = npcId, ImageId = b, Ordem = 1 });
         await db.SaveChangesAsync();
 
-        (await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == characterId).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync()).Should().Equal(b, a);
-        (await db.NpcSheetHistoriaImages.Where(i => i.NpcSheetId == npcId).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync()).Should().Equal(a, b);
+        (await db.CharacterSheetHistoriaImages.Where(i => i.SheetId == characterId).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync()).Should().Equal(b, a);
+        (await db.NpcSheetHistoriaImages.Where(i => i.SheetId == npcId).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync()).Should().Equal(a, b);
     }
 
     [Fact]
@@ -62,11 +62,11 @@ public class HistoriaImagensMigrationTests : IClassFixture<BlankDatabaseFixture>
         await using var db = NewContext();
         await db.Database.MigrateAsync();
         var (characterId, _, a, _) = await SeedAsync(db, "2");
-        db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = a, Ordem = 0 });
+        db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = a, Ordem = 0 });
         await db.SaveChangesAsync();
 
         await using var other = NewContext();
-        other.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = a, Ordem = 1 });
+        other.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = a, Ordem = 1 });
 
         await FluentActions.Awaiting(() => other.SaveChangesAsync()).Should().ThrowAsync<DbUpdateException>();
     }
@@ -78,21 +78,21 @@ public class HistoriaImagensMigrationTests : IClassFixture<BlankDatabaseFixture>
         await db.Database.MigrateAsync();
         var (characterId, npcId, a, b) = await SeedAsync(db, "3");
         db.CharacterSheetHistoriaImages.AddRange(
-            new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = a, Ordem = 0 },
-            new CharacterSheetHistoriaImage { CharacterSheetId = characterId, ImageId = b, Ordem = 1 });
+            new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = a, Ordem = 0 },
+            new CharacterSheetHistoriaImage { SheetId = characterId, ImageId = b, Ordem = 1 });
         db.NpcSheetHistoriaImages.AddRange(
-            new NpcSheetHistoriaImage { NpcSheetId = npcId, ImageId = a, Ordem = 0 },
-            new NpcSheetHistoriaImage { NpcSheetId = npcId, ImageId = b, Ordem = 1 });
+            new NpcSheetHistoriaImage { SheetId = npcId, ImageId = a, Ordem = 0 },
+            new NpcSheetHistoriaImage { SheetId = npcId, ImageId = b, Ordem = 1 });
         await db.SaveChangesAsync();
 
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"Images\" WHERE \"Id\" = {a}");
-        (await db.CharacterSheetHistoriaImages.AsNoTracking().Where(i => i.CharacterSheetId == characterId).Select(i => i.ImageId).ToListAsync()).Should().Equal(b);
-        (await db.NpcSheetHistoriaImages.AsNoTracking().Where(i => i.NpcSheetId == npcId).Select(i => i.ImageId).ToListAsync()).Should().Equal(b);
+        (await db.CharacterSheetHistoriaImages.AsNoTracking().Where(i => i.SheetId == characterId).Select(i => i.ImageId).ToListAsync()).Should().Equal(b);
+        (await db.NpcSheetHistoriaImages.AsNoTracking().Where(i => i.SheetId == npcId).Select(i => i.ImageId).ToListAsync()).Should().Equal(b);
 
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"CharacterSheets\" WHERE \"Id\" = {characterId}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"NpcSheets\" WHERE \"Id\" = {npcId}");
-        (await db.CharacterSheetHistoriaImages.AsNoTracking().AnyAsync(i => i.CharacterSheetId == characterId)).Should().BeFalse();
-        (await db.NpcSheetHistoriaImages.AsNoTracking().AnyAsync(i => i.NpcSheetId == npcId)).Should().BeFalse();
+        (await db.CharacterSheetHistoriaImages.AsNoTracking().AnyAsync(i => i.SheetId == characterId)).Should().BeFalse();
+        (await db.NpcSheetHistoriaImages.AsNoTracking().AnyAsync(i => i.SheetId == npcId)).Should().BeFalse();
         (await db.Images.AsNoTracking().AnyAsync(i => i.Id == b)).Should().BeTrue("apagar a ficha não apaga a imagem");
     }
 }

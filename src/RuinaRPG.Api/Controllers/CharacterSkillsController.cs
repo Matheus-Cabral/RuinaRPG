@@ -34,14 +34,14 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
 
         var porId = await pericias.PorIdAsync();
         var ativas = porId.Values.Where(p => !p.IsDeleted).ToList();
-        var linhas = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
+        var linhas = await db.CharacterSkills.Where(s => s.SheetId == sheetId).ToDictionaryAsync(s => s.PericiaId);
 
         // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
         var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
         var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
 
         var attributeTotals = await db.CharacterAttributes
-            .Where(a => a.CharacterSheetId == sheetId)
+            .Where(a => a.SheetId == sheetId)
             .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
 
@@ -76,7 +76,7 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
             return Forbid();
 
         var gastoBruto = await db.CharacterSkills
-            .Where(s => s.CharacterSheetId == sheetId && !db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))
+            .Where(s => s.SheetId == sheetId && !db.Pericias.Any(p => p.Id == s.PericiaId && p.IsDeleted))
             .SumAsync(s => s.Gasto);
         // Pontos ganhos por Acerto Crítico não vêm do orçamento por Nível — subtraídos do Gasto
         // Total para não acusar "acima do máximo" por um ganho legítimo (2.d).
@@ -103,14 +103,14 @@ public class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pe
             return Forbid();
 
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var gastoAtual = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
+        var gastoAtual = await db.CharacterSkills.Where(s => s.SheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
         if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, request.Gasto, tabela.Limite(ChavesDeNivel.MaxPericia, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
             return BadRequest(erroDeLimite);
 
-        var skill = await db.CharacterSkills.SingleOrDefaultAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == def.Id);
+        var skill = await db.CharacterSkills.SingleOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == def.Id);
         if (skill is null)
         {
-            skill = new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheetId, PericiaId = def.Id };
+            skill = new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheetId, PericiaId = def.Id };
             db.CharacterSkills.Add(skill);
         }
         skill.Gasto = request.Gasto;

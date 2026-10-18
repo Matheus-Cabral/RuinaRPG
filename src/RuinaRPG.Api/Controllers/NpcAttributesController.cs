@@ -51,7 +51,7 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var gastoTotal = await db.NpcAttributes.Where(a => a.NpcSheetId == sheetId).SumAsync(a => a.Gasto);
+        var gastoTotal = await db.NpcAttributes.Where(a => a.SheetId == sheetId).SumAsync(a => a.Gasto);
         var tabela = await tabelaDeNiveis.ObterAsync();
         return new AttributePointBudgetResponse(gastoTotal, AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela));
     }
@@ -66,7 +66,7 @@ public class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabel
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.NpcAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         var tabela = await tabelaDeNiveis.ObterAsync();
         if (LimitesDeNivel.Gasto(atributo.ToString(), attribute.Gasto, request.Gasto, tabela.Limite(ChavesDeNivel.MaxAtributo, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
             return BadRequest(erroDeLimite);

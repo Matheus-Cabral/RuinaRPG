@@ -548,8 +548,8 @@ public class EncounterParticipantCondicoesControllerTests(ApiFixture fixture) : 
             await db.SaveChangesAsync();
             natural = Guid.NewGuid();
             comItem = Guid.NewGuid();
-            db.CreatureWeapons.Add(new CreatureWeapon { Id = natural, CreatureSheetId = sheetId, ManualNome = "Mordida" });
-            db.CreatureWeapons.Add(new CreatureWeapon { Id = comItem, CreatureSheetId = sheetId, ItemId = arma.Id, DurabilidadeAtual = 5 });
+            db.CreatureWeapons.Add(new CreatureWeapon { Id = natural, SheetId = sheetId, ManualNome = "Mordida" });
+            db.CreatureWeapons.Add(new CreatureWeapon { Id = comItem, SheetId = sheetId, ItemId = arma.Id, DurabilidadeAtual = 5 });
             await db.SaveChangesAsync();
         }
 
@@ -610,18 +610,18 @@ public class EncounterParticipantCondicoesControllerTests(ApiFixture fixture) : 
             ["Arma"] = Guid.NewGuid(), ["Escudo"] = Guid.NewGuid(), ["Artefato"] = Guid.NewGuid(),
             ["Magia"] = Guid.NewGuid(), ["Habilidade"] = Guid.NewGuid(), ["Passiva"] = Guid.NewGuid(), ["Runa"] = Guid.NewGuid(),
         };
-        db.NpcWeapons.Add(new NpcWeapon { Id = ids["Arma"], NpcSheetId = npcSheetId, ItemId = arma.Id, DurabilidadeAtual = 5 });
+        db.NpcWeapons.Add(new NpcWeapon { Id = ids["Arma"], SheetId = npcSheetId, ItemId = arma.Id, DurabilidadeAtual = 5 });
         // Every slot already exists, empty, on a new sheet: fill one, leave the others empty.
-        var slot = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == npcSheetId && a.Slot == RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Capacete);
+        var slot = await db.NpcArmorSlots.SingleAsync(a => a.SheetId == npcSheetId && a.Slot == RuinaRPG.Domain.CharacterSheets.ArmorSlotType.Capacete);
         ids["Armadura"] = slot.Id;
         slot.ItemId = armadura.Id;
         slot.DurabilidadeAtual = 5;
-        db.NpcShields.Add(new NpcShield { Id = ids["Escudo"], NpcSheetId = npcSheetId, ItemId = escudo.Id, DurabilidadeAtual = 5 });
-        db.NpcArtifacts.Add(new NpcArtifact { Id = ids["Artefato"], NpcSheetId = npcSheetId, ArtifactItemId = artefato.Id });
-        db.NpcRunes.Add(new NpcRune { Id = ids["Runa"], NpcSheetId = npcSheetId, Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1 });
+        db.NpcShields.Add(new NpcShield { Id = ids["Escudo"], SheetId = npcSheetId, ItemId = escudo.Id, DurabilidadeAtual = 5 });
+        db.NpcArtifacts.Add(new NpcArtifact { Id = ids["Artefato"], SheetId = npcSheetId, ArtifactItemId = artefato.Id });
+        db.NpcRunes.Add(new NpcRune { Id = ids["Runa"], SheetId = npcSheetId, Nome = "Runa do Fogo", Descricao = "Queima.", Grau = 1 });
         foreach (var (chave, nome, tipo) in new[] { ("Magia", "Bola de Fogo", SpellAbilityTipo.Magia), ("Habilidade", "Golpe Forte", SpellAbilityTipo.Habilidade), ("Passiva", "Pele Grossa", SpellAbilityTipo.Passiva) })
-            db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = ids[chave], NpcSheetId = npcSheetId, Nome = nome, Tipo = tipo, Descricao = "." });
-        db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Nome = "Dom Racial", Tipo = SpellAbilityTipo.Racial, Descricao = "." });
+            db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = ids[chave], SheetId = npcSheetId, Nome = nome, Tipo = tipo, Descricao = "." });
+        db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = Guid.NewGuid(), SheetId = npcSheetId, Nome = "Dom Racial", Tipo = SpellAbilityTipo.Racial, Descricao = "." });
         await db.SaveChangesAsync();
         return ids;
     }

@@ -47,19 +47,19 @@ public class RacialTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
         db.Traits.Add(trait);
         await db.SaveChangesAsync();
 
-        db.CharacterTraits.Add(new CharacterTrait { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, TraitId = trait.Id, Polaridade = Polaridade.Positiva, IsRacial = true, RacialVariante = Variante.Sinir });
-        db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), NpcSheetId = npcSheet.Id, TraitId = trait.Id, Polaridade = Polaridade.Positiva, IsRacial = true, RacialVariante = Variante.Sinir });
+        db.CharacterTraits.Add(new CharacterTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = trait.Id, Polaridade = Polaridade.Positiva, IsRacial = true, RacialVariante = Variante.Sinir });
+        db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), SheetId = npcSheet.Id, TraitId = trait.Id, Polaridade = Polaridade.Positiva, IsRacial = true, RacialVariante = Variante.Sinir });
         await db.SaveChangesAsync();
 
         var overrideRow = await db.RacialTraitOverrides.SingleAsync(o => o.GmId == gm.Id);
         overrideRow.Variante.Should().Be(Variante.Alora);
         overrideRow.GratuitaOptionsJson.Should().Contain("Detectar Magia");
 
-        var characterTraitRow = await db.CharacterTraits.SingleAsync(t => t.CharacterSheetId == sheet.Id);
+        var characterTraitRow = await db.CharacterTraits.SingleAsync(t => t.SheetId == sheet.Id);
         characterTraitRow.IsRacial.Should().BeTrue();
         characterTraitRow.RacialVariante.Should().Be(Variante.Sinir);
 
-        var npcTraitRow = await db.NpcTraits.SingleAsync(t => t.NpcSheetId == npcSheet.Id);
+        var npcTraitRow = await db.NpcTraits.SingleAsync(t => t.SheetId == npcSheet.Id);
         npcTraitRow.IsRacial.Should().BeTrue();
         npcTraitRow.RacialVariante.Should().Be(Variante.Sinir);
     }

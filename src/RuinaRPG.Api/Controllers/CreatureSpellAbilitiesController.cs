@@ -76,7 +76,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
                 // Uma Magia/Habilidade comum pode repetir na ficha (cópias independentes); uma Passiva não —
                 // ela é um estado ligado/desligado por Categoria, então a mesma entrada do banco só pode
                 // virar uma cópia por ficha.
-                if (await db.CreatureSpellAbilities.AnyAsync(e => e.CreatureSheetId == sheetId && e.SourceBankEntryId == bankEntryId))
+                if (await db.CreatureSpellAbilities.AnyAsync(e => e.SheetId == sheetId && e.SourceBankEntryId == bankEntryId))
                     return BadRequest("Esta Passiva já está na ficha.");
 
                 var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await stats.FichaParaRequisitosAsync(sheet),
@@ -116,7 +116,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
 
         var sheetCopy = new CreatureSpellAbility
         {
-            Id = Guid.NewGuid(), CreatureSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
+            Id = Guid.NewGuid(), SheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
             Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao,
             Categoria = categoria, Requisitos = requisitos
         };
@@ -164,7 +164,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var entries = await db.CreatureSpellAbilities.Include(e => e.Efeitos).Where(e => e.CreatureSheetId == sheetId).ToListAsync();
+        var entries = await db.CreatureSpellAbilities.Include(e => e.Efeitos).Where(e => e.SheetId == sheetId).ToListAsync();
         // Uma só leitura da ficha, e só se houver Passivas; mapeamento sequencial (um único DbContext).
         var ficha = entries.Any(e => e.Tipo == SpellAbilityTipo.Passiva) ? await stats.FichaParaRequisitosAsync(sheet) : null;
         var result = new List<CreatureSpellAbilityResponse>();
@@ -210,7 +210,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var entry = await db.CreatureSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.CreatureSheetId == sheetId);
+        var entry = await db.CreatureSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.SheetId == sheetId);
         if (entry is null)
             return NotFound();
 
@@ -265,7 +265,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var entry = await db.CreatureSpellAbilities.FirstOrDefaultAsync(e => e.Id == id && e.CreatureSheetId == sheetId);
+        var entry = await db.CreatureSpellAbilities.FirstOrDefaultAsync(e => e.Id == id && e.SheetId == sheetId);
         if (entry is null)
             return NotFound();
 
@@ -315,7 +315,7 @@ public class CreatureSpellAbilitiesController(RuinaRpgDbContext db, CreatureShee
         };
         if (categoria is not { } c)
             return null;
-        var sheetId = e.CreatureSheetId;
+        var sheetId = e.SheetId;
         return (await condicoes.ParaCriaturaAsync((await db.CreatureSheets.FindAsync(sheetId))!)).DesabilitadoPor(c, e.Id);
     }
 

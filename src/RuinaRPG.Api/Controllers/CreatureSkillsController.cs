@@ -53,10 +53,10 @@ public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo per
         if (!def.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
-        var skill = await db.CreatureSkills.SingleOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == def.Id);
+        var skill = await db.CreatureSkills.SingleOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == def.Id);
         if (skill is null)
         {
-            skill = new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheetId, PericiaId = def.Id };
+            skill = new CreatureSkill { Id = Guid.NewGuid(), SheetId = sheetId, PericiaId = def.Id };
             db.CreatureSkills.Add(skill);
         }
         skill.Gasto = request.Gasto;

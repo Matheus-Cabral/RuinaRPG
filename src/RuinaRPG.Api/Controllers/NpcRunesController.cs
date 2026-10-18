@@ -97,7 +97,7 @@ public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.Cond
             nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
         }
 
-        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
+        var rune = new NpcRune { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.NpcRunes.Add(rune);
 
         // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
@@ -135,7 +135,7 @@ public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.Cond
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var runes = await db.NpcRunes.Where(r => r.NpcSheetId == sheetId).ToListAsync();
+        var runes = await db.NpcRunes.Where(r => r.SheetId == sheetId).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
         var respostas = new List<NpcRuneResponse>();
         foreach (var r in runes)
@@ -153,7 +153,7 @@ public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.Cond
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var rune = await db.NpcRunes.FirstOrDefaultAsync(r => r.Id == id && r.NpcSheetId == sheetId);
+        var rune = await db.NpcRunes.FirstOrDefaultAsync(r => r.Id == id && r.SheetId == sheetId);
         if (rune is null)
             return NotFound();
 
@@ -164,7 +164,7 @@ public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.Cond
 
     private async Task<NpcRuneResponse> ToResponseAsync(NpcRune r, Dictionary<Guid, string> imageUrls)
     {
-        var sheetId = r.NpcSheetId;
+        var sheetId = r.SheetId;
         return new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina),
             DesabilitadoPor: (await condicoes.ParaNpcAsync((await db.NpcSheets.FindAsync(sheetId))!)).DesabilitadoPor(CategoriaDesabilitavel.Runa, r.Id));
     }

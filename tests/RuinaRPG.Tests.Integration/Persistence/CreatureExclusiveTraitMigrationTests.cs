@@ -55,11 +55,11 @@ public class CreatureExclusiveTraitMigrationTests : IClassFixture<BlankDatabaseF
         // one of TraitId/CreatureExclusiveTraitId is set per row, mirroring how
         // EncounterParticipant.SourceCharacterSheetId/SourceNpcSheetId/SourceCreatureSheetId already
         // does this for three possible sources instead of two.
-        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, TraitId = normalTrait.Id, Polaridade = normalTrait.Polaridade });
-        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, CreatureExclusiveTraitId = exclusiveTrait.Id, Polaridade = exclusiveTrait.Polaridade });
+        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = normalTrait.Id, Polaridade = normalTrait.Polaridade });
+        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, CreatureExclusiveTraitId = exclusiveTrait.Id, Polaridade = exclusiveTrait.Polaridade });
         await db.SaveChangesAsync();
 
-        var rows = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheet.Id).ToListAsync();
+        var rows = await db.CreatureTraits.Where(t => t.SheetId == sheet.Id).ToListAsync();
         rows.Should().HaveCount(2);
         rows.Should().ContainSingle(r => r.TraitId == normalTrait.Id && r.CreatureExclusiveTraitId == null);
         rows.Should().ContainSingle(r => r.CreatureExclusiveTraitId == exclusiveTrait.Id && r.TraitId == null);

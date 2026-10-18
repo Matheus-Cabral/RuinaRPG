@@ -35,7 +35,7 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
         if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
             return BadRequest("Perícia ou Atributo desconhecido.");
 
-        var mastery = new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
+        var mastery = new CharacterMastery { Id = Guid.NewGuid(), SheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
         db.CharacterMasteries.Add(mastery);
         await db.SaveChangesAsync();
 
@@ -56,7 +56,7 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
             return Forbid();
 
         var porId = await pericias.PorIdAsync();
-        var masteries = (await db.CharacterMasteries.Where(m => m.CharacterSheetId == sheetId).ToListAsync())
+        var masteries = (await db.CharacterMasteries.Where(m => m.SheetId == sheetId).ToListAsync())
             .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
             .ToList();
         var responses = new List<CharacterMasteryResponse>();
@@ -87,7 +87,7 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
         if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
             return BadRequest("Perícia ou Atributo desconhecido.");
 
-        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CharacterSheetId == sheetId);
+        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
         if (mastery is null)
             return NotFound();
 
@@ -113,7 +113,7 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CharacterSheetId == sheetId);
+        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
         if (mastery is null)
             return NotFound();
 
@@ -129,8 +129,8 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
     private async Task<int> ComputeTotalAsync(Guid sheetId, Guid maestriaId, PericiaDefinicao pericia, Atributo atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
     {
         var periciaId = pericia.Id;
-        var skill = await db.CharacterSkills.FirstOrDefaultAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == periciaId);
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
+        var skill = await db.CharacterSkills.FirstOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == periciaId);
+        var attribute = await db.CharacterAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         var historicoId = await db.CharacterSheets.Where(s => s.Id == sheetId).Select(s => s.HistoricoId).SingleAsync();
         var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
         var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));

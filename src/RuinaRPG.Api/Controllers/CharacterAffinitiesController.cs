@@ -43,7 +43,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
 
         var affinity = new CharacterAffinity
         {
-            Id = Guid.NewGuid(), CharacterSheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
+            Id = Guid.NewGuid(), SheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
             SegundaEssencia = segunda, SegundaEssenciaValor = request.SegundaEssenciaValor,
             SubElemento = subElemento, SubElementoValor = request.SubElementoValor, Experiencia = request.Experiencia
         };
@@ -64,7 +64,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var affinities = await db.CharacterAffinities.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        var affinities = await db.CharacterAffinities.Where(a => a.SheetId == sheetId).ToListAsync();
         var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
         return affinities.Select(a => ToResponse(a, efeitos)).ToList();
     }
@@ -80,7 +80,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var affinity = await db.CharacterAffinities.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        var affinity = await db.CharacterAffinities.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affinity is null)
             return NotFound();
 
@@ -119,7 +119,7 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var affinity = await db.CharacterAffinities.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        var affinity = await db.CharacterAffinities.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affinity is null)
             return NotFound();
 
@@ -177,14 +177,14 @@ public class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvi
 
     private async Task<bool> HasDuplicateSubElementoAsync(Guid sheetId, SubElemento? subElemento, Guid? excludingId) =>
         subElemento is not null && await db.CharacterAffinities.AnyAsync(a =>
-            a.CharacterSheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
+            a.SheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
 
     // Vocação Arcana (2.c): só bloqueia a alteração que faz o gasto subir acima do máximo — uma
     // ficha que já está acima (o máximo caiu depois) ainda pode baixar o gasto ou mexer em campos
     // que não custam pontos.
     private async Task<string?> ExcedeVocacaoArcanaAsync(CharacterSheet sheet, LinhaDeAfinidade novaLinha, Guid? substituindoId)
     {
-        var existentes = await db.CharacterAffinities.Where(a => a.CharacterSheetId == sheet.Id)
+        var existentes = await db.CharacterAffinities.Where(a => a.SheetId == sheet.Id)
             .Select(a => new { a.Id, Linha = new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor) })
             .ToListAsync();
 

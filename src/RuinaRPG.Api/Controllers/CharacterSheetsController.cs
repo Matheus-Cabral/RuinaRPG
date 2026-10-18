@@ -49,11 +49,11 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         db.CharacterSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
-            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = atributo });
+            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
-            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
+            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = slot });
+            db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
 
         await db.SaveChangesAsync();
 
@@ -319,7 +319,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         if (varianteChanged)
         {
-            var staleRacialTraits = await db.CharacterTraits.Where(t => t.CharacterSheetId == id && t.IsRacial).ToListAsync();
+            var staleRacialTraits = await db.CharacterTraits.Where(t => t.SheetId == id && t.IsRacial).ToListAsync();
             db.CharacterTraits.RemoveRange(staleRacialTraits);
         }
 
@@ -418,7 +418,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return NotFound(); // NotFound rather than Forbid — same as Get
 
-        var ids = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
+        var ids = await db.CharacterSheetHistoriaImages.Where(i => i.SheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
         return await HistoriaImageAccess.ToResponseAsync(db, ids);
     }
 
@@ -443,7 +443,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         if (ids.Count > HistoriaImageAccess.MaxImagens)
             return BadRequest(HistoriaImageAccess.MaxImagensMessage);
 
-        var existing = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).ToListAsync();
+        var existing = await db.CharacterSheetHistoriaImages.Where(i => i.SheetId == id).ToListAsync();
         var novas = ids.Where(imageId => existing.All(e => e.ImageId != imageId)).ToList();
         if ((await HistoriaImageAccess.UsableAsync(db, novas, CurrentUserId(), campaignGmId, sheet.CampaignId)).Count != novas.Count)
             return BadRequest(HistoriaImageAccess.NotFoundMessage);
@@ -455,7 +455,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             if (existing.FirstOrDefault(e => e.ImageId == imageId) is { } row)
                 row.Ordem = ordem;
             else
-                db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { CharacterSheetId = id, ImageId = imageId, Ordem = ordem });
+                db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { SheetId = id, ImageId = imageId, Ordem = ordem });
         }
         await db.SaveChangesAsync();
 
@@ -626,7 +626,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == s.Id)
+        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.SheetId == s.Id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);

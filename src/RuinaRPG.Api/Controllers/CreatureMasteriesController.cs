@@ -40,7 +40,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
         if (!pericia.DisponivelParaCriaturas)
             return BadRequest("Perícia fora da lista permitida para Criaturas.");
 
-        var mastery = new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
+        var mastery = new CreatureMastery { Id = Guid.NewGuid(), SheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
         db.CreatureMasteries.Add(mastery);
         await db.SaveChangesAsync();
 
@@ -60,7 +60,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
             return NotFound();
 
         var porId = await pericias.PorIdAsync();
-        var masteries = (await db.CreatureMasteries.Where(m => m.CreatureSheetId == sheetId).ToListAsync())
+        var masteries = (await db.CreatureMasteries.Where(m => m.SheetId == sheetId).ToListAsync())
             .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
             .ToList();
         var responses = new List<CreatureMasteryResponse>();
@@ -84,7 +84,7 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var mastery = await db.CreatureMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CreatureSheetId == sheetId);
+        var mastery = await db.CreatureMasteries.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
         if (mastery is null)
             return NotFound();
 
@@ -100,8 +100,8 @@ public class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo 
     private async Task<int> ComputeTotalAsync(Guid sheetId, Guid maestriaId, PericiaDefinicao pericia, AtributoCriatura atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
     {
         var periciaId = pericia.Id;
-        var skill = await db.CreatureSkills.FirstOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == periciaId);
-        var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
+        var skill = await db.CreatureSkills.FirstOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == periciaId);
+        var attribute = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, 0);
         var atributoTotal = efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0));
         return efeitos.NaMaestria(pericia.Chave, maestriaId, gastoMaestria + bruto + atributoTotal);

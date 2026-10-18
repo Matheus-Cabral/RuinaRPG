@@ -34,7 +34,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (item is null)
             return BadRequest("Item de arma não encontrado.");
 
-        var weapon = new CharacterWeapon { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
+        var weapon = new CharacterWeapon { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
         db.CharacterWeapons.Add(weapon);
         await db.SaveChangesAsync();
 
@@ -48,7 +48,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).ToListAsync();
+        var weapons = await db.CharacterWeapons.Where(w => w.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<CharacterWeaponResponse>();
         foreach (var weapon in weapons)
@@ -63,14 +63,14 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
+        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
         if (isEquipped)
         {
             // Default rule (no Ambidestria exception — see plan out-of-scope): only 1 weapon equipped at a time.
-            var currentlyEquipped = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId && w.IsEquipped).ToListAsync();
+            var currentlyEquipped = await db.CharacterWeapons.Where(w => w.SheetId == sheetId && w.IsEquipped).ToListAsync();
             foreach (var other in currentlyEquipped)
                 other.IsEquipped = false;
         }
@@ -86,7 +86,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
+        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
@@ -104,7 +104,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
+        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
@@ -120,7 +120,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var slots = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        var slots = await db.CharacterArmorSlots.Where(a => a.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<CharacterArmorSlotResponse>();
         foreach (var slot in slots)
@@ -135,7 +135,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == slot);
+        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == slot);
 
         if (request.ItemId is null)
         {
@@ -166,7 +166,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == slot);
+        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == slot);
         if (armorSlot.ItemId is null)
             return BadRequest("Nenhuma armadura equipada nesse slot.");
 
@@ -191,7 +191,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (item is null)
             return BadRequest("Item de escudo não encontrado.");
 
-        var shield = new CharacterShield { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
+        var shield = new CharacterShield { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
         db.CharacterShields.Add(shield);
         await db.SaveChangesAsync();
 
@@ -205,7 +205,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).ToListAsync();
+        var shields = await db.CharacterShields.Where(s => s.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<CharacterShieldResponse>();
         foreach (var shield in shields)
@@ -220,14 +220,14 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
         if (isEquipped)
         {
             // Same "1 equipped at a time" default rule as weapons (UpdateWeapon) — no exception modeled yet.
-            var currentlyEquipped = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId && s.IsEquipped).ToListAsync();
+            var currentlyEquipped = await db.CharacterShields.Where(s => s.SheetId == sheetId && s.IsEquipped).ToListAsync();
             foreach (var other in currentlyEquipped)
                 other.IsEquipped = false;
         }
@@ -243,7 +243,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
@@ -261,7 +261,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         if (authError is not null)
             return authError;
 
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
+        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
@@ -316,7 +316,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.CharacterSheetId, weapon.Id) }, item, weapon.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.SheetId, weapon.Id) }, item, weapon.SheetId);
     }
 
     private async Task<CharacterArmorSlotResponse> ToArmorSlotResponseAsync(CharacterArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -328,7 +328,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.CharacterSheetId, slot.Id) }, item, slot.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.SheetId, slot.Id) }, item, slot.SheetId);
     }
 
     private async Task<CharacterShieldResponse> ToShieldResponseAsync(CharacterShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -337,7 +337,7 @@ public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRan
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new CharacterShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.CharacterSheetId, shield.Id) }, item, shield.CharacterSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.SheetId, shield.Id) }, item, shield.SheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

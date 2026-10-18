@@ -39,14 +39,14 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         db.CreatureSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
-            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = atributo });
+            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
         // R0005's "lista fixa mais curta" — only the Perícias flagged DisponivelParaCriaturas, not
         // every active one (unlike Ficha de NPCs). The suggested Atributo only applies when the
         // Criatura has it (AtributoCriatura is a shorter enum).
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = slot });
+            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
 
         await db.SaveChangesAsync();
 
@@ -306,7 +306,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
     /// </summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
-        var attribute = await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
             artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
     }

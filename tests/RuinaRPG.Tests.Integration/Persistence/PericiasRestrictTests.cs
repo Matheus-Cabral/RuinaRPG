@@ -45,12 +45,12 @@ public class PericiasRestrictTests : IClassFixture<BlankDatabaseFixture>
 
         // Uma Perícia distinta por referência, para cada FK ser exercitada isoladamente.
         const int characterSkill = 1, npcSkill = 2, creatureSkill = 3, characterMastery = 4, npcMastery = 5, creatureMastery = 6, maisSeis = 7, maisTres = 8;
-        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = characterSkill, Gasto = 1 });
-        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = npc.Id, PericiaId = npcSkill, Gasto = 1 });
-        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = criatura.Id, PericiaId = creatureSkill, Gasto = 1 });
-        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "M1", PericiaId = characterMastery, Atributo = Atributo.Destreza, GastoMaestria = 1 });
-        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), NpcSheetId = npc.Id, Nome = "M2", PericiaId = npcMastery, Atributo = Atributo.Destreza, GastoMaestria = 1 });
-        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = criatura.Id, Nome = "M3", PericiaId = creatureMastery, Atributo = AtributoCriatura.Destreza, GastoMaestria = 1 });
+        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = characterSkill, Gasto = 1 });
+        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), SheetId = npc.Id, PericiaId = npcSkill, Gasto = 1 });
+        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = criatura.Id, PericiaId = creatureSkill, Gasto = 1 });
+        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "M1", PericiaId = characterMastery, Atributo = Atributo.Destreza, GastoMaestria = 1 });
+        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), SheetId = npc.Id, Nome = "M2", PericiaId = npcMastery, Atributo = Atributo.Destreza, GastoMaestria = 1 });
+        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), SheetId = criatura.Id, Nome = "M3", PericiaId = creatureMastery, Atributo = AtributoCriatura.Destreza, GastoMaestria = 1 });
         db.Historicos.Add(new Historico { Id = Guid.NewGuid(), Nome = "Historico de teste", Descricao = "d", PericiaMaisSeisId = maisSeis, PericiaMaisTresId = maisTres });
         await db.SaveChangesAsync();
 

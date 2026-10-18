@@ -184,7 +184,7 @@ public class NpcAffinitiesControllerTests(ApiFixture fixture) : ApiTestBase(fixt
             row2Id = Guid.NewGuid();
             db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
             {
-                Id = row2Id, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
+                Id = row2Id, SheetId = Guid.Parse(sheetId), Elemento = Elemento.Fogo, SegundaEssencia = EssenciaBasica.Vida, SubElemento = SubElemento.Curar
             });
             await db.SaveChangesAsync();
         }
@@ -277,7 +277,7 @@ public class NpcAffinitiesControllerTests(ApiFixture fixture) : ApiTestBase(fixt
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.NpcAffinities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity
-                { Id = legacyId, NpcSheetId = Guid.Parse(sheetId), Elemento = Elemento.Ar, SubElemento = SubElemento.Curar });
+                { Id = legacyId, SheetId = Guid.Parse(sheetId), Elemento = Elemento.Ar, SubElemento = SubElemento.Curar });
             await db.SaveChangesAsync();
         }
 

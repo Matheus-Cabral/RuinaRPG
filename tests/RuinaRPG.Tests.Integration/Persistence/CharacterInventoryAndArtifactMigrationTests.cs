@@ -37,8 +37,8 @@ public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<BlankDa
         db.Set<Artefato>().Add(artifactItem);
         await db.SaveChangesAsync();
 
-        db.Set<CharacterInventoryItem>().Add(new CharacterInventoryItem { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
-        db.Set<CharacterArtifact>().Add(new CharacterArtifact { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
+        db.Set<CharacterInventoryItem>().Add(new CharacterInventoryItem { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
+        db.Set<CharacterArtifact>().Add(new CharacterArtifact { Id = Guid.NewGuid(), SheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
         await db.SaveChangesAsync();
 
         (await db.Set<CharacterInventoryItem>().CountAsync()).Should().Be(1);

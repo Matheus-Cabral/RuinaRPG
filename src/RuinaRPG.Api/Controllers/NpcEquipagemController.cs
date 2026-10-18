@@ -52,7 +52,7 @@ public class NpcEquipagemController(RuinaRpgDbContext db, EquipmentKitGrantServi
         if (plan is null)
             return BadRequest(error);
 
-        var existingArtifactTipos = db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId)
+        var existingArtifactTipos = db.NpcArtifacts.Where(a => a.SheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i.TipoDeAlvo);
         var artifactCapError = await grantService.CheckArtifactCapAsync(plan.Grants, existingArtifactTipos);
         if (artifactCapError is not null)
@@ -87,21 +87,21 @@ public class NpcEquipagemController(RuinaRpgDbContext db, EquipmentKitGrantServi
         switch (grant.Tipo)
         {
             case RuinaRPG.Domain.Items.ItemTipo.Arma:
-                db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
+                db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.Armadura:
-                var armorSlot = await db.NpcArmorSlots.SingleAsync(s => s.NpcSheetId == sheetId && s.Slot == grant.ArmorSlot);
+                var armorSlot = await db.NpcArmorSlots.SingleAsync(s => s.SheetId == sheetId && s.Slot == grant.ArmorSlot);
                 armorSlot.ItemId = grant.ItemId;
                 armorSlot.DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0;
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.Escudo:
-                db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
+                db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = grant.ItemId, IsEquipped = false, DurabilidadeAtual = grant.DurabilidadeMaxima ?? 0 });
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.ItemGeral:
-                db.NpcInventoryItems.Add(new NpcInventoryItem { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = grant.ItemId, Qtd = grant.Qtd });
+                db.NpcInventoryItems.Add(new NpcInventoryItem { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = grant.ItemId, Qtd = grant.Qtd });
                 break;
             case RuinaRPG.Domain.Items.ItemTipo.Artefato:
-                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheetId, ArtifactItemId = grant.ItemId });
+                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = grant.ItemId });
                 break;
         }
     }

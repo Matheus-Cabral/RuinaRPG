@@ -52,7 +52,7 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<BlankDatabaseFixt
             });
             db.CharacterSpellAbilities.Add(new CharacterSpellAbility
             {
-                Id = sheetEntryId, CharacterSheetId = sheet.Id, SourceBankEntryId = bankId, Nome = "Pele de Pedra",
+                Id = sheetEntryId, SheetId = sheet.Id, SourceBankEntryId = bankId, Nome = "Pele de Pedra",
                 Tipo = SpellAbilityTipo.Passiva, Descricao = "d", Categoria = CategoriaDePassiva.Vocacional, Requisitos = requisitos
             });
             await db.SaveChangesAsync();

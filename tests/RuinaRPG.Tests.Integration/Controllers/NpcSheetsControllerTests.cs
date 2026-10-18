@@ -576,9 +576,9 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmSeed1", "npcseed1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var attributes = await db.NpcAttributes.Where(a => a.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
-        var armorSlots = await db.NpcArmorSlots.Where(a => a.NpcSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var attributes = await db.NpcAttributes.Where(a => a.SheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.NpcSkills.Where(s => s.SheetId == Guid.Parse(sheetId)).ToListAsync();
+        var armorSlots = await db.NpcArmorSlots.Where(a => a.SheetId == Guid.Parse(sheetId)).ToListAsync();
 
         attributes.Should().HaveCount(8);
         attributes.Should().OnlyContain(a => a.Gasto == 0 && a.Bonus == 0 && !a.TemMaestria);

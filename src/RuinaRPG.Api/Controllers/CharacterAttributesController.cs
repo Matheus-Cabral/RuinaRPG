@@ -32,7 +32,7 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
 
         // Display order is independent of the enum's underlying (persisted) int value —
         // see AttributeDisplayOrder's doc comment — so this sorts in memory, not in SQL.
-        var attributes = (await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).ToListAsync())
+        var attributes = (await db.CharacterAttributes.Where(a => a.SheetId == sheetId).ToListAsync())
             .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
             .ToList();
 
@@ -58,7 +58,7 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var gastoTotal = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).SumAsync(a => a.Gasto);
+        var gastoTotal = await db.CharacterAttributes.Where(a => a.SheetId == sheetId).SumAsync(a => a.Gasto);
         var tabela = await tabelaDeNiveis.ObterAsync();
         var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
         return new AttributePointBudgetResponse(gastoTotal, pontosDisponiveis);
@@ -75,7 +75,7 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.CharacterAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
 
         // "A soma de Gasto de todos os 8 atributos ... não pode ultrapassar o total de pontos que
         // o personagem já recebeu (criação + níveis)" (2.a). Rejected rather than clamped. O
@@ -85,7 +85,7 @@ public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis
         var tabela = await tabelaDeNiveis.ObterAsync();
         if (request.Gasto > attribute.Gasto)
         {
-            var gastoDosOutros = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
+            var gastoDosOutros = await db.CharacterAttributes.Where(a => a.SheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
             var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
             if (gastoDosOutros + request.Gasto > pontosDisponiveis)
                 return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");

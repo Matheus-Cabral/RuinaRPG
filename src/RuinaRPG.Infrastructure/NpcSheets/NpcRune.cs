@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.Runes;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcRune
+public class NpcRune : ILinhaDaFicha
 {
     public Guid Id { get; set; }
-    public Guid NpcSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public required string Nome { get; set; }
     public required string Descricao { get; set; }
     public int Grau { get; set; }

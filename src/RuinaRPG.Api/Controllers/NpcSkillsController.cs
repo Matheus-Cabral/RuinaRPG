@@ -51,14 +51,14 @@ public class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias
             return NotFound();
 
         var tabela = await tabelaDeNiveis.ObterAsync();
-        var gastoAtual = await db.NpcSkills.Where(s => s.NpcSheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
+        var gastoAtual = await db.NpcSkills.Where(s => s.SheetId == sheetId && s.PericiaId == def.Id).Select(s => s.Gasto).SingleOrDefaultAsync();
         if (LimitesDeNivel.Gasto(def.Nome, gastoAtual, request.Gasto, tabela.Limite(ChavesDeNivel.MaxPericia, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
             return BadRequest(erroDeLimite);
 
-        var skill = await db.NpcSkills.SingleOrDefaultAsync(s => s.NpcSheetId == sheetId && s.PericiaId == def.Id);
+        var skill = await db.NpcSkills.SingleOrDefaultAsync(s => s.SheetId == sheetId && s.PericiaId == def.Id);
         if (skill is null)
         {
-            skill = new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheetId, PericiaId = def.Id };
+            skill = new NpcSkill { Id = Guid.NewGuid(), SheetId = sheetId, PericiaId = def.Id };
             db.NpcSkills.Add(skill);
         }
         skill.Gasto = request.Gasto;

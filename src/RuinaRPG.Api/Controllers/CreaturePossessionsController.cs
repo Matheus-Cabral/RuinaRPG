@@ -40,7 +40,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (item is null)
             return BadRequest("Item não encontrado.");
 
-        var spoil = new CreatureSpoil { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ItemId = itemId, Qtd = request.Qtd, DT = request.DT };
+        var spoil = new CreatureSpoil { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, Qtd = request.Qtd, DT = request.DT };
         db.CreatureSpoils.Add(spoil);
         await db.SaveChangesAsync();
 
@@ -54,7 +54,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var spoils = await db.CreatureSpoils.Where(i => i.CreatureSheetId == sheetId).ToListAsync();
+        var spoils = await db.CreatureSpoils.Where(i => i.SheetId == sheetId).ToListAsync();
         var responses = new List<CreatureSpoilResponse>();
         foreach (var spoil in spoils)
             responses.Add(await ToSpoilResponseAsync(spoil));
@@ -68,7 +68,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var spoil = await db.CreatureSpoils.FirstOrDefaultAsync(i => i.Id == id && i.CreatureSheetId == sheetId);
+        var spoil = await db.CreatureSpoils.FirstOrDefaultAsync(i => i.Id == id && i.SheetId == sheetId);
         if (spoil is null)
             return NotFound();
 
@@ -84,7 +84,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var spoil = await db.CreatureSpoils.FirstOrDefaultAsync(i => i.Id == id && i.CreatureSheetId == sheetId);
+        var spoil = await db.CreatureSpoils.FirstOrDefaultAsync(i => i.Id == id && i.SheetId == sheetId);
         if (spoil is null)
             return NotFound();
 
@@ -109,13 +109,13 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
 
         // Modelo de Dados: "limite de 3 por TipoDeAlvo validado na aplicação, não no schema".
         var existingOfSameType = await db.CreatureArtifacts
-            .Where(a => a.CreatureSheetId == sheetId)
+            .Where(a => a.SheetId == sheetId)
             .Join(db.Set<Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i.TipoDeAlvo)
             .CountAsync(t => t == newItem.TipoDeAlvo);
         if (existingOfSameType >= 3)
             return BadRequest($"Limite de 3 Artefatos do tipo {newItem.TipoDeAlvo} já atingido.");
 
-        var artifact = new CreatureArtifact { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ArtifactItemId = artifactItemId };
+        var artifact = new CreatureArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artifactItemId };
         db.CreatureArtifacts.Add(artifact);
         await db.SaveChangesAsync();
 
@@ -129,7 +129,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var artifacts = await db.CreatureArtifacts.Where(a => a.CreatureSheetId == sheetId).ToListAsync();
+        var artifacts = await db.CreatureArtifacts.Where(a => a.SheetId == sheetId).ToListAsync();
         var responses = new List<CreatureArtifactResponse>();
         foreach (var artifact in artifacts)
             responses.Add(await ToArtifactResponseAsync(artifact));
@@ -143,7 +143,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var artifact = await db.CreatureArtifacts.FirstOrDefaultAsync(a => a.Id == id && a.CreatureSheetId == sheetId);
+        var artifact = await db.CreatureArtifacts.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (artifact is null)
             return NotFound();
 
@@ -159,7 +159,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var affection = new CreatureAffection { Id = Guid.NewGuid(), CreatureSheetId = sheetId, Nome = request.Nome, Favorabilidade = request.Favorabilidade };
+        var affection = new CreatureAffection { Id = Guid.NewGuid(), SheetId = sheetId, Nome = request.Nome, Favorabilidade = request.Favorabilidade };
         db.CreatureAffections.Add(affection);
         await db.SaveChangesAsync();
 
@@ -173,7 +173,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var affections = await db.CreatureAffections.Where(a => a.CreatureSheetId == sheetId).ToListAsync();
+        var affections = await db.CreatureAffections.Where(a => a.SheetId == sheetId).ToListAsync();
         return affections.Select(ToAffectionResponse).ToList();
     }
 
@@ -184,7 +184,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var affection = await db.CreatureAffections.FirstOrDefaultAsync(a => a.Id == id && a.CreatureSheetId == sheetId);
+        var affection = await db.CreatureAffections.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affection is null)
             return NotFound();
 
@@ -229,7 +229,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var creatureTrait = new CreatureTrait
         {
             Id = Guid.NewGuid(),
-            CreatureSheetId = sheetId,
+            SheetId = sheetId,
             TraitId = null,
             CreatureExclusiveTraitId = exclusiveTrait.Id,
             Polaridade = trait.Polaridade,
@@ -250,7 +250,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
     /// </summary>
     private async Task<int> SumExistingCustoAsync(Guid sheetId, Polaridade polaridade)
     {
-        var rows = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheetId && t.Polaridade == polaridade).ToListAsync();
+        var rows = await db.CreatureTraits.Where(t => t.SheetId == sheetId && t.Polaridade == polaridade).ToListAsync();
         var normalIds = rows.Where(r => r.TraitId is not null).Select(r => r.TraitId!.Value).ToList();
         var exclusiveIds = rows.Where(r => r.CreatureExclusiveTraitId is not null).Select(r => r.CreatureExclusiveTraitId!.Value).ToList();
 
@@ -266,7 +266,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var creatureTraits = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheetId).ToListAsync();
+        var creatureTraits = await db.CreatureTraits.Where(t => t.SheetId == sheetId).ToListAsync();
         var normalIds = creatureTraits.Where(t => t.TraitId is not null).Select(t => t.TraitId!.Value).ToList();
         var exclusiveIds = creatureTraits.Where(t => t.CreatureExclusiveTraitId is not null).Select(t => t.CreatureExclusiveTraitId!.Value).ToList();
 
@@ -298,7 +298,7 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         if (authError is not null)
             return authError;
 
-        var creatureTrait = await db.CreatureTraits.FirstOrDefaultAsync(t => t.Id == id && t.CreatureSheetId == sheetId);
+        var creatureTrait = await db.CreatureTraits.FirstOrDefaultAsync(t => t.Id == id && t.SheetId == sheetId);
         if (creatureTrait is null)
             return NotFound();
 
@@ -337,8 +337,8 @@ public class CreaturePossessionsController(RuinaRpgDbContext db, ITabelaDeNiveis
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new CreatureArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
-        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CreatureSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.CreatureSheetId, artifact.Id) };
+        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.SheetId));
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.SheetId, artifact.Id) };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

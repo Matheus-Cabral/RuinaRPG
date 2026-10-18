@@ -117,17 +117,17 @@ public class ResumoDaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var magiaId = Guid.NewGuid();
         if (rota == Npc)
         {
-            db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheetId, ArtifactItemId = anel.Id });
-            db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = espada.Id, IsEquipped = true });
-            db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = magiaId, NpcSheetId = sheetId, Nome = "Bola de Fogo", Tipo = SpellAbilityTipo.Magia, Grau = 2, Descricao = "." });
+            db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = anel.Id });
+            db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = espada.Id, IsEquipped = true });
+            db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = magiaId, SheetId = sheetId, Nome = "Bola de Fogo", Tipo = SpellAbilityTipo.Magia, Grau = 2, Descricao = "." });
             var traco = await db.Traits.FirstAsync(t => !t.IsDeleted);
-            db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), NpcSheetId = sheetId, TraitId = traco.Id, Polaridade = traco.Polaridade });
+            db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), SheetId = sheetId, TraitId = traco.Id, Polaridade = traco.Polaridade });
         }
         else
         {
-            db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ArtifactItemId = anel.Id });
-            db.CreatureWeapons.Add(new CreatureWeapon { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ItemId = espada.Id, IsEquipped = true });
-            db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = magiaId, CreatureSheetId = sheetId, Nome = "Bola de Fogo", Tipo = SpellAbilityTipo.Magia, Grau = 2, Descricao = "." });
+            db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = anel.Id });
+            db.CreatureWeapons.Add(new CreatureWeapon { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = espada.Id, IsEquipped = true });
+            db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = magiaId, SheetId = sheetId, Nome = "Bola de Fogo", Tipo = SpellAbilityTipo.Magia, Grau = 2, Descricao = "." });
         }
         await db.SaveChangesAsync();
         return new Ficha(rota, id, chave, anel.Id);

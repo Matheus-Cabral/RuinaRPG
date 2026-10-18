@@ -36,7 +36,7 @@ public class CharacterSpellAbilityMigrationTests : IClassFixture<BlankDatabaseFi
         var spellAbility = new CharacterSpellAbility
         {
             Id = Guid.NewGuid(),
-            CharacterSheetId = sheet.Id,
+            SheetId = sheet.Id,
             Nome = "Bola de Fogo",
             Tipo = SpellAbilityTipo.Magia,
             Grau = 3,

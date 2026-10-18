@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcSpellAbility
+public class NpcSpellAbility : ILinhaDaFicha
 {
     public Guid Id { get; set; }
-    public Guid NpcSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public Guid? SourceBankEntryId { get; set; }
     public required string Nome { get; set; }
     public SpellAbilityTipo Tipo { get; set; }

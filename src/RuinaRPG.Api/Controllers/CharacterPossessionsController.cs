@@ -38,7 +38,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (item is null)
             return BadRequest("Item Geral não encontrado.");
 
-        var inventoryItem = new CharacterInventoryItem { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, Qtd = request.Qtd };
+        var inventoryItem = new CharacterInventoryItem { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, Qtd = request.Qtd };
         db.CharacterInventoryItems.Add(inventoryItem);
         await db.SaveChangesAsync();
 
@@ -52,7 +52,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var items = await db.CharacterInventoryItems.Where(i => i.CharacterSheetId == sheetId).ToListAsync();
+        var items = await db.CharacterInventoryItems.Where(i => i.SheetId == sheetId).ToListAsync();
         var responses = new List<CharacterInventoryItemResponse>();
         foreach (var item in items)
             responses.Add(await ToInventoryItemResponseAsync(item));
@@ -66,7 +66,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var item = await db.CharacterInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.CharacterSheetId == sheetId);
+        var item = await db.CharacterInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.SheetId == sheetId);
         if (item is null)
             return NotFound();
 
@@ -82,7 +82,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var item = await db.CharacterInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.CharacterSheetId == sheetId);
+        var item = await db.CharacterInventoryItems.FirstOrDefaultAsync(i => i.Id == id && i.SheetId == sheetId);
         if (item is null)
             return NotFound();
 
@@ -107,13 +107,13 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
 
         // Modelo de Dados: "limite de 3 por TipoDeAlvo validado na aplicação, não no schema".
         var existingOfSameType = await db.CharacterArtifacts
-            .Where(a => a.CharacterSheetId == sheetId)
+            .Where(a => a.SheetId == sheetId)
             .Join(db.Set<Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => i.TipoDeAlvo)
             .CountAsync(t => t == newItem.TipoDeAlvo);
         if (existingOfSameType >= 3)
             return BadRequest($"Limite de 3 Artefatos do tipo {newItem.TipoDeAlvo} já atingido.");
 
-        var artifact = new CharacterArtifact { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ArtifactItemId = artifactItemId };
+        var artifact = new CharacterArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artifactItemId };
         db.CharacterArtifacts.Add(artifact);
         await db.SaveChangesAsync();
 
@@ -127,7 +127,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var artifacts = await db.CharacterArtifacts.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        var artifacts = await db.CharacterArtifacts.Where(a => a.SheetId == sheetId).ToListAsync();
         var responses = new List<CharacterArtifactResponse>();
         foreach (var artifact in artifacts)
             responses.Add(await ToArtifactResponseAsync(artifact));
@@ -141,7 +141,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var artifact = await db.CharacterArtifacts.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        var artifact = await db.CharacterArtifacts.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (artifact is null)
             return NotFound();
 
@@ -157,7 +157,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var affection = new CharacterAffection { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = request.Nome, Favorabilidade = request.Favorabilidade };
+        var affection = new CharacterAffection { Id = Guid.NewGuid(), SheetId = sheetId, Nome = request.Nome, Favorabilidade = request.Favorabilidade };
         db.CharacterAffections.Add(affection);
         await db.SaveChangesAsync();
 
@@ -171,7 +171,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var affections = await db.CharacterAffections.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
+        var affections = await db.CharacterAffections.Where(a => a.SheetId == sheetId).ToListAsync();
         return affections.Select(ToAffectionResponse).ToList();
     }
 
@@ -182,7 +182,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affection is null)
             return NotFound();
 
@@ -200,7 +200,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.CharacterSheetId == sheetId);
+        var affection = await db.CharacterAffections.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affection is null)
             return NotFound();
 
@@ -236,7 +236,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         // Racial grants (IsRacial) are excluded — they cost 0 and never count toward this budget,
         // no matter what the underlying Trait's own Custo is (Requisitos - Ficha de Personagem 5.d).
         var existingTotal = await db.CharacterTraits
-            .Where(t => t.CharacterSheetId == sheetId && t.Polaridade == trait.Polaridade && !t.IsRacial)
+            .Where(t => t.SheetId == sheetId && t.Polaridade == trait.Polaridade && !t.IsRacial)
             .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => t.Custo)
             .SumAsync();
         if (Math.Abs(existingTotal) + Math.Abs(trait.Custo) > pontosDisponiveis)
@@ -245,7 +245,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         var characterTrait = new CharacterTrait
         {
             Id = Guid.NewGuid(),
-            CharacterSheetId = sheetId,
+            SheetId = sheetId,
             TraitId = traitId,
             Polaridade = trait.Polaridade,
             Especificacao = trait.RequerEspecificacao ? request.Especificacao : null,
@@ -264,7 +264,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
             return authError;
 
         var rows = (await db.CharacterTraits
-            .Where(t => t.CharacterSheetId == sheetId)
+            .Where(t => t.SheetId == sheetId)
             .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new { ct, t })
             .ToListAsync())
             .Select(x => ToTraitResponse(x.ct, x.t))
@@ -285,7 +285,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         if (authError is not null)
             return authError;
 
-        var characterTrait = await db.CharacterTraits.FirstOrDefaultAsync(t => t.Id == id && t.CharacterSheetId == sheetId);
+        var characterTrait = await db.CharacterTraits.FirstOrDefaultAsync(t => t.Id == id && t.SheetId == sheetId);
         if (characterTrait is null)
             return NotFound();
 
@@ -315,7 +315,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         var over = await db.RacialTraitOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == variante);
         var slots = RacialTraitOverrideResolver.Resolve(over, variante);
 
-        var existingCount = await db.CharacterTraits.CountAsync(t => t.CharacterSheetId == sheetId && t.IsRacial && t.RacialVariante == variante);
+        var existingCount = await db.CharacterTraits.CountAsync(t => t.SheetId == sheetId && t.IsRacial && t.RacialVariante == variante);
         var resolved = RacialTraitChoiceResolver.IsResolved(slots, existingCount);
         var requerEspecificacaoByNome = await RequerEspecificacaoByNomeAsync(slots);
 
@@ -363,7 +363,7 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
 
             db.CharacterTraits.Add(new CharacterTrait
             {
-                Id = Guid.NewGuid(), CharacterSheetId = sheetId, TraitId = trait.Id, Polaridade = trait.Polaridade,
+                Id = Guid.NewGuid(), SheetId = sheetId, TraitId = trait.Id, Polaridade = trait.Polaridade,
                 Especificacao = trait.RequerEspecificacao ? especificacao : null, IsRacial = true, RacialVariante = variante,
             });
         }
@@ -412,8 +412,8 @@ public class CharacterPossessionsController(RuinaRpgDbContext db, ITabelaDeNivei
         var item = await db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var resposta = new CharacterArtifactResponse(artifact.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeAlvo?.ToString() ?? string.Empty, item.Alvo ?? string.Empty, item.Valor ?? 0, imageUrl, item.Descricao);
-        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.CharacterSheetId));
-        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.CharacterSheetId, artifact.Id) };
+        var avaliacao = await penalidades.AvaliarAsync(item, () => _fichaSemPenalidades ??= CalcularFichaAsync(artifact.SheetId));
+        return resposta with { Requisitos = avaliacao.Requisitos, RequisitosPendentes = avaliacao.RequisitosPendentes, Penalidade = avaliacao.Penalidade, OutrasPenalidades = avaliacao.OutrasPenalidades, DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Artefato, artifact.SheetId, artifact.Id) };
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

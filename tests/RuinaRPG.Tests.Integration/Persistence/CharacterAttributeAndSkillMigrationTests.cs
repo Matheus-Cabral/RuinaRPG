@@ -33,8 +33,8 @@ public class CharacterAttributeAndSkillMigrationTests : IClassFixture<BlankDatab
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
-        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
+        db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
+        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAttributes.CountAsync()).Should().Be(1);

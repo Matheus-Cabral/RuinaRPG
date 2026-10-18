@@ -364,78 +364,89 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterAttribute>(entity =>
         {
-            entity.HasIndex(a => new { a.CharacterSheetId, a.Atributo }).IsUnique();
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Atributo }).IsUnique();
             entity.HasOne<CharacterSheet>()
                 .WithMany()
-                .HasForeignKey(a => a.CharacterSheetId)
+                .HasForeignKey(a => a.SheetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CharacterSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.CharacterSheetId, s.PericiaId }).IsUnique();
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasIndex(s => new { s.SheetId, s.PericiaId }).IsUnique();
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CharacterSheet>()
                 .WithMany()
-                .HasForeignKey(s => s.CharacterSheetId)
+                .HasForeignKey(s => s.SheetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CharacterAffinity>(entity =>
         {
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
             entity.HasOne<CharacterSheet>()
                 .WithMany()
-                .HasForeignKey(a => a.CharacterSheetId)
+                .HasForeignKey(a => a.SheetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CharacterRune>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(r => r.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(r => r.Tipo).HasConversion<string>();
             entity.Property(r => r.Disciplina).HasConversion<string>();
         });
         builder.Entity<CharacterMastery>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(m => m.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterWeapon>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(w => w.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(w => w.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterArmorSlot>(entity =>
         {
-            entity.HasIndex(a => new { a.CharacterSheetId, a.Slot }).IsUnique();
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Slot }).IsUnique();
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterShield>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(s => s.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterInventoryItem>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterArtifact>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterSpellAbility>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(e => e.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(e => e.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.CharacterSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
             entity.Property(e => e.Requisitos).HasColumnType("jsonb")
                 .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
@@ -484,14 +495,16 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
         // Aba História — galeria de imagens. Apagar a ficha ou a imagem leva a linha junto (mesmo que DiaryEntryImages).
         builder.Entity<CharacterSheetHistoriaImage>(entity =>
         {
-            entity.HasKey(i => new { i.CharacterSheetId, i.ImageId });
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasKey(i => new { i.SheetId, i.ImageId });
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(i => i.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<NpcSheetHistoriaImage>(entity =>
         {
-            entity.HasKey(i => new { i.NpcSheetId, i.ImageId });
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasKey(i => new { i.SheetId, i.ImageId });
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(i => i.ImageId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -510,12 +523,14 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterAffection>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CharacterTrait>(entity =>
         {
-            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(t => t.CharacterSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(t => t.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -562,142 +577,175 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcAttribute>(entity =>
         {
-            entity.HasIndex(a => new { a.NpcSheetId, a.Atributo }).IsUnique();
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Atributo }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<NpcSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.NpcSheetId, s.PericiaId }).IsUnique();
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasIndex(s => new { s.SheetId, s.PericiaId }).IsUnique();
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<NpcAffinity>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<NpcAffinity>(entity =>
+        {
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<NpcRune>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(r => r.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Image>().WithMany().HasForeignKey(r => r.ImageId).OnDelete(DeleteBehavior.SetNull);
             entity.Property(r => r.Tipo).HasConversion<string>();
             entity.Property(r => r.Disciplina).HasConversion<string>();
         });
         builder.Entity<NpcMastery>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(m => m.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcWeapon>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(w => w.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(w => w.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcArmorSlot>(entity =>
         {
-            entity.HasIndex(a => new { a.NpcSheetId, a.Slot }).IsUnique();
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Slot }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcShield>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcInventoryItem>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(i => i.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcArtifact>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcSpellAbility>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(e => e.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(e => e.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.NpcSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
             entity.Property(e => e.Requisitos).HasColumnType("jsonb")
                 .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
-        builder.Entity<NpcAffection>(entity => entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.NpcSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<NpcAffection>(entity =>
+        {
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<NpcTrait>(entity =>
         {
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(t => t.NpcSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(t => t.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureAttribute>(entity =>
         {
-            entity.HasIndex(a => new { a.CreatureSheetId, a.Atributo }).IsUnique();
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Atributo }).IsUnique();
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CreatureSkill>(entity =>
         {
-            entity.HasIndex(s => new { s.CreatureSheetId, s.PericiaId }).IsUnique();
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasIndex(s => new { s.SheetId, s.PericiaId }).IsUnique();
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CreatureMastery>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(m => m.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(m => m.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(m => m.PericiaId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureWeapon>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(w => w.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(w => w.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(w => w.ItemId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureArmorSlot>(entity =>
         {
-            entity.HasIndex(a => new { a.CreatureSheetId, a.Slot }).IsUnique();
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasIndex(a => new { a.SheetId, a.Slot }).IsUnique();
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureShield>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(s => s.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureSpoil>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(i => i.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(i => i.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureArtifact>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Item>().WithMany().HasForeignKey(a => a.ArtifactItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CreatureSpellAbility>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(e => e.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(e => e.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Efeitos).WithOne().HasForeignKey(ef => ef.CreatureSpellAbilityId).OnDelete(DeleteBehavior.Cascade);
             entity.Property(e => e.Requisitos).HasColumnType("jsonb")
                 .HasConversion(RequisitosDePassivaJson.Converter, RequisitosDePassivaJson.Comparer);
         });
 
-        builder.Entity<CreatureAffection>(entity => entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.CreatureSheetId).OnDelete(DeleteBehavior.Cascade));
+        builder.Entity<CreatureAffection>(entity =>
+        {
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<CreatureTrait>(entity =>
         {
-            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.CreatureSheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.SheetId).HasColumnName("CreatureSheetId");
+            entity.HasOne<CreatureSheet>().WithMany().HasForeignKey(t => t.SheetId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Trait>().WithMany().HasForeignKey(t => t.TraitId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CreatureExclusiveTrait>().WithMany().HasForeignKey(t => t.CreatureExclusiveTraitId).OnDelete(DeleteBehavior.Restrict);
             // Exactly one of TraitId/CreatureExclusiveTraitId is set per row (see CreatureTrait's

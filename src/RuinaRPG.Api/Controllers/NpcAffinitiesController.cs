@@ -36,7 +36,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services
 
         var affinity = new NpcAffinity
         {
-            Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
+            Id = Guid.NewGuid(), SheetId = sheetId, Elemento = elemento, ElementoValor = request.ElementoValor,
             SegundaEssencia = segunda, SegundaEssenciaValor = request.SegundaEssenciaValor,
             SubElemento = subElemento, SubElementoValor = request.SubElementoValor, Experiencia = request.Experiencia
         };
@@ -56,7 +56,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var affinities = await db.NpcAffinities.Where(a => a.NpcSheetId == sheetId).ToListAsync();
+        var affinities = await db.NpcAffinities.Where(a => a.SheetId == sheetId).ToListAsync();
         var efeitos = await condicoes.ParaNpcAsync(sheet);
         return affinities.Select(a => ToResponse(a, efeitos)).ToList();
     }
@@ -71,7 +71,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var affinity = await db.NpcAffinities.FirstOrDefaultAsync(a => a.Id == id && a.NpcSheetId == sheetId);
+        var affinity = await db.NpcAffinities.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affinity is null)
             return NotFound();
 
@@ -105,7 +105,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound();
 
-        var affinity = await db.NpcAffinities.FirstOrDefaultAsync(a => a.Id == id && a.NpcSheetId == sheetId);
+        var affinity = await db.NpcAffinities.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
         if (affinity is null)
             return NotFound();
 
@@ -163,7 +163,7 @@ public class NpcAffinitiesController(RuinaRpgDbContext db, RuinaRPG.Api.Services
 
     private async Task<bool> HasDuplicateSubElementoAsync(Guid sheetId, SubElemento? subElemento, Guid? excludingId) =>
         subElemento is not null && await db.NpcAffinities.AnyAsync(a =>
-            a.NpcSheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
+            a.SheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
 
     // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
     // o que as Condições mudam vai à parte, só para exibir.

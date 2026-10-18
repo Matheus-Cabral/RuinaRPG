@@ -86,7 +86,7 @@ public class CharacterRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Service
             nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
         }
 
-        var rune = new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
+        var rune = new CharacterRune { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
         db.CharacterRunes.Add(rune);
 
         // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
@@ -127,7 +127,7 @@ public class CharacterRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Service
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var runes = await db.CharacterRunes.Where(r => r.CharacterSheetId == sheetId).ToListAsync();
+        var runes = await db.CharacterRunes.Where(r => r.SheetId == sheetId).ToListAsync();
         var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
         var respostas = new List<CharacterRuneResponse>();
         foreach (var r in runes)
@@ -146,7 +146,7 @@ public class CharacterRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Service
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var rune = await db.CharacterRunes.FirstOrDefaultAsync(r => r.Id == id && r.CharacterSheetId == sheetId);
+        var rune = await db.CharacterRunes.FirstOrDefaultAsync(r => r.Id == id && r.SheetId == sheetId);
         if (rune is null)
             return NotFound();
 
@@ -157,7 +157,7 @@ public class CharacterRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Service
 
     private async Task<CharacterRuneResponse> ToResponseAsync(CharacterRune r, Dictionary<Guid, string> imageUrls)
     {
-        var sheetId = r.CharacterSheetId;
+        var sheetId = r.SheetId;
         return new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina),
             DesabilitadoPor: (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(CategoriaDesabilitavel.Runa, r.Id));
     }

@@ -408,7 +408,7 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.CharacterSheets.SingleAsync(s => s.Id == c.SheetId)).Nome = "Nunca Salvo";
             // Viola a FK para CharacterSheets: o salvamento inteiro falha.
-            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = Guid.NewGuid(), Atributo = Atributo.Vigor });
+            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), SheetId = Guid.NewGuid(), Atributo = Atributo.Vigor });
 
             var salvar = () => db.SaveChangesAsync();
 
@@ -454,7 +454,7 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
             await using var scope = comAtor.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.CharacterSheets.SingleAsync(s => s.Id == c.SheetId)).Nome = "Depois da Falha";
-            var ruim = new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = Guid.NewGuid(), Atributo = Atributo.Vigor };
+            var ruim = new CharacterAttribute { Id = Guid.NewGuid(), SheetId = Guid.NewGuid(), Atributo = Atributo.Vigor };
             db.CharacterAttributes.Add(ruim);
             var salvar = () => db.SaveChangesAsync();
             await salvar.Should().ThrowAsync<DbUpdateException>();

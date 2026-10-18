@@ -41,11 +41,11 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         db.NpcSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
-            db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Atributo = atributo });
+            db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
-            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
+            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Slot = slot });
+            db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
 
         await db.SaveChangesAsync();
 
@@ -175,7 +175,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         if (varianteChanged)
         {
-            var staleRacialTraits = await db.NpcTraits.Where(t => t.NpcSheetId == id && t.IsRacial).ToListAsync();
+            var staleRacialTraits = await db.NpcTraits.Where(t => t.SheetId == id && t.IsRacial).ToListAsync();
             db.NpcTraits.RemoveRange(staleRacialTraits);
         }
 
@@ -226,7 +226,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var ids = await db.NpcSheetHistoriaImages.Where(i => i.NpcSheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
+        var ids = await db.NpcSheetHistoriaImages.Where(i => i.SheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
         return await HistoriaImageAccess.ToResponseAsync(db, ids);
     }
 
@@ -250,7 +250,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         if (ids.Count > HistoriaImageAccess.MaxImagens)
             return BadRequest(HistoriaImageAccess.MaxImagensMessage);
 
-        var existing = await db.NpcSheetHistoriaImages.Where(i => i.NpcSheetId == id).ToListAsync();
+        var existing = await db.NpcSheetHistoriaImages.Where(i => i.SheetId == id).ToListAsync();
         var novas = ids.Where(imageId => existing.All(e => e.ImageId != imageId)).ToList();
         if ((await HistoriaImageAccess.UsableAsync(db, novas, CurrentUserId(), sheet.GmId, await CampaignIdForImagesAsync(sheet))).Count != novas.Count)
             return BadRequest(HistoriaImageAccess.NotFoundMessage);
@@ -262,7 +262,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
             if (existing.FirstOrDefault(e => e.ImageId == imageId) is { } row)
                 row.Ordem = ordem;
             else
-                db.NpcSheetHistoriaImages.Add(new NpcSheetHistoriaImage { NpcSheetId = id, ImageId = imageId, Ordem = ordem });
+                db.NpcSheetHistoriaImages.Add(new NpcSheetHistoriaImage { SheetId = id, ImageId = imageId, Ordem = ordem });
         }
         await db.SaveChangesAsync();
 
@@ -504,7 +504,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// </summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
-        var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.NpcAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
             artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
     }
@@ -664,7 +664,7 @@ public class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules,
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == s.Id)
+        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.SheetId == s.Id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);

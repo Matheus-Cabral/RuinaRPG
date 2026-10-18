@@ -22,11 +22,11 @@ public class ItensDesabilitaveisDaFicha(RuinaRpgDbContext db, IPericiaCatalogo p
     {
         var linhas =
             participante.SourceCharacterSheetId is { } personagemId
-                ? await db.CharacterMasteries.Where(m => m.CharacterSheetId == personagemId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+                ? await db.CharacterMasteries.Where(m => m.SheetId == personagemId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
             : participante.SourceNpcSheetId is { } npcId
-                ? await db.NpcMasteries.Where(m => m.NpcSheetId == npcId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+                ? await db.NpcMasteries.Where(m => m.SheetId == npcId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
             : participante.SourceCreatureSheetId is { } criaturaId
-                ? await db.CreatureMasteries.Where(m => m.CreatureSheetId == criaturaId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
+                ? await db.CreatureMasteries.Where(m => m.SheetId == criaturaId).Select(m => new { m.Id, m.Nome, m.PericiaId }).ToListAsync()
             : [];
         var porId = await pericias.PorIdAsync();
         return linhas.Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
@@ -39,33 +39,33 @@ public class ItensDesabilitaveisDaFicha(RuinaRpgDbContext db, IPericiaCatalogo p
 
         if (participante.SourceCharacterSheetId is { } personagemId)
         {
-            porCategoria[CategoriaDesabilitavel.Arma] = await Nomear(db.CharacterWeapons.Where(w => w.CharacterSheetId == personagemId).Select(w => new LinhaDeItem(w.Id, w.ItemId)));
-            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.CharacterArmorSlots.Where(s => s.CharacterSheetId == personagemId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
-            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.CharacterShields.Where(s => s.CharacterSheetId == personagemId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
-            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.CharacterArtifacts.Where(a => a.CharacterSheetId == personagemId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
-            PorTipo(porCategoria, await db.CharacterSpellAbilities.Where(a => a.CharacterSheetId == personagemId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
-            porCategoria[CategoriaDesabilitavel.Runa] = (await db.CharacterRunes.Where(r => r.CharacterSheetId == personagemId).Select(r => new { r.Id, r.Nome }).ToListAsync()).Select(r => (r.Id, r.Nome)).ToList();
+            porCategoria[CategoriaDesabilitavel.Arma] = await Nomear(db.CharacterWeapons.Where(w => w.SheetId == personagemId).Select(w => new LinhaDeItem(w.Id, w.ItemId)));
+            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.CharacterArmorSlots.Where(s => s.SheetId == personagemId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
+            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.CharacterShields.Where(s => s.SheetId == personagemId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
+            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.CharacterArtifacts.Where(a => a.SheetId == personagemId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
+            PorTipo(porCategoria, await db.CharacterSpellAbilities.Where(a => a.SheetId == personagemId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
+            porCategoria[CategoriaDesabilitavel.Runa] = (await db.CharacterRunes.Where(r => r.SheetId == personagemId).Select(r => new { r.Id, r.Nome }).ToListAsync()).Select(r => (r.Id, r.Nome)).ToList();
         }
         else if (participante.SourceNpcSheetId is { } npcId)
         {
-            porCategoria[CategoriaDesabilitavel.Arma] = await Nomear(db.NpcWeapons.Where(w => w.NpcSheetId == npcId).Select(w => new LinhaDeItem(w.Id, w.ItemId)));
-            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.NpcArmorSlots.Where(s => s.NpcSheetId == npcId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
-            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.NpcShields.Where(s => s.NpcSheetId == npcId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
-            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.NpcArtifacts.Where(a => a.NpcSheetId == npcId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
-            PorTipo(porCategoria, await db.NpcSpellAbilities.Where(a => a.NpcSheetId == npcId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
-            porCategoria[CategoriaDesabilitavel.Runa] = (await db.NpcRunes.Where(r => r.NpcSheetId == npcId).Select(r => new { r.Id, r.Nome }).ToListAsync()).Select(r => (r.Id, r.Nome)).ToList();
+            porCategoria[CategoriaDesabilitavel.Arma] = await Nomear(db.NpcWeapons.Where(w => w.SheetId == npcId).Select(w => new LinhaDeItem(w.Id, w.ItemId)));
+            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.NpcArmorSlots.Where(s => s.SheetId == npcId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
+            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.NpcShields.Where(s => s.SheetId == npcId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
+            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.NpcArtifacts.Where(a => a.SheetId == npcId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
+            PorTipo(porCategoria, await db.NpcSpellAbilities.Where(a => a.SheetId == npcId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
+            porCategoria[CategoriaDesabilitavel.Runa] = (await db.NpcRunes.Where(r => r.SheetId == npcId).Select(r => new { r.Id, r.Nome }).ToListAsync()).Select(r => (r.Id, r.Nome)).ToList();
         }
         else if (participante.SourceCreatureSheetId is { } criaturaId)
         {
             // Um ataque natural não tem Item: usa o nome manual. A Criatura não tem Runas.
-            var armas = await db.CreatureWeapons.Where(w => w.CreatureSheetId == criaturaId)
+            var armas = await db.CreatureWeapons.Where(w => w.SheetId == criaturaId)
                 .Select(w => new { w.Id, w.ItemId, w.ManualNome }).ToListAsync();
             var nomesDosItens = await NomesDosItensAsync(armas.Where(w => w.ItemId != null).Select(w => w.ItemId!.Value));
             porCategoria[CategoriaDesabilitavel.Arma] = armas.Select(w => (w.Id, w.ItemId is { } i ? nomesDosItens.GetValueOrDefault(i, "") : w.ManualNome ?? "")).ToList();
-            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.CreatureArmorSlots.Where(s => s.CreatureSheetId == criaturaId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
-            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.CreatureShields.Where(s => s.CreatureSheetId == criaturaId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
-            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.CreatureArtifacts.Where(a => a.CreatureSheetId == criaturaId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
-            PorTipo(porCategoria, await db.CreatureSpellAbilities.Where(a => a.CreatureSheetId == criaturaId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
+            porCategoria[CategoriaDesabilitavel.Armadura] = await Nomear(db.CreatureArmorSlots.Where(s => s.SheetId == criaturaId && s.ItemId != null).Select(s => new LinhaDeItem(s.Id, s.ItemId!.Value)));
+            porCategoria[CategoriaDesabilitavel.Escudo] = await Nomear(db.CreatureShields.Where(s => s.SheetId == criaturaId).Select(s => new LinhaDeItem(s.Id, s.ItemId)));
+            porCategoria[CategoriaDesabilitavel.Artefato] = await Nomear(db.CreatureArtifacts.Where(a => a.SheetId == criaturaId).Select(a => new LinhaDeItem(a.Id, a.ArtifactItemId)));
+            PorTipo(porCategoria, await db.CreatureSpellAbilities.Where(a => a.SheetId == criaturaId).Select(a => new { a.Id, a.Nome, a.Tipo }).ToListAsync(), a => (a.Id, a.Nome, a.Tipo));
         }
 
         return porCategoria;

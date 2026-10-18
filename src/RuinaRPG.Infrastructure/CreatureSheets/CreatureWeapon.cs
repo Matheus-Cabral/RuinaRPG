@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.Items;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureWeapon
+public class CreatureWeapon : ILinhaDaFicha
 {
     public Guid Id { get; set; }
-    public Guid CreatureSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public Guid? ItemId { get; set; } // null = natural attack, uses the Manual* fields below instead
     public bool IsEquipped { get; set; }
     public int? DurabilidadeAtual { get; set; } // null for natural attacks — they have no durability

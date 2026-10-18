@@ -67,7 +67,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
                 // Uma Magia/Habilidade comum pode repetir na ficha (cópias independentes); uma Passiva não —
                 // ela é um estado ligado/desligado por Categoria, então a mesma entrada do banco só pode
                 // virar uma cópia por ficha.
-                if (await db.CharacterSpellAbilities.AnyAsync(e => e.CharacterSheetId == sheetId && e.SourceBankEntryId == bankEntryId))
+                if (await db.CharacterSpellAbilities.AnyAsync(e => e.SheetId == sheetId && e.SourceBankEntryId == bankEntryId))
                     return BadRequest("Esta Passiva já está na ficha.");
 
                 var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await stats.FichaParaRequisitosAsync(sheet),
@@ -78,7 +78,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
                 if (bankEntry.Categoria is { } cat)
                 {
                     var naFicha = await db.CharacterSpellAbilities
-                        .Where(e => e.CharacterSheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria != null)
+                        .Where(e => e.SheetId == sheetId && e.Tipo == SpellAbilityTipo.Passiva && e.Categoria != null)
                         .Select(e => e.Categoria!.Value).ToListAsync();
                     if (LimitesDeNivel.Passivas(cat, naFicha, await tabelaDeNiveis.ObterAsync(), sheet.Nivel) is { } erroDeLimite)
                         return BadRequest(erroDeLimite);
@@ -116,7 +116,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
 
         var sheetCopy = new CharacterSpellAbility
         {
-            Id = Guid.NewGuid(), CharacterSheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
+            Id = Guid.NewGuid(), SheetId = sheetId, SourceBankEntryId = sourceBankEntryId,
             Nome = nome, Tipo = tipo, Grau = grau, GastoEmPI = gastoEmPI, Custo = custo, Descricao = descricao,
             Categoria = categoria, Requisitos = requisitos
         };
@@ -167,7 +167,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
 
-        var entries = await db.CharacterSpellAbilities.Include(e => e.Efeitos).Where(e => e.CharacterSheetId == sheetId).ToListAsync();
+        var entries = await db.CharacterSpellAbilities.Include(e => e.Efeitos).Where(e => e.SheetId == sheetId).ToListAsync();
         // Uma só leitura da ficha, e só se houver Passivas; mapeamento sequencial (um único DbContext).
         var ficha = entries.Any(e => e.Tipo == SpellAbilityTipo.Passiva) ? await stats.FichaParaRequisitosAsync(sheet) : null;
         var result = new List<CharacterSpellAbilityResponse>();
@@ -206,7 +206,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var entry = await db.CharacterSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.CharacterSheetId == sheetId);
+        var entry = await db.CharacterSpellAbilities.Include(e => e.Efeitos).FirstOrDefaultAsync(e => e.Id == id && e.SheetId == sheetId);
         if (entry is null)
             return NotFound();
 
@@ -262,7 +262,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
             return Forbid();
 
-        var entry = await db.CharacterSpellAbilities.FirstOrDefaultAsync(e => e.Id == id && e.CharacterSheetId == sheetId);
+        var entry = await db.CharacterSpellAbilities.FirstOrDefaultAsync(e => e.Id == id && e.SheetId == sheetId);
         if (entry is null)
             return NotFound();
 
@@ -312,7 +312,7 @@ public class CharacterSpellAbilitiesController(RuinaRpgDbContext db, CharacterSh
         };
         if (categoria is not { } c)
             return null;
-        var sheetId = e.CharacterSheetId;
+        var sheetId = e.SheetId;
         return (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(c, e.Id);
     }
 

@@ -256,7 +256,7 @@ public class CreatureAffectionsAndTraitsControllerTests(ApiFixture fixture) : Ap
             legacyRowId = Guid.NewGuid();
             db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
             {
-                Id = legacyRowId, CreatureSheetId = Guid.Parse(sheetId), TraitId = alfabetizado.Id,
+                Id = legacyRowId, SheetId = Guid.Parse(sheetId), TraitId = alfabetizado.Id,
                 Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
             });
             await db.SaveChangesAsync();

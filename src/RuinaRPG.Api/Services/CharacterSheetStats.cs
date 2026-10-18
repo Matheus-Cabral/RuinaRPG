@@ -44,7 +44,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
         var brutoSkills = await db.CharacterSkills
-            .Where(s => s.CharacterSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
+            .Where(s => s.SheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
             .ToListAsync();
         int BrutoOf(int periciaId) => SkillFormulas.Modificador(
             brutoSkills.Single(s => s.PericiaId == periciaId).Gasto,
@@ -54,9 +54,9 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         var brutoReflexos = BrutoOf(PericiasDeSistema.Reflexos);
         var brutoFortitude = BrutoOf(PericiasDeSistema.Fortitude);
 
-        var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
-        var inventoryItems = await db.CharacterInventoryItems.Where(i => i.CharacterSheetId == id)
+        var weapons = await db.CharacterWeapons.Where(w => w.SheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
+        var shields = await db.CharacterShields.Where(s => s.SheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
+        var inventoryItems = await db.CharacterInventoryItems.Where(i => i.SheetId == id)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
             .ToListAsync();
 
@@ -75,7 +75,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
 
         // Escudo e Armadura desabilitados por Condição não estão em uso (a linha guardada não muda).
         var equippedShield = (await db.CharacterShields
-            .Where(s => s.CharacterSheetId == id && s.IsEquipped)
+            .Where(s => s.SheetId == id && s.IsEquipped)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => new { s.Id, i.BonusDefesa })
             .ToListAsync())
             .Where(s => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Escudo, s.Id) is null)
@@ -87,14 +87,14 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         // flag, unlike weapons/shields) — so, unlike Peso Total Carregado, this is already
         // scoped to equipped armor only.
         var armorRfRm = await db.CharacterArmorSlots
-            .Where(a => a.CharacterSheetId == id && a.ItemId != null)
+            .Where(a => a.SheetId == id && a.ItemId != null)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { a.Id, i.RF, i.RM })
             .ToListAsync();
         armorRfRm = armorRfRm.Where(a => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Armadura, a.Id) is null).ToList();
         var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
-        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == id)
+        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.SheetId == id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         // A Eficiência e o Dano Elemental saem do valor da Afinidade já com as Condições (o mesmo que a lista 2.c exibe).
@@ -127,13 +127,13 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     public async Task<FichaParaRequisitos> FichaParaRequisitosAsync(CharacterSheet sheet)
     {
         var artefatos = await ArtefatosAsync(sheet.Id);
-        var atributos = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheet.Id)
+        var atributos = await db.CharacterAttributes.Where(a => a.SheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
         // Mesmo Total da 2.d que CharacterSkillsController.List mostra.
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var skills = await db.CharacterSkills.Where(s => s.SheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
         var porId = await pericias.PorIdAsync();
         // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
         // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
@@ -180,7 +180,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
         var linhas = await db.CharacterArtifacts
-            .Where(a => a.CharacterSheetId == sheetId)
+            .Where(a => a.SheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => new { a.Id, i })
             .Where(x => x.i.TipoDeAlvo != null)
             .Select(x => new { x.Id, Bonus = new ArtifactBonusInput(x.i.TipoDeAlvo!.Value, x.i.Alvo, x.i.Valor ?? 0) })
@@ -193,13 +193,13 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
         // Equipamento desabilitado por Condição não está em uso (a linha guardada não muda): sem penalidade enquanto ela durar.
-        var armas = (await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
+        var armas = (await db.CharacterWeapons.Where(w => w.SheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Arma, x.Id) is null)).ToList();
-        var escudos = (await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
+        var escudos = (await db.CharacterShields.Where(s => s.SheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Escudo, x.Id) is null)).ToList();
-        var armaduras = (await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
+        var armaduras = (await db.CharacterArmorSlots.Where(a => a.SheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Armadura, x.Id) is null)).ToList();
-        var artefatos = (await db.CharacterArtifacts.Where(a => a.CharacterSheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
+        var artefatos = (await db.CharacterArtifacts.Where(a => a.SheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, x.Id) is null)).ToList();
         return [.. armas, .. escudos, .. armaduras, .. artefatos];
     }
@@ -249,7 +249,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
     /// <summary>Single-row lookup + AttributeTotalCalculator.Total.</summary>
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.CharacterAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         var artefatoBonus = ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString());
         return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: artefatoBonus));
     }

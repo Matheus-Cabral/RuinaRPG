@@ -850,8 +850,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : ApiTestBase(fi
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var attributes = await db.CharacterAttributes.Where(a => a.CharacterSheetId == Guid.Parse(sheetId)).ToListAsync();
-        var skills = await db.CharacterSkills.Where(s => s.CharacterSheetId == Guid.Parse(sheetId)).ToListAsync();
+        var attributes = await db.CharacterAttributes.Where(a => a.SheetId == Guid.Parse(sheetId)).ToListAsync();
+        var skills = await db.CharacterSkills.Where(s => s.SheetId == Guid.Parse(sheetId)).ToListAsync();
 
         attributes.Should().HaveCount(8);
         attributes.Should().OnlyContain(a => a.Gasto == 0 && a.Bonus == 0 && !a.TemMaestria);

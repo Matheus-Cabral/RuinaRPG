@@ -33,8 +33,8 @@ public class CharacterRuneAndMasteryMigrationTests : IClassFixture<BlankDatabase
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterRunes.Add(new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
-        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
+        db.CharacterRunes.Add(new CharacterRune { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
+        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
         await db.SaveChangesAsync();
 
         (await db.CharacterRunes.CountAsync()).Should().Be(1);

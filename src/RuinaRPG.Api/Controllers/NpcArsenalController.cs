@@ -32,7 +32,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (item is null)
             return BadRequest("Item de arma não encontrado.");
 
-        var weapon = new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
+        var weapon = new NpcWeapon { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
         db.NpcWeapons.Add(weapon);
         await db.SaveChangesAsync();
 
@@ -46,7 +46,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var weapons = await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId).ToListAsync();
+        var weapons = await db.NpcWeapons.Where(w => w.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<NpcWeaponResponse>();
         foreach (var weapon in weapons)
@@ -61,14 +61,14 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.NpcSheetId == sheetId);
+        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
         if (isEquipped)
         {
             // Default rule (no Ambidestria exception — see plan out-of-scope): only 1 weapon equipped at a time.
-            var currentlyEquipped = await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId && w.IsEquipped).ToListAsync();
+            var currentlyEquipped = await db.NpcWeapons.Where(w => w.SheetId == sheetId && w.IsEquipped).ToListAsync();
             foreach (var other in currentlyEquipped)
                 other.IsEquipped = false;
         }
@@ -84,7 +84,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.NpcSheetId == sheetId);
+        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
@@ -102,7 +102,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.NpcSheetId == sheetId);
+        var weapon = await db.NpcWeapons.FirstOrDefaultAsync(w => w.Id == id && w.SheetId == sheetId);
         if (weapon is null)
             return NotFound();
 
@@ -118,7 +118,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var slots = await db.NpcArmorSlots.Where(a => a.NpcSheetId == sheetId).ToListAsync();
+        var slots = await db.NpcArmorSlots.Where(a => a.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<NpcArmorSlotResponse>();
         foreach (var slot in slots)
@@ -133,7 +133,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var armorSlot = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == slot);
+        var armorSlot = await db.NpcArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == slot);
 
         if (request.ItemId is null)
         {
@@ -164,7 +164,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var armorSlot = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == slot);
+        var armorSlot = await db.NpcArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == slot);
         if (armorSlot.ItemId is null)
             return BadRequest("Nenhuma armadura equipada nesse slot.");
 
@@ -188,7 +188,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (item is null)
             return BadRequest("Item de escudo não encontrado.");
 
-        var shield = new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
+        var shield = new NpcShield { Id = Guid.NewGuid(), SheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
         db.NpcShields.Add(shield);
         await db.SaveChangesAsync();
 
@@ -202,7 +202,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var shields = await db.NpcShields.Where(s => s.NpcSheetId == sheetId).ToListAsync();
+        var shields = await db.NpcShields.Where(s => s.SheetId == sheetId).ToListAsync();
         var tabela = await durabilidades.TabelaAsync();
         var responses = new List<NpcShieldResponse>();
         foreach (var shield in shields)
@@ -217,13 +217,13 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.NpcSheetId == sheetId);
+        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
         if (isEquipped)
         {
-            var currentlyEquipped = await db.NpcShields.Where(s => s.NpcSheetId == sheetId && s.IsEquipped).ToListAsync();
+            var currentlyEquipped = await db.NpcShields.Where(s => s.SheetId == sheetId && s.IsEquipped).ToListAsync();
             foreach (var other in currentlyEquipped)
                 other.IsEquipped = false;
         }
@@ -239,7 +239,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.NpcSheetId == sheetId);
+        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
@@ -256,7 +256,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         if (authError is not null)
             return authError;
 
-        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.NpcSheetId == sheetId);
+        var shield = await db.NpcShields.FirstOrDefaultAsync(s => s.Id == id && s.SheetId == sheetId);
         if (shield is null)
             return NotFound();
 
@@ -310,7 +310,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.NpcSheetId, weapon.Id) }, item, weapon.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.SheetId, weapon.Id) }, item, weapon.SheetId);
     }
 
     private async Task<NpcArmorSlotResponse> ToArmorSlotResponseAsync(NpcArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -322,7 +322,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.NpcSheetId, slot.Id) }, item, slot.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.SheetId, slot.Id) }, item, slot.SheetId);
     }
 
     private async Task<NpcShieldResponse> ToShieldResponseAsync(NpcShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
@@ -331,7 +331,7 @@ public class NpcArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvi
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
         var resposta = new NpcShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.NpcSheetId, shield.Id) }, item, shield.NpcSheetId);
+        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.SheetId, shield.Id) }, item, shield.SheetId);
     }
 
     private async Task<string?> ResolveImageUrlAsync(Guid? imageId)

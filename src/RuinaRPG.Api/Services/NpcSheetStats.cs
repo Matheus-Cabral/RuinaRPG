@@ -49,7 +49,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
 
         var brutoSkills = await db.NpcSkills
-            .Where(s => s.NpcSheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
+            .Where(s => s.SheetId == id && (s.PericiaId == PericiasDeSistema.Prontidao || s.PericiaId == PericiasDeSistema.Reflexos || s.PericiaId == PericiasDeSistema.Fortitude))
             .ToListAsync();
         int BrutoOf(int periciaId) => SkillFormulas.Modificador(
             brutoSkills.Single(s => s.PericiaId == periciaId).Gasto,
@@ -59,9 +59,9 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         var brutoReflexos = BrutoOf(PericiasDeSistema.Reflexos);
         var brutoFortitude = BrutoOf(PericiasDeSistema.Fortitude);
 
-        var weapons = await db.NpcWeapons.Where(w => w.NpcSheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var shields = await db.NpcShields.Where(s => s.NpcSheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
-        var inventoryItems = await db.NpcInventoryItems.Where(i => i.NpcSheetId == id)
+        var weapons = await db.NpcWeapons.Where(w => w.SheetId == id).Join(db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
+        var shields = await db.NpcShields.Where(s => s.SheetId == id).Join(db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
+        var inventoryItems = await db.NpcInventoryItems.Where(i => i.SheetId == id)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
             .ToListAsync();
 
@@ -77,7 +77,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
 
         // Escudo e Armadura desabilitados por Condição não estão em uso (a linha guardada não muda).
         var equippedShield = (await db.NpcShields
-            .Where(s => s.NpcSheetId == id && s.IsEquipped)
+            .Where(s => s.SheetId == id && s.IsEquipped)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Escudo>(), s => s.ItemId, i => i.Id, (s, i) => new { s.Id, i.BonusDefesa })
             .ToListAsync())
             .Where(s => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Escudo, s.Id) is null)
@@ -89,14 +89,14 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
         // unlike weapons/shields) — so, unlike Peso Total Carregado, this is already scoped to
         // equipped armor only.
         var armorRfRm = await db.NpcArmorSlots
-            .Where(a => a.NpcSheetId == id && a.ItemId != null)
+            .Where(a => a.SheetId == id && a.ItemId != null)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Armadura>(), a => a.ItemId!.Value, i => i.Id, (a, i) => new { a.Id, i.RF, i.RM })
             .ToListAsync();
         armorRfRm = armorRfRm.Where(a => efeitos.DesabilitadoPor(CategoriaDesabilitavel.Armadura, a.Id) is null).ToList();
         var armaduraRf = armorRfRm.Sum(a => a.RF ?? 0);
         var armaduraRm = armorRfRm.Sum(a => a.RM ?? 0);
 
-        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.NpcSheetId == id)
+        var linhasDeAfinidade = await db.NpcAffinities.Where(a => a.SheetId == id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         // A Eficiência e o Dano Elemental saem do valor da Afinidade já com as Condições (o mesmo que a lista 2.c exibe).
@@ -125,12 +125,12 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     {
         // Sempre SEM penalidades de equipamento: é contra este retrato que os Requisitos são avaliados.
         var artefatos = await ArtefatosAsync(sheet.Id);
-        var atributos = await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id)
+        var atributos = await db.NpcAttributes.Where(a => a.SheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())));
 
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
-        var skills = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var skills = await db.NpcSkills.Where(s => s.SheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
         var porId = await pericias.PorIdAsync();
         // Toda Perícia ativa entra (linha ausente = Gasto 0 e Atributo sugerido, como na lista da ficha);
         // removidas ficam de fora e o avaliador ignora requisitos sobre elas.
@@ -163,7 +163,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     public async Task<List<ArtifactBonusInput>> ArtefatosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
         var linhas = await db.NpcArtifacts
-            .Where(a => a.NpcSheetId == sheetId)
+            .Where(a => a.SheetId == sheetId)
             .Join(db.Set<RuinaRPG.Infrastructure.Items.Artefato>(), a => a.ArtifactItemId, i => i.Id, (a, i) => new { a.Id, i })
             .Where(x => x.i.TipoDeAlvo != null)
             .Select(x => new { x.Id, Bonus = new ArtifactBonusInput(x.i.TipoDeAlvo!.Value, x.i.Alvo, x.i.Valor ?? 0) })
@@ -176,13 +176,13 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     private async Task<List<EquipamentoDaFicha>> EquipamentosAsync(Guid sheetId, EfeitosDeCondicao? efeitos = null)
     {
         // Equipamento desabilitado por Condição não está em uso (a linha guardada não muda): sem penalidade enquanto ela durar.
-        var armas = (await db.NpcWeapons.Where(w => w.NpcSheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
+        var armas = (await db.NpcWeapons.Where(w => w.SheetId == sheetId).Select(w => new { w.Id, ItemId = w.ItemId, EmUso = w.IsEquipped }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Arma, x.Id) is null)).ToList();
-        var escudos = (await db.NpcShields.Where(s => s.NpcSheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
+        var escudos = (await db.NpcShields.Where(s => s.SheetId == sheetId).Select(s => new { s.Id, ItemId = s.ItemId, EmUso = s.IsEquipped }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Escudo, x.Id) is null)).ToList();
-        var armaduras = (await db.NpcArmorSlots.Where(a => a.NpcSheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
+        var armaduras = (await db.NpcArmorSlots.Where(a => a.SheetId == sheetId && a.ItemId != null).Select(a => new { a.Id, ItemId = a.ItemId!.Value, EmUso = true }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Armadura, x.Id) is null)).ToList();
-        var artefatos = (await db.NpcArtifacts.Where(a => a.NpcSheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
+        var artefatos = (await db.NpcArtifacts.Where(a => a.SheetId == sheetId).Select(a => new { a.Id, ItemId = a.ArtifactItemId, EmUso = true }).ToListAsync())
             .Select(x => new EquipamentoDaFicha(x.ItemId, x.EmUso && efeitos?.DesabilitadoPor(CategoriaDesabilitavel.Artefato, x.Id) is null)).ToList();
         return [.. armas, .. escudos, .. armaduras, .. artefatos];
     }
@@ -213,7 +213,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     public async Task<List<AtributoCalculado>> AtributosAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
     {
         var artefatos = await ModificadoresAsync(sheet, efeitos);
-        return (await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id).ToListAsync())
+        return (await db.NpcAttributes.Where(a => a.SheetId == sheet.Id).ToListAsync())
             .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
             .Select(a => new AtributoCalculado(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
                 efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
@@ -225,9 +225,9 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
     public async Task<List<PericiaCalculada>> PericiasAsync(NpcSheet sheet, EfeitosDeCondicao efeitos)
     {
         var ativas = (await pericias.PorIdAsync()).Values.Where(p => !p.IsDeleted).ToList();
-        var linhas = await db.NpcSkills.Where(s => s.NpcSheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
+        var linhas = await db.NpcSkills.Where(s => s.SheetId == sheet.Id).ToDictionaryAsync(s => s.PericiaId);
         var artefatos = await ModificadoresAsync(sheet, efeitos);
-        var totaisDeAtributo = await db.NpcAttributes.Where(a => a.NpcSheetId == sheet.Id)
+        var totaisDeAtributo = await db.NpcAttributes.Where(a => a.SheetId == sheet.Id)
             .ToDictionaryAsync(a => a.Atributo, a => efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
                 artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString()))));
         var historico = sheet.HistoricoId is null ? null : await db.Historicos.FindAsync(sheet.HistoricoId.Value);
@@ -251,7 +251,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
 
     private async Task<int> GetAttributeTotalAsync(Guid sheetId, Atributo atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
     {
-        var attribute = await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheetId && a.Atributo == atributo);
+        var attribute = await db.NpcAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
         return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
             artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
     }

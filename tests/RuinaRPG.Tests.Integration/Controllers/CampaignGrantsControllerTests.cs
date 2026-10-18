@@ -242,7 +242,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var copiedRow = await db.NpcAffinities.AsNoTracking()
-                .SingleAsync(a => a.NpcSheetId == Guid.Parse(body.SheetId) && a.Elemento == RuinaRPG.Domain.CharacterSheets.Elemento.Fogo);
+                .SingleAsync(a => a.SheetId == Guid.Parse(body.SheetId) && a.Elemento == RuinaRPG.Domain.CharacterSheets.Elemento.Fogo);
             copiedRow.SegundaEssencia.Should().Be(RuinaRPG.Domain.CharacterSheets.EssenciaBasica.Vida);
             copiedRow.SegundaEssenciaValor.Should().Be(5);
         }
@@ -321,7 +321,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             db.CreatureTraits.Add(new RuinaRPG.Infrastructure.CreatureSheets.CreatureTrait
             {
-                Id = Guid.NewGuid(), CreatureSheetId = Guid.Parse(sourceId), TraitId = Guid.Parse(normalTraitId),
+                Id = Guid.NewGuid(), SheetId = Guid.Parse(sourceId), TraitId = Guid.Parse(normalTraitId),
                 Polaridade = RuinaRPG.Domain.Enums.Polaridade.Positiva,
             });
             await db.SaveChangesAsync();
@@ -567,7 +567,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
             var gmId = await db.NpcSheets.Where(n => n.Id == Guid.Parse(sourceId)).Select(n => n.GmId).SingleAsync();
             db.NpcSpellAbilities.Add(new RuinaRPG.Infrastructure.NpcSheets.NpcSpellAbility
             {
-                Id = Guid.NewGuid(), NpcSheetId = Guid.Parse(sourceId), SourceBankEntryId = null,
+                Id = Guid.NewGuid(), SheetId = Guid.Parse(sourceId), SourceBankEntryId = null,
                 Nome = "Toque Antigo", Tipo = RuinaRPG.Domain.SpellsAndAbilities.SpellAbilityTipo.Magia, Grau = 1, GastoEmPI = 0, Custo = 0, Descricao = "Legado."
             });
             if (existeIgual)
@@ -591,7 +591,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            (await db.NpcSpellAbilities.Where(s => s.NpcSheetId == Guid.Parse(body!.SheetId)).Select(s => s.SourceBankEntryId).SingleAsync())
+            (await db.NpcSpellAbilities.Where(s => s.SheetId == Guid.Parse(body!.SheetId)).Select(s => s.SourceBankEntryId).SingleAsync())
                 .Should().Be(entrada.Id);
         }
     }
