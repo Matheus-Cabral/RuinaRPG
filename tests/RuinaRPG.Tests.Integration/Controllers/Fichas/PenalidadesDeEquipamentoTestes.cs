@@ -159,7 +159,7 @@ public abstract class PenalidadesDeEquipamentoTestes<TTipo>(ApiFixture fixture) 
     }
 
     [Fact]
-    public async Task Armor_shield_and_artifact_penalize_are_listed_as_active_and_lines_report_requirements()
+    public async Task Armor_shield_and_artifact_penalize_and_are_listed_as_active_and_lines_report_requirements()
     {
         var f = await NovaFichaAsync();
         var antes = await TotalDoAtributoAsync(f, "Agilidade");
