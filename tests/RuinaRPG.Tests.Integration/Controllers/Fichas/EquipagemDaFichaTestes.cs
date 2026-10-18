@@ -6,46 +6,32 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
-using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 
-namespace RuinaRPG.Tests.Integration.Controllers;
+// Respostas e pedidos de arsenal, posses e ficha têm o mesmo JSON no Personagem e no NPC nos campos lidos aqui.
+using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
+using ArmaLidaDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterWeaponResponse;
+using ArtefatoLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterArtifactResponse;
+using EscudoLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterShieldResponse;
+using ItemLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterInventoryItemResponse;
+using SlotLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterArmorSlotResponse;
 
-public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
+namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
+
+/// <summary>
+/// Equipagem inicial (<c>/equipagem</c>), que só Personagem e NPC têm. O Mestre escolhe o kit: no
+/// Personagem, na ficha do Jogador da campanha; no NPC, no seu próprio NPC.
+/// </summary>
+public abstract class EquipagemDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTipo>(fixture) where TTipo : ITipoDeTestePersonagemOuNpc, new()
 {
-    // Copied verbatim from CharacterSheetsControllerTests.cs's established helpers —
-    // CharacterSheetsController.Create requires OwnerId to be a real CampaignMember.
-
-    // Copied verbatim from EquipmentKitsControllerTests.cs / HistoricosControllerTests.cs — the
-    // established direct-DB way to grant the Rules Auditor role in a test (no grant endpoint exists).
-
-    // Copied verbatim from CharacterPossessionsControllerTests.cs's helper.
-    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
-        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
-    private async Task<(string CampaignId, string SheetId)> CreateCampaignAndSheetAsync(string gmToken)
-    {
-        var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, $"EquipagemPlayer{Guid.NewGuid():N}", $"{Guid.NewGuid():N}@teste.com");
-        var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));
-        var campaign = await campaignResponse.Content.ReadFromJsonAsync<CampaignResponse>();
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaign!.Id}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaign.Id}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
-        var sheet = await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        return (campaign.Id, sheet!.Id);
-    }
-
     [Fact]
     public async Task ListKits_returns_every_seeded_kit_with_choice_slot_options_resolved_against_the_GM_s_catalog()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm1", "equipagem1@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var kits = await response.Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
@@ -58,23 +44,23 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task Choose_a_kit_with_no_choice_slots_places_every_fixed_item_and_adds_Ciclos()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm2", "equipagem2@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var viajante = kits!.Single(k => k.Nome == "Viajante");
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken,
             new ChooseEquipmentKitRequest(viajante.Id, [])));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
-        var sheet = await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}", gmToken));
+        var sheet = await sheetResponse.Content.ReadFromJsonAsync<FichaLida>();
         sheet!.EquipmentKitId.Should().Be(viajante.Id);
         sheet.Ciclos.Should().Be(25);
 
-        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", gmToken));
-        var inventory = await inventoryResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
+        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/inventory", gmToken));
+        var inventory = await inventoryResponse.Content.ReadFromJsonAsync<List<ItemLidoDaEquipagem>>();
         inventory!.Should().Contain(i => i.Nome == "Mochila");
         inventory.Should().Contain(i => i.Nome == "Ração de Viagem" && i.Qtd == 2);
     }
@@ -82,31 +68,31 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task Choose_a_kit_with_a_choice_slot_places_the_selected_weapon()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm3", "equipagem3@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var patrulheiro = kits!.Single(k => k.Nome == "Patrulheiro");
         var chosenWeapon = patrulheiro.ChoiceSlots.Single().Options.First();
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken,
             new ChooseEquipmentKitRequest(patrulheiro.Id, [new ChoiceSlotSelectionRequest(patrulheiro.ChoiceSlots.Single().SlotId, chosenWeapon.ItemId)])));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var weaponsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", gmToken));
-        var weapons = await weaponsResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        var weaponsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/weapons", gmToken));
+        var weapons = await weaponsResponse.Content.ReadFromJsonAsync<List<ArmaLidaDaEquipagem>>();
         weapons!.Should().ContainSingle(w => w.Nome == chosenWeapon.Nome);
 
-        var shieldsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/shields", gmToken));
-        var shields = await shieldsResponse.Content.ReadFromJsonAsync<List<CharacterShieldResponse>>();
+        var shieldsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/shields", gmToken));
+        var shields = await shieldsResponse.Content.ReadFromJsonAsync<List<EscudoLidoDaEquipagem>>();
         shields!.Should().ContainSingle(s => s.Nome == "Tampa de Madeira");
     }
 
     [Fact]
     public async Task Choose_Cacador_with_the_Arco_alternative_also_grants_10_Flechas_de_Madeira()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm4", "equipagem4@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
 
         // DefaultCatalogItems.cs's Tier-F rows for "Arcos"/"Fundas e Baladeiras" are empty (its lowest
         // bow is Arco Curto at Tier E) — this test can't rely on incidental default-catalog data for
@@ -128,22 +114,22 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
             testBowId = bow.Id;
         }
 
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var cacador = kits!.Single(k => k.Nome == "Caçador");
         var slot = cacador.ChoiceSlots.Single();
         var chosen = slot.Options.Single(o => o.ItemId == testBowId.ToString());
 
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken,
             new ChooseEquipmentKitRequest(cacador.Id, [new ChoiceSlotSelectionRequest(slot.SlotId, chosen.ItemId)])));
 
-        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/inventory", gmToken));
-        var inventory = await inventoryResponse.Content.ReadFromJsonAsync<List<CharacterInventoryItemResponse>>();
+        var inventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/inventory", gmToken));
+        var inventory = await inventoryResponse.Content.ReadFromJsonAsync<List<ItemLidoDaEquipagem>>();
         inventory!.Should().Contain(i => i.Nome == "Flecha de Madeira" && i.Qtd == 10);
 
         // Durabilidade por Rank: a Rank-F kit weapon lands with atual = max = 20 (Tabela).
-        var weaponsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", gmToken));
-        var weapons = await weaponsResponse.Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+        var weaponsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/weapons", gmToken));
+        var weapons = await weaponsResponse.Content.ReadFromJsonAsync<List<ArmaLidaDaEquipagem>>();
         var bowOnSheet = weapons!.Single(w => w.ItemId == testBowId.ToString());
         bowOnSheet.DurabilidadeAtual.Should().Be(20);
         bowOnSheet.DurabilidadeMaxima.Should().Be(20);
@@ -152,14 +138,14 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task Choose_a_second_time_on_an_already_chosen_sheet_returns_400()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm5", "equipagem5@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var negociante = kits!.Single(k => k.Nome == "Negociante");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
 
-        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
 
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -172,13 +158,13 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
         // null-coalescing guard, BuildPlanAsync's foreach over choiceSlots would NRE (500) the first
         // time it tries selections.FirstOrDefault(...) for a kit that actually has a choice slot
         // (Patrulheiro) — it should fail cleanly with 400 instead.
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm7", "equipagem7@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        var f = await NovaFichaAsync();
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var patrulheiro = kits!.Single(k => k.Nome == "Patrulheiro");
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose");
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         request.Content = JsonContent.Create(new { KitId = patrulheiro.Id });
         var response = await Client.SendAsync(request);
@@ -189,22 +175,22 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task Choose_a_kit_that_would_push_an_Artefato_TipoDeAlvo_past_3_returns_400_and_grants_nothing()
     {
-        // Mirrors CharacterPossessionsController.AddArtifact's own "limite de 3 por TipoDeAlvo
+        // Mirrors the Possessions controller's AddArtifact's own "limite de 3 por TipoDeAlvo
         // validado na aplicação" cap (Requisitos - Modelo de Dados) — no path in the Equipagem
         // feature enforced this before this fix, even though nothing stops an Auditor from
         // authoring a kit with an Artefato fixed item via the Auditoria page's Tipo dropdown.
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm8", "equipagem8@teste.com");
-        await GrantRulesAuditorAsync("equipagem8@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var f = await NovaFichaAsync();
+        await GrantRulesAuditorAsync(f.GmEmail);
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
 
         var artifact1 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 1", "Atributo", "Vigor", 1);
         var artifact2 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 2", "Atributo", "Forca", 1);
         var artifact3 = await CreateArtefatoItemAsync(gmToken, "Anel Equipagem 3", "Atributo", "Agilidade", 1);
         var artifact4Nome = "Anel Equipagem 4";
         await CreateArtefatoItemAsync(gmToken, artifact4Nome, "Atributo", "Astucia", 1);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact1)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact2)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(artifact3)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken, new AdicionarArtefato(artifact1)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken, new AdicionarArtefato(artifact2)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken, new AdicionarArtefato(artifact3)));
 
         var artifact4FixoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kit-fixed-items", gmToken,
             new CreateItemRequest("Artefato", artifact4Nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "Atributo", "Astucia", 1, null)));
@@ -216,48 +202,48 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
         var kitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/equipment-kits", gmToken, kitRequest));
         var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
-        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken,
             new ChooseEquipmentKitRequest(kit!.Id, [])));
 
         chooseResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
-        var sheet = await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}", gmToken));
+        var sheet = await sheetResponse.Content.ReadFromJsonAsync<FichaLida>();
         sheet!.EquipmentKitId.Should().BeNull(); // rejected before SaveChangesAsync — nothing partially applied
 
-        var artifactsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", gmToken));
-        var artifacts = await artifactsResponse.Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
+        var artifactsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken));
+        var artifacts = await artifactsResponse.Content.ReadFromJsonAsync<List<ArtefatoLidoDaEquipagem>>();
         artifacts!.Should().HaveCount(3);
     }
 
     [Fact]
-    public async Task ListKits_and_Choose_by_an_unrelated_jogador_return_403()
+    public async Task ListKits_and_Choose_by_someone_without_access_return_the_denied_status()
     {
-        // Same CanEdit gate as every other sheet sub-controller (see CharacterMasteriesControllerTests's
-        // identical Add_by_an_unrelated_jogador_returns_403) — a caller who is neither the sheet's
-        // owner nor its campaign's GM cannot list kits or choose one.
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm9", "equipagem9@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var (_, otherToken) = await RegisterJogadorLinkedToAsync(gmToken, "EquipagemStranger9", "equipagemstranger9@teste.com");
+        // Same CanEdit gate as every other sheet sub-controller — a caller who cannot edit the sheet
+        // cannot list kits or choose one (403 no Personagem; 404 no NPC, sem confirmar que a ficha existe).
+        var f = await NovaFichaAsync();
+        var sheetId = f.SheetId;
+        var otherToken = await Tipo.CriarIntrusoAsync(this, f);
 
-        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", otherToken));
-        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", otherToken));
+        listResponse.StatusCode.Should().Be(Tipo.StatusNegado);
 
-        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", otherToken,
+        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", otherToken,
             new ChooseEquipmentKitRequest(Guid.NewGuid().ToString(), [])));
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        chooseResponse.StatusCode.Should().Be(Tipo.StatusNegado);
     }
 
     [Fact]
     public async Task Choose_auto_attaches_every_granted_item_to_the_sheet_s_campaign_as_public()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemGm6", "equipagem6@teste.com");
-        var (campaignId, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
-        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/equipagem/kits", gmToken)))
+        // No NPC, só um NPC concedido a um Jogador fica numa campanha (a ficha de NPC não tem CampaignId).
+        var f = await FichaDeJogadorAsync();
+        var (gmToken, sheetId, campaignId) = (f.GmToken, f.SheetId, f.CampaignId!);
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", gmToken)))
             .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
         var viajante = kits!.Single(k => k.Nome == "Viajante");
 
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(viajante.Id, [])));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(viajante.Id, [])));
 
         var meResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
         var gmId = Guid.Parse((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id);
@@ -268,7 +254,7 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
         // one independently for every GM that applies a kit containing it), so an unscoped Nome-only
         // lookup would collide with another test in this class that also grants a "Mochila" (e.g.
         // Choose_a_kit_with_no_choice_slots_places_every_fixed_item_and_adds_Ciclos above), since all
-        // Facts in this class share one Postgres database via BlankDatabaseFixture.
+        // Facts in this class share one Postgres database.
         var mochila = await db.Set<RuinaRPG.Infrastructure.Items.ItemGeral>().SingleAsync(i => i.Nome == "Mochila" && i.GmId == gmId);
         var attachment = await db.CampaignAttachments.SingleAsync(a => a.CampaignId == Guid.Parse(campaignId) && a.ItemId == mochila.Id);
         attachment.IsPublic.Should().BeTrue();
@@ -277,9 +263,9 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     [Fact]
     public async Task Choose_a_kit_with_an_Armadura_choice_slot_updates_the_target_armor_slot()
     {
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemArmorGm1", "equipagemarmor1@teste.com");
-        await GrantRulesAuditorAsync("equipagemarmor1@teste.com"); // this file's own copy of the Auditor-grant helper, per Task 6/9's established pattern
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var f = await NovaFichaAsync();
+        await GrantRulesAuditorAsync(f.GmEmail);
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
 
         var meResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken));
         var gmId = (await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id;
@@ -302,12 +288,12 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
                 [new EquipmentKitChoiceSlotInput("Armadura", "Armadura", ["Couro"], null, 1, null, null, null, "Superior")])));
         var kit = await kitResponse.Content.ReadFromJsonAsync<EquipmentKitResponse>();
 
-        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken,
+        var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken,
             new ChooseEquipmentKitRequest(kit!.Id, [new ChoiceSlotSelectionRequest(kit.ChoiceSlots.Single().Id, armaduraId.ToString())])));
         chooseResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var slotsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", gmToken));
-        var slots = await slotsResponse.Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
+        var slotsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/armor-slots", gmToken));
+        var slots = await slotsResponse.Content.ReadFromJsonAsync<List<SlotLidoDaEquipagem>>();
         var superior = slots!.Single(s => s.Slot == "Superior");
         superior.Nome.Should().Be("Armadura de Teste F");
         superior.DurabilidadeAtual.Should().Be(0);
@@ -319,14 +305,14 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
     {
         // O Artefato fixo não está no catálogo do GM: a aplicação o criaria. O teto de 3 por TipoDeAlvo
         // tem de valer também para o item que ainda só existe no change tracker.
-        var gmToken = await RegisterGmAndGetTokenAsync("EquipagemCapGmC", "equipagemcapgmc@teste.com");
-        await GrantRulesAuditorAsync("equipagemcapgmc@teste.com");
-        var (_, sheetId) = await CreateCampaignAndSheetAsync(gmToken);
+        var f = await NovaFichaAsync();
+        await GrantRulesAuditorAsync(f.GmEmail);
+        var (gmToken, sheetId) = (f.GmToken, f.SheetId);
 
         foreach (var (nome, alvo) in new[] { ("Anel Character Teto 1", "Vigor"), ("Anel Character Teto 2", "Forca"), ("Anel Character Teto 3", "Agilidade") })
         {
             var id = await CreateArtefatoItemAsync(gmToken, nome, "Atributo", alvo, 1);
-            await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", gmToken, new AddCharacterArtifactRequest(id)));
+            await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken, new AdicionarArtefato(id)));
         }
 
         var fixoNome = "Anel Character Teto Novo " + Guid.NewGuid().ToString("N");
@@ -338,15 +324,34 @@ public class CharacterEquipagemControllerTests(ApiFixture fixture) : ApiTestBase
             new CreateEquipmentKitRequest("Kit Teto Criando " + Guid.NewGuid().ToString("N"), "D", 0, [new EquipmentKitItemInput(fixo.Id, 1)], []))))
             .Content.ReadFromJsonAsync<EquipmentKitResponse>())!;
 
-        var choose = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(kit.Id, [])));
+        var choose = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", gmToken, new ChooseEquipmentKitRequest(kit.Id, [])));
 
         choose.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await choose.Content.ReadAsStringAsync()).Should().Contain("Limite de 3 Artefatos do tipo Atributo já atingido.");
-        var artifacts = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/artifacts", gmToken))).Content.ReadFromJsonAsync<List<CharacterArtifactResponse>>();
+        var artifacts = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/artifacts", gmToken))).Content.ReadFromJsonAsync<List<ArtefatoLidoDaEquipagem>>();
         artifacts!.Should().HaveCount(3);
         var gmId = Guid.Parse((await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", gmToken))).Content.ReadFromJsonAsync<MeResponse>())!.Id);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
         (await db.Items.CountAsync(i => i.GmId == gmId && i.Nome == fixoNome)).Should().Be(0);
+    }
+}
+
+/// <summary>Personagem: o Mestre escolhe o kit na ficha do Jogador da campanha.</summary>
+public sealed class EquipagemDaFichaTestesPersonagem(ApiFixture fixture) : EquipagemDaFichaTestes<TipoDeTestePersonagem>(fixture);
+
+public sealed class EquipagemDaFichaTestesNpc(ApiFixture fixture) : EquipagemDaFichaTestes<TipoDeTesteNpc>(fixture)
+{
+    [Fact]
+    public async Task Choose_on_a_GM_owned_Npc_not_attached_to_any_campaign_skips_the_auto_attach_step_without_erroring()
+    {
+        var f = await NovaFichaAsync(); // NPC do Mestre, fora de qualquer campanha
+        var kits = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "equipagem/kits"), f.GmToken)))
+            .Content.ReadFromJsonAsync<List<EquipmentKitOptionResponse>>();
+        var negociante = kits!.Single(k => k.Nome == "Negociante");
+
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "equipagem/choose"), f.GmToken, new ChooseEquipmentKitRequest(negociante.Id, [])));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }
