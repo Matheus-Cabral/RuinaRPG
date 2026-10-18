@@ -1,5 +1,6 @@
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
+using RuinaRPG.Domain.Runes;
 using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Fichas;
@@ -125,4 +126,35 @@ public interface IEfeitoDaMagiaDaFicha
     string EfeitoNome { get; set; }
     int? Quantidade { get; set; }
     int CustoPI { get; set; }
+}
+
+/// <summary>Uma ficha que escolhe a Equipagem inicial (Personagem e NPC; a Criatura não tem).</summary>
+public interface IFichaComEquipagem : IFicha
+{
+    Guid? EquipmentKitId { get; set; }
+    int Ciclos { get; set; }
+}
+
+/// <summary>Uma Runa da ficha, cópia independente com imagem opcional (CharacterRune, NpcRune).</summary>
+public interface IRunaDaFicha : ILinhaDaFicha
+{
+    string Nome { get; set; }
+    string Descricao { get; set; }
+    int Grau { get; set; }
+    TipoDeRuna? Tipo { get; set; }
+    DisciplinaDeRuna? Disciplina { get; set; }
+    Guid? ImageId { get; set; }
+    Guid? SourceBankEntryId { get; set; }
+}
+
+/// <summary>Uma linha de Afinidade da ficha (CharacterAffinity, NpcAffinity).</summary>
+public interface IAfinidadeDaFicha : ILinhaDaFicha
+{
+    Elemento? Elemento { get; set; }
+    int? ElementoValor { get; set; }
+    SubElemento? SubElemento { get; set; }
+    int? SubElementoValor { get; set; }
+    EssenciaBasica? SegundaEssencia { get; set; }
+    int? SegundaEssenciaValor { get; set; }
+    int? Experiencia { get; set; }
 }
