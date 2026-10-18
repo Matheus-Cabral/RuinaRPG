@@ -16,7 +16,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CreatureAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CreatureSheet> tipo, RuinaRPG.Api.Services.CreatureSheetStats stats)
     : AtributosDaFichaController<CreatureSheet, CreatureAttribute, AtributoCriatura, CreatureAttributeResponse, UpdateCreatureAttributeRequest>(db, tabelaDeNiveis, tipo)
 {
-
     protected override (int Gasto, int Bonus, bool TemMaestria) Ler(UpdateCreatureAttributeRequest request) => (request.Gasto, request.Bonus, request.TemMaestria);
 
     protected override async Task<List<CreatureAttributeResponse>> ListarAsync(CreatureSheet ficha) =>

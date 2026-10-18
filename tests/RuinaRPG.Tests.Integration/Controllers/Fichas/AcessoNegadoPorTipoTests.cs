@@ -28,6 +28,19 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "POST", "weapons", 403 }, { "npc", "POST", "weapons", 404 }, { "creature", "POST", "weapons", 404 },
         { "character", "PUT", "armor-slots/Capacete", 403 }, { "npc", "PUT", "armor-slots/Capacete", 404 }, { "creature", "PUT", "armor-slots/Capacete", 404 },
         { "character", "DELETE", $"shields/{Guid.Empty}", 403 }, { "npc", "DELETE", $"shields/{Guid.Empty}", 404 }, { "creature", "DELETE", $"shields/{Guid.Empty}", 404 },
+        { "character", "GET", "inventory", 403 }, { "npc", "GET", "inventory", 404 }, { "creature", "GET", "spoils", 404 },
+        { "character", "GET", "artifacts", 403 }, { "npc", "GET", "artifacts", 404 }, { "creature", "GET", "artifacts", 404 },
+        { "character", "GET", "affections", 403 }, { "npc", "GET", "affections", 404 }, { "creature", "GET", "affections", 404 },
+        { "character", "GET", "traits", 403 }, { "npc", "GET", "traits", 404 }, { "creature", "GET", "traits", 404 },
+        { "character", "GET", "racial-traits/pending", 403 }, { "npc", "GET", "racial-traits/pending", 404 },
+        { "character", "POST", "inventory", 403 }, { "npc", "POST", "inventory", 404 }, { "creature", "POST", "spoils", 404 },
+        { "character", "DELETE", $"inventory/{Guid.Empty}", 403 }, { "npc", "DELETE", $"inventory/{Guid.Empty}", 404 }, { "creature", "DELETE", $"spoils/{Guid.Empty}", 404 },
+        { "character", "POST", "artifacts", 403 }, { "npc", "POST", "artifacts", 404 }, { "creature", "POST", "artifacts", 404 },
+        { "character", "DELETE", $"affections/{Guid.Empty}", 403 }, { "npc", "DELETE", $"affections/{Guid.Empty}", 404 }, { "creature", "DELETE", $"affections/{Guid.Empty}", 404 },
+        { "character", "PUT", $"affections/{Guid.Empty}", 403 },
+        { "character", "POST", "traits", 403 }, { "npc", "POST", "traits", 404 }, { "creature", "POST", "traits", 404 },
+        { "character", "DELETE", $"traits/{Guid.Empty}", 403 }, { "npc", "DELETE", $"traits/{Guid.Empty}", 404 }, { "creature", "DELETE", $"traits/{Guid.Empty}", 404 },
+        { "character", "POST", "racial-traits/resolve", 403 }, { "npc", "POST", "racial-traits/resolve", 404 },
     };
 
     // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
@@ -35,6 +48,7 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
     {
         Gasto = 1, AtributoEscolhido = (string?)null, Bonus = 0, TemMaestria = false,
         Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0, ItemId = Guid.Empty.ToString(),
+        Qtd = 1, DT = 0, ArtifactItemId = Guid.Empty.ToString(), Favorabilidade = 0, TraitId = Guid.Empty.ToString(), GratuitaTraitNome = "Golpe",
     };
 
     [Theory]

@@ -15,7 +15,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class NpcAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<NpcSheet> tipo, RuinaRPG.Api.Services.NpcSheetStats stats)
     : AtributosDaFichaController<NpcSheet, NpcAttribute, Atributo, NpcAttributeResponse, UpdateNpcAttributeRequest>(db, tabelaDeNiveis, tipo)
 {
-
     protected override (int Gasto, int Bonus, bool TemMaestria) Ler(UpdateNpcAttributeRequest request) => (request.Gasto, request.Bonus, request.TemMaestria);
 
     // Artefatos (Posses 5.b: estar na ficha é estar equipado), penalidades de equipamento ativas e Condições: NpcSheetStats.

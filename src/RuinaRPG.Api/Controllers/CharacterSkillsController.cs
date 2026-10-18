@@ -20,7 +20,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo, RuinaRPG.Api.Services.CharacterSheetStats stats)
     : PericiasDaFichaController<CharacterSheet, CharacterSkill, Atributo, CharacterSkillResponse, UpdateCharacterSkillRequest>(db, pericias, tabelaDeNiveis, tipo)
 {
-
     protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateCharacterSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
 
     // Cálculo próprio do Personagem, mantido como estava até o núcleo de stats compartilhado (spec D.4).

@@ -15,7 +15,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class CreatureMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<CreatureSheet> tipo)
     : MaestriasDaFichaController<CreatureSheet, CreatureMastery, CreatureSkill, CreatureAttribute, AtributoCriatura, CreatureMasteryResponse, AddCreatureMasteryRequest>(db, pericias, tipo)
 {
-
     protected override CreatureMastery Nova(Guid sheetId, string nome, int periciaId, AtributoCriatura atributo, int gastoMaestria) =>
         new() { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, PericiaId = periciaId, Atributo = atributo, GastoMaestria = gastoMaestria };
 

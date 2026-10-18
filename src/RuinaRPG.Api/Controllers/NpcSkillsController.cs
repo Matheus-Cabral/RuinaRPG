@@ -16,7 +16,6 @@ namespace RuinaRPG.Api.Controllers;
 public sealed class NpcSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<NpcSheet> tipo, RuinaRPG.Api.Services.NpcSheetStats stats)
     : PericiasDaFichaController<NpcSheet, NpcSkill, Atributo, NpcSkillResponse, UpdateNpcSkillRequest>(db, pericias, tabelaDeNiveis, tipo)
 {
-
     protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateNpcSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
 
     protected override async Task<List<NpcSkillResponse>> ListarAsync(NpcSheet ficha) =>

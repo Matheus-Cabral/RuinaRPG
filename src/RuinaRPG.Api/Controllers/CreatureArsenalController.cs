@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -33,18 +32,7 @@ public sealed class CreatureArsenalController(RuinaRpgDbContext db, Durabilidade
             return BadRequest("Informe exatamente um: ItemId (vincular ao Catálogo) ou os 4 campos manuais (ataque natural).");
 
         if (isFromCatalogo)
-        {
-            if (!Guid.TryParse(request.ItemId, out var itemId))
-                return BadRequest("ItemId inválido.");
-
-            var item = await Db.Set<Arma>().FirstOrDefaultAsync(a => a.Id == itemId);
-            if (item is null)
-                return BadRequest("Item de arma não encontrado.");
-
-            arma.ItemId = itemId;
-            arma.DurabilidadeAtual = (await Durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0;
-            return null;
-        }
+            return await PreencherArmaDoCatalogoAsync(request.ItemId, (itemId, durabilidade) => (arma.ItemId, arma.DurabilidadeAtual) = (itemId, durabilidade));
 
         if (!Enum.TryParse<TipoDeDano>(request.ManualTipoDeDano, out var tipoDeDano))
             return BadRequest("Tipo de Dano desconhecido.");

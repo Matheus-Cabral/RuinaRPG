@@ -28,6 +28,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
 {
     protected RuinaRpgDbContext Db { get; } = db;
     protected DurabilidadePorRankProvider Durabilidades { get; } = durabilidades;
+    protected EquipmentPenaltyService Penalidades { get; } = penalidades;
 
     private DbSet<TArma> Armas => Db.Set<TArma>();
     private DbSet<TSlot> Slots => Db.Set<TSlot>();
@@ -207,7 +208,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
             return erro;
 
         var shield = new TEscudo { Id = Guid.NewGuid(), SheetId = sheetId, IsEquipped = false };
-        if (await PreencherDoCatalogoAsync<Escudo>(shield, ItemIdDoEscudo(request), e => e.Rank, "Item de escudo não encontrado.") is { } erroDoPedido)
+        if (await PreencherDoCatalogoAsync<Escudo>(ItemIdDoEscudo(request), e => e.Rank, "Item de escudo não encontrado.", LigarAoCatalogo(shield)) is { } erroDoPedido)
             return erroDoPedido;
 
         Escudos.Add(shield);
@@ -285,7 +286,14 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
 
     /// <summary>Liga a Arma nova à Arma do Catálogo pedida, com a Durabilidade cheia do Rank; ou o 400 do ItemId.</summary>
     protected Task<ActionResult?> PreencherArmaDoCatalogoAsync(IEquipavelDoCatalogo arma, string? itemIdPedido) =>
-        PreencherDoCatalogoAsync<Arma>(arma, itemIdPedido, a => a.Rank, "Item de arma não encontrado.");
+        PreencherArmaDoCatalogoAsync(itemIdPedido, LigarAoCatalogo(arma));
+
+    /// <summary>
+    /// Confere a Arma do Catálogo pedida e entrega a <paramref name="ligar"/> o ItemId e a Durabilidade cheia do Rank;
+    /// ou devolve o 400 do ItemId.
+    /// </summary>
+    protected Task<ActionResult?> PreencherArmaDoCatalogoAsync(string? itemIdPedido, Action<Guid, int> ligar) =>
+        PreencherDoCatalogoAsync<Arma>(itemIdPedido, a => a.Rank, "Item de arma não encontrado.", ligar);
 
     /// <summary>A Durabilidade Atual pedida, limitada ao Máximo do Rank da Arma (Ficha de Personagem 3.a, aplicado a NPC por R0002).</summary>
     protected Task<int> DurabilidadeDeArmaLimitadaAsync(Guid itemId, int durabilidadeAtual) =>
@@ -302,7 +310,10 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     private Task<TEscudoResponse> RespostaDeEscudoAsync(TSheet ficha, TEscudo shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela) =>
         RespostaDoCatalogoAsync<Escudo, TEscudoResponse>(ficha, shield.ItemId, shield.Id, CategoriaDesabilitavel.Escudo, tabela, e => e.Rank, (item, d) => RespostaDeEscudo(shield, item, d));
 
-    private async Task<ActionResult?> PreencherDoCatalogoAsync<TItem>(IEquipavelDoCatalogo linha, string? itemIdPedido, Func<TItem, RankDeItem?> rank, string naoEncontrado)
+    private static Action<Guid, int> LigarAoCatalogo(IEquipavelDoCatalogo linha) =>
+        (itemId, durabilidade) => (linha.ItemId, linha.DurabilidadeAtual) = (itemId, durabilidade);
+
+    private async Task<ActionResult?> PreencherDoCatalogoAsync<TItem>(string? itemIdPedido, Func<TItem, RankDeItem?> rank, string naoEncontrado, Action<Guid, int> ligar)
         where TItem : Item
     {
         if (!Guid.TryParse(itemIdPedido, out var itemId))
@@ -312,8 +323,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
         if (item is null)
             return BadRequest(naoEncontrado);
 
-        linha.ItemId = itemId;
-        linha.DurabilidadeAtual = (await Durabilidades.ResolverAsync(rank(item))).Maxima ?? 0;
+        ligar(itemId, (await Durabilidades.ResolverAsync(rank(item))).Maxima ?? 0);
         return null;
     }
 
@@ -331,7 +341,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
         var imageUrl = await ResolveImageUrlAsync(item.ImageId);
         var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(rank(item), tabela);
         var desabilitadoPor = await DesabilitadoPorAsync(ficha, categoria, linhaId);
-        var avaliacao = await penalidades.AvaliarAsync(item, FichaSemPenalidades(ficha));
+        var avaliacao = await Penalidades.AvaliarAsync(item, FichaSemPenalidades(ficha));
         return montar(item, new DetalhesDoItemEquipado(imageUrl, maxima, inquebravel, desabilitadoPor, avaliacao));
     }
 
