@@ -14,12 +14,35 @@ public interface IFicha
 
     /// <summary>Cobertura atual (2.b), que soma na Defesa Natural.</summary>
     Cobertura Cobertura { get; set; }
+
+    int ExperienciaAtual { get; set; }
+
+    /// <summary>Último Nível cujo aviso de subida de nível o usuário dispensou (null: nenhum).</summary>
+    int? LastDismissedLevelUpLevel { get; set; }
 }
 
 /// <summary>Uma ficha com Variante de Linhagem, que dá os traços raciais (Personagem e NPC; a Criatura não tem).</summary>
 public interface IFichaComVariante : IFicha
 {
     Variante? Variante { get; set; }
+}
+
+/// <summary>Uma ficha com Linhagem, Arca e aba História (Personagem e NPC; a Criatura não tem).</summary>
+public interface IFichaComLinhagem : IFichaComVariante
+{
+    Linhagem? Linhagem { get; set; }
+    int? ArcaRolada { get; set; }
+
+    /// <summary>Aba História: HTML sanitizado (HistoriaSanitizer); null = editor vazio.</summary>
+    string? Historia { get; set; }
+}
+
+/// <summary>Uma imagem da galeria da aba História (CharacterSheetHistoriaImage, NpcSheetHistoriaImage).</summary>
+public interface IImagemDaHistoria
+{
+    Guid SheetId { get; set; }
+    Guid ImageId { get; set; }
+    int Ordem { get; set; }
 }
 
 /// <summary>Uma linha de uma tabela por tipo de ficha (CharacterSkill, NpcSkill, …).</summary>

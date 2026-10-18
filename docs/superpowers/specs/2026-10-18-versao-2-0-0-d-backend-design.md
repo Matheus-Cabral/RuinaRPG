@@ -195,9 +195,18 @@ mantido; fica para o usuário decidir depois.
   embora a Ficha de NPCs não mude 5.a (mantido via hook `ConferirItemAsync` de `InventarioDaFichaController`).
 - Magias e Habilidades/GET `spell-abilities` e GET `spell-abilities/passivas-disponiveis`: o Personagem nega
   acesso com 404, enquanto seus POST/PUT/DELETE de Magias (e todos os outros endpoints da Ficha de Personagem)
-  negam com 403 (mantido via `FichaParaLeituraAsync` de `MagiasDaFichaController`, que nega com 404 nos três tipos).
+  negam com 403 (mantido via `FichaParaLeituraAsync`, hoje em `FichaControllerBase`, que nega com 404 nos três tipos).
 - Estatísticas/Peso na Movimentação (`sub-attributes` e tudo que usa a Movimentação): na Criatura, o Peso Total
   Carregado ainda soma toda Arma/Armadura/Escudo do Catálogo, equipados ou não, que é a fórmula anterior à
   correção de 2026-09-08 (`2026-09-08-inventory-weight-and-capacity-design.md`, que deixou a Criatura fora de
   escopo). No Personagem e no NPC só contam o Inventário e as Armas/Escudos desequipados (mantido via hook
   `CargaAsync` de `FichaStats`, sobrescrito em `CreatureSheetStats`).
+- Fichas/leituras da própria ficha: o Personagem nega com 404 o GET `{id}`, `{id}/racial-ability`,
+  `{id}/variantes-liberadas` e `{id}/historia/imagens` ("não confirma a um estranho que a ficha existe"), mas nega
+  com 403 os GET `{id}/level-up-notice`, `{id}/sub-attributes`, `{id}/condicoes-ativas`, `{id}/equipment-penalties`
+  e `{id}/modificador-de-dano`, que revelam o mesmo (mantido via `FichaParaLeituraAsync` × `FichaEditavelAsync` em
+  `FichasController` / `FichaComLinhagemController`).
+- Fichas/DELETE `{id}`: o Personagem só é apagado pelo Mestre da campanha (papel GM; 404 para qualquer outro); NPC e
+  Criatura são apagados por quem pode editá-los, inclusive o jogador a quem foram concedidos, embora a Campanha R0010
+  diga que, concedida a ficha, "criação e exclusão continuam exclusivas do GM" (mantido via `Delete` próprio em
+  `CharacterSheetsController` e `ApagarAsync` de `FichasController` para NPC/Criatura).

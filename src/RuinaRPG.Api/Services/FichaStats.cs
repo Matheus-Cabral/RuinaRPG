@@ -40,6 +40,14 @@ public static class FichaStats
     };
 }
 
+/// <summary>O que os endpoints comuns das fichas (FichasController) leem das estatísticas, para qualquer tipo.</summary>
+public interface IFichaStats<in TSheet> where TSheet : class, IFicha
+{
+    Task<SubAttributesResponse> SubAtributosAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
+    Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
+    Task<List<ArtifactBonusInput>> ModificadoresAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
+}
+
 /// <summary>
 /// Núcleo comum de CharacterSheetStats, NpcSheetStats e CreatureSheetStats (spec D.4): Sub-Atributos, o retrato
 /// FichaParaRequisitos, Artefatos, equipamentos e penalidades, máximos de recurso, Atributos e Perícias calculados.
@@ -48,6 +56,7 @@ public static class FichaStats
 /// </summary>
 public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPericia, TEscudo, TSlot, TArtefato>(
     RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
+    : IFichaStats<TSheet>
     where TSheet : class, IFicha
     where TAtributo : struct, Enum
     where TLinhaAtributo : class, IAtributoDaFicha<TAtributo>

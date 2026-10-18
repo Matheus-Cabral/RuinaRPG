@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -7,15 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
-using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.CreatureSheets;
-using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.CreatureSheets;
-using RuinaRPG.Domain.Items;
-using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -26,7 +18,8 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes, ITipoDeFicha<CreatureSheet> tipo) : ControllerBase
+public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CreatureSheet> tipo)
+    : FichasController<CreatureSheet, CreatureSheetStats>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
     // been granted one already does — same reasoning as List below.
@@ -37,19 +30,19 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         var gmId = CurrentUserId();
 
         var sheet = new CreatureSheet { Id = Guid.NewGuid(), GmId = gmId };
-        db.CreatureSheets.Add(sheet);
+        Db.CreatureSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
-            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
+            Db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
         // R0005's "lista fixa mais curta" — only the Perícias flagged DisponivelParaCriaturas, not
         // every active one (unlike Ficha de NPCs). The suggested Atributo only applies when the
         // Criatura has it (AtributoCriatura is a shorter enum).
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
+            Db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
+            Db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
 
-        await db.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(sheet));
     }
@@ -57,12 +50,9 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
     [HttpGet("{id}")]
     public async Task<ActionResult<CreatureSheetResponse>> Get(Guid id)
     {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+        // NotFound e não Forbid — não confirma a um estranho que a ficha existe.
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
+            return erro;
 
         return await ToResponseAsync(sheet);
     }
@@ -70,14 +60,10 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateCreatureSheetRequest request)
     {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
+        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+            return erro;
 
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        var tabela = await tabelaDeNiveis.ObterAsync();
+        var tabela = await TabelaDeNiveis.ObterAsync();
         if (request.Nivel < 1 || request.Nivel > tabela.UltimoNivel)
             return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
 
@@ -109,276 +95,26 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         // apagar um débito ou uma devolução feita pelo servidor.
         sheet.Cobertura = cobertura;
         // Só o Atual que o jogador editou é gravado, e no máximo atual da ficha (AtualDoFormulario), como no NPC.
-        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await Stats.MaximosAsync(sheet, await Tipo.CondicoesAsync(sheet));
         sheet.VitalidadeAtual = AtualDoFormulario.EscolherNoMaximo(sheet.VitalidadeAtual, request.VitalidadeAtual, request.VitalidadeAtualCarregada, vitalidadeMaximo);
         sheet.FocoAtual = AtualDoFormulario.EscolherNoMaximo(sheet.FocoAtual, request.FocoAtual, request.FocoAtualCarregado, focoMaximo);
         sheet.AdrenalinaAtual = AtualDoFormulario.EscolherNoMaximo(sheet.AdrenalinaAtual, request.AdrenalinaAtual, request.AdrenalinaAtualCarregada, adrenalinaMaximo);
 
-        await db.SaveChangesAsync();
-        await NotifyAffectedEncountersAsync(id);
+        await Db.SaveChangesAsync();
+        await NotificarEncontrosAsync(id);
 
         return NoContent();
     }
 
-    // Criaturas (unlike Ficha de Personagem, where Nível is calculated-only from Experiência
-    // Atual) keep Nível directly GM-editable — but the two fields still need to land on the same
-    // pair the XP-threshold table would derive from either alone (Requisitos - Ficha de
-    // Criaturas). The generic Update above can't apply that rule itself: it always receives both
-    // fields in one full-form submission, with no reliable way to tell "the GM just edited Nível"
-    // apart from "Nível simply wasn't touched and still reads its old value" (a resend that
-    // happens to equal the old value either way). These two endpoints exist so the client can say
-    // which field it actually means, by calling one or the other — see FichaDeCriatura.razor's
-    // Nível/Experiência Atual fields.
+    // Nível e Experiência Atual editáveis pelo GM, cada um com o seu endpoint: ver FichasController.DefinirNivelAsync.
     [HttpPut("{id}/nivel")]
-    public async Task<IActionResult> UpdateNivel(Guid id, [FromBody] int nivel)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        if (nivel < 1 || nivel > tabela.UltimoNivel)
-            return BadRequest($"O nível deve estar entre 1 e {tabela.UltimoNivel}.");
-
-        sheet.Nivel = nivel;
-        sheet.ExperienciaAtual = NivelCalculator.MinXpParaNivel(nivel, tabela.ComoXpPorNivel());
-        await db.SaveChangesAsync();
-        await NotifyAffectedEncountersAsync(id);
-
-        return NoContent();
-    }
+    public Task<IActionResult> UpdateNivel(Guid id, [FromBody] int nivel) => DefinirNivelAsync(id, nivel);
 
     [HttpPut("{id}/experiencia-atual")]
-    public async Task<IActionResult> UpdateExperienciaAtual(Guid id, [FromBody] int experienciaAtual)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        sheet.ExperienciaAtual = experienciaAtual;
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        sheet.Nivel = NivelCalculator.Compute(experienciaAtual, tabela.ComoXpPorNivel());
-        await db.SaveChangesAsync();
-        await NotifyAffectedEncountersAsync(id);
-
-        return NoContent();
-    }
-
-    // Edição manual do saldo de Pontos de Ignição — fora do Update genérico pelo mesmo motivo de Nível e
-    // Experiência Atual terem os seus: o formulário inteiro não diz qual campo o usuário de fato mexeu, e
-    // um saldo desatualizado nele apagaria o que o servidor debitou ou devolveu. Não avisa os Encontros:
-    // eles não exibem Pontos de Ignição.
-    [HttpPut("{id}/pontos-de-ignicao")]
-    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        if (pontos < 0)
-            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
-
-        sheet.PontosDeIgnicao = pontos;
-        await db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    [HttpGet("{id}/level-up-notice")]
-    public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        return new LevelUpNoticeResponse(tabela.LinhasDeBonusAcumuladas(sheet.LastDismissedLevelUpLevel ?? 0, sheet.Nivel).ToList());
-    }
-
-    [HttpPost("{id}/dismiss-level-up-notice")]
-    public async Task<IActionResult> DismissLevelUpNotice(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        sheet.LastDismissedLevelUpLevel = sheet.Nivel;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    private async Task NotifyAffectedEncountersAsync(Guid creatureSheetId)
-    {
-        var affectedEncounterIds = await db.EncounterParticipants
-            .Where(p => p.SourceCreatureSheetId == creatureSheetId)
-            .Select(p => p.EncounterId)
-            .Distinct()
-            .ToListAsync();
-        foreach (var encounterId in affectedEncounterIds)
-        {
-            // Item 3 of the gap audit: the sheet is already saved at this point — a hub failure
-            // must not surface as a 500 to a caller whose save genuinely succeeded.
-            try
-            {
-                await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
-        }
-    }
+    public Task<IActionResult> UpdateExperienciaAtual(Guid id, [FromBody] int experienciaAtual) => DefinirExperienciaAtualAsync(id, experienciaAtual);
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        db.CreatureSheets.Remove(sheet);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    /// <summary>
-    /// A null request value means "not set" and maps to null on the entity. A non-null value
-    /// that fails to parse is malformed input, not an absent one — the caller must 400 rather
-    /// than silently persisting null. Mirrors NpcSheetsController.TryParseEnum.
-    /// </summary>
-    private static bool TryParseEnum<TEnum>(string? value, out TEnum? parsed) where TEnum : struct, Enum
-    {
-        if (value is null)
-        {
-            parsed = null;
-            return true;
-        }
-
-        if (Enum.TryParse<TEnum>(value, out var result))
-        {
-            parsed = result;
-            return true;
-        }
-
-        parsed = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Treats null, empty, or whitespace-only as "no image" (returns true with imageId null).
-    /// A non-empty string that isn't a valid Guid is rejected (returns false) rather than
-    /// throwing. Mirrors NpcSheetsController.TryParseImageId.
-    /// </summary>
-    private static bool TryParseImageId(string? raw, out Guid? imageId)
-    {
-        imageId = null;
-        if (string.IsNullOrWhiteSpace(raw))
-            return true;
-
-        if (!Guid.TryParse(raw, out var parsed))
-            return false;
-
-        imageId = parsed;
-        return true;
-    }
-
-    /// <summary>
-    /// Shared by ToResponseAsync's máximo computation — a single-row lookup +
-    /// AttributeTotalCalculator.Total, rather than duplicating that logic. Mirrors
-    /// NpcSheetsController.GetAttributeTotalAsync, scoped to CreatureAttributes/AtributoCriatura.
-    /// </summary>
-    private async Task<int> GetAttributeTotalAsync(Guid sheetId, AtributoCriatura atributo, IReadOnlyList<ArtifactBonusInput> artefatos, EfeitosDeCondicao efeitos)
-    {
-        var attribute = await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheetId && a.Atributo == atributo);
-        return efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria,
-            artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, atributo.ToString())));
-    }
-
-    /// <summary>
-    /// As Condições ativas na ficha, com o que cada uma muda e os Turnos que faltam. Sempre vazia numa ficha do GM
-    /// (sem dono): as Condições de um participante dela só valem no resumo do encontro.
-    /// </summary>
-    [HttpGet("{id}/condicoes-ativas")]
-    public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        return await condicoes.ListarDaCriaturaAsync(sheet);
-    }
-
-    /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
-    [HttpGet("{id}/equipment-penalties")]
-    public async Task<ActionResult<List<PenalidadeAtivaResponse>>> EquipmentPenalties(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaCriaturaAsync(sheet)));
-    }
-
-    /// <summary>
-    /// Ficha de Personagem 3.f (inherited by Criatura): one read-only value per Tipo de Dano, each
-    /// the sum of equipped Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de
-    /// Dano. Mirrors CharacterSheetsController.ModificadorDeDano.
-    /// </summary>
-    [HttpGet("{id}/modificador-de-dano")]
-    public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        var efeitos = await condicoes.ParaCriaturaAsync(sheet);
-        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
-    }
-
-    /// <summary>
-    /// Read-only, everything derived live — nothing here is persisted. The computation itself
-    /// lives in CreatureSheetStats.SubAtributosAsync, shared with the FichaParaRequisitos
-    /// snapshot used by Passiva requisitos.
-    /// </summary>
-    [HttpGet("{id}/sub-attributes")]
-    public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        return await stats.SubAtributosAsync(sheet, await condicoes.ParaCriaturaAsync(sheet));
-    }
+    public Task<IActionResult> Delete(Guid id) => ApagarAsync(id);
 
     // The GM's whole Creature roster/library, not scoped to any one player — GM-only, same reasoning as Create.
     [HttpGet]
@@ -389,7 +125,7 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
         [FromQuery] string? campaignId)
     {
         var gmId = CurrentUserId();
-        var query = db.CreatureSheets.Where(s => s.GmId == gmId);
+        var query = Db.CreatureSheets.Where(s => s.GmId == gmId);
 
         if (!string.IsNullOrWhiteSpace(nome))
             query = query.Where(s => s.Nome != null && EF.Functions.ILike(s.Nome, $"%{nome}%"));
@@ -407,8 +143,8 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
             .Select(s => new
             {
                 Sheet = s,
-                Owner = db.Users.FirstOrDefault(u => u.Id == s.OwnerId),
-                Image = db.Images.FirstOrDefault(i => i.Id == s.ImageId)
+                Owner = Db.Users.FirstOrDefault(u => u.Id == s.OwnerId),
+                Image = Db.Images.FirstOrDefault(i => i.Id == s.ImageId)
             })
             .Select(x => new CreatureSheetSummaryResponse(x.Sheet.Id.ToString(), x.Sheet.Nome ?? "", x.Sheet.Raca, x.Sheet.Arquetipo == null ? null : x.Sheet.Arquetipo.ToString(), x.Sheet.Rank == null ? null : x.Sheet.Rank.ToString(), x.Sheet.Nivel, x.Owner != null ? x.Owner.Nickname : null, x.Image != null ? "/images/" + x.Image.Path : null))
             .ToListAsync();
@@ -423,20 +159,15 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
     /// </summary>
     private async Task<CreatureSheetResponse> ToResponseAsync(CreatureSheet s)
     {
-        string? imageUrl = null;
-        if (s.ImageId is not null)
-        {
-            var image = await db.Images.FindAsync(s.ImageId.Value);
-            imageUrl = image is not null ? $"/images/{image.Path}" : null;
-        }
+        var imageUrl = await UrlDaImagemAsync(Db, s.ImageId);
 
         var abate = XpAwardCalculator.Abate(s.ExperienciaAtual);
         var assistencia = XpAwardCalculator.Assistencia(s.ExperienciaAtual);
 
         // Totais exibidos com as Condições ativas (Nenhum numa ficha do GM, sem dono). A Criatura não tem Estresse.
-        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await stats.MaximosAsync(s, await condicoes.ParaCriaturaAsync(s));
+        var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo) = await Stats.MaximosAsync(s, await Tipo.CondicoesAsync(s));
 
-        var campaignId = await tipo.CampanhaAsync(s);
+        var campaignId = await Tipo.CampanhaAsync(s);
 
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
@@ -446,6 +177,4 @@ public class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabe
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,
             campaignId?.ToString(), s.ImageId?.ToString());
     }
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.SpellsAndAbilities;
-using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -42,11 +41,6 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
     /// <summary>O retrato da ficha SEM penalidades de equipamento usado para conferir Requisitos (o Stats do tipo).</summary>
     protected abstract Task<FichaParaRequisitos> FichaParaRequisitosAsync(TSheet ficha);
-
-    /// <summary>O saldo de Pontos de Ignição da ficha (PontosDeIgnicaoAtual; PontosDeIgnicao na Criatura).</summary>
-    protected abstract int PontosDeIgnicao(TSheet ficha);
-
-    protected abstract void DefinirPontosDeIgnicao(TSheet ficha, int valor);
 
     /// <summary>A cópia que uma criação do zero grava no banco já nasce marcada como de Criatura? Só na Ficha de Criatura.</summary>
     protected virtual bool CopiaNoBancoDeCriatura => false;
@@ -141,9 +135,9 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
         // 4.b: o Gasto em PI sai do saldo da ficha; sem saldo, nem o GM cria. Passivas não têm PI.
         if (SaldoDePontosDeIgnicao.Consome(tipo))
         {
-            if (SaldoDePontosDeIgnicao.ErroAoDebitar(PontosDeIgnicao(sheet), gastoEmPI) is { } semSaldo)
+            if (SaldoDePontosDeIgnicao.ErroAoDebitar(Tipo.PontosDeIgnicao(sheet), gastoEmPI) is { } semSaldo)
                 return BadRequest(semSaldo);
-            DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(PontosDeIgnicao(sheet), gastoEmPI));
+            Tipo.DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(Tipo.PontosDeIgnicao(sheet), gastoEmPI));
         }
 
         var sheetCopy = Nova(nome, descricao);
@@ -250,9 +244,9 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
         // Só a diferença: subir o custo precisa caber no saldo; baixar devolve.
         var diferenca = gastoEmPI - entry.GastoEmPI;
-        if (SaldoDePontosDeIgnicao.ErroAoDebitar(PontosDeIgnicao(sheet), diferenca) is { } semSaldo)
+        if (SaldoDePontosDeIgnicao.ErroAoDebitar(Tipo.PontosDeIgnicao(sheet), diferenca) is { } semSaldo)
             return BadRequest(semSaldo);
-        DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(PontosDeIgnicao(sheet), diferenca));
+        Tipo.DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(Tipo.PontosDeIgnicao(sheet), diferenca));
 
         entry.Nome = request.Nome;
         entry.Tipo = tipo;
@@ -284,23 +278,10 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
         // Remover devolve o Gasto em PI, inclusive o de uma entrada anterior à 1.5.0 (nunca debitada).
         if (SaldoDePontosDeIgnicao.Consome(entry.Tipo))
-            DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(PontosDeIgnicao(sheet), -entry.GastoEmPI));
+            Tipo.DefinirPontosDeIgnicao(sheet, SaldoDePontosDeIgnicao.Debitar(Tipo.PontosDeIgnicao(sheet), -entry.GastoEmPI));
         Linhas.Remove(entry); // a cópia no banco feita na criação não é tocada — cópias independentes
         await Db.SaveChangesAsync();
         return NoContent();
-    }
-
-    /// <summary>
-    /// Como <see cref="FichaControllerBase{TSheet}.FichaEditavelAsync"/>, mas o acesso negado é 404 nos três tipos:
-    /// os GET de Magias do Personagem negam com 404, e não com o 403 dos seus POST/PUT/DELETE (divergência
-    /// acidental mantida — ver "Divergências encontradas" na spec D).
-    /// </summary>
-    private async Task<AcessoAFicha> FichaParaLeituraAsync(Guid sheetId)
-    {
-        var ficha = await Tipo.CarregarAsync(sheetId);
-        if (ficha is null || !await Tipo.PodeEditarAsync(ficha, CurrentUserId()))
-            return new AcessoAFicha(NotFound());
-        return new AcessoAFicha(ficha);
     }
 
     private async Task<TResponse> RespostaAsync(TSheet sheet, TLinha e, FichaParaRequisitos? ficha)

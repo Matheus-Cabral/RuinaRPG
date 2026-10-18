@@ -33,8 +33,4 @@ public sealed class CreatureSpellAbilitiesController(RuinaRpgDbContext db, Creat
 
     // Criada numa Ficha de Criatura, a cópia no banco já nasce marcada como Magia/Habilidade de Criatura.
     protected override bool CopiaNoBancoDeCriatura => true;
-
-    protected override int PontosDeIgnicao(CreatureSheet ficha) => ficha.PontosDeIgnicao;
-
-    protected override void DefinirPontosDeIgnicao(CreatureSheet ficha, int valor) => ficha.PontosDeIgnicao = valor;
 }

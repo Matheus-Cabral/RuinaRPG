@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -24,6 +25,17 @@ public sealed class TipoPersonagem(RuinaRpgDbContext db, CondicoesAtivasDaFicha 
     public ActionResult Negado(ControllerBase controller) => controller.Forbid();
 
     public Task<EfeitosDeCondicao> CondicoesAsync(CharacterSheet sheet) => condicoes.ParaPersonagemAsync(sheet.Id);
+
+    public Task<List<CondicaoAtivaNaFichaResponse>> ListarCondicoesAsync(CharacterSheet sheet) => condicoes.ListarDoPersonagemAsync(sheet.Id);
+
+    public async Task<List<Guid>> EncontrosAsync(Guid sheetId) =>
+        await db.EncounterParticipants.Where(p => p.SourceCharacterSheetId == sheetId).Select(p => p.EncounterId).Distinct().ToListAsync();
+
+    public int PontosDeIgnicao(CharacterSheet sheet) => sheet.PontosDeIgnicaoAtual;
+
+    public void DefinirPontosDeIgnicao(CharacterSheet sheet, int valor) => sheet.PontosDeIgnicaoAtual = valor;
+
+    public bool PontosDeIgnicaoAcompanhamONivel => true;
 
     public Guid? HistoricoId(CharacterSheet sheet) => sheet.HistoricoId;
 

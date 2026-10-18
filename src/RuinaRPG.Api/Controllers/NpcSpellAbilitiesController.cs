@@ -30,8 +30,4 @@ public sealed class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetSt
         new(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, efeitos, e.Categoria?.ToString(), requisitos, pendentes, CriadaNaFicha: e.CriadaNaFicha, DesabilitadoPor: desabilitadoPor);
 
     protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(NpcSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
-
-    protected override int PontosDeIgnicao(NpcSheet ficha) => ficha.PontosDeIgnicaoAtual;
-
-    protected override void DefinirPontosDeIgnicao(NpcSheet ficha, int valor) => ficha.PontosDeIgnicaoAtual = valor;
 }

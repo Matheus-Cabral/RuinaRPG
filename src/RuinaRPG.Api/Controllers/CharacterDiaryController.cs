@@ -3,8 +3,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.Diary;
-using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -13,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/diary")]
-public class CharacterDiaryController(RuinaRpgDbContext db) : ControllerBase
+public class CharacterDiaryController(RuinaRpgDbContext db, ITipoDeFicha<CharacterSheet> tipo) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<DiaryEntryResponse>> CreateDiaryEntry(Guid sheetId, CreateDiaryEntryRequest request)
@@ -108,12 +109,11 @@ public class CharacterDiaryController(RuinaRpgDbContext db) : ControllerBase
     /// </summary>
     private async Task<ActionResult?> CheckAuthorizationAsync(Guid sheetId)
     {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
+        var sheet = await tipo.CarregarAsync(sheetId);
         if (sheet is null)
             return NotFound();
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
+        if (!await tipo.PodeEditarAsync(sheet, CurrentUserId()))
             return Forbid();
 
         return null;

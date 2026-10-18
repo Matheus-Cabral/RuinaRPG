@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Fichas;
 
@@ -31,6 +32,23 @@ public interface ITipoDeFicha<TSheet> where TSheet : class, IFicha
 
     /// <summary>Condições ativas da ficha (CondicoesAtivasDaFicha.ParaPersonagemAsync / ParaNpcAsync / ParaCriaturaAsync).</summary>
     Task<EfeitosDeCondicao> CondicoesAsync(TSheet sheet);
+
+    /// <summary>As Condições ativas listadas para a ficha (CondicoesAtivasDaFicha.ListarDoPersonagemAsync / ListarDoNpcAsync / ListarDaCriaturaAsync).</summary>
+    Task<List<CondicaoAtivaNaFichaResponse>> ListarCondicoesAsync(TSheet sheet);
+
+    /// <summary>Os Encontros com um participante vindo da ficha (a FK do participante tem nome por tipo), sem repetição.</summary>
+    Task<List<Guid>> EncontrosAsync(Guid sheetId);
+
+    /// <summary>O saldo de Pontos de Ignição da ficha (PontosDeIgnicaoAtual; PontosDeIgnicao na Criatura).</summary>
+    int PontosDeIgnicao(TSheet sheet);
+
+    void DefinirPontosDeIgnicao(TSheet sheet, int valor);
+
+    /// <summary>
+    /// O saldo de Pontos de Ignição acompanha a mudança de Nível (Tabela de Níveis, Ficha de Personagem 1.b)?
+    /// Personagem e NPC sim; a Criatura não ganha PI por Nível.
+    /// </summary>
+    bool PontosDeIgnicaoAcompanhamONivel { get; }
 
     /// <summary>O Histórico da ficha, que dá o bônus +6/+3 de Perícia. Criatura não tem Histórico: sempre null.</summary>
     Guid? HistoricoId(TSheet sheet);

@@ -28,6 +28,20 @@ public abstract class FichaControllerBase<TSheet>(ITipoDeFicha<TSheet> tipo) : C
         return new AcessoAFicha(ficha);
     }
 
+    /// <summary>
+    /// Como <see cref="FichaEditavelAsync"/>, mas o acesso negado é 404 nos três tipos: as leituras do Personagem
+    /// que não revelam que a ficha existe (a ficha em si, Habilidade Racial, Variantes liberadas, galeria da História,
+    /// os GET de Magias) negam com 404, e não com o 403 dos demais endpoints (a de Magias é divergência acidental
+    /// mantida — ver "Divergências encontradas" na spec D).
+    /// </summary>
+    protected async Task<AcessoAFicha> FichaParaLeituraAsync(Guid sheetId)
+    {
+        var ficha = await Tipo.CarregarAsync(sheetId);
+        if (ficha is null || !await Tipo.PodeEditarAsync(ficha, CurrentUserId()))
+            return new AcessoAFicha(NotFound());
+        return new AcessoAFicha(ficha);
+    }
+
     /// <summary>A URL pública da imagem (<c>/images/&lt;Path&gt;</c>), ou null se não há imagem.</summary>
     protected static async Task<string?> UrlDaImagemAsync(RuinaRpgDbContext db, Guid? imageId)
     {
