@@ -86,6 +86,21 @@ load helpers
   [ "$output" = "$c" ]
 }
 
+@test "build_images builds the three targets of deploy/Dockerfile with one GIT_SHA, skipping tags that exist" {
+  run bash -c '
+    source "$1"
+    log() { :; }
+    docker() {
+      if [[ "$1 $2" == "image inspect" ]]; then [[ "$3" == ruinarpg-client:* ]]; return; fi
+      echo "docker $*"
+    }
+    RUINA_REPO_DIR=/repo build_images abc123' _ "$RUINA_REPO_DIR/deploy/deploy.sh"
+  [ "$status" -eq 0 ]
+  [ "${#lines[@]}" -eq 2 ]
+  [ "${lines[0]}" = "docker build -q -f /repo/deploy/Dockerfile --target api --build-arg GIT_SHA=abc123 -t ruinarpg-api:abc123 /repo" ]
+  [ "${lines[1]}" = "docker build -q -f /repo/deploy/Dockerfile --target smoke --build-arg GIT_SHA=abc123 -t ruinarpg-smoke:abc123 /repo" ]
+}
+
 @test "prune_backups never removes the window backup or the last deploy's backup" {
   d="$BATS_TEST_TMPDIR/prune"; mkdir -p "$d"
   for n in 1 2 3 4 5; do mkdir "$d/2026010${n}T000000Z-abc"; done

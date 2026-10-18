@@ -181,10 +181,12 @@ build_image() {
   docker build -q -f "$RUINA_REPO_DIR/$dockerfile" "$@" -t "$image:$sha" "$RUINA_REPO_DIR"
 }
 
+# One Dockerfile, three targets; the same GIT_SHA for all three, or BuildKit could not share the build stage.
 build_images() {
-  build_image ruinarpg-api src/RuinaRPG.Api/Dockerfile "$1" --build-arg "GIT_SHA=$1"
-  build_image ruinarpg-client infra/client/Dockerfile "$1" --build-arg "GIT_SHA=$1"
-  build_image ruinarpg-smoke tools/RuinaRPG.Smoke/Dockerfile "$1"
+  local target
+  for target in api client smoke; do
+    build_image "ruinarpg-$target" deploy/Dockerfile "$1" --target "$target" --build-arg "GIT_SHA=$1"
+  done
 }
 
 # A release directory is never replaced once it exists: it may be the one `current` points at.
