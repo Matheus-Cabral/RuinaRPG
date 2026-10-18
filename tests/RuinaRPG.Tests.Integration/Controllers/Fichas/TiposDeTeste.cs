@@ -1,19 +1,24 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 /// <summary>
 /// Uma ficha criada para um teste: o Mestre dono, quem edita a ficha (o Jogador dono no Personagem e numa
-/// ficha concedida; o próprio Mestre no NPC/Criatura) e o id.
+/// ficha concedida; o próprio Mestre no NPC/Criatura), o id e a campanha (se a ficha está numa).
 /// </summary>
-public sealed record FichaDeTeste(string GmToken, string GmEmail, string Token, string SheetId);
+public sealed record FichaDeTeste(string GmToken, string GmEmail, string Token, string SheetId, string? CampaignId = null);
 
 /// <summary>
 /// O tipo de ficha em que um teste genérico roda. Tudo o que os testes por tipo afirmavam com valores
@@ -43,6 +48,17 @@ public interface ITipoDeTeste
     /// Mestre que não é dono (Personagem) ou outro Mestre (NPC/Criatura).
     /// </summary>
     Task<string> CriarIntrusoAsync(TestesDeFicha t, FichaDeTeste ficha);
+
+    /// <summary>Pontos de Ignição atuais da ficha, lidos direto do banco.</summary>
+    Task<int> PiAsync(RuinaRpgDbContext db, Guid id);
+
+    Task DefinirPiAsync(RuinaRpgDbContext db, Guid id, int pi);
+
+    /// <summary>Corpo do PUT da ficha com o campo de PI no valor dado (um formulário aberto antes de um débito).</summary>
+    object AtualizacaoComPi(int pi);
+
+    /// <summary>DeCriatura das entradas que a ficha manda ao Banco de Magias.</summary>
+    bool MagiasDeCriatura { get; }
 }
 
 /// <summary>Personagem e NPC: os dois têm Histórico.</summary>
@@ -67,10 +83,23 @@ public sealed class TipoDeTestePersonagem : ITipoDeTestePersonagemOuNpc
         var (playerId, playerToken) = await t.JogadorAsync(gm);
         var campaignId = await t.CampanhaComMembroAsync(gm, playerId);
         var sheet = await t.SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gm, new CreateCharacterSheetRequest(playerId));
-        return new FichaDeTeste(gm, email, playerToken, (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id);
+        return new FichaDeTeste(gm, email, playerToken, (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id, campaignId);
     }
 
     public async Task<string> CriarIntrusoAsync(TestesDeFicha t, FichaDeTeste ficha) => (await t.JogadorAsync(ficha.GmToken)).Token;
+
+    public async Task<int> PiAsync(RuinaRpgDbContext db, Guid id) => (await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == id)).PontosDeIgnicaoAtual;
+
+    public async Task DefinirPiAsync(RuinaRpgDbContext db, Guid id, int pi)
+    {
+        (await db.CharacterSheets.FindAsync(id))!.PontosDeIgnicaoAtual = pi;
+        await db.SaveChangesAsync();
+    }
+
+    public object AtualizacaoComPi(int pi) => new UpdateCharacterSheetRequest(null, "Vann Astrel", "Humano", "Sinir", "Campeao", "Duelista", null, null,
+        true, 0, 0, 0, 0, 0, 0, 0, 0, 0, pi, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, 0);
+
+    public bool MagiasDeCriatura => false;
 
     public object AtualizacaoComHistorico(string? historicoId) => new UpdateCharacterSheetRequest(
         null, "Teste", null, null, null, null, null, null,
@@ -95,6 +124,19 @@ public sealed class TipoDeTesteNpc : ITipoDeTestePersonagemOuNpc
 
     public Task<string> CriarIntrusoAsync(TestesDeFicha t, FichaDeTeste ficha) => t.OutroMestreAsync();
 
+    public async Task<int> PiAsync(RuinaRpgDbContext db, Guid id) => (await db.NpcSheets.AsNoTracking().SingleAsync(s => s.Id == id)).PontosDeIgnicaoAtual;
+
+    public async Task DefinirPiAsync(RuinaRpgDbContext db, Guid id, int pi)
+    {
+        (await db.NpcSheets.FindAsync(id))!.PontosDeIgnicaoAtual = pi;
+        await db.SaveChangesAsync();
+    }
+
+    public object AtualizacaoComPi(int pi) => new UpdateNpcSheetRequest(null, "Sentinela", "Humano", "Sinir", "Campeao", "Duelista", null, null,
+        1, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, pi, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0);
+
+    public bool MagiasDeCriatura => false;
+
     public object AtualizacaoComHistorico(string? historicoId) => new UpdateNpcSheetRequest(
         null, "Teste", null, null, null, null, null, null,
         1, true, 0, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, historicoId, null, 0);
@@ -117,6 +159,18 @@ public sealed class TipoDeTesteCriatura : ITipoDeTeste
     public Task<FichaDeTeste> CriarFichaDeJogadorAsync(TestesDeFicha t) => t.FichaConcedidaAsync("Creature");
 
     public Task<string> CriarIntrusoAsync(TestesDeFicha t, FichaDeTeste ficha) => t.OutroMestreAsync();
+
+    public async Task<int> PiAsync(RuinaRpgDbContext db, Guid id) => (await db.CreatureSheets.AsNoTracking().SingleAsync(s => s.Id == id)).PontosDeIgnicao;
+
+    public async Task DefinirPiAsync(RuinaRpgDbContext db, Guid id, int pi)
+    {
+        (await db.CreatureSheets.FindAsync(id))!.PontosDeIgnicao = pi;
+        await db.SaveChangesAsync();
+    }
+
+    public object AtualizacaoComPi(int pi) => new UpdateCreatureSheetRequest(null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra", "F", 1, 0, pi, 0, 0, 0, "Nenhuma");
+
+    public bool MagiasDeCriatura => true;
 }
 
 /// <summary>Os ajudantes de <see cref="ApiTestBase"/> que os tipos de teste usam para montar as fichas.</summary>
@@ -143,6 +197,33 @@ public abstract class TestesDeFicha(ApiFixture fixture) : ApiTestBase(fixture)
         return response;
     }
 
+    protected async Task<string> CreateItemGeralAsync(string gmToken, string nome, decimal peso, int preco, string? imageId = null, string descricao = "Um item qualquer")
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("ItemGeral", nome, peso, preco, imageId, "Diversos", descricao, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    protected async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor, string? imageId = null, string? descricao = null)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Artefato", nome, 0.1m, 500, imageId, null, descricao, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
+    protected async Task<string> UploadImageAsync(string token)
+    {
+        var content = new MultipartFormDataContent();
+        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
+        var fileContent = new ByteArrayContent(pngBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "file", "test.png");
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await Client.SendAsync(message);
+        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
+    }
+
     internal async Task<string> CampanhaComMembroAsync(string gmToken, string playerId)
     {
         var campaign = await SendOkAsync(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", ""));
@@ -157,7 +238,7 @@ public abstract class TestesDeFicha(ApiFixture fixture) : ApiTestBase(fixture)
         var (playerId, playerToken) = await JogadorAsync(gm);
         var campaignId = await CampanhaComMembroAsync(gm, playerId);
         var grant = await SendOkAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gm, new GrantSheetRequest(playerId, tipo, null));
-        return new FichaDeTeste(gm, email, playerToken, (await grant.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId);
+        return new FichaDeTeste(gm, email, playerToken, (await grant.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId, campaignId);
     }
 }
 
@@ -167,6 +248,20 @@ public abstract class TestesDeFicha<TTipo>(ApiFixture fixture) : TestesDeFicha(f
     protected static readonly TTipo Tipo = new();
 
     protected Task<FichaDeTeste> NovaFichaAsync() => Tipo.CriarFichaAsync(this);
+
+    protected Task<FichaDeTeste> FichaDeJogadorAsync() => Tipo.CriarFichaDeJogadorAsync(this);
+
+    protected async Task SetPiAsync(FichaDeTeste f, int pi)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        await Tipo.DefinirPiAsync(scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>(), Guid.Parse(f.SheetId), pi);
+    }
+
+    protected async Task<int> GetPiAsync(FichaDeTeste f)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        return await Tipo.PiAsync(scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>(), Guid.Parse(f.SheetId));
+    }
 
     /// <summary>
     /// Cria um Histórico (o Mestre da ficha vira Auditor de Regras para isso) com as duas Perícias e o põe

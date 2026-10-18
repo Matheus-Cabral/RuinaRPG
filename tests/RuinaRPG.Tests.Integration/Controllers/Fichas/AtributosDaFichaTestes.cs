@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
-using RuinaRPG.Contracts.Items;
 // Os pedidos de Atributo e Artefato têm o mesmo JSON nos três tipos de ficha.
 using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
 using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
@@ -13,13 +12,6 @@ namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 /// <summary>Atributos da ficha e o orçamento de pontos (<c>/attributes</c>), nos três tipos.</summary>
 public abstract class AtributosDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTipo>(fixture) where TTipo : ITipoDeTeste, new()
 {
-    private async Task<string> CreateArtefatoItemAsync(string gmToken, string nome, string tipoDeAlvo, string alvo, int valor)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Artefato", nome, 0.1m, 500, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, tipoDeAlvo, alvo, valor, null)));
-        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
     [Fact]
     public async Task List_returns_every_attribute_of_the_kind_all_zeroed()
     {

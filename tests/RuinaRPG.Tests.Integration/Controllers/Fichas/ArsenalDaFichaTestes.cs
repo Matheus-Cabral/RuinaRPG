@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -34,19 +33,6 @@ public abstract class ArsenalDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDe
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
             new CreateItemRequest("Escudo", "Broquel", 2m, 25, imageId, null, descricao, rank, null, null, null, null, null, null, "Leve", null, null, null, 2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
-    private async Task<string> UploadImageAsync(string token)
-    {
-        var content = new MultipartFormDataContent();
-        byte[] pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
-        var fileContent = new ByteArrayContent(pngBytes);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-        content.Add(fileContent, "file", "test.png");
-        var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await Client.SendAsync(message);
-        return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!.Id;
     }
 
     [Fact]
