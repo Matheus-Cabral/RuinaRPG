@@ -3,7 +3,7 @@ using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureSpellAbility : ILinhaDaFicha
+public class CreatureSpellAbility : IMagiaDaFicha<CreatureSpellAbilityEffect>
 {
     public Guid Id { get; set; }
     public Guid SheetId { get; set; }

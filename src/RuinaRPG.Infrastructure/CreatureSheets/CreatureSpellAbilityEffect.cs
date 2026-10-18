@@ -1,6 +1,8 @@
+using RuinaRPG.Infrastructure.Fichas;
+
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureSpellAbilityEffect
+public class CreatureSpellAbilityEffect : IEfeitoDaMagiaDaFicha
 {
     public Guid Id { get; set; }
     public Guid CreatureSpellAbilityId { get; set; }

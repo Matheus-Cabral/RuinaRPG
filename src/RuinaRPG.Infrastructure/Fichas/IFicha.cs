@@ -1,5 +1,6 @@
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
+using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.Fichas;
 
@@ -97,4 +98,31 @@ public interface ICaracteristicaDaFicha : ILinhaDaFicha
     string? Especificacao { get; set; }
     bool IsRacial { get; set; }
     Variante? RacialVariante { get; set; }
+}
+
+/// <summary>
+/// Uma Magia, Habilidade, Passiva ou Racial da ficha, cópia independente com seus Efeitos
+/// (CharacterSpellAbility, NpcSpellAbility, CreatureSpellAbility).
+/// </summary>
+public interface IMagiaDaFicha<TEfeito> : ILinhaDaFicha where TEfeito : IEfeitoDaMagiaDaFicha
+{
+    Guid? SourceBankEntryId { get; set; }
+    string Nome { get; set; }
+    SpellAbilityTipo Tipo { get; set; }
+    int Grau { get; set; }
+    int GastoEmPI { get; set; }
+    int Custo { get; set; }
+    string Descricao { get; set; }
+    List<TEfeito> Efeitos { get; set; }
+    CategoriaDePassiva? Categoria { get; set; }
+    RequisitosDePassiva? Requisitos { get; set; }
+    bool CriadaNaFicha { get; set; }
+}
+
+/// <summary>Um Efeito de uma Magia/Habilidade da ficha (CharacterSpellAbilityEffect, NpcSpellAbilityEffect, CreatureSpellAbilityEffect).</summary>
+public interface IEfeitoDaMagiaDaFicha
+{
+    string EfeitoNome { get; set; }
+    int? Quantidade { get; set; }
+    int CustoPI { get; set; }
 }

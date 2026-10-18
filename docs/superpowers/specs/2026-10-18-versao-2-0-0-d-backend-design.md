@@ -193,3 +193,6 @@ mantido; fica para o usuário decidir depois.
 - Inventário/POST `inventory`: o Personagem só aceita Item Geral ("Item Geral não encontrado.", Ficha de Personagem
   5.a); o NPC aceita qualquer Item do Catálogo, inclusive Arma/Armadura/Escudo/Artefato ("Item não encontrado."),
   embora a Ficha de NPCs não mude 5.a (mantido via hook `ConferirItemAsync` de `InventarioDaFichaController`).
+- Magias e Habilidades/GET `spell-abilities` e GET `spell-abilities/passivas-disponiveis`: o Personagem nega
+  acesso com 404, enquanto seus POST/PUT/DELETE de Magias (e todos os outros endpoints da Ficha de Personagem)
+  negam com 403 (mantido via `FichaParaLeituraAsync` de `MagiasDaFichaController`, que nega com 404 nos três tipos).
