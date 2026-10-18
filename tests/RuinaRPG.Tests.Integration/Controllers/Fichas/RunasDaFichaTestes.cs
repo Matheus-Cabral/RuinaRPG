@@ -209,6 +209,20 @@ public abstract class RunasDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFi
         (await PublicRunesAsync(f.Token, f.CampaignId!)).Should().ContainSingle(e => e.Nome == "Runa Sombria" && e.Tipo == "Negra");
     }
 
+    /// <summary>Era o caso do NPC: o Mestre na sua própria ficha (no NPC, fora de campanha).</summary>
+    [Fact]
+    public async Task A_rune_from_scratch_by_the_gm_with_a_tipo_returns_it_and_the_bank_copy_carries_it()
+    {
+        var f = await NovaFichaAsync();
+
+        var response = await AddAsync(f, f.GmToken, new AdicionarRuna("Runa Sombria", "Escura.", 2, null, null, "Negra", Disciplina: "Adicao"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await response.Content.ReadFromJsonAsync<RunaLida>())!.Tipo.Should().Be("Negra");
+        (await RunesOfAsync(f, f.GmToken)).Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra");
+        (await BankOfAsync(f.GmToken)).Should().ContainSingle(e => e.Nome == "Runa Sombria" && e.Tipo == "Negra");
+    }
+
     [Fact]
     public async Task A_rune_without_tipo_has_a_null_tipo()
     {

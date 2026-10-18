@@ -210,7 +210,12 @@ public abstract class FichaDePersonagemOuNpcTestes<TTipo>(ApiFixture fixture) : 
     {
         var corpo = JsonSerializer.SerializeToNode(AtualizacaoValida())!.AsObject();
         foreach (var (campo, valor) in JsonSerializer.SerializeToNode(mudancas)!.AsObject())
+        {
+            // Um nome errado criaria um campo novo que a API ignora em silêncio; falha alto em vez disso.
+            if (!corpo.ContainsKey(campo))
+                throw new ArgumentException($"O corpo de atualização não tem o campo '{campo}'.", nameof(mudancas));
             corpo[campo] = valor?.DeepClone();
+        }
         return corpo;
     }
 

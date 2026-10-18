@@ -119,6 +119,36 @@ public abstract class MagiasDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeF
         (await SourceBankEntryIdAsync(sheetCopy.Id)).Should().Be(Guid.Parse(bankEntry.Id));
     }
 
+    /// <summary>Era o caso do NPC/Criatura: o Mestre escolhe do banco na sua própria ficha, sem anexo à campanha.</summary>
+    [Fact]
+    public async Task AddFromBankEntry_by_the_gm_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it()
+    {
+        var f = await NovaFichaAsync();
+        await SetPiAsync(f, 1000);
+
+        var bankCreateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", f.GmToken,
+            new CreateSpellAbilityEntryRequest("Cura Leve", "Habilidade", 1, "Restaura um pouco de vida.",
+                [new SpellAbilityEffectRequest("Dano", 2, 4), new SpellAbilityEffectRequest("Cura", null, 2)])));
+        var bankEntry = await bankCreateResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>();
+
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "spell-abilities"), f.GmToken,
+            new AdicionarMagia(bankEntry!.Id, null, null, null, null, null)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sheetCopy = await response.Content.ReadFromJsonAsync<MagiaLida>();
+        sheetCopy!.Nome.Should().Be(bankEntry.Nome);
+        sheetCopy.Tipo.Should().Be(bankEntry.Tipo);
+        sheetCopy.Grau.Should().Be(bankEntry.Grau);
+        sheetCopy.Descricao.Should().Be(bankEntry.Descricao);
+        sheetCopy.GastoEmPI.Should().Be(bankEntry.GastoEmPI);
+        sheetCopy.Custo.Should().Be(bankEntry.Custo);
+        sheetCopy.Efeitos.Should().BeEquivalentTo(bankEntry.Efeitos);
+
+        var bank = await GetBankAsync(f.GmToken);
+        bank.Should().ContainSingle().Which.Id.Should().Be(bankEntry.Id); // escolher do banco não gera uma segunda entrada
+        (await SourceBankEntryIdAsync(sheetCopy.Id)).Should().Be(Guid.Parse(bankEntry.Id));
+    }
+
     [Fact]
     public async Task Delete_removes_only_the_sheet_copy()
     {

@@ -420,7 +420,7 @@ A Task 12 preencheu os destinos das suas linhas (verificados contra `dotnet test
 | Método | Existe em | Destino |
 |---|---|---|
 | `AddFromScratch_creates_the_sheet_entry_and_an_independent_bank_copy` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromScratch_creates_the_sheet_entry_and_an_independent_bank_copy` (Personagem/NPC/Criatura) |
-| `AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) |
+| `AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) + `Fichas.MagiasDaFichaTestes.AddFromBankEntry_by_the_gm_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) — o caminho do Mestre na própria ficha |
 | `Delete_removes_only_the_sheet_copy` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.Delete_removes_only_the_sheet_copy` (Personagem/NPC/Criatura) |
 | `Add_without_either_SourceBankEntryId_or_from_scratch_fields_returns_400` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.Add_without_either_SourceBankEntryId_or_from_scratch_fields_returns_400` (Personagem/NPC/Criatura) |
 | `Add_by_a_different_gm_returns_404` | Npc/Creature | `Fichas.MagiasDaFichaTestes.Add_by_someone_without_access_returns_the_denied_status` (Personagem/NPC/Criatura) — status de `Tipo.StatusNegado` (403/404) |
@@ -446,7 +446,7 @@ A Task 12 preencheu os destinos das suas linhas (verificados contra `dotnet test
 | Método | Existe em | Destino |
 |---|---|---|
 | `AddFromScratch_creates_the_sheet_entry_and_an_independent_bank_copy` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromScratch_creates_the_sheet_entry_and_an_independent_bank_copy` (Personagem/NPC/Criatura) |
-| `AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) |
+| `AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.AddFromBankEntry_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) + `Fichas.MagiasDaFichaTestes.AddFromBankEntry_by_the_gm_copies_every_field_and_reuses_the_bank_entry_without_duplicating_it` (Personagem/NPC/Criatura) — o caminho do Mestre na própria ficha |
 | `Delete_removes_only_the_sheet_copy` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.Delete_removes_only_the_sheet_copy` (Personagem/NPC/Criatura) |
 | `Add_without_either_SourceBankEntryId_or_from_scratch_fields_returns_400` | Character/Npc/Creature | `Fichas.MagiasDaFichaTestes.Add_without_either_SourceBankEntryId_or_from_scratch_fields_returns_400` (Personagem/NPC/Criatura) |
 | `Add_by_a_different_gm_returns_404` | Npc/Creature | `Fichas.MagiasDaFichaTestes.Add_by_someone_without_access_returns_the_denied_status` (Personagem/NPC/Criatura) — status de `Tipo.StatusNegado` (403/404) |
@@ -517,7 +517,7 @@ A Task 12 preencheu os destinos das suas linhas (verificados contra `dotnet test
 | `A_rune_added_by_the_gm_lands_in_the_bank` | Npc | `Fichas.RunasDaFichaTestes.A_rune_added_by_the_gm_lands_in_the_bank_but_is_not_published_to_the_campaign` (Personagem/NPC) |
 | `A_rune_added_by_the_player_a_npc_was_granted_to_is_also_published_to_the_campaign` | Npc | `Fichas.RunasDaFichaTestes.A_rune_added_by_the_player_lands_in_the_bank_and_is_published_to_the_campaign` (Personagem/NPC) |
 | `A_rune_picked_from_the_bank_copies_its_fields_without_duplicating_the_bank_entry` | Character/Npc | `Fichas.RunasDaFichaTestes.A_rune_picked_from_the_bank_copies_its_fields_without_duplicating_the_bank_entry` (Personagem/NPC) |
-| `A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it` | Character/Npc | `Fichas.RunasDaFichaTestes.A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it` (Personagem/NPC) |
+| `A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it` | Character/Npc | `Fichas.RunasDaFichaTestes.A_rune_from_scratch_with_a_tipo_returns_it_and_the_bank_copy_carries_it` (Personagem/NPC) + `Fichas.RunasDaFichaTestes.A_rune_from_scratch_by_the_gm_with_a_tipo_returns_it_and_the_bank_copy_carries_it` (Personagem/NPC) — o caminho do Mestre na própria ficha |
 | `A_rune_with_an_unknown_tipo_returns_400_and_creates_nothing` | Character/Npc | `Fichas.RunasDaFichaTestes.A_rune_with_an_unknown_tipo_returns_400_and_creates_nothing` (Personagem/NPC) |
 | `A_rune_picked_from_the_bank_copies_the_tipo` | Character/Npc | `Fichas.RunasDaFichaTestes.A_rune_picked_from_the_bank_copies_the_tipo` (Personagem/NPC) |
 | `A_player_can_only_pick_bank_entries_the_gm_published_to_the_campaign` | Character/Npc | `Fichas.RunasDaFichaTestes.A_player_can_only_pick_bank_entries_the_gm_published_to_the_campaign` (Personagem/NPC) |
