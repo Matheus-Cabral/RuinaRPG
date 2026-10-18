@@ -1,6 +1,5 @@
 using FluentAssertions;
 using RuinaRPG.Domain.Rules.ReferenceData;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.Rules;
 

@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
-using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Identity;

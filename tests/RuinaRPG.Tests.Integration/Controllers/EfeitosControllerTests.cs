@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -12,17 +10,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class EfeitosControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
-    private async Task<string> GrantRulesAuditorAndReturnEmailAsync(string email)
-    {
-        await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-        return email;
-    }
-
     [Fact]
     public async Task List_is_seeded_with_51_effects_and_is_open_to_any_authenticated_GM()
     {
@@ -177,8 +164,8 @@ public class EfeitosControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         await CleanUpCreatedEfeitoAsync(response, gmToken);
     }
 
-    // The Efeitos table is shared across every test in this class (single Postgres container via
-    // BlankDatabaseFixture, never reset between tests), and List_is_seeded_with_51_effects asserts an
+    // The Efeitos table is shared across every test in this class (one Postgres database per test
+    // class, never reset between tests), and List_is_seeded_with_51_effects asserts an
     // exact count. Any test that successfully creates a new catalog row must delete it again
     // before returning, so the shared count is restored regardless of test execution order.
     private async Task CleanUpCreatedEfeitoAsync(HttpResponseMessage createResponse, string gmToken)

@@ -15,7 +15,6 @@ namespace RuinaRPG.Tests.Integration;
 
 public class GmPasswordResetCliTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<AuthResponse> RegisterGmAsync(string nickname, string email)
     {
         var response = await Client.PostAsJsonAsync("/api/auth/register/gm",

@@ -1,13 +1,10 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Rules.Niveis;

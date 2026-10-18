@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +18,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class TabelaDeNiveisControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null) =>
         Client.SendAsync(AuthedRequest(method, url, token, body));
 

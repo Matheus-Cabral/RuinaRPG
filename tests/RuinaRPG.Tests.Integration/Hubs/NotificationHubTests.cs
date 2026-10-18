@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.SignalR;
@@ -15,7 +14,6 @@ namespace RuinaRPG.Tests.Integration.Hubs;
 
 public class NotificationHubTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private static string Unique(string prefix) => prefix + Guid.NewGuid().ToString("N")[..10];
 
     private async Task<string> RegisterGmAsync()

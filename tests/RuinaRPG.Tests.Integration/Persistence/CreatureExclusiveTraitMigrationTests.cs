@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Identity;

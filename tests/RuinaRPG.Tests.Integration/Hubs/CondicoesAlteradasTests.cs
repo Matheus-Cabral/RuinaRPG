@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
@@ -24,7 +23,6 @@ namespace RuinaRPG.Tests.Integration.Hubs;
 /// </summary>
 public class CondicoesAlteradasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private static readonly TimeSpan Arrives = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StaysSilent = TimeSpan.FromSeconds(1);
 

@@ -4,14 +4,12 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class RulebookControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task Get_without_a_token_returns_200()
     {

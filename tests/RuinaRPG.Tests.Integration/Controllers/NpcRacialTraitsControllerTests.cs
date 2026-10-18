@@ -1,8 +1,6 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -10,7 +8,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class NpcRacialTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> CreateSheetAsync(string gmToken)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));

@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;

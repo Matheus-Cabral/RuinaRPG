@@ -17,7 +17,6 @@ namespace RuinaRPG.Tests.Integration.Rules;
 
 public class EquipmentKitGrantServiceTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     // Item.GmId and Campaign.GmId both carry a real DB-level FK to AspNetUsers, and
     // CampaignAttachment.CampaignId/ItemId carry real FKs to Campaigns/Items — a bare
     // Guid.NewGuid() used directly as GmId/CampaignId/ItemId (as a unit-test double might get

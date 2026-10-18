@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Rules.Niveis;
@@ -23,7 +22,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
 
     protected override Task DefinirXpAsync(FichaDeTeste f, int xp) =>
         Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}/experiencia-atual", f.GmToken, xp));
-
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
@@ -204,7 +202,6 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         body.Abate.Should().BeNull();
         body.Assistencia.Should().BeNull();
     }
-
 
     [Fact]
     public async Task Update_allows_an_Afinidade_liberada_pela_Vocacao_atual()

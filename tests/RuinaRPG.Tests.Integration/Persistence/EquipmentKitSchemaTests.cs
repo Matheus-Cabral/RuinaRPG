@@ -8,7 +8,6 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 public class EquipmentKitSchemaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task EquipmentKit_with_a_fixed_item_and_a_choice_slot_round_trips()
     {

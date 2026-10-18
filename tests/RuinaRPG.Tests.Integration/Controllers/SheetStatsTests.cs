@@ -1,16 +1,12 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Api.Services;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -24,7 +20,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class SheetStatsTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> SetUpSheetAsync(string gmToken, string playerId)
     {
         var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));

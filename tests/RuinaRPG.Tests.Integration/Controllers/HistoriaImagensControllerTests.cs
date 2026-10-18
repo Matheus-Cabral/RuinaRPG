@@ -16,7 +16,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class HistoriaImagensControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterGmAsync(string tag)
     {
         var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"HImgGm{tag}", $"himggm{tag}@teste.com", "Senha!123", "Senha!123"));

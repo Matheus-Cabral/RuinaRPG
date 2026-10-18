@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
@@ -12,7 +11,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// <summary>Requisitos - Livro de Regras R0010: a aba Habilidades Passivas, por papel e por campanha.</summary>
 public class RulebookPassivasControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterGmAsync(string tag)
     {
         var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"LivroGm{tag}", $"livrogm{tag}@teste.com", "Senha!123", "Senha!123"));

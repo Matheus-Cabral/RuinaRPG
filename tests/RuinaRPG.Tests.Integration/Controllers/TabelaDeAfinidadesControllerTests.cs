@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
-using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -20,7 +17,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 public class TabelaDeAfinidadesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Url = "/api/tabela-de-afinidades";
-
 
     private async Task<string> AuditorTokenAsync(string nickname, string email)
     {

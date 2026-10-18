@@ -1,7 +1,6 @@
 using Bunit;
 using Bunit.Rendering;
 using FluentAssertions;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Pages;

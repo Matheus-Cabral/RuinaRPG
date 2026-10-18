@@ -16,7 +16,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// <summary>Campanha R0016: consulta paginada do log de ficha, só para o GM.</summary>
 public class SheetLogsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private sealed record Cenario(string GmToken, string PlayerToken, Guid PlayerId, string CampaignId, Guid SheetId);
 
     private Task<HttpResponseMessage> GetAsync(string url, string token)

@@ -10,7 +10,6 @@ using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.Condicoes;
-using RuinaRPG.Domain.Encounters;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Items;
@@ -21,7 +20,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class EncounterParticipantCondicoesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private HttpRequestMessage Authed(HttpMethod method, string url, string token, object? body = null)
     {
         var message = new HttpRequestMessage(method, url);

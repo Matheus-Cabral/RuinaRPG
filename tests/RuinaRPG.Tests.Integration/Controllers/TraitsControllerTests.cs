@@ -1,10 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -16,17 +13,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class TraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
-    private async Task<string> GrantRulesAuditorAndReturnEmailAsync(string email)
-    {
-        await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-        return email;
-    }
-
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));

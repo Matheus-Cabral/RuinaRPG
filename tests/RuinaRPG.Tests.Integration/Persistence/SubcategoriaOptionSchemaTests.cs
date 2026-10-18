@@ -13,7 +13,6 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 public class SubcategoriaOptionSchemaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task SubcategoriaOption_round_trips_and_the_three_item_types_persist_Subcategoria()
     {

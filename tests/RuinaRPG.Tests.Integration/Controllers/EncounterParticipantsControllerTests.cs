@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Encounters;
@@ -15,7 +13,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class EncounterParticipantsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> CreateEncounterAsync(string gmToken, string campaignId, string nome)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest(nome)));

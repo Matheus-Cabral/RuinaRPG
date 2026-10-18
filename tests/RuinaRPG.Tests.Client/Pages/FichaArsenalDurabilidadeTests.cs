@@ -2,7 +2,6 @@ using Bunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;

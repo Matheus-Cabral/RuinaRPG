@@ -4,7 +4,6 @@ using Moq;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Smoke;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.Smoke;
 

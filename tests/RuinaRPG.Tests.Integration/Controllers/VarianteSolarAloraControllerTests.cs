@@ -1,8 +1,6 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.NpcSheets;
@@ -13,7 +11,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 // GM dá um nome a ela na página de Habilidades Raciais.
 public class VarianteSolarAloraControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> SetUpCharacterSheetAsync(string gmToken, string playerId)
     {
         var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));

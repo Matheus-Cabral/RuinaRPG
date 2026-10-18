@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
-using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Domain;
 
 namespace RuinaRPG.Tests.Integration.Controllers;

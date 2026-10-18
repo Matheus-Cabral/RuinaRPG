@@ -1,6 +1,5 @@
 using FluentAssertions;
 using RuinaRPG.Domain.SpellsAndAbilities;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.SpellsAndAbilities;
 

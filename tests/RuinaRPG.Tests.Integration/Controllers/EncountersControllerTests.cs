@@ -1,9 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
-using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Contracts.NpcSheets;
 
@@ -11,7 +9,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class EncountersControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterJogadorAndGetTokenAsync(string gmToken, string nickname, string email)
     {
         var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));

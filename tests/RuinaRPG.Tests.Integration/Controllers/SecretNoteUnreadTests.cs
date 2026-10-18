@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
@@ -10,7 +9,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class SecretNoteUnreadTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private static string Unique(string prefix) => prefix + Guid.NewGuid().ToString("N")[..10];
 
     private async Task<string> RegisterGmAsync()

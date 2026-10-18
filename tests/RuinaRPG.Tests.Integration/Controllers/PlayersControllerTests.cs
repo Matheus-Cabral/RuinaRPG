@@ -10,7 +10,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class PlayersControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterGmAsync(string nickname, string email)
     {
         var response = await Client.PostAsJsonAsync("/api/auth/register/gm",

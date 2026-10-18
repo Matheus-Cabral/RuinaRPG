@@ -1,8 +1,6 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
@@ -11,7 +9,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class SubcategoriaOptionsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task List_is_open_to_any_authenticated_caller_and_filters_by_Tipo_and_Facet()
     {

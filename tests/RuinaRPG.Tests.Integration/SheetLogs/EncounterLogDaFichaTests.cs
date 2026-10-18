@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
@@ -25,7 +24,6 @@ public class EncounterLogDaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
     private const string RecursoDaFicha = "RecursoDaFicha";
     private const string NomeDoPersonagem = "Vann Astrel";
     private const string NomeDoNpc = "Sentinela da Ruína";
-
 
     private static string Rotulo<T>(string propriedade) => SheetLogMap.Entidades[typeof(T)].Campos[propriedade];
 

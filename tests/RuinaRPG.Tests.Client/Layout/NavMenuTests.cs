@@ -12,7 +12,6 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Tests.Client.Shared;
-using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;

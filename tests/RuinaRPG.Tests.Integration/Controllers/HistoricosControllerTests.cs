@@ -1,20 +1,16 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Rules;
-using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class HistoricosControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task List_without_a_token_returns_401()
     {

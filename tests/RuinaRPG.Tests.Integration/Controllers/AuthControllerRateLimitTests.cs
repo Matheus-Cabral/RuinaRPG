@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using RuinaRPG.Contracts.Auth;
 
@@ -9,16 +8,16 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class AuthControllerRateLimitTests : IClassFixture<ApiFixture>, IAsyncLifetime
 {
-    private readonly ApiFixture _postgres;
+    private readonly ApiFixture _fixture;
     private ApiFactory _factory = null!;
     private WebApplicationFactory<Program> _productionLimitFactory = null!;
     private HttpClient _client = null!;
 
-    public AuthControllerRateLimitTests(ApiFixture postgres) => _postgres = postgres;
+    public AuthControllerRateLimitTests(ApiFixture fixture) => _fixture = fixture;
 
     public Task InitializeAsync()
     {
-        _factory = new ApiFactory(_postgres.ConnectionString);
+        _factory = new ApiFactory(_fixture.ConnectionString);
         // Production's 10 logins/min (Técnico R0006); ApiFactory raises it for every other class.
         _productionLimitFactory = _factory.WithWebHostBuilder(b => b.UseSetting("RateLimiting:LoginPermitLimit", "10"));
         _client = _productionLimitFactory.CreateClient();

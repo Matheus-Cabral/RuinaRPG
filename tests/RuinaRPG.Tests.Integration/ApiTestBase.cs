@@ -57,6 +57,12 @@ public abstract class ApiTestBase(ApiFixture fixture) : IClassFixture<ApiFixture
         await db.SaveChangesAsync();
     }
 
+    protected async Task<string> GrantRulesAuditorAndReturnEmailAsync(string email)
+    {
+        await GrantRulesAuditorAsync(email);
+        return email;
+    }
+
     protected async Task<string> CreateCampaignAsync(string gmToken, string nome)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));

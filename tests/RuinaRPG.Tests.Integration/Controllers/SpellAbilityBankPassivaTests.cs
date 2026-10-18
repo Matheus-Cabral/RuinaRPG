@@ -1,15 +1,12 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class SpellAbilityBankPassivaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private static RequisitosDePassivaDto RequisitosCompletos() => new(
         Nivel: 3, Vocacao: "Feiticeiro", Classe: "Elementalista", Linhagem: "Humano", Variante: "Sinir",
         Graduacao: 2, CoracaoDeMana: true, Afinidade: "Fogo", Estrela: "Liora",

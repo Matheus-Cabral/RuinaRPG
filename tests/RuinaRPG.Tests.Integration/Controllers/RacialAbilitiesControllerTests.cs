@@ -4,13 +4,11 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CharacterSheets;
-using Xunit;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class RacialAbilitiesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");

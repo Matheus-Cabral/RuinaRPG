@@ -3,7 +3,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Shared;
-using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
 using System.Net;
 using System.Net.Http.Json;

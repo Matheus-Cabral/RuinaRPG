@@ -6,10 +6,8 @@ using MudBlazor;
 using RuinaRPG.Client.Layout;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Tests.Client.Shared;
-using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Layout;

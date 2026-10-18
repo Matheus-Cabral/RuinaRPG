@@ -2,7 +2,6 @@ using System.Net;
 using Blazored.LocalStorage;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using RuinaRPG.Client.Services;
 using RuinaRPG.Contracts.Auth;
 using Xunit;

@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Infrastructure.Persistence;
@@ -19,7 +17,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class DurabilidadesPorRankControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     /// <summary>Restores the row at the end of a test that edits it — the table is shared by every Fact.</summary>
     private async Task<Func<Task>> CaptureUndoAsync(string rank)
     {

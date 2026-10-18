@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using MudBlazor;
-using MudBlazor.Services;
 using RuinaRPG.Client.Layout;
 using RuinaRPG.Client.Services;
 using RuinaRPG.Contracts.Auth;
@@ -17,7 +16,6 @@ using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Layout;

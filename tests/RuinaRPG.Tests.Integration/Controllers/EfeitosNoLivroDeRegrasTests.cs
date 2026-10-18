@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -21,7 +20,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class EfeitosNoLivroDeRegrasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterAuditorAsync(string nickname, string email)
     {
         var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));

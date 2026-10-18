@@ -10,7 +10,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class SpellAbilityBankControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");

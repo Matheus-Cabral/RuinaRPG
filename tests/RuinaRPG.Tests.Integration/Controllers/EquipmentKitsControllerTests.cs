@@ -1,10 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
@@ -14,7 +11,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class EquipmentKitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> CreateCharacterSheetAsync(string gmToken, string playerId, string campaignId)
     {
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));

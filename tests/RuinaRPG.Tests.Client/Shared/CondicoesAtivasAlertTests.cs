@@ -1,7 +1,6 @@
 using Bunit;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Condicoes;
 using System.Net;

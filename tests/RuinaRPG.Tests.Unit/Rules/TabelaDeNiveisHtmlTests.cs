@@ -1,7 +1,6 @@
 using FluentAssertions;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Rules;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.Rules;
 

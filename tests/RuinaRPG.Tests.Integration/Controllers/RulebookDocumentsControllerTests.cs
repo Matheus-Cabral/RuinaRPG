@@ -1,18 +1,14 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Rules;
-using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
 public class RulebookDocumentsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     [Fact]
     public async Task List_returns_the_3_documents_all_default_when_no_override_exists()
     {

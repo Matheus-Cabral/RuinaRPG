@@ -8,7 +8,6 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
-using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.CreatureSheets;
 
@@ -20,7 +19,6 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : FichaTestes<Tip
 {
     protected override Task DefinirXpAsync(FichaDeTeste f, int xp) =>
         Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}/experiencia-atual", f.GmToken, xp));
-
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {

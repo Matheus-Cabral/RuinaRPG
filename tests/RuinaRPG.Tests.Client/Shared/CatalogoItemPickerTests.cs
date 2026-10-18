@@ -7,7 +7,6 @@ using MudBlazor;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Items;
-using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;

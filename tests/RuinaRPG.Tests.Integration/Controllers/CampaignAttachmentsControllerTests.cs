@@ -2,12 +2,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
-using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Items;
-using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 

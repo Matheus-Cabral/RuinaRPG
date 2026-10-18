@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
@@ -22,7 +21,6 @@ namespace RuinaRPG.Tests.Integration.SheetLogs;
 /// <summary>Campanha R0016 / Técnico R0012: o interceptor grava o log de ficha no mesmo salvamento da alteração.</summary>
 public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private static string Rotulo<T>(string propriedade) => SheetLogMap.Entidades[typeof(T)].Campos[propriedade];
     private static string Secao<T>() => SheetLogMap.Entidades[typeof(T)].Secao;
 

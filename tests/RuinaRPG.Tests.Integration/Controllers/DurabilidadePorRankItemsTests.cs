@@ -1,10 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
@@ -23,7 +21,6 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// </summary>
 public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-
     private async Task<string> SetUpCharacterSheetAsync(string gmToken, string playerId)
     {
         var campaignResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest("Campanha", "")));

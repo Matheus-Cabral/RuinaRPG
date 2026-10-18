@@ -1,6 +1,5 @@
 using FluentAssertions;
 using RuinaRPG.Smoke;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.Smoke;
 

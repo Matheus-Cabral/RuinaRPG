@@ -1,12 +1,10 @@
 using Bunit;
 using Bunit.Rendering;
 using FluentAssertions;
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Shared.Fields;
 using RuinaRPG.Contracts.Rules;
-using RuinaRPG.Tests.Client.Shared;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
