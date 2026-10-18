@@ -18,6 +18,7 @@ seconds_between() {
 # Cold: an empty commit (new tags) on an empty build cache. docker builder prune wipes the host-wide
 # build cache, as the old script did.
 bench_commit "bench cold"
+echo 'AVISO: docker builder prune -af apaga o cache de build de TODO o host.' >&2
 docker builder prune -af > /dev/null
 rm -f "$BENCH_CLONE/deploy/state/deploy.log"
 timed bench_deploy > "$RESULTS_DIR/$LABEL-deploy-cold.log" 2>&1

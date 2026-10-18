@@ -54,7 +54,9 @@ services:
     ports:
       - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
     volumes:
-      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # The directory, not the file: a single-file bind mount pins the inode, and git checkout replaces
+      # the file, so nginx -s reload would keep serving the old config. upstream.conf.example is not *.conf.
+      - ./deploy/nginx:/etc/nginx/conf.d:ro
       - ./deploy/state/upstream.conf:/etc/nginx/upstream.conf:ro
       - webroot:/webroot:ro
       - images:/images:ro

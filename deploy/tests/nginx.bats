@@ -22,12 +22,14 @@ setup_file() {
   printf 'server { listen 8080; location / { default_type application/json; return 200 %s; } }\n' "'{\"x\":\"$big\"}'" > "$root/stub/default.conf"
   echo 'upstream app { server stub:8080; }' > "$root/upstream.conf"
   # nginx's workers run as uid 101; bats' temp dirs are private to us.
+  # A copy of the repo's config directory, mounted as a directory like docker-compose.yml does.
+  cp -r "$repo/deploy/nginx" "$root/conf.d"
   chmod -R a+rX "$BATS_FILE_TMPDIR"
   docker network create "$NGX_NET" > /dev/null
   docker run -d --name "$NGX_STUB" --network "$NGX_NET" --network-alias stub \
     -v "$root/stub/default.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine > /dev/null
   docker run -d --name "$NGX_WEB" --network "$NGX_NET" -p 127.0.0.1::80 \
-    -v "$repo/deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+    -v "$root/conf.d:/etc/nginx/conf.d:ro" \
     -v "$root/upstream.conf:/etc/nginx/upstream.conf:ro" \
     -v "$root/webroot:/webroot:ro" -v "$root/images:/images:ro" nginx:1.27-alpine > /dev/null
   export NGX_URL="http://$(docker port "$NGX_WEB" 80/tcp | head -1)"
@@ -106,9 +108,31 @@ cache_is() { [ "$(grep -c '^cache-control:' <<< "$1")" -eq 1 ] && grep -qx "cach
 }
 
 @test "auth responses are never compressed" {
-  ! grep -q '^content-encoding:' <<< "$(gz /api/auth/login)"
+  h="$(gz /api/auth/login)"
+  grep -q '^content-type: application/json' <<< "$h"   # the stub answered: not a vacuous pass
+  ! grep -q '^content-encoding:' <<< "$h"
 }
 
 @test "SignalR is never compressed" {
-  ! grep -q '^content-encoding:' <<< "$(gz /hubs/notifications)"
+  h="$(gz /hubs/notifications)"
+  grep -q '^content-type: application/json' <<< "$h"   # the stub answered: not a vacuous pass
+  ! grep -q '^content-encoding:' <<< "$h"
+}
+
+# Runs last: it changes the served config. git checkout replaces a file (new inode); the reload in
+# deploy.sh must still pick the change up, which a single-file bind mount would not allow.
+@test "a replaced default.conf is picked up by nginx -s reload" {
+  local conf="$BATS_FILE_TMPDIR/ngx/conf.d/default.conf"
+  sed '/location = \/index.html {/a\        add_header X-Bats-Reload 1 always;' "$conf" > "$conf.new"
+  grep -q X-Bats-Reload "$conf.new"
+  chmod a+r "$conf.new"
+  mv "$conf.new" "$conf"
+  docker exec "$NGX_WEB" nginx -t -q
+  docker exec "$NGX_WEB" nginx -s reload
+  local i
+  for i in $(seq 1 25); do
+    headers /index.html | grep -qix 'x-bats-reload: 1' && return 0
+    sleep 0.2
+  done
+  return 1
 }

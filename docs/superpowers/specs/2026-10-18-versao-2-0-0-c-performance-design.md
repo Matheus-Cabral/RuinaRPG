@@ -90,9 +90,15 @@ Cloudflare edge, so a deleted image is not left reachable there; the browser sti
 
 `/api/` responses keep whatever headers the API sends; nginx only compresses them.
 
-**Rollout:** the file is bind-mounted into the long-lived `web` container; the first 2.0.0 deploy's
-color switch reloads it. No container is recreated. A rollback to 1.5.0 keeps the new `default.conf`
-(the rollback does not check out files), which is compatible with 1.5.0's client and API.
+**Rollout:** the config *directory* (`./deploy/nginx`) is bind-mounted at `/etc/nginx/conf.d` in the
+long-lived `web` container (a single-file mount pins the inode, and `git checkout` replaces the file, so
+a reload would keep the old config). The color switch's `nginx -t && nginx -s reload` therefore picks up
+a checked-out change; `upstream.conf.example` does not match `*.conf`, so only `default.conf` loads. At
+the production cutover `web` is created fresh (1.5.0 has an `nginx` service, not `web`). Any **existing**
+2.0.0-era stack created before this fix (local stack, rehearsal stacks) needs one
+`docker compose -p <project> up -d --force-recreate --no-deps web` to switch to the directory mount.
+A rollback to 1.5.0 keeps the new `default.conf` (the rollback does not check out files), which is
+compatible with 1.5.0's client and API.
 
 ### C.2 Shared Dockerfile (`deploy/Dockerfile`)
 
