@@ -22,13 +22,19 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "POST", "masteries", 403 }, { "npc", "POST", "masteries", 404 }, { "creature", "POST", "masteries", 404 },
         { "character", "DELETE", $"masteries/{Guid.Empty}", 403 }, { "npc", "DELETE", $"masteries/{Guid.Empty}", 404 }, { "creature", "DELETE", $"masteries/{Guid.Empty}", 404 },
         { "character", "PUT", $"masteries/{Guid.Empty}", 403 },
+        { "character", "GET", "weapons", 403 }, { "npc", "GET", "weapons", 404 }, { "creature", "GET", "weapons", 404 },
+        { "character", "GET", "armor-slots", 403 }, { "npc", "GET", "armor-slots", 404 }, { "creature", "GET", "armor-slots", 404 },
+        { "character", "GET", "shields", 403 }, { "npc", "GET", "shields", 404 }, { "creature", "GET", "shields", 404 },
+        { "character", "POST", "weapons", 403 }, { "npc", "POST", "weapons", 404 }, { "creature", "POST", "weapons", 404 },
+        { "character", "PUT", "armor-slots/Capacete", 403 }, { "npc", "PUT", "armor-slots/Capacete", 404 }, { "creature", "PUT", "armor-slots/Capacete", 404 },
+        { "character", "DELETE", $"shields/{Guid.Empty}", 403 }, { "npc", "DELETE", $"shields/{Guid.Empty}", 404 }, { "creature", "DELETE", $"shields/{Guid.Empty}", 404 },
     };
 
     // Um corpo só, válido para todo PUT/POST da tabela (campos que a rota não usa são ignorados no binding).
     private static readonly object Corpo = new
     {
         Gasto = 1, AtributoEscolhido = (string?)null, Bonus = 0, TemMaestria = false,
-        Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0,
+        Nome = "Golpe", Pericia = "Atletismo", Atributo = "Forca", GastoMaestria = 0, ItemId = Guid.Empty.ToString(),
     };
 
     [Theory]
