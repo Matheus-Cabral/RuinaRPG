@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -15,9 +16,9 @@ namespace RuinaRPG.Api.Controllers;
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
 public sealed class CreatureTraitsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CreatureSheet> tipo)
-    : CaracteristicasDaFichaController<CreatureSheet, CreatureTrait, CreatureTraitResponse, CreatureTraitsListResponse, AddCreatureTraitRequest>(db, tabelaDeNiveis, tipo)
+    : CaracteristicasDaFichaController<CreatureSheet, CreatureTrait, CreatureTraitResponse, CreatureTraitsListResponse>(db, tabelaDeNiveis, tipo)
 {
-    protected override (string TraitId, string? Especificacao) Ler(AddCreatureTraitRequest request) => (request.TraitId, request.Especificacao);
+    protected override (string TraitId, string? Especificacao) Ler(AddTraitRequest request) => (request.TraitId, request.Especificacao);
 
     // Só o catálogo exclusivo de criatura (Auditoria de Regras R0005). As linhas do catálogo normal concedidas antes da
     // 1.5.0 continuam valendo em ListTraits/SomaDoCustoAsync/DeleteTrait.

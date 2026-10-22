@@ -47,7 +47,7 @@
     /// <summary>A ficha o incrementa quando as Condições mudam: a lista recarrega (traz o "Desabilitado por").</summary>
     [Parameter] public int Versao { get; set; }
 
-    // Subconjunto comum das respostas de Character/Npc/CreatureSpellAbilityResponse.
+    // Subconjunto comum de SpellAbilityResponse (RuinaRPG.Contracts.Fichas).
     private record PassivaDaFicha(string Id, string Nome, string Tipo, string Descricao, string? Categoria, List<string>? RequisitosPendentes, string? DesabilitadoPor = null);
 
     private List<PassivaDaFicha> _passivas = new();

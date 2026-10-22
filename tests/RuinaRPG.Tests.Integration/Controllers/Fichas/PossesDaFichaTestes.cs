@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 // Pedidos e respostas de Inventário e Artefato têm o mesmo JSON nos três tipos de ficha.
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AdicionarItem = RuinaRPG.Contracts.CharacterSheets.AddCharacterInventoryItemRequest;
-using ArtefatoDaPosse = RuinaRPG.Contracts.CharacterSheets.CharacterArtifactResponse;
-using ItemDoInventario = RuinaRPG.Contracts.CharacterSheets.CharacterInventoryItemResponse;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AdicionarItem = RuinaRPG.Contracts.Fichas.AddInventoryItemRequest;
+using ArtefatoDaPosse = RuinaRPG.Contracts.Fichas.ArtifactResponse;
+using ItemDoInventario = RuinaRPG.Contracts.Fichas.InventoryItemResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -324,8 +325,8 @@ public sealed class PossesDaFichaTestesCriatura(ApiFixture fixture) : PossesDaFi
         spoilBody!.ImageUrl.Should().StartWith("/images/");
         spoilBody.Descricao.Should().Be("Brilha levemente no escuro.");
 
-        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "artifacts"), f.Token, new AddCreatureArtifactRequest(artifactItemId)));
-        var artifactBody = await artifactResponse.Content.ReadFromJsonAsync<CreatureArtifactResponse>();
+        var artifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "artifacts"), f.Token, new AddArtifactRequest(artifactItemId)));
+        var artifactBody = await artifactResponse.Content.ReadFromJsonAsync<ArtifactResponse>();
         artifactBody!.ImageUrl.Should().StartWith("/images/");
         artifactBody.Descricao.Should().Be("Um anel de ouro maciço.");
     }

@@ -9,12 +9,12 @@ using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 
 // Respostas e pedidos de arsenal, posses e ficha têm o mesmo JSON no Personagem e no NPC nos campos lidos aqui.
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using ArmaLidaDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterWeaponResponse;
-using ArtefatoLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterArtifactResponse;
-using EscudoLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterShieldResponse;
-using ItemLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterInventoryItemResponse;
-using SlotLidoDaEquipagem = RuinaRPG.Contracts.CharacterSheets.CharacterArmorSlotResponse;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using ArmaLidaDaEquipagem = RuinaRPG.Contracts.Fichas.WeaponResponse;
+using ArtefatoLidoDaEquipagem = RuinaRPG.Contracts.Fichas.ArtifactResponse;
+using EscudoLidoDaEquipagem = RuinaRPG.Contracts.Fichas.ShieldResponse;
+using ItemLidoDaEquipagem = RuinaRPG.Contracts.Fichas.InventoryItemResponse;
+using SlotLidoDaEquipagem = RuinaRPG.Contracts.Fichas.ArmorSlotResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

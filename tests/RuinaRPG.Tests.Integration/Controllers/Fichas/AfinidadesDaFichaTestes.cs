@@ -3,14 +3,15 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Persistence;
 // Pedidos e resposta de Afinidade têm o mesmo JSON no Personagem e no NPC.
-using AdicionarAfinidade = RuinaRPG.Contracts.CharacterSheets.AddCharacterAffinityRequest;
-using AfinidadeLida = RuinaRPG.Contracts.CharacterSheets.CharacterAffinityResponse;
-using AtualizarAfinidade = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAffinityRequest;
+using AdicionarAfinidade = RuinaRPG.Contracts.Fichas.AddAffinityRequest;
+using AfinidadeLida = RuinaRPG.Contracts.Fichas.AffinityResponse;
+using AtualizarAfinidade = RuinaRPG.Contracts.Fichas.UpdateAffinityRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -387,7 +388,7 @@ public sealed class AfinidadesDaFichaTestesPersonagem(ApiFixture fixture) : Afin
     }
 
     private Task<HttpResponseMessage> AddValoresAsync(FichaDeTeste f, string elemento, int elementoValor, string? segunda, int? segundaValor, int? subValor) =>
-        AddAsync(f, new AddCharacterAffinityRequest(elemento, elementoValor, segunda, segundaValor, subValor, null));
+        AddAsync(f, new AddAffinityRequest(elemento, elementoValor, segunda, segundaValor, subValor, null));
 
     private async Task<CharacterSheetResponse> GetSheetAsync(FichaDeTeste f) =>
         (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{f.SheetId}", f.Token)))
@@ -455,12 +456,12 @@ public sealed class AfinidadesDaFichaTestesPersonagem(ApiFixture fixture) : Afin
     {
         var f = await FichaAsync();
         await SetVocacaoAsync(f, "Feiticeiro", 3);
-        var added = await (await AddValoresAsync(f, "Fogo", 6, null, null, null)).Content.ReadFromJsonAsync<CharacterAffinityResponse>();
+        var added = await (await AddValoresAsync(f, "Fogo", 6, null, null, null)).Content.ReadFromJsonAsync<AffinityResponse>();
 
         await SetVocacaoAsync(f, "Feiticeiro", 0); // gasto 6 > máximo 3, mas baixar o máximo não é bloqueado
 
-        var lower = await UpdateAsync(f, f.Token, added!.Id, new UpdateCharacterAffinityRequest("Fogo", 5, null, null, null, null));
-        var higher = await UpdateAsync(f, f.Token, added.Id, new UpdateCharacterAffinityRequest("Fogo", 6, null, null, null, null));
+        var lower = await UpdateAsync(f, f.Token, added!.Id, new UpdateAffinityRequest("Fogo", 5, null, null, null, null));
+        var higher = await UpdateAsync(f, f.Token, added.Id, new UpdateAffinityRequest("Fogo", 6, null, null, null, null));
 
         lower.StatusCode.Should().Be(HttpStatusCode.OK);
         higher.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -484,7 +485,7 @@ public sealed class AfinidadesDaFichaTestesNpc(ApiFixture fixture) : AfinidadesD
         var f = await FichaAsync();
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{f.SheetId}", f.GmToken, ValidUpdate() with { AfinidadeAdicional = 1 }));
 
-        var response = await AddAsync(f, new AddCharacterAffinityRequest("Fogo", 3, "Terra", 2, 1, null));
+        var response = await AddAsync(f, new AddAffinityRequest("Fogo", 3, "Terra", 2, 1, null));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var sheet = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{f.SheetId}", f.GmToken)))
@@ -502,7 +503,7 @@ public sealed class AfinidadesDaFichaTestesNpc(ApiFixture fixture) : AfinidadesD
         var f = await FichaAsync();
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{f.SheetId}", f.GmToken,
             ValidUpdate() with { Afinidade = "Fogo", AfinidadeAdicional = 10 }));
-        var added = await AddAsync(f, new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null));
+        var added = await AddAsync(f, new AddAffinityRequest("Fogo", 7, null, null, null, null));
         added.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{f.SheetId}/sub-attributes", f.GmToken));

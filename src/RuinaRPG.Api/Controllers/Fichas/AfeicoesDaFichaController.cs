@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -9,7 +10,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// Afeições da ficha (criar, listar e apagar), para os três tipos. A rota fica na subclasse de cada tipo;
 /// editar uma Afeição existente só o Personagem tem, na própria subclasse.
 /// </summary>
-public abstract class AfeicoesDaFichaController<TSheet, TLinha, TResponse, TAdd>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
+public abstract class AfeicoesDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, ILinhaDaFicha
@@ -19,12 +20,12 @@ public abstract class AfeicoesDaFichaController<TSheet, TLinha, TResponse, TAdd>
     protected DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
     /// <summary>Uma Afeição nova do tipo (as entidades têm Nome required, então não servem para new()).</summary>
-    protected abstract TLinha Nova(Guid sheetId, TAdd request);
+    protected abstract TLinha Nova(Guid sheetId, AddAffectionRequest request);
 
-    protected abstract TResponse Resposta(TLinha affection);
+    protected abstract AffectionResponse Resposta(TLinha affection);
 
     [HttpPost("affections")]
-    public async Task<ActionResult<TResponse>> AddAffection(Guid sheetId, TAdd request)
+    public async Task<ActionResult<AffectionResponse>> AddAffection(Guid sheetId, AddAffectionRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;
@@ -37,7 +38,7 @@ public abstract class AfeicoesDaFichaController<TSheet, TLinha, TResponse, TAdd>
     }
 
     [HttpGet("affections")]
-    public async Task<ActionResult<List<TResponse>>> ListAffections(Guid sheetId)
+    public async Task<ActionResult<List<AffectionResponse>>> ListAffections(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;

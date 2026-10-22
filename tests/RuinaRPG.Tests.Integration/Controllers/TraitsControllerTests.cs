@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -117,7 +118,7 @@ public class TraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
     [Fact]
     public async Task List_with_no_filter_returns_a_real_Id_for_a_known_trait()
     {
-        // TraitId is what AddCharacterTraitRequest (and the Npc/Creature equivalents) actually
+        // TraitId is what AddTraitRequest (and the Npc/Creature equivalents) actually
         // needs — this is the one endpoint that lets a caller resolve it, unlike
         // CompendioController's search, which only ever returns Nome/Descricao text.
         var token = await RegisterGmAndGetTokenAsync("TraitGm1", "trait1@teste.com");
@@ -249,7 +250,7 @@ public class TraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         var sheetId = (await sheetResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddCharacterTraitRequest(created!.Id, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/traits", playerToken, new AddTraitRequest(created!.Id, null)));
 
         var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/traits/{created.Id}", gmToken));
 

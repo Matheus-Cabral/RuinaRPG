@@ -5,6 +5,7 @@ using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Invites;
 using RuinaRPG.Contracts.Runes;
 
@@ -374,7 +375,7 @@ public class RuneBankControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         var (imageId, imageUrl) = await UploadImageAsync(playerToken, campaignId);
         var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/runes", playerToken,
-            new AddCharacterRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId, Disciplina: "Adicao")));
+            new AddRuneRequest("Runa do Jogador", "Com imagem dele.", 1, null, imageId, Disciplina: "Adicao")));
         add.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var bankCopy = (await ListAsync(gmToken)).Single(e => e.Nome == "Runa do Jogador");

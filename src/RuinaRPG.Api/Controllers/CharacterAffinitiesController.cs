@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Controllers.Fichas;
-using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -15,15 +15,15 @@ namespace RuinaRPG.Api.Controllers;
 [Authorize]
 [Route("api/character-sheets/{sheetId}/affinities")]
 public sealed class CharacterAffinitiesController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo)
-    : AfinidadesDaFichaController<CharacterSheet, CharacterAffinity, CharacterAffinityResponse, AddCharacterAffinityRequest, UpdateCharacterAffinityRequest>(db, tipo)
+    : AfinidadesDaFichaController<CharacterSheet, CharacterAffinity>(db, tipo)
 {
-    protected override PedidoDeAfinidade LerNova(AddCharacterAffinityRequest r) =>
+    protected override PedidoDeAfinidade LerNova(AddAffinityRequest r) =>
         new(r.Elemento, r.ElementoValor, r.SegundaEssencia, r.SegundaEssenciaValor, r.SubElementoValor, r.Experiencia);
 
-    protected override PedidoDeAfinidade LerAlteracao(UpdateCharacterAffinityRequest r) =>
+    protected override PedidoDeAfinidade LerAlteracao(UpdateAffinityRequest r) =>
         new(r.Elemento, r.ElementoValor, r.SegundaEssencia, r.SegundaEssenciaValor, r.SubElementoValor, r.Experiencia);
 
-    protected override CharacterAffinityResponse Resposta(CharacterAffinity a, int? elementoValorComCondicoes) =>
+    protected override AffinityResponse Resposta(CharacterAffinity a, int? elementoValorComCondicoes) =>
         new(a.Id.ToString(), a.Elemento?.ToString(), a.ElementoValor, a.SegundaEssencia?.ToString(), a.SegundaEssenciaValor, a.SubElemento?.ToString(), a.SubElementoValor, a.Experiencia,
             elementoValorComCondicoes);
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Fichas;
@@ -12,7 +13,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// Linhas de Afinidade da ficha (Personagem e NPC). A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}/affinities</c>)
 /// fica na subclasse de cada tipo.
 /// </summary>
-public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAdd, TUpdate>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
+public abstract class AfinidadesDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IAfinidadeDaFicha, new()
@@ -21,11 +22,11 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAd
 
     private DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract PedidoDeAfinidade LerNova(TAdd request);
+    protected abstract PedidoDeAfinidade LerNova(AddAffinityRequest request);
 
-    protected abstract PedidoDeAfinidade LerAlteracao(TUpdate request);
+    protected abstract PedidoDeAfinidade LerAlteracao(UpdateAffinityRequest request);
 
-    protected abstract TResponse Resposta(TLinha linha, int? elementoValorComCondicoes);
+    protected abstract AffinityResponse Resposta(TLinha linha, int? elementoValorComCondicoes);
 
     /// <summary>
     /// A recusa por Vocação Arcana (Ficha de Personagem R0007), ou null. Por padrão nenhuma: no NPC o máximo só
@@ -38,7 +39,7 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAd
     protected sealed record PedidoDeAfinidade(string? Elemento, int? ElementoValor, string? SegundaEssencia, int? SegundaEssenciaValor, int? SubElementoValor, int? Experiencia);
 
     [HttpPost]
-    public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
+    public async Task<ActionResult<AffinityResponse>> Add(Guid sheetId, AddAffinityRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -68,7 +69,7 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAd
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
+    public async Task<ActionResult<List<AffinityResponse>>> List(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -79,7 +80,7 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAd
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<TResponse>> Update(Guid sheetId, Guid id, TUpdate request)
+    public async Task<ActionResult<AffinityResponse>> Update(Guid sheetId, Guid id, UpdateAffinityRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -181,5 +182,5 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha, TResponse, TAd
 
     // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
     // o que as Condições mudam vai à parte, só para exibir.
-    private TResponse Resposta(TLinha a, EfeitosDeCondicao efeitos) => Resposta(a, efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
+    private AffinityResponse Resposta(TLinha a, EfeitosDeCondicao efeitos) => Resposta(a, efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
 }

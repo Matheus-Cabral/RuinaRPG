@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 [Authorize]
 [Route("api/creature-sheets/{sheetId}")]
 public sealed class CreatureArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CreatureSheetStats stats, ITipoDeFicha<CreatureSheet> tipo)
-    : ArsenalDaFichaController<CreatureSheet, CreatureWeapon, CreatureArmorSlot, CreatureShield, CreatureWeaponResponse, CreatureArmorSlotResponse, CreatureShieldResponse, AddCreatureWeaponRequest, UpdateCreatureArmorSlotRequest, AddCreatureShieldRequest>(
+    : ArsenalDaFichaController<CreatureSheet, CreatureWeapon, CreatureArmorSlot, CreatureShield, CreatureWeaponResponse, CreatureArmorSlotResponse, AddCreatureWeaponRequest>(
         db, durabilidades, penalidades, tipo)
 {
     /// <summary>
@@ -77,13 +78,13 @@ public sealed class CreatureArsenalController(RuinaRpgDbContext db, Durabilidade
         new(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, d.Maxima), d.Maxima, d.ImageUrl, item.Descricao, d.Inquebravel,
             d.Avaliacao.Requisitos, d.Avaliacao.RequisitosPendentes, d.Avaliacao.Penalidade, d.Avaliacao.OutrasPenalidades, d.DesabilitadoPor);
 
-    protected override CreatureShieldResponse RespostaDeEscudo(CreatureShield escudo, Escudo item, DetalhesDoItemEquipado d) =>
+    protected override ShieldResponse RespostaDeEscudo(CreatureShield escudo, Escudo item, DetalhesDoItemEquipado d) =>
         new(escudo.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, escudo.IsEquipped, DurabilidadeDeItem.LimitarAtual(escudo.DurabilidadeAtual, d.Maxima), d.Maxima ?? 0, d.ImageUrl, item.Descricao, d.Inquebravel,
             d.Avaliacao.Requisitos, d.Avaliacao.RequisitosPendentes, d.Avaliacao.Penalidade, d.Avaliacao.OutrasPenalidades, d.DesabilitadoPor);
 
-    protected override string? ItemIdDoSlot(UpdateCreatureArmorSlotRequest request) => request.ItemId;
+    protected override string? ItemIdDoSlot(UpdateArmorSlotRequest request) => request.ItemId;
 
-    protected override string ItemIdDoEscudo(AddCreatureShieldRequest request) => request.ItemId;
+    protected override string ItemIdDoEscudo(AddShieldRequest request) => request.ItemId;
 
     protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(CreatureSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
 }

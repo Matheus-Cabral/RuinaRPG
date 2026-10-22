@@ -6,6 +6,7 @@
 @inject IDialogService Dialogs
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
+@using RuinaRPG.Contracts.Fichas
 @using RuinaRPG.Contracts.NpcSheets
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.CharacterSheets
@@ -838,20 +839,20 @@
     private bool _imageExpanded;
     private bool _imageEditing;
     private bool _imageGalleryOpen;
-    private List<NpcAttributeResponse> _attributes = new();
+    private List<AttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
-    private List<NpcSkillResponse> _skills = new();
+    private List<SkillResponse> _skills = new();
 
     // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
     // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
     private string PericiaLabel(string chave) =>
         _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
-    private List<NpcAffinityResponse> _affinities = new();
+    private List<AffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
     private int _penalidadesVersao;
-    private List<NpcWeaponResponse> _weapons = new();
-    private List<NpcArmorSlotResponse> _armorSlots = new();
-    private List<NpcShieldResponse> _shields = new();
+    private List<WeaponResponse> _weapons = new();
+    private List<ArmorSlotResponse> _armorSlots = new();
+    private List<ShieldResponse> _shields = new();
     private readonly WeaponFormModel _weaponForm = new();
     private readonly ShieldFormModel _shieldForm = new();
     // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
@@ -859,21 +860,21 @@
     private SubAttributesResponse? _subAttributes;
     private ModificadorDeDanoResponse? _modificadorDeDano;
     private RacialAbilityResponse? _racialAbility;
-    private List<NpcSpellAbilityResponse> _spellAbilities = new();
+    private List<SpellAbilityResponse> _spellAbilities = new();
     private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
-    private List<NpcRuneResponse> _runes = new();
+    private List<RuneResponse> _runes = new();
     private List<RuneBankEntryResponse> _runeBankEntries = new();
     private readonly RuneOrigemModel _runeForm = new();
-    private List<NpcMasteryResponse> _masteries = new();
+    private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
-    private List<NpcInventoryItemResponse> _inventory = new();
+    private List<InventoryItemResponse> _inventory = new();
     private readonly InventoryFormModel _inventoryForm = new();
-    private List<NpcArtifactResponse> _artifacts = new();
+    private List<ArtifactResponse> _artifacts = new();
     private readonly ArtifactFormModel _artifactForm = new();
-    private List<NpcAffectionResponse> _affections = new();
+    private List<AffectionResponse> _affections = new();
     private readonly AffectionFormModel _affectionForm = new();
-    private NpcTraitsListResponse? _traits;
+    private TraitsListResponse? _traits;
     private List<string> _levelUpBonuses = new();
     private PendingRacialTraitChoiceResponse? _pendingRacialChoice;
     private bool _racialChoiceDialogOpen;
@@ -1291,13 +1292,13 @@
 
     private async Task LoadTabs2And3Async()
     {
-        _attributes = await Http.GetFromJsonAsync<List<NpcAttributeResponse>>($"npc-sheets/{SheetId}/attributes") ?? new();
+        _attributes = await Http.GetFromJsonAsync<List<AttributeResponse>>($"npc-sheets/{SheetId}/attributes") ?? new();
         _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"npc-sheets/{SheetId}/attributes/budget");
-        _skills = await Http.GetFromJsonAsync<List<NpcSkillResponse>>($"npc-sheets/{SheetId}/skills") ?? new();
-        _affinities = await Http.GetFromJsonAsync<List<NpcAffinityResponse>>($"npc-sheets/{SheetId}/affinities") ?? new();
-        _weapons = await Http.GetFromJsonAsync<List<NpcWeaponResponse>>($"npc-sheets/{SheetId}/weapons") ?? new();
-        _armorSlots = await Http.GetFromJsonAsync<List<NpcArmorSlotResponse>>($"npc-sheets/{SheetId}/armor-slots") ?? new();
-        _shields = await Http.GetFromJsonAsync<List<NpcShieldResponse>>($"npc-sheets/{SheetId}/shields") ?? new();
+        _skills = await Http.GetFromJsonAsync<List<SkillResponse>>($"npc-sheets/{SheetId}/skills") ?? new();
+        _affinities = await Http.GetFromJsonAsync<List<AffinityResponse>>($"npc-sheets/{SheetId}/affinities") ?? new();
+        _weapons = await Http.GetFromJsonAsync<List<WeaponResponse>>($"npc-sheets/{SheetId}/weapons") ?? new();
+        _armorSlots = await Http.GetFromJsonAsync<List<ArmorSlotResponse>>($"npc-sheets/{SheetId}/armor-slots") ?? new();
+        _shields = await Http.GetFromJsonAsync<List<ShieldResponse>>($"npc-sheets/{SheetId}/shields") ?? new();
         _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"npc-sheets/{SheetId}/sub-attributes");
         _modificadorDeDano = await Http.GetFromJsonAsync<ModificadorDeDanoResponse>($"npc-sheets/{SheetId}/modificador-de-dano");
     }
@@ -1309,7 +1310,7 @@
         var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateNpcAttributeRequest(gasto, bonus, temMaestria));
+        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateAttributeRequest(gasto, bonus, temMaestria));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1319,7 +1320,7 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(gasto, current.AtributoEscolhido));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1329,7 +1330,7 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var atributoEscolhido = value?.ToString();
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateNpcSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
         _penalidadesVersao++;
     }
@@ -1357,7 +1358,7 @@
     private async Task AddAffinityAsync()
     {
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affinities",
-            new AddNpcAffinityRequest(_affinityForm.Elemento, _affinityForm.ElementoValor, _affinityForm.SegundaEssencia, _affinityForm.SegundaEssenciaValor,
+            new AddAffinityRequest(_affinityForm.Elemento, _affinityForm.ElementoValor, _affinityForm.SegundaEssencia, _affinityForm.SegundaEssenciaValor,
                 _affinityForm.SubElementoValor, _affinityForm.Experiencia));
         if (!response.IsSuccessStatusCode)
         {
@@ -1390,7 +1391,7 @@
             segundaValor = null;
 
         var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/affinities/{id}",
-            new UpdateNpcAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));
+            new UpdateAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
     }
@@ -1410,7 +1411,7 @@
 
     private async Task AddWeaponAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/weapons", new AddNpcWeaponRequest(_weaponForm.ItemId));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/weapons", new AddWeaponRequest(_weaponForm.ItemId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a arma.";
@@ -1437,7 +1438,7 @@
 
     private async Task AssignArmorSlotAsync(string slot, string? itemId)
     {
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/armor-slots/{slot}", new UpdateNpcArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
+        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/armor-slots/{slot}", new UpdateArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
         _armorSlotForm[slot] = "";
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1452,7 +1453,7 @@
 
     private async Task AddShieldAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/shields", new AddNpcShieldRequest(_shieldForm.ItemId));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/shields", new AddShieldRequest(_shieldForm.ItemId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar o escudo.";
@@ -1508,7 +1509,7 @@
 
     private async Task LoadSpellAbilitiesAsync()
     {
-        _spellAbilities = await Http.GetFromJsonAsync<List<NpcSpellAbilityResponse>>($"npc-sheets/{SheetId}/spell-abilities") ?? new();
+        _spellAbilities = await Http.GetFromJsonAsync<List<SpellAbilityResponse>>($"npc-sheets/{SheetId}/spell-abilities") ?? new();
         var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
         _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
     }
@@ -1522,8 +1523,8 @@
     private async Task AddSpellAbilityAsync()
     {
         var request = _spellAbilityForm.Origem == "Banco"
-            ? new AddNpcSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
-            : new AddNpcSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
+            ? new AddSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
+            : new AddSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
                 _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
 
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/spell-abilities", request);
@@ -1550,7 +1551,7 @@
         await RecarregarPontosDeIgnicaoAsync();
     }
 
-    private async Task EditSpellAbilityAsync(NpcSpellAbilityResponse entrada)
+    private async Task EditSpellAbilityAsync(SpellAbilityResponse entrada)
     {
         var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
             new DialogParameters<EditarMagiaHabilidadeDialog>
@@ -1585,7 +1586,7 @@
 
     private async Task LoadRunesAsync()
     {
-        _runes = await Http.GetFromJsonAsync<List<NpcRuneResponse>>($"npc-sheets/{SheetId}/runes") ?? new();
+        _runes = await Http.GetFromJsonAsync<List<RuneResponse>>($"npc-sheets/{SheetId}/runes") ?? new();
         var bankUrl = _isGmCaller ? "rune-bank" : $"campaigns/{_campaignId}/available-runes";
         _runeBankEntries = await Http.GetFromJsonAsync<List<RuneBankEntryResponse>>(bankUrl) ?? new();
     }
@@ -1600,8 +1601,8 @@
         }
 
         var request = _runeForm.DoBanco
-            ? new AddNpcRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
-            : new AddNpcRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId, Tipo: _runeForm.TipoOuNulo, Disciplina: _runeForm.Disciplina);
+            ? new AddRuneRequest(null, null, null, _runeForm.SourceBankEntryId)
+            : new AddRuneRequest(_runeForm.Nome, _runeForm.Descricao, _runeForm.Grau, ImageId: string.IsNullOrEmpty(_runeForm.ImageId) ? null : _runeForm.ImageId, Tipo: _runeForm.TipoOuNulo, Disciplina: _runeForm.Disciplina);
 
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/runes", request);
         if (!response.IsSuccessStatusCode)
@@ -1622,12 +1623,12 @@
 
     private async Task LoadMasteriesAsync()
     {
-        _masteries = await Http.GetFromJsonAsync<List<NpcMasteryResponse>>($"npc-sheets/{SheetId}/masteries") ?? new();
+        _masteries = await Http.GetFromJsonAsync<List<MasteryResponse>>($"npc-sheets/{SheetId}/masteries") ?? new();
     }
 
     private async Task AddMasteryAsync()
     {
-        var request = new AddNpcMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
+        var request = new AddMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
         var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/masteries", request);
         if (!response.IsSuccessStatusCode)
         {
@@ -1655,12 +1656,12 @@
 
     private async Task LoadInventoryAsync()
     {
-        _inventory = await Http.GetFromJsonAsync<List<NpcInventoryItemResponse>>($"npc-sheets/{SheetId}/inventory") ?? new();
+        _inventory = await Http.GetFromJsonAsync<List<InventoryItemResponse>>($"npc-sheets/{SheetId}/inventory") ?? new();
     }
 
     private async Task AddInventoryItemAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/inventory", new AddNpcInventoryItemRequest(_inventoryForm.ItemId, _inventoryForm.Qtd));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/inventory", new AddInventoryItemRequest(_inventoryForm.ItemId, _inventoryForm.Qtd));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar o item.";
@@ -1690,12 +1691,12 @@
 
     private async Task LoadArtifactsAsync()
     {
-        _artifacts = await Http.GetFromJsonAsync<List<NpcArtifactResponse>>($"npc-sheets/{SheetId}/artifacts") ?? new();
+        _artifacts = await Http.GetFromJsonAsync<List<ArtifactResponse>>($"npc-sheets/{SheetId}/artifacts") ?? new();
     }
 
     private async Task AddArtifactAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/artifacts", new AddNpcArtifactRequest(_artifactForm.ArtifactItemId));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/artifacts", new AddArtifactRequest(_artifactForm.ArtifactItemId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar o artefato.";
@@ -1718,12 +1719,12 @@
 
     private async Task LoadAffectionsAsync()
     {
-        _affections = await Http.GetFromJsonAsync<List<NpcAffectionResponse>>($"npc-sheets/{SheetId}/affections") ?? new();
+        _affections = await Http.GetFromJsonAsync<List<AffectionResponse>>($"npc-sheets/{SheetId}/affections") ?? new();
     }
 
     private async Task AddAffectionAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affections", new AddNpcAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affections", new AddAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a afeição.";
@@ -1743,7 +1744,7 @@
 
     private async Task LoadTraitsAsync()
     {
-        _traits = await Http.GetFromJsonAsync<NpcTraitsListResponse>($"npc-sheets/{SheetId}/traits");
+        _traits = await Http.GetFromJsonAsync<TraitsListResponse>($"npc-sheets/{SheetId}/traits");
     }
 
     // Ruína RPG - Sistema Básico §7: every Variante grants a Característica Gratuita (a real
@@ -1779,7 +1780,7 @@
 
     private async Task AddTraitAsync()
     {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/traits", new AddNpcTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
+        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/traits", new AddTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";

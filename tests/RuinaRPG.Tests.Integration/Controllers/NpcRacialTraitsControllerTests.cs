@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -48,7 +49,7 @@ public class NpcRacialTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fi
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Imunidade de Venenos (2 pontos)" && t.Custo == 0 && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Crédulo" && t.Custo == 0 && t.IsRacial);
         traits.TotalPositivas.Should().Be(0);
@@ -97,7 +98,7 @@ public class NpcRacialTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fi
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Sentidos Aguçados" && t.Especificacao == "Olfato" && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Código de Honra" && t.Especificacao == "Fiel ao seu clã" && t.IsRacial);
     }
@@ -127,7 +128,7 @@ public class NpcRacialTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fi
         await SetVarianteAsync(gmToken, sheetId, "Humano", "Laonir");
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().NotContain(t => t.Nome == "Alfabetizado");
 
         var pendingResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));

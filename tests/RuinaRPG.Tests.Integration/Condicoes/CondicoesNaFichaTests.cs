@@ -10,6 +10,7 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
@@ -823,9 +824,9 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         // O teto do orçamento continua o mesmo: o que cabe sem Condição cabe, um ponto a mais não.
         var atributos = JsonSerializer.Deserialize<AttributePointBudgetResponse>(orcamentoDeAtributos, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         var livre = atributos.PontosDisponiveis - atributos.GastoTotal;
-        (await Client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre + 1, 0, false))))
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateAttributeRequest(livre + 1, 0, false))))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre, 0, false), HttpStatusCode.NoContent);
+        await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateAttributeRequest(livre, 0, false), HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -836,7 +837,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var cumprida = await CriarPassivaAsync(mesa, "Braço Forte", new RequisitosDePassivaDto(Atributos: [new("Forca", 8)]));
         var pendente = await CriarPassivaAsync(mesa, "Pés Leves", new RequisitosDePassivaDto(Atributos: [new("Agilidade", 8)]));
         var jaNaFicha = (await (await EnviarAsync(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Gm,
-            new AddCharacterSpellAbilityRequest(cumprida, null, null, null, null, null), HttpStatusCode.Created)).Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!.Id;
+            new AddSpellAbilityRequest(cumprida, null, null, null, null, null), HttpStatusCode.Created)).Content.ReadFromJsonAsync<SpellAbilityResponse>())!.Id;
         var disponiveisAntes = await TextoAsync(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities/passivas-disponiveis");
 
         // Com a Condição a ficha MOSTRA Força 4 (abaixo do requisito) e Agilidade 12 (acima do requisito).
@@ -847,10 +848,10 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         numeros["Atributo:Agilidade"].Should().Be(12);
 
         (await TextoAsync(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities/passivas-disponiveis")).Should().Be(disponiveisAntes);
-        var naFicha = await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities");
+        var naFicha = await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities");
         naFicha.Single(e => e.Id == jaNaFicha).RequisitosPendentes.Should().BeEmpty("a Força sem Condições continua 10");
         var recusada = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Jogador,
-            new AddCharacterSpellAbilityRequest(pendente, null, null, null, null, null)));
+            new AddSpellAbilityRequest(pendente, null, null, null, null, null)));
         recusada.StatusCode.Should().Be(HttpStatusCode.BadRequest, "a Agilidade sem Condições continua 6");
         (await recusada.Content.ReadAsStringAsync()).Should().Contain("Agilidade ≥ 8");
     }
@@ -894,15 +895,15 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         // A página aberta lê tudo sob a Condição e salva de volta, campo por campo, sem o jogador mudar nada.
         var lida = await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz);
         await EnviarAsync(HttpMethod.Put, raiz, mesa.Jogador, ComoPut(lida));
-        foreach (var a in await LerAsync<List<CharacterAttributeResponse>>(mesa.Jogador, $"{raiz}/attributes"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/{a.Atributo}", mesa.Jogador, new UpdateCharacterAttributeRequest(a.Gasto, a.Bonus, a.TemMaestria));
-        foreach (var p in await LerAsync<List<CharacterSkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateCharacterSkillRequest(p.Gasto, p.AtributoEscolhido));
-        foreach (var m in await LerAsync<List<CharacterMasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
+        foreach (var a in await LerAsync<List<AttributeResponse>>(mesa.Jogador, $"{raiz}/attributes"))
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/{a.Atributo}", mesa.Jogador, new UpdateAttributeRequest(a.Gasto, a.Bonus, a.TemMaestria));
+        foreach (var p in await LerAsync<List<SkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
+        foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateCharacterMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
-        foreach (var a in await LerAsync<List<CharacterAffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
+        foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
-                new UpdateCharacterAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
+                new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
 
         await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
 
@@ -1170,8 +1171,8 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         marcas["Anel"].Should().Be($"Antimagia {mesa.Tag}");
         marcas.Where(m => m.Key != "Anel").Should().OnlyContain(m => m.Value == null);
         (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
-        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Nome == "Pele").RequisitosPendentes.Should().BeNullOrEmpty();
-        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Id == passiva.ToString()).DesabilitadoPor.Should().BeNull();
+        (await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Nome == "Pele").RequisitosPendentes.Should().BeNullOrEmpty();
+        (await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Id == passiva.ToString()).DesabilitadoPor.Should().BeNull();
 
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
@@ -1211,7 +1212,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Desarmado", "Escudo"));
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:defesaNatural", 8)));
-        var escudos = await LerAsync<List<CharacterShieldResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/shields");
+        var escudos = await LerAsync<List<ShieldResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/shields");
         escudos.Single().Id.Should().Be(escudo.ToString());
         escudos.Single().IsEquipped.Should().BeTrue("o estado guardado não muda");
         escudos.Single().DesabilitadoPor.Should().Be($"Desarmado {mesa.Tag}");
@@ -1220,7 +1221,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Sem peça", "Armadura"));
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:reducaoFisica", 4), ("Sub:reducaoMagica", 0)));
-        (await LerAsync<List<CharacterArmorSlotResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/armor-slots")).Single(s => s.Nome == "Elmo").DesabilitadoPor.Should().Be($"Sem peça {mesa.Tag}");
+        (await LerAsync<List<ArmorSlotResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/armor-slots")).Single(s => s.Nome == "Elmo").DesabilitadoPor.Should().Be($"Sem peça {mesa.Tag}");
         (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
@@ -1247,7 +1248,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         // Durante: a penalidade some de TUDO o que a ficha mostra, e volta a ser o número de quem não tem a arma.
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(semArma);
         (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Should().BeEmpty();
-        var arma = (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single();
+        var arma = (await LerAsync<List<WeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single();
         arma.DesabilitadoPor.Should().Be($"Manco {mesa.Tag}");
         arma.IsEquipped.Should().BeTrue();
         // A avaliação do requisito do item não usa Condições: segue dizendo o que falta e qual seria a penalidade.
@@ -1259,7 +1260,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(comPenalidade);
         (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Select(p => p.ItemNome).Should().Equal("Montante");
-        (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single().DesabilitadoPor.Should().BeNull();
+        (await LerAsync<List<WeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single().DesabilitadoPor.Should().BeNull();
 
         // Encerrar o encontro com a Condição ativa também traz a penalidade de volta.
         await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Manco 2", "Arma"));

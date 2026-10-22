@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Fichas;
@@ -23,10 +24,10 @@ public sealed record CaracteristicaDoCatalogo(Guid Id, string Nome, string Descr
 /// <summary>
 /// Características da ficha (adicionar, listar com o orçamento, apagar), para os três tipos. A rota fica na subclasse
 /// de cada tipo. Personagem e NPC usam o catálogo comum e têm traços raciais
-/// (<see cref="CaracteristicasComRaciaisDaFichaController{TSheet, TLinha, TResponse, TLista, TAdd}"/>); a Criatura só
+/// (<see cref="CaracteristicasComRaciaisDaFichaController{TSheet, TLinha}"/>); a Criatura só
 /// adiciona do catálogo exclusivo de criatura.
 /// </summary>
-public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse, TLista, TAdd>(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
+public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse, TLista>(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, ILinhaDaFicha
@@ -35,7 +36,7 @@ public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse
 
     protected DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract (string TraitId, string? Especificacao) Ler(TAdd request);
+    protected abstract (string TraitId, string? Especificacao) Ler(AddTraitRequest request);
 
     /// <summary>A Característica do catálogo que este tipo pode adicionar, ou null.</summary>
     protected abstract Task<CaracteristicaDoCatalogo?> CaracteristicaParaAdicionarAsync(Guid traitId);
@@ -60,7 +61,7 @@ public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse
     protected abstract TLista Lista(List<TResponse> positivas, int totalPositivas, List<TResponse> negativas, int totalNegativas, int pontosDisponiveis, int pontosDisponiveisNegativas);
 
     [HttpPost("traits")]
-    public async Task<ActionResult<TResponse>> AddTrait(Guid sheetId, TAdd request)
+    public async Task<ActionResult<TResponse>> AddTrait(Guid sheetId, AddTraitRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
@@ -131,8 +132,8 @@ public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse
 }
 
 /// <summary>Características do Personagem e do NPC: só o catálogo comum, e os traços raciais custam 0 e ficam fora do orçamento.</summary>
-public abstract class CaracteristicasComRaciaisDaFichaController<TSheet, TLinha, TResponse, TLista, TAdd>(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
-    : CaracteristicasDaFichaController<TSheet, TLinha, TResponse, TLista, TAdd>(db, tabelaDeNiveis, tipo)
+public abstract class CaracteristicasComRaciaisDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
+    : CaracteristicasDaFichaController<TSheet, TLinha, TraitDaFichaResponse, TraitsListResponse>(db, tabelaDeNiveis, tipo)
     where TSheet : class, IFicha
     where TLinha : class, ICaracteristicaDaFicha, new()
 {

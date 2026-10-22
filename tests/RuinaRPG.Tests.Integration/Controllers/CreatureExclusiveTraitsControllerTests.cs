@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Rules;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -114,7 +115,7 @@ public class CreatureExclusiveTraitsControllerTests(ApiFixture fixture) : ApiTes
 
         var sheetId = await CreateCreatureSheetAsync(gmToken);
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken,
-            new AddCreatureTraitRequest(created!.Id, null)));
+            new AddTraitRequest(created!.Id, null)));
 
         var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/creature-exclusive-traits/{created.Id}", gmToken));
 

@@ -2,10 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 // Os pedidos de Maestria, Perícia e Atributo têm o mesmo JSON nos três tipos de ficha.
-using AdicionarMaestria = RuinaRPG.Contracts.CharacterSheets.AddCharacterMasteryRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
-using AtualizarPericia = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterSkillRequest;
+using AdicionarMaestria = RuinaRPG.Contracts.Fichas.AddMasteryRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
+using AtualizarPericia = RuinaRPG.Contracts.Fichas.UpdateSkillRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -151,21 +152,21 @@ public sealed class MaestriasDaFichaTestesPersonagem(ApiFixture fixture) : Maest
         var f = await NovaFichaAsync();
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "masteries"), f.Token,
-            new AddCharacterMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+            new AddMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
+        var added = await addResponse.Content.ReadFromJsonAsync<MasteryResponse>();
 
         // Bruto[Furtividade] = Modificador(9) = 3; AtributoTotal[Agilidade] = 4 (Gasto 4, sem maestria)
         var skillUpdate = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "skills/Furtividade"), f.GmToken,
-            new UpdateCharacterSkillRequest(9, null)));
+            new UpdateSkillRequest(9, null)));
         skillUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var attributeUpdate = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Agilidade"), f.GmToken,
-            new UpdateCharacterAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
         attributeUpdate.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"masteries/{added!.Id}"), f.Token,
             new UpdateCharacterMasteryRequest("Maestria em Furtividade", "Furtividade", "Agilidade", 5)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<MasteryResponse>();
         updated!.Nome.Should().Be("Maestria em Furtividade");
         updated.Pericia.Should().Be("Furtividade");
         updated.Atributo.Should().Be("Agilidade");
@@ -174,7 +175,7 @@ public sealed class MaestriasDaFichaTestesPersonagem(ApiFixture fixture) : Maest
         updated.Total.Should().Be(12);
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "masteries"), f.Token));
-        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
+        var body = await listResponse.Content.ReadFromJsonAsync<List<MasteryResponse>>();
         body!.Should().ContainSingle(m => m.Id == added.Id && m.Total == 12);
     }
 
@@ -185,8 +186,8 @@ public sealed class MaestriasDaFichaTestesPersonagem(ApiFixture fixture) : Maest
         var otherToken = await Tipo.CriarIntrusoAsync(this, f);
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "masteries"), f.Token,
-            new AddCharacterMasteryRequest("Maestria em Atletismo", "Atletismo", "Vigor", 1)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+            new AddMasteryRequest("Maestria em Atletismo", "Atletismo", "Vigor", 1)));
+        var added = await addResponse.Content.ReadFromJsonAsync<MasteryResponse>();
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"masteries/{added!.Id}"), otherToken,
             new UpdateCharacterMasteryRequest("Maestria Alheia", "Atletismo", "Vigor", 2)));
@@ -211,15 +212,15 @@ public sealed class MaestriasDaFichaTestesPersonagem(ApiFixture fixture) : Maest
         var f = await NovaFichaAsync();
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "masteries"), f.Token,
-            new AddCharacterMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterMasteryResponse>();
+            new AddMasteryRequest("Maestria em Pontaria", "Pontaria", "Destreza", 3)));
+        var added = await addResponse.Content.ReadFromJsonAsync<MasteryResponse>();
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"masteries/{added!.Id}"), f.Token,
             new UpdateCharacterMasteryRequest("Maestria Inválida", "999", "Destreza", 3)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "masteries"), f.Token));
-        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>();
+        var body = await listResponse.Content.ReadFromJsonAsync<List<MasteryResponse>>();
         body!.Should().ContainSingle(m => m.Id == added.Id && m.Pericia == "Pontaria" && m.GastoMaestria == 3);
     }
 }

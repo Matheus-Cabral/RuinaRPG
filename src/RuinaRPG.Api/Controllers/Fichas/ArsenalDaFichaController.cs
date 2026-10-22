@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
@@ -18,7 +19,7 @@ public sealed record DetalhesDoItemEquipado(string? ImageUrl, int? Maxima, bool 
 /// Arsenal da ficha (Armas, slots de Armadura e Escudos), para os três tipos. A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}</c>)
 /// fica na subclasse de cada tipo; os records de resposta são do contrato de cada tipo, montados pela subclasse.
 /// </summary>
-public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TArmaResponse, TSlotResponse, TEscudoResponse, TAddArma, TUpdateSlot, TAddEscudo>(
+public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TArmaResponse, TSlotResponse, TAddArma>(
     RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
@@ -46,11 +47,11 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
 
     protected abstract TSlotResponse RespostaDeSlot(TSlot slot, Armadura item, DetalhesDoItemEquipado detalhes);
 
-    protected abstract TEscudoResponse RespostaDeEscudo(TEscudo escudo, Escudo item, DetalhesDoItemEquipado detalhes);
+    protected abstract ShieldResponse RespostaDeEscudo(TEscudo escudo, Escudo item, DetalhesDoItemEquipado detalhes);
 
-    protected abstract string? ItemIdDoSlot(TUpdateSlot request);
+    protected abstract string? ItemIdDoSlot(UpdateArmorSlotRequest request);
 
-    protected abstract string ItemIdDoEscudo(TAddEscudo request);
+    protected abstract string ItemIdDoEscudo(AddShieldRequest request);
 
     /// <summary>O retrato da ficha usado para conferir Requisitos (o Stats do tipo).</summary>
     protected abstract Task<FichaParaRequisitos> FichaParaRequisitosAsync(TSheet ficha);
@@ -155,7 +156,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     }
 
     [HttpPut("armor-slots/{slot}")]
-    public async Task<IActionResult> UpdateArmorSlot(Guid sheetId, ArmorSlotType slot, TUpdateSlot request)
+    public async Task<IActionResult> UpdateArmorSlot(Guid sheetId, ArmorSlotType slot, UpdateArmorSlotRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;
@@ -202,7 +203,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     }
 
     [HttpPost("shields")]
-    public async Task<ActionResult<TEscudoResponse>> AddShield(Guid sheetId, TAddEscudo request)
+    public async Task<ActionResult<ShieldResponse>> AddShield(Guid sheetId, AddShieldRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
@@ -218,14 +219,14 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     }
 
     [HttpGet("shields")]
-    public async Task<ActionResult<List<TEscudoResponse>>> ListShields(Guid sheetId)
+    public async Task<ActionResult<List<ShieldResponse>>> ListShields(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var shields = await Escudos.Where(s => s.SheetId == sheetId).ToListAsync();
         var tabela = await Durabilidades.TabelaAsync();
-        var responses = new List<TEscudoResponse>();
+        var responses = new List<ShieldResponse>();
         foreach (var shield in shields)
             responses.Add(await RespostaDeEscudoAsync(ficha, shield, tabela));
         return responses;
@@ -303,8 +304,8 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     protected async Task<string?> DesabilitadoPorAsync(TSheet ficha, CategoriaDesabilitavel categoria, Guid linhaId) =>
         (await Tipo.CondicoesAsync(ficha)).DesabilitadoPor(categoria, linhaId);
 
-    private Task<TEscudoResponse> RespostaDeEscudoAsync(TSheet ficha, TEscudo shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela) =>
-        RespostaDoCatalogoAsync<Escudo, TEscudoResponse>(ficha, shield.ItemId, shield.Id, CategoriaDesabilitavel.Escudo, tabela, e => e.Rank, (item, d) => RespostaDeEscudo(shield, item, d));
+    private Task<ShieldResponse> RespostaDeEscudoAsync(TSheet ficha, TEscudo shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela) =>
+        RespostaDoCatalogoAsync<Escudo, ShieldResponse>(ficha, shield.ItemId, shield.Id, CategoriaDesabilitavel.Escudo, tabela, e => e.Rank, (item, d) => RespostaDeEscudo(shield, item, d));
 
     /// <summary>Grava na linha o ItemId e a Durabilidade que <see cref="PreencherArmaDoCatalogoAsync"/> entrega.</summary>
     protected static Action<Guid, int> LigarAoCatalogo(IEquipavelDoCatalogo linha) =>

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Rules.Niveis;
@@ -559,19 +560,19 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
 
         // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Agilidade", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
-            new UpdateNpcAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
 
         // Prontidao Gasto 9, Histórico bonus 6 counts as Pericia points -> Modificador (9+6)/3 = 5.
         // Reflexos Gasto 6, Histórico bonus 3 -> Modificador (6+3)/3 = 3.
         // Fortitude Gasto 3 -> Modificador 1, untouched by this Histórico.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Prontidao", gmToken,
-            new UpdateNpcSkillRequest(9, null)));
+            new UpdateSkillRequest(9, null)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Reflexos", gmToken,
-            new UpdateNpcSkillRequest(6, null)));
+            new UpdateSkillRequest(6, null)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Fortitude", gmToken,
-            new UpdateNpcSkillRequest(3, null)));
+            new UpdateSkillRequest(3, null)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
 
@@ -591,8 +592,8 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         var update = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}", gmToken, new RuinaRPG.Contracts.Campaigns.UpdateCampaignRequest("Campanha Bônus", "", null, 25m)));
         update.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var sheetId = await CreateSheetAsync(gmToken);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateNpcAttributeRequest(4, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gmToken, new UpdateAttributeRequest(4, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken, new UpdateAttributeRequest(4, 0, false)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/sub-attributes", gmToken));
 
@@ -615,10 +616,10 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
 
         // Vigor total = Gasto(5) + Bonus(0)/2 (sem maestria) = 5 → Vitalidade = 5*2 + 8 = 18.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Vigor", gmToken,
-            new UpdateNpcAttributeRequest(5, 0, false)));
+            new UpdateAttributeRequest(5, 0, false)));
         // Astúcia total = Gasto(3) + Bonus(0)/2 (sem maestria) = 3 → Foco = 3*2 + 4 = 10.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Astucia", gmToken,
-            new UpdateNpcAttributeRequest(3, 0, false)));
+            new UpdateAttributeRequest(3, 0, false)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
 

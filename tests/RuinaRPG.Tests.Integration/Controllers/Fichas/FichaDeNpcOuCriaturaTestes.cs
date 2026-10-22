@@ -5,8 +5,8 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 // Pedidos de Atributo e Artefato têm o mesmo JSON nos três tipos.
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

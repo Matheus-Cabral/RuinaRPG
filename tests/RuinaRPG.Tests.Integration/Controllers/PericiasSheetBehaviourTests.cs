@@ -7,6 +7,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.Rules;
@@ -80,15 +81,15 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet1");
         var nova = await CreatePericiaAsync(auditor, "Esgrima Élfica", "Destreza", criaturas: false);
 
-        var skills = await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token);
+        var skills = await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token);
         var linha = skills.Single(s => s.Pericia == nova.Chave);
         linha.Gasto.Should().Be(0);
         linha.AtributoEscolhido.Should().Be("Destreza");
         linha.Nome.Should().Be("Esgrima Élfica");
 
-        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateCharacterSkillRequest(2, "Destreza")));
+        var put = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateSkillRequest(2, "Destreza")));
         put.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
+        (await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
     }
 
     [Fact]
@@ -97,19 +98,19 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var auditor = await RegisterAuditorAsync("PerSheetAud2", "persheetaud2@teste.com");
         var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet2");
         var nova = await CreatePericiaAsync(auditor, "Falcoaria", null, criaturas: false);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateCharacterSkillRequest(3, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateSkillRequest(3, null)));
         var antes = await GetAsync<SkillPointBudgetResponse>($"/api/character-sheets/{sheetId}/skills/budget", token);
 
         await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{nova.Id}", auditor));
 
         var depois = await GetAsync<SkillPointBudgetResponse>($"/api/character-sheets/{sheetId}/skills/budget", token);
         depois.GastoTotal.Should().Be(antes.GastoTotal - 3);
-        (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Should().NotContain(s => s.Pericia == nova.Chave);
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateCharacterSkillRequest(1, null))))
+        (await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Should().NotContain(s => s.Pericia == nova.Chave);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateSkillRequest(1, null))))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/pericias/{nova.Id}/restaurar", auditor));
-        (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(0);
+        (await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(0);
     }
 
     [Fact]
@@ -119,13 +120,13 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var nova = await CreatePericiaAsync(auditor, "Domar Feras", null, criaturas: true);
         var npcId = await CreateNpcSheetAsync(auditor);
         var creatureId = await CreateCreatureSheetAsync(auditor);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{nova.Chave}", auditor, new UpdateNpcSkillRequest(4, null)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nova.Chave}", auditor, new UpdateCreatureSkillRequest(4, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{nova.Chave}", auditor, new UpdateSkillRequest(4, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nova.Chave}", auditor, new UpdateSkillRequest(4, null)));
 
         await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{nova.Id}", auditor));
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/pericias/{nova.Id}/restaurar", auditor));
 
-        (await GetAsync<List<NpcSkillResponse>>($"/api/npc-sheets/{npcId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(0);
+        (await GetAsync<List<SkillResponse>>($"/api/npc-sheets/{npcId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(0);
         (await GetAsync<List<CreatureSkillResponse>>($"/api/creature-sheets/{creatureId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(0);
     }
 
@@ -141,7 +142,7 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
 
         skills.Should().Contain(s => s.Pericia == sim.Chave);
         skills.Should().NotContain(s => s.Pericia == nao.Chave);
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nao.Chave}", auditor, new UpdateCreatureSkillRequest(1, null))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nao.Chave}", auditor, new UpdateSkillRequest(1, null))))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -152,7 +153,7 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, "/api/pericias/7", auditor, new SalvarPericiaRequest("Atletismo", "Correr, saltar, escalar.", null, true)));
         var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet5");
 
-        var skills = await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token);
+        var skills = await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token);
 
         skills.Single(s => s.Pericia == "Atletismo").Descricao.Should().Be("Correr, saltar, escalar.");
         skills.Select(s => s.Nome).Should().BeInAscendingOrder(StringComparer.CurrentCulture);
@@ -165,13 +166,13 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var auditor = await RegisterAuditorAsync("PerSheetAud6", "persheetaud6@teste.com");
         var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet6");
         var nova = await CreatePericiaAsync(auditor, "Tecelagem", null, criaturas: false);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddCharacterMasteryRequest("Tear Rápido", nova.Chave, "Destreza", 1)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddMasteryRequest("Tear Rápido", nova.Chave, "Destreza", 1)));
 
         await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{nova.Id}", auditor));
 
         var masteries = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/masteries", token));
         masteries.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await masteries.Content.ReadFromJsonAsync<List<CharacterMasteryResponse>>())!.Should().NotContain(m => m.Pericia == nova.Chave);
+        (await masteries.Content.ReadFromJsonAsync<List<MasteryResponse>>())!.Should().NotContain(m => m.Pericia == nova.Chave);
     }
 
     [Fact]
@@ -179,17 +180,17 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
     {
         var auditor = await RegisterAuditorAsync("PerSheetAud7", "persheetaud7@teste.com");
         var (sheetId, token) = await CreateCharacterSheetAsync(auditor, "PerSheet7");
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/ArmasBrancas", token, new UpdateCharacterSkillRequest(0, "Forca")));
-        var antes = (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == "ArmasBrancas").Total;
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/ArmasBrancas", token, new UpdateSkillRequest(0, "Forca")));
+        var antes = (await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == "ArmasBrancas").Total;
 
         // Same CreateItemRequest shape as CharacterSheetsControllerTests.CreateDanoArtefatoItemAsync,
         // with TipoDeAlvo "Pericia" and Alvo "ArmasBrancas" (the legacy enum name = seeded Chave).
         var item = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", auditor,
             new CreateItemRequest("Artefato", "Anel do Duelista", 0.1m, 500, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, "Pericia", "ArmasBrancas", 2, null)))).Content.ReadFromJsonAsync<ItemResponse>();
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", token, new AddCharacterArtifactRequest(item!.Id)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", token, new AddArtifactRequest(item!.Id)));
 
-        var depois = (await GetAsync<List<CharacterSkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == "ArmasBrancas").Total;
+        var depois = (await GetAsync<List<SkillResponse>>($"/api/character-sheets/{sheetId}/skills", token)).Single(s => s.Pericia == "ArmasBrancas").Total;
         depois.Should().Be(antes + 2);
     }
 
@@ -204,9 +205,9 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
 
         foreach (var chave in new[] { "ChaveInexistente", nova.Chave })
         {
-            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{chave}", auditor, new UpdateNpcSkillRequest(1, null))))
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{chave}", auditor, new UpdateSkillRequest(1, null))))
                 .StatusCode.Should().Be(HttpStatusCode.NotFound);
-            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{chave}", auditor, new UpdateCreatureSkillRequest(1, null))))
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{chave}", auditor, new UpdateSkillRequest(1, null))))
                 .StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
     }
@@ -219,7 +220,7 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var nova = await CreatePericiaAsync(auditor, "Cestaria", null, criaturas: false);
         await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/pericias/{nova.Id}", auditor));
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddCharacterMasteryRequest("Cesto", nova.Chave, "Destreza", 1)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddMasteryRequest("Cesto", nova.Chave, "Destreza", 1)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -233,16 +234,16 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var npcId = await CreateNpcSheetAsync(auditor);
         var creatureId = await CreateCreatureSheetAsync(auditor);
 
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddCharacterMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/masteries", token, new AddMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
             .StatusCode.Should().Be(HttpStatusCode.Created);
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{npcId}/masteries", auditor, new AddNpcMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{npcId}/masteries", auditor, new AddMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
             .StatusCode.Should().Be(HttpStatusCode.Created);
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{creatureId}/masteries", auditor, new AddCreatureMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{creatureId}/masteries", auditor, new AddMasteryRequest("Filigrana", nova.Chave, "Destreza", 1))))
             .StatusCode.Should().Be(HttpStatusCode.Created);
 
-        (await GetAsync<List<CharacterMasteryResponse>>($"/api/character-sheets/{sheetId}/masteries", token)).Should().ContainSingle(m => m.Pericia == nova.Chave);
-        (await GetAsync<List<NpcMasteryResponse>>($"/api/npc-sheets/{npcId}/masteries", auditor)).Should().ContainSingle(m => m.Pericia == nova.Chave);
-        (await GetAsync<List<CreatureMasteryResponse>>($"/api/creature-sheets/{creatureId}/masteries", auditor)).Should().ContainSingle(m => m.Pericia == nova.Chave);
+        (await GetAsync<List<MasteryResponse>>($"/api/character-sheets/{sheetId}/masteries", token)).Should().ContainSingle(m => m.Pericia == nova.Chave);
+        (await GetAsync<List<MasteryResponse>>($"/api/npc-sheets/{npcId}/masteries", auditor)).Should().ContainSingle(m => m.Pericia == nova.Chave);
+        (await GetAsync<List<MasteryResponse>>($"/api/creature-sheets/{creatureId}/masteries", auditor)).Should().ContainSingle(m => m.Pericia == nova.Chave);
     }
 
     [Fact]
@@ -253,12 +254,12 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         var creatureId = await CreateCreatureSheetAsync(auditor);
         var nova = await CreatePericiaAsync(auditor, "Mergulho", "Forca", criaturas: true);
 
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{nova.Chave}", auditor, new UpdateNpcSkillRequest(2, null))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}/skills/{nova.Chave}", auditor, new UpdateSkillRequest(2, null))))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nova.Chave}", auditor, new UpdateCreatureSkillRequest(2, null))))
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}/skills/{nova.Chave}", auditor, new UpdateSkillRequest(2, null))))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        (await GetAsync<List<NpcSkillResponse>>($"/api/npc-sheets/{npcId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
+        (await GetAsync<List<SkillResponse>>($"/api/npc-sheets/{npcId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
         (await GetAsync<List<CreatureSkillResponse>>($"/api/creature-sheets/{creatureId}/skills", auditor)).Single(s => s.Pericia == nova.Chave).Gasto.Should().Be(2);
     }
 
@@ -280,13 +281,13 @@ public class PericiasSheetBehaviourTests(ApiFixture fixture) : ApiTestBase(fixtu
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", auditor, true));
 
         var bloqueada = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
-            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null)));
+            new AddSpellAbilityRequest(entryId, null, null, null, null, null)));
         bloqueada.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await bloqueada.Content.ReadAsStringAsync()).Should().Contain("Requisitos não cumpridos").And.Contain("Heroísmo Tardio");
 
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateCharacterSkillRequest(30, "Forca")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/{nova.Chave}", token, new UpdateSkillRequest(30, "Forca")));
         (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", token,
-            new AddCharacterSpellAbilityRequest(entryId, null, null, null, null, null))))
+            new AddSpellAbilityRequest(entryId, null, null, null, null, null))))
             .StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

@@ -5,6 +5,7 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -47,13 +48,13 @@ public class SheetStatsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var gm = await RegisterGmAndGetTokenAsync("StatsGm1", "statsgm1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gm, "StatsPlayer1", "statsplayer1@teste.com");
         var sheetId = await SetUpSheetAsync(gm, playerId);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateCharacterAttributeRequest(2, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateAttributeRequest(5, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateAttributeRequest(2, 0, false)));
 
         var subAttributes = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken)))
             .Content.ReadFromJsonAsync<SubAttributesResponse>();
         var skills = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/skills", playerToken)))
-            .Content.ReadFromJsonAsync<List<CharacterSkillResponse>>();
+            .Content.ReadFromJsonAsync<List<SkillResponse>>();
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();

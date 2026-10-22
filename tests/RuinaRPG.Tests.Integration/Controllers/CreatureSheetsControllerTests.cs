@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.CreatureSheets;
 
@@ -275,9 +276,9 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : FichaTestes<Tip
 
         // Agilidade Gasto 4, no bônus/maestria/artefato → Total 4. Vigor same → Total 4.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Agilidade", gmToken,
-            new UpdateCreatureAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/Vigor", gmToken,
-            new UpdateCreatureAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/sub-attributes", gmToken));
 

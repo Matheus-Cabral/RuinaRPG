@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Items;
 // Os pedidos de Perícia, Atributo e Artefato têm o mesmo JSON nos três tipos de ficha.
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
-using AtualizarPericia = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterSkillRequest;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
+using AtualizarPericia = RuinaRPG.Contracts.Fichas.UpdateSkillRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

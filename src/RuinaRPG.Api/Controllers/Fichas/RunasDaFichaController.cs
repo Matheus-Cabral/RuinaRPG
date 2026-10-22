@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Runes;
 using RuinaRPG.Infrastructure.Campaigns;
@@ -12,7 +13,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// <summary>
 /// Runas da ficha (Personagem e NPC). A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}/runes</c>) fica na subclasse de cada tipo.
 /// </summary>
-public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
+public abstract class RunasDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IRunaDaFicha
@@ -21,15 +22,15 @@ public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(Ru
 
     private DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract (string? Nome, string? Descricao, int? Grau, string? SourceBankEntryId, string? ImageId, string? Tipo, string? Disciplina) Ler(TAdd request);
+    protected abstract (string? Nome, string? Descricao, int? Grau, string? SourceBankEntryId, string? ImageId, string? Tipo, string? Disciplina) Ler(AddRuneRequest request);
 
     /// <summary>Uma linha nova (os membros <c>required</c>); o resto é preenchido pela base.</summary>
     protected abstract TLinha Nova(string nome, string descricao);
 
-    protected abstract TResponse Resposta(TLinha runa, string? imageUrl, string? desabilitadoPor);
+    protected abstract RuneResponse Resposta(TLinha runa, string? imageUrl, string? desabilitadoPor);
 
     [HttpPost]
-    public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
+    public async Task<ActionResult<RuneResponse>> Add(Guid sheetId, AddRuneRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -137,7 +138,7 @@ public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(Ru
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
+    public async Task<ActionResult<List<RuneResponse>>> List(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -163,6 +164,6 @@ public abstract class RunasDaFichaController<TSheet, TLinha, TResponse, TAdd>(Ru
         return NoContent();
     }
 
-    private TResponse Resposta(TLinha r, Dictionary<Guid, string> imageUrls, EfeitosDeCondicao efeitos) =>
+    private RuneResponse Resposta(TLinha r, Dictionary<Guid, string> imageUrls, EfeitosDeCondicao efeitos) =>
         Resposta(r, RuneImageAccess.UrlOf(imageUrls, r.ImageId), efeitos.DesabilitadoPor(CategoriaDesabilitavel.Runa, r.Id));
 }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -29,15 +30,15 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!;
     }
 
-    private async Task<List<NpcAttributeResponse>> GetNpcAttributesAsync(string gmToken, string sheetId)
+    private async Task<List<AttributeResponse>> GetNpcAttributesAsync(string gmToken, string sheetId)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes", gmToken));
-        return (await response.Content.ReadFromJsonAsync<List<NpcAttributeResponse>>())!;
+        return (await response.Content.ReadFromJsonAsync<List<AttributeResponse>>())!;
     }
 
     private async Task SetNpcAttributeGastoAsync(string gmToken, string sheetId, string atributo, int gasto) =>
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/{atributo}", gmToken,
-            new UpdateNpcAttributeRequest(gasto, 0, false)));
+            new UpdateAttributeRequest(gasto, 0, false)));
 
     private async Task SetNpcVocacaoAsync(string gmToken, string sheetId, string vocacao) =>
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
@@ -46,12 +47,12 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
 
     private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? segundaEssencia, int? segundaEssenciaValor, int? subElementoValor, int? experiencia) =>
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddNpcAffinityRequest(elemento, elementoValor, segundaEssencia, segundaEssenciaValor, subElementoValor, experiencia)));
+            new AddAffinityRequest(elemento, elementoValor, segundaEssencia, segundaEssenciaValor, subElementoValor, experiencia)));
 
-    private async Task<List<NpcAffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
+    private async Task<List<AffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
-        return (await response.Content.ReadFromJsonAsync<List<NpcAffinityResponse>>())!;
+        return (await response.Content.ReadFromJsonAsync<List<AffinityResponse>>())!;
     }
 
     private async Task<HttpResponseMessage> GrantAsync(string gmToken, string campaignId, GrantSheetRequest request) =>
@@ -69,15 +70,15 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         return (await response.Content.ReadFromJsonAsync<CreatureSheetResponse>())!;
     }
 
-    private async Task<List<CreatureAttributeResponse>> GetCreatureAttributesAsync(string gmToken, string sheetId)
+    private async Task<List<AttributeResponse>> GetCreatureAttributesAsync(string gmToken, string sheetId)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/creature-sheets/{sheetId}/attributes", gmToken));
-        return (await response.Content.ReadFromJsonAsync<List<CreatureAttributeResponse>>())!;
+        return (await response.Content.ReadFromJsonAsync<List<AttributeResponse>>())!;
     }
 
     private async Task SetCreatureAttributeGastoAsync(string gmToken, string sheetId, string atributo, int gasto) =>
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}/attributes/{atributo}", gmToken,
-            new UpdateCreatureAttributeRequest(gasto, 0, false)));
+            new UpdateAttributeRequest(gasto, 0, false)));
 
     // Traits are seeded at app startup by TraitSeeder from Características.md — pull a real one
     // straight out of the running app's database rather than inserting a synthetic one, same
@@ -111,7 +112,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
     }
 
     private async Task<HttpResponseMessage> AddCreatureTraitAsync(string gmToken, string sheetId, string traitId) =>
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddCreatureTraitRequest(traitId, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", gmToken, new AddTraitRequest(traitId, null)));
 
     private async Task<CreatureTraitsListResponse> GetCreatureTraitsAsync(string gmToken, string sheetId)
     {
@@ -183,14 +184,14 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
         var image = (await (await Client.SendAsync(upload)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Images.ImageUploadResponse>())!;
         var addRune = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id, Disciplina: "Adicao")));
+            new AddRuneRequest("Runa Ilustrada", "Tem imagem.", 1, null, image.Id, Disciplina: "Adicao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
         var runes = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
-            .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
+            .Content.ReadFromJsonAsync<List<RuneResponse>>();
         runes!.Should().ContainSingle(r => r.Nome == "Runa Ilustrada" && r.ImageUrl == image.Url);
     }
 
@@ -203,14 +204,14 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         await AddMemberAsync(gmToken, campaignId, playerId);
         var sourceId = await CreateNpcSheetAsync(gmToken);
         var addRune = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/runes", gmToken,
-            new AddNpcRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra", Disciplina: "Manifestacao")));
+            new AddRuneRequest("Runa Sombria", "Escura.", 1, null, null, "Negra", Disciplina: "Manifestacao")));
         addRune.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
         var runes = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{body!.SheetId}/runes", gmToken)))
-            .Content.ReadFromJsonAsync<List<NpcRuneResponse>>();
+            .Content.ReadFromJsonAsync<List<RuneResponse>>();
         runes!.Should().ContainSingle(r => r.Nome == "Runa Sombria" && r.Tipo == "Negra" && r.Disciplina == "Manifestacao");
     }
 
@@ -508,8 +509,8 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         var (sourceId, rota) = tipo == "Npc" ? (await CreateNpcSheetAsync(gmToken), "npc-sheets") : (await CreateCreatureSheetAsync(gmToken), "creature-sheets");
         await SetSheetPiAsync(tipo, sourceId, 1000);
         object addRequest = tipo == "Npc"
-            ? new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())
-            : new AddCreatureSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList());
+            ? new AddSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())
+            : new AddSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList());
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{rota}/{sourceId}/spell-abilities", gmToken, addRequest));
         var bancoAntes = (await BancoEAnexosAsync(campaignId)).Banco;
 
@@ -524,8 +525,8 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         var copiaId = (await response.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
         var copiadas = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{rota}/{copiaId}/spell-abilities", gmToken));
         var criadasNaFicha = tipo == "Npc"
-            ? (await copiadas.Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha))
-            : (await copiadas.Content.ReadFromJsonAsync<List<CreatureSpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha));
+            ? (await copiadas.Content.ReadFromJsonAsync<List<SpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha))
+            : (await copiadas.Content.ReadFromJsonAsync<List<SpellAbilityResponse>>())!.Select(e => (e.Nome, e.CriadaNaFicha));
         criadasNaFicha.Should().Equal(("Bola de Fogo", true));
     }
 
@@ -539,7 +540,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         var sourceId = await CreateNpcSheetAsync(gmToken);
         await SetSheetPiAsync("Npc", sourceId, 1000);
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sourceId}/spell-abilities", gmToken,
-            new AddNpcSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())));
+            new AddSpellAbilityRequest(null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", EfeitosDeTeste().ToList())));
         var entryId = (await BancoEAnexosAsync(campaignId)).Banco.Single().Id;
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken,
             new AttachToCampaignRequest(null, null, null, entryId.ToString(), null)));

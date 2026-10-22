@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Rules.Niveis;
@@ -17,7 +18,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// Magias e Habilidades da ficha (incluindo Passivas e Raciais), para os três tipos. A rota
 /// (<c>api/&lt;tipo&gt;-sheets/{sheetId}/spell-abilities</c>) fica na subclasse de cada tipo.
 /// </summary>
-public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse, TAdd>(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
+public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IMagiaDaFicha<TEfeito>
@@ -29,7 +30,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
 
     private DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract (string? SourceBankEntryId, string? Nome, string? Tipo, int? Grau, string? Descricao, List<SpellAbilityEffectRequest>? Efeitos) Ler(TAdd request);
+    protected abstract (string? SourceBankEntryId, string? Nome, string? Tipo, int? Grau, string? Descricao, List<SpellAbilityEffectRequest>? Efeitos) Ler(AddSpellAbilityRequest request);
 
     /// <summary>Uma linha nova (os membros <c>required</c>); o resto é preenchido pela base.</summary>
     protected abstract TLinha Nova(string nome, string descricao);
@@ -37,7 +38,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
     /// <summary>Um Efeito novo da linha <paramref name="magiaId"/> (a FK tem nome por tipo).</summary>
     protected abstract TEfeito NovoEfeito(Guid magiaId, SpellAbilityEffectRequest efeito);
 
-    protected abstract TResponse Resposta(TLinha linha, List<SpellAbilityEffectResponse> efeitos, RequisitosDePassivaDto? requisitos, List<string>? pendentes, string? desabilitadoPor);
+    protected abstract SpellAbilityResponse Resposta(TLinha linha, List<SpellAbilityEffectResponse> efeitos, RequisitosDePassivaDto? requisitos, List<string>? pendentes, string? desabilitadoPor);
 
     /// <summary>O retrato da ficha SEM penalidades de equipamento usado para conferir Requisitos (o Stats do tipo).</summary>
     protected abstract Task<FichaParaRequisitos> FichaParaRequisitosAsync(TSheet ficha);
@@ -46,7 +47,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
     protected virtual bool CopiaNoBancoDeCriatura => false;
 
     [HttpPost]
-    public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
+    public async Task<ActionResult<SpellAbilityResponse>> Add(Guid sheetId, AddSpellAbilityRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -182,7 +183,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
+    public async Task<ActionResult<List<SpellAbilityResponse>>> List(Guid sheetId)
     {
         if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -190,7 +191,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
         var entries = await Linhas.Include(e => e.Efeitos).Where(e => e.SheetId == sheetId).ToListAsync();
         // Uma só leitura da ficha, e só se houver Passivas; mapeamento sequencial (um único DbContext).
         var ficha = entries.Any(e => e.Tipo == SpellAbilityTipo.Passiva) ? await FichaParaRequisitosAsync(sheet) : null;
-        var result = new List<TResponse>();
+        var result = new List<SpellAbilityResponse>();
         foreach (var e in entries)
             result.Add(await RespostaAsync(sheet, e, ficha));
         return result;
@@ -218,7 +219,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<TResponse>> Update(Guid sheetId, Guid id, UpdateSheetSpellAbilityRequest request)
+    public async Task<ActionResult<SpellAbilityResponse>> Update(Guid sheetId, Guid id, UpdateSheetSpellAbilityRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -284,7 +285,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito, TResponse
         return NoContent();
     }
 
-    private async Task<TResponse> RespostaAsync(TSheet sheet, TLinha e, FichaParaRequisitos? ficha)
+    private async Task<SpellAbilityResponse> RespostaAsync(TSheet sheet, TLinha e, FichaParaRequisitos? ficha)
     {
         List<string>? pendentes = null;
         if (e.Tipo == SpellAbilityTipo.Passiva && ficha is not null)

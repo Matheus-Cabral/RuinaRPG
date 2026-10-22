@@ -9,8 +9,8 @@ using RuinaRPG.Contracts.Runes;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Runes;
 // Pedido e resposta de Runa têm o mesmo JSON no Personagem e no NPC.
-using AdicionarRuna = RuinaRPG.Contracts.CharacterSheets.AddCharacterRuneRequest;
-using RunaLida = RuinaRPG.Contracts.CharacterSheets.CharacterRuneResponse;
+using AdicionarRuna = RuinaRPG.Contracts.Fichas.AddRuneRequest;
+using RunaLida = RuinaRPG.Contracts.Fichas.RuneResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

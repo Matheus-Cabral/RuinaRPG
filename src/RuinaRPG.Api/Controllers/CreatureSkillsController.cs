@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -14,9 +15,9 @@ namespace RuinaRPG.Api.Controllers;
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
 public sealed class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CreatureSheet> tipo, RuinaRPG.Api.Services.CreatureSheetStats stats)
-    : PericiasDaFichaController<CreatureSheet, CreatureSkill, AtributoCriatura, CreatureSkillResponse, UpdateCreatureSkillRequest>(db, pericias, tabelaDeNiveis, tipo)
+    : PericiasDaFichaController<CreatureSheet, CreatureSkill, AtributoCriatura, CreatureSkillResponse>(db, pericias, tabelaDeNiveis, tipo)
 {
-    protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateCreatureSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
+    protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
 
     protected override async Task<List<CreatureSkillResponse>> ListarAsync(CreatureSheet ficha) =>
         (await stats.PericiasAsync(ficha, await Tipo.CondicoesAsync(ficha)))

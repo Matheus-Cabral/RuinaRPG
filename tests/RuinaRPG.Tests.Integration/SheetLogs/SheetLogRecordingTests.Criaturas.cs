@@ -3,8 +3,8 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
-using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
@@ -152,7 +152,7 @@ public partial class SheetLogRecordingTests
         }
 
         var novas = await NovasDaCriaturaAsync(sheetId, () =>
-            SendOkAsync(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", c.PlayerToken, new AddCreatureTraitRequest(exclusiva.Id.ToString(), null)));
+            SendOkAsync(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/traits", c.PlayerToken, new AddTraitRequest(exclusiva.Id.ToString(), null)));
 
         var linha = novas.Should().ContainSingle().Subject;
         linha.Acao.Should().Be(SheetLogAcao.Adicionou);
@@ -167,9 +167,9 @@ public partial class SheetLogRecordingTests
         var armaduraId = await CriarArmaduraAsync(c.GmToken, "Elmo de Ferro");
         var url = $"/api/character-sheets/{c.SheetId}/armor-slots/Capacete";
 
-        var aoEquipar = await NovasAsync(c.SheetId, () => SendOkAsync(HttpMethod.Put, url, c.PlayerToken, new UpdateCharacterArmorSlotRequest(armaduraId)));
+        var aoEquipar = await NovasAsync(c.SheetId, () => SendOkAsync(HttpMethod.Put, url, c.PlayerToken, new UpdateArmorSlotRequest(armaduraId)));
         // Ao tirar, o item de antes está preenchido: a linha continua sendo o slot, não o item.
-        var aoTirar = await NovasAsync(c.SheetId, () => SendOkAsync(HttpMethod.Put, url, c.PlayerToken, new UpdateCharacterArmorSlotRequest(null)));
+        var aoTirar = await NovasAsync(c.SheetId, () => SendOkAsync(HttpMethod.Put, url, c.PlayerToken, new UpdateArmorSlotRequest(null)));
 
         aoEquipar.Concat(aoTirar).Should().OnlyContain(l => l.Acao == SheetLogAcao.Alterou
             && l.Secao == Secao<CharacterArmorSlot>() && l.ItemNome == SheetLogValues.Render(ArmorSlotType.Capacete));
@@ -192,7 +192,7 @@ public partial class SheetLogRecordingTests
 
         var novas = await NovasAsync(c.SheetId, () =>
             SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/skills/Atletismo", c.PlayerToken,
-                new UpdateCharacterSkillRequest(1, pericia.AtributoSugerido?.ToString())));
+                new UpdateSkillRequest(1, pericia.AtributoSugerido?.ToString())));
 
         var linha = novas.Should().ContainSingle().Subject;
         linha.Acao.Should().Be(SheetLogAcao.Alterou);
@@ -210,7 +210,7 @@ public partial class SheetLogRecordingTests
         var itemId = await CriarItemGeralAsync(c.GmToken, "Corda de Cânhamo");
 
         var novas = await NovasAsync(c.SheetId, () =>
-            SendOkAsync(HttpMethod.Post, $"/api/character-sheets/{c.SheetId}/inventory", c.PlayerToken, new AddCharacterInventoryItemRequest(itemId, 2)));
+            SendOkAsync(HttpMethod.Post, $"/api/character-sheets/{c.SheetId}/inventory", c.PlayerToken, new AddInventoryItemRequest(itemId, 2)));
 
         var linha = novas.Should().ContainSingle().Subject;
         linha.Acao.Should().Be(SheetLogAcao.Adicionou);

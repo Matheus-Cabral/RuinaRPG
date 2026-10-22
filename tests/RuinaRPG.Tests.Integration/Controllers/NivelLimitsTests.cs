@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Campaigns;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Contracts.Auth;
@@ -71,7 +72,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var atributos = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/attributes/budget", gmToken)))
             .Content.ReadFromJsonAsync<AttributePointBudgetResponse>();
         var caracteristicas = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken)))
-            .Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+            .Content.ReadFromJsonAsync<TraitsListResponse>();
 
         atributos!.PontosDisponiveis.Should().Be(pontosDeAtributo);
         caracteristicas!.PontosDisponiveis.Should().Be(espacosDeCaracteristica);
@@ -115,7 +116,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     private Task<HttpResponseMessage> PutCharacterForcaAsync(string token, string sheetId, int gasto) =>
-        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", token, new UpdateCharacterAttributeRequest(gasto, 0, false)));
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", token, new UpdateAttributeRequest(gasto, 0, false)));
 
     [Fact]
     public async Task Character_attribute_gasto_above_MaxAtributo_is_rejected_but_lowering_is_allowed()
@@ -148,7 +149,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         {
             // Subir é recusado; manter, baixar e editar Bônus/Maestria seguem permitidos.
             (await PutCharacterForcaAsync(gm, sheetId, 6)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-            var bonus = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", gm, new UpdateCharacterAttributeRequest(5, 2, true)));
+            var bonus = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", gm, new UpdateAttributeRequest(5, 2, true)));
             bonus.StatusCode.Should().Be(HttpStatusCode.NoContent);
             (await PutCharacterForcaAsync(gm, sheetId, 4)).StatusCode.Should().Be(HttpStatusCode.NoContent);
         }
@@ -163,10 +164,10 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var anterior = await SetLimiteAsync("MaxAtributo", 3);
         try
         {
-            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateNpcAttributeRequest(4, 0, false)));
+            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateAttributeRequest(4, 0, false)));
             acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await ReadBodyAsync(acima)).Should().Contain("não pode passar de 3");
-            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateNpcAttributeRequest(3, 0, false)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/attributes/Forca", gm, new UpdateAttributeRequest(3, 0, false)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         }
         finally { await SetLimiteAsync("MaxAtributo", anterior); }
     }
@@ -178,10 +179,10 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var anterior = await SetLimiteAsync("MaxPericia", 3);
         try
         {
-            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateCharacterSkillRequest(4, null)));
+            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateSkillRequest(4, null)));
             acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await ReadBodyAsync(acima)).Should().Contain("Atletismo não pode passar de 3 pontos");
-            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateCharacterSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Atletismo", gm, new UpdateSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         }
         finally { await SetLimiteAsync("MaxPericia", anterior); }
     }
@@ -194,10 +195,10 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var anterior = await SetLimiteAsync("MaxPericia", 3);
         try
         {
-            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateNpcSkillRequest(4, null)));
+            var acima = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateSkillRequest(4, null)));
             acima.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await ReadBodyAsync(acima)).Should().Contain("não pode passar de 3");
-            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateNpcSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/skills/Atletismo", gm, new UpdateSkillRequest(3, null)))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         }
         finally { await SetLimiteAsync("MaxPericia", anterior); }
     }
@@ -218,7 +219,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
         var vocacional = await CreatePassivaAsync(gm, "Vocacional Um", "Vocacional");
         Task<HttpResponseMessage> Add(string id) => Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
-            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+            new AddSpellAbilityRequest(id, null, null, null, null, null)));
 
         var anterior = await SetLimiteAsync("MaxPassivasLivres", 1);
         try
@@ -239,7 +240,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
         var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
         Task<HttpResponseMessage> Add(string id) => Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
-            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+            new AddSpellAbilityRequest(id, null, null, null, null, null)));
 
         var anterior = await SetLimiteAsync("MaxPassivasLivres", null);
         try
@@ -260,7 +261,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         try
         {
             var resposta = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
-                new AddCharacterSpellAbilityRequest(livre1, null, null, null, null, null)));
+                new AddSpellAbilityRequest(livre1, null, null, null, null, null)));
             resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await ReadBodyAsync(resposta)).Should().Contain("no máximo 0 Passiva");
         }
@@ -275,7 +276,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var livre1 = await CreatePassivaAsync(gm, "Livre Um", "Livre");
         var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
         Task<HttpResponseMessage> Add(string id) => Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
-            new AddNpcSpellAbilityRequest(id, null, null, null, null, null)));
+            new AddSpellAbilityRequest(id, null, null, null, null, null)));
 
         var anterior = await SetLimiteAsync("MaxPassivasLivres", 1);
         try
@@ -296,7 +297,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
         var vocacional = await CreatePassivaAsync(gm, "Vocacional Um", "Vocacional");
         Task<HttpResponseMessage> Add(string id) => Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/spell-abilities", gm,
-            new AddCharacterSpellAbilityRequest(id, null, null, null, null, null)));
+            new AddSpellAbilityRequest(id, null, null, null, null, null)));
 
         var livres = await SetLimiteAsync("MaxPassivasLivres", 1);
         var vocacionais = await SetLimiteAsync("MaxPassivasVocacionais", 0);
@@ -326,7 +327,7 @@ public class NivelLimitsTests(ApiFixture fixture) : ApiTestBase(fixture)
         var livre2 = await CreatePassivaAsync(gm, "Livre Dois", "Livre");
         var livre3 = await CreatePassivaAsync(gm, "Livre Três", "Livre");
         Task<HttpResponseMessage> Add(string id) => Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/spell-abilities", gm,
-            new AddNpcSpellAbilityRequest(id, null, null, null, null, null)));
+            new AddSpellAbilityRequest(id, null, null, null, null, null)));
 
         var livres = await SetLimiteAsync("MaxPassivasLivres", 1);
         var coringas = await SetLimiteAsync("MaxPassivasCoringa", 1);

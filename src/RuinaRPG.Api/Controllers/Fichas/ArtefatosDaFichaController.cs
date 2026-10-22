@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Fichas;
@@ -10,7 +11,7 @@ using RuinaRPG.Infrastructure.Persistence;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Artefatos da ficha, para os três tipos. A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}</c>) fica na subclasse de cada tipo.</summary>
-public abstract class ArtefatosDaFichaController<TSheet, TLinha, TResponse, TAdd>(RuinaRpgDbContext db, EquipmentPenaltyService penalidades, ITipoDeFicha<TSheet> tipo)
+public abstract class ArtefatosDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, EquipmentPenaltyService penalidades, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IArtefatoDaFicha, new()
@@ -20,15 +21,15 @@ public abstract class ArtefatosDaFichaController<TSheet, TLinha, TResponse, TAdd
 
     private DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract string ArtifactItemIdDe(TAdd request);
+    protected abstract string ArtifactItemIdDe(AddArtifactRequest request);
 
-    protected abstract TResponse Resposta(TLinha linha, Artefato item, string? imageUrl, AvaliacaoDeEquipamento avaliacao, string? desabilitadoPor);
+    protected abstract ArtifactResponse Resposta(TLinha linha, Artefato item, string? imageUrl, AvaliacaoDeEquipamento avaliacao, string? desabilitadoPor);
 
     /// <summary>O retrato da ficha usado para conferir Requisitos (o Stats do tipo).</summary>
     protected abstract Task<FichaParaRequisitos> FichaParaRequisitosAsync(TSheet ficha);
 
     [HttpPost("artifacts")]
-    public async Task<ActionResult<TResponse>> AddArtifact(Guid sheetId, TAdd request)
+    public async Task<ActionResult<ArtifactResponse>> AddArtifact(Guid sheetId, AddArtifactRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
@@ -56,13 +57,13 @@ public abstract class ArtefatosDaFichaController<TSheet, TLinha, TResponse, TAdd
     }
 
     [HttpGet("artifacts")]
-    public async Task<ActionResult<List<TResponse>>> ListArtifacts(Guid sheetId)
+    public async Task<ActionResult<List<ArtifactResponse>>> ListArtifacts(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var artifacts = await Linhas.Where(a => a.SheetId == sheetId).ToListAsync();
-        var responses = new List<TResponse>();
+        var responses = new List<ArtifactResponse>();
         foreach (var artifact in artifacts)
             responses.Add(await RespostaAsync(ficha, artifact));
         return responses;
@@ -83,7 +84,7 @@ public abstract class ArtefatosDaFichaController<TSheet, TLinha, TResponse, TAdd
         return NoContent();
     }
 
-    private async Task<TResponse> RespostaAsync(TSheet ficha, TLinha artifact)
+    private async Task<ArtifactResponse> RespostaAsync(TSheet ficha, TLinha artifact)
     {
         var item = await Db.Set<Artefato>().SingleAsync(a => a.Id == artifact.ArtifactItemId);
         var imageUrl = await UrlDaImagemAsync(Db, item.ImageId);

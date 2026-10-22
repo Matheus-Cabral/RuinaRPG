@@ -8,6 +8,7 @@ using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Diary;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
@@ -212,8 +213,8 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
 
         var aoAdicionar = await NovasAsync(c.SheetId, async () =>
         {
-            var response = await SendOkAsync(HttpMethod.Post, $"/api/character-sheets/{c.SheetId}/affections", c.PlayerToken, new AddCharacterAffectionRequest("Rival", -2));
-            afeicaoId = (await response.Content.ReadFromJsonAsync<CharacterAffectionResponse>())!.Id;
+            var response = await SendOkAsync(HttpMethod.Post, $"/api/character-sheets/{c.SheetId}/affections", c.PlayerToken, new AddAffectionRequest("Rival", -2));
+            afeicaoId = (await response.Content.ReadFromJsonAsync<AffectionResponse>())!.Id;
         });
         var aoRemover = await NovasAsync(c.SheetId, () =>
             SendOkAsync(HttpMethod.Delete, $"/api/character-sheets/{c.SheetId}/affections/{afeicaoId}", c.PlayerToken));
@@ -229,14 +230,14 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
         removeu.ItemNome.Should().Be("Rival");
     }
 
-    private static AddCharacterSpellAbilityRequest BolaDeFogo() => new(
+    private static AddSpellAbilityRequest BolaDeFogo() => new(
         null, "Bola de Fogo", "Magia", 3, "Uma explosão de fogo.",
         [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)]);
 
     private async Task<string> AddBolaDeFogoAsync(Cenario c)
     {
         var response = await SendOkAsync(HttpMethod.Post, $"/api/character-sheets/{c.SheetId}/spell-abilities", c.GmToken, BolaDeFogo());
-        return (await response.Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!.Id;
+        return (await response.Content.ReadFromJsonAsync<SpellAbilityResponse>())!.Id;
     }
 
     [Fact]
@@ -311,7 +312,7 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
         var c = await CenarioAsync("Atributo");
 
         var novas = await NovasAsync(c.SheetId, () =>
-            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/attributes/Forca", c.PlayerToken, new UpdateCharacterAttributeRequest(1, 0, false)));
+            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/attributes/Forca", c.PlayerToken, new UpdateAttributeRequest(1, 0, false)));
 
         var linha = novas.Should().ContainSingle().Subject;
         linha.Acao.Should().Be(SheetLogAcao.Alterou);

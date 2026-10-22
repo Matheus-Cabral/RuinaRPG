@@ -7,8 +7,8 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
 // Pedido e resposta de Magia/Habilidade da ficha têm o mesmo JSON nos três tipos.
-using AdicionarMagia = RuinaRPG.Contracts.CharacterSheets.AddCharacterSpellAbilityRequest;
-using MagiaLida = RuinaRPG.Contracts.CharacterSheets.CharacterSpellAbilityResponse;
+using AdicionarMagia = RuinaRPG.Contracts.Fichas.AddSpellAbilityRequest;
+using MagiaLida = RuinaRPG.Contracts.Fichas.SpellAbilityResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

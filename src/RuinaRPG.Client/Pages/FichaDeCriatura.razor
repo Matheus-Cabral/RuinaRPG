@@ -8,6 +8,7 @@
 @inject IDialogService Dialogs
 @using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CreatureSheets
+@using RuinaRPG.Contracts.Fichas
 @using RuinaRPG.Contracts.SpellsAndAbilities
 @using RuinaRPG.Domain.SpellsAndAbilities
 @using RuinaRPG.Contracts.CharacterSheets
@@ -642,7 +643,7 @@
     private bool _imageExpanded;
     private bool _imageEditing;
     private bool _imageGalleryOpen;
-    private List<CreatureAttributeResponse> _attributes = new();
+    private List<AttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<CreatureSkillResponse> _skills = new();
 
@@ -654,22 +655,22 @@
     private List<CreatureWeaponResponse> _weapons = new();
     private readonly WeaponFormModel _weaponForm = new();
     private List<CreatureArmorSlotResponse> _armorSlots = new();
-    private List<CreatureShieldResponse> _shields = new();
+    private List<ShieldResponse> _shields = new();
     private readonly ShieldFormModel _shieldForm = new();
     // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private SubAttributesResponse? _subAttributes;
     private ModificadorDeDanoResponse? _modificadorDeDano;
-    private List<CreatureSpellAbilityResponse> _spellAbilities = new();
+    private List<SpellAbilityResponse> _spellAbilities = new();
     private List<SpellAbilityEntryResponse> _bankEntries = new();
     private readonly SpellAbilityFormModel _spellAbilityForm = new();
-    private List<CreatureMasteryResponse> _masteries = new();
+    private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
     private List<CreatureSpoilResponse> _spoils = new();
     private readonly SpoilFormModel _spoilForm = new();
-    private List<CreatureArtifactResponse> _artifacts = new();
+    private List<ArtifactResponse> _artifacts = new();
     private readonly ArtifactFormModel _artifactForm = new();
-    private List<CreatureAffectionResponse> _affections = new();
+    private List<AffectionResponse> _affections = new();
     private readonly AffectionFormModel _affectionForm = new();
     private CreatureTraitsListResponse? _traits;
     private List<string> _levelUpBonuses = new();
@@ -1052,12 +1053,12 @@
 
     private async Task LoadTabs2And3Async()
     {
-        _attributes = await Http.GetFromJsonAsync<List<CreatureAttributeResponse>>($"creature-sheets/{SheetId}/attributes") ?? new();
+        _attributes = await Http.GetFromJsonAsync<List<AttributeResponse>>($"creature-sheets/{SheetId}/attributes") ?? new();
         _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"creature-sheets/{SheetId}/attributes/budget");
         _skills = await Http.GetFromJsonAsync<List<CreatureSkillResponse>>($"creature-sheets/{SheetId}/skills") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<CreatureWeaponResponse>>($"creature-sheets/{SheetId}/weapons") ?? new();
         _armorSlots = await Http.GetFromJsonAsync<List<CreatureArmorSlotResponse>>($"creature-sheets/{SheetId}/armor-slots") ?? new();
-        _shields = await Http.GetFromJsonAsync<List<CreatureShieldResponse>>($"creature-sheets/{SheetId}/shields") ?? new();
+        _shields = await Http.GetFromJsonAsync<List<ShieldResponse>>($"creature-sheets/{SheetId}/shields") ?? new();
         _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"creature-sheets/{SheetId}/sub-attributes");
         _modificadorDeDano = await Http.GetFromJsonAsync<ModificadorDeDanoResponse>($"creature-sheets/{SheetId}/modificador-de-dano");
     }
@@ -1069,7 +1070,7 @@
         var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
-        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateCreatureAttributeRequest(gasto, bonus, temMaestria));
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateAttributeRequest(gasto, bonus, temMaestria));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1079,7 +1080,7 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(gasto, current.AtributoEscolhido));
         _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1089,7 +1090,7 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var atributoEscolhido = value?.ToString();
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
+        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
         await LoadTabs2And3Async();
         _penalidadesVersao++;
     }
@@ -1132,7 +1133,7 @@
 
     private async Task AssignArmorSlotAsync(string slot, string? itemId)
     {
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/armor-slots/{slot}", new UpdateCreatureArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
+        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/armor-slots/{slot}", new UpdateArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
         _armorSlotForm[slot] = "";
         await LoadTabs2And3Async();
         _penalidadesVersao++;
@@ -1147,7 +1148,7 @@
 
     private async Task AddShieldAsync()
     {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/shields", new AddCreatureShieldRequest(_shieldForm.ItemId));
+        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/shields", new AddShieldRequest(_shieldForm.ItemId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar o escudo.";
@@ -1188,7 +1189,7 @@
 
     private async Task LoadSpellAbilitiesAsync()
     {
-        _spellAbilities = await Http.GetFromJsonAsync<List<CreatureSpellAbilityResponse>>($"creature-sheets/{SheetId}/spell-abilities") ?? new();
+        _spellAbilities = await Http.GetFromJsonAsync<List<SpellAbilityResponse>>($"creature-sheets/{SheetId}/spell-abilities") ?? new();
         var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
         _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
     }
@@ -1202,8 +1203,8 @@
     private async Task AddSpellAbilityAsync()
     {
         var request = _spellAbilityForm.Origem == "Banco"
-            ? new AddCreatureSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
-            : new AddCreatureSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
+            ? new AddSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
+            : new AddSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
                 _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
 
         var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spell-abilities", request);
@@ -1230,7 +1231,7 @@
         await RecarregarPontosDeIgnicaoAsync();
     }
 
-    private async Task EditSpellAbilityAsync(CreatureSpellAbilityResponse entrada)
+    private async Task EditSpellAbilityAsync(SpellAbilityResponse entrada)
     {
         var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
             new DialogParameters<EditarMagiaHabilidadeDialog>
@@ -1265,12 +1266,12 @@
 
     private async Task LoadMasteriesAsync()
     {
-        _masteries = await Http.GetFromJsonAsync<List<CreatureMasteryResponse>>($"creature-sheets/{SheetId}/masteries") ?? new();
+        _masteries = await Http.GetFromJsonAsync<List<MasteryResponse>>($"creature-sheets/{SheetId}/masteries") ?? new();
     }
 
     private async Task AddMasteryAsync()
     {
-        var request = new AddCreatureMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
+        var request = new AddMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
         var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/masteries", request);
         if (!response.IsSuccessStatusCode)
         {
@@ -1324,12 +1325,12 @@
 
     private async Task LoadArtifactsAsync()
     {
-        _artifacts = await Http.GetFromJsonAsync<List<CreatureArtifactResponse>>($"creature-sheets/{SheetId}/artifacts") ?? new();
+        _artifacts = await Http.GetFromJsonAsync<List<ArtifactResponse>>($"creature-sheets/{SheetId}/artifacts") ?? new();
     }
 
     private async Task AddArtifactAsync()
     {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/artifacts", new AddCreatureArtifactRequest(_artifactForm.ArtifactItemId));
+        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/artifacts", new AddArtifactRequest(_artifactForm.ArtifactItemId));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar o artefato.";
@@ -1352,12 +1353,12 @@
 
     private async Task LoadAffectionsAsync()
     {
-        _affections = await Http.GetFromJsonAsync<List<CreatureAffectionResponse>>($"creature-sheets/{SheetId}/affections") ?? new();
+        _affections = await Http.GetFromJsonAsync<List<AffectionResponse>>($"creature-sheets/{SheetId}/affections") ?? new();
     }
 
     private async Task AddAffectionAsync()
     {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/affections", new AddCreatureAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
+        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/affections", new AddAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível adicionar a afeição.";
@@ -1382,7 +1383,7 @@
 
     private async Task AddTraitAsync()
     {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/traits", new AddCreatureTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
+        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/traits", new AddTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";

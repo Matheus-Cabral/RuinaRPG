@@ -6,17 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
 // Os pedidos de arma (com ItemId do catálogo), escudo, armadura, Artefato, Atributo e Perícia têm o mesmo
 // JSON nos três tipos de ficha.
-using AdicionarArma = RuinaRPG.Contracts.CharacterSheets.AddCharacterWeaponRequest;
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AdicionarEscudo = RuinaRPG.Contracts.CharacterSheets.AddCharacterShieldRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
-using AtualizarPericia = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterSkillRequest;
-using AtualizarSlot = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterArmorSlotRequest;
+using AdicionarArma = RuinaRPG.Contracts.Fichas.AddWeaponRequest;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AdicionarEscudo = RuinaRPG.Contracts.Fichas.AddShieldRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
+using AtualizarPericia = RuinaRPG.Contracts.Fichas.UpdateSkillRequest;
+using AtualizarSlot = RuinaRPG.Contracts.Fichas.UpdateArmorSlotRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -286,7 +287,7 @@ public sealed class PenalidadesDeEquipamentoTestesPersonagem(ApiFixture fixture)
 
         // Tudo responde 200 (GetAsync afirma sucesso) e nenhuma linha de penalidade cita a Perícia removida.
         (await ListarPericiasAsync(f)).Should().NotContain(p => p.Pericia == chave);
-        var atributos = await GetAsync<List<CharacterAttributeResponse>>(f, "attributes");
+        var atributos = await GetAsync<List<AttributeResponse>>(f, "attributes");
         atributos.Should().NotBeEmpty();
         await SubAtributosAsync(f);
         var linha = (await ListarArmasAsync(f)).Single();

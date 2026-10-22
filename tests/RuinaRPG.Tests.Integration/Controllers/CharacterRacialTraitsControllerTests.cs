@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
@@ -73,7 +74,7 @@ public class CharacterRacialTraitsControllerTests(ApiFixture fixture) : ApiTestB
         (await pendingResponse.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>())!.Pending.Should().BeFalse();
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         var granted = traits!.Positivas.Should().ContainSingle(t => t.Nome == "Alfabetizado").Subject;
         granted.Custo.Should().Be(0); // real catalog cost is 1 — racial grants are free
         granted.IsRacial.Should().BeTrue();
@@ -93,7 +94,7 @@ public class CharacterRacialTraitsControllerTests(ApiFixture fixture) : ApiTestB
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Imunidade de Venenos (2 pontos)" && t.Custo == 0 && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Crédulo" && t.Custo == 0 && t.IsRacial);
         traits.TotalPositivas.Should().Be(0);
@@ -113,7 +114,7 @@ public class CharacterRacialTraitsControllerTests(ApiFixture fixture) : ApiTestB
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Detectar Magia" && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Desvantagem Elemental" && t.Especificacao == "Fogo" && t.IsRacial);
     }
@@ -162,7 +163,7 @@ public class CharacterRacialTraitsControllerTests(ApiFixture fixture) : ApiTestB
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Sentidos Aguçados" && t.Especificacao == "Audição" && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Código de Honra" && t.Especificacao == "Nunca mente para um Lorde" && t.IsRacial);
     }
@@ -194,7 +195,7 @@ public class CharacterRacialTraitsControllerTests(ApiFixture fixture) : ApiTestB
         await SetVarianteAsync(gmToken, playerToken, sheetId, "Humano", "Laonir");
 
         var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/traits", playerToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<CharacterTraitsListResponse>();
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().NotContain(t => t.Nome == "Alfabetizado");
 
         var pendingResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/racial-traits/pending", playerToken));

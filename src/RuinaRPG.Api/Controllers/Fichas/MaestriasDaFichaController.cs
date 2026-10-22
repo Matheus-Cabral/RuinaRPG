@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Fichas;
@@ -10,7 +11,7 @@ using RuinaRPG.Infrastructure.Rules;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Maestrias da ficha (criar, listar e apagar), para os três tipos. A rota fica na subclasse de cada tipo.</summary>
-public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLinhaDeAtributo, TAtributo, TResponse, TAdd>(
+public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLinhaDeAtributo, TAtributo>(
     RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
@@ -32,12 +33,12 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     /// <summary>Uma Maestria nova do tipo (as entidades têm Nome required, então não servem para new()).</summary>
     protected abstract TMaestria Nova(Guid sheetId, string nome, int periciaId, TAtributo atributo, int gastoMaestria);
 
-    protected abstract (string Nome, string Pericia, string? Atributo, int GastoMaestria) Ler(TAdd request);
+    protected abstract (string Nome, string Pericia, string? Atributo, int GastoMaestria) Ler(AddMasteryRequest request);
 
-    protected abstract TResponse Resposta(string id, string nome, string pericia, string atributo, int gastoMaestria, int total);
+    protected abstract MasteryResponse Resposta(string id, string nome, string pericia, string atributo, int gastoMaestria, int total);
 
     [HttpPost]
-    public async Task<ActionResult<TResponse>> Add(Guid sheetId, TAdd request)
+    public async Task<ActionResult<MasteryResponse>> Add(Guid sheetId, AddMasteryRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -64,7 +65,7 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
+    public async Task<ActionResult<List<MasteryResponse>>> List(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
@@ -73,7 +74,7 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
         var masteries = (await Linhas.Where(m => m.SheetId == sheetId).ToListAsync())
             .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
             .ToList();
-        var responses = new List<TResponse>();
+        var responses = new List<MasteryResponse>();
         var efeitos = await Tipo.CondicoesAsync(sheet);
         foreach (var mastery in masteries)
         {
@@ -117,6 +118,6 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
         return efeitos.NaMaestria(pericia.Chave, maestriaId, gastoMaestria + bruto + atributoTotal);
     }
 
-    protected TResponse ParaResposta(TMaestria m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>
+    protected MasteryResponse ParaResposta(TMaestria m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>
         Resposta(m.Id.ToString(), m.Nome, porId[m.PericiaId].Chave, m.Atributo.ToString(), m.GastoMaestria, total);
 }

@@ -3,9 +3,10 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 // Os pedidos de Atributo e Artefato têm o mesmo JSON nos três tipos de ficha.
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -219,7 +220,7 @@ public sealed class AtributosDaFichaTestesPersonagem(ApiFixture fixture) : Atrib
         var f = await NovaFichaAsync();
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Forca"), f.Token,
-            new UpdateCharacterAttributeRequest(10, 0, false))); // Nível 1 budget is 9
+            new UpdateAttributeRequest(10, 0, false))); // Nível 1 budget is 9
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -229,15 +230,15 @@ public sealed class AtributosDaFichaTestesPersonagem(ApiFixture fixture) : Atrib
     {
         var f = await NovaFichaAsync();
 
-        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Forca"), f.Token, new UpdateCharacterAttributeRequest(5, 0, false)));
+        var first = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Forca"), f.Token, new UpdateAttributeRequest(5, 0, false)));
         first.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // 5 (Forca já gasto) + 5 (Vigor) = 10 > 9.
-        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Vigor"), f.Token, new UpdateCharacterAttributeRequest(5, 0, false)));
+        var second = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Vigor"), f.Token, new UpdateAttributeRequest(5, 0, false)));
         second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         // Exactly at the budget (5 + 4 = 9) is allowed.
-        var third = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Vigor"), f.Token, new UpdateCharacterAttributeRequest(4, 0, false)));
+        var third = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "attributes/Vigor"), f.Token, new UpdateAttributeRequest(4, 0, false)));
         third.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

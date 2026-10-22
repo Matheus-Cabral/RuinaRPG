@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Rules.Niveis;
@@ -227,7 +228,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         // 3*2+24 = 30, exactly ValidUpdate()'s VitalidadeAtual, so the clamp added for "Atual não
         // pode exceder o máximo" (1.c) doesn't interfere with this test's real purpose (every
         // other field round-trips unchanged).
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateAttributeRequest(3, 0, false)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, ValidUpdate()));
 
@@ -366,9 +367,9 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         // Vigor total = Gasto(5) + Bonus(0)/2 (sem maestria) = 5 → Vitalidade = 5*2 + 8 = 18.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateAttributeRequest(5, 0, false)));
         // Astúcia total = Gasto(3) + Bonus(0)/2 (sem maestria) = 3 → Foco = 3*2 + 4 = 10.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateAttributeRequest(3, 0, false)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
 
@@ -392,8 +393,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         // Campeão Nível 1 → Vitalidade máximo 18, Foco máximo 10 (see the test above); Adrenalina
         // and Estresse máximos (10 each) don't depend on attributes at all. Attributes are set
         // BEFORE the sheet PUT below, since clamping happens against the máximo at save time.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(5, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateCharacterAttributeRequest(3, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateAttributeRequest(5, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Astucia", playerToken, new UpdateAttributeRequest(3, 0, false)));
 
         var update = ValidUpdate() with
         {
@@ -632,19 +633,19 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
 
         // Agilidade Gasto 4, Vigor Gasto 4, no bônus/maestria/artefato → Total 4 each.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken,
-            new UpdateCharacterAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken,
-            new UpdateCharacterAttributeRequest(4, 0, false)));
+            new UpdateAttributeRequest(4, 0, false)));
 
         // Prontidao Gasto 9, Histórico bonus 6 counts as Pericia points -> Modificador (9+6)/3 = 5.
         // Reflexos Gasto 6, Histórico bonus 3 -> Modificador (6+3)/3 = 3.
         // Fortitude Gasto 3 -> Modificador 1, untouched by this Histórico.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Prontidao", playerToken,
-            new UpdateCharacterSkillRequest(9, null)));
+            new UpdateSkillRequest(9, null)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Reflexos", playerToken,
-            new UpdateCharacterSkillRequest(6, null)));
+            new UpdateSkillRequest(6, null)));
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/skills/Fortitude", playerToken,
-            new UpdateCharacterSkillRequest(3, null)));
+            new UpdateSkillRequest(3, null)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
 
@@ -676,8 +677,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
 
         var iniciativaArtifactId = await CreateArtefatoItemAsync(gmToken, "Amuleto da Presteza", "SubAtributo", "Iniciativa", 4);
         var reducaoFisicaArtifactId = await CreateArtefatoItemAsync(gmToken, "Bracelete de Ferro", "SubAtributo", "Redução Física", 2);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(iniciativaArtifactId)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddCharacterArtifactRequest(reducaoFisicaArtifactId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddArtifactRequest(iniciativaArtifactId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/artifacts", playerToken, new AddArtifactRequest(reducaoFisicaArtifactId)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
 
@@ -695,8 +696,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Bc {tag}");
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(forcaVigor, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Forca", playerToken, new UpdateAttributeRequest(forcaVigor, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateAttributeRequest(forcaVigor, 0, false)));
         return (sheetId, playerToken, campaignId, gmToken);
     }
 
@@ -744,9 +745,9 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
     public async Task SubAttributes_Movimentacao_overweight_penalty_follows_the_campaign_BonusDeCarga()
     {
         var (sheetId, playerToken, campaignId, gmToken) = await NewSheetWithForcaVigorAsync("3", 2);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateCharacterAttributeRequest(4, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Agilidade", playerToken, new UpdateAttributeRequest(4, 0, false)));
         var itemId = await CreateItemGeralAsync(gmToken, "Pedra", peso: 4m, capacidadeExtra: null);
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddCharacterInventoryItemRequest(itemId, 1)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/inventory", playerToken, new AddInventoryItemRequest(itemId, 1)));
 
         var overweight = await GetSubAttributesAsync(sheetId, playerToken); // max 2, carrying 4 -> sobrepeso 2
         overweight.Movimentacao.Should().Be(6); // 4*2 - 2 sobrepeso
@@ -786,7 +787,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null)));
+            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
 
@@ -814,7 +815,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddCharacterAffinityRequest("Fogo", 7, null, null, null, null)));
+            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
         var linhas = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-afinidades", gmToken)))
             .Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
         var linha7 = linhas.Single(l => l.Afinidade == 7);

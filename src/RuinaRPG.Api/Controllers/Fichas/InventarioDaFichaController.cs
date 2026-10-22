@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
@@ -10,7 +11,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// Inventário da ficha (Personagem e NPC; a Criatura tem Espólios no lugar, em <see cref="CreatureSpoilsController"/>).
 /// A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}</c>) fica na subclasse de cada tipo.
 /// </summary>
-public abstract class InventarioDaFichaController<TSheet, TLinha, TResponse, TAdd>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
+public abstract class InventarioDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IItemDoInventarioDaFicha, new()
@@ -19,15 +20,15 @@ public abstract class InventarioDaFichaController<TSheet, TLinha, TResponse, TAd
 
     private DbSet<TLinha> Linhas => Db.Set<TLinha>();
 
-    protected abstract (string ItemId, int Qtd) Ler(TAdd request);
+    protected abstract (string ItemId, int Qtd) Ler(AddInventoryItemRequest request);
 
     /// <summary>Confere se o Item do Catálogo pedido pode entrar no inventário; o 400 se não existe ou não serve.</summary>
     protected abstract Task<ActionResult?> ConferirItemAsync(Guid itemId);
 
-    protected abstract TResponse Resposta(TLinha linha, Item item, string? imageUrl);
+    protected abstract InventoryItemResponse Resposta(TLinha linha, Item item, string? imageUrl);
 
     [HttpPost("inventory")]
-    public async Task<ActionResult<TResponse>> AddInventoryItem(Guid sheetId, TAdd request)
+    public async Task<ActionResult<InventoryItemResponse>> AddInventoryItem(Guid sheetId, AddInventoryItemRequest request)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;
@@ -47,13 +48,13 @@ public abstract class InventarioDaFichaController<TSheet, TLinha, TResponse, TAd
     }
 
     [HttpGet("inventory")]
-    public async Task<ActionResult<List<TResponse>>> ListInventory(Guid sheetId)
+    public async Task<ActionResult<List<InventoryItemResponse>>> ListInventory(Guid sheetId)
     {
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
             return erro;
 
         var items = await Linhas.Where(i => i.SheetId == sheetId).ToListAsync();
-        var responses = new List<TResponse>();
+        var responses = new List<InventoryItemResponse>();
         foreach (var item in items)
             responses.Add(await RespostaAsync(item));
         return responses;
@@ -89,7 +90,7 @@ public abstract class InventarioDaFichaController<TSheet, TLinha, TResponse, TAd
         return NoContent();
     }
 
-    private async Task<TResponse> RespostaAsync(TLinha linha)
+    private async Task<InventoryItemResponse> RespostaAsync(TLinha linha)
     {
         var item = await Db.Items.SingleAsync(i => i.Id == linha.ItemId);
         return Resposta(linha, item, await UrlDaImagemAsync(Db, item.ImageId));

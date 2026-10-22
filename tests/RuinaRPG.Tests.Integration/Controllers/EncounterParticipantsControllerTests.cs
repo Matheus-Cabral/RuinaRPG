@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -105,7 +106,7 @@ public class EncounterParticipantsControllerTests(ApiFixture fixture) : ApiTestB
         var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
         // Vitalidade não pode exceder o Máximo (Ficha de Personagem 1.c) — Campeão Nível 5 → Vida
         // 24 (real Tabela de Vocação); Vigor 1 pushes o máximo pra 26, folga suficiente pro 25 pedido.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateCharacterAttributeRequest(1, 0, false)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/attributes/Vigor", playerToken, new UpdateAttributeRequest(1, 0, false)));
         await UpdateCharacterVitalidadeAsync(playerToken, sheetId, "Vann Astrel", 25);
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,

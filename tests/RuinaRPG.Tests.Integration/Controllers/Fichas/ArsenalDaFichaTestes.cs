@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 // Os pedidos de arma (com ItemId do catálogo), armadura e escudo têm o mesmo JSON nos três tipos de ficha;
 // o pedido de arma da Criatura só acrescenta os campos do ataque natural, que ficam nulos.
-using AdicionarArma = RuinaRPG.Contracts.CharacterSheets.AddCharacterWeaponRequest;
-using AdicionarEscudo = RuinaRPG.Contracts.CharacterSheets.AddCharacterShieldRequest;
-using AtualizarSlot = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterArmorSlotRequest;
+using AdicionarArma = RuinaRPG.Contracts.Fichas.AddWeaponRequest;
+using AdicionarEscudo = RuinaRPG.Contracts.Fichas.AddShieldRequest;
+using AtualizarSlot = RuinaRPG.Contracts.Fichas.UpdateArmorSlotRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -509,7 +510,7 @@ public sealed class ArsenalDaFichaTestesCriatura(ApiFixture fixture) : ArsenalDa
         var armorItemId = await CreateArmaduraItemAsync(f.GmToken, "F");
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, "armor-slots/Capacete"), f.Token,
-            new UpdateCreatureArmorSlotRequest(armorItemId)));
+            new UpdateArmorSlotRequest(armorItemId)));
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "armor-slots"), f.Token));

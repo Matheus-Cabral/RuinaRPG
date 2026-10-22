@@ -2,13 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Campaigns;
-using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Rules;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 // Pedidos e respostas de Magia/Habilidade e de Atributo têm o mesmo JSON nos três tipos.
-using AdicionarMagia = RuinaRPG.Contracts.CharacterSheets.AddCharacterSpellAbilityRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
-using MagiaLida = RuinaRPG.Contracts.CharacterSheets.CharacterSpellAbilityResponse;
+using AdicionarMagia = RuinaRPG.Contracts.Fichas.AddSpellAbilityRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
+using MagiaLida = RuinaRPG.Contracts.Fichas.SpellAbilityResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -221,7 +221,7 @@ public sealed class PassivasDaFichaTestesNpc(ApiFixture fixture) : PassivasDePer
         var grantedId = await GrantNpcAsync(gm, campaignId, playerId, source.SheetId);
 
         var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{grantedId}/spell-abilities", playerToken)))
-            .Content.ReadFromJsonAsync<List<NpcSpellAbilityResponse>>();
+            .Content.ReadFromJsonAsync<List<SpellAbilityResponse>>();
         var copy = list!.Single(e => e.Nome == "Vigia");
         copy.Categoria.Should().Be("Livre");
         copy.Requisitos!.Nivel.Should().Be(1);

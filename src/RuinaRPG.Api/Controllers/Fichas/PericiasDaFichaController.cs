@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Persistence;
@@ -9,7 +10,7 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>Perícias da ficha (listar e editar uma), para os três tipos. A rota fica na subclasse de cada tipo.</summary>
-public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResponse, TUpdate>(
+public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResponse>(
     RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
@@ -26,7 +27,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
     /// <summary>A lista de Perícias da ficha já calculada, no record de resposta do tipo.</summary>
     protected abstract Task<List<TResponse>> ListarAsync(TSheet ficha);
 
-    protected abstract (int Gasto, string? AtributoEscolhido) Ler(TUpdate request);
+    protected abstract (int Gasto, string? AtributoEscolhido) Ler(UpdateSkillRequest request);
 
     [HttpGet]
     public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
@@ -38,7 +39,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
     }
 
     [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, string pericia, TUpdate request)
+    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateSkillRequest request)
     {
         // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
         var def = await Pericias.AtivaPorChaveAsync(pericia);

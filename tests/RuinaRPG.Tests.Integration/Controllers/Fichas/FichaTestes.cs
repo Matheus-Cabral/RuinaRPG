@@ -8,13 +8,13 @@ using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.Rules;
 // Pedidos de Atributo, Perícia, Armadura e Artefato têm o mesmo JSON nos três tipos.
-using AdicionarArma = RuinaRPG.Contracts.CharacterSheets.AddCharacterWeaponRequest;
-using AdicionarArtefato = RuinaRPG.Contracts.CharacterSheets.AddCharacterArtifactRequest;
-using AdicionarEscudo = RuinaRPG.Contracts.CharacterSheets.AddCharacterShieldRequest;
-using AdicionarItem = RuinaRPG.Contracts.CharacterSheets.AddCharacterInventoryItemRequest;
-using AtualizarAtributo = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterAttributeRequest;
-using AtualizarPericia = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterSkillRequest;
-using AtualizarSlot = RuinaRPG.Contracts.CharacterSheets.UpdateCharacterArmorSlotRequest;
+using AdicionarArma = RuinaRPG.Contracts.Fichas.AddWeaponRequest;
+using AdicionarArtefato = RuinaRPG.Contracts.Fichas.AddArtifactRequest;
+using AdicionarEscudo = RuinaRPG.Contracts.Fichas.AddShieldRequest;
+using AdicionarItem = RuinaRPG.Contracts.Fichas.AddInventoryItemRequest;
+using AtualizarAtributo = RuinaRPG.Contracts.Fichas.UpdateAttributeRequest;
+using AtualizarPericia = RuinaRPG.Contracts.Fichas.UpdateSkillRequest;
+using AtualizarSlot = RuinaRPG.Contracts.Fichas.UpdateArmorSlotRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 

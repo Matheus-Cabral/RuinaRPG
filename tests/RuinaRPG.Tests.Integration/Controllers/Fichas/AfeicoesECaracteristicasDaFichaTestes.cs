@@ -5,16 +5,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
 // Pedidos e respostas de Afeição e Característica têm o mesmo JSON nos três tipos de ficha (a Criatura
 // só não tem IsRacial, que nenhum teste daqui lê).
-using AdicionarAfeicao = RuinaRPG.Contracts.CharacterSheets.AddCharacterAffectionRequest;
-using AdicionarCaracteristica = RuinaRPG.Contracts.CharacterSheets.AddCharacterTraitRequest;
-using AfeicaoLida = RuinaRPG.Contracts.CharacterSheets.CharacterAffectionResponse;
-using CaracteristicaLida = RuinaRPG.Contracts.CharacterSheets.CharacterTraitResponse;
-using CaracteristicasLidas = RuinaRPG.Contracts.CharacterSheets.CharacterTraitsListResponse;
+using AdicionarAfeicao = RuinaRPG.Contracts.Fichas.AddAffectionRequest;
+using AdicionarCaracteristica = RuinaRPG.Contracts.Fichas.AddTraitRequest;
+using AfeicaoLida = RuinaRPG.Contracts.Fichas.AffectionResponse;
+using CaracteristicaLida = RuinaRPG.Contracts.Fichas.TraitDaFichaResponse;
+using CaracteristicasLidas = RuinaRPG.Contracts.Fichas.TraitsListResponse;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
@@ -295,18 +296,18 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesPersonagem(ApiFixture f
         var f = await NovaFichaAsync();
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "affections"), f.Token,
-            new AddCharacterAffectionRequest("Amigo de infância", 5)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+            new AddAffectionRequest("Amigo de infância", 5)));
+        var added = await addResponse.Content.ReadFromJsonAsync<AffectionResponse>();
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"affections/{added!.Id}"), f.Token,
             new UpdateCharacterAffectionRequest("Rival de infância", -3)));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<AffectionResponse>();
         updated!.Nome.Should().Be("Rival de infância");
         updated.Favorabilidade.Should().Be(-3);
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "affections"), f.Token));
-        var body = await listResponse.Content.ReadFromJsonAsync<List<CharacterAffectionResponse>>();
+        var body = await listResponse.Content.ReadFromJsonAsync<List<AffectionResponse>>();
         body!.Should().ContainSingle(a => a.Id == added.Id && a.Nome == "Rival de infância" && a.Favorabilidade == -3);
     }
 
@@ -317,8 +318,8 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesPersonagem(ApiFixture f
         var otherToken = await Tipo.CriarIntrusoAsync(this, f);
 
         var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "affections"), f.Token,
-            new AddCharacterAffectionRequest("Mentor", 8)));
-        var added = await addResponse.Content.ReadFromJsonAsync<CharacterAffectionResponse>();
+            new AddAffectionRequest("Mentor", 8)));
+        var added = await addResponse.Content.ReadFromJsonAsync<AffectionResponse>();
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"affections/{added!.Id}"), otherToken,
             new UpdateCharacterAffectionRequest("Impostor", 0)));
@@ -374,7 +375,7 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesCriatura(ApiFixture fix
         var positiveTraitId = (await db.Traits.FirstAsync(t => t.Polaridade == Polaridade.Positiva && !t.RequerEspecificacao && t.Custo <= 3)).Id.ToString();
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "traits"), f.Token,
-            new AddCreatureTraitRequest(positiveTraitId, null)));
+            new AddTraitRequest(positiveTraitId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("Esta característica não é do catálogo de criatura.");
@@ -387,7 +388,7 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesCriatura(ApiFixture fix
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Regeneração Bestial", "Recupera Vitalidade.", 3, Polaridade.Positiva, false);
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "traits"), f.Token,
-            new AddCreatureTraitRequest(exclusiveId, null)));
+            new AddTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = await response.Content.ReadFromJsonAsync<CreatureTraitResponse>();
@@ -424,7 +425,7 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesCriatura(ApiFixture fix
             });
             await db.SaveChangesAsync();
         }
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "traits"), f.Token, new AddCreatureTraitRequest(exclusiveId, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "traits"), f.Token, new AddTraitRequest(exclusiveId, null)));
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "traits"), f.Token));
         var list = await listResponse.Content.ReadFromJsonAsync<CreatureTraitsListResponse>();
@@ -442,7 +443,7 @@ public sealed class AfeicoesECaracteristicasDaFichaTestesCriatura(ApiFixture fix
         var exclusiveId = await CreateExclusiveTraitDirectlyAsync("Fúria Sazonal", "Muda de comportamento numa estação.", 1, Polaridade.Positiva, true);
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "traits"), f.Token,
-            new AddCreatureTraitRequest(exclusiveId, null)));
+            new AddTraitRequest(exclusiveId, null)));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

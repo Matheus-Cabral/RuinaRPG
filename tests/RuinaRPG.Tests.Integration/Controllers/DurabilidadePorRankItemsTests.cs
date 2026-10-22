@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.NpcSheets;
 using RuinaRPG.Domain.Items;
@@ -190,10 +191,10 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddWeaponRequest(itemId)));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<CharacterWeaponResponse>();
+        var body = await response.Content.ReadFromJsonAsync<WeaponResponse>();
         body!.Rank.Should().Be("C");
         body.DurabilidadeAtual.Should().Be(125);
         body.DurabilidadeMaxima.Should().Be(125);
@@ -207,14 +208,14 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "DurRankPlayer2", "durrankplayer2@teste.com");
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
-        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
-        var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddWeaponRequest(itemId)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<WeaponResponse>())!.Id;
 
         var undo = await SetRankAsync(RankDeItem.C, 50, false);
         try
         {
             var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
-                .Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+                .Content.ReadFromJsonAsync<List<WeaponResponse>>();
             var weapon = list!.Single(w => w.Id == weaponId);
             weapon.DurabilidadeAtual.Should().Be(50);
             weapon.DurabilidadeMaxima.Should().Be(50);
@@ -239,8 +240,8 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "DurRankPlayer3", "durrankplayer3@teste.com");
         var sheetId = await SetUpCharacterSheetAsync(gmToken, playerId);
         var itemId = await CreateItemAsync(gmToken, "Arma", "C");
-        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddCharacterWeaponRequest(itemId)));
-        var weaponId = (await add.Content.ReadFromJsonAsync<CharacterWeaponResponse>())!.Id;
+        var add = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/weapons", playerToken, new AddWeaponRequest(itemId)));
+        var weaponId = (await add.Content.ReadFromJsonAsync<WeaponResponse>())!.Id;
 
         var undo = await SetRankAsync(RankDeItem.C, null, true);
         try
@@ -255,7 +256,7 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
             }
 
             var list = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/weapons", playerToken)))
-                .Content.ReadFromJsonAsync<List<CharacterWeaponResponse>>();
+                .Content.ReadFromJsonAsync<List<WeaponResponse>>();
             var weapon = list!.Single(w => w.Id == weaponId);
             weapon.Inquebravel.Should().BeTrue();
             weapon.DurabilidadeAtual.Should().Be(0);
@@ -275,17 +276,17 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         var armorId = await CreateItemAsync(gmToken, "Armadura", "E");
         var shieldId = await CreateItemAsync(gmToken, "Escudo", "S");
 
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateCharacterArmorSlotRequest(armorId)));
-        var addShield = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddCharacterShieldRequest(shieldId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/armor-slots/Capacete", playerToken, new UpdateArmorSlotRequest(armorId)));
+        var addShield = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/shields", playerToken, new AddShieldRequest(shieldId)));
 
         var slots = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/armor-slots", playerToken)))
-            .Content.ReadFromJsonAsync<List<CharacterArmorSlotResponse>>();
+            .Content.ReadFromJsonAsync<List<ArmorSlotResponse>>();
         var capacete = slots!.Single(s => s.Slot == "Capacete");
         capacete.DurabilidadeAtual.Should().Be(45);
         capacete.DurabilidadeMaxima.Should().Be(45);
         capacete.Inquebravel.Should().BeFalse();
 
-        var shield = await addShield.Content.ReadFromJsonAsync<CharacterShieldResponse>();
+        var shield = await addShield.Content.ReadFromJsonAsync<ShieldResponse>();
         shield!.Inquebravel.Should().BeTrue();
         shield.DurabilidadeAtual.Should().Be(0);
         shield.DurabilidadeMaxima.Should().Be(0);
@@ -301,21 +302,21 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         var shieldItemId = await CreateItemAsync(gmToken, "Escudo", "SS");
         var armorItemId = await CreateItemAsync(gmToken, "Armadura", "SS");
 
-        var weapon = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddNpcWeaponRequest(weaponItemId))))
-            .Content.ReadFromJsonAsync<NpcWeaponResponse>();
+        var weapon = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/weapons", gmToken, new AddWeaponRequest(weaponItemId))))
+            .Content.ReadFromJsonAsync<WeaponResponse>();
         weapon!.Rank.Should().Be("A");
         weapon.DurabilidadeAtual.Should().Be(245);
         weapon.DurabilidadeMaxima.Should().Be(245);
         weapon.Inquebravel.Should().BeFalse();
 
-        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddNpcShieldRequest(shieldItemId))))
-            .Content.ReadFromJsonAsync<NpcShieldResponse>();
+        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/shields", gmToken, new AddShieldRequest(shieldItemId))))
+            .Content.ReadFromJsonAsync<ShieldResponse>();
         shield!.Inquebravel.Should().BeTrue();
         shield.DurabilidadeAtual.Should().Be(0);
 
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Superior", gmToken, new UpdateNpcArmorSlotRequest(armorItemId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/armor-slots/Superior", gmToken, new UpdateArmorSlotRequest(armorItemId)));
         var slots = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/armor-slots", gmToken)))
-            .Content.ReadFromJsonAsync<List<NpcArmorSlotResponse>>();
+            .Content.ReadFromJsonAsync<List<ArmorSlotResponse>>();
         var superior = slots!.Single(s => s.Slot == "Superior");
         superior.Inquebravel.Should().BeTrue();
         superior.DurabilidadeMaxima.Should().BeNull();
@@ -339,8 +340,8 @@ public class DurabilidadePorRankItemsTests(ApiFixture fixture) : ApiTestBase(fix
         weapon.DurabilidadeMaximo.Should().Be(180);
         weapon.Inquebravel.Should().BeFalse();
 
-        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddCreatureShieldRequest(shieldItemId))))
-            .Content.ReadFromJsonAsync<CreatureShieldResponse>();
+        var shield = await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/creature-sheets/{sheetId}/shields", gmToken, new AddShieldRequest(shieldItemId))))
+            .Content.ReadFromJsonAsync<ShieldResponse>();
         shield!.Inquebravel.Should().BeTrue();
         shield.DurabilidadeAtual.Should().Be(0);
     }
