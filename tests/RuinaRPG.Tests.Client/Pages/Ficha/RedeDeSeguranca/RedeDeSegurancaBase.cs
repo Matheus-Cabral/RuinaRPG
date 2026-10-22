@@ -287,6 +287,37 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         return i < 0 ? new() : todas.Skip(i).ToList();
     }
 
+    /// <summary>Abre o MudSelect de rótulo <paramref name="rotulo"/> dentro de <paramref name="raiz"/> e clica na opção <paramref name="opcao"/>.</summary>
+    protected static async Task EscolherOpcaoAsync(IRenderedComponent<IComponent> cut, Func<IElement> raiz, string rotulo, string opcao)
+    {
+        var label = raiz().QuerySelectorAll("label.mud-input-label").Single(l => TextoNormalizado(l) == rotulo);
+        await cut.InvokeAsync(() => label.Closest(".mud-input-control")!.MouseDown());
+        var item = cut.WaitForElements(".mud-popover-open .mud-list-item").Single(li => TextoNormalizado(li) == opcao);
+        await cut.InvokeAsync(() => item.Click());
+    }
+
+    /// <summary>
+    /// Busca (texto vazio) e escolhe um item no seletor de catálogo (<c>EntityPicker</c>, também o de dentro do
+    /// <c>CatalogoItemPicker</c>) número <paramref name="indice"/> da página, na ordem do DOM.
+    /// </summary>
+    protected static async Task EscolherNoSeletorAsync(IRenderedComponent<IComponent> cut, int indice, string itemId, string nome)
+    {
+        var seletor = cut.FindComponents<RuinaRPG.Client.Shared.EntityPicker>()[indice];
+        await cut.InvokeAsync(() => seletor.Instance.SearchAsyncForTests(""));
+        await cut.InvokeAsync(() => seletor.Instance.SelectForTests(new RuinaRPG.Client.Shared.PickerOption(itemId, nome)));
+    }
+
+    /// <summary>
+    /// Fixa a cultura do teste em pt-BR (a do público do app; a página formata números e datas com a cultura
+    /// corrente do navegador). Método síncrono de propósito: chamado no corpo do teste, a cultura vale para o
+    /// resto dele (e para a renderização), e volta ao normal quando o teste termina.
+    /// </summary>
+    protected static void FixarCulturaPtBr() =>
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("pt-BR");
+
+    /// <summary>O <c>.mud-dialog</c> aberto (tem de ser um só).</summary>
+    protected static IElement Dialogo(IRenderedComponent<IComponent> cut) => cut.WaitForElements(".mud-dialog").Single();
+
     // ---- HTTP falso ----
 
     private HttpResponseMessage ResponderRequisicao(HttpRequestMessage request)
@@ -402,10 +433,18 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             "variantes-liberadas" => Array.Empty<object>(),
             "spell-abilities" => new object[]
             {
-                new { id = "m1", nome = "Bola de Fogo", tipo = "Magia", grau = 1, gastoEmPI = 2, custo = 3, descricao = "Queima.", efeitos = Array.Empty<object>() },
+                new { id = "m1", nome = "Bola de Fogo", tipo = "Magia", grau = 1, gastoEmPI = 2, custo = 3, descricao = "Queima.", efeitos = Array.Empty<object>(), criadaNaFicha = true },
+                new { id = "m2", nome = "Golpe Duplo", tipo = "Habilidade", grau = 2, gastoEmPI = 0, custo = 1, descricao = "Dois golpes.", efeitos = Array.Empty<object>(), criadaNaFicha = false },
                 new { id = "p1", nome = "Pele de Ferro", tipo = "Passiva", grau = 1, gastoEmPI = 0, custo = 0, descricao = "Dura.", efeitos = Array.Empty<object>(), categoria = "Defesa" },
             },
-            "spell-abilities/passivas-disponiveis" => Array.Empty<object>(),
+            "spell-abilities/passivas-disponiveis" => new[]
+            {
+                new
+                {
+                    entrada = new { id = "pb1", nome = "Couraça", tipo = "Passiva", grau = 1, gastoEmPI = 0, custo = 0, descricao = "Rija.", efeitos = Array.Empty<object>(), deCriatura = false, categoria = "Defesa" },
+                    pendencias = Array.Empty<string>(),
+                },
+            },
             "runes" => new[] { new { id = "r1", nome = "Runa do Vento", descricao = "Sopra.", grau = 1, tipo = "Arcana", disciplina = "Emissao" } },
             "masteries" => new[] { new { id = "ma1", nome = "Golpe Firme", pericia = "Atletismo", atributo = "Vigor", gastoMaestria = 1, total = 4 } },
             "inventory" => new[] { new { id = "inv1", itemId = "i5", nome = "Corda", peso = 1m, qtd = 2, total = 2m, descricao = "Dez metros." } },
@@ -439,6 +478,30 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             colunas = new[] { new { id = "00000000-0000-0000-0000-0000000000a1", nome = "Pontos de Perícia", tipo = "Acumulativa", chaveDeSistema = "PontosDePericia", doSistema = true, ordem = 1 } },
             linhas = Enumerable.Range(1, 5).Select(n => new { nivel = n, outrosBonus = (string?)null, valores = new Dictionary<string, int?> { ["00000000-0000-0000-0000-0000000000a1"] = 2 } }).ToArray(),
             mostrarLimitesNoLivro = false,
+        },
+        "/spell-ability-bank" or "/campaigns/c1/available-spell-abilities" => new[]
+        {
+            new { id = "b1", nome = "Raio", tipo = "Magia", grau = 2, gastoEmPI = 3, custo = 2, descricao = "Zap.", efeitos = Array.Empty<object>(), deCriatura = false },
+        },
+        "/rune-bank" or "/campaigns/c1/available-runes" => new[]
+        {
+            new { id = "rb1", nome = "Runa da Terra", descricao = "Firme.", grau = 2, imageId = (string?)null, imageUrl = (string?)null, tipo = "Negra", disciplina = "Adicao" },
+        },
+        "/rulebook/estrelas-alkerianas" => new
+        {
+            slug = "estrelas-alkerianas", titulo = "As Estrelas Alkerianas", introHtml = (string?)null,
+            sections = new[] { new { id = "aeurer", titulo = "I — AEURER", html = "<p><em>Estrela da Curiosidade</em></p><p>Busca o novo.</p>", grupo = (string?)null } },
+        },
+        "/historicos" => new[] { new { id = "h1", nome = "Ferreiro", descricao = "Cresceu na forja.", periciaMaisSeis = "Atletismo", periciaMaisTres = "Atletismo", isCustomized = false } },
+        // Um Efeito de custo fixo, Grau 0, para o formulário "do zero" poder adicionar um.
+        "/efeitos" => new[]
+        {
+            new
+            {
+                id = "e1", nome = "Luz", grau = 0, descricao = "Ilumina.", tipoDeCusto = "Fixo", custoFixo = 2, custoPorUnidade = (int?)null, unidadeLabel = (string?)null,
+                quantidadeDerivadaDeEfeito = (string?)null, maxUnidades = (int?)null, maxEscalaPorGrau = false, maxContandoAPartirDoGrau = (int?)null,
+                custoAlternativo = (int?)null, custoAlternativoAPartirDoGrau = (int?)null, preRequisitos = Array.Empty<string[]>(),
+            },
         },
         "/campaigns" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
         "/images/mine" or "/campaigns/c1/available-images" => new[]

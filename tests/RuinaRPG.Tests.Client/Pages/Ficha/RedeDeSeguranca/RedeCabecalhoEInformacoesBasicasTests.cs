@@ -109,7 +109,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     // ---------------- requisições e salvamentos ----------------
 
-    protected static string CorpoDaFicha(string tipo, string nome = "Novo", string? imageId = "img1", string? linhagem = null, string? variante = null)
+    protected internal static string CorpoDaFicha(string tipo, string nome = "Novo", string? imageId = "img1", string? linhagem = null, string? variante = null)
     {
         var img = imageId is null ? "null" : $"\"{imageId}\"";
         return tipo switch
@@ -149,7 +149,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
     };
 
     /// <summary>O que a página relê depois de gravar a ficha pelo PUT geral (sem ordem: são em sequência hoje, mas só o conjunto importa).</summary>
-    protected static string[] RecargaDepoisDeSalvar(string tipo)
+    protected internal static string[] RecargaDepoisDeSalvar(string tipo)
     {
         var k = $"/{Prefixo(tipo)}/s1";
         var lista = new List<string> { $"GET {k}" };
