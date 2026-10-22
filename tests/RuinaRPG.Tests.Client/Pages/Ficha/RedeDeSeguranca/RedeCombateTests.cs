@@ -84,7 +84,7 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
             lista.Add("Peso");
         lista.AddRange(new[] { "Durabilidade", "Equipada", "Espada Longa", "Cortante", "1", "1d8", "3", "19-20", "C" });
         if (comPeso)
-            lista.Add($"{1.5m}");
+            lista.Add("1,5"); // o teste fixa pt-BR
         lista.AddRange(new[] { "«8»", "/ 10", "Equipada", "Desequipar", "Remover" });
         return lista;
     }
@@ -173,9 +173,10 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
         [MemberData(nameof(TiposEPapeis))]
         public async Task A_aba_mostra_recursos_sub_atributos_e_equipamento_nesta_ordem(string tipo, string papel)
         {
+            FixarCulturaPtBr();
             var cut = await AbrirAbaAsync(tipo, papel);
 
-            Leitura(AbaAberta(cut)).Should().Equal(LeituraDaAba(tipo));
+            cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Equal(LeituraDaAba(tipo)), TimeSpan.FromSeconds(5));
         }
 
         // A Leitura não vê ícones nem atributos: o "+" de cadastrar item no catálogo (só NPC e Criatura, só o GM;

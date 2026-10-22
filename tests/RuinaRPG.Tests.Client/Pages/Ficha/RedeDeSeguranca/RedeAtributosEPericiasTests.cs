@@ -207,6 +207,19 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":null,\"gasto\":2}}", recarregaPenalidades: true);
         }
 
+        [Theory]
+        [MemberData(nameof(TiposEPapeis))]
+        public async Task Escolher_o_atributo_da_pericia_grava_a_pericia_com_ele_e_recarrega(string tipo, string papel)
+        {
+            // A perícia começa sem atributo; as opções são os atributos da ficha (só Vigor na rede).
+            Responder("/skills", new[] { new { pericia = "Atletismo", gasto = 2, modificador = 1, atributoEscolhido = (string?)null, total = 3, contaHistorico = true, nome = "Atletismo", descricao = "Correr e saltar." } });
+            var cut = await AbrirAbaAsync(tipo, papel);
+
+            await EscolherAsync(cut, () => LinhaDaPericia(cut).QuerySelectorAll("td")[3], "Vigor");
+
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":\"Vigor\",\"gasto\":2}}", recarregaPenalidades: true);
+        }
+
         // Diferença A6 do inventário (a decidir): Personagem e NPC mostram a mensagem do servidor; a Criatura não mostra nada.
         [Theory]
         [InlineData("Personagem")]
@@ -254,7 +267,7 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await EscolherAsync(cut, () => NovaAfinidade(cut).QuerySelectorAll("td")[0], "Terra");
             await cut.InvokeAsync(() => NovaAfinidade(cut).QuerySelectorAll("td")[0].QuerySelectorAll("input")[1].Change("3"));
             await cut.InvokeAsync(() => NovaAfinidade(cut).QuerySelectorAll("td")[3].QuerySelector("input")!.Change("2"));
-            LimparRequisicoes();
+            Requisicoes.Should().BeEmpty();
             await cut.InvokeAsync(() => Botao(NovaAfinidade(cut), "Adicionar").Click());
 
             await AfirmarGravacaoAsync(cut, tipo,
