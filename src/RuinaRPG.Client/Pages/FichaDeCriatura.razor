@@ -265,7 +265,7 @@
 
                 @if (_weaponForm.Origem == "Catalogo")
                 {
-                    <CatalogoItemPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." Tipo="Arma" PodeCriar="@_isGmCaller" />
+                    <CatalogoItemPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => _estado.BuscarItensPorTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." Tipo="Arma" PodeCriar="@_isGmCaller" />
                 }
                 else
                 {
@@ -426,7 +426,7 @@
                                 else
                                 {
                                     <span style="display: inline-block; width: 16em; vertical-align: middle;">
-                                        <CatalogoItemPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." Tipo="Armadura" PodeCriar="@_isGmCaller" />
+                                        <CatalogoItemPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => _estado.BuscarItensPorTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." Tipo="Armadura" PodeCriar="@_isGmCaller" />
                                     </span>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</MudButton>
                                 }
@@ -439,7 +439,7 @@
 
         <Section Title="Escudos">
             <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
-                <CatalogoItemPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." Tipo="Escudo" PodeCriar="@_isGmCaller" />
+                <CatalogoItemPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => _estado.BuscarItensPorTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." Tipo="Escudo" PodeCriar="@_isGmCaller" />
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
@@ -492,81 +492,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
-        <Section Title="Espólios">
-            <EditForm Model="_spoilForm" OnValidSubmit="AddSpoilAsync">
-                <CatalogoItemPicker @bind-Value="_spoilForm.ItemId" SearchItems="SearchAllItemsAsync" Placeholder="Buscar item..." PodeCriar="@_isGmCaller" />
-                <MudNumericField T="int" @bind-Value="_spoilForm.Qtd" Label="Quantidade" />
-                <MudNumericField T="int" @bind-Value="_spoilForm.DT" Label="DT" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Espólio</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Custo</th>
-                        <th>Qtd</th>
-                        <th>Total</th>
-                        <th>DT</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var spoil in _spoils)
-                    {
-                        <tr>
-                            <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /></td>
-                            <td>@spoil.Custo</td>
-                            <td><MudNumericField T="int?" Value="@spoil.Qtd" ValueChanged="@(v => UpdateSpoilQtdAsync(spoil.Id, v))" Style="width:5em; display:inline-flex;" /></td>
-                            <td>@spoil.CustoTotal</td>
-                            <td>@spoil.DT</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpoilAsync(spoil.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Artefatos">
-            <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
-                <CatalogoItemPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." Tipo="Artefato" PodeCriar="@_isGmCaller" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Artefato</MudButton>
-            </EditForm>
-            @foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
-            {
-                <MudText Typo="Typo.h6" Class="mt-3">@group.Key</MudText>
-                <MudSimpleTable Dense="true" Hover="true">
-                    <tbody>
-                        @foreach (var artifact in group)
-                        {
-                            <tr>
-                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> <DesabilitadoChip Condicao="@artifact.DesabilitadoPor" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
-                                </td>
-                                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            }
-        </Section>
-
-        <Section Title="Afeições">
-            <EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
-                <MudTextField T="string" @bind-Value="_affectionForm.Nome" Label="Nome" />
-                <MudNumericField T="int" @bind-Value="_affectionForm.Favorabilidade" Label="Favorabilidade" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afeição</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var affection in _affections)
-                    {
-                        <tr>
-                            <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffectionAsync(affection.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaPosses />
     </MudTabPanel>
 </MudTabs>
 </CascadingValue>
@@ -585,6 +511,7 @@
     private List<ImageSummaryResponse> _myImages { get => _estado.MinhasImagens; set => _estado.MinhasImagens = value; }
     private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
+    private SubAttributesResponse? _subAttributes { get => _estado.SubAtributos; set => _estado.SubAtributos = value; }
 
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
@@ -613,43 +540,12 @@
     private readonly ShieldFormModel _shieldForm = new();
     // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
-    private SubAttributesResponse? _subAttributes;
     private ModificadorDeDanoResponse? _modificadorDeDano;
     private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
-    private List<CreatureSpoilResponse> _spoils = new();
-    private readonly SpoilFormModel _spoilForm = new();
-    private List<ArtifactResponse> _artifacts = new();
-    private readonly ArtifactFormModel _artifactForm = new();
-    private List<AffectionResponse> _affections = new();
-    private readonly AffectionFormModel _affectionForm = new();
     private CreatureTraitsListResponse? _traits;
     private List<string> _levelUpBonuses = new();
     private readonly TraitFormModel _traitForm = new();
-
-    private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
-    {
-        var url = _isGmCaller
-            ? $"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}"
-            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}&tipo={tipo}";
-        var response = await Http.GetAsync(url);
-        if (!response.IsSuccessStatusCode) return new();
-        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
-        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
-    }
-
-    // Espólios has no Tipo restriction server-side (AddSpoil accepts any catalog Item) — unlike
-    // Inventário/Weapon/Armor/Artefato, which are each scoped to a single Tipo.
-    private async Task<List<PickerOption>> SearchAllItemsAsync(string query)
-    {
-        var url = _isGmCaller
-            ? $"items?nome={Uri.EscapeDataString(query)}"
-            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}";
-        var response = await Http.GetAsync(url);
-        if (!response.IsSuccessStatusCode) return new();
-        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
-        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
-    }
 
     private EntityPicker? _traitPicker;
     private bool _isRulesAuditor;
@@ -683,6 +579,7 @@
     {
         _estado = new FichaEstado(Http, TipoDeFichaCliente.Criatura, SheetId);
         _estado.RecarregarPontosDeIgnicao = RecarregarPontosDeIgnicaoAsync;
+        _estado.RecarregarAtributosECombate = LoadTabs2And3Async;
         _estado.Alterado += OnEstadoAlterado;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
@@ -738,7 +635,7 @@
     // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
     private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
     {
-        await LoadSheetAsync(); await LoadTabs2And3Async(); await _estado.CarregarMagiasAsync(); await LoadArtifactsAsync();
+        await LoadSheetAsync(); await LoadTabs2And3Async(); await _estado.CarregarMagiasAsync(); await _estado.CarregarArtefatosAsync();
         _penalidadesVersao++;
         StateHasChanged();
     });
@@ -771,7 +668,7 @@
         await Task.WhenAll(
             LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             _estado.CarregarMagiasAsync(), LoadMasteriesAsync(),
-            LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
+            _estado.CarregarEspoliosAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
     }
 
     private async Task LoadLevelUpNoticeAsync()
@@ -1186,92 +1083,6 @@
         await LoadMasteriesAsync();
     }
 
-    private async Task LoadSpoilsAsync()
-    {
-        _spoils = await Http.GetFromJsonAsync<List<CreatureSpoilResponse>>($"creature-sheets/{SheetId}/spoils") ?? new();
-    }
-
-    private async Task AddSpoilAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spoils", new AddCreatureSpoilRequest(_spoilForm.ItemId, _spoilForm.Qtd, _spoilForm.DT));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar o espólio.";
-            return;
-        }
-
-        _spoilForm.ItemId = "";
-        _spoilForm.Qtd = 1;
-        _spoilForm.DT = 0;
-        await LoadSpoilsAsync();
-    }
-
-    private async Task UpdateSpoilQtdAsync(string id, object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var qtd))
-            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/spoils/{id}/qtd", qtd);
-        await LoadSpoilsAsync();
-    }
-
-    private async Task DeleteSpoilAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/spoils/{id}");
-        await LoadSpoilsAsync();
-    }
-
-    private async Task LoadArtifactsAsync()
-    {
-        _artifacts = await Http.GetFromJsonAsync<List<ArtifactResponse>>($"creature-sheets/{SheetId}/artifacts") ?? new();
-    }
-
-    private async Task AddArtifactAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/artifacts", new AddArtifactRequest(_artifactForm.ArtifactItemId));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar o artefato.";
-            return;
-        }
-
-        _artifactForm.ArtifactItemId = "";
-        await LoadArtifactsAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task DeleteArtifactAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/artifacts/{id}");
-        await LoadArtifactsAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task LoadAffectionsAsync()
-    {
-        _affections = await Http.GetFromJsonAsync<List<AffectionResponse>>($"creature-sheets/{SheetId}/affections") ?? new();
-    }
-
-    private async Task AddAffectionAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/affections", new AddAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar a afeição.";
-            return;
-        }
-
-        _affectionForm.Nome = "";
-        _affectionForm.Favorabilidade = 0;
-        await LoadAffectionsAsync();
-    }
-
-    private async Task DeleteAffectionAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/affections/{id}");
-        await LoadAffectionsAsync();
-    }
-
     private async Task LoadTraitsAsync()
     {
         _traits = await Http.GetFromJsonAsync<CreatureTraitsListResponse>($"creature-sheets/{SheetId}/traits");
@@ -1354,24 +1165,6 @@
         public string Pericia { get; set; } = "";
         public string Atributo { get; set; } = "";
         public int GastoMaestria { get; set; }
-    }
-
-    private class SpoilFormModel
-    {
-        public string ItemId { get; set; } = "";
-        public int Qtd { get; set; } = 1;
-        public int DT { get; set; }
-    }
-
-    private class ArtifactFormModel
-    {
-        public string ArtifactItemId { get; set; } = "";
-    }
-
-    private class AffectionFormModel
-    {
-        public string Nome { get; set; } = "";
-        public int Favorabilidade { get; set; }
     }
 
     private class TraitFormModel

@@ -191,7 +191,8 @@ public class FichaEstadoMagiasTests
 
         await estado.RemoverMagiaAsync("m1");
 
-        _requisicoes.Should().HaveCount(3);
+        _requisicoes.Should().Equal($"DELETE {K("Criatura")}/spell-abilities/m1",
+            $"GET {K("Criatura")}/spell-abilities", "GET spell-ability-bank");
     }
 
     [Theory]

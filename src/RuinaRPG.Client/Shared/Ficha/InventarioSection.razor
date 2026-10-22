@@ -1,0 +1,70 @@
+@using MudBlazor
+
+@* O Equipamento Inicial e o Inventário (só nos tipos com Inventário, TipoDeFichaCliente.TemInventario), no topo da aba
+   Posses. O kit escolhido e os Ciclos vivem no formulário auto-salvo da página: ela os passa, salva e relê. *@
+
+@if (!EquipamentoInicialEscolhido)
+{
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mb-3" OnClick="@(() => _equipagemDialogOpen = true)">Escolher Equipamento Inicial</MudButton>
+    <EscolherEquipagemDialog @bind-Visible="_equipagemDialogOpen" SheetKind="@Estado.Tipo.Rota" SheetId="@Estado.SheetId" OnChosen="EquipagemEscolhida" />
+}
+<Section Title="Inventário">
+    @if (Estado.SubAtributos?.PesoAtual is not null && Estado.SubAtributos.PesoMaximo is not null)
+    {
+        var sub = Estado.SubAtributos;
+        <MudText>Peso: @sub.PesoAtual?.ToString("0.##") / @sub.PesoMaximo?.ToString("0.##")</MudText>
+        @if (sub.BonusDeCargaDaCampanha != 0m)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">inclui @(sub.BonusDeCargaDaCampanha > 0 ? "+" : "−")@(Math.Abs(sub.BonusDeCargaDaCampanha).ToString("0.##")) da campanha</MudText>
+        }
+        @if (sub.PesoAtual > sub.PesoMaximo)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-1">Sobrecarregado — reduz Movimentação.</MudAlert>
+        }
+    }
+    <MudNumericField T="int?" Value="@Ciclos" ValueChanged="CiclosChanged" Label="Ciclos" Style="width:8em;" />
+    <EditForm Model="Estado.FormularioDeInventario" OnValidSubmit="Estado.AdicionarItemAoInventarioAsync">
+        <SeletorDeItem @bind-Value="Estado.FormularioDeInventario.ItemId" Tipo="ItemGeral" Placeholder="Buscar item..." />
+        <MudNumericField T="int" @bind-Value="Estado.FormularioDeInventario.Qtd" Label="Quantidade" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Item</MudButton>
+    </EditForm>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Peso</th>
+                <th>Qtd</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Estado.Inventario)
+            {
+                <tr>
+                    <td><ClickableItemName Nome="@item.Nome" ImageUrl="@item.ImageUrl" Descricao="@item.Descricao" /></td>
+                    <td>@item.Peso</td>
+                    <td><MudNumericField T="int?" Value="@item.Qtd" ValueChanged="@(v => Estado.AtualizarQtdDoItemAsync(item.Id, v))" Style="width:5em; display:inline-flex;" /></td>
+                    <td>@item.Total</td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverItemDoInventarioAsync(item.Id))">Remover</MudButton></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>O formulário da página já tem um kit (<c>EquipmentKitId</c>): o botão do Equipamento Inicial some.</summary>
+    [Parameter] public bool EquipamentoInicialEscolhido { get; set; }
+
+    /// <summary>Depois de escolher o kit, a página grava e relê a ficha, as abas 2 e 3, o Inventário e os Artefatos.</summary>
+    [Parameter] public EventCallback EquipagemEscolhida { get; set; }
+
+    [Parameter] public int? Ciclos { get; set; }
+
+    [Parameter] public EventCallback<int?> CiclosChanged { get; set; }
+
+    private bool _equipagemDialogOpen;
+}

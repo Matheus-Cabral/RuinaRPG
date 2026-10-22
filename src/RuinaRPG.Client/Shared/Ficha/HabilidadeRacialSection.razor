@@ -1,8 +1,9 @@
 @using RuinaRPG.Contracts.CharacterSheets
 @using MudBlazor
 
-@* A Habilidade Racial (só nos tipos com Linhagem, TipoDeFichaCliente.TemLinhagemEVocacao), no topo da aba Magias &
-   Habilidades. O Humano rola a Arca: o número vive no formulário auto-salvo da página, que salva e relê. *@
+@* A Habilidade Racial, no topo da aba Magias & Habilidades. Não é a aba que a põe: as páginas de Personagem e de NPC
+   (os tipos com Linhagem) a colocam logo antes de <AbaMagiasEHabilidades />, e a Criatura não a tem. O Humano rola a
+   Arca: o número vive no formulário auto-salvo da página, que salva e relê. *@
 
 <Section Title="Habilidade Racial">
     <MudText>@(Habilidade?.Nome ?? "—")</MudText>

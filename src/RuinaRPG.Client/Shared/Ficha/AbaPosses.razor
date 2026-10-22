@@ -1,0 +1,78 @@
+@using MudBlazor
+
+@* A aba Posses das três fichas: o Inventário (com o Equipamento Inicial e os Ciclos) onde o tipo tem Inventário, os
+   Espólios onde o tipo tem Espólios, os Artefatos e as Afeições. O kit e os Ciclos vêm do formulário auto-salvo da
+   página, que os passa como parâmetros (só os tipos com Inventário os usam). *@
+
+@if (Estado.Tipo.TemInventario)
+{
+    <InventarioSection EquipamentoInicialEscolhido="EquipamentoInicialEscolhido" EquipagemEscolhida="EquipagemEscolhida" Ciclos="Ciclos" CiclosChanged="CiclosChanged" />
+}
+@if (Estado.Tipo.TemEspolios)
+{
+    <EspoliosSection />
+}
+
+<Section Title="Artefatos">
+    <EditForm Model="Estado.FormularioDeArtefato" OnValidSubmit="Estado.AdicionarArtefatoAsync">
+        <SeletorDeItem @bind-Value="Estado.FormularioDeArtefato.ArtifactItemId" Tipo="Artefato" Placeholder="Buscar artefato..." />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Artefato</MudButton>
+    </EditForm>
+    @foreach (var group in Estado.Artefatos.GroupBy(a => a.TipoDeAlvo))
+    {
+        <MudText Typo="Typo.h6" Class="mt-3">@group.Key</MudText>
+        <MudSimpleTable Dense="true" Hover="true">
+            <tbody>
+                @foreach (var artifact in group)
+                {
+                    <tr>
+                        <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> <DesabilitadoChip Condicao="@artifact.DesabilitadoPor" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
+                        </td>
+                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverArtefatoAsync(artifact.Id))">Remover</MudButton></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</Section>
+
+<Section Title="Afeições">
+    <EditForm Model="Estado.FormularioDeAfeicao" OnValidSubmit="Estado.AdicionarAfeicaoAsync">
+        <MudTextField T="string" @bind-Value="Estado.FormularioDeAfeicao.Nome" Label="Nome" />
+        <MudNumericField T="int" @bind-Value="Estado.FormularioDeAfeicao.Favorabilidade" Label="Favorabilidade" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afeição</MudButton>
+    </EditForm>
+    @if (Estado.Tipo.EditaAfeicaoNaLinha)
+    {
+        <AfeicoesNaLinha />
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+            <tbody>
+                @foreach (var affection in Estado.Afeicoes)
+                {
+                    <tr>
+                        <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
+                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverAfeicaoAsync(affection.Id))">Remover</MudButton></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>Só onde há Inventário: o formulário da página já tem um kit de Equipamento Inicial.</summary>
+    [Parameter] public bool EquipamentoInicialEscolhido { get; set; }
+
+    /// <summary>Só onde há Inventário: a página grava e relê depois que o kit é escolhido.</summary>
+    [Parameter] public EventCallback EquipagemEscolhida { get; set; }
+
+    /// <summary>Só onde há Inventário: os Ciclos do formulário da página.</summary>
+    [Parameter] public int? Ciclos { get; set; }
+
+    [Parameter] public EventCallback<int?> CiclosChanged { get; set; }
+}

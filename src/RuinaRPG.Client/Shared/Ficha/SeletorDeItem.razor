@@ -1,0 +1,29 @@
+@using MudBlazor
+
+@* O seletor de um item do Catálogo, de um Tipo só. Onde o tipo cadastra item no seletor
+   (TipoDeFichaCliente.CadastraItemNoPicker), é o CatalogoItemPicker, com o "+" para o GM; senão, o EntityPicker. A busca
+   é a do papel (FichaEstado.BuscarItensPorTipoAsync). *@
+
+@if (Estado.Tipo.CadastraItemNoPicker)
+{
+    <CatalogoItemPicker Value="@Value" ValueChanged="ValueChanged" SearchItems="Buscar" Placeholder="@Placeholder" Tipo="@Tipo" PodeCriar="@Estado.IsGmCaller" />
+}
+else
+{
+    <EntityPicker Value="@Value" ValueChanged="ValueChanged" SearchItems="Buscar" Placeholder="@Placeholder" />
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>O Tipo do item (<c>ItemGeral</c>, <c>Artefato</c>, <c>Arma</c>…): filtra a busca e trava o Tipo do item cadastrado.</summary>
+    [Parameter, EditorRequired] public string Tipo { get; set; } = "";
+
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+
+    private Task<List<PickerOption>> Buscar(string query) => Estado.BuscarItensPorTipoAsync(query, Tipo);
+}

@@ -46,6 +46,22 @@ public class FichaEstadoNaPaginaTests : RedeDeSegurancaBase
         estado.MinhasImagens.Select(i => i.Id).Should().Equal("img1", "img2");
     }
 
+    // Os ganchos que a página liga no estado (o que só ela sabe reler). Um gancho esquecido seria pulado em silêncio,
+    // então cada página tem de ligar todos — inclusive os que vierem depois (o teste os acha por reflexão).
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task The_page_sets_every_state_hook(string tipo)
+    {
+        var cut = await RenderFichaAsync(tipo);
+        var estado = Estado(cut);
+
+        var ganchos = typeof(FichaEstado).GetProperties()
+            .Where(p => typeof(Delegate).IsAssignableFrom(p.PropertyType) && p.CanWrite)
+            .ToList();
+        ganchos.Select(g => g.Name).Should().BeEquivalentTo("RecarregarPontosDeIgnicao", "RecarregarAtributosECombate");
+        ganchos.Where(g => g.GetValue(estado) is null).Select(g => g.Name).Should().BeEmpty();
+    }
+
     // Review Focus (4): um erro posto no estado por uma aba filha aparece no alerta da página.
     [Theory]
     [MemberData(nameof(Tipos))]
