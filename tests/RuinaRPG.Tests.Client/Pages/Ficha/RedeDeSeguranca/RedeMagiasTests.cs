@@ -274,6 +274,7 @@ public abstract class RedeMagiasTests : RedeDeSegurancaBase
             await cut.InvokeAsync(() => FormularioDeMagia(cut).Submit());
 
             cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("PI insuficiente."));
+            await EsperarCalmariaAsync();
             SemEfeitos(Requisicoes).Should().Equal($"POST {K(tipo)}/spell-abilities {{\"descricao\":null,\"efeitos\":null,\"grau\":null,\"nome\":null,\"sourceBankEntryId\":\"b1\",\"tipo\":null}}");
         }
     }

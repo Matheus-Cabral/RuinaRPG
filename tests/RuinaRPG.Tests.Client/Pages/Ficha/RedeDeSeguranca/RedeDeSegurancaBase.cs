@@ -307,13 +307,30 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         await cut.InvokeAsync(() => seletor.Instance.SelectForTests(new RuinaRPG.Client.Shared.PickerOption(itemId, nome)));
     }
 
+    private (System.Globalization.CultureInfo Cultura, System.Globalization.CultureInfo CulturaDaInterface)? _culturaOriginal;
+
     /// <summary>
     /// Fixa a cultura do teste em pt-BR (a do público do app; a página formata números e datas com a cultura
-    /// corrente do navegador). Método síncrono de propósito: chamado no corpo do teste, a cultura vale para o
-    /// resto dele (e para a renderização), e volta ao normal quando o teste termina.
+    /// corrente do navegador). Chamado no corpo do teste, a cultura vale para o resto dele (e para a
+    /// renderização). A cultura de antes volta no <see cref="Dispose(bool)"/>, então o teste não depende de ser
+    /// assíncrono (num método <c>async</c> a mudança já não escaparia dele) para não vazar a cultura.
     /// </summary>
-    protected static void FixarCulturaPtBr() =>
+    protected void FixarCulturaPtBr()
+    {
+        _culturaOriginal ??= (System.Globalization.CultureInfo.CurrentCulture, System.Globalization.CultureInfo.CurrentUICulture);
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("pt-BR");
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_culturaOriginal is { } original)
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original.Cultura;
+            System.Globalization.CultureInfo.CurrentUICulture = original.CulturaDaInterface;
+            _culturaOriginal = null;
+        }
+        base.Dispose(disposing);
+    }
 
     /// <summary>O <c>.mud-dialog</c> aberto (tem de ser um só).</summary>
     protected static IElement Dialogo(IRenderedComponent<IComponent> cut) => cut.WaitForElements(".mud-dialog").Single();
