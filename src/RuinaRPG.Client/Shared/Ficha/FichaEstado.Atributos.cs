@@ -11,7 +11,7 @@ namespace RuinaRPG.Client.Shared.Ficha;
 /// A aba Atributos &amp; Perícias: os Atributos e o orçamento deles, as Perícias (com o orçamento onde
 /// <see cref="TipoDeFichaCliente.TemOrcamentoDePericias"/>) e as Afinidades (onde
 /// <see cref="TipoDeFichaCliente.TemAfinidades"/>), e a recarga das abas 2 e 3 que tudo o que mexe nelas pede
-/// (<see cref="CarregarAtributosECombateAsync"/>). Toda edição termina em <see cref="NotificarAlteracao"/>: a
+/// (<see cref="CarregarAtributosECombateAsync"/>, que termina com o Combate). Toda edição termina em <see cref="NotificarAlteracao"/>: a
 /// página mostra o erro (ou o apaga) e re-renderiza as filhas da aba com os dados novos.
 /// </summary>
 public sealed partial class FichaEstado
@@ -31,11 +31,10 @@ public sealed partial class FichaEstado
     public AffinityFormModel FormularioDeAfinidade { get; } = new();
 
     /// <summary>
-    /// O Combate (Armas, Armaduras, Escudos, Sub-Atributos, Modificador de Dano) ainda é da página: ela o liga, e a
-    /// recarga das abas 2 e 3 o chama depois das listas desta aba, na ordem de hoje. Toda página o liga
-    /// (FichaEstadoNaPaginaTests confere); sai quando o Combate vier para o estado (Task 12).
+    /// Os pontos de Acerto Crítico digitados e ainda não aplicados. Moram aqui, e não na seção, para sobreviver à troca de
+    /// aba (a aba inativa sai da árvore), como quando eram um campo da página.
     /// </summary>
-    public Func<Task>? CarregarCombate { get; set; }
+    public int? DeltaDeAcertoCritico { get; set; }
 
     /// <summary>
     /// Relê as abas 2 e 3, em sequência: Atributos, o orçamento deles, Perícias, o orçamento delas, Afinidades (o que o
@@ -50,12 +49,12 @@ public sealed partial class FichaEstado
             OrcamentoDePericias = await Http.GetFromJsonAsync<SkillPointBudgetResponse>(Tipo.Url(SheetId, "skills/budget"));
         if (Tipo.TemAfinidades)
             Afinidades = await Http.GetFromJsonAsync<List<AffinityResponse>>(Tipo.Url(SheetId, "affinities")) ?? new();
-        if (CarregarCombate is not null)
-            await CarregarCombate();
+        await CarregarCombateAsync();
     }
 
     // O bônus de Histórico no Modificador (ContaHistorico) só existe onde a ficha tem Antecedentes; o record da
-    // Criatura não o traz e passa pelo adaptador.
+    // Criatura não o traz e passa pelo adaptador. A escolha do record segue TemAntecedentes (ver a nota nele), como a
+    // dos records do Combate segue TemArmaManual (FichaEstado.Combate.cs).
     private async Task<List<SkillResponse>> CarregarPericiasAsync()
     {
         var url = Tipo.Url(SheetId, "skills");

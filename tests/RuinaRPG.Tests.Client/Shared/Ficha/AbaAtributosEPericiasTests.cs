@@ -328,6 +328,22 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
         }, TimeSpan.FromSeconds(5));
     }
 
+    // O número digitado e ainda não aplicado sobrevive à troca de aba, como quando era um campo da página: a aba
+    // inativa sai da árvore, então o número mora no estado.
+    [Fact]
+    public async Task A_typed_acerto_critico_survives_a_tab_switch()
+    {
+        var cut = await AbrirAsync("Personagem");
+        await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Adicionar/subtrair pontos de Acerto Crítico").Change("3"));
+
+        await IrParaAbaAsync(cut, "Combate");
+        await IrParaAbaAsync(cut, NomeDaAba);
+
+        cut.WaitForAssertion(() => Campo(AbaAberta(cut), "Adicionar/subtrair pontos de Acerto Crítico").GetAttribute("value").Should().Be("3"), TimeSpan.FromSeconds(5));
+        await EsperarCalmariaAsync();
+        Requisicoes.Should().NotContain(r => !r.StartsWith("GET ", StringComparison.Ordinal));
+    }
+
     // Personagem e NPC: a Afinidade Adicional é do formulário auto-salvo; o salvamento relê a ficha (a Vocação Arcana máxima).
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]

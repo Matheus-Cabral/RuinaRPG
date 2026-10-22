@@ -35,7 +35,7 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     /// <summary>A galeria de imagens: as do GM, ou as liberadas na campanha para o jogador.</summary>
     public List<ImageSummaryResponse> MinhasImagens { get; set; } = new();
 
-    /// <summary>Os Sub-Atributos, relidos pela página com as abas 2 e 3; a aba Posses mostra o Peso deles.</summary>
+    /// <summary>Os Sub-Atributos, relidos com o Combate (abas 2 e 3); a aba Posses mostra o Peso deles.</summary>
     public SubAttributesResponse? SubAtributos { get; set; }
 
     /// <summary>Algo mudou fora de um evento da própria página (uma aba filha): a página re-renderiza.</summary>

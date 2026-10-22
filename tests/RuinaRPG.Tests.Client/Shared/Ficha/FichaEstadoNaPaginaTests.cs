@@ -58,7 +58,7 @@ public class FichaEstadoNaPaginaTests : RedeDeSegurancaBase
         var ganchos = typeof(FichaEstado).GetProperties()
             .Where(p => typeof(Delegate).IsAssignableFrom(p.PropertyType) && p.CanWrite)
             .ToList();
-        ganchos.Select(g => g.Name).Should().BeEquivalentTo("RecarregarPontosDeIgnicao", "CarregarCombate");
+        ganchos.Select(g => g.Name).Should().BeEquivalentTo("RecarregarPontosDeIgnicao");
         ganchos.Where(g => g.GetValue(estado) is null).Select(g => g.Name).Should().BeEmpty();
     }
 

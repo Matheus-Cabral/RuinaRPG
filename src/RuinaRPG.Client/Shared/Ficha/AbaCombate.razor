@@ -1,0 +1,325 @@
+@using MudBlazor
+@inject PericiaCatalogo Catalogo
+
+@* A aba Combate das três fichas: os recursos (com a Sina e o Estresse onde o tipo os tem), os Sub-Atributos, o
+   Modificador de Dano, as Armas (a arma manual onde o tipo a tem: ArmaManualForm), as Maestrias (editadas na linha onde
+   o tipo as edita: MaestriasNaLinha), as Armaduras e os Escudos. Os recursos, a Sina, a Cobertura e a Afinidade são do
+   formulário auto-salvo da página (Formulario): os recursos vão no autosave (AoMudar), a Sina salva na hora
+   (SalvarAgora), a Cobertura e a Afinidade salvam na hora e releem as abas (SalvarERecarregar), num evento só da página.
+   O resto são ações do estado. *@
+
+<PenalidadesAtivasAlert Url="@Estado.Tipo.Url(Estado.SheetId, "equipment-penalties")" Versao="Estado.PenalidadesVersao" />
+<AutoSaveIndicator State="AutoSave.State" LastSavedAt="AutoSave.LastSavedAt" />
+<Section>
+    @if (Estado.Tipo.TemSinaEEstresse)
+    {
+        <div class="mt-2">
+            <MudText Typo="Typo.body2">Pontos de Sina</MudText>
+            <MudRating SelectedValue="Formulario.SinaAtual" SelectedValueChanged="MudarSinaAsync" MaxValue="3" Size="Size.Large" Class="rr-sina-rating" />
+        </div>
+    }
+    <MudNumericField T="int?" @bind-Value="Formulario.VitalidadeAtual" For="@(() => Formulario.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {Formulario.VitalidadeMaximo}")" @bind-Value:after="AoMudarAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.FocoAtual" For="@(() => Formulario.FocoAtual)" Label="@Estado.Tipo.RotuloDoFoco" Adornment="Adornment.End" AdornmentText="@($"/ {Formulario.FocoMaximo}")" @bind-Value:after="AoMudarAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.AdrenalinaAtual" For="@(() => Formulario.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {Formulario.AdrenalinaMaximo}")" @bind-Value:after="AoMudarAsync" />
+    @if (Estado.Tipo.TemSinaEEstresse)
+    {
+        <MudNumericField T="int?" @bind-Value="Formulario.EstresseAtual" For="@(() => Formulario.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {Formulario.EstresseMaximo}")" @bind-Value:after="AoMudarAsync" />
+    }
+</Section>
+
+@if (Estado.SubAtributos is not null)
+{
+    <SubAtributosSection SubAtributos="Estado.SubAtributos" Cobertura="@Formulario.Cobertura" CoberturaChanged="@(v => MudarCoberturaAsync(v))"
+                         ComAfinidade="Estado.Tipo.TemAfinidades" Afinidade="@Formulario.Afinidade" AfinidadeChanged="@(v => MudarAfinidadeAsync(v))" />
+}
+
+@if (Estado.ModificadorDeDano is { } modificador)
+{
+    <Section Title="Modificador de Dano">
+        <MudText>Cortante: @modificador.Cortante</MudText>
+        <MudText>Perfurante: @modificador.Perfurante</MudText>
+        <MudText>Contundente: @modificador.Contundente</MudText>
+        <MudText>Mágico: @modificador.Arcano</MudText>
+        @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(modificador.DanoElemental))
+        {
+            <MudText>@linha</MudText>
+        }
+    </Section>
+}
+
+<Section Title="Armas">
+    <EditForm Model="Estado.FormularioDeArma" OnValidSubmit="Estado.AdicionarArmaAsync">
+        @if (Estado.Tipo.TemArmaManual)
+        {
+            <ArmaManualForm />
+        }
+        else
+        {
+            <SeletorDeItem @bind-Value="Estado.FormularioDeArma.ItemId" Tipo="Arma" Placeholder="Buscar arma..." />
+        }
+        @* A margem de cima vem com a Origem e os campos manuais logo acima. *@
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="@(Estado.Tipo.TemArmaManual ? "mt-3" : null)">Adicionar Arma</MudButton>
+    </EditForm>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Tipo de Dano</th>
+                <th>Alcance</th>
+                <th>Dados</th>
+                <th>Dano</th>
+                <th>Crítico</th>
+                <th>Rank</th>
+                @if (Estado.Tipo.MostraPesoDasArmas)
+                {
+                    <th>Peso</th>
+                }
+                <th>Durabilidade</th>
+                <th>Equipada</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var linha in Estado.Armas)
+            {
+                var weapon = linha.Arma;
+                <tr>
+                    <td>
+                        <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" /> <DesabilitadoChip Condicao="@weapon.DesabilitadoPor" />
+                    </td>
+                    <td>@(weapon.TipoDeDano ?? "—")</td>
+                    <td>@(weapon.Alcance?.ToString() ?? "—")</td>
+                    <td>@(weapon.Dados ?? "—")</td>
+                    <td>@(weapon.Dano?.ToString() ?? "—")</td>
+                    <td>@(weapon.Critico ?? "—")</td>
+                    <td>@(weapon.Rank ?? "—")</td>
+                    @if (Estado.Tipo.MostraPesoDasArmas)
+                    {
+                        <td>@weapon.Peso</td>
+                    }
+                    <td>
+                        @* O ataque natural não tem Item do Catálogo: o adaptador da Criatura mantém o ItemId nulo. A
+                           Durabilidade é a da linha, anulável (em branco quando a arma não a tem: R-E2). *@
+                        @if (weapon.ItemId is null)
+                        {
+                            <text>Ataque natural</text>
+                        }
+                        else if (weapon.Inquebravel)
+                        {
+                            <text>Inquebrável</text>
+                        }
+                        else
+                        {
+                            <MudNumericField T="int?" Value="@linha.DurabilidadeAtual" ValueChanged="@(v => Estado.AtualizarDurabilidadeDaArmaAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" />
+                            <text> / @linha.DurabilidadeMaxima</text>
+                        }
+                    </td>
+                    <td>@(weapon.IsEquipped ? "Equipada" : "")</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Estado.EquiparArmaAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverArmaAsync(weapon.Id))">Remover</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<Section Title="Maestrias">
+    <EditForm Model="Estado.FormularioDeMaestria" OnValidSubmit="Estado.AdicionarMaestriaAsync">
+        <MudTextField T="string" @bind-Value="Estado.FormularioDeMaestria.Nome" Label="Nome" />
+        <MudSelect T="string" @bind-Value="Estado.FormularioDeMaestria.Pericia" Label="Perícia">
+            <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
+            @foreach (var skill in Estado.Pericias)
+            {
+                <MudSelectItem Value="@skill.Pericia">@Estado.NomeDaPericia(skill.Pericia, Catalogo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="string" @bind-Value="Estado.FormularioDeMaestria.Atributo" Label="Atributo">
+            <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
+            @foreach (var attr in Estado.Atributos)
+            {
+                <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="Estado.FormularioDeMaestria.GastoMaestria" Label="Gasto Maestria" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
+    </EditForm>
+    @if (Estado.Tipo.EditaMaestriaNaLinha)
+    {
+        <MaestriasNaLinha />
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+            <tbody>
+                @foreach (var mastery in Estado.Maestrias)
+                {
+                    <tr>
+                        <td>@mastery.Nome — @Estado.NomeDaPericia(mastery.Pericia, Catalogo) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
+                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverMaestriaAsync(mastery.Id))">Remover</MudButton></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</Section>
+
+<Section Title="Armaduras">
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Slot</th>
+                <th>Armadura</th>
+                <th>Categoria</th>
+                <th>Defesa</th>
+                <th>RF</th>
+                <th>RM</th>
+                <th>Peso</th>
+                <th>Durabilidade</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var slot in Estado.SlotsDeArmadura)
+            {
+                <tr>
+                    <td>@slot.Slot</td>
+                    <td>
+                        @if (slot.Nome is not null)
+                        {
+                            <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" /> <DesabilitadoChip Condicao="@slot.DesabilitadoPor" />
+                        }
+                        else
+                        {
+                            @:—
+                        }
+                    </td>
+                    <td>@(slot.Categoria ?? "—")</td>
+                    <td>@(slot.Defesa?.ToString() ?? "—")</td>
+                    <td>@(slot.RF?.ToString() ?? "—")</td>
+                    <td>@(slot.RM?.ToString() ?? "—")</td>
+                    <td>@(slot.Peso?.ToString() ?? "—")</td>
+                    <td>
+                        @if (slot.ItemId is not null)
+                        {
+                            @if (slot.Inquebravel)
+                            {
+                                <text>Inquebrável</text>
+                            }
+                            else
+                            {
+                                <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => Estado.AtualizarDurabilidadeDoSlotAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
+                                <text> / @slot.DurabilidadeMaxima</text>
+                            }
+                        }
+                    </td>
+                    <td>
+                        @if (slot.ItemId is not null)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.AtribuirSlotDeArmaduraAsync(slot.Slot, null))">Remover</MudButton>
+                        }
+                        else
+                        {
+                            <span style="display: inline-block; width: 16em; vertical-align: middle;">
+                                <SeletorDeItem Value="@Estado.FormularioDosSlots[slot.Slot]" ValueChanged="@(v => Estado.FormularioDosSlots[slot.Slot] = v ?? "")" Tipo="Armadura" Placeholder="Buscar armadura..." />
+                            </span>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Estado.AtribuirSlotDeArmaduraAsync(slot.Slot, Estado.FormularioDosSlots.GetValueOrDefault(slot.Slot)))">Atribuir</MudButton>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<Section Title="Escudos">
+    <EditForm Model="Estado.FormularioDeEscudo" OnValidSubmit="Estado.AdicionarEscudoAsync">
+        <SeletorDeItem @bind-Value="Estado.FormularioDeEscudo.ItemId" Tipo="Escudo" Placeholder="Buscar escudo..." />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
+    </EditForm>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Bônus de Defesa</th>
+                <th>Peso</th>
+                <th>Durabilidade</th>
+                <th>Equipado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var shield in Estado.Escudos)
+            {
+                <tr>
+                    <td>
+                        <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" /> <DesabilitadoChip Condicao="@shield.DesabilitadoPor" />
+                    </td>
+                    <td>@(shield.Categoria ?? "—")</td>
+                    <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
+                    <td>@shield.Peso</td>
+                    <td>
+                        @if (shield.Inquebravel)
+                        {
+                            <text>Inquebrável</text>
+                        }
+                        else
+                        {
+                            <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => Estado.AtualizarDurabilidadeDoEscudoAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
+                            <text> / @shield.DurabilidadeMaxima</text>
+                        }
+                    </td>
+                    <td>@(shield.IsEquipped ? "Equipado" : "")</td>
+                    <td>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Estado.EquiparEscudoAsync(shield.Id, !shield.IsEquipped))">@(shield.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverEscudoAsync(shield.Id))">Remover</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>O formulário auto-salvo da página (os recursos, a Sina, a Cobertura, a Afinidade).</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>O auto-save da página: o indicador da aba mostra os salvamentos dela.</summary>
+    [Parameter, EditorRequired] public AutoSaveCoordinator AutoSave { get; set; } = default!;
+
+    /// <summary>A página auto-salva a ficha (os recursos).</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    /// <summary>Onde há Sina: a página salva a ficha na hora.</summary>
+    [Parameter] public EventCallback SalvarAgora { get; set; }
+
+    /// <summary>
+    /// A página salva a ficha na hora e relê as abas 2 e 3, num evento só (a Cobertura entra na Defesa Natural, a
+    /// Afinidade define a Eficiência e o Dano Elemental, e esses vêm com os Sub-Atributos).
+    /// </summary>
+    [Parameter] public EventCallback SalvarERecarregar { get; set; }
+
+    private Task AoMudarAsync() => AoMudar.InvokeAsync();
+
+    private Task MudarSinaAsync(int valor)
+    {
+        Formulario.SinaAtual = valor;
+        return SalvarAgora.InvokeAsync();
+    }
+
+    private Task MudarCoberturaAsync(string? valor)
+    {
+        Formulario.Cobertura = valor ?? "Nenhuma";
+        return SalvarERecarregar.InvokeAsync();
+    }
+
+    private Task MudarAfinidadeAsync(string? valor)
+    {
+        Formulario.Afinidade = valor;
+        return SalvarERecarregar.InvokeAsync();
+    }
+}

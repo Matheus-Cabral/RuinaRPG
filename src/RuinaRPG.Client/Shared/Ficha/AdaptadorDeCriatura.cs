@@ -12,8 +12,10 @@ namespace RuinaRPG.Client.Shared.Ficha;
 public static class AdaptadorDeCriatura
 {
     /// <summary>
-    /// O ataque natural (manual) mantém <c>ItemId</c> nulo: é por ele que a linha mostra "Ataque natural" em vez da
-    /// Durabilidade. A Durabilidade nula (o ataque natural não tem) fica 0.
+    /// O ataque natural (manual) mantém <c>ItemId</c> nulo, embora o record compartilhado o declare não anulável: é por
+    /// ele que a linha mostra "Ataque natural" em vez da Durabilidade (a aba testa <c>ItemId is null</c>). A Durabilidade
+    /// nula (o ataque natural não tem, e uma arma do Catálogo também pode não ter) fica 0 aqui; esse 0 não vai para a
+    /// tela: <see cref="LinhaDeArma"/> guarda a nula, que a tela mostra em branco (R-E2).
     /// </summary>
     public static WeaponResponse ParaArma(CreatureWeaponResponse arma) => new(
         Id: arma.Id,

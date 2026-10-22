@@ -108,6 +108,30 @@ public class AdaptadorDeCriaturaTests
         arma.Requisitos.Should().BeNull();
     }
 
+    // R-E2: uma arma do Catálogo também pode chegar sem Durabilidade (não só o ataque natural). O record compartilhado
+    // tem 0 (não anulável), mas a linha da tabela guarda a nula: a tela a mostra em branco, nunca 0.
+    [Fact]
+    public void A_catalog_weapon_without_durability_gets_zero_in_the_record_and_null_in_the_row()
+    {
+        var semDurabilidade = ArmaDoCatalogo() with { Inquebravel = false, DurabilidadeAtual = null, DurabilidadeMaximo = null };
+
+        var arma = AdaptadorDeCriatura.ParaArma(semDurabilidade);
+        var linha = LinhaDeArma.De(semDurabilidade);
+
+        arma.ItemId.Should().Be("i1");
+        (arma.DurabilidadeAtual, arma.DurabilidadeMaxima).Should().Be((0, 0));
+        linha.Arma.Should().Be(arma);
+        (linha.DurabilidadeAtual, linha.DurabilidadeMaxima).Should().Be(((int?)null, (int?)null));
+    }
+
+    [Fact]
+    public void A_row_keeps_the_durability_it_got()
+    {
+        LinhaDeArma.De(ArmaDoCatalogo()).Should().Match<LinhaDeArma>(l => l.DurabilidadeAtual == 7 && l.DurabilidadeMaxima == 9);
+        var compartilhada = new WeaponResponse("w1", "i1", "Espada", null, null, null, null, null, null, 1.5m, true, 8, 10, null, null);
+        LinhaDeArma.De(compartilhada).Should().Be(new LinhaDeArma(compartilhada, 8, 10));
+    }
+
     [Fact]
     public void An_empty_armor_slot_stays_empty()
     {

@@ -51,14 +51,13 @@ public class FichaEstadoPossesTests
                 : caminho.EndsWith("/spoils") ? (HttpStatusCode.OK, Espolios)
                 : caminho.EndsWith("/artifacts") ? (HttpStatusCode.OK, Artefatos)
                 : caminho.EndsWith("/affections") ? (HttpStatusCode.OK, Afeicoes)
-                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") || caminho.EndsWith("/affinities") ? (HttpStatusCode.OK, "[]")
+                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") || caminho.EndsWith("/affinities")
+                    || caminho.EndsWith("/weapons") || caminho.EndsWith("/armor-slots") || caminho.EndsWith("/shields") ? (HttpStatusCode.OK, "[]")
                 : caminho.StartsWith("items?") || caminho.StartsWith("campaigns/c1/available-items?") ? (HttpStatusCode.OK, Itens)
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
-        var estado = new FichaEstado(http, Tipo(tipo), "s1") { IsGmCaller = gm, CampaignId = "c1" };
-        estado.CarregarCombate = () => { _requisicoes.Add("COMBATE"); return Task.CompletedTask; };
-        return estado;
+        return new FichaEstado(http, Tipo(tipo), "s1") { IsGmCaller = gm, CampaignId = "c1" };
     }
 
     private static string K(string tipo) => Tipo(tipo).Url("s1");
@@ -71,7 +70,7 @@ public class FichaEstadoPossesTests
             lista.Add($"GET {K(tipo)}/skills/budget");
         if (tipo != "Criatura")
             lista.Add($"GET {K(tipo)}/affinities");
-        lista.Add("COMBATE");
+        lista.AddRange(new[] { $"GET {K(tipo)}/weapons", $"GET {K(tipo)}/armor-slots", $"GET {K(tipo)}/shields", $"GET {K(tipo)}/sub-attributes", $"GET {K(tipo)}/modificador-de-dano" });
         return lista.ToArray();
     }
 

@@ -64,7 +64,11 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>A coluna Peso da tabela de armas.</summary>
     public required bool MostraPesoDasArmas { get; init; }
 
-    /// <summary>A arma preenchida à mão (ataque natural, sem Item do Catálogo).</summary>
+    /// <summary>
+    /// A arma preenchida à mão (ataque natural, sem Item do Catálogo). O tipo que a tem lê os records de Combate da
+    /// Criatura no fio (arma com <c>ItemId</c> e Durabilidade anuláveis; armas e slots com <c>DurabilidadeMaximo</c>) e os
+    /// passa pelo <see cref="AdaptadorDeCriatura"/> (FichaEstado.Combate.cs).
+    /// </summary>
     public required bool TemArmaManual { get; init; }
 
     /// <summary>A edição na linha das Maestrias (<c>PUT masteries/{id}</c>).</summary>
@@ -82,7 +86,11 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>Os Espólios (em Posses, no lugar do Inventário).</summary>
     public required bool TemEspolios { get; init; }
 
-    /// <summary>A aba Antecedentes (Estrela, Histórico e História; igual em todo tipo que a tem).</summary>
+    /// <summary>
+    /// A aba Antecedentes (Estrela, Histórico e História; igual em todo tipo que a tem). Também escolhe o record das
+    /// Perícias: só com Antecedentes há o bônus de Histórico (<c>ContaHistorico</c>); sem eles, o record da Criatura passa
+    /// pelo <see cref="AdaptadorDeCriatura"/> (FichaEstado.Atributos.cs, <c>CarregarPericiasAsync</c>).
+    /// </summary>
     public required bool TemAntecedentes { get; init; }
 
     /// <summary>A aba Diário.</summary>

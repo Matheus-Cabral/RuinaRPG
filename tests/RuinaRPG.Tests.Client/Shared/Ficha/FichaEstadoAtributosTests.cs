@@ -9,7 +9,7 @@ namespace RuinaRPG.Tests.Client.Shared.Ficha;
 
 /// <summary>
 /// A parte Atributos &amp; Perícias do <see cref="FichaEstado"/> (E, Task 11): a recarga das abas 2 e 3 (as mesmas
-/// requisições do antigo <c>LoadTabs2And3Async</c>, na mesma ordem; o Combate ainda pela página), as edições de
+/// requisições do antigo <c>LoadTabs2And3Async</c>, na mesma ordem, com o Combate no fim), as edições de
 /// atributo, perícia e afinidade com a recarga e a versão das penalidades, e os erros do servidor no alerta da página.
 /// </summary>
 public class FichaEstadoAtributosTests
@@ -35,7 +35,10 @@ public class FichaEstadoAtributosTests
 
     private const string Afinidades = """[{"id":"afi1","elemento":"Fogo","elementoValor":2,"segundaEssencia":"Vida","segundaEssenciaValor":1,"subElemento":"Curar","subElementoValor":3,"experiencia":1,"elementoValorComCondicoes":2}]""";
 
-    private FichaEstado Estado(string tipo, bool comCombate = true)
+    // Chamado a cada requisição, com o caminho (para ver o estado no meio da recarga).
+    private Action<string>? _aoPedir;
+
+    private FichaEstado Estado(string tipo)
     {
         var http = FakeHttpMessageHandler.CreateClient(req =>
         {
@@ -43,8 +46,10 @@ public class FichaEstadoAtributosTests
             var corpo = req.Content is null ? "" : " " + req.Content.ReadAsStringAsync().Result;
             lock (_requisicoes)
                 _requisicoes.Add($"{req.Method} {caminho}{corpo}");
+            _aoPedir?.Invoke(caminho);
             var resposta = _respostas.TryGetValue($"{req.Method} {caminho}", out var r) ? r
                 : req.Method != HttpMethod.Get ? (HttpStatusCode.OK, "{}")
+                : caminho.EndsWith("/weapons") || caminho.EndsWith("/armor-slots") || caminho.EndsWith("/shields") ? (HttpStatusCode.OK, "[]")
                 : caminho.EndsWith("/attributes") ? (HttpStatusCode.OK, Atributos)
                 : caminho.EndsWith("/attributes/budget") ? (HttpStatusCode.OK, """{"gastoTotal":2,"pontosDisponiveis":10}""")
                 : caminho.EndsWith("/skills") ? (HttpStatusCode.OK, Pericias)
@@ -53,15 +58,12 @@ public class FichaEstadoAtributosTests
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
-        var estado = new FichaEstado(http, Tipo(tipo), "s1");
-        if (comCombate)
-            estado.CarregarCombate = () => { _requisicoes.Add("COMBATE"); return Task.CompletedTask; };
-        return estado;
+        return new FichaEstado(http, Tipo(tipo), "s1");
     }
 
     private static string K(string tipo) => Tipo(tipo).Url("s1");
 
-    /// <summary>O antigo LoadTabs2And3Async: em sequência, o que o tipo tem, e depois o Combate (ainda da página).</summary>
+    /// <summary>O antigo LoadTabs2And3Async: em sequência, o que o tipo tem, e depois o Combate.</summary>
     private static string[] Recarga(string tipo)
     {
         var lista = new List<string> { $"GET {K(tipo)}/attributes", $"GET {K(tipo)}/attributes/budget", $"GET {K(tipo)}/skills" };
@@ -69,7 +71,7 @@ public class FichaEstadoAtributosTests
             lista.Add($"GET {K(tipo)}/skills/budget");
         if (tipo != "Criatura")
             lista.Add($"GET {K(tipo)}/affinities");
-        lista.Add("COMBATE");
+        lista.AddRange(new[] { $"GET {K(tipo)}/weapons", $"GET {K(tipo)}/armor-slots", $"GET {K(tipo)}/shields", $"GET {K(tipo)}/sub-attributes", $"GET {K(tipo)}/modificador-de-dano" });
         return lista.ToArray();
     }
 
@@ -108,16 +110,6 @@ public class FichaEstadoAtributosTests
         estado.Pericias.Single().ContaHistorico.Should().Be(contaHistorico);
     }
 
-    [Fact]
-    public async Task Without_a_combat_hook_the_reload_still_reads_the_tab()
-    {
-        var estado = Estado("NPC", comCombate: false);
-
-        await estado.CarregarAtributosECombateAsync();
-
-        _requisicoes.Should().Equal(Recarga("NPC").Where(r => r != "COMBATE"));
-    }
-
     [Theory]
     [MemberData(nameof(Tipos))]
     public async Task Missing_lists_become_empty(string tipo)
@@ -152,7 +144,7 @@ public class FichaEstadoAtributosTests
             estado.Erro = "antigo";
             var notificacoes = 0;
             var versaoNaRecarga = -1;
-            estado.CarregarCombate = () => { versaoNaRecarga = estado.PenalidadesVersao; _requisicoes.Add("COMBATE"); return Task.CompletedTask; };
+            _aoPedir = caminho => { if (caminho.EndsWith("/weapons")) versaoNaRecarga = estado.PenalidadesVersao; };
             estado.Alterado += () => notificacoes++;
 
             await estado.AtualizarAtributoAsync("Vigor", campo, valor);
