@@ -13,6 +13,12 @@ each item gets its own brainstorm → spec → plan after 2.0.0 ships (H done).
 3. **Remove a player from a campaign.** The GM can remove a Jogador from one of their campaigns.
 4. **Delete a player account.** The GM can delete a Jogador's account.
 
+5. **"Placeholder" in the NPC/Criatura item pickers** (found by E's safety net, 2026-10-22).
+   `src/RuinaRPG.Client/Shared/CatalogoItemPicker.razor:13` passes `Placeholder="Placeholder"` as a
+   literal, so the weapon/armor/shield pickers on NPC and Criatura sheets show the word "Placeholder".
+   User decided to fix it in 2.1.0, not in E. The E safety net pins today's text; update that test with
+   the fix.
+
 ## Questions to settle in the brainstorm (not answered yet)
 
 - Cemitério: who sees the sheet there (owner, campaign, GM only)? Can the GM bring it back? Does it
