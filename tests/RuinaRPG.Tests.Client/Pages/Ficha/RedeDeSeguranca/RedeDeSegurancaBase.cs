@@ -190,21 +190,29 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     }
 
     /// <summary>
-    /// Espera (no máximo <paramref name="limite"/>, 5 s por padrão; estoura com a falha da asserção) até
+    /// O limite das esperas da rede (R-E4). É infraestrutura de teste, não asserção: com a suíte inteira rodando em
+    /// paralelo, uma espera de 5 s estourava de vez em quando sem nada errado (a lista esperada não muda). Um teste
+    /// realmente travado só demora mais para falhar.
+    /// </summary>
+    protected static readonly TimeSpan LimiteDeEspera = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Espera (no máximo <paramref name="limite"/>, <see cref="LimiteDeEspera"/> por padrão; estoura com a falha da asserção) até
     /// <paramref name="afirmar"/> passar sobre <see cref="Requisicoes"/>, depois espera a calmaria e afirma de novo,
     /// para que nenhuma requisição a mais passe despercebida nem vaze para o passo seguinte.
     /// </summary>
     protected async Task EsperarRequisicoesAsync<TComponente>(IRenderedComponent<TComponente> cut, Action<IReadOnlyList<string>> afirmar, TimeSpan? limite = null)
         where TComponente : IComponent
     {
-        cut.WaitForAssertion(() => afirmar(Requisicoes), limite ?? TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => afirmar(Requisicoes), limite ?? LimiteDeEspera);
         await EsperarCalmariaAsync();
         afirmar(Requisicoes);
     }
 
     /// <summary>
     /// Só a verificação final de "nada a mais": espera <paramref name="quietoMs"/> sem requisição nova. Não serve
-    /// para esperar uma carga (use <see cref="EsperarRequisicoesAsync"/>); se as requisições não param em 5 s, estoura.
+    /// para esperar uma carga (use <see cref="EsperarRequisicoesAsync"/>); se as requisições não param em
+    /// <see cref="LimiteDeEspera"/>, estoura.
     /// </summary>
     protected async Task EsperarCalmariaAsync(int quietoMs = 100)
     {
@@ -213,8 +221,8 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         var relogio = System.Diagnostics.Stopwatch.StartNew();
         while (quieto < quietoMs)
         {
-            if (relogio.Elapsed > TimeSpan.FromSeconds(5))
-                throw new TimeoutException($"As requisições não pararam em 5 s ({Requisicoes.Count} até agora).");
+            if (relogio.Elapsed > LimiteDeEspera)
+                throw new TimeoutException($"As requisições não pararam em {LimiteDeEspera.TotalSeconds} s ({Requisicoes.Count} até agora).");
             await Task.Delay(25);
             var agora = Requisicoes.Count;
             quieto = agora == contagem ? quieto + 25 : 0;
