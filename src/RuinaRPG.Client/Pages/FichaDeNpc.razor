@@ -246,6 +246,8 @@
             </MudSimpleTable>
         </Section>
 
+        <br/>
+
         <Section Title="Perícias">
             <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
             <MudSimpleTable Dense="true" Hover="true">
@@ -281,6 +283,8 @@
                 </tbody>
             </MudSimpleTable>
         </Section>
+
+        <br/>
 
         <Section Title="Afinidades">
             <VocacaoArcanaResumo Gasto="@VocacaoArcanaResumo.CalcularGasto(_affinities.Select(a => (a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor)))"
@@ -345,10 +349,10 @@
                 <MudText Typo="Typo.body2">Pontos de Sina</MudText>
                 <MudRating SelectedValue="_form.SinaAtual" SelectedValueChanged="OnSinaChangedAsync" MaxValue="3" Size="Size.Large" Class="rr-sina-rating" />
             </div>
-            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Foco (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.EstresseAtual" For="@(() => _form.EstresseAtual)" Label="Estresse" Adornment="Adornment.End" AdornmentText="@($"/ {_form.EstresseMaximo}")" @bind-Value:after="NotifySavedAsync" />
         </Section>
 
         @if (_subAttributes is not null)
@@ -661,12 +665,17 @@
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
             </EditForm>
             <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <thead><tr><th></th><th>Nome</th><th>Descrição</th><th>Grau</th><th>Tipo</th><th>Disciplina</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var rune in _runes)
                     {
                         <tr>
                             <td>@if (rune.ImageUrl is not null) { <ClickableImage Src="@rune.ImageUrl" Width="60" /> }</td>
-                            <td>@rune.Nome (Grau @rune.Grau@(rune.Tipo is null ? "" : ", " + RuneTipoRotulo.De(rune.Tipo)), Disciplina: @RuneDisciplinaRotulo.De(rune.Disciplina)) — @rune.Descricao <DesabilitadoChip Condicao="@rune.DesabilitadoPor" /></td>
+                            <td>@rune.Nome <DesabilitadoChip Condicao="@rune.DesabilitadoPor" /></td>
+                            <td>@rune.Descricao</td>
+                            <td>@rune.Grau</td>
+                            <td>@RuneTipoRotulo.De(rune.Tipo)</td>
+                            <td>@RuneDisciplinaRotulo.De(rune.Disciplina)</td>
                             <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRuneAsync(rune.Id))">Remover</MudButton></td>
                         </tr>
                     }

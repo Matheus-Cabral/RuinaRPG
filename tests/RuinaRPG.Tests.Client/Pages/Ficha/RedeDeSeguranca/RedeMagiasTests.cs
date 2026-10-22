@@ -88,13 +88,10 @@ public abstract class RedeMagiasTests : RedeDeSegurancaBase
         "Enviar nova imagem", "Escolher imagem já enviada", "Adicionar Runa",
     };
 
-    // A forma de hoje: tabela no Personagem, uma linha de texto no NPC (unificar na tabela é diferença decidida, Task 4).
-    protected static string[] Runas(string tipo) => tipo switch
-    {
-        "Personagem" => FormularioDeRuna.Concat(new[] { "Nome", "Descrição", "Grau", "Tipo", "Disciplina", "Runa do Vento", "Sopra.", "1", "Runa Arcana", "Emissão", "Remover" }).ToArray(),
-        "NPC" => FormularioDeRuna.Concat(new[] { "Runa do Vento (Grau 1, Runa Arcana, Disciplina: Emissão) — Sopra.", "Remover" }).ToArray(),
-        _ => Array.Empty<string>(),
-    };
+    // A tabela do Personagem para todos os tipos que têm Runas (diferença decidida pelo usuário; a Criatura não tem Runas).
+    protected static string[] Runas(string tipo) => tipo == "Criatura"
+        ? Array.Empty<string>()
+        : FormularioDeRuna.Concat(new[] { "Nome", "Descrição", "Grau", "Tipo", "Disciplina", "Runa do Vento", "Sopra.", "1", "Runa Arcana", "Emissão", "Remover" }).ToArray();
 
     protected static IEnumerable<string> LeituraDaAba(string tipo) =>
         HabilidadeRacial(tipo).Concat(MagiasEHabilidades).Concat(Passivas).Concat(Runas(tipo));
@@ -340,10 +337,8 @@ public abstract class RedeMagiasTests : RedeDeSegurancaBase
             }.Concat(RecargaDasRunas(tipo, papel))));
         }
 
-        // Bug de hoje, fixado como está: RuneOrigemFields passa ao ImageAttachmentField CampaignId="CampaignId",
-        // que no Razor é o texto literal. Então a imagem da Runa sobe com campaignId=CampaignId para o GM e para o
-        // jogador (as outras imagens da ficha mandam campaignId=c1 só para o jogador). Corrigir é mudança visível
-        // ao servidor: precisa do usuário, e esta rede muda junto (Task 4).
+        // A imagem da Runa sobe como as outras imagens da ficha: sem campanha para o GM, com a da ficha (c1) para o
+        // jogador. (Antes do E ela subia com o texto literal campaignId=CampaignId; corrigido por decisão do usuário.)
         [Theory]
         [MemberData(nameof(TiposComRunas))]
         public async Task Enviar_uma_imagem_sobe_o_arquivo_e_a_runa_grava_com_ela(string tipo, string papel)
@@ -354,7 +349,7 @@ public abstract class RedeMagiasTests : RedeDeSegurancaBase
             await EscolherOpcaoAsync(cut, () => FormularioDeRunaDa(cut), "Disciplina", "Emissão");
             var anexo = cut.FindComponents<ImageAttachmentField>().Single();
             await cut.InvokeAsync(() => anexo.Instance.UploadForTests(new FakeBrowserFile("runa.png")));
-            await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal("POST /images [file, campaignId=CampaignId]"));
+            await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(papel == "GM" ? "POST /images [file]" : "POST /images [file, campaignId=c1]"));
             LimparRequisicoes();
             await cut.InvokeAsync(() => FormularioDeRunaDa(cut).Submit());
 

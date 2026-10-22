@@ -44,7 +44,7 @@ else
     </div>
     <ImageAttachmentField AvailableImages="AvailableImages" SelectedIds="SelectedImageIds"
                           SelectedIdsChanged="@(ids => Model.ImageId = ids.FirstOrDefault() ?? "")"
-                          OnError="OnError" CampaignId="CampaignId" Multiple="false" />
+                          OnError="OnError" CampaignId="@CampaignId" Multiple="false" />
 }
 
 @code {

@@ -38,7 +38,7 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
 
     // ---------------- o que se lê ----------------
 
-    // A ordem dos recursos é a de hoje de cada tipo (a unificação na ordem do Personagem é uma diferença decidida, Task 4).
+    // Os recursos na ordem do Personagem para todos (Vitalidade, Foco, Adrenalina, Estresse): diferença decidida pelo usuário.
     protected static string[] Recursos(string tipo) => tipo switch
     {
         "Personagem" => new[]
@@ -49,9 +49,9 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
         "NPC" => new[]
         {
             "Pontos de Sina", "[ ]", "[x]", "[ ]",
-            "«4»", "/ 6", "Adrenalina (PA)", "«6»", "/ 8", "Foco (PF)", "«2»", "/ 10", "Estresse", "«30»", "/ 32", "Vitalidade",
+            "«30»", "/ 32", "Vitalidade", "«6»", "/ 8", "Foco (PF)", "«4»", "/ 6", "Adrenalina (PA)", "«2»", "/ 10", "Estresse",
         },
-        _ => new[] { "«2»", "/ 3", "Adrenalina (PA)", "«4»", "/ 4", "Arcana (PF)", "«18»", "/ 18", "Vitalidade" },
+        _ => new[] { "«18»", "/ 18", "Vitalidade", "«4»", "/ 4", "Arcana (PF)", "«2»", "/ 3", "Adrenalina (PA)" },
     };
 
     protected static IEnumerable<string> SubAtributos(string tipo)

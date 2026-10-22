@@ -193,6 +193,8 @@
             </MudSimpleTable>
         </Section>
 
+        <br/>
+
         <Section Title="Perícias">
             <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
             <MudSimpleTable Dense="true" Hover="true">
@@ -219,15 +221,17 @@
                 </tbody>
             </MudSimpleTable>
         </Section>
+
+        <br/>
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
         <PenalidadesAtivasAlert Url="@($"creature-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
         <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
         <Section>
-            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Arcana (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
             <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Arcana (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
+            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
         </Section>
 
         @if (_subAttributes is not null)
@@ -1065,7 +1069,8 @@
         var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
         var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
 
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateCreatureAttributeRequest(gasto, bonus, temMaestria));
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateCreatureAttributeRequest(gasto, bonus, temMaestria));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
     }
@@ -1074,7 +1079,8 @@
     {
         var current = _skills.Single(s => s.Pericia == pericia);
         var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(gasto, current.AtributoEscolhido));
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(gasto, current.AtributoEscolhido));
+        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
     }

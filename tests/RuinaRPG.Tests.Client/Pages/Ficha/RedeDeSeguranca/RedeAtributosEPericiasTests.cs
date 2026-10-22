@@ -130,6 +130,24 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Equal(LeituraDaAba(tipo)), TimeSpan.FromSeconds(5));
         }
 
+        // Diferença A4 (decidida pelo usuário: a versão do Personagem para todos): uma linha em branco (<br>) logo
+        // depois da seção Atributos e logo depois da seção Perícias. A Leitura não vê o <br>, então fica afirmado aqui.
+        [Theory]
+        [MemberData(nameof(TiposEPapeis))]
+        public async Task Atributos_e_pericias_tem_cada_uma_uma_linha_em_branco_depois(string tipo, string papel)
+        {
+            var cut = await AbrirAbaAsync(tipo, papel);
+
+            cut.WaitForAssertion(() =>
+            {
+                var secoes = AbaAberta(cut).QuerySelectorAll(".rr-section-root")
+                    .Where(s => s.QuerySelector(".rr-section-title") is { } titulo && TextoNormalizado(titulo) is "Atributos" or "Perícias")
+                    .ToList();
+                secoes.Select(s => TextoNormalizado(s.QuerySelector(".rr-section-title")!)).Should().Equal("Atributos", "Perícias");
+                secoes.Select(s => s.NextElementSibling?.LocalName).Should().Equal("br", "br");
+            }, TimeSpan.FromSeconds(5));
+        }
+
         // A Leitura não vê atributos: o Modificador em negrito ("Inclui bônus de Histórico") e os campos desabilitados
         // ficam afirmados aqui. GM e jogador editam a aba igual; só a Essência 2 da linha nova (sem Essência 1) fica desabilitada.
         [Theory]
@@ -220,12 +238,13 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":\"Vigor\",\"gasto\":2}}", recarregaPenalidades: true);
         }
 
-        // Diferença A6 do inventário (a decidir): Personagem e NPC mostram a mensagem do servidor; a Criatura não mostra nada.
+        // Diferença A6 (decidida pelo usuário: a versão do Personagem para todos): o servidor recusa e a página mostra
+        // a mensagem dele no alerta; um salvamento certo depois apaga o erro.
         [Theory]
         [InlineData("Personagem")]
         [InlineData("NPC")]
         [InlineData("Criatura")]
-        public async Task Um_atributo_recusado_mostra_a_mensagem_do_servidor_menos_na_criatura(string tipo)
+        public async Task Um_atributo_recusado_mostra_a_mensagem_do_servidor_e_um_salvamento_certo_a_apaga(string tipo)
         {
             ResponderErro("/attributes/Vigor", HttpStatusCode.BadRequest, "Acima do orçamento.");
             var cut = await AbrirAbaAsync(tipo, "GM");
@@ -233,8 +252,14 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await cut.InvokeAsync(() => LinhaDoAtributo(cut).QuerySelectorAll("input")[0].Change("40"));
 
             await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/attributes/Vigor {{\"bonus\":1,\"gasto\":40,\"temMaestria\":false}}", recarregaPenalidades: true);
-            var alertas = cut.FindAll(".mud-alert").Select(TextoNormalizado);
-            alertas.Should().Equal(tipo == "Criatura" ? Array.Empty<string>() : new[] { "Acima do orçamento." });
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Acima do orçamento."));
+
+            Responder("/attributes/Vigor", new { });
+            LimparRequisicoes();
+            await cut.InvokeAsync(() => LinhaDoAtributo(cut).QuerySelectorAll("input")[0].Change("4"));
+
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/attributes/Vigor {{\"bonus\":1,\"gasto\":4,\"temMaestria\":false}}", recarregaPenalidades: true);
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Should().BeEmpty());
         }
 
         // Idem para a perícia (A6).
@@ -242,7 +267,7 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
         [InlineData("Personagem")]
         [InlineData("NPC")]
         [InlineData("Criatura")]
-        public async Task Uma_pericia_recusada_mostra_a_mensagem_do_servidor_menos_na_criatura(string tipo)
+        public async Task Uma_pericia_recusada_mostra_a_mensagem_do_servidor_e_um_salvamento_certo_a_apaga(string tipo)
         {
             ResponderErro("/skills/Atletismo", HttpStatusCode.BadRequest, "Perícia acima do máximo.");
             var cut = await AbrirAbaAsync(tipo, "GM");
@@ -250,8 +275,14 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await cut.InvokeAsync(() => LinhaDaPericia(cut).QuerySelectorAll("input")[0].Change("40"));
 
             await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":\"Vigor\",\"gasto\":40}}", recarregaPenalidades: true);
-            var alertas = cut.FindAll(".mud-alert").Select(TextoNormalizado);
-            alertas.Should().Equal(tipo == "Criatura" ? Array.Empty<string>() : new[] { "Perícia acima do máximo." });
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Perícia acima do máximo."));
+
+            Responder("/skills/Atletismo", new { });
+            LimparRequisicoes();
+            await cut.InvokeAsync(() => LinhaDaPericia(cut).QuerySelectorAll("input")[0].Change("3"));
+
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":\"Vigor\",\"gasto\":3}}", recarregaPenalidades: true);
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Should().BeEmpty());
         }
     }
 
