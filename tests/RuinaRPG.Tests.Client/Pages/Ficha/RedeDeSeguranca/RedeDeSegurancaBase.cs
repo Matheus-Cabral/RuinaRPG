@@ -66,6 +66,15 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     /// </summary>
     protected void Responder(string sufixoOuRegex, object? json) => _respostas.Insert(0, (sufixoOuRegex, json));
 
+    /// <summary>
+    /// Como <see cref="Responder"/>, mas recusa: responde <paramref name="status"/> com <paramref name="mensagem"/>
+    /// como corpo (uma string JSON, como o servidor manda as mensagens de erro).
+    /// </summary>
+    protected void ResponderErro(string sufixoOuRegex, HttpStatusCode status, string mensagem) =>
+        _respostas.Insert(0, (sufixoOuRegex, new Erro(status, mensagem)));
+
+    private sealed record Erro(HttpStatusCode Status, string Mensagem);
+
     /// <summary>"character-sheets", "npc-sheets" ou "creature-sheets".</summary>
     protected static string Prefixo(string tipo) => tipo switch
     {
@@ -115,6 +124,34 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             lista.Add($"GET {k}/condicoes-ativas");
         return lista.ToArray();
     }
+
+    /// <summary>
+    /// O que a página relê (em sequência, nesta ordem) depois de mexer em Atributos, Perícias, Afinidades ou no
+    /// Combate (<c>LoadTabs2And3Async</c>).
+    /// </summary>
+    protected static string[] RecargaDasAbas(string tipo)
+    {
+        var k = $"/{Prefixo(tipo)}/s1";
+        var lista = new List<string> { $"GET {k}/attributes", $"GET {k}/attributes/budget", $"GET {k}/skills" };
+        if (tipo == "Personagem")
+            lista.Add($"GET {k}/skills/budget");
+        if (tipo != "Criatura")
+            lista.Add($"GET {k}/affinities");
+        lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
+        return lista.ToArray();
+    }
+
+    /// <summary>A tabela (dentro de <paramref name="raiz"/>) cujo primeiro cabeçalho é <paramref name="primeiroCabecalho"/>.</summary>
+    protected static IElement Tabela(IElement raiz, string primeiroCabecalho) =>
+        raiz.QuerySelectorAll("table").Single(t => t.QuerySelector("th") is { } th && TextNormalization.Collapse(th.TextContent) == primeiroCabecalho);
+
+    /// <summary>A linha do corpo de <paramref name="tabela"/> cuja primeira célula é <paramref name="primeiraCelula"/>.</summary>
+    protected static IElement Linha(IElement tabela, string primeiraCelula) =>
+        tabela.QuerySelectorAll("tbody tr").Single(tr => tr.QuerySelector("td") is { } td && TextNormalization.Collapse(td.TextContent) == primeiraCelula);
+
+    /// <summary>O botão de <paramref name="raiz"/> com o texto visível <paramref name="texto"/> (tem de ser um só).</summary>
+    protected static IElement Botao(IElement raiz, string texto) =>
+        raiz.QuerySelectorAll("button").Single(b => TextNormalization.Collapse(b.TextContent) == texto);
 
     /// <summary>
     /// Renderiza a página do tipo (<c>"Personagem"</c>, <c>"NPC"</c>, <c>"Criatura"</c>) com SheetId "s1",
@@ -285,6 +322,10 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     private static HttpResponseMessage Resposta(object? json) => json switch
     {
         null => new HttpResponseMessage(HttpStatusCode.NotFound),
+        Erro erro => new HttpResponseMessage(erro.Status)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(erro.Mensagem), Encoding.UTF8, "application/json"),
+        },
         string cru => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(cru, Encoding.UTF8, "application/json") },
         _ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -392,6 +433,13 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     {
         "/pericias" => new[] { new { id = 1, chave = "Atletismo", nome = "Atletismo", descricao = "Correr e saltar.", atributoSugerido = "Vigor", disponivelParaCriaturas = true, protegida = false } },
         "/auth/me" => new { id = "u1", nickname = "Mestre", role = _papel, isRulesAuditor = !EhJogador, pendingChangelogVersion = (string?)null, mustChangePassword = false },
+        // Uma coluna acumulativa (2 por nível) para a "Progressão do nível" mostrar um valor que depende do Nível da ficha.
+        "/tabela-de-niveis" => new
+        {
+            colunas = new[] { new { id = "00000000-0000-0000-0000-0000000000a1", nome = "Pontos de Perícia", tipo = "Acumulativa", chaveDeSistema = "PontosDePericia", doSistema = true, ordem = 1 } },
+            linhas = Enumerable.Range(1, 5).Select(n => new { nivel = n, outrosBonus = (string?)null, valores = new Dictionary<string, int?> { ["00000000-0000-0000-0000-0000000000a1"] = 2 } }).ToArray(),
+            mostrarLimitesNoLivro = false,
+        },
         "/campaigns" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
         "/images/mine" or "/campaigns/c1/available-images" => new[]
         {
