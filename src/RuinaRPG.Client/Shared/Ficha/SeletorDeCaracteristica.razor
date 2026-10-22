@@ -1,0 +1,43 @@
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+
+@* O seletor de Característica de Informações Básicas, no catálogo do tipo (FichaEstado.BuscarCaracteristicasAsync).
+   Onde o tipo cria característica no seletor (TipoDeFichaCliente.CriaCaracteristicaNoPicker), o Auditor de Regras tem
+   ao lado o "Nova característica de criatura": a criada já fica escolhida. *@
+
+@if (Estado.Tipo.CriaCaracteristicaNoPicker)
+{
+    <div class="d-flex align-center" style="gap:8px">
+        <div style="flex:1">
+            <EntityPicker @ref="_seletor" Value="@Value" ValueChanged="ValueChanged" SearchItems="Estado.BuscarCaracteristicasAsync" Placeholder="Buscar característica..." />
+        </div>
+        @if (Estado.EhAuditorDeRegras)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="NovaCaracteristicaAsync">Nova característica de criatura</MudButton>
+        }
+    </div>
+}
+else
+{
+    <EntityPicker Value="@Value" ValueChanged="ValueChanged" SearchItems="Estado.BuscarCaracteristicasAsync" Placeholder="Buscar característica..." />
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Inject] private IDialogService Dialogs { get; set; } = default!;
+
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private EntityPicker? _seletor;
+
+    private async Task NovaCaracteristicaAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CaracteristicaDeCriaturaDialog>("Nova característica de criatura",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false, Data: CreatureExclusiveTraitResponse criada } && _seletor is not null)
+            await _seletor.SelectExternallyAsync(new PickerOption(criada.Id, $"{criada.Nome} ({criada.Custo}, {criada.Polaridade})"));
+    }
+}

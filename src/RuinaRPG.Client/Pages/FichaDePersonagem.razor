@@ -3,7 +3,6 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject SecretNoteNotifier Notifier
-@inject IDialogService Dialogs
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.Campaigns
@@ -21,7 +20,6 @@
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 @using RuinaRPG.Contracts.Notifications
-@using System.ComponentModel.DataAnnotations
 
 <div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
 <Breadcrumbs Items="@Crumbs" />
@@ -98,135 +96,13 @@
 <CascadingValue Value="_estado" IsFixed="false">
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
-        <EditForm Model="_form">
-            <DataAnnotationsValidator />
-            <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
-            <Section Title="Identidade">
-                <div class="mb-4">
-                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = true)">
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" ObjectFit="ObjectFit.Cover" />
-                        }
-                        else
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Person" />
-                        }
-                    </MudAvatar>
-                </div>
-
-                <MudDialog @bind-Visible="_imageExpanded">
-                    <DialogContent>
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
-                        }
-                        <div>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
-                            @if (_form.ImageId is not null)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
-                            }
-                        </div>
-
-                        @if (_imageEditing)
-                        {
-                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
-                                <CustomContent Context="fileUploadContext">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                                </CustomContent>
-                            </MudFileUpload>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
-                            <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
-                                                 IsSelectedFunc="@(id => id == _form.ImageId)"
-                                                 OnPick="@(id => { SelectExistingImage(id); _imageGalleryOpen = false; })" />
-                        }
-                    </DialogContent>
-                    <DialogActions>
-                        <MudButton OnClick="@(() => _imageExpanded = false)">Fechar</MudButton>
-                    </DialogActions>
-                </MudDialog>
-
-                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-                <LinhagemVarianteFields VariantesLiberadas="_variantesLiberadas" @bind-Linhagem="_form.Linhagem" @bind-Variante="_form.Variante" @bind-Linhagem:after="NotifySavedAsync" @bind-Variante:after="NotifySavedAsync" />
-                <VocacaoSubVocacaoFields @bind-Vocacao="_form.Vocacao" @bind-SubVocacao="_form.SubVocacao" @bind-Vocacao:after="NotifySavedAsync" @bind-SubVocacao:after="NotifySavedAsync" />
-                <MudTextField T="string" @bind-Value="_form.Propriedade" Label="Propriedade" @bind-Value:after="NotifySavedAsync" />
-            </Section>
-
-            <Section Title="Nível e Progressão">
-                <MudText Typo="Typo.h6">Nível: @_form.Nivel</MudText>
-                <MudText>@_form.GraduacaoLabel: @_form.Graduacao</MudText>
-                @* Só as Vocações mágicas usam Círculo (1.b); o valor salvo continua lá se a Vocação mudar. *@
-                @if (VocacaoArcanaCalculator.EhMagica(Enum.TryParse<Vocacao>(_form.Vocacao, out var vocacaoAtual) ? vocacaoAtual : null))
-                {
-                    <MudCheckBox T="bool" @bind-Value="_form.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="NotifySavedAsync" />
-                }
-                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifySavedAsync" />
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    @(_form.XpParaProximoNivel is not null ? $"Faltam {_form.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
-                </MudText>
-                <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_xpDelta" Label="Adicionar/subtrair XP" Style="max-width:22rem" />
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyXpDeltaAsync">Aplicar</MudButton>
-                </div>
-                <MudText>VIS Atual: @_form.EAPAtual</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicaoAtual" For="@(() => _form.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="NotifyPontosDeIgnicaoChangedAsync" />
-                <div class="d-flex align-center mt-2" style="gap:8px">
-                    <MudNumericField T="int?" @bind-Value="_piDelta" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:22rem" />
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPiDeltaAsync">Aplicar</MudButton>
-                </div>
-            </Section>
-
-            <Section Title="Âmbares Absorvidos">
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankF" For="@(() => _form.NucleosRankF)" Label="Rank F" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankE" For="@(() => _form.NucleosRankE)" Label="Rank E" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankD" For="@(() => _form.NucleosRankD)" Label="Rank D" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankC" For="@(() => _form.NucleosRankC)" Label="Rank C" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankB" For="@(() => _form.NucleosRankB)" Label="Rank B" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankA" For="@(() => _form.NucleosRankA)" Label="Rank A" @bind-Value:after="NotifySavedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.NucleosRankS" For="@(() => _form.NucleosRankS)" Label="Rank S" @bind-Value:after="NotifySavedAsync" />
-            </Section>
-
-        </EditForm>
-
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <EntityPicker @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            <OrcamentoDeCaracteristicas TotalPositivas="@(_traits?.TotalPositivas ?? 0)" TotalNegativas="@(_traits?.TotalNegativas ?? 0)"
-                                        LimitePositivas="@(_traits?.PontosDisponiveis ?? 0)" LimiteNegativas="@(_traits?.PontosDisponiveisNegativas ?? 0)" />
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaInformacoesBasicas Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" AoMudarExperiencia="NotifySavedAsync"
+                               AoMudarPontosDeIgnicao="NotifyPontosDeIgnicaoChangedAsync" SalvarAgora="SaveIgnoringResultAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
         <PenalidadesAtivasAlert Url="@($"character-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
-        <ProgressaoDoNivelSection Nivel="@_form.Nivel" />
+        <ProgressaoDoNivelSection Nivel="@(_form.Nivel ?? 1)" />
         <Section Title="Atributos">
             @if (_attributeBudget is not null)
             {
@@ -619,16 +495,16 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
-        <HabilidadeRacialSection Habilidade="_racialAbility" Humano="@(_form.Linhagem == "Humano")" ArcaRolada="_form.ArcaRolada" ArcaRoladaChanged="UpdateArcaRoladaAsync" />
+        <HabilidadeRacialSection Formulario="_form" SalvarAgora="SaveIgnoringResultAsync" />
         <AbaMagiasEHabilidades />
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
-        <AbaPosses EquipamentoInicialEscolhido="@(_form.EquipmentKitId is not null)" EquipagemEscolhida="OnEquipagemChosenAsync" Ciclos="_form.Ciclos" CiclosChanged="@(v => UpdateCiclosAsync(v))" />
+        <AbaPosses Formulario="_form" SalvarAgora="SaveIgnoringResultAsync" EquipagemEscolhida="OnEquipagemChosenAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Antecedentes">
-        <AbaAntecedentes @bind-Estrela="_form.Estrela" @bind-Estrela:after="NotifySavedAsync" @bind-HistoricoId="_form.HistoricoId" @bind-HistoricoId:after="NotifySavedAsync" @bind-Historia="_form.Historia" />
+        <AbaAntecedentes Formulario="_form" AoMudar="NotifySavedAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Diário">
@@ -721,15 +597,11 @@
         }
     }
 
-    private readonly SheetFormModel _form = new();
+    // Antes da carga o VIS do Personagem mostra 0 (no NPC fica em branco), como sempre mostrou.
+    private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Personagem) { EAPAtual = 0 };
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private int? _xpDelta;
-    private int? _piDelta;
     private int? _periciaCriticoDelta;
     private List<string> _levelUpBonuses = new();
-    private bool _imageExpanded;
-    private bool _imageEditing;
-    private bool _imageGalleryOpen;
     private List<AttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private SkillPointBudgetResponse? _skillBudget;
@@ -749,31 +621,20 @@
     // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private ModificadorDeDanoResponse? _modificadorDeDano;
-    private RacialAbilityResponse? _racialAbility;
     private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
-    private TraitsListResponse? _traits;
     private PendingRacialTraitChoiceResponse? _pendingRacialChoice;
     private bool _racialChoiceDialogOpen;
     private string? _racialGratuitaChoice;
     private string? _racialObrigatoriaChoice;
     private string? _racialGratuitaEspecificacao;
     private string? _racialObrigatoriaEspecificacao;
-    private readonly TraitFormModel _traitForm = new();
     private List<DiaryEntryResponse> _diaryEntries = new();
     private readonly DiaryFormModel _diaryForm = new();
     private string? _editingDiaryEntryId;
     private string _editDiaryText = "";
     private List<string> _diaryImageIds = new();
     private List<string> _editDiaryImageIds = new();
-
-    private async Task<List<PickerOption>> SearchTraitsAsync(string query)
-    {
-        var response = await Http.GetAsync($"traits?nome={Uri.EscapeDataString(query)}");
-        if (!response.IsSuccessStatusCode) return new();
-        var traits = await response.Content.ReadFromJsonAsync<List<TraitResponse>>() ?? new();
-        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
-    }
 
     protected override void OnInitialized()
     {
@@ -864,8 +725,8 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
-            LoadRacialAbilityAsync(), LoadVariantesLiberadasAsync(), _estado.CarregarMagiasAsync(), _estado.CarregarRunasAsync(), LoadMasteriesAsync(),
-            _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), LoadTraitsAsync(), LoadDiaryAsync(),
+            _estado.CarregarHabilidadeRacialAsync(), _estado.CarregarVariantesLiberadasAsync(), _estado.CarregarMagiasAsync(), _estado.CarregarRunasAsync(), LoadMasteriesAsync(),
+            _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(), LoadDiaryAsync(),
             LoadCampaignNameAsync(), LoadPendingRacialChoiceAsync());
     }
 
@@ -875,42 +736,6 @@
         var response = await Http.GetAsync(url);
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
-    }
-
-    private async Task UploadImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-        if (!_isGmCaller && _campaignId is not null)
-            content.Add(new StringContent(_campaignId), "campaignId");
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _form.ImageId = body!.Id;
-        _form.ImageUrl = body.Url;
-        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void SelectExistingImage(string? id)
-    {
-        _form.ImageId = id;
-        _form.ImageUrl = id is null ? null : _myImages.FirstOrDefault(i => i.Id == id)?.Url;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void RemoveImage()
-    {
-        _form.ImageId = null;
-        _form.ImageUrl = null;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private async Task LoadCampaignNameAsync()
@@ -1012,7 +837,7 @@
 
         _errorMessage = null;
         var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
-            _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual,
+            _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual ?? 0,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
             _form.PontosDeIgnicaoAtual!.Value, _form.PontosDeIgnicaoBonusManual, _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.EstresseAtual!.Value,
             _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional,
@@ -1032,9 +857,9 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         // Evoluções de Arca unlocked depend on Nível.
-        await LoadRacialAbilityAsync();
+        await _estado.CarregarHabilidadeRacialAsync();
         return true;
     }
 
@@ -1072,9 +897,10 @@
 
     /// <summary>
     /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via _autoSave.NotifyChanged), for
-    /// the pre-existing "Aplicar"/inline-update handlers below that saved immediately before this
-    /// tab had autosave. Preserves their original behavior of surfacing a save failure via
-    /// _errorMessage instead of letting SaveIfValidAsync's exception go unhandled.
+    /// the immediate-save handlers that saved before the sheet had autosave: the inline updates
+    /// below and, through SalvarAgora, the tabs' "Aplicar" of XP/PI, Ciclos and Arca rolada.
+    /// Preserves their original behavior of surfacing a save failure via _errorMessage instead of
+    /// letting SaveIfValidAsync's exception go unhandled.
     /// </summary>
     private async Task SaveIgnoringResultAsync()
     {
@@ -1086,38 +912,6 @@
         {
             _errorMessage = ex.Message;
         }
-    }
-
-    /// <summary>
-    /// The "adicionar ou subtrair xp do montante total" field: applies a signed delta to
-    /// Experiência Atual (never below 0) and saves immediately, same immediate-action pattern as
-    /// UpdateCoberturaAsync/UpdateCiclosAsync below. Nível is derived server-side from the new
-    /// total, so LoadSheetAsync (inside SaveIfValidAsync) picks up whatever Nível that XP now computes to.
-    /// </summary>
-    private async Task ApplyXpDeltaAsync()
-    {
-        if (_xpDelta is null || _xpDelta == 0)
-            return;
-
-        _form.ExperienciaAtual = Math.Max(0, (_form.ExperienciaAtual ?? 0) + _xpDelta.Value);
-        _xpDelta = null;
-        await SaveIgnoringResultAsync();
-    }
-
-    /// <summary>
-    /// The "GM também pode conceder PI" manual bonus (1.b): applies a signed delta to
-    /// PontosDeIgnicaoBonusManual and saves immediately, same pattern as ApplyXpDeltaAsync above.
-    /// The server adds the same delta to PontosDeIgnicaoAtual; the reload inside SaveIfValidAsync
-    /// brings that value back into the form.
-    /// </summary>
-    private async Task ApplyPiDeltaAsync()
-    {
-        if (_piDelta is null || _piDelta == 0)
-            return;
-
-        _form.PontosDeIgnicaoBonusManual += _piDelta.Value;
-        _piDelta = null;
-        await SaveIgnoringResultAsync();
     }
 
     /// <summary>
@@ -1150,13 +944,6 @@
         _form.Cobertura = value ?? "Nenhuma";
         await SaveIgnoringResultAsync();
         await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural (2.b), loaded here, not by LoadSheetAsync.
-    }
-
-    private async Task UpdateCiclosAsync(object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var ciclos))
-            _form.Ciclos = ciclos;
-        await SaveIgnoringResultAsync();
     }
 
     private async Task LoadTabs2And3Async()
@@ -1355,24 +1142,6 @@
         await LoadTabs2And3Async();
     }
 
-    private List<VarianteLiberadaResponse> _variantesLiberadas = new();
-
-    private async Task LoadVariantesLiberadasAsync()
-    {
-        _variantesLiberadas = await Http.GetFromJsonAsync<List<VarianteLiberadaResponse>>($"character-sheets/{SheetId}/variantes-liberadas") ?? new();
-    }
-
-    private async Task LoadRacialAbilityAsync()
-    {
-        _racialAbility = await Http.GetFromJsonAsync<RacialAbilityResponse>($"character-sheets/{SheetId}/racial-ability");
-    }
-
-    private async Task UpdateArcaRoladaAsync(int? value)
-    {
-        _form.ArcaRolada = value;
-        await SaveIgnoringResultAsync();
-        await LoadRacialAbilityAsync();
-    }
 
     private async Task OnSinaChangedAsync(int value)
     {
@@ -1442,11 +1211,6 @@
         _penalidadesVersao++;
     }
 
-    private async Task LoadTraitsAsync()
-    {
-        _traits = await Http.GetFromJsonAsync<TraitsListResponse>($"character-sheets/{SheetId}/traits");
-    }
-
     // Ruína RPG - Sistema Básico §7: every Variante grants a Característica Gratuita (a real
     // choice) and, for some, a Característica Obrigatória (0, 1 fixed, or a real choice too) — see
     // RacialTraitLookup/RacialTraitChoiceResolver. This dialog opens whenever the sheet's current
@@ -1476,27 +1240,7 @@
 
         _racialChoiceDialogOpen = false;
         await LoadPendingRacialChoiceAsync();
-        await LoadTraitsAsync();
-    }
-
-    private async Task AddTraitAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"character-sheets/{SheetId}/traits", new AddTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";
-            return;
-        }
-
-        _traitForm.TraitId = "";
-        _traitForm.Especificacao = "";
-        await LoadTraitsAsync();
-    }
-
-    private async Task DeleteTraitAsync(string id)
-    {
-        await Http.DeleteAsync($"character-sheets/{SheetId}/traits/{id}");
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
     }
 
     private async Task LoadDiaryAsync()
@@ -1559,76 +1303,6 @@
         await LoadDiaryAsync();
     }
 
-    private class SheetFormModel
-    {
-        public string? ImageId { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? Nome { get; set; }
-        public string? Linhagem { get; set; }
-        public string? Variante { get; set; }
-        public string? Vocacao { get; set; }
-        public string? SubVocacao { get; set; }
-        public string? Afinidade { get; set; }
-        public string? Propriedade { get; set; }
-        public string? Estrela { get; set; }
-        public int SinaAtual { get; set; }
-        public string? HistoricoId { get; set; }
-        public string? Historia { get; set; }
-        public string? EquipmentKitId { get; set; }
-        // Nível is derived server-side from Experiência Atual (NivelCalculator) — no longer a
-        // GM-editable field on Ficha de Personagem, unlike NPC/Criatura sheets.
-        public int Nivel { get; set; } = 1;
-        public int Graduacao { get; set; }
-        public string GraduacaoLabel { get; set; } = "Grau";
-        public bool PossuiCoracaoDeMana { get; set; }
-        public int AfinidadeAdicional { get; set; }
-        public int VocacaoArcanaMaxima { get; set; }
-        [Required(ErrorMessage = "Informe a Experiência Atual.")]
-        public int? ExperienciaAtual { get; set; }
-        public int? XpParaProximoNivel { get; set; }
-        public int EAPAtual { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank F.")]
-        public int? NucleosRankF { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank E.")]
-        public int? NucleosRankE { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank D.")]
-        public int? NucleosRankD { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank C.")]
-        public int? NucleosRankC { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank B.")]
-        public int? NucleosRankB { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank A.")]
-        public int? NucleosRankA { get; set; }
-        [Required(ErrorMessage = "Informe os Núcleos de Rank S.")]
-        public int? NucleosRankS { get; set; }
-        [Required(ErrorMessage = "Informe os Pontos de Ignição Atual.")]
-        public int? PontosDeIgnicaoAtual { get; set; }
-        public int PontosDeIgnicaoBonusManual { get; set; }
-        public int PontosDePericiaBonusCritico { get; set; }
-        [Required(ErrorMessage = "Informe a Vitalidade.")]
-        public int? VitalidadeAtual { get; set; }
-        [Required(ErrorMessage = "Informe o Foco.")]
-        public int? FocoAtual { get; set; }
-        [Required(ErrorMessage = "Informe a Adrenalina.")]
-        public int? AdrenalinaAtual { get; set; }
-        [Required(ErrorMessage = "Informe o Estresse.")]
-        public int? EstresseAtual { get; set; }
-        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
-        public int? VitalidadeAtualCarregada { get; private set; }
-        public int? FocoAtualCarregado { get; private set; }
-        public int? AdrenalinaAtualCarregada { get; private set; }
-        public int? EstresseAtualCarregado { get; private set; }
-        public void GuardarAtuaisCarregados() =>
-            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada, EstresseAtualCarregado) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual);
-        public string Cobertura { get; set; } = "Nenhuma";
-        public int Ciclos { get; set; }
-        public int? ArcaRolada { get; set; }
-        public int VitalidadeMaximo { get; set; }
-        public int FocoMaximo { get; set; }
-        public int AdrenalinaMaximo { get; set; }
-        public int EstresseMaximo { get; set; }
-    }
-
     private class MasteryFormModel
     {
         public string Nome { get; set; } = "";
@@ -1655,12 +1329,6 @@
         public int? SegundaEssenciaValor { get; set; }
         public int? SubElementoValor { get; set; }
         public int? Experiencia { get; set; }
-    }
-
-    private class TraitFormModel
-    {
-        public string TraitId { get; set; } = "";
-        public string? Especificacao { get; set; }
     }
 
     private class DiaryFormModel

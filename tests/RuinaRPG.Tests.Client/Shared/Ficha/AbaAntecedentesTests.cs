@@ -40,7 +40,7 @@ public class AbaAntecedentesTests : RedeDeSegurancaBase
         cut.FindComponent<AbaAntecedentes>().Instance.Estado.Should().BeSameAs(cut.FindComponent<CascadingValue<FichaEstado>>().Instance.Value);
     }
 
-    // Estrela, Histórico e História moram no formulário auto-salvo da página, que os passa (com os retornos) à aba.
+    // Estrela, Histórico e História moram no formulário auto-salvo da página, que o passa (com o retorno que salva) à aba.
     [Theory]
     [InlineData("Personagem", "Nasceu no porto.")]
     [InlineData("NPC", "Ferreiro do vale.")]
@@ -49,12 +49,13 @@ public class AbaAntecedentesTests : RedeDeSegurancaBase
         var cut = await AbrirAsync(tipo);
 
         var aba = cut.FindComponent<AbaAntecedentes>().Instance;
-        aba.Estrela.Should().BeNull();
-        aba.HistoricoId.Should().BeNull();
-        aba.Historia.Should().Be(historia);
-        aba.EstrelaChanged.HasDelegate.Should().BeTrue();
-        aba.HistoricoIdChanged.HasDelegate.Should().BeTrue();
-        aba.HistoriaChanged.HasDelegate.Should().BeTrue();
+        aba.Formulario.Tipo.Nome.Should().Be(tipo);
+        aba.Formulario.Estrela.Should().BeNull();
+        aba.Formulario.HistoricoId.Should().BeNull();
+        aba.Formulario.Historia.Should().Be(historia);
+        aba.AoMudar.HasDelegate.Should().BeTrue();
+        cut.FindComponent<HistoriaEditor>().Instance.Html.Should().Be(historia);
+        cut.FindComponent<HistoriaEditor>().Instance.HtmlChanged.HasDelegate.Should().BeTrue();
         aba.Estado.HistoriaCarregada.Should().BeTrue();
     }
 

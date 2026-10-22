@@ -134,6 +134,18 @@ public class AdaptadorDeCriaturaTests
     }
 
     // Cada record da Criatura que continua separado e que uma aba compartilhada mostra tem o seu Para….
+    // Um corpo sem as listas (o JSON pode omiti-las) passa como veio: a aba mostra nada, como a página de antes mostrava.
+    [Fact]
+    public void A_trait_list_without_rows_keeps_them_missing()
+    {
+        var lista = new CreatureTraitsListResponse(null!, 0, null!, 0, 0, 0);
+
+        var compartilhada = AdaptadorDeCriatura.ParaCaracteristicas(lista);
+
+        compartilhada.Positivas.Should().BeNull();
+        compartilhada.Negativas.Should().BeNull();
+    }
+
     [Fact]
     public void There_is_one_mapping_per_creature_record_a_shared_tab_shows()
     {

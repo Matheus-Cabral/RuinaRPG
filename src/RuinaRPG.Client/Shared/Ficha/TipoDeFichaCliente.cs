@@ -49,6 +49,18 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>Os seletores de item do Catálogo com "+" para o GM (<c>CatalogoItemPicker</c>) em vez do <c>EntityPicker</c>.</summary>
     public required bool CadastraItemNoPicker { get; init; }
 
+    /// <summary>
+    /// O Auditor de Regras cria uma Característica nova ali mesmo, ao lado do seletor ("Nova característica de
+    /// criatura"), no catálogo que o seletor busca.
+    /// </summary>
+    public required bool CriaCaracteristicaNoPicker { get; init; }
+
+    /// <summary>
+    /// A ajuda (InfoPopup) ao lado do Abate e da Assistência em Nível e Progressão; <c>null</c> mostra os números sem
+    /// ajuda (A2 do inventário: mantido por tipo).
+    /// </summary>
+    public string? AjudaDoXpPorAbate { get; init; }
+
     /// <summary>A coluna Peso da tabela de armas.</summary>
     public required bool MostraPesoDasArmas { get; init; }
 
@@ -97,6 +109,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
         MostraProgressaoDoNivel = true,
         CadastraItemNoPicker = false,
+        CriaCaracteristicaNoPicker = false,
         MostraPesoDasArmas = true,
         TemArmaManual = false,
         EditaMaestriaNaLinha = true,
@@ -124,6 +137,8 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
         MostraProgressaoDoNivel = true,
         CadastraItemNoPicker = true,
+        CriaCaracteristicaNoPicker = false,
+        AjudaDoXpPorAbate = "XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.",
         MostraPesoDasArmas = true,
         TemArmaManual = false,
         EditaMaestriaNaLinha = false,
@@ -151,6 +166,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         RotuloDosPontosDeIgnicao = "Pontos de Ignição",
         MostraProgressaoDoNivel = false,
         CadastraItemNoPicker = true,
+        CriaCaracteristicaNoPicker = true,
         MostraPesoDasArmas = false,
         TemArmaManual = true,
         EditaMaestriaNaLinha = false,

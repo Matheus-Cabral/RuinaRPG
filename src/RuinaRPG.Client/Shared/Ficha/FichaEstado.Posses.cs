@@ -9,8 +9,8 @@ namespace RuinaRPG.Client.Shared.Ficha;
 /// <summary>
 /// A aba Posses: o Inventário (onde <see cref="TipoDeFichaCliente.TemInventario"/>), os Espólios (onde
 /// <see cref="TipoDeFichaCliente.TemEspolios"/>), os Artefatos e as Afeições, e a busca no Catálogo de Itens que os
-/// seletores (também os do Combate) usam. O Equipamento Inicial e os Ciclos mexem no formulário auto-salvo da página e
-/// ficam nela. Toda mutação que dá certo termina em <see cref="NotificarAlteracao"/>: as seções filhas da aba sem
+/// seletores (também os do Combate) usam. O Equipamento Inicial e os Ciclos mexem no formulário auto-salvo da página
+/// (<see cref="FormularioDaFicha"/>), que ela passa à aba e grava. Toda mutação que dá certo termina em <see cref="NotificarAlteracao"/>: as seções filhas da aba sem
 /// parâmetros (AfeicoesNaLinha, EspoliosSection) só re-renderizam pela cascata da página.
 /// </summary>
 public sealed partial class FichaEstado

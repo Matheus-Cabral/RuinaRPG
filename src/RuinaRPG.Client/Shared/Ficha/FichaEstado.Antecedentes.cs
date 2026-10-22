@@ -2,7 +2,7 @@ namespace RuinaRPG.Client.Shared.Ficha;
 
 /// <summary>
 /// A aba Antecedentes (onde o tipo tem Antecedentes). Estrela, Histórico e o texto da História moram no formulário
-/// auto-salvo da página, que os passa à aba como parâmetros; a História tem endpoint e autosave próprios
+/// auto-salvo da página (<see cref="FormularioDaFicha"/>), que ela passa à aba; a História tem endpoint e autosave próprios
 /// (<c>HistoriaEditor</c>), então esta parte não faz requisições.
 /// </summary>
 public sealed partial class FichaEstado

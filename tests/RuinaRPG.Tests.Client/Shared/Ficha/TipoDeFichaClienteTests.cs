@@ -62,6 +62,7 @@ public class TipoDeFichaClienteTests
     [InlineData(nameof(TipoDeFichaCliente.MostraProgressaoDoNivel), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.CadastraItemNoPicker), false, true, true)]
     [InlineData(nameof(TipoDeFichaCliente.MostraPesoDasArmas), true, true, false)]
+    [InlineData(nameof(TipoDeFichaCliente.CriaCaracteristicaNoPicker), false, false, true)]
     public void Flag_per_kind(string flag, bool personagem, bool npc, bool criatura)
     {
         Ler<bool>(TipoDeFichaCliente.Personagem, flag).Should().Be(personagem);
@@ -80,6 +81,17 @@ public class TipoDeFichaClienteTests
         Ler<string>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
         Ler<string>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
         Ler<string>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
+    }
+
+    // A2 (decidido em 2026-10-22): a ajuda do XP por abate e assistência existe no NPC ("só o GM vê"); a Criatura mostra
+    // os números sem ajuda, e o Personagem não tem Abate.
+    [Theory]
+    [InlineData(nameof(TipoDeFichaCliente.AjudaDoXpPorAbate), null, "XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.", null)]
+    public void Optional_text_member_per_kind(string membro, string? personagem, string? npc, string? criatura)
+    {
+        Ler<string?>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
+        Ler<string?>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
+        Ler<string?>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
     }
 
     // Nenhum fato fica sem teste: cada propriedade pública de TipoDeFichaCliente aparece num InlineData acima.

@@ -5,8 +5,6 @@
 @inject SecretNoteNotifier Notifier
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
-@inject IDialogService Dialogs
-@using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CreatureSheets
 @using RuinaRPG.Contracts.Fichas
 @using RuinaRPG.Contracts.SpellsAndAbilities
@@ -19,7 +17,6 @@
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 @using RuinaRPG.Contracts.Notifications
-@using System.ComponentModel.DataAnnotations
 
 <div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
 <Breadcrumbs Items="@Crumbs" />
@@ -48,126 +45,8 @@
 <CascadingValue Value="_estado" IsFixed="false">
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
-        <EditForm Model="_form">
-            <DataAnnotationsValidator />
-            <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
-            <Section Title="Identidade">
-                <div class="mb-4">
-                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = true)">
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" ObjectFit="ObjectFit.Cover" />
-                        }
-                        else
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Person" />
-                        }
-                    </MudAvatar>
-                </div>
-
-                <MudDialog @bind-Visible="_imageExpanded">
-                    <DialogContent>
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
-                        }
-                        <div>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
-                            @if (_form.ImageId is not null)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
-                            }
-                        </div>
-
-                        @if (_imageEditing)
-                        {
-                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
-                                <CustomContent Context="fileUploadContext">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                                </CustomContent>
-                            </MudFileUpload>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
-                            <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
-                                                 IsSelectedFunc="@(id => id == _form.ImageId)"
-                                                 OnPick="@(id => { SelectExistingImage(id); _imageGalleryOpen = false; })" />
-                        }
-                    </DialogContent>
-                    <DialogActions>
-                        <MudButton OnClick="@(() => _imageExpanded = false)">Fechar</MudButton>
-                    </DialogActions>
-                </MudDialog>
-
-                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-                <MudTextField T="string" @bind-Value="_form.Raca" Label="Raça" @bind-Value:after="NotifySavedAsync" />
-                <MudSelect T="string" @bind-Value="_form.Arquetipo" Label="Arquétipo" @bind-Value:after="NotifySavedAsync">
-                    <MudSelectItem Value="@("")">Escolha um Arquétipo</MudSelectItem>
-                    <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
-                    <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
-                </MudSelect>
-                <MudTextField T="string" @bind-Value="_form.SubArquetipo" Label="Sub Arquétipo" @bind-Value:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" />
-                <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" @bind-Value:after="NotifySavedAsync">
-                    <MudSelectItem Value="@("")">Escolha um Rank</MudSelectItem>
-                    <MudSelectItem Value="@("F")">F</MudSelectItem>
-                    <MudSelectItem Value="@("E")">E</MudSelectItem>
-                    <MudSelectItem Value="@("D")">D</MudSelectItem>
-                    <MudSelectItem Value="@("C")">C</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("A")">A</MudSelectItem>
-                    <MudSelectItem Value="@("S")">S</MudSelectItem>
-                </MudSelect>
-            </Section>
-
-            <Section Title="Nível e Progressão">
-                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifyNivelChangedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
-                <MudText>Abate: @_form.Abate</MudText>
-                <MudText>Assistência: @_form.Assistencia</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifyPontosDeIgnicaoChangedAsync" />
-            </Section>
-        </EditForm>
-
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <div class="d-flex align-center" style="gap:8px">
-                    <div style="flex:1">
-                        <EntityPicker @ref="_traitPicker" @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                    </div>
-                    @if (_isRulesAuditor)
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="NovaCaracteristicaDeCriaturaAsync">Nova característica de criatura</MudButton>
-                    }
-                </div>
-                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            <OrcamentoDeCaracteristicas TotalPositivas="@(_traits?.TotalPositivas ?? 0)" TotalNegativas="@(_traits?.TotalNegativas ?? 0)"
-                                        LimitePositivas="@(_traits?.PontosDisponiveis ?? 0)" LimiteNegativas="@(_traits?.PontosDisponiveisNegativas ?? 0)" />
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaInformacoesBasicas Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
+                               AoMudarExperiencia="NotifyExperienciaAtualChangedAsync" AoMudarPontosDeIgnicao="NotifyPontosDeIgnicaoChangedAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
@@ -520,11 +399,9 @@
         new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Criatura" : _form.Nome),
     };
 
-    private readonly SheetFormModel _form = new();
+    // A Criatura sempre tem Abate e Assistência (0 antes da carga, como sempre mostrou).
+    private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private bool _imageExpanded;
-    private bool _imageEditing;
-    private bool _imageGalleryOpen;
     private List<AttributeResponse> _attributes = new();
     private AttributePointBudgetResponse? _attributeBudget;
     private List<CreatureSkillResponse> _skills = new();
@@ -543,37 +420,8 @@
     private ModificadorDeDanoResponse? _modificadorDeDano;
     private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
-    private CreatureTraitsListResponse? _traits;
     private List<string> _levelUpBonuses = new();
-    private readonly TraitFormModel _traitForm = new();
 
-    private EntityPicker? _traitPicker;
-    private bool _isRulesAuditor;
-
-    // Só o catálogo exclusivo de criatura (Ficha de Criaturas 5.d).
-    private async Task<List<PickerOption>> SearchTraitsAsync(string query)
-    {
-        var response = await Http.GetAsync($"creature-exclusive-traits?nome={Uri.EscapeDataString(query ?? "")}");
-        if (!response.IsSuccessStatusCode)
-            return new();
-        var traits = await response.Content.ReadFromJsonAsync<List<CreatureExclusiveTraitResponse>>() ?? new();
-        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
-    }
-
-    private async Task LoadIsRulesAuditorAsync()
-    {
-        var response = await Http.GetAsync("auth/me");
-        if (response.IsSuccessStatusCode)
-            _isRulesAuditor = (await response.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false;
-    }
-
-    private async Task NovaCaracteristicaDeCriaturaAsync()
-    {
-        var dialog = await Dialogs.ShowAsync<CaracteristicaDeCriaturaDialog>("Nova característica de criatura",
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-        if ((await dialog.Result) is { Canceled: false, Data: CreatureExclusiveTraitResponse criada } && _traitPicker is not null)
-            await _traitPicker.SelectExternallyAsync(new PickerOption(criada.Id, $"{criada.Nome} ({criada.Custo}, {criada.Polaridade})"));
-    }
 
     protected override void OnInitialized()
     {
@@ -668,7 +516,7 @@
         await Task.WhenAll(
             LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
             _estado.CarregarMagiasAsync(), LoadMasteriesAsync(),
-            _estado.CarregarEspoliosAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
+            _estado.CarregarEspoliosAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(), _estado.CarregarAuditorDeRegrasAsync());
     }
 
     private async Task LoadLevelUpNoticeAsync()
@@ -690,42 +538,6 @@
         var response = await Http.GetAsync(url);
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
-    }
-
-    private async Task UploadImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-        if (!_isGmCaller && _campaignId is not null)
-            content.Add(new StringContent(_campaignId), "campaignId");
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _form.ImageId = body!.Id;
-        _form.ImageUrl = body.Url;
-        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void SelectExistingImage(string? id)
-    {
-        _form.ImageId = id;
-        _form.ImageUrl = id is null ? null : _myImages.FirstOrDefault(i => i.Id == id)?.Url;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void RemoveImage()
-    {
-        _form.ImageId = null;
-        _form.ImageUrl = null;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private async Task LoadSheetAsync()
@@ -752,7 +564,7 @@
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
         _form.Abate = sheet.Abate;
         _form.Assistencia = sheet.Assistencia;
-        _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
+        _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicao;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
@@ -766,7 +578,7 @@
 
     private async Task<bool> SaveIfValidAsync()
     {
-        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.PontosDeIgnicao is null
+        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.PontosDeIgnicaoAtual is null
             || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null)
         {
             _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
@@ -774,7 +586,7 @@
         }
 
         var request = new UpdateCreatureSheetRequest(_form.ImageId, _form.Nome, _form.Raca, _form.Arquetipo, _form.SubArquetipo,
-            _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicao!.Value,
+            _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicaoAtual!.Value,
             _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura,
             _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada);
 
@@ -786,7 +598,7 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
@@ -825,13 +637,13 @@
 
     private async Task<bool> SavePontosDeIgnicaoAsync()
     {
-        if (_form.PontosDeIgnicao is null)
+        if (_form.PontosDeIgnicaoAtual is null)
         {
             _errorMessage = "Informe os Pontos de Ignição.";
             return false;
         }
 
-        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicao.Value);
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicaoAtual.Value);
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
@@ -856,7 +668,7 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
@@ -876,7 +688,7 @@
         await LoadLevelUpNoticeAsync();
         await LoadTabs2And3Async();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
@@ -1054,7 +866,7 @@
 
         var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         if (sheet is not null)
-            _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
+            _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicao;
     }
 
     private async Task LoadMasteriesAsync()
@@ -1083,67 +895,6 @@
         await LoadMasteriesAsync();
     }
 
-    private async Task LoadTraitsAsync()
-    {
-        _traits = await Http.GetFromJsonAsync<CreatureTraitsListResponse>($"creature-sheets/{SheetId}/traits");
-    }
-
-    private async Task AddTraitAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/traits", new AddTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";
-            return;
-        }
-
-        _traitForm.TraitId = "";
-        _traitForm.Especificacao = "";
-        await LoadTraitsAsync();
-    }
-
-    private async Task DeleteTraitAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/traits/{id}");
-        await LoadTraitsAsync();
-    }
-
-    private class SheetFormModel
-    {
-        public string? ImageId { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? Nome { get; set; }
-        public string? Raca { get; set; }
-        public string? Arquetipo { get; set; }
-        public string? SubArquetipo { get; set; }
-        public string? Afinidade { get; set; }
-        public string? Rank { get; set; }
-        [Required(ErrorMessage = "Informe o Nível.")]
-        public int? Nivel { get; set; } = 1;
-        [Required(ErrorMessage = "Informe a Experiência Atual.")]
-        public int? ExperienciaAtual { get; set; }
-        public int Abate { get; set; }
-        public int Assistencia { get; set; }
-        [Required(ErrorMessage = "Informe os Pontos de Ignição.")]
-        public int? PontosDeIgnicao { get; set; }
-        [Required(ErrorMessage = "Informe a Vitalidade.")]
-        public int? VitalidadeAtual { get; set; }
-        [Required(ErrorMessage = "Informe o Foco.")]
-        public int? FocoAtual { get; set; }
-        [Required(ErrorMessage = "Informe a Adrenalina.")]
-        public int? AdrenalinaAtual { get; set; }
-        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
-        public int? VitalidadeAtualCarregada { get; private set; }
-        public int? FocoAtualCarregado { get; private set; }
-        public int? AdrenalinaAtualCarregada { get; private set; }
-        public void GuardarAtuaisCarregados() =>
-            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual);
-        public string Cobertura { get; set; } = "Nenhuma";
-        public int VitalidadeMaximo { get; set; }
-        public int FocoMaximo { get; set; }
-        public int AdrenalinaMaximo { get; set; }
-    }
-
     private class WeaponFormModel
     {
         public string Origem { get; set; } = "Catalogo";
@@ -1167,9 +918,4 @@
         public int GastoMaestria { get; set; }
     }
 
-    private class TraitFormModel
-    {
-        public string TraitId { get; set; } = "";
-        public string? Especificacao { get; set; }
-    }
 }

@@ -1,12 +1,13 @@
 @using MudBlazor
 
 @* A aba Posses das três fichas: o Inventário (com o Equipamento Inicial e os Ciclos) onde o tipo tem Inventário, os
-   Espólios onde o tipo tem Espólios, os Artefatos e as Afeições. O kit e os Ciclos vêm do formulário auto-salvo da
-   página, que os passa como parâmetros (só os tipos com Inventário os usam). *@
+   Espólios onde o tipo tem Espólios, os Artefatos e as Afeições. O kit e os Ciclos são do formulário auto-salvo da
+   página (Formulario), que salva na hora (SalvarAgora) e relê depois do kit (EquipagemEscolhida); só os tipos com
+   Inventário os usam. *@
 
 @if (Estado.Tipo.TemInventario)
 {
-    <InventarioSection EquipamentoInicialEscolhido="EquipamentoInicialEscolhido" EquipagemEscolhida="EquipagemEscolhida" Ciclos="Ciclos" CiclosChanged="CiclosChanged" />
+    <InventarioSection Formulario="Formulario!" SalvarAgora="SalvarAgora" EquipagemEscolhida="EquipagemEscolhida" />
 }
 @if (Estado.Tipo.TemEspolios)
 {
@@ -65,14 +66,12 @@
 @code {
     [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
 
-    /// <summary>Só onde há Inventário: o formulário da página já tem um kit de Equipamento Inicial.</summary>
-    [Parameter] public bool EquipamentoInicialEscolhido { get; set; }
+    /// <summary>Só onde há Inventário: o formulário auto-salvo da página (o kit escolhido e os Ciclos).</summary>
+    [Parameter] public FormularioDaFicha? Formulario { get; set; }
+
+    /// <summary>Só onde há Inventário: a página salva a ficha na hora (os Ciclos).</summary>
+    [Parameter] public EventCallback SalvarAgora { get; set; }
 
     /// <summary>Só onde há Inventário: a página grava e relê depois que o kit é escolhido.</summary>
     [Parameter] public EventCallback EquipagemEscolhida { get; set; }
-
-    /// <summary>Só onde há Inventário: os Ciclos do formulário da página.</summary>
-    [Parameter] public int? Ciclos { get; set; }
-
-    [Parameter] public EventCallback<int?> CiclosChanged { get; set; }
 }

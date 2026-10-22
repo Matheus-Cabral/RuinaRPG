@@ -46,7 +46,8 @@ public class AbaPossesTests : RedeDeSegurancaBase
         cut.FindComponents<EspoliosSection>().Should().HaveCount(tipo == "Criatura" ? 1 : 0);
     }
 
-    // O Equipamento Inicial e os Ciclos vivem no formulário auto-salvo da página, que os passa ao Inventário.
+    // O Equipamento Inicial e os Ciclos vivem no formulário auto-salvo da página, que o passa (com os retornos que
+    // salvam e releem) à aba e dela ao Inventário.
     [Theory]
     [InlineData("Personagem", 4)]
     [InlineData("NPC", 2)]
@@ -54,10 +55,13 @@ public class AbaPossesTests : RedeDeSegurancaBase
     {
         var cut = await AbrirAsync(tipo);
 
+        var aba = cut.FindComponent<AbaPosses>().Instance;
         var inventario = cut.FindComponent<InventarioSection>().Instance;
-        inventario.Ciclos.Should().Be(ciclos);
-        inventario.EquipamentoInicialEscolhido.Should().BeFalse();
-        inventario.CiclosChanged.HasDelegate.Should().BeTrue();
+        inventario.Formulario.Should().BeSameAs(aba.Formulario).And.NotBeNull();
+        inventario.Formulario.Tipo.Nome.Should().Be(tipo);
+        inventario.Formulario.Ciclos.Should().Be(ciclos);
+        inventario.Formulario.EquipmentKitId.Should().BeNull();
+        inventario.SalvarAgora.HasDelegate.Should().BeTrue();
         inventario.EquipagemEscolhida.HasDelegate.Should().BeTrue();
     }
 

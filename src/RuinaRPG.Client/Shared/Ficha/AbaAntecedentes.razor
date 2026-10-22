@@ -2,19 +2,20 @@
 @using RuinaRPG.Client.Shared.Fields
 
 @* A aba Antecedentes das fichas que a têm (Personagem e NPC; a Criatura não tem a aba). Estrela, Histórico e o texto da
-   História vêm do formulário auto-salvo da página: os retornos são os dela, então ela re-renderiza e salva como antes.
-   A História grava sozinha, no endpoint dela (HistoriaEditor); um erro do editor vai ao alerta da página. *@
+   História são do formulário auto-salvo da página (Formulario): Estrela e Histórico chamam o retorno dela que salva
+   (AoMudar), então ela re-renderiza e salva como antes. A História grava sozinha, no endpoint dela (HistoriaEditor): o
+   texto só volta ao formulário. Um erro do editor vai ao alerta da página. *@
 
 @if (Estado.Tipo.TemAntecedentes)
 {
     <Section Title="Estrela e Histórico">
-        <EstrelaSelect Value="@Estrela" ValueChanged="EstrelaChanged" />
-        <HistoricoSelect Value="@HistoricoId" ValueChanged="HistoricoIdChanged" />
+        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" />
+        <HistoricoSelect @bind-Value="Formulario.HistoricoId" @bind-Value:after="MudouAsync" />
     </Section>
     <Section>
         @if (Estado.HistoriaCarregada)
         {
-            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" Html="@Historia" HtmlChanged="HistoriaChanged" OnError="@Estado.MostrarErroDaHistoria"
+            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErroDaHistoria"
                             AvailableImages="Estado.MinhasImagens" CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" />
         }
         else
@@ -28,12 +29,11 @@
 @code {
     [CascadingParameter] public FichaEstado Estado { get; set; } = null!;
 
-    [Parameter] public string? Estrela { get; set; }
-    [Parameter] public EventCallback<string?> EstrelaChanged { get; set; }
+    /// <summary>O formulário auto-salvo da página (ela o carrega e o grava).</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
 
-    [Parameter] public string? HistoricoId { get; set; }
-    [Parameter] public EventCallback<string?> HistoricoIdChanged { get; set; }
+    /// <summary>Estrela ou Histórico mudou: a página agenda o salvamento geral.</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
 
-    [Parameter] public string? Historia { get; set; }
-    [Parameter] public EventCallback<string?> HistoriaChanged { get; set; }
+    private Task MudouAsync() => AoMudar.InvokeAsync();
 }

@@ -1,0 +1,174 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+
+@* A aba Informações Básicas das três fichas. Os campos são do formulário auto-salvo da página (Formulario): a aba só os
+   mostra e, a cada mudança, chama o retorno da página que salva (AoMudar = autosave geral; Nível, Experiência e PI têm
+   os deles). A página continua dona do autosave (AutoSave, o indicador lê dele) e da recarga adiada; um foco que sai de
+   um campo daqui sobe até a raiz dela. As Características, a galeria e o envio de imagem vêm do estado. *@
+
+<EditForm Model="Formulario">
+    <DataAnnotationsValidator />
+    <AutoSaveIndicator State="AutoSave.State" LastSavedAt="AutoSave.LastSavedAt" />
+    <Section Title="Identidade">
+        <div class="mb-4">
+            <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imagemAberta = true)">
+                @if (Formulario.ImageUrl is not null)
+                {
+                    <MudImage Src="@Formulario.ImageUrl" ObjectFit="ObjectFit.Cover" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                }
+            </MudAvatar>
+        </div>
+
+        <MudDialog @bind-Visible="_imagemAberta">
+            <DialogContent>
+                @if (Formulario.ImageUrl is not null)
+                {
+                    <MudImage Src="@Formulario.ImageUrl" Width="240" Class="mb-2" />
+                }
+                <div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _editandoImagem = !_editandoImagem)" title="Editar imagem" />
+                    @if (Formulario.ImageId is not null)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoverImagemAsync" title="Remover imagem" />
+                    }
+                </div>
+
+                @if (_editandoImagem)
+                {
+                    <MudFileUpload T="IBrowserFile" FilesChanged="EnviarImagemAsync" Class="mt-2">
+                        <CustomContent Context="fileUploadContext">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _galeriaAberta = true)">Escolher imagem já enviada</MudButton>
+                    <ImageGalleryDialog @bind-Visible="_galeriaAberta" Images="Estado.MinhasImagens" AllowClear="true"
+                                         IsSelectedFunc="@(id => id == Formulario.ImageId)"
+                                         OnPick="EscolherImagemAsync" />
+                }
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="@(() => _imagemAberta = false)">Fechar</MudButton>
+            </DialogActions>
+        </MudDialog>
+
+        <MudTextField T="string" @bind-Value="Formulario.Nome" Label="Nome" @bind-Value:after="MudouAsync" />
+        @if (Estado.Tipo.TemLinhagemEVocacao)
+        {
+            <LinhagemVarianteFields VariantesLiberadas="Estado.VariantesLiberadas" @bind-Linhagem="Formulario.Linhagem" @bind-Variante="Formulario.Variante" @bind-Linhagem:after="MudouAsync" @bind-Variante:after="MudouAsync" />
+            <VocacaoSubVocacaoFields @bind-Vocacao="Formulario.Vocacao" @bind-SubVocacao="Formulario.SubVocacao" @bind-Vocacao:after="MudouAsync" @bind-SubVocacao:after="MudouAsync" />
+            <MudTextField T="string" @bind-Value="Formulario.Propriedade" Label="Propriedade" @bind-Value:after="MudouAsync" />
+        }
+        else
+        {
+            <RacaEArquetipoFields Formulario="Formulario" AoMudar="AoMudar" />
+        }
+    </Section>
+
+    <Section Title="Nível e Progressão">
+        @if (Estado.Tipo.EditaNivelAManual)
+        {
+            <NivelManualSection Formulario="Formulario" AoMudar="AoMudar" AoMudarNivel="AoMudarNivel" AoMudarExperiencia="AoMudarExperiencia" AoMudarPontosDeIgnicao="AoMudarPontosDeIgnicao" />
+        }
+        else
+        {
+            <NivelPorExperienciaSection Formulario="Formulario" AoMudar="AoMudar" AoMudarExperiencia="AoMudarExperiencia" AoMudarPontosDeIgnicao="AoMudarPontosDeIgnicao" SalvarAgora="SalvarAgora" />
+        }
+    </Section>
+
+    @if (Estado.Tipo.TemLinhagemEVocacao)
+    {
+        <AmbaresAbsorvidosSection Formulario="Formulario" AoMudar="AoMudar" />
+    }
+</EditForm>
+
+<Section Title="Características">
+    <EditForm Model="Estado.FormularioDeCaracteristica" OnValidSubmit="Estado.AdicionarCaracteristicaAsync">
+        <SeletorDeCaracteristica @bind-Value="Estado.FormularioDeCaracteristica.TraitId" />
+        <MudTextField @bind-Value="Estado.FormularioDeCaracteristica.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
+    </EditForm>
+    <OrcamentoDeCaracteristicas TotalPositivas="@(Estado.Caracteristicas?.TotalPositivas ?? 0)" TotalNegativas="@(Estado.Caracteristicas?.TotalNegativas ?? 0)"
+                                LimitePositivas="@(Estado.Caracteristicas?.PontosDisponiveis ?? 0)" LimiteNegativas="@(Estado.Caracteristicas?.PontosDisponiveisNegativas ?? 0)" />
+    <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(Estado.Caracteristicas?.TotalPositivas ?? 0))</MudText>
+    <MudSimpleTable Dense="true" Hover="true">
+        <tbody>
+            @foreach (var trait in Estado.Caracteristicas?.Positivas ?? new())
+            {
+                <tr>
+                    <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverCaracteristicaAsync(trait.Id))">Remover</MudButton></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+    <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(Estado.Caracteristicas?.TotalNegativas ?? 0))</MudText>
+    <MudSimpleTable Dense="true" Hover="true">
+        <tbody>
+            @foreach (var trait in Estado.Caracteristicas?.Negativas ?? new())
+            {
+                <tr>
+                    <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverCaracteristicaAsync(trait.Id))">Remover</MudButton></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>O formulário auto-salvo da página (ela o carrega e o grava).</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>O autosave da página: o indicador "Salvo às" mostra o estado dele.</summary>
+    [Parameter, EditorRequired] public AutoSaveCoordinator AutoSave { get; set; } = default!;
+
+    /// <summary>Um campo mudou: a página agenda o salvamento geral (PUT da ficha).</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    /// <summary>Só onde o Nível é editado à mão: a página o salva pelo endpoint dele.</summary>
+    [Parameter] public EventCallback AoMudarNivel { get; set; }
+
+    /// <summary>A Experiência Atual mudou (endpoint próprio onde o Nível é à mão; no Personagem, o salvamento geral).</summary>
+    [Parameter] public EventCallback AoMudarExperiencia { get; set; }
+
+    /// <summary>O saldo de PI mudou: a página o salva pelo endpoint dele.</summary>
+    [Parameter] public EventCallback AoMudarPontosDeIgnicao { get; set; }
+
+    /// <summary>Só no Personagem ("Aplicar" de XP e de PI): a página salva na hora, fora do autosave.</summary>
+    [Parameter] public EventCallback SalvarAgora { get; set; }
+
+    private bool _imagemAberta;
+    private bool _editandoImagem;
+    private bool _galeriaAberta;
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+
+    private async Task EnviarImagemAsync(IBrowserFile arquivo)
+    {
+        var enviada = await Estado.EnviarImagemAsync(arquivo);
+        if (enviada is null)
+            return;
+
+        Formulario.UsarImagem(enviada.Id, enviada.Url);
+        await AoMudar.InvokeAsync();
+    }
+
+    private async Task EscolherImagemAsync(string? id)
+    {
+        Formulario.EscolherImagem(id, Estado.MinhasImagens);
+        _galeriaAberta = false;
+        await AoMudar.InvokeAsync();
+    }
+
+    private Task RemoverImagemAsync()
+    {
+        Formulario.RemoverImagem();
+        return AoMudar.InvokeAsync();
+    }
+}

@@ -1,0 +1,21 @@
+@using MudBlazor
+
+@* Os Âmbares Absorvidos (núcleos por Rank), nos tipos com Linhagem e Vocação. Cada um vai no salvamento geral. *@
+
+<Section Title="Âmbares Absorvidos">
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankF" For="@(() => Formulario.NucleosRankF)" Label="Rank F" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankE" For="@(() => Formulario.NucleosRankE)" Label="Rank E" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankD" For="@(() => Formulario.NucleosRankD)" Label="Rank D" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankC" For="@(() => Formulario.NucleosRankC)" Label="Rank C" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankB" For="@(() => Formulario.NucleosRankB)" Label="Rank B" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankA" For="@(() => Formulario.NucleosRankA)" Label="Rank A" @bind-Value:after="MudouAsync" />
+    <MudNumericField T="int?" @bind-Value="Formulario.NucleosRankS" For="@(() => Formulario.NucleosRankS)" Label="Rank S" @bind-Value:after="MudouAsync" />
+</Section>
+
+@code {
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+}

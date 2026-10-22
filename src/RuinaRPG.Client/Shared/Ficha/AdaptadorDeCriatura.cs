@@ -79,10 +79,11 @@ public static class AdaptadorDeCriatura
         RequerEspecificacao: caracteristica.RequerEspecificacao,
         IsRacial: false);
 
+    /// <summary>Uma lista que o JSON omitiu continua faltando (a aba mostra nada, como antes).</summary>
     public static TraitsListResponse ParaCaracteristicas(CreatureTraitsListResponse lista) => new(
-        Positivas: lista.Positivas.Select(ParaCaracteristica).ToList(),
+        Positivas: lista.Positivas?.Select(ParaCaracteristica).ToList()!,
         TotalPositivas: lista.TotalPositivas,
-        Negativas: lista.Negativas.Select(ParaCaracteristica).ToList(),
+        Negativas: lista.Negativas?.Select(ParaCaracteristica).ToList()!,
         TotalNegativas: lista.TotalNegativas,
         PontosDisponiveis: lista.PontosDisponiveis,
         PontosDisponiveisNegativas: lista.PontosDisponiveisNegativas);
