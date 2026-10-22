@@ -375,4 +375,44 @@ public class FichaEstadoPossesTests
         (await estado.BuscarItensPorTipoAsync("a", "Escudo")).Should().BeEmpty();
         (await estado.BuscarTodosOsItensAsync("a")).Should().BeEmpty();
     }
+
+    // Toda mutação de Posses avisa a página: uma filha sem parâmetros da aba (AfeicoesNaLinha, EspoliosSection) só
+    // re-renderiza pela cascata da página, não porque a aba re-renderizou.
+    [Theory]
+    [InlineData("AdicionarAfeicao")]
+    [InlineData("RemoverAfeicao")]
+    [InlineData("AtualizarAfeicao")]
+    [InlineData("AdicionarEspolio")]
+    [InlineData("AtualizarQtdDoEspolio")]
+    [InlineData("RemoverEspolio")]
+    [InlineData("AdicionarItem")]
+    [InlineData("AtualizarQtdDoItem")]
+    [InlineData("RemoverItem")]
+    [InlineData("AdicionarArtefato")]
+    [InlineData("RemoverArtefato")]
+    public async Task Every_successful_mutation_notifies_the_page(string acao)
+    {
+        var estado = Estado(acao.Contains("Espolio") ? "Criatura" : "Personagem");
+        await estado.CarregarAfeicoesAsync();
+        var notificacoes = 0;
+        estado.Alterado += () => notificacoes++;
+
+        await (acao switch
+        {
+            "AdicionarAfeicao" => estado.AdicionarAfeicaoAsync(),
+            "RemoverAfeicao" => estado.RemoverAfeicaoAsync("afe1"),
+            "AtualizarAfeicao" => estado.AtualizarAfeicaoAsync("afe1", "Nome", "Ferreira"),
+            "AdicionarEspolio" => estado.AdicionarEspolioAsync(),
+            "AtualizarQtdDoEspolio" => estado.AtualizarQtdDoEspolioAsync("sp1", 3),
+            "RemoverEspolio" => estado.RemoverEspolioAsync("sp1"),
+            "AdicionarItem" => estado.AdicionarItemAoInventarioAsync(),
+            "AtualizarQtdDoItem" => estado.AtualizarQtdDoItemAsync("inv1", 3),
+            "RemoverItem" => estado.RemoverItemDoInventarioAsync("inv1"),
+            "AdicionarArtefato" => estado.AdicionarArtefatoAsync(),
+            _ => estado.RemoverArtefatoAsync("art1"),
+        });
+
+        estado.Erro.Should().BeNull();
+        notificacoes.Should().Be(1);
+    }
 }

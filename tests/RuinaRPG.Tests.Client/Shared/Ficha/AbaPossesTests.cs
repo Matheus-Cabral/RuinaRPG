@@ -82,4 +82,45 @@ public class AbaPossesTests : RedeDeSegurancaBase
         cut.FindComponents<CatalogoItemPicker>().Should().HaveCount(tipo == "Personagem" ? 0 : 2);
         cut.FindComponents<EntityPicker>().Should().HaveCount(2);
     }
+
+    // Uma filha sem parâmetros (AfeicoesNaLinha, EspoliosSection) não re-renderiza só porque a aba re-renderizou: depois de
+    // adicionar, a lista nova tem de aparecer em todo tipo (a rede de segurança devolve a mesma linha e não vê isto).
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task Adding_an_afeicao_shows_the_reloaded_list(string tipo)
+    {
+        var cut = await AbrirAsync(tipo);
+        var form = Botao(AbaAberta(cut), "Adicionar Afeição").Closest("form")!;
+        await cut.InvokeAsync(() => Campo(form, "Nome").Change("Ferreira"));
+        LimparRequisicoes();
+        Responder("/affections", new[]
+        {
+            new { id = "afe1", nome = "Taverneiro", favorabilidade = 2 },
+            new { id = "afe2", nome = "Ferreira", favorabilidade = 0 },
+        });
+
+        await cut.InvokeAsync(() => Botao(AbaAberta(cut), "Adicionar Afeição").Closest("form")!.Submit());
+
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().Contain(r => r.StartsWith("GET ") && r.EndsWith("/affections")));
+        cut.WaitForAssertion(() => Botao(AbaAberta(cut), "Adicionar Afeição").Closest("form")!.ParentElement!
+            .QuerySelectorAll("table tbody tr").Should().HaveCount(2));
+    }
+
+    [Fact]
+    public async Task Adding_an_espolio_shows_the_reloaded_list()
+    {
+        var cut = await AbrirAsync("Criatura");
+        LimparRequisicoes();
+        Responder("/spoils", new[]
+        {
+            new { id = "sp1", itemId = "i6", nome = "Presa de Lobo", custo = 5, qtd = 2, custoTotal = 10, dt = 12, descricao = "Afiada." },
+            new { id = "sp2", itemId = "i7", nome = "Couro", custo = 3, qtd = 1, custoTotal = 3, dt = 10, descricao = "Curtido." },
+        });
+
+        await cut.InvokeAsync(() => Botao(AbaAberta(cut), "Adicionar Espólio").Closest("form")!.Submit());
+
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().Contain(r => r.StartsWith("GET ") && r.EndsWith("/spoils")));
+        cut.WaitForAssertion(() => Botao(AbaAberta(cut), "Adicionar Espólio").Closest("form")!.ParentElement!
+            .QuerySelectorAll("table tbody tr").Should().HaveCount(2));
+    }
 }

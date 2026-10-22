@@ -72,4 +72,23 @@ public class AbaMagiasEHabilidadesTests : RedeDeSegurancaBase
         campos.AvailableImages.Select(i => i.Id).Should().Equal("img1", "img2");
         campos.BankEntries.Select(e => e.Id).Should().Equal("rb1");
     }
+
+    // RunasSection não tem parâmetros: só re-renderiza por um evento dela ou pela cascata da página. As ações das
+    // Runas são dela (o formulário e os botões estão nela), então a lista relida aparece.
+    [Theory]
+    [InlineData("Personagem")]
+    [InlineData("NPC")]
+    public async Task Removing_a_runa_shows_the_reloaded_list(string tipo)
+    {
+        var cut = await AbrirAsync(tipo, "GM");
+        AngleSharp.Dom.IElement Tabela() => Botao(AbaAberta(cut), "Adicionar Runa").Closest("form")!.ParentElement!.QuerySelector("table")!;
+        Tabela().QuerySelectorAll("tbody tr").Should().HaveCount(1);
+        LimparRequisicoes();
+        Responder("/runes", Array.Empty<object>());
+
+        await cut.InvokeAsync(() => Botao(Tabela(), "Remover").Click());
+
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().Contain(r => r.StartsWith("GET ") && r.EndsWith("/runes")));
+        cut.WaitForAssertion(() => Tabela().QuerySelectorAll("tbody tr").Should().BeEmpty());
+    }
 }

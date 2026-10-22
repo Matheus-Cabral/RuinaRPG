@@ -10,7 +10,8 @@ namespace RuinaRPG.Client.Shared.Ficha;
 /// A aba Posses: o Inventário (onde <see cref="TipoDeFichaCliente.TemInventario"/>), os Espólios (onde
 /// <see cref="TipoDeFichaCliente.TemEspolios"/>), os Artefatos e as Afeições, e a busca no Catálogo de Itens que os
 /// seletores (também os do Combate) usam. O Equipamento Inicial e os Ciclos mexem no formulário auto-salvo da página e
-/// ficam nela.
+/// ficam nela. Toda mutação que dá certo termina em <see cref="NotificarAlteracao"/>: as seções filhas da aba sem
+/// parâmetros (AfeicoesNaLinha, EspoliosSection) só re-renderizam pela cascata da página.
 /// </summary>
 public sealed partial class FichaEstado
 {
@@ -94,20 +95,26 @@ public sealed partial class FichaEstado
         form.ItemId = "";
         form.Qtd = 1;
         form.DT = 0;
-        await CarregarEspoliosAsync();
+        await RecarregarEspoliosAsync();
     }
 
     public async Task AtualizarQtdDoEspolioAsync(string id, object? value)
     {
         if (int.TryParse(value?.ToString(), out var qtd))
             await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"spoils/{id}/qtd"), qtd);
-        await CarregarEspoliosAsync();
+        await RecarregarEspoliosAsync();
     }
 
     public async Task RemoverEspolioAsync(string id)
     {
         await Http.DeleteAsync(Tipo.Url(SheetId, $"spoils/{id}"));
+        await RecarregarEspoliosAsync();
+    }
+
+    private async Task RecarregarEspoliosAsync()
+    {
         await CarregarEspoliosAsync();
+        NotificarAlteracao();
     }
 
     // ---------------- Artefatos ----------------
@@ -160,13 +167,13 @@ public sealed partial class FichaEstado
 
         form.Nome = "";
         form.Favorabilidade = 0;
-        await CarregarAfeicoesAsync();
+        await RecarregarAfeicoesAsync();
     }
 
     public async Task RemoverAfeicaoAsync(string id)
     {
         await Http.DeleteAsync(Tipo.Url(SheetId, $"affections/{id}"));
-        await CarregarAfeicoesAsync();
+        await RecarregarAfeicoesAsync();
     }
 
     /// <summary>A edição na linha (só onde <see cref="TipoDeFichaCliente.EditaAfeicaoNaLinha"/>): grava a linha com o campo mudado.</summary>
@@ -177,7 +184,13 @@ public sealed partial class FichaEstado
         var favorabilidade = field == "Favorabilidade" ? (int.TryParse(value?.ToString(), out var f) ? f : current.Favorabilidade) : current.Favorabilidade;
 
         await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"affections/{id}"), new UpdateCharacterAffectionRequest(nome, favorabilidade));
+        await RecarregarAfeicoesAsync();
+    }
+
+    private async Task RecarregarAfeicoesAsync()
+    {
         await CarregarAfeicoesAsync();
+        NotificarAlteracao();
     }
 
     // ---------------- Busca no Catálogo de Itens ----------------
