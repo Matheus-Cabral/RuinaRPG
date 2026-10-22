@@ -186,6 +186,7 @@ assemblies).
 | A3 — "Progressão do nível" panel on P and N, absent on C | Kept as is (`MostraProgressaoDoNivel`) (user, 2026-10-22) |
 | A4 — blank line after Atributos and after Perícias on P only | Personagem version for all (N and C gain the gap) (user, 2026-10-22) |
 | A5 — granted NPC/Criatura breadcrumb points a player to a GM-only page | Kept as is in E; later suggestion (navigation change, out of E's scope) (user, 2026-10-22) |
+| Rune image upload sends the literal `campaignId=CampaignId` (`RuneOrigemFields.razor`, `CampaignId="CampaignId"`) | Fixed in E: the upload sends the sheet's real campaign id (`@CampaignId`), no visible change (user, 2026-10-22) |
 | A6 — Criatura ignores a refused attribute/skill change (no message) | Personagem version for all: C shows the server's message, and a successful save clears an earlier error (user, 2026-10-22) |
 
 ## Left to the builder

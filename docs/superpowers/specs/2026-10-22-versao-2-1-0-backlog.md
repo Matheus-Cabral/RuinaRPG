@@ -19,6 +19,10 @@ each item gets its own brainstorm → spec → plan after 2.0.0 ships (H done).
    User decided to fix it in 2.1.0, not in E. The E safety net pins today's text; update that test with
    the fix.
 
+6. **`EstrelaSelect` crashes on a malformed rulebook response** (found by E's safety net, 2026-10-22).
+   The Estrela picker doesn't catch a bad `/api/rulebook` reply, so the tab breaks instead of showing an
+   error. Not seen in normal use. User decided to fix it in 2.1.0.
+
 ## Questions to settle in the brainstorm (not answered yet)
 
 - Cemitério: who sees the sheet there (owner, campaign, GM only)? Can the GM bring it back? Does it
