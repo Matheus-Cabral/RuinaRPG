@@ -181,6 +181,12 @@ assemblies).
 | Vitalidade/Foco order in Combate (and any other swapped order) | Personagem order for all |
 | Runas: table (Personagem) vs one line of text (NPC) | Personagem table for all |
 | Pontos de Perícia: "Gasto / Disponível" vs "Gastos: N" | Kept per kind (budget only on Personagem) |
+| A1 — racial-trait dialog wording (P second person, N "do NPC") | Kept per kind: one shared dialog, the two texts as parameters (user, 2026-10-22) |
+| A2 — NPC "XP por abate e assistência" InfoPopup ("só o GM vê"), none on Criatura | Kept as is: popup text is an optional parameter, none for Criatura (user, 2026-10-22) |
+| A3 — "Progressão do nível" panel on P and N, absent on C | Kept as is (`MostraProgressaoDoNivel`) (user, 2026-10-22) |
+| A4 — blank line after Atributos and after Perícias on P only | Personagem version for all (N and C gain the gap) (user, 2026-10-22) |
+| A5 — granted NPC/Criatura breadcrumb points a player to a GM-only page | Kept as is in E; later suggestion (navigation change, out of E's scope) (user, 2026-10-22) |
+| A6 — Criatura ignores a refused attribute/skill change (no message) | Personagem version for all: C shows the server's message, and a successful save clears an earlier error (user, 2026-10-22) |
 
 ## Left to the builder
 
