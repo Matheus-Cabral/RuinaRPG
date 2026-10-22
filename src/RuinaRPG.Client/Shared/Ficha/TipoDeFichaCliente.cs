@@ -25,6 +25,12 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>A escolha das Características Raciais (<c>racial-traits</c>).</summary>
     public required bool TemTracosRaciais { get; init; }
 
+    /// <summary>O título do diálogo da escolha de Característica Racial (onde <see cref="TemTracosRaciais"/>; A1: fica por tipo).</summary>
+    public string? TituloDaEscolhaRacial { get; init; }
+
+    /// <summary>O começo da frase da Característica Obrigatória única no mesmo diálogo ("… recebe automaticamente:").</summary>
+    public string? RecebeAutomaticamente { get; init; }
+
     /// <summary>Nível e Experiência editados à mão, cada um no seu endpoint (<c>PUT nivel</c>, <c>PUT experiencia-atual</c>).</summary>
     public required bool EditaNivelAManual { get; init; }
 
@@ -109,6 +115,8 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CondicoesSoSeConcedida = false,
         TemLinhagemEVocacao = true,
         TemTracosRaciais = true,
+        TituloDaEscolhaRacial = "Escolha suas Características Raciais",
+        RecebeAutomaticamente = "Você também recebe automaticamente:",
         EditaNivelAManual = false,
         TemOrcamentoDePericias = true,
         TemAfinidades = true,
@@ -137,6 +145,8 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CondicoesSoSeConcedida = true,
         TemLinhagemEVocacao = true,
         TemTracosRaciais = true,
+        TituloDaEscolhaRacial = "Escolha a Característica Racial do NPC",
+        RecebeAutomaticamente = "O NPC também recebe automaticamente:",
         EditaNivelAManual = true,
         TemOrcamentoDePericias = false,
         TemAfinidades = true,

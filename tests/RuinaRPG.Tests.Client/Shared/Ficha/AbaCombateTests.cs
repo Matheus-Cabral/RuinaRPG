@@ -107,8 +107,6 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(esperado));
     }
 
-    private static readonly TimeSpan Limite = LimiteDeEspera;
-
     // ---------------- a aba, o estado e o formulário da página ----------------
 
     private static object Pagina(IRenderedComponent<IComponent> cut, string tipo) => cut.FindComponents<IComponent>().Select(c => c.Instance)
@@ -213,7 +211,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
             ? "{\"itemId\":\"i9\",\"manualDados\":null,\"manualDano\":null,\"manualNome\":null,\"manualTipoDeDano\":null}"
             : "{\"itemId\":\"i9\"}";
         await EsperarGravacaoAsync(cut, tipo, $"POST /{Prefixo(tipo)}/s1/weapons {corpo}", recarregaPenalidades: true, "GET /items?nome=&tipo=Arma");
-        cut.WaitForAssertion(() => NomesDasArmas(cut).Should().Equal("Espada Longa", "Machado"), Limite);
+        cut.WaitForAssertion(() => NomesDasArmas(cut).Should().Equal("Espada Longa", "Machado"), LimiteDeEspera);
     }
 
     [Theory]
@@ -249,7 +247,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
             Campo(FormularioDe(cut, "Adicionar Arma"), "Nome").GetAttribute("value").Should().BeNullOrEmpty();
             Campo(FormularioDe(cut, "Adicionar Arma"), "Dados").GetAttribute("value").Should().BeNullOrEmpty();
             Campo(FormularioDe(cut, "Adicionar Arma"), "Dano").GetAttribute("value").Should().Be("0");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     [Theory]
@@ -262,7 +260,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => Botao(LinhaDaArma(cut, "Espada Longa"), "Remover").Click());
 
         await EsperarGravacaoAsync(cut, tipo, $"DELETE /{Prefixo(tipo)}/s1/weapons/w1", recarregaPenalidades: true);
-        cut.WaitForAssertion(() => NomesDasArmas(cut).Should().BeEmpty(), Limite);
+        cut.WaitForAssertion(() => NomesDasArmas(cut).Should().BeEmpty(), LimiteDeEspera);
     }
 
     [Theory]
@@ -280,7 +278,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         {
             Leitura(LinhaDaArma(cut, "Espada Longa")).Should().Contain("Equipar").And.NotContain("Equipada");
             TextoNormalizado(AbaAberta(cut)).Should().Contain("Cota de Malha");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     [Theory]
@@ -294,7 +292,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => LinhaDaArma(cut, "Espada Longa").QuerySelector("input")!.Change("7"));
 
         await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/weapons/w1/durabilidade 7", recarregaPenalidades: false);
-        cut.WaitForAssertion(() => LinhaDaArma(cut, "Espada Longa").QuerySelector("input")!.GetAttribute("value").Should().Be("6"), Limite);
+        cut.WaitForAssertion(() => LinhaDaArma(cut, "Espada Longa").QuerySelector("input")!.GetAttribute("value").Should().Be("6"), LimiteDeEspera);
     }
 
     [Theory]
@@ -313,7 +311,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
             Leitura(LinhaDoSlot(cut, "Capacete")).Should().Contain("Elmo").And.Contain("Remover");
             // O seletor que sobra (Inferior) começa vazio.
             Leitura(LinhaDoSlot(cut, "Inferior")).Should().Contain("«»");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     [Theory]
@@ -326,7 +324,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => Botao(LinhaDoSlot(cut, "Superior"), "Remover").Click());
 
         await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/armor-slots/Superior {{\"itemId\":null}}", recarregaPenalidades: true);
-        cut.WaitForAssertion(() => Leitura(LinhaDoSlot(cut, "Superior")).Should().Contain("Atribuir").And.NotContain("Cota de Malha"), Limite);
+        cut.WaitForAssertion(() => Leitura(LinhaDoSlot(cut, "Superior")).Should().Contain("Atribuir").And.NotContain("Cota de Malha"), LimiteDeEspera);
     }
 
     [Theory]
@@ -339,7 +337,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => LinhaDoSlot(cut, "Superior").QuerySelector("input")!.Change("4"));
 
         await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/armor-slots/Superior/durabilidade 4", recarregaPenalidades: false);
-        cut.WaitForAssertion(() => LinhaDoSlot(cut, "Superior").QuerySelector("input")!.GetAttribute("value").Should().Be("3"), Limite);
+        cut.WaitForAssertion(() => LinhaDoSlot(cut, "Superior").QuerySelector("input")!.GetAttribute("value").Should().Be("3"), LimiteDeEspera);
     }
 
     [Theory]
@@ -353,7 +351,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => FormularioDe(cut, "Adicionar Escudo").Submit());
 
         await EsperarGravacaoAsync(cut, tipo, $"POST /{Prefixo(tipo)}/s1/shields {{\"itemId\":\"i8\"}}", recarregaPenalidades: true, "GET /items?nome=&tipo=Escudo");
-        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Select(l => TextoNormalizado(l.QuerySelector("td")!)).Should().Equal("Broquel", "Pavês"), Limite);
+        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Select(l => TextoNormalizado(l.QuerySelector("td")!)).Should().Equal("Broquel", "Pavês"), LimiteDeEspera);
     }
 
     [Theory]
@@ -366,7 +364,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => Botao(LinhasDosEscudos(cut).Single(), "Equipar").Click());
 
         await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/shields/sh1 true", recarregaPenalidades: true);
-        cut.WaitForAssertion(() => Leitura(LinhasDosEscudos(cut).Single()).Should().Contain("Equipado").And.Contain("Desequipar"), Limite);
+        cut.WaitForAssertion(() => Leitura(LinhasDosEscudos(cut).Single()).Should().Contain("Equipado").And.Contain("Desequipar"), LimiteDeEspera);
     }
 
     [Theory]
@@ -379,7 +377,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => Botao(LinhasDosEscudos(cut).Single(), "Remover").Click());
 
         await EsperarGravacaoAsync(cut, tipo, $"DELETE /{Prefixo(tipo)}/s1/shields/sh1", recarregaPenalidades: true);
-        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Should().BeEmpty(), Limite);
+        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Should().BeEmpty(), LimiteDeEspera);
     }
 
     [Theory]
@@ -392,7 +390,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => LinhasDosEscudos(cut).Single().QuerySelector("input")!.Change("3"));
 
         await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/shields/sh1/durabilidade 3", recarregaPenalidades: false);
-        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Single().QuerySelector("input")!.GetAttribute("value").Should().Be("2"), Limite);
+        cut.WaitForAssertion(() => LinhasDosEscudos(cut).Single().QuerySelector("input")!.GetAttribute("value").Should().Be("2"), LimiteDeEspera);
     }
 
     [Theory]
@@ -418,7 +416,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
                 TextoNormalizado(LinhasDasMaestrias(cut)[1]).Should().StartWith("Defesa Firme — Atletismo / Vigor — Gasto 2 — Total 6");
             Campo(FormularioDe(cut, "Adicionar Maestria"), "Nome").GetAttribute("value").Should().BeNullOrEmpty();
             Campo(FormularioDe(cut, "Adicionar Maestria"), "Gasto Maestria").GetAttribute("value").Should().Be("0");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     [Theory]
@@ -431,7 +429,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => Botao(LinhasDasMaestrias(cut).Single(), "Remover").Click());
 
         await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal($"DELETE /{Prefixo(tipo)}/s1/masteries/ma1", $"GET /{Prefixo(tipo)}/s1/masteries"));
-        cut.WaitForAssertion(() => LinhasDasMaestrias(cut).Should().BeEmpty(), Limite);
+        cut.WaitForAssertion(() => LinhasDasMaestrias(cut).Should().BeEmpty(), LimiteDeEspera);
     }
 
     // Só o Personagem edita a Maestria na linha.
@@ -453,7 +451,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
             var linha = LinhasDasMaestrias(cut).Single();
             linha.QuerySelector("input")!.GetAttribute("value").Should().Be("Golpe Certeiro");
             TextoNormalizado(linha.QuerySelectorAll("td")[4]).Should().Be("7");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     // ---------------- erros de dentro da aba no alerta da página ----------------
@@ -476,7 +474,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         await cut.InvokeAsync(() => FormularioDe(cut, botao).Submit());
 
         await EsperarRequisicoesAsync(cut, todas => todas.Should().ContainSingle().Which.Should().StartWith($"POST /{Prefixo(tipo)}/s1{caminho}"));
-        cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal(mensagem), Limite);
+        cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal(mensagem), LimiteDeEspera);
     }
 
     // ---------------- o formulário auto-salvo da página dentro da aba ----------------
@@ -505,7 +503,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         {
             var leitura = Leitura(AbaAberta(cut));
             leitura.Skip(leitura.IndexOf("Pontos de Sina") + 1).Take(3).Should().Equal("[ ]", "[ ]", "[x]");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     // Os recursos vão no autosave da página: o indicador da aba mostra o salvamento e a tela, o máximo relido.
@@ -536,7 +534,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         {
             Leitura(AbaAberta(cut)).Should().ContainInOrder("«15»", "/ 40", "Vitalidade");
             AbaAberta(cut).QuerySelector(".rr-autosave-indicator")!.TextContent.Should().StartWith("Salvo às");
-        }, Limite);
+        }, LimiteDeEspera);
     }
 
     // A Cobertura salva na hora e relê as abas (ela entra na Defesa Natural, dos Sub-Atributos); a tela mostra os dois.
@@ -558,7 +556,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         var corpo = RedeCabecalhoEInformacoesBasicasTests.CorpoDaFicha(tipo, nome: tipo switch { "NPC" => "Borin", "Criatura" => "Lobo Cinzento", _ => "Aria" })
             .Replace("\"cobertura\":\"Nenhuma\"", "\"cobertura\":\"Parcial\"");
         await EsperarSalvarERecarregarAsync(cut, tipo, corpo);
-        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Contain("Defesa Natural: 18").And.Contain("Parcial (+5)"), Limite);
+        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Contain("Defesa Natural: 18").And.Contain("Parcial (+5)"), LimiteDeEspera);
     }
 
     // A Afinidade (Personagem e NPC) salva na hora e relê as abas (a Eficiência e o Dano Elemental vêm dela).
@@ -580,7 +578,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         var antes = tipo == "Personagem" ? "\"afinidade\":\"Fogo\"" : "\"afinidade\":\"Terra\"";
         var corpo = RedeCabecalhoEInformacoesBasicasTests.CorpoDaFicha(tipo, nome: tipo == "NPC" ? "Borin" : "Aria").Replace(antes, "\"afinidade\":\"Agua\"");
         await EsperarSalvarERecarregarAsync(cut, tipo, corpo);
-        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().ContainInOrder("Água", "Eficiência Elemental", "7", "conforme a Tabela de Afinidades", "Dano Elemental", "4"), Limite);
+        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().ContainInOrder("Água", "Eficiência Elemental", "7", "conforme a Tabela de Afinidades", "Dano Elemental", "4"), LimiteDeEspera);
     }
 
     /// <summary>O PUT, a recarga do salvamento (o conjunto), a recarga das abas em sequência e, no fim, o alerta das penalidades.</summary>

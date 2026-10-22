@@ -1,0 +1,64 @@
+@using MudBlazor
+
+@* A aba Diário (só onde o tipo tem Diário). As entradas, o rascunho e a edição em curso moram no estado
+   (FichaEstado.Diario.cs), que avisa a página a cada ação; os erros vão para o alerta da página. *@
+
+<Section Title="Adicionar Entrada">
+    <EditForm Model="Estado.FormularioDoDiario" OnValidSubmit="Estado.AdicionarEntradaAsync">
+        <MudTextField T="string" @bind-Value="Estado.FormularioDoDiario.Texto" Label="Texto" Lines="3" />
+        <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
+            <ImageAttachmentField AvailableImages="Estado.MinhasImagens" SelectedIds="Estado.ImagensDaNovaEntrada"
+                                  SelectedIdsChanged="@(v => Estado.ImagensDaNovaEntrada = v)" OnError="Estado.MostrarErroDoDiario"
+                                  CampaignId="@CampanhaDoJogador" />
+        </MudExpansionPanel>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
+    </EditForm>
+</Section>
+
+<Section Title="Entradas">
+    <MudTimeline Class="mt-3" TimelinePosition="TimelinePosition.Left">
+        @foreach (var entry in Estado.EntradasDoDiario)
+        {
+            <MudTimelineItem Color="Color.Primary">
+                <ItemContent>
+                    <MudCard>
+                        <MudCardContent>
+                            @if (Estado.EntradaEmEdicao == entry.Id)
+                            {
+                                <MudTextField T="string" @bind-Value="Estado.TextoEmEdicao" Lines="3" />
+                                <ImageAttachmentField AvailableImages="Estado.MinhasImagens" SelectedIds="Estado.ImagensEmEdicao"
+                                                      SelectedIdsChanged="@(v => Estado.ImagensEmEdicao = v)" OnError="Estado.MostrarErroDoDiario"
+                                                      ButtonSize="Size.Small" CampaignId="@CampanhaDoJogador" />
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => Estado.SalvarEntradaAsync(entry.Id))">Salvar</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="Estado.CancelarEdicao">Cancelar</MudButton>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@entry.CreatedAt.ToString("g")</MudText>
+                                <MudText>@entry.Texto</MudText>
+                                @if (entry.ImageUrls.Count > 0)
+                                {
+                                    <div class="mt-1">
+                                        @foreach (var url in entry.ImageUrls)
+                                        {
+                                            <ClickableImage Src="@url" Width="100" Class="mr-1" />
+                                        }
+                                    </div>
+                                }
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Estado.ComecarEdicao(entry))">Editar</MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.ExcluirEntradaAsync(entry.Id))">Excluir</MudButton>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </ItemContent>
+            </MudTimelineItem>
+        }
+    </MudTimeline>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    // O jogador anexa e envia imagens na campanha da ficha; o GM, na galeria dele.
+    private string? CampanhaDoJogador => Estado.IsGmCaller ? null : Estado.CampaignId;
+}

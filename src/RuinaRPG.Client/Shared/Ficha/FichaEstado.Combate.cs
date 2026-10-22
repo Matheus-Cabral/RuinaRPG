@@ -71,11 +71,13 @@ public sealed partial class FichaEstado
     public async Task AdicionarArmaAsync()
     {
         var form = FormularioDeArma;
-        var response = !Tipo.TemArmaManual
-            ? await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddWeaponRequest(form.ItemId))
-            : await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), form.Origem == "Catalogo"
-                ? new AddCreatureWeaponRequest(form.ItemId, null, null, null, null)
-                : new AddCreatureWeaponRequest(null, form.ManualNome, form.ManualTipoDeDano, form.ManualDados, form.ManualDano));
+        HttpResponseMessage response;
+        if (!Tipo.TemArmaManual)
+            response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddWeaponRequest(form.ItemId));
+        else if (form.Origem == "Catalogo")
+            response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddCreatureWeaponRequest(form.ItemId, null, null, null, null));
+        else
+            response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddCreatureWeaponRequest(null, form.ManualNome, form.ManualTipoDeDano, form.ManualDados, form.ManualDano));
         if (!response.IsSuccessStatusCode)
         {
             MostrarErro("Não foi possível adicionar a arma.");

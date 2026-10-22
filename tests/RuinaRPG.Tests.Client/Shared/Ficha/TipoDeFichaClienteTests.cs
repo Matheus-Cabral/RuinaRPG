@@ -87,6 +87,9 @@ public class TipoDeFichaClienteTests
     // os números sem ajuda, e o Personagem não tem Abate.
     [Theory]
     [InlineData(nameof(TipoDeFichaCliente.AjudaDoXpPorAbate), null, "XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.", null)]
+    // A1 (decidido: fica por tipo): o diálogo da Característica Racial fala com o jogador no Personagem e do NPC no NPC.
+    [InlineData(nameof(TipoDeFichaCliente.TituloDaEscolhaRacial), "Escolha suas Características Raciais", "Escolha a Característica Racial do NPC", null)]
+    [InlineData(nameof(TipoDeFichaCliente.RecebeAutomaticamente), "Você também recebe automaticamente:", "O NPC também recebe automaticamente:", null)]
     public void Optional_text_member_per_kind(string membro, string? personagem, string? npc, string? criatura)
     {
         Ler<string?>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);

@@ -1,0 +1,61 @@
+@using MudBlazor
+
+@* A escolha pendente da Característica Racial (onde o tipo tem Traços Raciais): abre sozinha quando a Variante atual
+   ainda tem escolha pendente (FichaEstado.Cabecalho.cs). O título e a frase da Obrigatória fixa vêm do tipo (A1). *@
+
+<MudDialog @bind-Visible="Estado.EscolhaRacialAberta" Options="@(new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false })">
+    <DialogContent>
+        <MudText Typo="Typo.h6">@Estado.Tipo.TituloDaEscolhaRacial</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Toda Variante concede uma Característica Gratuita, a escolher entre as opções abaixo — algumas Variantes também exigem uma Característica Obrigatória.
+        </MudText>
+
+        <MudText Typo="Typo.subtitle1">Característica Gratuita</MudText>
+        <MudRadioGroup T="string" @bind-Value="Estado.GratuitaEscolhida">
+            @foreach (var option in Pendente?.Gratuita ?? new())
+            {
+                <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
+            }
+        </MudRadioGroup>
+        @{ var gratuitaSelected = Pendente?.Gratuita.FirstOrDefault(o => o.TraitNome == Estado.GratuitaEscolhida); }
+        @if (gratuitaSelected is { RequerEspecificacao: true, Especificacao: null })
+        {
+            <MudTextField @bind-Value="Estado.EspecificacaoDaGratuita" Label="Especificação" Class="mt-2" />
+        }
+
+        @if (Pendente?.Obrigatoria.Count > 1)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-4">Característica Obrigatória</MudText>
+            <MudRadioGroup T="string" @bind-Value="Estado.ObrigatoriaEscolhida">
+                @foreach (var option in Pendente.Obrigatoria)
+                {
+                    <MudRadio Value="@option.TraitNome">@option.TraitNome</MudRadio>
+                }
+            </MudRadioGroup>
+            var obrigatoriaSelected = Pendente.Obrigatoria.FirstOrDefault(o => o.TraitNome == Estado.ObrigatoriaEscolhida);
+            @if (obrigatoriaSelected is { RequerEspecificacao: true, Especificacao: null })
+            {
+                <MudTextField @bind-Value="Estado.EspecificacaoDaObrigatoria" Label="Especificação" Class="mt-2" />
+            }
+        }
+        else if (Pendente?.Obrigatoria.Count == 1)
+        {
+            var fixedOption = Pendente.Obrigatoria[0];
+            <MudText Typo="Typo.body2" Class="mt-3">@Estado.Tipo.RecebeAutomaticamente <b>@fixedOption.TraitNome</b>.</MudText>
+            @if (fixedOption is { RequerEspecificacao: true, Especificacao: null })
+            {
+                <MudTextField @bind-Value="Estado.EspecificacaoDaObrigatoria" Label="Especificação" Class="mt-2" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Estado.AdiarEscolhaRacial">Decidir depois</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado.GratuitaEscolhida is null)" OnClick="Estado.ConfirmarEscolhaRacialAsync">Confirmar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    private RuinaRPG.Contracts.CharacterSheets.PendingRacialTraitChoiceResponse? Pendente => Estado.EscolhaRacialPendente;
+}

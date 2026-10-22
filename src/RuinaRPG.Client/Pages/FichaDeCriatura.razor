@@ -6,43 +6,15 @@
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
 @using RuinaRPG.Contracts.CreatureSheets
-@using RuinaRPG.Contracts.Fichas
-@using RuinaRPG.Contracts.SpellsAndAbilities
-@using RuinaRPG.Domain.SpellsAndAbilities
-@using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Images
-@using RuinaRPG.Contracts.Items
-@using RuinaRPG.Contracts.Rules
-@using RuinaRPG.Client.Shared.Fields
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 @using RuinaRPG.Contracts.Notifications
 
 <div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
-<Breadcrumbs Items="@Crumbs" />
-<h1>Ficha de Criatura</h1>
-@if (_concedida)
-{
-    <CondicoesAtivasAlert Url="@($"creature-sheets/{SheetId}/condicoes-ativas")" Versao="_condicoesVersao" />
-}
-
-<DismissibleAlert @bind-Message="_estado.Erro" Class="mb-3" />
-
-@if (_levelUpBonuses.Count > 0)
-{
-    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-3">
-        <MudText Typo="Typo.h6">Novo Nível!</MudText>
-        <ul>
-            @foreach (var bonus in _levelUpBonuses)
-            {
-                <li>@bonus</li>
-            }
-        </ul>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="DismissLevelUpAsync">Fechar</MudButton>
-    </MudAlert>
-}
-
 <CascadingValue Value="_estado" IsFixed="false">
+<CabecalhoDaFicha Trilha="@Crumbs" Concedida="_concedida" />
+
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <AbaInformacoesBasicas Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
@@ -92,7 +64,6 @@
     // A Criatura sempre tem Abate e Assistência (0 antes da carga, como sempre mostrou).
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private List<string> _levelUpBonuses = new();
 
     protected override void OnInitialized()
     {
@@ -184,22 +155,9 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(
-            LoadLevelUpNoticeAsync(), _estado.CarregarAtributosECombateAsync(),
+            _estado.CarregarAvisoDeNovoNivelAsync(), _estado.CarregarAtributosECombateAsync(),
             _estado.CarregarMagiasAsync(), _estado.CarregarMaestriasAsync(),
             _estado.CarregarEspoliosAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(), _estado.CarregarAuditorDeRegrasAsync());
-    }
-
-    private async Task LoadLevelUpNoticeAsync()
-    {
-        var response = await Http.GetAsync($"creature-sheets/{SheetId}/level-up-notice");
-        if (response.IsSuccessStatusCode)
-            _levelUpBonuses = (await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>())!.BonusTexts;
-    }
-
-    private async Task DismissLevelUpAsync()
-    {
-        await Http.PostAsync($"creature-sheets/{SheetId}/dismiss-level-up-notice", null);
-        _levelUpBonuses.Clear();
     }
 
     private async Task LoadImagesAsync()
@@ -265,7 +223,7 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
@@ -335,7 +293,7 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
@@ -355,7 +313,7 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
