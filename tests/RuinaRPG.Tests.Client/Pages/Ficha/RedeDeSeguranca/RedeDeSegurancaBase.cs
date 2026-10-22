@@ -1,5 +1,6 @@
 using AngleSharp.Dom;
 using Bunit;
+using FluentAssertions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +41,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     /// <summary>
     /// Cada requisição como <c>"{METHOD} {caminho}"</c> (sem o prefixo <c>/api</c>, com a query) e, fora o GET,
     /// o corpo em JSON compacto com as chaves em ordem alfabética (a ordem das propriedades no fio pode mudar
-    /// no E.2; os nomes e os valores não). Um corpo multipart entra só como os nomes das partes: <c>[file, campaignId]</c>.
+    /// no E.2; os nomes e os valores não). Um corpo multipart entra como as partes: o arquivo pelo nome, o texto com o valor: <c>[file, campaignId=c1]</c>.
     /// </summary>
     protected IReadOnlyList<string> Requisicoes
     {
@@ -74,12 +75,55 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null),
     };
 
+    // Personagem sempre mostra as Condições; NPC e Criatura só quando concedidos a um jogador (os do GM nem perguntam).
+    protected static bool MostraCondicoes(string tipo, string papel) => tipo == "Personagem" || papel == "Jogador";
+
+    /// <summary>As três primeiras requisições da carga, em sequência: Perícias, a ficha (diz a campanha) e a galeria de imagens.</summary>
+    protected static string[] InicioDaCarga(string tipo, string papel) =>
+        new[] { "GET /pericias", $"GET /{Prefixo(tipo)}/s1", papel == "GM" ? "GET /images/mine" : "GET /campaigns/c1/available-images" };
+
+    /// <summary>O resto da carga, pedido em paralelo (<c>Task.WhenAll</c>): vale o conjunto, não a ordem.</summary>
+    protected static string[] CargaInicial(string tipo, string papel)
+    {
+        var k = $"/{Prefixo(tipo)}/s1";
+        var jogador = papel == "Jogador";
+        var lista = new List<string>
+        {
+            $"GET {k}/level-up-notice", $"GET {k}/attributes", $"GET {k}/attributes/budget", $"GET {k}/skills",
+        };
+        if (tipo == "Personagem")
+            lista.Add($"GET {k}/skills/budget");
+        if (tipo != "Criatura")
+            lista.Add($"GET {k}/affinities");
+        lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
+        if (tipo != "Criatura")
+            lista.AddRange(new[] { $"GET {k}/racial-ability", $"GET {k}/variantes-liberadas" });
+        lista.Add($"GET {k}/spell-abilities");
+        lista.Add(jogador ? "GET /campaigns/c1/available-spell-abilities" : "GET /spell-ability-bank");
+        if (tipo != "Criatura")
+            lista.AddRange(new[] { $"GET {k}/runes", jogador ? "GET /campaigns/c1/available-runes" : "GET /rune-bank" });
+        lista.Add($"GET {k}/masteries");
+        lista.Add(tipo == "Criatura" ? $"GET {k}/spoils" : $"GET {k}/inventory");
+        lista.AddRange(new[] { $"GET {k}/artifacts", $"GET {k}/affections", $"GET {k}/traits" });
+        if (tipo == "Personagem")
+            lista.AddRange(new[] { $"GET {k}/diary", "GET /campaigns" });
+        if (tipo != "Criatura")
+            lista.Add($"GET {k}/racial-traits/pending");
+        if (tipo == "Criatura")
+            lista.Add("GET /auth/me");
+        if (MostraCondicoes(tipo, papel))
+            lista.Add($"GET {k}/condicoes-ativas");
+        return lista.ToArray();
+    }
+
     /// <summary>
     /// Renderiza a página do tipo (<c>"Personagem"</c>, <c>"NPC"</c>, <c>"Criatura"</c>) com SheetId "s1",
     /// ao lado dos provedores de diálogo e popover, e espera a carga terminar. <paramref name="papel"/> é
-    /// "GM" ou "Jogador"; para o jogador, a ficha de NPC/Criatura é uma concedida a ele.
+    /// "GM" ou "Jogador"; para o jogador, a ficha de NPC/Criatura é uma concedida a ele. A espera é positiva:
+    /// até chegarem as requisições da carga (<see cref="InicioDaCarga"/> + <see cref="CargaInicial"/>, ou
+    /// <paramref name="cargaEsperada"/> quando um <see cref="Responder"/> muda a carga), e então nenhuma a mais.
     /// </summary>
-    protected async Task<IRenderedComponent<IComponent>> RenderFichaAsync(string tipo, string papel = "GM")
+    protected async Task<IRenderedComponent<IComponent>> RenderFichaAsync(string tipo, string papel = "GM", IEnumerable<string>? cargaEsperada = null)
     {
         _tipo = tipo;
         _papel = papel;
@@ -103,17 +147,37 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             builder.AddAttribute(3, "SheetId", SheetId);
             builder.CloseComponent();
         });
-        await EsperarCalmariaAsync();
+        var esperada = (cargaEsperada ?? InicioDaCarga(tipo, papel).Concat(CargaInicial(tipo, papel))).ToList();
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().BeEquivalentTo(esperada));
         return (IRenderedComponent<IComponent>)(object)cut;
     }
 
-    /// <summary>Espera até não chegar requisição nova por <paramref name="quietoMs"/> (a carga e as recargas são em cascata).</summary>
-    protected async Task EsperarCalmariaAsync(int quietoMs = 150)
+    /// <summary>
+    /// Espera (no máximo <paramref name="limite"/>, 5 s por padrão; estoura com a falha da asserção) até
+    /// <paramref name="afirmar"/> passar sobre <see cref="Requisicoes"/>, depois espera a calmaria e afirma de novo,
+    /// para que nenhuma requisição a mais passe despercebida nem vaze para o passo seguinte.
+    /// </summary>
+    protected async Task EsperarRequisicoesAsync<TComponente>(IRenderedComponent<TComponente> cut, Action<IReadOnlyList<string>> afirmar, TimeSpan? limite = null)
+        where TComponente : IComponent
+    {
+        cut.WaitForAssertion(() => afirmar(Requisicoes), limite ?? TimeSpan.FromSeconds(5));
+        await EsperarCalmariaAsync();
+        afirmar(Requisicoes);
+    }
+
+    /// <summary>
+    /// Só a verificação final de "nada a mais": espera <paramref name="quietoMs"/> sem requisição nova. Não serve
+    /// para esperar uma carga (use <see cref="EsperarRequisicoesAsync"/>); se as requisições não param em 5 s, estoura.
+    /// </summary>
+    protected async Task EsperarCalmariaAsync(int quietoMs = 100)
     {
         var contagem = Requisicoes.Count;
         var quieto = 0;
-        for (var i = 0; i < 200 && quieto < quietoMs; i++)
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+        while (quieto < quietoMs)
         {
+            if (relogio.Elapsed > TimeSpan.FromSeconds(5))
+                throw new TimeoutException($"As requisições não pararam em 5 s ({Requisicoes.Count} até agora).");
             await Task.Delay(25);
             var agora = Requisicoes.Count;
             quieto = agora == contagem ? quieto + 25 : 0;
@@ -198,7 +262,9 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             && conteudo.Headers.ContentType?.MediaType == "application/json")
             registro += " " + JsonOrdenado(conteudo.ReadAsStringAsync().GetAwaiter().GetResult());
         else if (request.Content is MultipartFormDataContent partes)
-            registro += " [" + string.Join(", ", partes.Select(p => p.Headers.ContentDisposition?.Name?.Trim('"'))) + "]";
+            registro += " [" + string.Join(", ", partes.Select(p => p is StringContent texto
+                ? $"{p.Headers.ContentDisposition?.Name?.Trim('"')}={texto.ReadAsStringAsync().GetAwaiter().GetResult()}"
+                : p.Headers.ContentDisposition?.Name?.Trim('"'))) + "]";
         lock (_requisicoes)
             _requisicoes.Add(registro);
 

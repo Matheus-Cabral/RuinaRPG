@@ -35,9 +35,6 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     protected static readonly string[] LeituraDaCondicao = { "Condições ativas", "Atordoado", "— 2 turnos", "Tonto.", "Vigor −2" };
 
-    // Personagem sempre mostra as Condições; NPC e Criatura só quando concedidos a um jogador (os do GM nem perguntam).
-    protected static bool MostraCondicoes(string tipo, string papel) => tipo == "Personagem" || papel == "Jogador";
-
     protected static string[] Trilha(string tipo) => tipo switch
     {
         "Personagem" => new[] { "Painel", "/", "Campanhas", "/", "Crônicas de Alker", "/", "Aria" },
@@ -112,39 +109,6 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     // ---------------- requisições e salvamentos ----------------
 
-    protected static string[] CargaInicial(string tipo, string papel)
-    {
-        var k = $"/{Prefixo(tipo)}/s1";
-        var jogador = papel == "Jogador";
-        var lista = new List<string>
-        {
-            $"GET {k}/level-up-notice", $"GET {k}/attributes", $"GET {k}/attributes/budget", $"GET {k}/skills",
-        };
-        if (tipo == "Personagem")
-            lista.Add($"GET {k}/skills/budget");
-        if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
-        lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
-        if (tipo != "Criatura")
-            lista.AddRange(new[] { $"GET {k}/racial-ability", $"GET {k}/variantes-liberadas" });
-        lista.Add($"GET {k}/spell-abilities");
-        lista.Add(jogador ? "GET /campaigns/c1/available-spell-abilities" : "GET /spell-ability-bank");
-        if (tipo != "Criatura")
-            lista.AddRange(new[] { $"GET {k}/runes", jogador ? "GET /campaigns/c1/available-runes" : "GET /rune-bank" });
-        lista.Add($"GET {k}/masteries");
-        lista.Add(tipo == "Criatura" ? $"GET {k}/spoils" : $"GET {k}/inventory");
-        lista.AddRange(new[] { $"GET {k}/artifacts", $"GET {k}/affections", $"GET {k}/traits" });
-        if (tipo == "Personagem")
-            lista.AddRange(new[] { $"GET {k}/diary", "GET /campaigns" });
-        if (tipo != "Criatura")
-            lista.Add($"GET {k}/racial-traits/pending");
-        if (tipo == "Criatura")
-            lista.Add("GET /auth/me");
-        if (MostraCondicoes(tipo, papel))
-            lista.Add($"GET {k}/condicoes-ativas");
-        return lista.ToArray();
-    }
-
     protected static string CorpoDaFicha(string tipo, string nome = "Novo", string? imageId = "img1", string? linhagem = null, string? variante = null)
     {
         var img = imageId is null ? "null" : $"\"{imageId}\"";
@@ -205,12 +169,12 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
     protected async Task AfirmarSalvamentoAsync(IRenderedComponent<IComponent> cut, string tipo, string corpo, params string[] antes)
     {
         var put = $"PUT /{Prefixo(tipo)}/s1 {corpo}";
-        cut.WaitForAssertion(() => Requisicoes.Should().Contain(put), TimeSpan.FromSeconds(3));
-        await EsperarCalmariaAsync();
-        var todas = Requisicoes.ToList();
-        todas.Take(antes.Length).Should().Equal(antes);
-        todas.Skip(antes.Length).First().Should().Be(put);
-        todas.Skip(antes.Length + 1).Should().BeEquivalentTo(RecargaDepoisDeSalvar(tipo));
+        await EsperarRequisicoesAsync(cut, todas =>
+        {
+            todas.Take(antes.Length).Should().Equal(antes);
+            todas.Skip(antes.Length).FirstOrDefault().Should().Be(put);
+            todas.Skip(antes.Length + 1).Should().BeEquivalentTo(RecargaDepoisDeSalvar(tipo));
+        });
     }
 
     protected async Task AbrirEdicaoDaImagemAsync(IRenderedComponent<IComponent> cut)
@@ -248,10 +212,11 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     protected async Task AfirmarEndpointProprioAsync(IRenderedComponent<IComponent> cut, string put, string[] recarga)
     {
-        cut.WaitForAssertion(() => Requisicoes.Should().Contain(put), TimeSpan.FromSeconds(3));
-        await EsperarCalmariaAsync();
-        Requisicoes.First().Should().Be(put);
-        Requisicoes.Skip(1).Should().BeEquivalentTo(recarga);
+        await EsperarRequisicoesAsync(cut, todas =>
+        {
+            todas.FirstOrDefault().Should().Be(put);
+            todas.Skip(1).Should().BeEquivalentTo(recarga);
+        });
     }
 
     protected static string SemCoracao() =>
@@ -305,9 +270,8 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
             var fechar = cut.FindAll("button").Single(b => TextoNormalizado(b) == "Fechar" && b.Closest(".mud-alert") is not null);
             await cut.InvokeAsync(() => fechar.Click());
-            await EsperarCalmariaAsync();
 
-            Requisicoes.Should().Equal($"POST /{Prefixo(tipo)}/s1/dismiss-level-up-notice");
+            await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal($"POST /{Prefixo(tipo)}/s1/dismiss-level-up-notice"));
             LeituraDoCabecalho(cut).Should().NotContain("Novo Nível!");
         }
 
@@ -357,8 +321,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         {
             await RenderFichaAsync(tipo, papel);
 
-            var k = $"/{Prefixo(tipo)}/s1";
-            Requisicoes.Take(3).Should().Equal("GET /pericias", $"GET {k}", papel == "GM" ? "GET /images/mine" : "GET /campaigns/c1/available-images");
+            Requisicoes.Take(3).Should().Equal(InicioDaCarga(tipo, papel));
             Requisicoes.Skip(3).Should().BeEquivalentTo(CargaInicial(tipo, papel));
         }
     }
@@ -407,7 +370,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
             await cut.InvokeAsync(() => arquivo.UploadFiles(InputFileContent.CreateFromText("conteudo", "foto.png")));
 
             // O jogador sobe a imagem na campanha da ficha.
-            var upload = papel == "GM" ? "POST /images [file]" : "POST /images [file, campaignId]";
+            var upload = papel == "GM" ? "POST /images [file]" : "POST /images [file, campaignId=c1]";
             await AfirmarSalvamentoAsync(cut, tipo, CorpoDaFicha(tipo, nome: tipo switch { "Personagem" => "Aria", "NPC" => "Borin", _ => "Lobo Cinzento" }, imageId: "img-nova"), upload);
         }
 
