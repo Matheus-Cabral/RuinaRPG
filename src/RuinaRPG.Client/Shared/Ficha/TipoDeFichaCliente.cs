@@ -1,0 +1,174 @@
+namespace RuinaRPG.Client.Shared.Ficha;
+
+/// <summary>
+/// O tipo de ficha (Personagem, NPC, Criatura) do lado do cliente: o prefixo da API e os fatos que as abas
+/// compartilhadas perguntam. É um valor passado adiante, sem HTTP próprio. Os fatos têm o nome da capacidade
+/// ("a ficha tem Diário?"), nunca o do tipo ("é Criatura?"); os valores vêm do inventário de diferenças do E
+/// (docs/superpowers/specs/2026-10-19-e-inventario-de-diferencas.md), aprovado pelo usuário em 2026-10-22.
+/// </summary>
+/// <param name="Nome">"Personagem", "NPC" ou "Criatura".</param>
+/// <param name="Rota">O prefixo da API: <c>character-sheets</c>, <c>npc-sheets</c> ou <c>creature-sheets</c>.</param>
+public sealed record TipoDeFichaCliente(string Nome, string Rota)
+{
+    /// <summary>O <c>Kind</c> do aviso <c>CondicoesAlteradas</c> que vale para este tipo.</summary>
+    public required string TipoDaNotificacao { get; init; }
+
+    /// <summary>O título da página (h1) e o último item da trilha enquanto a ficha não tem nome.</summary>
+    public required string Titulo { get; init; }
+
+    /// <summary>As Condições ativas só existem numa ficha concedida a um jogador (NPC, Criatura); o Personagem sempre as tem.</summary>
+    public required bool CondicoesSoSeConcedida { get; init; }
+
+    /// <summary>Linhagem, Variante, Vocação, Classe, Graduação, Coração de Mana, VIS, Âmbares e a Habilidade Racial.</summary>
+    public required bool TemLinhagemEVocacao { get; init; }
+
+    /// <summary>A escolha das Características Raciais (<c>racial-traits</c>).</summary>
+    public required bool TemTracosRaciais { get; init; }
+
+    /// <summary>Nível e Experiência editados à mão, cada um no seu endpoint (<c>PUT nivel</c>, <c>PUT experiencia-atual</c>).</summary>
+    public required bool EditaNivelAManual { get; init; }
+
+    /// <summary>"Pontos de Perícia: gasto / disponível" e o Acerto Crítico; sem orçamento, só "Pontos de Perícia Gastos: N".</summary>
+    public required bool TemOrcamentoDePericias { get; init; }
+
+    /// <summary>A seção Afinidades e a Afinidade dentro dos Sub-Atributos.</summary>
+    public required bool TemAfinidades { get; init; }
+
+    /// <summary>Os Pontos de Sina e o Estresse no Combate.</summary>
+    public required bool TemSinaEEstresse { get; init; }
+
+    /// <summary>O rótulo do Foco no Combate ("Foco (PF)" ou "Arcana (PF)").</summary>
+    public required string RotuloDoFoco { get; init; }
+
+    /// <summary>O rótulo dos Pontos de Ignição em Informações Básicas.</summary>
+    public required string RotuloDosPontosDeIgnicao { get; init; }
+
+    /// <summary>O painel "Progressão do nível" no alto de Atributos &amp; Perícias.</summary>
+    public required bool MostraProgressaoDoNivel { get; init; }
+
+    /// <summary>Os seletores de item do Catálogo com "+" para o GM (<c>CatalogoItemPicker</c>) em vez do <c>EntityPicker</c>.</summary>
+    public required bool CadastraItemNoPicker { get; init; }
+
+    /// <summary>A coluna Peso da tabela de armas.</summary>
+    public required bool MostraPesoDasArmas { get; init; }
+
+    /// <summary>A arma preenchida à mão (ataque natural, sem Item do Catálogo).</summary>
+    public required bool TemArmaManual { get; init; }
+
+    /// <summary>A edição na linha das Maestrias (<c>PUT masteries/{id}</c>).</summary>
+    public required bool EditaMaestriaNaLinha { get; init; }
+
+    /// <summary>A edição na linha das Afeições (<c>PUT affections/{id}</c>).</summary>
+    public required bool EditaAfeicaoNaLinha { get; init; }
+
+    /// <summary>A seção Runas.</summary>
+    public required bool TemRunas { get; init; }
+
+    /// <summary>O Equipamento Inicial e o Inventário.</summary>
+    public required bool TemInventario { get; init; }
+
+    /// <summary>Os Espólios (em Posses, no lugar do Inventário).</summary>
+    public required bool TemEspolios { get; init; }
+
+    /// <summary>A aba Antecedentes.</summary>
+    public required bool TemAntecedentes { get; init; }
+
+    /// <summary>
+    /// Antecedentes com Estrela, Histórico e História. Hoje Personagem e NPC mostram a mesma aba completa (o
+    /// inventário as achou idênticas), então coincide com <see cref="TemAntecedentes"/>.
+    /// </summary>
+    public required bool AntecedentesCompletos { get; init; }
+
+    /// <summary>A aba Diário.</summary>
+    public required bool TemDiario { get; init; }
+
+    /// <summary>O endereço da busca de Características (<c>traits</c> ou <c>creature-exclusive-traits</c>).</summary>
+    public required string UrlDeBuscaDeCaracteristicas { get; init; }
+
+    /// <summary>O endereço da ficha ou, com <paramref name="sufixo"/>, de algo dentro dela (<c>weapons/w1</c>).</summary>
+    public string Url(string sheetId, string sufixo = "") => $"{Rota}/{sheetId}{(sufixo == "" ? "" : "/" + sufixo)}";
+
+    public static TipoDeFichaCliente Personagem { get; } = new("Personagem", "character-sheets")
+    {
+        TipoDaNotificacao = "character",
+        Titulo = "Ficha de Personagem",
+        CondicoesSoSeConcedida = false,
+        TemLinhagemEVocacao = true,
+        TemTracosRaciais = true,
+        EditaNivelAManual = false,
+        TemOrcamentoDePericias = true,
+        TemAfinidades = true,
+        TemSinaEEstresse = true,
+        RotuloDoFoco = "Foco (PF)",
+        RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
+        MostraProgressaoDoNivel = true,
+        CadastraItemNoPicker = false,
+        MostraPesoDasArmas = true,
+        TemArmaManual = false,
+        EditaMaestriaNaLinha = true,
+        EditaAfeicaoNaLinha = true,
+        TemRunas = true,
+        TemInventario = true,
+        TemEspolios = false,
+        TemAntecedentes = true,
+        AntecedentesCompletos = true,
+        TemDiario = true,
+        UrlDeBuscaDeCaracteristicas = "traits",
+    };
+
+    public static TipoDeFichaCliente Npc { get; } = new("NPC", "npc-sheets")
+    {
+        TipoDaNotificacao = "npc",
+        Titulo = "Ficha de NPC",
+        CondicoesSoSeConcedida = true,
+        TemLinhagemEVocacao = true,
+        TemTracosRaciais = true,
+        EditaNivelAManual = true,
+        TemOrcamentoDePericias = false,
+        TemAfinidades = true,
+        TemSinaEEstresse = true,
+        RotuloDoFoco = "Foco (PF)",
+        RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
+        MostraProgressaoDoNivel = true,
+        CadastraItemNoPicker = true,
+        MostraPesoDasArmas = true,
+        TemArmaManual = false,
+        EditaMaestriaNaLinha = false,
+        EditaAfeicaoNaLinha = false,
+        TemRunas = true,
+        TemInventario = true,
+        TemEspolios = false,
+        TemAntecedentes = true,
+        AntecedentesCompletos = true,
+        TemDiario = false,
+        UrlDeBuscaDeCaracteristicas = "traits",
+    };
+
+    public static TipoDeFichaCliente Criatura { get; } = new("Criatura", "creature-sheets")
+    {
+        TipoDaNotificacao = "creature",
+        Titulo = "Ficha de Criatura",
+        CondicoesSoSeConcedida = true,
+        TemLinhagemEVocacao = false,
+        TemTracosRaciais = false,
+        EditaNivelAManual = true,
+        TemOrcamentoDePericias = false,
+        TemAfinidades = false,
+        TemSinaEEstresse = false,
+        RotuloDoFoco = "Arcana (PF)",
+        RotuloDosPontosDeIgnicao = "Pontos de Ignição",
+        MostraProgressaoDoNivel = false,
+        CadastraItemNoPicker = true,
+        MostraPesoDasArmas = false,
+        TemArmaManual = true,
+        EditaMaestriaNaLinha = false,
+        EditaAfeicaoNaLinha = false,
+        TemRunas = false,
+        TemInventario = false,
+        TemEspolios = true,
+        TemAntecedentes = false,
+        AntecedentesCompletos = false,
+        TemDiario = false,
+        UrlDeBuscaDeCaracteristicas = "creature-exclusive-traits",
+    };
+}

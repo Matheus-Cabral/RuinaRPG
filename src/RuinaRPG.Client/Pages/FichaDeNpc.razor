@@ -17,6 +17,7 @@
 @using RuinaRPG.Contracts.Rules
 @using RuinaRPG.Contracts.Runes
 @using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 @using RuinaRPG.Contracts.Notifications
 @using System.ComponentModel.DataAnnotations
@@ -29,7 +30,7 @@
     <CondicoesAtivasAlert Url="@($"npc-sheets/{SheetId}/condicoes-ativas")" Versao="_condicoesVersao" />
 }
 
-<DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+<DismissibleAlert @bind-Message="_estado.Erro" Class="mb-3" />
 
 @if (_levelUpBonuses.Count > 0)
 {
@@ -96,6 +97,7 @@
     </DialogActions>
 </MudDialog>
 
+<CascadingValue Value="_estado" IsFixed="false">
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <EditForm Model="_form">
@@ -793,11 +795,22 @@
         </Section>
     </MudTabPanel>
 </MudTabs>
+</CascadingValue>
 
 </div>
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
+
+    // O estado que as abas compartilhadas recebem em cascata (E). Os campos abaixo continuam com os nomes de antes,
+    // mas o valor mora no estado: a página e as abas leem e escrevem o mesmo.
+    private FichaEstado _estado = null!;
+    private string? _errorMessage { get => _estado.Erro; set => _estado.Erro = value; }
+    private bool _isGmCaller { get => _estado.IsGmCaller; set => _estado.IsGmCaller = value; }
+    private string? _campaignId { get => _estado.CampaignId; set => _estado.CampaignId = value; }
+    private List<ImageSummaryResponse> _myImages { get => _estado.MinhasImagens; set => _estado.MinhasImagens = value; }
+    private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
+    private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
 
     // Value must match the Variante enum member name exactly (server parses it); label is the
     // real Sistema Básico display name (Ruína RPG - Sistema Básico §7).
@@ -829,13 +842,9 @@
 
     private readonly SheetFormModel _form = new();
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private string? _errorMessage;
     // Aba Antecedentes: _form.Historia comes from the API only on the first load — later reloads (after
     // any other field's autosave) must not overwrite what HistoriaEditor is holding.
     private bool _historiaLoaded;
-    private List<ImageSummaryResponse> _myImages = new();
-    private bool _isGmCaller;
-    private string? _campaignId;
     private bool _imageExpanded;
     private bool _imageEditing;
     private bool _imageGalleryOpen;
@@ -849,7 +858,6 @@
         _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
     private List<AffinityResponse> _affinities = new();
     private readonly AffinityFormModel _affinityForm = new();
-    private int _penalidadesVersao;
     private List<WeaponResponse> _weapons = new();
     private List<ArmorSlotResponse> _armorSlots = new();
     private List<ShieldResponse> _shields = new();
@@ -906,6 +914,8 @@
 
     protected override void OnInitialized()
     {
+        _estado = new FichaEstado(Http, TipoDeFichaCliente.Npc, SheetId);
+        _estado.Alterado += OnEstadoAlterado;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
         // trocar o campo que está sendo editado (RecargaAdiada).
@@ -932,7 +942,6 @@
     }
 
     private RecargaAdiada _recarga = null!;
-    private int _condicoesVersao;
     // Só uma ficha concedida a um jogador tem Condições vivas; a do Mestre mostra o efeito só no Resumo do encontro.
     private bool _concedida;
 
@@ -968,8 +977,12 @@
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
 
+    // Uma aba filha mudou o estado fora de um evento da página (ex.: Erro depois de um POST recusado).
+    private void OnEstadoAlterado() => InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
+        _estado.Alterado -= OnEstadoAlterado;
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
         Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
         _recarga.Dispose();
