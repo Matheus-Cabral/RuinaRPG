@@ -31,6 +31,15 @@ public sealed partial class FichaEstado
     /// <summary>A Habilidade Racial (no topo de Magias &amp; Habilidades, onde o tipo tem Linhagem). As Evoluções de Arca dependem do Nível: a página a relê depois de salvar.</summary>
     public RacialAbilityResponse? HabilidadeRacial { get; set; }
 
+    /// <summary>
+    /// O XP e o PI (bônus manual) digitados e ainda não aplicados (onde o Nível vem da Experiência). Moram aqui, e não na
+    /// seção, para sobreviver à troca de aba (a aba inativa sai da árvore), como quando eram campos da página.
+    /// </summary>
+    public int? DeltaDeExperiencia { get; set; }
+
+    /// <inheritdoc cref="DeltaDeExperiencia"/>
+    public int? DeltaDeBonusManualDePi { get; set; }
+
     // ---------------- Características ----------------
 
     /// <summary>A Criatura não tem Característica Racial: a lista dela vem sem a marca e passa pelo adaptador.</summary>

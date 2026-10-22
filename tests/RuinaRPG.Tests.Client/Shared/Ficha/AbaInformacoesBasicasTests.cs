@@ -275,6 +275,28 @@ public class AbaInformacoesBasicasTests : RedeDeSegurancaBase
         await EsperarCalmariaAsync();
     }
 
+    // Os números digitados e ainda não aplicados sobrevivem à troca de aba (antes do E eram campos da página; as abas do
+    // MudTabs não ficam vivas, então moram no estado).
+    [Fact]
+    public async Task Typed_xp_and_pi_deltas_survive_a_tab_switch()
+    {
+        var cut = await RenderFichaAsync("Personagem");
+        await cut.InvokeAsync(() => CampoNaAba(cut, "Adicionar/subtrair XP").Change("15"));
+        await cut.InvokeAsync(() => CampoNaAba(cut, "Adicionar/subtrair PI (bônus manual)").Change("4"));
+        LimparRequisicoes();
+
+        await IrParaAbaAsync(cut, "Combate");
+        await IrParaAbaAsync(cut, "Informações Básicas");
+
+        cut.WaitForAssertion(() =>
+        {
+            CampoNaAba(cut, "Adicionar/subtrair XP").GetAttribute("value").Should().Be("15");
+            CampoNaAba(cut, "Adicionar/subtrair PI (bônus manual)").GetAttribute("value").Should().Be("4");
+        }, LimiteDeEspera);
+        await EsperarCalmariaAsync();
+        Requisicoes.Should().NotContain(r => !r.StartsWith("GET ", StringComparison.Ordinal));
+    }
+
     [Theory]
     [MemberData(nameof(Tipos))]
     public async Task Adding_a_caracteristica_shows_the_reloaded_list(string tipo)
