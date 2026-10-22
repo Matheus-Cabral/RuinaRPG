@@ -74,4 +74,10 @@
 
     /// <summary>Só onde há Inventário: a página grava e relê depois que o kit é escolhido.</summary>
     [Parameter] public EventCallback EquipagemEscolhida { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Estado.Tipo.TemInventario && Formulario is null)
+            throw new InvalidOperationException($"AbaPosses: a ficha de {Estado.Tipo.Nome} tem Inventário e precisa do Formulario da página.");
+    }
 }

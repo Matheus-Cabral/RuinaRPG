@@ -9,6 +9,12 @@ namespace RuinaRPG.Client.Shared.Ficha;
 /// PI). É da página: ela o cria, o preenche, monta o pedido do tipo dela e coordena o autosave; as abas o recebem como
 /// parâmetro (<c>Formulario</c>), junto com os retornos da página que salvam. Um tipo só para os três: cada tipo usa os
 /// campos que tem (a Criatura tem Raça e Rank, não Linhagem nem Âmbares) e ignora os outros.
+/// <para>
+/// A validação vale campo a campo (o <c>For</c> de cada campo MudBlazor com o <c>DataAnnotationsValidator</c>), nunca
+/// do modelo inteiro: há <c>[Required]</c> em campos que um tipo não tem e nunca preenche (o VIS e os Núcleos de Rank
+/// na Criatura, o Estresse na Criatura), então um <c>Validator.TryValidateObject</c> ou um <c>EditContext.Validate()</c>
+/// sobre ele todo falharia sem motivo. Não há suporte a isso.
+/// </para>
 /// </summary>
 public sealed class FormularioDaFicha(TipoDeFichaCliente tipo)
 {
@@ -142,6 +148,19 @@ public sealed class FormularioDaFicha(TipoDeFichaCliente tipo)
             return false;
 
         PontosDeIgnicaoBonusManual += delta.Value;
+        return true;
+    }
+
+    /// <summary>
+    /// O "Adicionar/subtrair pontos de Acerto Crítico" do Personagem: pontos de Perícia que não vêm do orçamento do
+    /// nível; o servidor os desconta do Gasto Total. Vazio ou 0 não muda nada; o retorno diz se há o que salvar.
+    /// </summary>
+    public bool SomarPontosDeAcertoCritico(int? delta)
+    {
+        if (delta is null || delta == 0)
+            return false;
+
+        PontosDePericiaBonusCritico += delta.Value;
         return true;
     }
 

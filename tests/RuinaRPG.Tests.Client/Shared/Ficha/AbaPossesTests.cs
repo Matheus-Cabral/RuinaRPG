@@ -127,4 +127,15 @@ public class AbaPossesTests : RedeDeSegurancaBase
         cut.WaitForAssertion(() => Botao(AbaAberta(cut), "Adicionar Espólio").Closest("form")!.ParentElement!
             .QuerySelectorAll("table tbody tr").Should().HaveCount(2));
     }
+
+    // Um tipo com Inventário sem o formulário da página falha com uma mensagem clara (não um NullReferenceException).
+    [Fact]
+    public void A_kind_with_inventory_without_the_page_form_fails_clearly()
+    {
+        var estado = new FichaEstado(new HttpClient(), TipoDeFichaCliente.Personagem, SheetId);
+
+        var renderizar = () => Render<AbaPosses>(p => p.AddCascadingValue(estado));
+
+        renderizar.Should().Throw<InvalidOperationException>().WithMessage("*Inventário*Formulario*");
+    }
 }

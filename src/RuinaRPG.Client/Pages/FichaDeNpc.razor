@@ -103,125 +103,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
-        <PenalidadesAtivasAlert Url="@($"npc-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
-        <ProgressaoDoNivelSection Nivel="@(_form.Nivel ?? 1)" />
-        <Section Title="Atributos">
-            @if (_attributeBudget is not null)
-            {
-                <MudText Color="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? Color.Error : Color.Default)">
-                    Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
-                </MudText>
-            }
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Proeficiência</th><th>Total</th></tr></thead>
-                <tbody>
-                    @foreach (var attr in _attributes)
-                    {
-                        <tr>
-                            <td>@AtributoDisplay.Label(attr.Atributo)</td>
-                            <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
-                            <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
-                            <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
-                            <td>@attr.Total</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <br/>
-
-        <Section Title="Perícias">
-            <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
-                <tbody>
-                    @foreach (var skill in _skills)
-                    {
-                        <tr>
-                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
-                            <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
-                            <td>
-                                @if (skill.ContaHistorico)
-                                {
-                                    <b title="Inclui bônus de Histórico">@skill.Modificador</b>
-                                }
-                                else
-                                {
-                                    @skill.Modificador
-                                }
-                            </td>
-                            <td>
-                                <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
-                                    <MudSelectItem Value="@("")">—</MudSelectItem>
-                                    @foreach (var attr in _attributes)
-                                    {
-                                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </td>
-                            <td>@skill.Total</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <br/>
-
-        <Section Title="Afinidades">
-            <VocacaoArcanaResumo Gasto="@VocacaoArcanaResumo.CalcularGasto(_affinities.Select(a => (a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor)))"
-                                 Maxima="_form.VocacaoArcanaMaxima"
-                                 @bind-AfinidadeAdicional="_form.AfinidadeAdicional" @bind-AfinidadeAdicional:after="NotifySavedAsync" />
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Essência Básica 1</th><th>Essência Básica 2</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
-                <tbody>
-                    @foreach (var affinity in _affinities)
-                    {
-                        <tr>
-                            <td>
-                                <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
-                                                         Nome="@affinity.Elemento" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "Elemento", v))"
-                                                         Valor="@affinity.ElementoValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "ElementoValor", v))" ValorComCondicoes="@affinity.ElementoValorComCondicoes" />
-                            </td>
-                            <td>
-                                <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(affinity.Elemento, affinity.SegundaEssencia)"
-                                                         Disabled="@string.IsNullOrEmpty(affinity.Elemento)" Clearable="true"
-                                                         Nome="@affinity.SegundaEssencia" NomeChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssencia", v))"
-                                                         Valor="@affinity.SegundaEssenciaValor" ValorChanged="@(v => UpdateAffinityAsync(affinity.Id, "SegundaEssenciaValor", v))" />
-                            </td>
-                            <td>
-                                <div class="d-flex align-center" style="gap:4px">
-                                    <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(affinity.SubElemento)</MudText>
-                                    <MudNumericField T="int?" Value="@affinity.SubElementoValor" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "SubElementoValor", v))" Margin="Margin.Dense" Style="max-width:4.5rem" />
-                                </div>
-                            </td>
-                            <td><MudNumericField T="int?" Value="@affinity.Experiencia" ValueChanged="@(v => UpdateAffinityAsync(affinity.Id, "Experiencia", v))" /></td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffinityAsync(affinity.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                    <tr>
-                        <td>
-                            <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
-                                                     Nome="@_affinityForm.Elemento" NomeChanged="OnNovaEssencia1Changed" @bind-Valor="_affinityForm.ElementoValor" />
-                        </td>
-                        <td>
-                            <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(_affinityForm.Elemento, null)"
-                                                     Disabled="@string.IsNullOrEmpty(_affinityForm.Elemento)" Clearable="true"
-                                                     Nome="@_affinityForm.SegundaEssencia" NomeChanged="OnNovaEssencia2Changed" @bind-Valor="_affinityForm.SegundaEssenciaValor" />
-                        </td>
-                        <td>
-                            <div class="d-flex align-center" style="gap:4px">
-                                <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(SubElementoDaNovaLinha())</MudText>
-                                <MudNumericField T="int?" @bind-Value="_affinityForm.SubElementoValor" Margin="Margin.Dense" Style="max-width:4.5rem" />
-                            </div>
-                        </td>
-                        <td><MudNumericField T="int?" @bind-Value="_affinityForm.Experiencia" /></td>
-                        <td><MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="AddAffinityAsync">Adicionar</MudButton></td>
-                    </tr>
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaAtributosEPericias Formulario="_form" AoMudar="NotifySavedAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
@@ -528,16 +410,13 @@
 
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Npc);
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private List<AttributeResponse> _attributes = new();
-    private AttributePointBudgetResponse? _attributeBudget;
-    private List<SkillResponse> _skills = new();
+    private List<AttributeResponse> _attributes => _estado.Atributos;
+    private List<SkillResponse> _skills => _estado.Pericias;
 
     // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
     // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
     private string PericiaLabel(string chave) =>
         _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
-    private List<AffinityResponse> _affinities = new();
-    private readonly AffinityFormModel _affinityForm = new();
     private List<WeaponResponse> _weapons = new();
     private List<ArmorSlotResponse> _armorSlots = new();
     private List<ShieldResponse> _shields = new();
@@ -560,7 +439,7 @@
     {
         _estado = new FichaEstado(Http, TipoDeFichaCliente.Npc, SheetId);
         _estado.RecarregarPontosDeIgnicao = RecarregarPontosDeIgnicaoAsync;
-        _estado.RecarregarAtributosECombate = LoadTabs2And3Async;
+        _estado.CarregarCombate = CarregarCombateAsync;
         _estado.Alterado += OnEstadoAlterado;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
@@ -616,7 +495,7 @@
     // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
     private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
     {
-        await LoadSheetAsync(); await LoadTabs2And3Async(); await _estado.CarregarMagiasAsync(); await _estado.CarregarRunasAsync(); await _estado.CarregarArtefatosAsync();
+        await LoadSheetAsync(); await _estado.CarregarAtributosECombateAsync(); await _estado.CarregarMagiasAsync(); await _estado.CarregarRunasAsync(); await _estado.CarregarArtefatosAsync();
         _penalidadesVersao++;
         StateHasChanged();
     });
@@ -646,7 +525,7 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(
-            LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
+            LoadLevelUpNoticeAsync(), _estado.CarregarAtributosECombateAsync(),
             _estado.CarregarHabilidadeRacialAsync(), _estado.CarregarVariantesLiberadasAsync(), _estado.CarregarMagiasAsync(), _estado.CarregarRunasAsync(), LoadMasteriesAsync(),
             _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(),
             LoadPendingRacialChoiceAsync());
@@ -766,7 +645,7 @@
         // one pending for the first time) — re-check so the dialog reflects that immediately.
         await LoadPendingRacialChoiceAsync();
         await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
         // Evoluções de Arca unlocked depend on Nível.
@@ -837,7 +716,7 @@
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
         // Evoluções de Arca unlocked depend on Nível.
@@ -859,7 +738,7 @@
 
         await LoadSheetAsync();
         await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
         await _estado.CarregarCaracteristicasAsync();
         // Evoluções de Arca unlocked depend on Nível.
@@ -890,14 +769,14 @@
     {
         _form.Afinidade = value;
         await SaveIgnoringResultAsync();
-        await LoadTabs2And3Async(); // A Afinidade define a Eficiência e o Dano Elemental (2.b), carregados aqui.
+        await _estado.CarregarAtributosECombateAsync(); // A Afinidade define a Eficiência e o Dano Elemental (2.b), carregados aqui.
     }
 
     private async Task UpdateCoberturaAsync(string? value)
     {
         _form.Cobertura = value ?? "Nenhuma";
         await SaveIgnoringResultAsync();
-        await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural, loaded here, not by LoadSheetAsync.
+        await _estado.CarregarAtributosECombateAsync(); // Cobertura feeds Defesa Natural, loaded here, not by LoadSheetAsync.
     }
 
     private async Task OnSinaChangedAsync(int value)
@@ -906,12 +785,9 @@
         await SaveIgnoringResultAsync();
     }
 
-    private async Task LoadTabs2And3Async()
+    /// <summary>O Combate (ainda desta página): o fim da recarga das abas 2 e 3 (<c>_estado.CarregarAtributosECombateAsync</c>).</summary>
+    private async Task CarregarCombateAsync()
     {
-        _attributes = await Http.GetFromJsonAsync<List<AttributeResponse>>($"npc-sheets/{SheetId}/attributes") ?? new();
-        _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"npc-sheets/{SheetId}/attributes/budget");
-        _skills = await Http.GetFromJsonAsync<List<SkillResponse>>($"npc-sheets/{SheetId}/skills") ?? new();
-        _affinities = await Http.GetFromJsonAsync<List<AffinityResponse>>($"npc-sheets/{SheetId}/affinities") ?? new();
         _weapons = await Http.GetFromJsonAsync<List<WeaponResponse>>($"npc-sheets/{SheetId}/weapons") ?? new();
         _armorSlots = await Http.GetFromJsonAsync<List<ArmorSlotResponse>>($"npc-sheets/{SheetId}/armor-slots") ?? new();
         _shields = await Http.GetFromJsonAsync<List<ShieldResponse>>($"npc-sheets/{SheetId}/shields") ?? new();
@@ -919,109 +795,11 @@
         _modificadorDeDano = await Http.GetFromJsonAsync<ModificadorDeDanoResponse>($"npc-sheets/{SheetId}/modificador-de-dano");
     }
 
-    private async Task UpdateAttributeAsync(string atributo, string field, object? value)
-    {
-        var current = _attributes.Single(a => a.Atributo == atributo);
-        var gasto = field == "Gasto" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Gasto) : current.Gasto;
-        var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
-        var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
-
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/attributes/{atributo}", new UpdateAttributeRequest(gasto, bonus, temMaestria));
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateSkillGastoAsync(string pericia, object? value)
-    {
-        var current = _skills.Single(s => s.Pericia == pericia);
-        var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(gasto, current.AtributoEscolhido));
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateSkillAtributoAsync(string pericia, object? value)
-    {
-        var current = _skills.Single(s => s.Pericia == pericia);
-        var atributoEscolhido = value?.ToString();
-        await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/skills/{pericia}", new UpdateSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private void OnNovaEssencia1Changed(string? elemento)
-    {
-        _affinityForm.Elemento = elemento;
-        if (!AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == _affinityForm.SegundaEssencia))
-            OnNovaEssencia2Changed(null);
-    }
-
     // Sem o nome da Essência 2, o Valor dela também é descartado.
-    private void OnNovaEssencia2Changed(string? segunda)
-    {
-        _affinityForm.SegundaEssencia = segunda;
-        if (segunda is null)
-            _affinityForm.SegundaEssenciaValor = null;
-    }
-
-    private string? SubElementoDaNovaLinha() =>
-        Enum.TryParse<Elemento>(_affinityForm.Elemento, out var e1) && Enum.TryParse<EssenciaBasica>(_affinityForm.SegundaEssencia, out var e2)
-            ? MatrizElemental.Intersecao(e1, e2)?.ToString()
-            : null;
-
-    private async Task AddAffinityAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"npc-sheets/{SheetId}/affinities",
-            new AddAffinityRequest(_affinityForm.Elemento, _affinityForm.ElementoValor, _affinityForm.SegundaEssencia, _affinityForm.SegundaEssenciaValor,
-                _affinityForm.SubElementoValor, _affinityForm.Experiencia));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a afinidade.";
-            return;
-        }
-
-        _affinityForm.Elemento = null;
-        _affinityForm.ElementoValor = null;
-        _affinityForm.SegundaEssencia = null;
-        _affinityForm.SegundaEssenciaValor = null;
-        _affinityForm.SubElementoValor = null;
-        _affinityForm.Experiencia = null;
-        await LoadTabs2And3Async();
-    }
-
-    private async Task UpdateAffinityAsync(string id, string field, object? value)
-    {
-        var current = _affinities.Single(a => a.Id == id);
-        var elemento = field == "Elemento" ? value?.ToString() : current.Elemento;
-        var elementoValor = field == "ElementoValor" ? value as int? : current.ElementoValor;
-        var segunda = field == "SegundaEssencia" ? value?.ToString() : current.SegundaEssencia;
-        var segundaValor = field == "SegundaEssenciaValor" ? value as int? : current.SegundaEssenciaValor;
-        var subElementoValor = field == "SubElementoValor" ? value as int? : current.SubElementoValor;
-        var experiencia = field == "Experiencia" ? value as int? : current.Experiencia;
-
-        if (field == "Elemento" && !AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == segunda))
-            segunda = null;
-        if (segunda is null)
-            segundaValor = null;
-
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/affinities/{id}",
-            new UpdateAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));
-        _errorMessage = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
-        await LoadTabs2And3Async();
-    }
-
-    private async Task DeleteAffinityAsync(string id)
-    {
-        await Http.DeleteAsync($"npc-sheets/{SheetId}/affinities/{id}");
-        await LoadTabs2And3Async();
-    }
-
     private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
     {
         await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
@@ -1034,14 +812,14 @@
             return;
         }
         _weaponForm.ItemId = "";
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
     private async Task DeleteWeaponAsync(string weaponId)
     {
         await Http.DeleteAsync($"npc-sheets/{SheetId}/weapons/{weaponId}");
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
@@ -1049,14 +827,14 @@
     {
         if (int.TryParse(value?.ToString(), out var durabilidade))
             await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/weapons/{weaponId}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
     }
 
     private async Task AssignArmorSlotAsync(string slot, string? itemId)
     {
         await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/armor-slots/{slot}", new UpdateArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
         _armorSlotForm[slot] = "";
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
@@ -1064,7 +842,7 @@
     {
         if (int.TryParse(value?.ToString(), out var durabilidade))
             await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/armor-slots/{slot}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
     }
 
     private async Task AddShieldAsync()
@@ -1076,21 +854,21 @@
             return;
         }
         _shieldForm.ItemId = "";
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
     private async Task EquipShieldAsync(string shieldId, bool isEquipped)
     {
         await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/shields/{shieldId}", isEquipped);
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
     private async Task DeleteShieldAsync(string shieldId)
     {
         await Http.DeleteAsync($"npc-sheets/{SheetId}/shields/{shieldId}");
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
     }
 
@@ -1098,7 +876,7 @@
     {
         if (int.TryParse(value?.ToString(), out var durabilidade))
             await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/shields/{shieldId}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
+        await _estado.CarregarAtributosECombateAsync();
     }
 
 
@@ -1147,7 +925,7 @@
     private async Task OnEquipagemChosenAsync()
     {
         await LoadSheetAsync();
-        await Task.WhenAll(LoadTabs2And3Async(), _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync());
+        await Task.WhenAll(_estado.CarregarAtributosECombateAsync(), _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync());
         _penalidadesVersao++;
     }
 
@@ -1198,16 +976,6 @@
     private class ShieldFormModel
     {
         public string ItemId { get; set; } = "";
-    }
-
-    private class AffinityFormModel
-    {
-        public string? Elemento { get; set; }
-        public int? ElementoValor { get; set; }
-        public string? SegundaEssencia { get; set; }
-        public int? SegundaEssenciaValor { get; set; }
-        public int? SubElementoValor { get; set; }
-        public int? Experiencia { get; set; }
     }
 
 }

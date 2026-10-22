@@ -1,0 +1,72 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+
+@* As Afinidades (só onde o tipo as tem): o resumo da Vocação Arcana com a Afinidade Adicional (do formulário
+   auto-salvo da página, AoMudar), a tabela com a edição na linha e a linha nova ("Adicionar"). *@
+
+<Section Title="Afinidades">
+    <VocacaoArcanaResumo Gasto="@VocacaoArcanaResumo.CalcularGasto(Estado.Afinidades.Select(a => (a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor)))"
+                         Maxima="Formulario.VocacaoArcanaMaxima"
+                         @bind-AfinidadeAdicional="Formulario.AfinidadeAdicional" @bind-AfinidadeAdicional:after="MudouAsync" />
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead><tr><th>Essência Básica 1</th><th>Essência Básica 2</th><th>Sub-Elemento</th><th>Experiência</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var affinity in Estado.Afinidades)
+            {
+                <tr>
+                    <td>
+                        <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
+                                                 Nome="@affinity.Elemento" NomeChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "Elemento", v))"
+                                                 Valor="@affinity.ElementoValor" ValorChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "ElementoValor", v))" ValorComCondicoes="@affinity.ElementoValorComCondicoes" />
+                    </td>
+                    <td>
+                        <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(affinity.Elemento, affinity.SegundaEssencia)"
+                                                 Disabled="@string.IsNullOrEmpty(affinity.Elemento)" Clearable="true"
+                                                 Nome="@affinity.SegundaEssencia" NomeChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "SegundaEssencia", v))"
+                                                 Valor="@affinity.SegundaEssenciaValor" ValorChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "SegundaEssenciaValor", v))" />
+                    </td>
+                    <td>
+                        <div class="d-flex align-center" style="gap:4px">
+                            <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(affinity.SubElemento)</MudText>
+                            <MudNumericField T="int?" Value="@affinity.SubElementoValor" ValueChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "SubElementoValor", v))" Margin="Margin.Dense" Style="max-width:4.5rem" />
+                        </div>
+                    </td>
+                    <td><MudNumericField T="int?" Value="@affinity.Experiencia" ValueChanged="@(v => Estado.AtualizarAfinidadeAsync(affinity.Id, "Experiencia", v))" /></td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverAfinidadeAsync(affinity.Id))">Remover</MudButton></td>
+                </tr>
+            }
+            <tr>
+                <td>
+                    <AfinidadeEssenciaField Label="Essência 1" Opcoes="AfinidadeEssenciaField.Elementos"
+                                             Nome="@Nova.Elemento" NomeChanged="Nova.TrocarEssencia1" @bind-Valor="Nova.ElementoValor" />
+                </td>
+                <td>
+                    <AfinidadeEssenciaField Label="Essência 2" Opcoes="AfinidadeEssenciaField.OpcoesSegundaEssencia(Nova.Elemento, null)"
+                                             Disabled="@string.IsNullOrEmpty(Nova.Elemento)" Clearable="true"
+                                             Nome="@Nova.SegundaEssencia" NomeChanged="Nova.TrocarEssencia2" @bind-Valor="Nova.SegundaEssenciaValor" />
+                </td>
+                <td>
+                    <div class="d-flex align-center" style="gap:4px">
+                        <MudText Style="min-width:7rem">@AfinidadeEssenciaField.RotuloSubElemento(Nova.SubElemento)</MudText>
+                        <MudNumericField T="int?" @bind-Value="Nova.SubElementoValor" Margin="Margin.Dense" Style="max-width:4.5rem" />
+                    </div>
+                </td>
+                <td><MudNumericField T="int?" @bind-Value="Nova.Experiencia" /></td>
+                <td><MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="Estado.AdicionarAfinidadeAsync">Adicionar</MudButton></td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>A página auto-salva a ficha (a Afinidade Adicional).</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    private AffinityFormModel Nova => Estado.FormularioDeAfinidade;
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+}

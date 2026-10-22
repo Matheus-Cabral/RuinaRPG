@@ -31,12 +31,6 @@ public sealed partial class FichaEstado
 
     public AffectionFormModel FormularioDeAfeicao { get; } = new();
 
-    /// <summary>
-    /// O Inventário (o Peso muda a Carga) e os Artefatos (mudam Atributos e Sub-Atributos) fazem a página reler as
-    /// abas 2 e 3, que ainda são dela. Toda página o liga (FichaEstadoNaPaginaTests confere).
-    /// </summary>
-    public Func<Task>? RecarregarAtributosECombate { get; set; }
-
     // ---------------- Inventário ----------------
 
     public async Task CarregarInventarioAsync() =>
@@ -73,7 +67,7 @@ public sealed partial class FichaEstado
     private async Task RecarregarInventarioEAbasAsync()
     {
         await CarregarInventarioAsync();
-        await RecarregarAtributosECombateAsync();
+        await CarregarAtributosECombateAsync();
         NotificarAlteracao();
     }
 
@@ -145,7 +139,7 @@ public sealed partial class FichaEstado
     private async Task RecarregarArtefatosEAbasAsync()
     {
         await CarregarArtefatosAsync();
-        await RecarregarAtributosECombateAsync();
+        await CarregarAtributosECombateAsync();
         PenalidadesVersao++;
         NotificarAlteracao();
     }
@@ -216,12 +210,6 @@ public sealed partial class FichaEstado
     }
 
     // ---------------- comum ----------------
-
-    private async Task RecarregarAtributosECombateAsync()
-    {
-        if (RecarregarAtributosECombate is not null)
-            await RecarregarAtributosECombate();
-    }
 
     private void MostrarErro(string erro)
     {

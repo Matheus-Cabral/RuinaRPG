@@ -135,6 +135,32 @@ public class FormularioDaFichaTests
         form.PontosDeIgnicaoBonusManual.Should().Be(2);
     }
 
+    // ---- "Aplicar" dos pontos de Acerto Crítico (Personagem) ----
+
+    [Theory]
+    [InlineData(1, 3, 4)]
+    [InlineData(1, -2, -1)]
+    public void Adding_acerto_critico_points_sums_the_signed_delta(int atual, int delta, int esperado)
+    {
+        var form = new FormularioDaFicha(TipoDeFichaCliente.Personagem) { PontosDePericiaBonusCritico = atual };
+
+        form.SomarPontosDeAcertoCritico(delta).Should().BeTrue();
+
+        form.PontosDePericiaBonusCritico.Should().Be(esperado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    public void Adding_no_acerto_critico_points_changes_nothing_and_asks_no_save(int? delta)
+    {
+        var form = new FormularioDaFicha(TipoDeFichaCliente.Personagem) { PontosDePericiaBonusCritico = 1 };
+
+        form.SomarPontosDeAcertoCritico(delta).Should().BeFalse();
+
+        form.PontosDePericiaBonusCritico.Should().Be(1);
+    }
+
     // ---- imagem ----
 
     private static readonly List<ImageSummaryResponse> Galeria = new()

@@ -51,16 +51,29 @@ public class FichaEstadoPossesTests
                 : caminho.EndsWith("/spoils") ? (HttpStatusCode.OK, Espolios)
                 : caminho.EndsWith("/artifacts") ? (HttpStatusCode.OK, Artefatos)
                 : caminho.EndsWith("/affections") ? (HttpStatusCode.OK, Afeicoes)
+                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") || caminho.EndsWith("/affinities") ? (HttpStatusCode.OK, "[]")
                 : caminho.StartsWith("items?") || caminho.StartsWith("campaigns/c1/available-items?") ? (HttpStatusCode.OK, Itens)
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
         var estado = new FichaEstado(http, Tipo(tipo), "s1") { IsGmCaller = gm, CampaignId = "c1" };
-        estado.RecarregarAtributosECombate = () => { _requisicoes.Add("ABAS 2 E 3"); return Task.CompletedTask; };
+        estado.CarregarCombate = () => { _requisicoes.Add("COMBATE"); return Task.CompletedTask; };
         return estado;
     }
 
     private static string K(string tipo) => Tipo(tipo).Url("s1");
+
+    /// <summary>A recarga das abas 2 e 3 (<see cref="FichaEstado.CarregarAtributosECombateAsync"/>): o que o tipo tem, depois o Combate.</summary>
+    private static string[] AbasDoisETres(string tipo)
+    {
+        var lista = new List<string> { $"GET {K(tipo)}/attributes", $"GET {K(tipo)}/attributes/budget", $"GET {K(tipo)}/skills" };
+        if (tipo == "Personagem")
+            lista.Add($"GET {K(tipo)}/skills/budget");
+        if (tipo != "Criatura")
+            lista.Add($"GET {K(tipo)}/affinities");
+        lista.Add("COMBATE");
+        return lista.ToArray();
+    }
 
     // ---------------- Inventário ----------------
 
@@ -88,7 +101,7 @@ public class FichaEstadoPossesTests
 
         await estado.AdicionarItemAoInventarioAsync();
 
-        _requisicoes.Should().Equal($"POST {K(tipo)}/inventory {{\"itemId\":\"i7\",\"qtd\":3}}", $"GET {K(tipo)}/inventory", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"POST {K(tipo)}/inventory {{\"itemId\":\"i7\",\"qtd\":3}}", $"GET {K(tipo)}/inventory" }.Concat(AbasDoisETres(tipo)));
         estado.FormularioDeInventario.ItemId.Should().BeEmpty();
         estado.FormularioDeInventario.Qtd.Should().Be(1);
         notificacoes.Should().BeGreaterThan(0);
@@ -119,7 +132,7 @@ public class FichaEstadoPossesTests
 
         await estado.AtualizarQtdDoItemAsync("inv1", 5);
 
-        _requisicoes.Should().Equal($"PUT {K(tipo)}/inventory/inv1/qtd 5", $"GET {K(tipo)}/inventory", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/inventory/inv1/qtd 5", $"GET {K(tipo)}/inventory" }.Concat(AbasDoisETres(tipo)));
     }
 
     [Fact]
@@ -129,7 +142,7 @@ public class FichaEstadoPossesTests
 
         await estado.AtualizarQtdDoItemAsync("inv1", null);
 
-        _requisicoes.Should().Equal($"GET {K("Personagem")}/inventory", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"GET {K("Personagem")}/inventory" }.Concat(AbasDoisETres("Personagem")));
     }
 
     [Theory]
@@ -140,7 +153,7 @@ public class FichaEstadoPossesTests
 
         await estado.RemoverItemDoInventarioAsync("inv1");
 
-        _requisicoes.Should().Equal($"DELETE {K(tipo)}/inventory/inv1", $"GET {K(tipo)}/inventory", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"DELETE {K(tipo)}/inventory/inv1", $"GET {K(tipo)}/inventory" }.Concat(AbasDoisETres(tipo)));
     }
 
     // ---------------- Espólios ----------------
@@ -235,7 +248,7 @@ public class FichaEstadoPossesTests
 
         await estado.AdicionarArtefatoAsync();
 
-        _requisicoes.Should().Equal($"POST {K(tipo)}/artifacts {{\"artifactItemId\":\"i4b\"}}", $"GET {K(tipo)}/artifacts", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"POST {K(tipo)}/artifacts {{\"artifactItemId\":\"i4b\"}}", $"GET {K(tipo)}/artifacts" }.Concat(AbasDoisETres(tipo)));
         estado.FormularioDeArtefato.ArtifactItemId.Should().BeEmpty();
         estado.PenalidadesVersao.Should().Be(1);
         notificacoes.Should().BeGreaterThan(0);
@@ -264,7 +277,7 @@ public class FichaEstadoPossesTests
 
         await estado.RemoverArtefatoAsync("art1");
 
-        _requisicoes.Should().Equal($"DELETE {K(tipo)}/artifacts/art1", $"GET {K(tipo)}/artifacts", "ABAS 2 E 3");
+        _requisicoes.Should().Equal(new[] { $"DELETE {K(tipo)}/artifacts/art1", $"GET {K(tipo)}/artifacts" }.Concat(AbasDoisETres(tipo)));
         estado.PenalidadesVersao.Should().Be(1);
     }
 
