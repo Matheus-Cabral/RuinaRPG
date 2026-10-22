@@ -1,0 +1,37 @@
+@using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
+
+@* A Habilidade Racial (só nos tipos com Linhagem, TipoDeFichaCliente.TemLinhagemEVocacao), no topo da aba Magias &
+   Habilidades. O Humano rola a Arca: o número vive no formulário auto-salvo da página, que salva e relê. *@
+
+<Section Title="Habilidade Racial">
+    <MudText>@(Habilidade?.Nome ?? "—")</MudText>
+    <MudText>@(Habilidade?.Descricao ?? "—")</MudText>
+    @if (Humano)
+    {
+        <MudNumericField T="int?" Value="@ArcaRolada" ValueChanged="@(v => ArcaRoladaChanged.InvokeAsync(v))" Label="@($"Número rolado (1d{ArcaDado})")" Min="1" Max="@ArcaDado" Style="width:12em;" Class="mt-2" />
+        @if (Habilidade?.ArcaRolada is not null)
+        {
+            <MudText Class="mt-1">@(Habilidade.ArcaForaDaTabela ? $"Arca fora da tabela (o dado atual é D{Habilidade.ArcaDado}). Role de novo." : Habilidade.ArcaNome ?? "Arca não cadastrada.")</MudText>
+            @if (Habilidade.ArcaDescricao is not null)
+            {
+                <MudText>@Habilidade.ArcaDescricao</MudText>
+            }
+            <ArcaEvolucoesButton Evolucoes="@Habilidade.ArcaEvolucoes" />
+        }
+    }
+</Section>
+
+@code {
+    [Parameter] public RacialAbilityResponse? Habilidade { get; set; }
+
+    /// <summary>A Linhagem da ficha é Humano: só ele rola a Arca.</summary>
+    [Parameter] public bool Humano { get; set; }
+
+    [Parameter] public int? ArcaRolada { get; set; }
+
+    [Parameter] public EventCallback<int?> ArcaRoladaChanged { get; set; }
+
+    // Dado da Tabela de Arcas do GM (vem da habilidade racial); D20 até carregar.
+    private int ArcaDado => Habilidade?.ArcaDado ?? 20;
+}

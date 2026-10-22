@@ -488,61 +488,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
-        <Section Title="Magias e Habilidades">
-            <EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
-                <MudSelect T="string" @bind-Value="_spellAbilityForm.Origem" Label="Origem">
-                    <MudSelectItem Value="@("Zero")">Montar do zero</MudSelectItem>
-                    <MudSelectItem Value="@("Banco")">Escolher do Banco de Magias</MudSelectItem>
-                </MudSelect>
-
-                @if (_spellAbilityForm.Origem == "Banco")
-                {
-                    <MudSelect T="string" @bind-Value="_spellAbilityForm.SourceBankEntryId" Label="Entrada do Banco">
-                        <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
-                        @foreach (var entry in _bankEntries.Where(e => e.Tipo != "Passiva"))
-                        {
-                            <MudSelectItem Value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-                else
-                {
-                    <MudTextField T="string" @bind-Value="_spellAbilityForm.Nome" Label="Nome" />
-                    <MudSelect T="string" @bind-Value="_spellAbilityForm.Tipo" Label="Tipo">
-                        <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
-                        <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
-                        <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
-                    </MudSelect>
-                    <MudNumericField T="int" @bind-Value="_spellAbilityForm.Grau" Label="Grau" />
-                    <MudTextField T="string" @bind-Value="_spellAbilityForm.Descricao" Label="Descrição" Lines="3" />
-
-                    <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
-                    <AddEfeitoForm Grau="_spellAbilityForm.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionado" />
-                    <EfeitosTable Efeitos="_spellAbilityForm.Efeitos" Grau="_spellAbilityForm.Grau" />
-                }
-
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Magia/Habilidade</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var spellAbility in _spellAbilities.Where(s => s.Tipo != "Passiva"))
-                    {
-                        <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade))) <DesabilitadoChip Condicao="@spellAbility.DesabilitadoPor" /></td>
-                            <td>
-                                @if (spellAbility.CriadaNaFicha && spellAbility.Tipo is "Magia" or "Habilidade")
-                                {
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" Class="mr-1" OnClick="@(() => EditSpellAbilityAsync(spellAbility))">Editar</MudButton>
-                                }
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" Versao="_condicoesVersao" />
+        <AbaMagiasEHabilidades />
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
@@ -669,9 +615,6 @@
     private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
     private SubAttributesResponse? _subAttributes;
     private ModificadorDeDanoResponse? _modificadorDeDano;
-    private List<SpellAbilityResponse> _spellAbilities = new();
-    private List<SpellAbilityEntryResponse> _bankEntries = new();
-    private readonly SpellAbilityFormModel _spellAbilityForm = new();
     private List<MasteryResponse> _masteries = new();
     private readonly MasteryFormModel _masteryForm = new();
     private List<CreatureSpoilResponse> _spoils = new();
@@ -739,6 +682,7 @@
     protected override void OnInitialized()
     {
         _estado = new FichaEstado(Http, TipoDeFichaCliente.Criatura, SheetId);
+        _estado.RecarregarPontosDeIgnicao = RecarregarPontosDeIgnicaoAsync;
         _estado.Alterado += OnEstadoAlterado;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
@@ -794,7 +738,7 @@
     // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
     private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
     {
-        await LoadSheetAsync(); await LoadTabs2And3Async(); await LoadSpellAbilitiesAsync(); await LoadArtifactsAsync();
+        await LoadSheetAsync(); await LoadTabs2And3Async(); await _estado.CarregarMagiasAsync(); await LoadArtifactsAsync();
         _penalidadesVersao++;
         StateHasChanged();
     });
@@ -826,7 +770,7 @@
 
         await Task.WhenAll(
             LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
-            LoadSpellAbilitiesAsync(), LoadMasteriesAsync(),
+            _estado.CarregarMagiasAsync(), LoadMasteriesAsync(),
             LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
     }
 
@@ -1200,67 +1144,6 @@
         _penalidadesVersao++;
     }
 
-    private async Task LoadSpellAbilitiesAsync()
-    {
-        _spellAbilities = await Http.GetFromJsonAsync<List<SpellAbilityResponse>>($"creature-sheets/{SheetId}/spell-abilities") ?? new();
-        var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
-        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
-    }
-
-    private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
-        _spellAbilityForm.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
-
-    private void OnEfeitoAdicionado(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados) =>
-        _spellAbilityForm.Efeitos.AddRange(resultados.Select(r => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(r.EfeitoNome, r.Quantidade, r.CustoPI)));
-
-    private async Task AddSpellAbilityAsync()
-    {
-        var request = _spellAbilityForm.Origem == "Banco"
-            ? new AddSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
-            : new AddSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
-                _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
-
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spell-abilities", request);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a magia/habilidade.";
-            return;
-        }
-
-        _spellAbilityForm.SourceBankEntryId = "";
-        _spellAbilityForm.Nome = "";
-        _spellAbilityForm.Tipo = "Magia";
-        _spellAbilityForm.Grau = 0;
-        _spellAbilityForm.Descricao = "";
-        _spellAbilityForm.Efeitos.Clear();
-        await LoadSpellAbilitiesAsync();
-        await RecarregarPontosDeIgnicaoAsync();
-    }
-
-    private async Task DeleteSpellAbilityAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/spell-abilities/{id}");
-        await LoadSpellAbilitiesAsync();
-        await RecarregarPontosDeIgnicaoAsync();
-    }
-
-    private async Task EditSpellAbilityAsync(SpellAbilityResponse entrada)
-    {
-        var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
-            new DialogParameters<EditarMagiaHabilidadeDialog>
-            {
-                { x => x.SaveUrl, $"creature-sheets/{SheetId}/spell-abilities/{entrada.Id}" },
-                { x => x.Nome, entrada.Nome }, { x => x.Tipo, entrada.Tipo }, { x => x.Grau, entrada.Grau },
-                { x => x.Descricao, entrada.Descricao }, { x => x.Efeitos, entrada.Efeitos },
-            },
-            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
-        if ((await dialog.Result) is { Canceled: false })
-        {
-            await LoadSpellAbilitiesAsync();
-            await RecarregarPontosDeIgnicaoAsync();
-        }
-    }
-
     /// <summary>
     /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b), e é ela quem
     /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
@@ -1463,17 +1346,6 @@
     private class ShieldFormModel
     {
         public string ItemId { get; set; } = "";
-    }
-
-    private class SpellAbilityFormModel
-    {
-        public string Origem { get; set; } = "Zero";
-        public string SourceBankEntryId { get; set; } = "";
-        public string Nome { get; set; } = "";
-        public string Tipo { get; set; } = "Magia";
-        public int Grau { get; set; }
-        public string Descricao { get; set; } = "";
-        public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
     }
 
     private class MasteryFormModel
