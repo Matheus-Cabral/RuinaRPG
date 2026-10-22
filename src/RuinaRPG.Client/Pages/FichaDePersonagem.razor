@@ -628,22 +628,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Antecedentes">
-        <Section Title="Estrela e Histórico">
-            <EstrelaSelect @bind-Value="_form.Estrela" @bind-Value:after="NotifySavedAsync" />
-            <HistoricoSelect @bind-Value="_form.HistoricoId" @bind-Value:after="NotifySavedAsync" />
-        </Section>
-        <Section>
-            @if (_historiaLoaded)
-            {
-                <HistoriaEditor SaveUrl="@($"character-sheets/{SheetId}/historia")" @bind-Html="_form.Historia" OnError="@(e => _errorMessage = e)"
-                                AvailableImages="_myImages" CampaignId="@(_isGmCaller ? null : _campaignId)" />
-            }
-            else
-            {
-                @* The editor reads Html only once, when created — wait for the sheet so it never starts empty. *@
-                <MudProgressCircular Indeterminate="true" Size="Size.Small" /> <span>Carregando…</span>
-            }
-        </Section>
+        <AbaAntecedentes @bind-Estrela="_form.Estrela" @bind-Estrela:after="NotifySavedAsync" @bind-HistoricoId="_form.HistoricoId" @bind-HistoricoId:after="NotifySavedAsync" @bind-Historia="_form.Historia" />
     </MudTabPanel>
 
     <MudTabPanel Text="Diário">
@@ -718,6 +703,7 @@
     private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
     private SubAttributesResponse? _subAttributes { get => _estado.SubAtributos; set => _estado.SubAtributos = value; }
+    private bool _historiaLoaded { get => _estado.HistoriaCarregada; set => _estado.HistoriaCarregada = value; }
 
     private string? _campaignName;
 
@@ -741,9 +727,6 @@
     private int? _piDelta;
     private int? _periciaCriticoDelta;
     private List<string> _levelUpBonuses = new();
-    // Aba Antecedentes: _form.Historia comes from the API only on the first load — later reloads (after
-    // any other field's autosave) must not overwrite what HistoriaEditor is holding.
-    private bool _historiaLoaded;
     private bool _imageExpanded;
     private bool _imageEditing;
     private bool _imageGalleryOpen;

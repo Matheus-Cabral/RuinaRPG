@@ -1,0 +1,39 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+
+@* A aba Antecedentes das fichas que a têm (Personagem e NPC; a Criatura não tem a aba). Estrela, Histórico e o texto da
+   História vêm do formulário auto-salvo da página: os retornos são os dela, então ela re-renderiza e salva como antes.
+   A História grava sozinha, no endpoint dela (HistoriaEditor); um erro do editor vai ao alerta da página. *@
+
+@if (Estado.Tipo.TemAntecedentes)
+{
+    <Section Title="Estrela e Histórico">
+        <EstrelaSelect Value="@Estrela" ValueChanged="EstrelaChanged" />
+        <HistoricoSelect Value="@HistoricoId" ValueChanged="HistoricoIdChanged" />
+    </Section>
+    <Section>
+        @if (Estado.HistoriaCarregada)
+        {
+            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" Html="@Historia" HtmlChanged="HistoriaChanged" OnError="@Estado.MostrarErroDaHistoria"
+                            AvailableImages="Estado.MinhasImagens" CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" />
+        }
+        else
+        {
+            @* The editor reads Html only once, when created — wait for the sheet so it never starts empty. *@
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" /> <span>Carregando…</span>
+        }
+    </Section>
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = null!;
+
+    [Parameter] public string? Estrela { get; set; }
+    [Parameter] public EventCallback<string?> EstrelaChanged { get; set; }
+
+    [Parameter] public string? HistoricoId { get; set; }
+    [Parameter] public EventCallback<string?> HistoricoIdChanged { get; set; }
+
+    [Parameter] public string? Historia { get; set; }
+    [Parameter] public EventCallback<string?> HistoriaChanged { get; set; }
+}

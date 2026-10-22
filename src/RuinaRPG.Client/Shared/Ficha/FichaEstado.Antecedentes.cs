@@ -1,0 +1,26 @@
+namespace RuinaRPG.Client.Shared.Ficha;
+
+/// <summary>
+/// A aba Antecedentes (onde o tipo tem Antecedentes). Estrela, Histórico e o texto da História moram no formulário
+/// auto-salvo da página, que os passa à aba como parâmetros; a História tem endpoint e autosave próprios
+/// (<c>HistoriaEditor</c>), então esta parte não faz requisições.
+/// </summary>
+public sealed partial class FichaEstado
+{
+    /// <summary>
+    /// A História já veio da ficha. Ela só é lida na primeira carga: as recargas seguintes (depois do autosave de
+    /// qualquer outro campo) não podem passar por cima do que o editor está segurando, e o editor só lê o HTML ao ser
+    /// criado, então a aba espera esta marca para criá-lo.
+    /// </summary>
+    public bool HistoriaCarregada { get; set; }
+
+    /// <summary>O endpoint da História (<c>PUT …/historia</c>; a galeria fica em <c>…/historia/imagens</c>).</summary>
+    public string UrlDaHistoria => Tipo.Url(SheetId, "historia");
+
+    /// <summary>Um erro do editor da História (texto, galeria, envio de imagem) no alerta da página.</summary>
+    public void MostrarErroDaHistoria(string erro)
+    {
+        Erro = erro;
+        NotificarAlteracao();
+    }
+}

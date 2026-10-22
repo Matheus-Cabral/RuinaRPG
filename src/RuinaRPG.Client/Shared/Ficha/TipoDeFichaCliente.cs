@@ -70,14 +70,8 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>Os Espólios (em Posses, no lugar do Inventário).</summary>
     public required bool TemEspolios { get; init; }
 
-    /// <summary>A aba Antecedentes.</summary>
+    /// <summary>A aba Antecedentes (Estrela, Histórico e História; igual em todo tipo que a tem).</summary>
     public required bool TemAntecedentes { get; init; }
-
-    /// <summary>
-    /// Antecedentes com Estrela, Histórico e História. Hoje Personagem e NPC mostram a mesma aba completa (o
-    /// inventário as achou idênticas), então coincide com <see cref="TemAntecedentes"/>.
-    /// </summary>
-    public required bool AntecedentesCompletos { get; init; }
 
     /// <summary>A aba Diário.</summary>
     public required bool TemDiario { get; init; }
@@ -111,7 +105,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemInventario = true,
         TemEspolios = false,
         TemAntecedentes = true,
-        AntecedentesCompletos = true,
         TemDiario = true,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
@@ -139,7 +132,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemInventario = true,
         TemEspolios = false,
         TemAntecedentes = true,
-        AntecedentesCompletos = true,
         TemDiario = false,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
@@ -167,7 +159,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemInventario = false,
         TemEspolios = true,
         TemAntecedentes = false,
-        AntecedentesCompletos = false,
         TemDiario = false,
         UrlDeBuscaDeCaracteristicas = "creature-exclusive-traits",
     };

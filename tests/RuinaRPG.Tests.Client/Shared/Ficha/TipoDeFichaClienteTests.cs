@@ -46,7 +46,6 @@ public class TipoDeFichaClienteTests
     [Theory]
     [InlineData(nameof(TipoDeFichaCliente.TemDiario), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemAntecedentes), true, true, false)]
-    [InlineData(nameof(TipoDeFichaCliente.AntecedentesCompletos), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.EditaNivelAManual), false, true, true)]
     [InlineData(nameof(TipoDeFichaCliente.TemOrcamentoDePericias), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemEspolios), false, false, true)]
