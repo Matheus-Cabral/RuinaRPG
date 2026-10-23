@@ -23,6 +23,20 @@ each item gets its own brainstorm → spec → plan after 2.0.0 ships (H done).
    The Estrela picker doesn't catch a bad `/api/rulebook` reply, so the tab breaks instead of showing an
    error. Not seen in normal use. User decided to fix it in 2.1.0.
 
+7. **PI edit lost after a quick Nome edit** (found in E, 2026-10-23; pre-existing). Editing Nome and then
+   Pontos de Ignição within the 400 ms auto-save window: the general save's reload (`LoadSheetAsync`)
+   overwrites the form's PI before the pending PI save runs, so the PI edit is silently lost. Data loss;
+   user decided to fix it in 2.1.0. Related to the 1.5.0 parked residual of `AutoSaveCoordinator` keeping
+   one pending save.
+8. **A refused skill-attribute change shows no message** (found in E, 2026-10-23; pre-existing). Changing
+   a Perícia's attribute ignores a server refusal on all three sheet kinds
+   (`FichaEstado.Atributos.cs`, kept on purpose in E). User decided to fix it in 2.1.0 (show the server's
+   message like the other edits).
+
+Also suggested by E's final review for 2.1.0 (not requested by the user; offer in the brainstorm): a common
+page base for the sheet pages' remaining duplicated coordination code, and one dedicated "wire shape" fact
+in `TipoDeFichaCliente` instead of reusing UI capability flags to pick Creature records.
+
 ## Questions to settle in the brainstorm (not answered yet)
 
 - Cemitério: who sees the sheet there (owner, campaign, GM only)? Can the GM bring it back? Does it
