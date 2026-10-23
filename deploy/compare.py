@@ -57,7 +57,8 @@ def allowed(allow, table, change, cols):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("a"); ap.add_argument("b"); ap.add_argument("allowlist")
-    ap.add_argument("--markdown")
+    ap.add_argument("--markdown", help="relatório público (só contagens e nomes de colunas); também vai para a saída padrão")
+    ap.add_argument("--full", help="relatório completo (com até SAMPLE pks por tabela); nunca publicar")
     args = ap.parse_args()
 
     try:
@@ -99,29 +100,36 @@ def main():
         for k, n in missing.items():
             found[t]["lost"].extend(["(sem pk)"] * n)
 
-    lines, count = [], 0
+    lines, public, count = [], [], 0
     for t in sorted(found):
         lost, alt = found[t]["lost"], found[t]["altered"]
-        sec = []
+        sec, pub = [], []
         if lost and not allowed(allow, t, "lost", []) :
             count += len(lost)
             sec.append(f"- lost: {len(lost)} linha(s) (pk: {', '.join(lost[:SAMPLE])})")
+            pub.append(f"- lost: {len(lost)} linha(s)")
         un = [(pk, d) for pk, d in alt if not allowed(allow, t, "altered", d)]
         if un:
             count += len(un)
             cols = sorted({c for _, d in un for c in d})
             sec.append(f"- altered: {len(un)} linha(s), colunas: {', '.join(cols)} (pk: {', '.join(pk for pk, _ in un[:SAMPLE])})")
+            pub.append(f"- altered: {len(un)} linha(s), colunas: {', '.join(cols)}")
         if sec:
             lines.append(f"### {t}")
             lines += sec
+            public.append(f"### {t}")
+            public += pub
 
     head = ["## Comparação de dados (clone)",
             "Resultado: OK" if count == 0 else f"Resultado: FALHOU — {count} achado(s) não previsto(s) em deploy/data-changes.yml"]
     report = "\n".join(head + lines) + "\n"
-    sys.stdout.write(report)
-    if args.markdown:
-        with open(args.markdown, "w", encoding="utf-8") as f:
-            f.write(report)
+    # Standard output feeds logs that are uploaded to GitHub: it carries the public report only.
+    public_report = "\n".join(head + public) + "\n"
+    sys.stdout.write(public_report)
+    for path, text in ((args.markdown, public_report), (args.full, report)):
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
     return 0 if count == 0 else 1
 
 

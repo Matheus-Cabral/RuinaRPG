@@ -101,3 +101,34 @@ class CompareTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PublicReportTests(unittest.TestCase):
+    def _run(self):
+        a = [row("Users", str(1000 + i), Name="a", Age="3") for i in range(30)] + \
+            [row("Posts", "777", Title="t")]
+        b = [row("Posts", "777", Title="novo")]
+        d = tempfile.mkdtemp()
+        pa, pb, pl, pub, full = (os.path.join(d, n) for n in ("a", "b", "l", "pub.md", "full.md"))
+        write(pa, a); write(pb, b); open(pl, "w").write("changes: []\n")
+        p = subprocess.run([sys.executable, COMPARE, pa, pb, pl, "--markdown", pub, "--full", full],
+                           capture_output=True, text=True)
+        return p, open(pub).read(), open(full).read()
+
+    def test_public_report_has_counts_only(self):
+        p, pub, _ = self._run()
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("lost: 30 linha(s)", pub)
+        self.assertIn("altered: 1 linha(s), colunas: Title", pub)
+        for text in (pub, p.stdout):
+            self.assertNotIn("pk:", text)
+            self.assertNotIn("777", text)
+            self.assertNotIn("1000", text)
+            self.assertNotIn("1029", text)
+
+    def test_full_report_keeps_samples(self):
+        _, _, full = self._run()
+        self.assertIn("1000", full)
+        self.assertIn("1019", full)
+        self.assertNotIn("1020", full)
+        self.assertIn("777", full)

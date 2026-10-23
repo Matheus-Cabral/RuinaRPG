@@ -15,7 +15,7 @@
 # deployed by deploy.sh. Then the worktree starts at the head, fingerprint A is taken from the restored
 # dump itself, the base deploy and the compat check are skipped, and compat is forced to `janela`.
 #
-# Writes into <workdir>: report.md (Markdown for the PR comment), compat (`ok` or `janela`), logs/<step>.log.
+# Writes into <workdir>: report.md (Markdown for the PR comment, counts only), report-full.md (same with sampled pks: stays on this VM), compat (`ok` or `janela`), logs/<step>.log.
 # Exit: 0 ok; 1 validation failure (head deploy/smoke failed, data findings); 2 infrastructure error.
 #
 # Configuration (environment):
@@ -180,7 +180,7 @@ do_fingerprint() {
 # The allowlist is the head's: the worktree is at the head now.
 do_compare() {
   python3 "$here/compare.py" "$WD/fingerprint-a.jsonl" "$WD/fingerprint-b.jsonl" \
-    "$WD/repo/deploy/data-changes.yml" --markdown "$WD/compare.md"
+    "$WD/repo/deploy/data-changes.yml" --markdown "$WD/compare.md" --full "$WD/compare-full.md"
 }
 
 wait_api() {
@@ -291,9 +291,12 @@ on_exit() {
     (( RC == 1 )) && why="validação"
     note "**Resultado: FALHOU — ${FAILED_STEP:-interrompido} ($why)**"
   fi
+  # report-full.md (pks sampled) stays on this VM; report.md (counts only) is what goes to GitHub.
+  cp "$REPORT" "$WD/report-full.md"
   if [[ -s "$WD/compare.md" ]]; then
     note ""
     cat "$WD/compare.md" >> "$REPORT"
+    { echo; cat "$WD/compare-full.md" 2>/dev/null || cat "$WD/compare.md"; } >> "$WD/report-full.md"
   fi
   exit "$RC"
 }
@@ -312,7 +315,7 @@ cmd_run() {
   WD="$(cd "$WD" && pwd)"
   REPORT="$WD/report.md"
   [[ ! -e "$WD/repo" ]] || fatal "$WD/repo já existe: use um diretório de trabalho novo"
-  rm -f "$WD/compat" "$WD/compare.md"
+  rm -f "$WD/compat" "$WD/compare.md" "$WD/compare-full.md" "$WD/report-full.md"
   export_clone_env
 
   # One clone per project at a time: the project name and the port are shared by every run.

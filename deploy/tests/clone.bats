@@ -139,6 +139,12 @@ teardown_file() {
   grep -q "lost" "$wd/report.md"
   grep -q "AspNetUsers" "$wd/report.md"
   grep -q "Resultado: FALHOU" "$wd/report.md"
+  # The public report carries counts only; the full one (VM-only) has the pks.
+  ! grep -q "pk:" "$wd/report.md"
+  grep -q "pk:" "$wd/report-full.md"
+  pk="$(grep -o 'pk: [^)]*' "$wd/report-full.md" | head -1 | sed 's/^pk: //; s/,.*//')"
+  [ -n "$pk" ]
+  ! grep -qF "$pk" "$wd/report.md" "$wd"/logs/compare.log
   # The head deploy itself ran the head commit.
   grep -q "sha=$BROKEN_SHA" "$wd/logs/head.log"
   [ -z "$(leftovers)" ]
