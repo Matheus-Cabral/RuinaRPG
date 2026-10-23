@@ -1,5 +1,6 @@
 using Bunit;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
@@ -67,7 +68,7 @@ public class FichaCondicoesTests : MudBunitContext
         Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider(_papel));
     }
 
-    private static async Task GoToTabAsync<T>(IRenderedComponent<T> cut, string tab) where T : Microsoft.AspNetCore.Components.IComponent
+    private static async Task GoToTabAsync<T>(IRenderedComponent<T> cut, string tab) where T : IComponent
     {
         var header = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == tab);
         await cut.InvokeAsync(() => header.Click());
@@ -78,6 +79,18 @@ public class FichaCondicoesTests : MudBunitContext
         // MainLayout is what opens the notification connection in the app; here the test plays that part.
         await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
         var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
+        await Task.Delay(100);
+        return cut;
+    }
+
+    private async Task<IRenderedComponent<ComponentBase>> RenderPaginaAsync(Type pagina)
+    {
+        IRenderedComponent<ComponentBase> cut = pagina switch
+        {
+            _ when pagina == typeof(FichaDePersonagem) => Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1")),
+            _ when pagina == typeof(FichaDeNpc) => Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1")),
+            _ => Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1")),
+        };
         await Task.Delay(100);
         return cut;
     }
@@ -109,37 +122,19 @@ public class FichaCondicoesTests : MudBunitContext
         cut.Markup.Should().NotContain("Condições ativas");
     }
 
-    [Fact]
-    public async Task A_granted_Npc_shows_the_alert_but_a_GM_owned_one_does_not_even_ask()
+    [Theory]
+    [InlineData(typeof(FichaDeNpc), "npc-sheets")]
+    [InlineData(typeof(FichaDeCriatura), "creature-sheets")]
+    public async Task A_granted_sheet_shows_the_alert_but_a_GM_owned_one_does_not_even_ask(Type pagina, string rota)
     {
         _ativas = new() { Atordoado };
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("npc-sheets/sheet-1") ? Json(new { OwnerId = "u1" }) : null);
-        var granted = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
+        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith($"{rota}/sheet-1") ? Json(new { OwnerId = "u1" }) : null);
+        var granted = await RenderPaginaAsync(pagina);
         granted.WaitForAssertion(() => granted.Markup.Should().Contain("Condições ativas"));
 
         _requests.Clear();
         _overrides = _ => null;
-        var gmOwned = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-
-        gmOwned.Markup.Should().NotContain("Condições ativas");
-        _requests.Should().NotContain(r => r.EndsWith("/condicoes-ativas"));
-    }
-
-    [Fact]
-    public async Task A_granted_Criatura_shows_the_alert_but_a_GM_owned_one_does_not_even_ask()
-    {
-        _ativas = new() { Atordoado };
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("creature-sheets/sheet-1") ? Json(new { OwnerId = "u1" }) : null);
-        var granted = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        granted.WaitForAssertion(() => granted.Markup.Should().Contain("Condições ativas"));
-
-        _requests.Clear();
-        _overrides = _ => null;
-        var gmOwned = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
+        var gmOwned = await RenderPaginaAsync(pagina);
 
         gmOwned.Markup.Should().NotContain("Condições ativas");
         _requests.Should().NotContain(r => r.EndsWith("/condicoes-ativas"));
@@ -147,8 +142,11 @@ public class FichaCondicoesTests : MudBunitContext
 
     // ---- chips de "Desabilitado por" ----
 
-    [Fact]
-    public async Task A_disabled_weapon_row_shows_the_chip_and_an_enabled_one_does_not()
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem))]
+    [InlineData(typeof(FichaDeNpc))]
+    [InlineData(typeof(FichaDeCriatura))]
+    public async Task A_disabled_weapon_row_shows_the_chip_and_an_enabled_one_does_not(Type pagina)
     {
         Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/weapons")
             ? Json(new object[]
@@ -157,7 +155,8 @@ public class FichaCondicoesTests : MudBunitContext
                 new { Id = "w2", ItemId = "i2", Nome = "Adaga", Dados = "1d4" },
             })
             : null);
-        var cut = await RenderPersonagemAsync();
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        var cut = await RenderPaginaAsync(pagina);
         await GoToTabAsync(cut, "Combate");
 
         var linhas = cut.FindAll("tr").Where(t => t.TextContent.Contains("Espada Longa") || t.TextContent.Contains("Adaga")).ToList();
@@ -217,24 +216,6 @@ public class FichaCondicoesTests : MudBunitContext
 
         await GoToTabAsync(cut, "Posses");
         cut.FindAll("tr").Single(t => t.TextContent.Contains("Amuleto")).TextContent.Should().Contain("Desabilitado por: Silenciado");
-    }
-
-    [Fact]
-    public async Task Npc_and_Criatura_weapon_rows_show_the_chip()
-    {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/weapons")
-            ? Json(new object[] { new { Id = "w1", ItemId = "i1", Nome = "Espada Longa", Dados = "1d8", DesabilitadoPor = "Atordoado" } })
-            : null);
-
-        var npc = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToTabAsync(npc, "Combate");
-        npc.FindAll("tr").Single(t => t.TextContent.Contains("Espada Longa")).TextContent.Should().Contain("Desabilitado por: Atordoado");
-
-        var criatura = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToTabAsync(criatura, "Combate");
-        criatura.FindAll("tr").Single(t => t.TextContent.Contains("Espada Longa")).TextContent.Should().Contain("Desabilitado por: Atordoado");
     }
 
     // ---- afinidade e dano elemental ----

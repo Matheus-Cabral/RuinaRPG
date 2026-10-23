@@ -83,11 +83,15 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
 
     private static int Campo(string corpo, string nome) => JsonDocument.Parse(corpo).RootElement.GetProperty(nome).GetInt32();
 
+    /// <summary>O campo, ou null quando o corpo não o tem (a Criatura não tem Estresse).</summary>
+    private static int? CampoOpcional(string corpo, string nome) =>
+        JsonDocument.Parse(corpo).RootElement.TryGetProperty(nome, out var valor) && valor.ValueKind != JsonValueKind.Null ? valor.GetInt32() : null;
+
     [Theory]
-    [InlineData(typeof(FichaDePersonagem), "character", true)]
-    [InlineData(typeof(FichaDeNpc), "npc", true)]
-    [InlineData(typeof(FichaDeCriatura), "creature", false)]
-    public async Task The_save_sends_the_loaded_values_and_a_reload_refreshes_them(Type pagina, string kind, bool temEstresse)
+    [InlineData(typeof(FichaDePersonagem), "character", 3, 2)]
+    [InlineData(typeof(FichaDeNpc), "npc", 3, 2)]
+    [InlineData(typeof(FichaDeCriatura), "creature", null, null)]
+    public async Task The_save_sends_the_loaded_values_and_a_reload_refreshes_them(Type pagina, string kind, int? estresseCarregado, int? estresseRecarregado)
     {
         _ficha = Ficha(12, 9, 6, 3);
         Prepare();
@@ -102,8 +106,7 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
         var primeiro = _corpos[0];
         (Campo(primeiro, "vitalidadeAtual"), Campo(primeiro, "vitalidadeAtualCarregada")).Should().Be((20, 12));
         (Campo(primeiro, "focoAtualCarregado"), Campo(primeiro, "adrenalinaAtualCarregada")).Should().Be((9, 6));
-        if (temEstresse)
-            Campo(primeiro, "estresseAtualCarregado").Should().Be(3);
+        CampoOpcional(primeiro, "estresseAtualCarregado").Should().Be(estresseCarregado);
 
         // O servidor mudou os Atuais (ex.: um ajuste "a cada vez") e avisou: a ficha se relê.
         _ficha = Ficha(7, 8, 5, 2);
@@ -116,7 +119,6 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
         (Campo(segundo, "vitalidadeAtual"), Campo(segundo, "vitalidadeAtualCarregada")).Should().Be((4, 7));
         (Campo(segundo, "focoAtual"), Campo(segundo, "focoAtualCarregado")).Should().Be((8, 8));
         Campo(segundo, "adrenalinaAtualCarregada").Should().Be(5);
-        if (temEstresse)
-            Campo(segundo, "estresseAtualCarregado").Should().Be(2);
+        CampoOpcional(segundo, "estresseAtualCarregado").Should().Be(estresseRecarregado);
     }
 }
