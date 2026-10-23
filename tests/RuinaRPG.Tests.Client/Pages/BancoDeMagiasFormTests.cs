@@ -12,6 +12,7 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Pages;
 
+[Collection("Tempo real")]
 public class BancoDeMagiasFormTests : MudBunitContext
 {
     // Info popups' inline <MudDialog> only renders its content through a MudDialogProvider present

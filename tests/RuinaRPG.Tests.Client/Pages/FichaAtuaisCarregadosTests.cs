@@ -21,6 +21,7 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// O salvamento do formulário inteiro leva, ao lado de cada Atual, o valor com que a ficha foi carregada: o servidor só
 /// grava o Atual que o jogador editou (ele também escreve esses valores). O carregado acompanha cada releitura da ficha.
 /// </summary>
+[Collection("Tempo real")]
 public class FichaAtuaisCarregadosTests : MudBunitContext
 {
     private sealed class FakeAuthStateProvider : AuthenticationStateProvider

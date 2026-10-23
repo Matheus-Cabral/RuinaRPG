@@ -19,6 +19,7 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// Ficha de Personagem 1.b e Ficha de NPC R0005: a ficha exibe só os Pontos de Ignição atuais, e o
 /// campo de bônus manual é largo o bastante para o rótulo.
 /// </summary>
+[Collection("Tempo real")]
 public class FichaPontosDeIgnicaoTests : MudBunitContext
 {
     private sealed class FakeAuthStateProvider : AuthenticationStateProvider

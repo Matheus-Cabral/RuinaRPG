@@ -24,6 +24,7 @@ namespace RuinaRPG.Tests.Client.Shared.Ficha;
 /// salvar (a rede responde sempre a mesma ficha), erros de dentro da aba no alerta da página e as mensagens de
 /// validação de cada tipo.
 /// </summary>
+[Collection("Tempo real")]
 public class AbaInformacoesBasicasTests : RedeDeSegurancaBase
 {
     public static TheoryData<string> Tipos => new() { "Personagem", "NPC", "Criatura" };

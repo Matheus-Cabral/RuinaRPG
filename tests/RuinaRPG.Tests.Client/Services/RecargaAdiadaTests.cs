@@ -4,6 +4,7 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Services;
 
+[Collection("Tempo real")]
 public class RecargaAdiadaTests
 {
     private int _recargas;

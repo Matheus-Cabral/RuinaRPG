@@ -228,6 +228,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         + "\"vocacaoArcanaGasta\":0,\"vocacaoArcanaMaxima\":0,\"abate\":50,\"assistencia\":25}";
 
     /// <summary>Trilha, título, Condições ativas, aviso de Novo Nível e indicador de salvamento.</summary>
+    [Collection("Tempo real")]
     public sealed class Cabecalho : RedeCabecalhoEInformacoesBasicasTests
     {
         [Theory]
@@ -289,6 +290,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
     }
 
     /// <summary>O que a aba mostra e o que a página pede ao abrir.</summary>
+    [Collection("Tempo real")]
     public sealed class InformacoesBasicas : RedeCabecalhoEInformacoesBasicasTests
     {
         [Theory]

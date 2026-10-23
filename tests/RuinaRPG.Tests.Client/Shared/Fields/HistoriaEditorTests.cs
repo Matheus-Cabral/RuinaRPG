@@ -14,6 +14,7 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
+[Collection("Tempo real")]
 public class HistoriaEditorTests : MudBunitContext
 {
     private readonly List<(string Method, string Path, string Body)> _requests = new();
