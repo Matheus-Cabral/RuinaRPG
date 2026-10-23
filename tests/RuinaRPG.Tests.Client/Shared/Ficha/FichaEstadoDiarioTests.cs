@@ -182,7 +182,7 @@ public class FichaEstadoDiarioTests
     {
         var estado = Estado();
 
-        Avisos(estado, () => { estado.MostrarErroDoDiario("Imagem grande demais."); return Task.CompletedTask; }).Should().Be(1);
+        Avisos(estado, () => { estado.MostrarErro("Imagem grande demais."); return Task.CompletedTask; }).Should().Be(1);
 
         estado.Erro.Should().Be("Imagem grande demais.");
     }

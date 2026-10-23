@@ -6,7 +6,7 @@
 <Section Title="Runas">
     <EditForm Model="Estado.FormularioDeRuna" OnValidSubmit="Estado.AdicionarRunaAsync">
         <RuneOrigemFields Model="Estado.FormularioDeRuna" BankEntries="Estado.BancoDeRunas" AvailableImages="Estado.MinhasImagens"
-                          CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" OnError="@MostrarErro" />
+                          CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" OnError="@Estado.MostrarErro" />
         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Runa</MudButton>
     </EditForm>
     <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
@@ -30,10 +30,4 @@
 
 @code {
     [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
-
-    private void MostrarErro(string erro)
-    {
-        Estado.Erro = erro;
-        Estado.NotificarAlteracao();
-    }
 }

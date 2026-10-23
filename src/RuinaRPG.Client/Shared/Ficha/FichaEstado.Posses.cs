@@ -208,12 +208,4 @@ public sealed partial class FichaEstado
         var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
         return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
     }
-
-    // ---------------- comum ----------------
-
-    private void MostrarErro(string erro)
-    {
-        Erro = erro;
-        NotificarAlteracao();
-    }
 }

@@ -42,7 +42,7 @@ public class FichaEstadoAntecedentesTests
         var avisos = 0;
         estado.Alterado += () => avisos++;
 
-        estado.MostrarErroDaHistoria("Não foi possível salvar a História.");
+        estado.MostrarErro("Não foi possível salvar a História.");
 
         estado.Erro.Should().Be("Não foi possível salvar a História.");
         avisos.Should().Be(1);

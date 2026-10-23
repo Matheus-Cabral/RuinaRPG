@@ -65,8 +65,7 @@ public sealed partial class FichaEstado
             new ResolveRacialTraitChoiceRequest(GratuitaEscolhida, ObrigatoriaEscolhida, EspecificacaoDaGratuita, EspecificacaoDaObrigatoria));
         if (!response.IsSuccessStatusCode)
         {
-            Erro = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível registrar a Característica Racial escolhida.";
-            NotificarAlteracao();
+            MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível registrar a Característica Racial escolhida.");
             return;
         }
 

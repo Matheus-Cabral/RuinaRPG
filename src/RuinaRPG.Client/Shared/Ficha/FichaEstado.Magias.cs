@@ -60,8 +60,7 @@ public sealed partial class FichaEstado
         var response = await Http.PostAsJsonAsync(UrlDasMagias, request);
         if (!response.IsSuccessStatusCode)
         {
-            Erro = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a magia/habilidade.";
-            NotificarAlteracao();
+            MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a magia/habilidade.");
             return;
         }
 
@@ -102,8 +101,7 @@ public sealed partial class FichaEstado
         var erro = form.Validar();
         if (erro is not null)
         {
-            Erro = erro;
-            NotificarAlteracao();
+            MostrarErro(erro);
             return;
         }
 
@@ -114,8 +112,7 @@ public sealed partial class FichaEstado
         var response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "runes"), request);
         if (!response.IsSuccessStatusCode)
         {
-            Erro = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a runa.";
-            NotificarAlteracao();
+            MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a runa.");
             return;
         }
 

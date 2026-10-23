@@ -8,7 +8,7 @@
         <MudTextField T="string" @bind-Value="Estado.FormularioDoDiario.Texto" Label="Texto" Lines="3" />
         <MudExpansionPanel Text="Anexar imagens" Class="mt-3">
             <ImageAttachmentField AvailableImages="Estado.MinhasImagens" SelectedIds="Estado.ImagensDaNovaEntrada"
-                                  SelectedIdsChanged="@(v => Estado.ImagensDaNovaEntrada = v)" OnError="Estado.MostrarErroDoDiario"
+                                  SelectedIdsChanged="@(v => Estado.ImagensDaNovaEntrada = v)" OnError="Estado.MostrarErro"
                                   CampaignId="@CampanhaDoJogador" />
         </MudExpansionPanel>
         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Entrada</MudButton>
@@ -27,7 +27,7 @@
                             {
                                 <MudTextField T="string" @bind-Value="Estado.TextoEmEdicao" Lines="3" />
                                 <ImageAttachmentField AvailableImages="Estado.MinhasImagens" SelectedIds="Estado.ImagensEmEdicao"
-                                                      SelectedIdsChanged="@(v => Estado.ImagensEmEdicao = v)" OnError="Estado.MostrarErroDoDiario"
+                                                      SelectedIdsChanged="@(v => Estado.ImagensEmEdicao = v)" OnError="Estado.MostrarErro"
                                                       ButtonSize="Size.Small" CampaignId="@CampanhaDoJogador" />
                                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mt-2" OnClick="@(() => Estado.SalvarEntradaAsync(entry.Id))">Salvar</MudButton>
                                 <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="Estado.CancelarEdicao">Cancelar</MudButton>

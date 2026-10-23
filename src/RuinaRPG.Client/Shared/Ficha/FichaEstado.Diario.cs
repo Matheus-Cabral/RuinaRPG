@@ -37,8 +37,7 @@ public sealed partial class FichaEstado
         var response = await Http.PostAsJsonAsync(UrlDoDiario(), new CreateDiaryEntryRequest(FormularioDoDiario.Texto, ImagensDaNovaEntrada.ToList()));
         if (!response.IsSuccessStatusCode)
         {
-            Erro = "Não foi possível adicionar a entrada.";
-            NotificarAlteracao();
+            MostrarErro("Não foi possível adicionar a entrada.");
             return;
         }
 
@@ -74,8 +73,7 @@ public sealed partial class FichaEstado
         var response = await Http.PutAsJsonAsync(UrlDoDiario(id), new UpdateDiaryEntryRequest(TextoEmEdicao, ImagensEmEdicao.ToList()));
         if (!response.IsSuccessStatusCode)
         {
-            Erro = "Não foi possível salvar a entrada.";
-            NotificarAlteracao();
+            MostrarErro("Não foi possível salvar a entrada.");
             return;
         }
 
@@ -89,13 +87,6 @@ public sealed partial class FichaEstado
     {
         await Http.DeleteAsync(UrlDoDiario(id));
         await CarregarDiarioAsync();
-        NotificarAlteracao();
-    }
-
-    /// <summary>Um erro do anexo de imagens (envio recusado) no alerta da página.</summary>
-    public void MostrarErroDoDiario(string erro)
-    {
-        Erro = erro;
         NotificarAlteracao();
     }
 

@@ -42,4 +42,11 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     public event Action? Alterado;
 
     public void NotificarAlteracao() => Alterado?.Invoke();
+
+    /// <summary>Mostra <paramref name="erro"/> no alerta da página (um erro de qualquer aba ou seção filha).</summary>
+    public void MostrarErro(string erro)
+    {
+        Erro = erro;
+        NotificarAlteracao();
+    }
 }

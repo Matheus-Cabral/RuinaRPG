@@ -16,11 +16,4 @@ public sealed partial class FichaEstado
 
     /// <summary>O endpoint da História (<c>PUT …/historia</c>; a galeria fica em <c>…/historia/imagens</c>).</summary>
     public string UrlDaHistoria => Tipo.Url(SheetId, "historia");
-
-    /// <summary>Um erro do editor da História (texto, galeria, envio de imagem) no alerta da página.</summary>
-    public void MostrarErroDaHistoria(string erro)
-    {
-        Erro = erro;
-        NotificarAlteracao();
-    }
 }
