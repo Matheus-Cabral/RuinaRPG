@@ -114,8 +114,9 @@ Volumes nomeados separados para os dados do Postgres e para as imagens armazenad
 - `make grant-rules-auditor EMAIL=...` / `make revoke-rules-auditor EMAIL=...`: designa (ou revoga) uma conta de GM como Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]"); não há tela para isso de propósito, só o operador do servidor concede.
 - `make reset-gm-password EMAIL=...`: recuperação de senha de GM (ver "[[Requisitos - Login e Cadastro]]" R0005), que não tem fluxo por e-mail.
 
-Os alvos que executam a Api (`grant-`/`revoke-rules-auditor`, `reset-gm-password`) rodam na cor ativa via `deploy.sh exec-api`.
 - `make logs`: acompanha os logs dos containers.
+
+Os alvos que executam a Api (`grant-`/`revoke-rules-auditor`, `reset-gm-password`) rodam na cor ativa via `deploy.sh exec-api`.
 
   
 
@@ -156,7 +157,7 @@ Implicações para o deploy:
 **Descrição**: As linhas do log de alterações de ficha (tabela `SheetLogEntries`, [[Requisitos - Modelo de Dados]]; a tela do GM está em [[Requisitos - Campanha]] R0016) são gravadas por um único interceptor de salvamento do EF Core, a partir do rastreador de alterações, no **mesmo** salvamento da alteração: alteração e log são gravados juntos ou falham juntos, e nenhum controller grava o log por conta própria. Motivo: um log escrito à mão em cada endpoint esquece campos e diverge entre os tipos de ficha.
 
 - O autor da linha é o usuário autenticado da requisição. Um salvamento sem usuário autenticado (seeders, inicialização da Api, utilitários de linha de comando) não gera log.
-- **Escritas automáticas.** Escritas que o servidor faz por conta própria dentro da ação de um usuário (ex.: o Atual cortado ao novo total quando as Condições de um participante mudam, ajustes por vez, expiração de Condições — [[Requisitos - Gerenciador de Encontros]]) são marcadas uma a uma e saem com `Automatico = true`; o autor continua sendo o usuário da requisição. A marca é por escrita, e não por salvamento, porque a ação do GM e o corte que ela provoca vão no mesmo salvamento.
+- **Escritas automáticas.** Escritas que o servidor faz por conta própria dentro da ação de um usuário (ex.: o Atual cortado ao novo total quando as Condições de um participante mudam, ajustes por vez, expiração de Condições — [[Requisitos - Gerenciador de Encontros]]) são marcadas uma a uma e saem com `Automatico = true`; o autor continua sendo o usuário da requisição, e o popup do log mostra o selo "automático" ao lado dele ([[Requisitos - Campanha]] R0016). A marca é por escrita, e não por salvamento, porque a ação do GM e o corte que ela provoca vão no mesmo salvamento.
 - **Linhas explícitas.** Aplicar, remover ou expirar uma Condição num participante ligado a uma ficha registra uma linha na seção "Condições", também pelo interceptor; aplicar e remover são do GM, a expiração é automática.
 - Fichas de NPC e de Criatura só entram no log enquanto estão concedidas a um jogador.
 - Quando a Vitalidade, o Foco ou a Adrenalina atual de uma ficha muda, o interceptor também grava uma linha no log de cada encontro em andamento de que ela participa — exceto quando a mudança é uma escrita automática.
@@ -177,7 +178,7 @@ Implicações para o deploy:
 
 Reprovação: o PR recebe um comentário com o diagnóstico (a falha de cada etapa e o relatório do clone) e volta a rascunho. Aprovação: o PR sai de rascunho e o auto-merge é habilitado. O clone é sempre desmontado ao fim, mesmo se o job for cancelado. Ensaio sem PR: `workflow_dispatch` do `release.yml` (informando o sha) roda a validação sem comentar nem fazer merge.
 
-Quando a base não tem `deploy/deploy.sh` (a 1.5.0, só na passagem para a 2.0.0), o clone entra em modo de **bootstrap**: pula o deploy da base e a verificação de compatibilidade e força `janela`.
+Quando a base não tem `deploy/deploy.sh` (a 1.5.0, só na passagem para a 2.0.0), o clone entra em modo de **bootstrap**: tira a impressão digital A do próprio dump restaurado, pula o deploy da base e a verificação de compatibilidade e força `janela`.
 
   
 
