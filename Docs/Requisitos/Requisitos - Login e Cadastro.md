@@ -1,8 +1,8 @@
-> Esta página se baseia nos blocos **LANDING PAGE**, **PÁGINA DE LOGIN** e **PÁGINA DE CADASTRO** do "[[01 - Visão Geral]]". Formaliza em R000x o que até agora só existia como texto solto nesses três blocos.
+> Esta página se baseia nos blocos **LANDING PAGE**, **PÁGINA DE LOGIN** e **PÁGINA DE CADASTRO** do "[[01 - Visão Geral]]".
 
   
 
-> **Modelo de acesso**: Landing Page, Login, Cadastro e o "[[Requisitos - Livro de Regras]]" são as únicas telas do sistema acessíveis **sem autenticação**. Toda outra tela exige um JWT válido (ver "[[Requisitos - Técnico]]" R0004).
+> **Modelo de acesso**: Landing Page, Login, Cadastro e o "[[Requisitos - Livro de Regras]]" são as únicas telas do sistema acessíveis **sem autenticação**. Toda outra tela exige login (ver "[[Requisitos - Técnico]]" R0004).
 
   
 
@@ -42,7 +42,7 @@ Sucesso: o usuário é autenticado automaticamente (sem precisar logar de novo) 
 
 # **R0004** - Logout.
 
-**Descrição**: Um controle de logout, acessível de qualquer tela autenticada, revoga o refresh token atual (ver "[[Requisitos - Técnico]]" e a tabela `RefreshTokens` em "[[Requisitos - Modelo de Dados]]") e redireciona à Landing Page (R0001).
+**Descrição**: Um controle de logout, acessível de qualquer tela autenticada, encerra a sessão e redireciona à Landing Page (R0001).
 
   
 
@@ -51,6 +51,6 @@ Sucesso: o usuário é autenticado automaticamente (sem precisar logar de novo) 
 **Descrição**: Não há serviço de e-mail configurado, então a recuperação de senha de uma conta de GM não é self-service — é feita por um operador com acesso ao servidor, via o comando de console descrito em "[[Requisitos - Técnico]]" R0008.
 
 - O comando recebe o e-mail da conta e devolve o **Nickname** e uma **senha temporária** gerada na hora, que o operador comunica ao GM por fora do sistema.
-- Rodar o comando também revoga todos os refresh tokens ativos daquele GM (Requisitos - Técnico e a tabela `RefreshTokens` em "[[Requisitos - Modelo de Dados]]") — toda sessão já aberta é encerrada, já que a senha anterior é considerada perdida/comprometida.
+- Rodar o comando também encerra todas as sessões abertas daquele GM, já que a senha anterior é considerada perdida/comprometida.
 - O GM loga normalmente (R0002) com a senha temporária. Enquanto não trocar a senha, o painel (GM ou Jogador, ver [[01 - Visão Geral]]) mostra só um formulário obrigatório de nova senha (**Nova senha** e **Confirmação da nova senha**) — nenhuma outra ação do painel é liberada até a troca ser concluída.
 - Não há prazo de expiração para a senha temporária: ela vale até ser trocada pelo GM, ou até o comando ser rodado de novo (o que gera outra e substitui a anterior).

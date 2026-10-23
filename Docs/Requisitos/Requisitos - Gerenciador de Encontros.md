@@ -37,7 +37,7 @@
 
 O comportamento de PV/PF/PA difere conforme a origem do participante (R0002):
 
-- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA refletem em tempo real os valores salvos na ficha correspondente. O GM pode editá-los no Encontro, e a edição grava **na própria ficha**: cada valor fica no máximo que a ficha mostra com as Condições ativas (o mesmo limite do salvamento da ficha), e só o recurso que o GM de fato mudou é gravado — o que ele não tocou fica como está, então uma mudança simultânea do jogador não se perde. A alteração entra no log da ficha como feita pelo GM ("[[Requisitos - Campanha]]" R0016) e, com o Encontro em andamento, no log do Encontro (R0010), uma linha por recurso. A ficha aberta do dono, e a do GM, recarrega os valores na hora, pelo mesmo caminho da recarga por Condições (sem trocar o campo que está sendo editado).
+- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA refletem em tempo real os valores salvos na ficha correspondente. O GM pode editá-los no Encontro, e a edição grava **na própria ficha**: cada valor fica no máximo que a ficha mostra com as Condições ativas (o mesmo limite do salvamento da ficha), e só o recurso que o GM de fato mudou é gravado — o que ele não tocou fica como está, então uma mudança simultânea do jogador não se perde. A alteração entra no log da ficha como feita pelo GM ("[[Requisitos - Campanha]]" R0016) e, com o Encontro em andamento, no log do Encontro (R0010), uma linha por recurso. A ficha aberta do dono e a do GM mostram os valores novos na hora, sem perder o campo em edição.
 - **Ficha de NPC/Criatura do GM**: PV/PF/PA são uma **cópia independente** daquela instância, iniciando nos valores atuais da ficha original no momento em que foi adicionada ao Encontro, e editável livremente pelo GM ali. Alterações feitas no Encontro não se propagam de volta para a ficha original, e vice-versa.
 
   
@@ -74,7 +74,7 @@ Com o Encontro em andamento, a tela mostra sempre, em destaque, o Turno e de que
 - **Em andamento**: começa em "Iniciar encontro", que exige ao menos um participante, leva ao Turno 1 e dá a vez ao primeiro da ordem de Iniciativa (R0004), com 3 Ações restantes (R0005).
 - **Finalizado**: "Finalizar encontro" (com confirmação) torna o Encontro somente leitura; "Reabrir" o devolve a em andamento, no mesmo Turno e na mesma vez.
 
-Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta regra: os que nunca tiveram a vez avançada ficam no Turno 0 (preparação); os demais ficam em andamento, no Turno em que estavam, com o log começando a partir da atualização.
+Renomear o Encontro é permitido em qualquer fase.
 
   
 
@@ -101,7 +101,7 @@ Renomear o Encontro é permitido em qualquer fase. Encontros criados antes desta
 - a finalização e a reabertura do Encontro;
 - para um participante ligado a uma ficha (Personagem, ou NPC/Criatura concedido), as alterações de Vitalidade, Foco e Adrenalina feitas na própria ficha.
 
-Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log abre num **popup**, como o log de alterações da ficha (ver "[[Requisitos - Campanha]]" R0016), por um ícone de histórico "Log do encontro": na tela do Encontro (fora da preparação) e em cada Encontro das listas de Encontros e de Encontros finalizados da Campanha; também funciona, só para leitura, no Encontro finalizado. O popup agrupa as linhas por **dia** (no fuso do navegador, do mais novo ao mais antigo) e, dentro de cada dia, por Turno e, dentro dele, pela vez em que o evento ocorreu, na ordem em que aconteceram. Ele tem um filtro de **período** e duas caixas, ambas marcadas de início: "Vitalidade, Foco e Adrenalina" e "Estresse", que escondem só as linhas de alteração desses recursos; os eventos do Encontro (início, Turnos, vez, participantes, Condições) nunca são escondidos. O popup mostra o log como estava ao abrir. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]" (EncounterLogEntries).
+Nada é registrado enquanto o Encontro está em preparação ou finalizado — a finalização e a reabertura em si são registradas. O log abre num **popup**, como o log de alterações da ficha (ver "[[Requisitos - Campanha]]" R0016), por um ícone de histórico "Log do encontro": na tela do Encontro (fora da preparação) e em cada Encontro das listas de Encontros e de Encontros finalizados da Campanha; também funciona, só para leitura, no Encontro finalizado. O popup agrupa as linhas por **dia** (no fuso do navegador, do mais novo ao mais antigo) e, dentro de cada dia, por Turno e, dentro dele, pela vez em que o evento ocorreu, na ordem em que aconteceram. Ele tem um filtro de **período** e duas caixas, ambas marcadas de início: "Vitalidade, Foco e Adrenalina" e "Estresse", que escondem só as linhas de alteração desses recursos; os eventos do Encontro (início, Turnos, vez, participantes, Condições) nunca são escondidos. O popup mostra o log como estava ao abrir. Como o resto do Encontro, é restrito ao GM. Ver "[[Requisitos - Modelo de Dados]]".
 
   
 
@@ -165,7 +165,7 @@ Um modificador **percentual** é um percentual do **total** do recurso, arredond
 
 Uma linha de equipamento ou de magia que uma Condição desabilita (R0011) aparece com o aviso "Desabilitado por: {Condição}".
 
-**Valores com e sem Condição**: todo número do resumo vem do mesmo cálculo das telas da ficha, feito duas vezes — com as Condições e sem elas. Um número que a Condição mudou aparece destacado, com o valor original riscado ao lado; os demais aparecem normais.
+**Valores com e sem Condição**: os números são os mesmos das telas da ficha. Um número que a Condição mudou aparece destacado, com o valor original riscado ao lado; os demais aparecem normais.
 
 **Quais Condições valem**:
 

@@ -21,7 +21,7 @@
 **Descrição**: Abaixo do botão de geração, uma lista exibe todos os códigos já gerados pelo GM, com as colunas:
 
 - **Código**: o valor alfanumérico gerado.
-- **Status**: uma tag indicando o estado atual do código — **Ativo**, **Usado** ou **Revogado** (ver [[#**R0005** - O GM deve poder revogar manualmente um código Ativo.|R0005]]).
+- **Status**: uma tag indicando o estado atual do código — **Ativo**, **Usado**, **Expirado** (R0004) ou **Revogado** (ver [[#**R0005** - O GM deve poder revogar manualmente um código Ativo.|R0005]]).
 - **Gerado em**: data e hora da geração do código.
 - **Expira em**: data e hora em que o código deixa de ser válido (Gerado em + 48h). Exibe travessão quando o código já não está mais **Ativo**.
 - **Resgatado por**: nickname e e-mail do jogador que usou o código para se cadastrar. Exibe travessão enquanto o código não for usado.

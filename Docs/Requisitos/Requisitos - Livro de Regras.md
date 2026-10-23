@@ -2,11 +2,7 @@
 
   
 
-> **Natureza do conteúdo**: assim como o Compêndio, o Livro de Regras não é curado por cada GM — é o mesmo conteúdo fixo para todo mundo, extraído diretamente de documentos em `Docs/Sistema RPG`. Ninguém edita o Livro de Regras pela interface; ele muda quando os documentos fonte mudam.
-
-  
-
-> **Edição**: o conteúdo deixou de ser 100% fixo — ver "[[Requisitos - Auditoria de Regras]]" para como um GM designado Auditor de Regras pode editá-lo (a aba de Características, em particular, passa a refletir o catálogo de "[[Características]]" em vez de uma cópia própria do texto).
+> **Natureza do conteúdo**: assim como o Compêndio, o Livro de Regras não é curado por cada GM — é o mesmo conteúdo para todo mundo, extraído de documentos em `Docs/Sistema RPG`. Só o Auditor de Regras o altera, pelas páginas de "[[Requisitos - Auditoria de Regras]]": o texto dos documentos (R0002) e os catálogos que montam as abas de Características, Históricos, Equipagem e Tabela de Níveis.
 
   
 
@@ -36,13 +32,13 @@
 
 # **R0003** - O conteúdo do Livro de Regras é somente leitura.
 
-**Descrição**: Nem GM nem jogadores podem editar, criar ou excluir conteúdo do Livro de Regras pela interface — ele reflete diretamente os documentos fonte em `Docs/Sistema RPG`.
+**Descrição**: Nas abas do Livro de Regras ninguém edita, cria ou exclui conteúdo; ele muda só pelas páginas do Auditor de Regras ("[[Requisitos - Auditoria de Regras]]").
 
   
 
 # **R0004** - Cada aba deve ser dividida em seções navegáveis, não um bloco único de texto corrido.
 
-**Descrição**: Documentos longos (até 60 títulos) eram exibidos como um único bloco de HTML contínuo, sem nenhuma forma de navegação interna — difícil de ler e de localizar uma regra específica. Cada documento é dividido em seções a partir de um nível de título escolhido (ver a tabela abaixo), e cada seção é exibida como um cartão visualmente separado, não mais texto corrido:
+**Descrição**: Cada documento é dividido em seções a partir de um nível de título (ver a tabela abaixo), e cada seção é exibida como um cartão separado:
 
 | Aba | Nível de divisão | Seções resultantes |
 |---|---|---|
@@ -52,7 +48,7 @@
 | Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
 | As Estrelas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
 | Históricos | — | uma por Histórico (ver R0007 abaixo; vem do catálogo de Históricos — não do Markdown, mesmo tratamento de R0004 para Características) |
-| Equipagem | — | uma por kit (ver R0008 abaixo; vem do catálogo de EquipmentKits — não do Markdown) |
+| Equipagem | — | uma por kit (ver R0008 abaixo; vem do catálogo de kits — não do Markdown) |
 
 Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas), um sumário fixo ao lado do conteúdo lista o título de cada seção; clicar em uma entrada rola a página até aquela seção. Conteúdo anterior ao primeiro título de divisão (ex: a tabela de custo de Grau, em Graus & Círculos) continua sendo exibido no topo da aba, antes do sumário e das seções.
 
@@ -78,7 +74,7 @@ Para as abas com seções (Sistema Básico, Graus & Círculos e As Estrelas), um
 
 # **R0008** - A aba de Equipagem reflete o catálogo de kits em tempo real.
 
-**Descrição**: Mesmo tratamento de R0007, mas para o catálogo de kits de Equipagem inicial: a aba não tem sobrescrita de texto própria — ela é montada diretamente a partir do catálogo de EquipmentKits (`EquipmentKit`/`EquipmentKitItem`/`EquipmentKitChoiceSlot`, ver "[[Requisitos - Modelo de Dados]]"). Uma edição salva por meio do `EquipmentKitsController` (nome do kit, descrição, itens, slots de escolha), gated ao Auditor de Regras, aparece nessa aba imediatamente, sem precisar de nenhuma ação adicional. O parágrafo introdutório de "[[Equipagem]]" continua vindo do documento fonte, exibido no topo da aba antes dos cartões de cada kit.
+**Descrição**: Mesmo tratamento de R0007, mas para o catálogo de kits de Equipagem inicial: a aba não tem sobrescrita de texto própria — ela é montada diretamente a partir do catálogo de kits ("[[Requisitos - Auditoria de Regras]]" R0009). Uma edição do Auditor de Regras (nome do kit, descrição, itens, slots de escolha) aparece nessa aba imediatamente. O parágrafo introdutório de "[[Equipagem]]" continua vindo do documento fonte, exibido no topo da aba antes dos cartões de cada kit.
 
   
 

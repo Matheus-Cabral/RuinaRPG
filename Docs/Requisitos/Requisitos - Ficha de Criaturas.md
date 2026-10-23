@@ -36,23 +36,19 @@
   - *Raça*: text input livre (não há uma tabela fixa de raças de criatura).
   - *Arquétipo*: dropdown com os 2 valores da "[[Tabela de Arquetipos]]": **Físico** ou **Arcano**. Substitui o papel da Vocação — determina as colunas de Vida e Arcana usadas na progressão (ver Recursos abaixo).
   - *Sub Arquétipo*: text input livre (não há uma tabela equivalente à Tabela de Classes para criaturas).
-- *Afinidade*: mesmo campo do Personagem (dropdown de Elementos/Sub-Elementos).
 - *Rank*: dropdown com os valores **F**, **E**, **D**, **C**, **B**, **A**, **S**. Substitui inteiramente o sistema de Círculo/Grau/VIS/Âmbares Absorvidos do Personagem (ver 1.b abaixo) — a Criatura tem uma classificação de poder fixa, não uma progressão calculada. É o mesmo Rank referenciado em "Âmbares Absorvidos" (Personagem, 1.b) e em "Contrato Mágico" ("[[GRAUS & CÍRCULOS]]" §1).
-- *Efeito de Batalha*: mesmo campo pendente do Personagem (3.d).
 
 **1.b Nível e Progressão** — diferenças:
 
-- *Nível* e *Experiência atual*: ao contrário do Personagem (onde só a Experiência atual é editável e o Nível é sempre calculado a partir dela), aqui os dois campos continuam editáveis diretamente pelo GM — mas editar um deles recalcula automaticamente o outro pelos mesmos limiares de XP em "[[Tabelas de XP, Atributos, Características e EAP]]": mudar o Nível ajusta a Experiência atual para o mínimo daquele nível; mudar a Experiência atual recalcula o Nível pela mesma regra de limiares do Personagem (1.b). Os dois campos nunca ficam inconsistentes entre si.
+- *Nível* e *Experiência atual*: como em [[Requisitos - Ficha de NPCs#**R0005** - Editar Nível ou Experiência atual recalcula automaticamente o outro campo.|R0005 da Ficha de NPCs]] — os dois editáveis pelo GM, e editar um recalcula o outro.
 - *Experiência dada*: dois campos calculados, não editáveis, nesta ordem — **Abate** e **Assistência** — quanto de XP a Criatura concede aos jogadores ao ser derrotada, conforme o papel de cada jogador na derrota. `Abate = piso(Experiência atual × 0,15)`; `Assistência = piso(Experiência atual × 0,12)` (arredondados para baixo; *Experiência atual* é o campo da própria Criatura, acima). Campo novo, sem equivalente no Personagem.
 - *Graduação* (Círculo/Grau), *VIS atual*, *Para o próximo* e *Âmbares Absorvidos* não existem na Ficha de Criatura — substituídos pelo campo único *Rank* (1.a).
 - *Pontos de Ignição*: campo numérico inteiro simples (não é um par atual/total como no Personagem), editável pelo GM. É o saldo de PI que as Magias/Habilidades da Criatura consomem (ver R0007).
 
 **1.c Recursos** — diferenças:
 
-- *Foco* é rotulado **Arcana** na Ficha de Criatura (mesmo campo, mesma fórmula: `(Astúcia × 2) + Status de classe Arcana`).
-- *Vitalidade*: mesma fórmula do Personagem, `(Vigor × 2) + Status de classe Vida`.
-- Em ambos os casos, "Status de classe" vem da "[[Tabela de Arquetipos]]" (cruzando Arquétipo × Nível), não da Tabela de Vocação/Classes.
-- *Adrenalina*: mesmo campo e fórmula do Personagem.
+- *Foco* é rotulado **Arcana** na Ficha de Criatura.
+- O "Status de classe" de Arcana e de Vitalidade vem da "[[Tabela de Arquetipos]]" (cruzando Arquétipo × Nível), não da Tabela de Vocação/Classes.
 - *Estresse* não existe na Ficha de Criatura.
 
   
@@ -61,11 +57,11 @@
 
 **Descrição**:
 
-**2.a Atributos** — a Criatura tem **6 atributos**, não 8: **Força**, **Vigor**, **Agilidade**, **Destreza**, **Astúcia** e **Ego**. *Instinto*, *Influência* e *Vontade* não existem — *Ego* é a fusão dos três num único atributo. Por ora, nenhuma fórmula do sistema depende de Ego especificamente (nem dos três que ele substitui, no contexto de Criatura); campo tratado como os demais atributos (mesma estrutura Gasto/Bônus/Maestria/Total e mesmas fórmulas de Total do Personagem), mas sem uso definido nas fórmulas ainda.
+**2.a Atributos** — a Criatura tem **6 atributos**, não 8: **Força**, **Vigor**, **Agilidade**, **Destreza**, **Astúcia** e **Ego**. *Instinto*, *Influência* e *Vontade* não existem — *Ego* é a fusão dos três num único atributo. Por ora, Ego não entra em nenhuma fórmula (nem os três que ele substitui, no contexto de Criatura).
 
-A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesma regra de "[[Requisitos - Ficha de NPCs]]" R0007: soma do *Gasto* dos 6 atributos contra os "Pontos de Atributo" que o *Nível* da Criatura concede na "[[Tabela de Níveis]]" (a "[[Tabela de Arquetipos]]" só define Vida e Arcana, não pontos de atributo), sem bloquear o GM ao passar do total. Diferença: os "+9 Pontos de Atributo" do Nível 1 são substituídos pelos pontos iniciais do *Rank* (1.a) — **F** 6, **E** 7, **D** 8, **C** 9, **B** 10, **A** 12, **S** 14 —, e do Nível 2 em diante a Criatura ganha pontos pela mesma "[[Tabela de Níveis]]". Sem Rank escolhido, vale o Nível 1 da tabela sem alteração.
+A seção também exibe **Pontos de Atributo: gasto / disponíveis**, como em "[[Requisitos - Ficha de NPCs]]" R0007 (os pontos vêm da "[[Tabela de Níveis]]"; a "[[Tabela de Arquetipos]]" só define Vida e Arcana). Diferença: os "+9 Pontos de Atributo" do Nível 1 são substituídos pelos pontos iniciais do *Rank* (1.a) — **F** 6, **E** 7, **D** 8, **C** 9, **B** 10, **A** 12, **S** 14 —, e do Nível 2 em diante a Criatura ganha pontos pela mesma "[[Tabela de Níveis]]". Sem Rank escolhido, vale o Nível 1 da tabela sem alteração.
 
-**2.b Sub-Atributos** — mesmos campos e fórmulas do Personagem (Iniciativa, Movimentação, Esquiva Natural, Defesa Natural, Cobertura, Redução Física, Redução Mágica), com as seguintes diferenças:
+**2.b Sub-Atributos** — diferenças:
 
 - *Resistência Física* e *Resistência Arcana* existem na Ficha de Criatura (diferente do Personagem, que não os tem). Por ora, nenhuma fórmula do sistema depende deles — campos previstos porém não implementados até existir regra.
 - *Dano Cortante* aparece na ficha real como um sub-atributo próprio da Criatura. Mesmo tratamento de *Dano de Briga* no Personagem: campo previsto porém sem fórmula definida ainda.
@@ -73,7 +69,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesm
 
 **2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
 
-**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. Mesma estrutura Gasto/Modificador/Atributo/Total do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). A lista passa a ser as perícias marcadas como *Disponível para Criaturas* na Auditoria de Perícias ("[[Requisitos - Auditoria de Regras]]" R0012); a lista acima é a inicial.
+**2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. O dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). A lista passa a ser as perícias marcadas como *Disponível para Criaturas* na Auditoria de Perícias ("[[Requisitos - Auditoria de Regras]]" R0012); a lista acima é a inicial.
 
   
 
@@ -83,14 +79,8 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, com a mesm
 
 **3.a Armas e Condutores** — modelo híbrido: ao adicionar uma linha, o GM escolhe entre:
 
-- **Vincular ao Catálogo**: mesmo comportamento do Personagem (3.a) — escolhe uma Arma do "[[Requisitos - Catálogo de Itens e Equipamentos]]", todos os campos (Nome, Tipo de Dano, Alcance, Dados, Dano, Crítico, Rank, Durabilidade Atual/Máximo) vêm preenchidos automaticamente, com o mesmo comportamento de Durabilidade Atual editável e independente por linha (Máximo vem do Rank, ver [[Tabela de Durabilidade por Rank]]; Rank inquebrável mostra apenas "Inquebrável").
+- **Vincular ao Catálogo**: como no Personagem (3.a).
 - **Preencher manualmente**: para ataques naturais (ex: garra, mordida) sem vínculo com o Catálogo. Campos digitados diretamente: *Nome*, *Tipo de Dano* (dropdown, mesmos valores do Catálogo), *Dados* e *Dano*. Sem Alcance, Crítico, Rank ou Durabilidade — ataque natural não tem durabilidade.
-
-O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igual ao Personagem.
-
-**3.b Armaduras** e **3.c Escudos**: sem alteração em relação ao Personagem.
-
-**3.d Efeito de Batalha** e **3.e Iniciativa**: sem alteração.
 
   
 
@@ -99,9 +89,9 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 **Descrição**:
 
 - **4.a Habilidade Racial** não existe na Ficha de Criatura.
-- **4.b Magias & Habilidades**: mesma estrutura do Personagem (Nome, Tipo, Grau, Efeitos, Gasto em PI, Custo em Arcana, Descrição — ver "[[Requisitos - Ficha de Personagem]]" 4.b), com uma diferença: o Grau de cada entrada é limitado pelo *Rank* da Criatura (1.a) em vez do Círculo/Grau do Personagem. A equivalência exata entre Rank e Grau máximo ainda não está definida nas regras — campo de validação previsto porém pendente até essa equivalência existir. O saldo de Pontos de Ignição e a edição das entradas montadas do zero seguem "[[Requisitos - Ficha de Personagem]]" 4.b, usando o campo *Pontos de Ignição* (1.b) como saldo; o bloqueio vale também para o GM.
+- **4.b Magias & Habilidades**: como no Personagem ("[[Requisitos - Ficha de Personagem]]" 4.b), com duas diferenças: o Grau de cada entrada é limitado pelo *Rank* da Criatura (1.a) em vez do Círculo/Grau (a equivalência exata entre Rank e Grau máximo ainda não está definida nas regras, e essa validação fica pendente até ela existir); e o saldo de Pontos de Ignição é o campo *Pontos de Ignição* (1.b).
 - **4.c Contratos** e **4.d Runas** não existem na Ficha de Criatura.
-- **4.e Maestrias**: mesma estrutura do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). Como no Personagem, a seção é exibida na aba Combate, logo abaixo de Armas.
+- **4.e Maestrias**: mesma estrutura do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
 - **4.f Habilidades Passivas**: mesma estrutura e regras do Personagem (ver "[[Requisitos - Ficha de Personagem]]" 4.f e R0008). Requisitos sobre campos que a Criatura não tem são **ignorados**: Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Estrela, Histórico e as Perícias fora da lista de 2.d. Entre os Atributos, só Força, Vigor, Agilidade, Destreza e Astúcia são comparados — requisitos de Instinto, Vontade e Influência são ignorados. Nível, Afinidade e Sub-Atributos são conferidos normalmente.
 
   
@@ -122,13 +112,11 @@ O restante (Peso quando vinculado ao Catálogo, seleção de Equipada) segue igu
 
 **5.b Artefatos**: mesma estrutura do Personagem; quando o Tipo é Atributo, o Alvo oferece apenas os 6 atributos de Criatura (2.a).
 
-**5.c Afeições**: sem alteração em relação ao Personagem.
-
 **5.d Características**: mesmo comportamento do Personagem, com uma diferença — o seletor de característica lista **apenas** o catálogo exclusivo de criatura de "[[Requisitos - Auditoria de Regras]]" R0005; o catálogo normal não é oferecido nem aceito. Uma característica do catálogo normal concedida antes dessa regra continua na ficha, conta no mesmo orçamento de pontos (Positivas/Negativas) e pode ser removida. Quando quem está na ficha é o Auditor de Regras, um botão "Nova característica de criatura" ao lado do seletor abre um popup com os campos de R0005 e cadastra a característica no catálogo sem sair da ficha; ao salvar, ela fica selecionada no seletor.
 
 # **R0009** - Requisitos e Penalidades de equipamento seguem o Personagem, com exceções.
 
-**Descrição**: Os Requisitos e a Penalidade dos equipamentos funcionam na Ficha de Criatura como na Ficha de Personagem (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014 e "[[Requisitos - Ficha de Personagem]]"): tag "Requisito(s) não cumprido(s)" nas linhas de equipamento (com os Requisitos e a Penalidade no popup do item), alerta "Penalidades de equipamento ativas" nas abas Atributos & Perícias e Combate e subtração automática dos Totais. Exceções: os Requisitos de **Vocação**, **Classe** e **Estrela** são ignorados, pois a Criatura não os tem; um Requisito ou uma Penalidade sobre um atributo que a Criatura não possui (Instinto, Vontade, Influência) não tem efeito; e um ataque natural (preenchido manualmente, sem vínculo com o Catálogo) não tem Requisitos.
+**Descrição**: Os Requisitos e a Penalidade dos equipamentos funcionam na Ficha de Criatura como na Ficha de Personagem (ver "[[Requisitos - Ficha de NPCs]]" R0013). Exceções: os Requisitos de **Vocação**, **Classe** e **Estrela** são ignorados, pois a Criatura não os tem; um Requisito ou uma Penalidade sobre um atributo que a Criatura não possui (Instinto, Vontade, Influência) não tem efeito; e um ataque natural (preenchido manualmente, sem vínculo com o Catálogo) não tem Requisitos.
 
 # **R0010** - Condições ativas: só na ficha concedida, com exceções.
 

@@ -2,7 +2,7 @@
 
   
 
-> **Natureza do conteúdo**: ao contrário do Catálogo de Itens ou do Banco de Magias e Habilidades, o Compêndio não é curado por cada GM — é o mesmo conteúdo fixo para todo mundo, extraído diretamente dos documentos em `Docs/Sistema RPG`. Ninguém edita o Compêndio pela interface; ele muda quando os documentos fonte mudam.
+> **Natureza do conteúdo**: ao contrário do Catálogo de Itens ou do Banco de Magias e Habilidades, o Compêndio não é curado por cada GM — é o mesmo conteúdo para todo mundo. As Características vêm do catálogo mantido pelo Auditor de Regras ("[[Requisitos - Auditoria de Regras]]" R0003); todo o resto vem dos documentos em `Docs/Sistema RPG` — as edições de texto do Auditor no Livro de Regras não chegam ao Compêndio.
 
   
 
@@ -10,11 +10,7 @@
 
   
 
-> **Status**: a entrada de menu do Compêndio foi ocultada em favor do "[[Requisitos - Livro de Regras]]" — a página, o endpoint e o índice de busca abaixo continuam existindo no código (nada foi removido), só deixaram de ser alcançáveis pelo menu. `IRulesDataProvider`, que também alimenta cálculos de nível/VIS/graduação em outras partes do sistema, não foi afetado.
-
-  
-
-> **Edição**: o conteúdo deixou de ser 100% fixo — ver "[[Requisitos - Auditoria de Regras]]" para como um GM designado Auditor de Regras pode editá-lo.
+> **Status**: a entrada de menu do Compêndio foi ocultada em favor do "[[Requisitos - Livro de Regras]]"; a página continua existindo, fora do menu.
 
   
 
@@ -43,4 +39,4 @@
 
 # **R0004** - O conteúdo do Compêndio é somente leitura.
 
-**Descrição**: Nem GM nem jogadores podem editar, criar ou excluir entradas do Compêndio pela interface — ele reflete diretamente os documentos fonte em `Docs/Sistema RPG`.
+**Descrição**: Ninguém edita, cria ou exclui entradas do Compêndio pela interface — ele reflete os documentos fonte em `Docs/Sistema RPG` e, nas Características, o catálogo do Auditor de Regras.

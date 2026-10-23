@@ -34,9 +34,9 @@
 
 - *Vocação*: Um dropdown exibindo as 5 vocações (classes) definidas na "[[Tabela de Vocação]]", sendo elas, **Campeão**, **Caçador**, **Feiticeiro**, **Adepto** e **Bruxo**. O valor padrão do dropdown deve ser o salvo no banco de dados e caso o valor for NULL, exibe o placeholder *Escolha uma Vocação*. A vocação escolhida determina as colunas de Vida e Arcana usadas na progressão de nível (ver *Vida* e *Arcana* no subgrupo Recursos).
 
-- *Classe*: Um dropdown exibindo os nomes das classes (subclasses) correspondentes à Vocação escolhida, listadas na "[[Tabela de Classes]]". O comportamento é análogo ao de *Variante* em relação a *Linhagem*: caso for NULL exibe o placeholder *Escolha uma Classe* e, se a Vocação estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma vocação antes da classe. A relação de Vocação e Classe está em [[Relação de Vocacão e Classes]]. (Chamado de "Sub-Vocação" no código e no banco de dados — só o rótulo exibido mudou.)
+- *Classe*: Um dropdown exibindo os nomes das classes (subclasses) correspondentes à Vocação escolhida, listadas na "[[Tabela de Classes]]". O comportamento é análogo ao de *Variante* em relação a *Linhagem*: caso for NULL exibe o placeholder *Escolha uma Classe* e, se a Vocação estiver NULL, não exibe nada e mostra uma mensagem alertando o usuário para escolher uma vocação antes da classe. A relação de Vocação e Classe está em [[Relação de Vocacão e Classes]].
 
-- *Trabalho*: campo previsto porém ainda não implementado. Vamos apenas não implementa-lo.
+- *Trabalho*: campo previsto, não implementado.
 
 - *Afinidade*: Um dropdown com a afinidade elemental do personagem. O campo **não é exibido junto dos demais de 1.a**: fica no bloco *Afinidade Elemental* dos Sub-Atributos (2.b), ao lado da Eficiência Elemental e do Dano Elemental que derivam dele. Os valores correspondem aos 4 Elementos e aos 12 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Aprimorar**, **Necromancia** e **Invocação**. *Alma* e *Vida* não estão aqui: na Matriz Elemental elas são **Caminhos** (ver 2.c), não Afinidades. Uma ficha que já tinha Alma ou Vida salvas continua exibindo o valor, mas não é possível escolhê-los de novo.
 
@@ -50,7 +50,7 @@
 
   
 
-- *Nível*: campo **calculado**, de 1 ao último nível da "[[Tabela de Níveis]]" (ver "[[Requisitos - Auditoria de Regras]]" R0013) — não é mais editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo a coluna "XP para o próximo nível" da "[[Tabela de Níveis]]" mantida pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0013); com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
+- *Nível*: campo **calculado**, de 1 ao último nível da "[[Tabela de Níveis]]" (ver "[[Requisitos - Auditoria de Regras]]" R0013) — não é editável diretamente na Ficha de Personagem (NPCs e Criaturas continuam permitindo edição direta pelo GM; ver seus documentos de diff). O valor é derivado da *Experiência atual* segundo a coluna "XP para o próximo nível" da "[[Tabela de Níveis]]" mantida pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0013); com 0 de XP, assume **1**. O nível é a chave para os valores de Vida/Arcana da "[[Tabela de Vocação]]" e para os bônus por nível.
 
 - *Graduação*: campo numérico de 0 a 9, calculado a partir do VIS atual segundo a tabela em "[[Tabela de Circulo e Grau por EAP]]". Se a Vocação for **Campeão** ou **Caçador**, o campo é rotulado **Grau**, não editável, e sempre calculado normalmente pelo VIS, mas nunca fica abaixo do **Grau 1** (vocações marciais, Campeão e Caçador, começam no Grau 1 mesmo com VIS 0). Se a Vocação for qualquer outra, o campo é rotulado **Círculo** e depende de um checkbox "Possui coração de mana?" (ver §1 de "[[GRAUS & CÍRCULOS]]"), exibido **só** quando a Vocação é Feiticeiro, Adepto ou Bruxo — com Vocação marcial ou vazia o checkbox some, mas o valor salvo é mantido: marcado, o Círculo é calculado normalmente pelo VIS; desmarcado, o Círculo é exibido como **0** independentemente do VIS acumulado (o personagem pode perder um coração de mana em jogo, desmarcando o checkbox). Quando NULL, o checkbox assume **desmarcado** e o valor assume **0**.
 
@@ -58,7 +58,7 @@
 
 - *Para o próximo*: valor que indica a XP necessária para o próximo nível. A tabela com os valores está no documento [[Tabelas de XP, Atributos, Características e EAP]].
 
-- *VIS atual*: campo numérico. Segue a tabela no documento [[Tabelas de XP, Atributos, Características e EAP]] e é somado pelo resultado de Âmbares Absorvidos. (Chamado de "EAP" no código e no banco de dados — só o rótulo exibido mudou.)
+- *VIS atual*: campo numérico. Segue a tabela no documento [[Tabelas de XP, Atributos, Características e EAP]] e é somado pelo resultado de Âmbares Absorvidos.
 
 - *Pontos de Ignição (PI)*: recurso usado na compra de efeitos de magias e habilidades (ver "[[GRAUS & CÍRCULOS]]"). A ficha exibe apenas o valor **atual**, editável diretamente; ele é o saldo que as Magias e Habilidades consomem (ver 4.b). O valor é salvo sozinho, assim que é editado e de forma independente do restante da ficha, para que uma edição em outro campo da ficha nunca sobrescreva o saldo. O atual acompanha o *Nível*: ao subir, soma os PI que os níveis ganhos concedem na "[[Tabela de Níveis]]"; ao descer, subtrai os mesmos pontos, sem ficar abaixo de **0**. Uma ficha nova começa com os PI que a tabela concede até o nível inicial. O total acumulado por nível não é repetido aqui — aparece em "Progressão do nível". Um campo dedicado permite ao GM adicionar ou subtrair um bônus manual (mesmo padrão do campo de XP em "Experiência atual", acima); o valor aplicado soma ao total e também ao atual. Quando NULL, o *atual* e o bônus manual assumem **0**.
 
@@ -117,9 +117,9 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 
 - *Iniciativa*: `Agilidade + Bruto Prontidão + Artefato ou item`.
 - *Movimentação*: `(Agilidade × 2) + Artefato − Sobrepeso`, com mínimo absoluto de **1**. *Sobrepeso* = `max(0, Peso Atual − Peso Máximo)`, onde *Peso Máximo* = `max(0, piso((Força + Vigor) / 2) + Capacidade Extra + Bônus de carga da Campanha)` (o Bônus de carga é definido pelo GM, pode ser negativo e vale só para fichas de Personagem — ver "[[Requisitos - Campanha]]" R0014; NPCs e Criaturas usam 0) e *Peso Atual* é a soma do campo Peso (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todos os itens do Inventário que não tiverem Capacidade Extra (ver 5.a) mais as Armas e Escudos **não equipados** do arsenal (ver 3.a/3.c) — Armaduras nunca entram nessa soma, pois todo slot preenchido está sempre equipado, sem estado "desequipado" (ver 3.b). *Capacidade Extra* é a soma do campo homônimo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") de todo item do Inventário que o tiver, multiplicada pela Qtd da linha. Peso Atual/Máximo e um aviso de sobrepeso são exibidos na aba "Posses" (ver 5.a).
-- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`. (Esse termo vale sempre 0: a penalidade de uma armadura agora vem da Penalidade do próprio equipamento, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.)
+- *Esquiva Natural*: `Agilidade + Bruto Reflexos + Artefatos − Penalidade de armadura`. (O termo vale 0: a penalidade da armadura vem da Penalidade do próprio equipamento, ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.)
 - *Defesa Natural*: `Vigor + Bruto Fortitude + Escudo + Artefatos + Cobertura`.
-- *Cobertura*: uma "nota" de dois escudos (ícones), abaixo do rótulo "Cobertura" e acima do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima; os valores guardados continuam Nenhuma/Parcial/Completa.
+- *Cobertura*: uma "nota" de dois escudos (ícones), abaixo do rótulo "Cobertura" e acima do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
 - *Eficiência Elemental* e *Dano Elemental*: campos calculados a partir do *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida. Os dois vêm da "[[Tabela de Afinidades]]", consultada com esse Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida em 1.a, e mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0016; ver também "[[Formulas]]"). Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
@@ -301,7 +301,7 @@ Uma entrada pode ser removida pelo jogador a qualquer momento. Uma entrada de Ti
 
   
 
-Contratos dependem da criatura invocada (ver "Contrato Mágico" em "[[GRAUS & CÍRCULOS]]" §1, que gera automaticamente uma Habilidade com Grau igual ao Rank da criatura). Como a Ficha de Criaturas ainda não foi detalhada, esta seção fica pendente até que aquele documento exista.
+Contratos dependem da criatura invocada (ver "Contrato Mágico" em "[[GRAUS & CÍRCULOS]]" §1, que gera automaticamente uma Habilidade com Grau igual ao Rank da criatura). A seção fica pendente até a regra dos Contratos ser definida.
 
   
 
@@ -326,14 +326,14 @@ A lista de Runas mostra o Tipo de cada uma ("Runa Arcana", "Runa Negra" ou "—"
 
   
 
-**Disposição**: apesar do identificador 4.e (mantido para não quebrar as referências existentes), a seção de Maestrias é exibida na aba **Combate**, logo abaixo de Armas e Condutores (3.a) e antes de Armaduras (3.b) — não na aba Magias & Habilidades. Vale igualmente para a Ficha de NPC e a Ficha de Criatura.
+**Disposição**: apesar do identificador 4.e, a seção de Maestrias é exibida na aba **Combate**, logo abaixo de Armas e Condutores (3.a) e antes de Armaduras (3.b) — não na aba Magias & Habilidades. Vale igualmente para a Ficha de NPC e a Ficha de Criatura.
 
 Recurso separado da Maestria de Atributos (ver 2.a) — tem seu próprio poço de Pontos/Espaços de Maestria, concedido pela "[[Tabela de Níveis]]". Lista incremental: o jogador adiciona uma Maestria por vez, com os campos:
 
 - *Nome*: text input.
 - *Perícia*: dropdown com as Perícias (ver 2.d).
 - *Atributo*: dropdown com os 8 atributos (ver 2.a).
-- *Gasto Maestria*: campo numérico ≥ 0, editável — pontos investidos nessa Maestria. Limitado pelos Pontos de Maestria disponíveis (o total exato concedido por nível ainda não está totalmente definido — ver R0001 em 1.b, Âmbares Absorvidos, para outro gap semelhante).
+- *Gasto Maestria*: campo numérico ≥ 0, editável — pontos investidos nessa Maestria. Limitado pelos Pontos de Maestria disponíveis (concedidos pela "[[Tabela de Níveis]]", ver "[[Requisitos - Auditoria de Regras]]" R0013).
 - *Total*: campo calculado, não editável. `Total = Gasto Maestria + Bruto [Perícia escolhida] + [Atributo escolhido]` (ver "[[Formulas]]"; "Bruto [Perícia]" definido em 2.b).
 
 Uma Maestria pode ser removida pelo jogador a qualquer momento.
