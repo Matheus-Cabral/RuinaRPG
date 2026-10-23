@@ -34,6 +34,8 @@
   <ItemGroup>
     <None Update="Controllers/rotas-da-api.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Rules/rulebook-equipagem.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Rules/livro-de-regras.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Rules/compendio.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
