@@ -4,7 +4,7 @@ using Testcontainers.PostgreSql;
 namespace RuinaRPG.Tests.Integration;
 
 // The one Postgres container of a test run. Booting one per test class overwhelmed this host's Docker
-// daemon - see docs/superpowers/specs/2026-09-18-shared-postgres-testcontainer-design.md. Every fixture
+// daemon - see docs/superpowers/archive/specs/2026-09-18-shared-postgres-testcontainer-design.md. Every fixture
 // gets its own database inside it instead.
 public static class SharedPostgres
 {

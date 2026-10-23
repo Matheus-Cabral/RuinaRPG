@@ -3,7 +3,7 @@ namespace RuinaRPG.Domain.CharacterSheets;
 /// <summary>
 /// Limite de Carga (Requisitos - Ficha de Personagem 2.b) plus the "mochila" mechanic: an
 /// Inventário item with a Capacidade Extra raises the max without adding its own weight to
-/// PesoAtual (see docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md).
+/// PesoAtual (see docs/superpowers/archive/specs/2026-09-08-inventory-weight-and-capacity-design.md).
 /// </summary>
 public static class CarryWeightCalculator
 {

@@ -16,7 +16,7 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// <summary>
 /// Creating/editing/deleting an Efeito on the Auditoria keeps its "## Nome" block in the Livro de
 /// Regras' Graus & Círculos document in sync — see
-/// docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
+/// docs/superpowers/archive/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
 /// </summary>
 public class EfeitosNoLivroDeRegrasTests(ApiFixture fixture) : ApiTestBase(fixture)
 {

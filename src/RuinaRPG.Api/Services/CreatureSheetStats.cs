@@ -31,7 +31,7 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, 
     /// Ataques naturais (ItemId nulo) não pesam — só Armas/Armaduras/Escudos do Catálogo entram no Peso Total
     /// Carregado, equipados ou não. Espólios (5.a) é o que a Criatura deixa ao ser derrotada, não inventário
     /// carregado: o Peso não aparece na resposta, só entra na Movimentação.
-    /// See docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md.
+    /// See docs/superpowers/archive/specs/2026-09-08-inventory-weight-and-capacity-design.md.
     /// </summary>
     protected override async Task<Carga> CargaAsync(CreatureSheet sheet, int forca, int vigor)
     {

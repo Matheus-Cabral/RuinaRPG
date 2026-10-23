@@ -4,7 +4,7 @@ namespace RuinaRPG.Domain.Rules;
 
 /// <summary>
 /// The Efeito fields needed to generate its "## Nome" block in the Graus & Círculos Markdown —
-/// see docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
+/// see docs/superpowers/archive/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
 /// </summary>
 public sealed record EfeitoParaLivro(
     string Nome,

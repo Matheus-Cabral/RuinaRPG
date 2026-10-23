@@ -299,7 +299,7 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     }
 
     /// <summary>
-    /// Peso Total 2.b do Personagem e do NPC (docs/superpowers/specs/2026-09-08-inventory-weight-and-capacity-design.md):
+    /// Peso Total 2.b do Personagem e do NPC (docs/superpowers/archive/specs/2026-09-08-inventory-weight-and-capacity-design.md):
     /// Inventário (5.a) + Armas/Escudos DESequipados. Armaduras nunca contam — slot com ItemId está vestido. Um item de
     /// Capacidade Extra ("mochila") não soma o próprio Peso: aumenta o Peso Máximo.
     /// </summary>

@@ -9,7 +9,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 /// Keeps the Livro de Regras' Graus & Círculos document (the "graus-e-circulos"
 /// RulebookDocumentOverride, created from the embedded GRAUS &amp; CÍRCULOS.md when none exists
 /// yet) in sync with the Efeitos catalog — see
-/// docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md and Requisitos -
+/// docs/superpowers/archive/specs/2026-09-29-efeitos-no-livro-de-regras-design.md and Requisitos -
 /// Auditoria de Regras R0006.
 ///
 /// AoCriar/AoEditar/AoExcluir only stage the change on the DbContext: the caller saves once, so

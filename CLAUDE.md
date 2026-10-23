@@ -11,7 +11,7 @@ This repository holds **two things side by side**:
 
 The `Docs/` side is still the source of truth: code changes must trace back to a requirement in `Docs/Requisitos/`. A task here can be either documentation work or code work — check which before assuming.
 
-Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, distinct from the `Docs/` vault).
+Implementation plans live in `docs/superpowers/plans/` (lowercase `docs/`, distinct from the `Docs/` vault); shipped specs and plans are moved to `docs/superpowers/archive/{specs,plans}/`.
 
 ## Build, test, and run
 

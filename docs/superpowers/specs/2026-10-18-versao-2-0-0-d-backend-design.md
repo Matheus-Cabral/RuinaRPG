@@ -201,7 +201,7 @@ mantido; fica para o usuário decidir depois.
   negam com 403 (mantido via `FichaParaLeituraAsync`, hoje em `FichaControllerBase`, que nega com 404 nos três tipos).
 - Estatísticas/Peso na Movimentação (`sub-attributes` e tudo que usa a Movimentação): na Criatura, o Peso Total
   Carregado ainda soma toda Arma/Armadura/Escudo do Catálogo, equipados ou não, que é a fórmula anterior à
-  correção de 2026-09-08 (`2026-09-08-inventory-weight-and-capacity-design.md`, que deixou a Criatura fora de
+  correção de 2026-09-08 (`archive/specs/2026-09-08-inventory-weight-and-capacity-design.md`, que deixou a Criatura fora de
   escopo). No Personagem e no NPC só contam o Inventário e as Armas/Escudos desequipados (mantido via hook
   `CargaAsync` de `FichaStats`, sobrescrito em `CreatureSheetStats`).
 - Fichas/leituras da própria ficha: o Personagem nega com 404 o GET `{id}`, `{id}/racial-ability`,

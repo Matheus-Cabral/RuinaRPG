@@ -26,7 +26,7 @@ O app gerencia fichas de personagem, campanhas e bestiários para as mesas de Ru
 Docs/                     Vault Obsidian — regras do jogo e requisitos do app (PT-BR)
   Sistema RPG/             Livro de regras: atributos, perícias, combate, magia, linhagens...
   Requisitos/              Requisitos de software do app, um documento por área
-docs/superpowers/plans/   Planos de implementação (pasta minúscula, não confundir com Docs/)
+docs/superpowers/plans/   Planos de implementação em curso; os entregues ficam em docs/superpowers/archive/ (pasta minúscula, não confundir com Docs/)
 src/
   RuinaRPG.Domain          C# puro, sem dependência de EF Core/ASP.NET/Identity
   RuinaRPG.Infrastructure  DbContext, entidades do Identity, migrations, serviços de JWT

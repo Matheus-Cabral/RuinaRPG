@@ -59,7 +59,7 @@ Detailed in the Spec 0+A.
 One API host per test class instead of one per test; a template database migrated and seeded once per
 run and cloned per class; a `Testing` environment that skips startup migration/seeding; duplicated test
 helpers moved into a shared base. Detailed in
-`docs/superpowers/specs/2026-10-16-versao-2-0-0-0-a-testes-design.md`.
+`docs/superpowers/archive/specs/2026-10-16-versao-2-0-0-0-a-testes-design.md`.
 
 ### F — Validated pipeline + zero-downtime deploy
 

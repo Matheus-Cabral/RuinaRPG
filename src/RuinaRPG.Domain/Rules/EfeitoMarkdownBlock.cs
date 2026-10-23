@@ -5,7 +5,7 @@ namespace RuinaRPG.Domain.Rules;
 /// <summary>
 /// Generates the "## Nome" Markdown block for an Efeito, in the same shape as the hand-authored
 /// blocks in Docs/Sistema RPG/GRAUS & CÍRCULOS.md — see
-/// docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
+/// docs/superpowers/archive/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
 /// </summary>
 public static class EfeitoMarkdownBlock
 {
