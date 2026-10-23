@@ -1,4 +1,4 @@
-> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 3, "NPCs do GM") do "[[01 - Visão Geral.canvas]]".
+> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 3, "NPCs do GM") do "[[01 - Visão Geral]]".
 
   
 

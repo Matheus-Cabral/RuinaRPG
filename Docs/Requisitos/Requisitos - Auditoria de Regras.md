@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo.
+> Esta página corresponde à ferramenta 9 do PAINEL DO *GM* no "[[01 - Visão Geral]]".
 
   
 

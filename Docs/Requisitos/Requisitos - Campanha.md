@@ -1,4 +1,4 @@
-> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 5, "Campanhas") do "[[01 - Visão Geral.canvas]]".
+> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 5, "Campanhas") do "[[01 - Visão Geral]]".
 
   
 
@@ -34,7 +34,7 @@
 
 # **R0004** - O GM deve poder criar fichas de personagem para os membros da campanha.
 
-**Descrição**: A partir da tela da campanha, o GM cria uma ficha de personagem (ver "[[Requisitos - Ficha de Personagem]]") escolhendo qual jogador membro é o dono dela. A ficha nasce vinculada tanto a essa campanha quanto a esse jogador — é essa vinculação que faz a ficha aparecer na coluna "campanha" da lista de fichas no painel do jogador (ver `PAINEL DO JOGADOR` no "[[01 - Visão Geral.canvas]]").
+**Descrição**: A partir da tela da campanha, o GM cria uma ficha de personagem (ver "[[Requisitos - Ficha de Personagem]]") escolhendo qual jogador membro é o dono dela. A ficha nasce vinculada tanto a essa campanha quanto a esse jogador — é essa vinculação que faz a ficha aparecer na coluna "campanha" da lista de fichas no painel do jogador (ver `PAINEL DO JOGADOR` no "[[01 - Visão Geral]]").
 
   
 

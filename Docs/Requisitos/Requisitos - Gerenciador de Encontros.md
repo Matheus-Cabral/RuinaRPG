@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é uma ferramenta nova do GM, complementar a "[[Requisitos - Campanha]]".
+> Esta página corresponde aos encontros da ferramenta 5 (Campanhas) do PAINEL DO *GM* no "[[01 - Visão Geral]]" — uma ferramenta do GM complementar a "[[Requisitos - Campanha]]".
 
   
 

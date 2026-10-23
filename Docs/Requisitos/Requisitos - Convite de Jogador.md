@@ -1,4 +1,4 @@
-> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 1, "Convidar jogador") do "[[01 - Visão Geral.canvas]]".
+> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 1, "Convidar jogador") do "[[01 - Visão Geral]]".
 
   
 
@@ -31,7 +31,7 @@
 
 # **R0003** - Ao ser resgatado, o código deve vincular o jogador ao GM.
 
-**Descrição**: Quando um jogador usa o código no cadastro (ver aba "Cadastro de jogadores" no `PÁGINA DE CADASTRO` do "[[01 - Visão Geral.canvas]]"), a conta criada é automaticamente vinculada à conta do GM que gerou aquele código. Na lista de códigos (R0002), o status muda para **Usado** e as colunas **Resgatado por** e **Resgatado em** passam a exibir os dados do jogador e o momento do resgate. Um código **Usado** não pode ser resgatado novamente.
+**Descrição**: Quando um jogador usa o código no cadastro (ver aba "Cadastro de jogadores" no `PÁGINA DE CADASTRO` do "[[01 - Visão Geral]]"), a conta criada é automaticamente vinculada à conta do GM que gerou aquele código. Na lista de códigos (R0002), o status muda para **Usado** e as colunas **Resgatado por** e **Resgatado em** passam a exibir os dados do jogador e o momento do resgate. Um código **Usado** não pode ser resgatado novamente.
 
   
 

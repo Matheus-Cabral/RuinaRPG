@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo, complementar a "[[Requisitos - Ficha de Personagem]]" (4.a) e §7 de "[[Ruína RPG - Sistema Básico]]".
+> Esta página corresponde à ferramenta 8 do PAINEL DO *GM* no "[[01 - Visão Geral]]" — um subsistema complementar a "[[Requisitos - Ficha de Personagem]]" (4.a) e §7 de "[[Ruína RPG - Sistema Básico]]".
 
   
 

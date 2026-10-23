@@ -2,7 +2,7 @@
 
   
 
-> **Modelo de edição**: salvo indicação em contrário, todos os campos da ficha são editáveis pelo jogador dono da ficha. Apenas a **criação** e a **exclusão** de uma ficha são exclusivas do **GM** (ver [[01 - Visão Geral.canvas]]).
+> **Modelo de edição**: salvo indicação em contrário, todos os campos da ficha são editáveis pelo jogador dono da ficha. Apenas a **criação** e a **exclusão** de uma ficha são exclusivas do **GM** (ver [[01 - Visão Geral]]).
 
   
 

@@ -1,4 +1,4 @@
-> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 2, "Bestiário do GM") do "[[01 - Visão Geral.canvas]]" e na "[[Ruína RPG - Ficha de Criaturas.pdf]]".
+> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 2, "Bestiário do GM") do "[[01 - Visão Geral]]" e na "[[Ruína RPG - Ficha de Criaturas.pdf]]".
 
   
 

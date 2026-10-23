@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é uma ferramenta de consulta nova.
+> Esta página corresponde ao bloco "Consulta de regras" do "[[01 - Visão Geral]]" — uma ferramenta de consulta.
 
   
 

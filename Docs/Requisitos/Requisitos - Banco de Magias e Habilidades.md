@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo, complementar a "[[Requisitos - Ficha de Personagem]]" (4.b), "[[Requisitos - Ficha de NPCs]]" e "[[Requisitos - Ficha de Criaturas]]" (R0007).
+> Esta página corresponde à ferramenta 6 do PAINEL DO *GM* no "[[01 - Visão Geral]]" — um subsistema complementar a "[[Requisitos - Ficha de Personagem]]" (4.b), "[[Requisitos - Ficha de NPCs]]" e "[[Requisitos - Ficha de Criaturas]]" (R0007).
 
   
 

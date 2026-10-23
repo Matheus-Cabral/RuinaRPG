@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — substitui a entrada de menu que antes apontava para o "[[Requisitos - Compêndio de Regras]]" (ver a nota de status naquele documento).
+> Esta página corresponde ao bloco "Consulta de regras" do "[[01 - Visão Geral]]" — substitui a entrada de menu que antes apontava para o "[[Requisitos - Compêndio de Regras]]" (ver a nota de status naquele documento).
 
   
 
