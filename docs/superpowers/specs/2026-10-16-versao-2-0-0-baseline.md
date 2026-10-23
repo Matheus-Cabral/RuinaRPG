@@ -123,3 +123,25 @@ Measured on `76c7763` (release/2.0.0; differs from `57b4ba7` only by docs) with 
 Other numbers: whole `Api` project 16 318 -> 13 702 lines; Unit 964 -> 964 tests, Client 936 -> 936, Integration 1812 -> 2045 (tests per kind grew, none removed). HttpClient timeouts 0 in all three. The other API endpoints stayed within single-run noise of the before values (sub-10 ms ones +/- 1 ms; `/api/items` 18.9 -> 21.2 ms, `/api/creature-sheets/{id}` 13.1 -> 14.5 ms).
 
 Targets were reported as measured, not tuned. The rulebook gain (74 -> 46 ms) comes from batching the Equipagem queries; where the rest goes was not profiled again in D (the profile under "After C" put the Markdown step at ~12-15 ms). The integration wall time grew because the suite now runs more cases (every shared case runs for each of the three kinds). Success criteria otherwise: build 0 warnings / 0 errors, whole suite green, `verificar-baseline.sh 729dac9` exit 0, `git diff ed7a447 -- src/RuinaRPG.Contracts src/RuinaRPG.Client` empty, route inventory and rulebook frozen output unchanged.
+
+## After E (client consolidation)
+
+"Before E" is `30a8fa4`, "after" is `0ebcecd` (release/2.0.0 HEAD). Both measured on the same VM; builds and client test runs in temporary `git worktree`s of each commit.
+
+**Methods (same for both columns):** line counts read every tracked file of the set at the commit (`git ls-tree -r` + `git show`, `wc -l`): the three pages are `src/RuinaRPG.Client/Pages/FichaDe{Personagem,Npc,Criatura}.razor`; `Shared/Ficha/` is every tracked file in `src/RuinaRPG.Client/Shared/Ficha/`; client total is every `.razor` and `.cs` under `src/RuinaRPG.Client`; `Contracts` is every `.cs` under `src/RuinaRPG.Contracts`. Build: `dotnet build --no-incremental` of the whole solution, one run each. Tests: `dotnet test tests/RuinaRPG.Tests.Client --no-restore`, 3 runs each, nothing else running. `_framework`: `dotnet publish src/RuinaRPG.Client -c Release -o <tmp>` at each commit, size of `wwwroot/_framework`.
+
+| Metric | Before E | After E | Reference | Result |
+|---|---|---|---|---|
+| Three sheet pages | 5 523 | 1 180 | - | -78.6 % |
+| `Shared/Ficha/` | 0 | 3 421 | - | new |
+| Pages + `Shared/Ficha/` | 5 523 | 4 601 (-16.7 %) | about 2 500-3 000 | **missed** (guess was too low) |
+| Client `.razor` + `.cs` total | 19 986 | 19 064 (-4.6 %) | - | -922 lines |
+| `Contracts` `.cs` | 1 251 | 1 105 (-11.7 %) | - | -146 lines |
+| Client tests | 936 | 2 024 | - | +1 088 |
+| Client test time (3 runs) | 23 / 23 / 24 s (wall 30.6 / 30.4 / 30.4 s) | 109 / 109 / 110 s (wall 116.1 / 116.1 / 116.5 s) | ~28 s | **regressed** (about 3.6x) |
+| `dotnet build --no-incremental` | 55.7 s, 0 warnings | 29.5 s, 0 warnings | no meaningful change | not comparable (see below) |
+| `_framework` (publish) | 24 635 507 B | 24 250 457 B (-1.6 %) | no meaningful change | met |
+
+Other numbers: `_framework` without the `.gz`/`.br` copies 14 532 687 -> 14 276 687 B; `.br` files 4 182 448 -> 4 151 848 B. First after-run of the client suite had one timing failure (green in the other two runs and in two more later runs).
+
+Notes. The pages-plus-shared number is reported as measured, not tuned: the three pages shrink by 4 343 lines, but the shared tabs carry 3 421 of them, and the tabs keep the per-kind capability branches the constraints allow. The client test count doubled because the E.1 safety net and the shared-tab tests are theories run once per kind and role; that is also why the suite takes about 3.6x longer (per test 0.025 s -> 0.054 s). The build time is a single run each and the "before" run was the first build in a fresh worktree (cold restore and obj), so the 55.7 -> 29.5 s gap is not evidence of a speed-up. Download size did not change meaningfully, as expected. Whole `dotnet test` (all three projects) green: Unit 965, Client 2 024, Integration 2 045; when run in one command the Client project hit timing flakes under load from Integration running in parallel (7 failures, all green on rerun alone, twice).

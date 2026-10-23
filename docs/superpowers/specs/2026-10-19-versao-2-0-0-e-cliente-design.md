@@ -1,6 +1,6 @@
 # Versão 2.0.0 — Spec E: Client consolidation — Design
 
-**Status:** draft, awaiting user approval (builder check done 2026-10-19). Version 2.0.0, branch `release/2.0.0`.
+**Status:** done 2026-10-23 on `release/2.0.0` (HEAD `0ebcecd`); measurements in the baseline doc, "After E". Deploy to the dev stack and the manual check of the three sheets remain after the final review (R-E5). Version 2.0.0, branch `release/2.0.0`.
 Detailed spec of sub-project **E** of the roadmap (`2026-10-16-versao-2-0-0-roadmap-design.md`).
 
 ## Intent
