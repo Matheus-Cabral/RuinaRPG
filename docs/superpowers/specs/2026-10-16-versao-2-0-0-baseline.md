@@ -164,6 +164,6 @@ After the final-review fix (2026-10-23, `ce41a46`): the client classes that asse
 | Broken wikilinks in `Docs/` | 0 | 0 | none |
 | Requirements marked "removido na 2.0.0" | 0 | 3 | NPCs R0002 and R0014, Catálogo R0011 |
 
-Other numbers: `docs/superpowers/archive/` (new, 103 files) holds 441 022 words, so live plus archive is 461 823 against 456 288 before (the archive adds a few index/notes words). Sistema RPG grew slightly because of small edits made during G, not new rules content. IDs were never renumbered; removed requirements keep their heading.
+Other numbers: `docs/superpowers/archive/` (new, 103 files) holds 441 022 words, so live plus archive is 461 823 against 456 288 before (the archive adds a few index/notes words). Sistema RPG's +76 words are list markers, not rules text: G turned kit lines into Markdown bullets (+81/−10 lines), and `wc -w` counts each `-` marker as a word, plus about 3 tokens split by reformatting; no rule text was added. IDs were never renumbered; removed requirements keep their heading.
 
-Verification at HEAD: `dotnet build` 0 warnings / 0 errors; Unit 965 passed, Client 2 024 passed (3 m 18 s), Integration 2 047 passed (4 m 40 s), each project run alone, 0 failures (the known one-off flakes did not occur).
+Verification at HEAD: `dotnet build` 0 warnings / 0 errors; Unit 965 passed, Client 2 024 passed (3 m 18 s), Integration 2 047 passed (4 m 40 s; 2 045 after E plus the two frozen-output tests added in G Task 1), each project run alone, 0 failures (the known one-off flakes did not occur).

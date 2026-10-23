@@ -40,7 +40,7 @@ O `.env.example` vem com `ASPNETCORE_ENVIRONMENT=Development`: migrations penden
 | `make logs` | Segue os logs dos containers. |
 | `make migrate` | Reaplica migrations e seeders com a imagem da cor ativa. |
 | `make status` | Cor ativa, releases e backups mais recentes. |
-| `make rollback` | Volta para a release anterior. |
+| `make rollback` | Volta para a release anterior. Num deploy em janela, restaura o backup da janela. |
 | `make grant-rules-auditor` / `revoke-rules-auditor` / `reset-gm-password` | Com `EMAIL=...`: dá ou tira o papel de Auditor de Regras de um GM, ou redefine a senha dele. |
 
 ## Build e testes
@@ -68,7 +68,7 @@ python3 tools/docs/verificar-wikilinks.py         # [[wikilinks]] sem destino em
 
 O deploy normal é automático (`Docs/Requisitos/Requisitos - Técnico.md`, R0013 a R0016):
 
-1. **PR para `main`.** O `release.yml` roda o CI completo e depois monta um clone descartável com um dump real da produção, onde implanta o `main` e em seguida o PR. Confere as impressões digitais dos dados antes e depois, o smoke somente-leitura e se a versão anterior ainda funciona com o novo schema.
+1. **PR para `main`.** O `release.yml` valida só PRs do dono, abertos a partir do próprio repositório: roda o CI completo e depois monta um clone descartável com um dump real da produção, onde implanta o `main` e em seguida o PR. Confere as impressões digitais dos dados antes e depois, o smoke somente-leitura e se a versão anterior ainda funciona com o novo schema.
 2. **Auto-merge.** Aprovado, o PR sai de rascunho e o auto-merge é habilitado.
 3. **Deploy.** Na `main`, o `deploy.yml` implanta em produção (blue-green, sem downtime), roda o smoke e reverte sozinho se algo falhar. Um PR com o rótulo `deploy:janela` é implantado em janela de manutenção, com backup restaurável.
 
@@ -76,7 +76,7 @@ O deploy normal é automático (`Docs/Requisitos/Requisitos - Técnico.md`, R001
 
 **Ensaio sem PR:** Actions > `release` > *Run workflow* roda a mesma validação, sem comentar nem fazer merge.
 
-**Caminho manual de emergência**, na VM de produção, sempre com `sudo`: `sudo make deploy`, `sudo make migrate`, `sudo make status`, `sudo make rollback`; `sudo deploy/deploy.sh deploy <sha> --window` para uma janela; `sudo deploy/deploy.sh backup` e `sudo deploy/deploy.sh restore <diretório>`. Cada deploy, rollback e restore fica registrado em `deploy/state/deploy.log`. Em produção os backups ficam em `/var/backups/ruinarpg` (os 5 mais recentes, mais o da janela e o do último deploy), com cópias em `/var/backups/ruinarpg-offsite`.
+**Caminho manual de emergência**, na VM de produção, sempre com `sudo`: `sudo make deploy`, `sudo make migrate`, `sudo make status`, `sudo make rollback`; `sudo deploy/deploy.sh deploy <sha> --window` para uma janela; `sudo deploy/deploy.sh backup` e `sudo deploy/deploy.sh restore <diretório>`. Cada deploy, rollback e restore fica registrado em `deploy/state/deploy.log`. Em produção os backups ficam em `/var/backups/ruinarpg` (os 5 mais recentes, mais o da janela e o do último deploy). As cópias fora da máquina não ficam na VM de produção: o `deploy.yml` (depois de cada deploy) e o `deploy/clone.sh` (a cada validação) as gravam na VM de validação, onde roda o runner, em `/var/backups/ruinarpg-offsite`.
 
 O provisionamento único das máquinas, chaves e segredos está em [`deploy/provision/README.md`](deploy/provision/README.md).
 

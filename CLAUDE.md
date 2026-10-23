@@ -22,7 +22,7 @@ Exceptions — Markdown that only seeds once:
 
 - Add one with `dotnet ef migrations add <Name> --project src/RuinaRPG.Infrastructure --startup-project src/RuinaRPG.Api --output-dir Persistence/Migrations`.
 - Since 2.0.0 the chain starts at one baseline (`20261017120000_Baseline_2_0_0`); `--migrate` converts a 1.5.0 history to it (`HistoricoDeMigracoes150`, Técnico R0009). `tools/migrations/verificar-baseline.sh <1.5.0 ref>` proves the baseline equals the old chain.
-- `Development` applies pending migrations at API startup. **`Production` never does** (Técnico R0009): `deploy.sh` runs them in a one-off container with the new image before switching colors, and `make migrate` re-runs them. A stack running in Production mode needs `make migrate` after a schema-changing deploy.
+- `Development` applies pending migrations at API startup. **`Production` never does** (Técnico R0009): `deploy.sh` runs them in a one-off container with the new image before switching colors, and `make migrate` re-runs them. A Production stack brought up without `deploy.sh` (e.g. a bare `docker compose up`) needs `make migrate` after moving to a release that changes the schema.
 - Migrations must stay backward compatible with the previous release (the old color keeps serving during a blue-green deploy, and the clone checks it). If not, the PR needs the `deploy:janela` label.
 - Keep the EF Core model and `Docs/Requisitos/Requisitos - Modelo de Dados.md` in sync.
 - Every secret comes from environment variables (Técnico R0003); the API refuses to start without the `Jwt__*` variables or with a signing key under 32 bytes.

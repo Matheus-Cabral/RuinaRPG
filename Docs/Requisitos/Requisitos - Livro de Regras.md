@@ -2,7 +2,7 @@
 
   
 
-> **Natureza do conteúdo**: assim como o Compêndio, o Livro de Regras não é curado por cada GM — é o mesmo conteúdo para todo mundo, extraído de documentos em `Docs/Sistema RPG`. Só o Auditor de Regras o altera, pelas páginas de "[[Requisitos - Auditoria de Regras]]": o texto dos documentos (R0002) e os catálogos que montam as abas de Características, Históricos, Equipagem e Tabela de Níveis.
+> **Natureza do conteúdo**: assim como o Compêndio, o Livro de Regras não é curado por cada GM — é o mesmo conteúdo para todo mundo, extraído de documentos em `Docs/Sistema RPG`. Só o Auditor de Regras o altera, pelas páginas de "[[Requisitos - Auditoria de Regras]]": o texto dos documentos ([[Requisitos - Auditoria de Regras#**R0002** - O Auditor de Regras pode editar o texto do Livro de Regras.|Auditoria R0002]]) e os catálogos que montam as abas de Características, Históricos, Equipagem e Tabela de Níveis.
 
   
 
@@ -45,7 +45,7 @@
 | Sistema Básico | `##` | 7 (uma por seção numerada do documento) |
 | Graus & Círculos | `#` | 9 (uma por Grau/Círculo; os efeitos de cada Grau, que são `##`, continuam dentro do cartão do próprio Grau) |
 | Tabela de Níveis | — | nenhuma (gerada da tabela da Auditoria, R0013 — "Nível \| Bônus", com os bônus de cada nível um por linha e "—" para nível sem bônus; e, só se o Auditor marcar a opção em R0013 (padrão: desmarcada), uma segunda tabela, "Limites e progressão", só com as colunas Por nível que têm algum valor) |
-| Características | `###`, agrupado por `#` | uma por característica (ver R0005) |
+| Características | — | uma por característica (vem do catálogo de Características da Auditoria, não do Markdown; ver R0005) |
 | As Estrelas | `#` | 11 (Sina + uma por Estrela; os usos de Sina e as tendências de cada Estrela, que são `##`/listas, continuam dentro do cartão do próprio Sina/Estrela) |
 | Históricos | — | uma por Histórico (ver R0007 abaixo; vem do catálogo de Históricos — não do Markdown, mesmo tratamento de R0004 para Características) |
 | Equipagem | — | uma por kit (ver R0008 abaixo; vem do catálogo de kits — não do Markdown) |

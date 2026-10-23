@@ -80,7 +80,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, como em "[
 **3.a Armas e Condutores** — modelo híbrido: ao adicionar uma linha, o GM escolhe entre:
 
 - **Vincular ao Catálogo**: como no Personagem (3.a).
-- **Preencher manualmente**: para ataques naturais (ex: garra, mordida) sem vínculo com o Catálogo. Campos digitados diretamente: *Nome*, *Tipo de Dano* (dropdown, mesmos valores do Catálogo), *Dados* e *Dano*. Sem Alcance, Crítico, Rank ou Durabilidade — ataque natural não tem durabilidade.
+- **Preencher manualmente**: para ataques naturais (ex: garra, mordida) sem vínculo com o Catálogo. Campos digitados diretamente: *Nome*, *Tipo de Dano* (dropdown, mesmos valores do Catálogo), *Dados* e *Dano*. Sem Alcance, Crítico, Rank, Durabilidade ou Peso — ataque natural não tem durabilidade nem conta no Peso Total Carregado.
 
   
 
