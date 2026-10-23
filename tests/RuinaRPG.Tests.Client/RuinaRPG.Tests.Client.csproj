@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\RuinaRPG.Client\RuinaRPG.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
