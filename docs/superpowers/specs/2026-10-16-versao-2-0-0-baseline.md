@@ -147,3 +147,23 @@ Other numbers: `_framework` without the `.gz`/`.br` copies 14 532 687 -> 14 276 
 Notes. The pages-plus-shared number is reported as measured, not tuned: the three pages shrink by 4 343 lines, but the shared tabs carry 3 421 of them, and the tabs keep the per-kind capability branches the constraints allow. The client test count doubled because the E.1 safety net and the shared-tab tests are theories run once per kind and role; that is also why the suite takes longer: about 4.7x in test time (the `Duration` dotnet test reports, mean 23.3 -> 109.3 s) and about 3.8x in wall clock (whole `dotnet test` command, mean 30.5 -> 116.2 s); per test 0.025 s -> 0.054 s. The "Reference ~28 s" is the baseline table at the top of this doc (Client bUnit time 27.6 / 28.7 s at `cc579e6`, 918 tests), the number the E spec quoted. The build time is a single run each and the "before" run was the first build in a fresh worktree (cold restore and obj), so the 55.7 -> 29.5 s gap is not evidence of a speed-up. Download size did not change meaningfully, as expected. Whole `dotnet test` (all three projects) green: Unit 965 (964 after D, plus one test added in E Task 5: `ContractsDasFichasTests`), Client 2 024, Integration 2 045; when run in one command the Client project hit timing flakes under load from Integration running in parallel (7 failures, all green on rerun alone, twice).
 
 After the final-review fix (2026-10-23, `ce41a46`): the client classes that assert real-time windows run in the non-parallel xunit collection "Tempo real" (`TempoRealCollection`), and `tests/RuinaRPG.Tests.Client/xunit.runner.json` caps the suite at `maxParallelThreads: 2` (the collection alone still gave 2 timing failures in 6 solo runs, both on bUnit's default 1 s `WaitForAssertion`). Client suite, 3 solo runs, nothing else running: 2 024 passed, 0 failed each; test time 3 m 15 s / 3 m 16 s / 3 m 15 s (about 195 s), wall 199.6 / 199.8 / 200.8 s. (With the collection alone: about 181 s, wall about 185 s.) That is about 1.8x the after-E test time above (109.3 s) and about 6.6x the before-E wall clock (30.5 s): the price of a green suite without retries.
+
+## After G (documentation slimming)
+
+"Before G" is `9688e1c` (controller ruling G2, start of G; no archive existed), "after" is HEAD of release/2.0.0 (`2f70a6d` plus this commit, which only touches this file). The roadmap sets no numeric target for G, so none is judged here.
+
+**Method (same for both columns):** words = `wc -w` over the concatenation of the tracked files of the set as committed (`git ls-files -z -- <set> | xargs -0 cat | wc -w`), evaluated in a temporary `git worktree` of `9688e1c` and in the working tree at HEAD (clean). Sets: `Docs/Requisitos/` = every tracked `.md` and `.canvas` (17 files on both sides; `01 - Visão Geral.canvas` became `01 - Visão Geral.md`, each side counted with what exists); `Docs/Sistema RPG/` = tracked `.md`; live `docs/superpowers/` = tracked `.md` under `docs/superpowers/` excluding `archive/`; `README.md`; `CLAUDE.md`. Broken wikilinks: `tools/docs/verificar-wikilinks.py` (copied into the `9688e1c` worktree, where it did not exist).
+
+| Metric | Before G | After G | Change |
+|---|---|---|---|
+| `Docs/Requisitos/` words | 46 072 | 44 531 | -1 541 (-3.3 %) |
+| `Docs/Sistema RPG/` words | 20 042 | 20 118 | +76 (+0.4 %) |
+| Live `docs/superpowers/` words (specs + plans, no archive) | 456 288 | 20 801 | -435 487 (-95.4 %) |
+| `README.md` words | 1 241 | 934 | -307 (-24.7 %) |
+| `CLAUDE.md` words | 1 826 | 1 198 | -628 (-34.4 %) |
+| Broken wikilinks in `Docs/` | 0 | 0 | none |
+| Requirements marked "removido na 2.0.0" | 0 | 3 | NPCs R0002 and R0014, Catálogo R0011 |
+
+Other numbers: `docs/superpowers/archive/` (new, 103 files) holds 441 022 words, so live plus archive is 461 823 against 456 288 before (the archive adds a few index/notes words). Sistema RPG grew slightly because of small edits made during G, not new rules content. IDs were never renumbered; removed requirements keep their heading.
+
+Verification at HEAD: `dotnet build` 0 warnings / 0 errors; Unit 965 passed, Client 2 024 passed (3 m 18 s), Integration 2 047 passed (4 m 40 s), each project run alone, 0 failures (the known one-off flakes did not occur).
