@@ -78,7 +78,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 
 *(ver "[[Requisitos - Catálogo de Itens e Equipamentos]]")*
 
-**Items** — Table-Per-Hierarchy: uma tabela, discriminada por `Tipo`. Rank e Subcategoria têm uma coluna própria por subtipo (`Arma_Rank`, `Arma_Subcategoria`, …), pois cada subtipo os mapeia separadamente.
+**Items** — Table-Per-Hierarchy: uma tabela, discriminada por `Tipo`. Rank e Subcategoria têm uma coluna própria por subtipo (`Arma_Rank`, `Arma_Subcategoria`, …), pois cada subtipo os mapeia separadamente; a Categoria da Armadura também (`Armadura_Categoria`), enquanto a do Escudo fica na coluna `Categoria`.
 
 | Coluna | Tipo | Aplica-se a |
 |---|---|---|
@@ -99,7 +99,8 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 | Critico | string, nullable | Arma |
 | Alcance | int, nullable | Arma |
 | TipoDeDano | enum, nullable | Arma |
-| Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura, Escudo (coluna compartilhada) |
+| Armadura_Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura |
+| Categoria | enum Leve \| Medio \| Pesada, nullable | Escudo |
 | Defesa | int, nullable | Armadura |
 | RF | int, nullable | Armadura |
 | RM | int, nullable | Armadura |
@@ -521,7 +522,7 @@ Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcAff
 - `GmId`: FK → Users — o GM dono do bestiário.
 - `OwnerId`: **nullable** (`SetNull`) — só setado se concedida a um jogador (Campanha R0010).
 - `CampaignId`: **não existe** — o vínculo com campanha é via `CampaignAttachments` (seção 5); os toggles de Nome/Imagem públicos também vivem lá (podem diferir por campanha).
-- Sem `PontosDeIgnicaoBonusManual` nem `PontosDePericiaBonusCritico`. `PontosDeIgnicaoTotal` é gravado e lido como está, mas não é editável desde a 1.5.0.
+- Sem `PontosDeIgnicaoBonusManual` nem `PontosDePericiaBonusCritico`. `PontosDeIgnicaoTotal` é **vestigial**, como em CharacterSheets: desde a 1.5.0 o valor enviado na atualização é ignorado, e nada o grava além da cópia literal quando o GM concede a cópia de um NPC existente; a leitura devolve o valor guardado, sem uso. Diferente do Personagem, nenhum Total é computado a partir do Nível.
 - `NpcSheetHistoriaImages`: ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
 - Usa `ExperienciaAtual` para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos**, e entregues somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
