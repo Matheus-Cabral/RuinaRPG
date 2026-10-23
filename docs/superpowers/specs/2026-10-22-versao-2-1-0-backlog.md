@@ -55,3 +55,9 @@ in `TipoDeFichaCliente` instead of reusing UI capability flags to pick Creature 
 - "Divergências encontradas" in `2026-10-18-versao-2-0-0-d-backend-design.md`: a player granted an
   NPC/Criatura sheet can delete it, against Campanha R0010. Fits naturally with items 2–4 (permissions
   of GM vs player over sheets) if the user wants it fixed.
+
+## Queued for 2.2.0 (user, 2026-10-23)
+
+- **A robust, complete backup system for production** (scheduled, kept off the production VM, restore
+  tested, monitored). Until then, 2.0.0's cutover (H) takes only the backups the cutover needs. Comes after
+  the 2.1.0 features.
