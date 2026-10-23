@@ -80,8 +80,8 @@ public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem
     /// <summary>
     /// Tracks the last Nível the GM dismissed the level-up notice for — see
     /// NpcSheetsController.LevelUpNotice/.DismissLevelUpNotice, same mechanism as
-    /// CharacterSheet's own property, per Requisitos - Ficha de NPCs R0002 ("estrutura idêntica
-    /// à Ficha de Personagem").
+    /// CharacterSheet's own property, per the preamble of Requisitos - Ficha de NPCs ("mesma estrutura
+    /// completa" da Ficha de Personagem).
     /// </summary>
     public int? LastDismissedLevelUpLevel { get; set; }
 }

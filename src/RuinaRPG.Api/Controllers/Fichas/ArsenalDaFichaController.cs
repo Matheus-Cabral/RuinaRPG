@@ -292,7 +292,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     protected Task<ActionResult?> PreencherArmaDoCatalogoAsync(string? itemIdPedido, Action<Guid, int> ligar) =>
         PreencherDoCatalogoAsync<Arma>(itemIdPedido, a => a.Rank, "Item de arma não encontrado.", ligar);
 
-    /// <summary>A Durabilidade Atual pedida, limitada ao Máximo do Rank da Arma (Ficha de Personagem 3.a, aplicado a NPC por R0002).</summary>
+    /// <summary>A Durabilidade Atual pedida, limitada ao Máximo do Rank da Arma (Ficha de Personagem 3.a, aplicado a NPC pelo preâmbulo da Ficha de NPCs).</summary>
     protected Task<int> DurabilidadeDeArmaLimitadaAsync(Guid itemId, int durabilidadeAtual) =>
         DurabilidadeLimitadaAsync<Arma>(itemId, durabilidadeAtual, a => a.Rank);
 

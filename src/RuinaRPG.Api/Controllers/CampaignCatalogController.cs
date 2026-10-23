@@ -16,7 +16,7 @@ using RuinaRPG.Infrastructure.Rules;
 namespace RuinaRPG.Api.Controllers;
 
 /// <summary>
-/// Requisitos - Ficha de Personagem R0003 / Requisitos - Catálogo R0011: a Jogador editing their
+/// Requisitos - Ficha de Personagem R0003: a Jogador editing their
 /// own sheet (or a NPC/Criatura sheet granted to them) may only pick an Item, Magia/Habilidade or
 /// Imagem that's attached to that sheet's campaign AND toggled public (Requisitos - Campanha
 /// R0008/R0009) — not their linked GM's entire catalog/bank/image library. This controller is
