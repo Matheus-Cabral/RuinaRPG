@@ -86,6 +86,13 @@ load helpers
   [ "$output" = "$c" ]
 }
 
+@test "the db healthcheck checks over TCP, not the Unix socket of the entrypoint's init server" {
+  # pg_isready over the socket goes green on the temporary server postgres runs while initialising a fresh
+  # volume; `compose up --wait db` then returned and the next pg_dump/psql met "shutting down".
+  run grep -E 'test: \["CMD-SHELL", "pg_isready -h 127\.0\.0\.1 ' "$RUINA_REPO_DIR/docker-compose.yml"
+  [ "$status" -eq 0 ]
+}
+
 @test "build_images builds the three targets of deploy/Dockerfile with one GIT_SHA, skipping tags that exist" {
   run bash -c '
     source "$1"
