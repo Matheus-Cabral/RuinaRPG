@@ -101,7 +101,8 @@ fi
 SHA="${RUINA_PACOTE_SHA:-}"
 if [[ -z "$SHA" ]]; then
   wd="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$DB" 2>/dev/null || true)"
-  if [[ -n "$wd" && -d "$wd/.git" ]] && command -v git >/dev/null 2>&1; then
+  # -e e não -d: num git worktree (o checkout do ensaio) o .git é um arquivo.
+  if [[ -n "$wd" && -e "$wd/.git" ]] && command -v git >/dev/null 2>&1; then
     SHA="$(git -c safe.directory="$wd" -C "$wd" rev-parse HEAD 2>/dev/null || true)"
   fi
   [[ -n "$SHA" ]] || log "aviso: não consegui ler o sha do checkout; dump.tar/sha fica vazio"

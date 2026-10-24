@@ -372,6 +372,15 @@ atual_compose() { docker compose -p "$ENS" -f "$BATS_FILE_TMPDIR/atual.yml" "$@"
   [[ "$output" == *"desfazer"* ]]
 }
 
+@test "pacote.sh no ensaio (checkout num git worktree) grava o sha da 1.5.0 em dump.tar/sha" {
+  RUINA_PACOTE_PROJECT="$ENS" run --separate-stderr "$PACOTE" --so-banco "$BATS_TEST_TMPDIR/destino"
+  echo "$output"; echo "$stderr"
+  [ "$status" -eq 0 ]
+  mkdir "$BATS_TEST_TMPDIR/x"
+  tar -C "$BATS_TEST_TMPDIR/x" -xf "$output/dump.tar" sha
+  [ "$(cat "$BATS_TEST_TMPDIR/x/sha")" = "$(git -C "$REPO" rev-parse 729dac9)" ]
+}
+
 @test "ensaio-150.sh desfazer remove a stack e o worktree e mantém as imagens" {
   run "$ENSAIO" desfazer "$ENS_DIR"
   echo "$output"

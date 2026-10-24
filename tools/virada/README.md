@@ -80,6 +80,23 @@ tools/virada/ensaio-150.sh desfazer <dir-checkout> [--remover-stack-atual]
 `comum.sh` tem as funções que `restaurar-pacote.sh` e `ensaio-150.sh` dividem (checksum, restauração,
 contagens, health, imagem do nginx, remoção do projeto).
 
+## `ambiente-producao.sh`, `ambiente-ensaio.sh` — carregados pelo roteiro da virada
+
+```
+. /home/pro/RuinaRPG/tools/virada/ambiente-producao.sh || exit 1   # no começo de cada chamada
+```
+
+- O roteiro (`docs/superpowers/specs/2026-10-23-h-roteiro-da-virada.md`, seção 0) é executado por um
+  agente cujo Bash não guarda variáveis nem funções entre chamadas: cada chamada carrega um destes
+  arquivos. Eles definem `ALVO` (`producao` ou `ensaio`, somente leitura), as variáveis do roteiro e, por
+  `ambiente-comum.sh`, as funções `prod`, `sqlprod`, `trazer`, `guardar` e `passo_longo`, e imprimem o
+  alvo. Carregar o segundo ambiente no mesmo shell é recusado.
+- `guardar VAR valor` acrescenta ao estado `~/.virada/estado-<alvo>.env` (700/600), lido sem ser
+  executado a cada chamada (só as variáveis previstas, valores com caracteres seguros).
+- `passo_longo <passo> <comando…>` grava a saída em `$LOGS/<passo>.log` com `== <passo> código N` no fim.
+- A senha do sudo fica só em `/home/pro/.ruinarpg-virada/sudo` (600) e entra pelo stdin do `sudo -S`.
+- Testes: `deploy/tests/run-bats.sh deploy/tests/virada-ambiente.bats` (sem docker nem rede).
+
 ## `contagens.sql`
 
 Uma linha `tabela<TAB>linhas` por tabela do schema `public` (inclui Identity e
