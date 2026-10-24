@@ -132,6 +132,9 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM HUP
+# Sem isto, um SIGPIPE (ex.: stderr num pipe que fechou) mata o bash com o trap de EXIT vendo $?=0, e o
+# .partial ficaria para trás.
+trap 'exit 141' PIPE
 
 log "gerando $DIR"
 

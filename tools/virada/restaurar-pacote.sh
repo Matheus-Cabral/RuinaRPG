@@ -44,8 +44,9 @@ while (( $# )); do
   esac
 done
 
-# --remover apaga volumes deste projeto: nunca deixe o nome apontar para outra stack.
-[[ "$PROJ" =~ ^ruinarpg-(pacote|bats)[a-z0-9_-]*$ ]] ||
+# --remover apaga volumes deste projeto: nunca deixe o nome apontar para outra stack (sem "_", para o
+# prefixo "<projeto>_" dos volumes não casar com outro projeto).
+[[ "$PROJ" =~ ^ruinarpg-(pacote|bats)[a-z0-9-]*$ ]] ||
   fatal "--projeto deve começar com ruinarpg-pacote ou ruinarpg-bats (descartável): $PROJ"
 if ! [[ "$PORT" =~ ^[1-9][0-9]{0,4}$ ]] || (( PORT > 65535 )); then fatal "--porta inválida: $PORT"; fi
 [[ "$RUINA_HEALTH_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || fatal "RUINA_HEALTH_TIMEOUT deve ser um inteiro >= 1"
@@ -189,7 +190,7 @@ dc up -d --wait db >&2 2>&1
 # ---------------------------------------------------------------- 3. restauração
 
 log "restaurando db.dump"
-dc exec -T db sh -c 'exec pg_restore --no-owner --exit-on-error --single-transaction -U ruinarpg -d ruinarpg' \
+dc exec -T db sh -c 'exec pg_restore --no-owner --no-privileges --exit-on-error --single-transaction -U ruinarpg -d ruinarpg' \
   < "$TMP/db.dump" || die "pg_restore falhou"
 log "restaurando images.tar"
 docker run --rm -i --network none -v "${PROJ}_images:/images" --entrypoint tar "$PG_IMAGE" -C /images -xf - \

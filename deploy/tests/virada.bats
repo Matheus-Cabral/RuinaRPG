@@ -68,7 +68,9 @@ EOF
     CREATE TABLE "__EFMigrationsHistory"("MigrationId" text PRIMARY KEY);
     INSERT INTO "AspNetUsers" VALUES ($$u1$$, $$a@x$$), ($$u2$$, $$b@x$$);
     INSERT INTO "Fichas" SELECT g, $$f$$ || g FROM generate_series(1, 25) g;
-    INSERT INTO "__EFMigrationsHistory" VALUES ($$m1$$), ($$m2$$), ($$m3$$);'
+    INSERT INTO "__EFMigrationsHistory" VALUES ($$m1$$), ($$m2$$), ($$m3$$);
+    CREATE ROLE leitor_so_na_producao;
+    GRANT SELECT ON "Fichas" TO leitor_so_na_producao;'
   head -c 4096 /dev/urandom > "$BATS_FILE_TMPDIR/0001-retrato.png"
   docker run --rm -i -v "${PROD}_images:/images" busybox:1.36 sh -c 'cat > /images/0001-retrato.png && echo zz > /images/zz.png' \
     < "$BATS_FILE_TMPDIR/0001-retrato.png"
@@ -172,6 +174,16 @@ pacote_dir() { cat "$BATS_FILE_TMPDIR/pacote"; }
   [ -z "$(ls -A "$BATS_TEST_TMPDIR/d")" ]
 }
 
+@test "pacote.sh morto por SIGPIPE (stderr fechado) não deixa .partial" {
+  mkdir -p "$BATS_TEST_TMPDIR/d"
+  # O leitor do stderr sai depois de "gerando" (o .partial já existe): a próxima mensagem de progresso
+  # recebe SIGPIPE.
+  run bash -c '"$1" "$2" 2>&1 >/dev/null | grep -q -m1 gerando; exit "${PIPESTATUS[0]}"' _ "$PACOTE" "$BATS_TEST_TMPDIR/d"
+  echo "status $status"
+  [ "$status" -ne 0 ]
+  [ -z "$(ls -A "$BATS_TEST_TMPDIR/d")" ]
+}
+
 @test "pacote.sh recusa quando a imagem em execução não é mais a da tag" {
   old="$(docker image inspect -f '{{.Id}}' "$NGINX_IMG")"
   # Um segundo nome segura a imagem antiga enquanto a tag aponta para a nova (no containerd image store,
@@ -197,6 +209,9 @@ pacote_dir() { cat "$BATS_FILE_TMPDIR/pacote"; }
   run "$RESTAURAR" --remover --projeto ruinarpg
   [ "$status" -eq 2 ]
   run "$RESTAURAR" --remover --projeto ruinarpg-clone
+  [ "$status" -eq 2 ]
+  # Sem "_": o prefixo "<projeto>_" dos volumes não pode casar com outro projeto.
+  run "$RESTAURAR" --remover --projeto ruinarpg-bats_x
   [ "$status" -eq 2 ]
 }
 
