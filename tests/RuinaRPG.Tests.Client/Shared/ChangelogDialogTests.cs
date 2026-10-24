@@ -56,39 +56,30 @@ public class ChangelogDialogTests : MudBunitContext
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_1_5_0()
+    public void Rendered_list_contains_the_section_labels_of_2_0_0()
     {
-        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Características de Criatura:").And.Contain("Pontos de Ignição:").And.Contain("PI 0")
-            .And.Contain("Magias e Habilidades da ficha:").And.Contain("Log de ficha:")
-            .And.Contain("Encontros:").And.Contain("Goblin 2").And.Contain("Condições:").And.Contain("Resumo da ficha no encontro:");
+        cut.Markup.Should().Contain("Mais rapidez:").And.Contain("Melhorias e correções:")
+            .And.NotContain("Nova versão disponível").And.NotContain("Vitalidade e Foco");
     }
 
     [Fact]
-    public void The_1_4_4_text_is_gone()
+    public void The_1_5_0_text_is_gone()
     {
-        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        cut.Markup.Should().NotContain("Notas Secretas:").And.NotContain("Maestrias:").And.NotContain("Tabela de Afinidades");
+        cut.Markup.Should().NotContain("Pontos de Ignição:").And.NotContain("Log de ficha:").And.NotContain("Goblin 2")
+            .And.NotContain("Auditoria de Condições:");
     }
 
     [Fact]
-    public void A_user_who_is_not_an_auditor_does_not_see_the_auditor_block()
+    public void The_2_0_0_text_has_no_auditor_block_because_no_Auditoria_page_changed()
     {
-        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }));
+        var comum = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }));
+        var auditor = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        cut.Markup.Should().NotContain("Para Auditores");
-    }
-
-    [Fact]
-    public void An_auditor_sees_the_auditor_block_after_the_general_list()
-    {
-        var cut = RenderDialog("1.5.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
-
-        var texto = cut.Markup;
-        texto.Should().Contain("Para Auditores");
-        texto.IndexOf("Para Auditores").Should().BeGreaterThan(texto.IndexOf("Resumo da ficha no encontro:"));
-        texto.IndexOf("Auditoria de Condições:").Should().BeGreaterThan(texto.IndexOf("Para Auditores"));
+        comum.Markup.Should().NotContain("Para Auditores");
+        auditor.Markup.Should().NotContain("Para Auditores");
     }
 }

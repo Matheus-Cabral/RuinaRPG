@@ -1,8 +1,8 @@
-> Este documento não é um requisito funcional — é o desenho do schema relacional (Postgres, via EF Core) que implementa os documentos de `Docs/Requisitos/`. Ele registra **estrutura** (entidades, colunas, relacionamentos); a semântica de cada campo (validação, fórmula, quem pode editar) já está descrita no documento de Requisitos correspondente e não é repetida aqui — cada seção linka de volta pra lá.
+> Este documento não é um requisito funcional — é o desenho do schema relacional (Postgres, via EF Core) que implementa os documentos de `Docs/Requisitos/`. Ele registra **estrutura** (tabelas, colunas, relacionamentos); a semântica de cada campo (validação, fórmula, quem pode editar) já está descrita no documento de Requisitos correspondente e não é repetida aqui — cada seção linka de volta pra lá. Os nomes são os das **colunas** do banco; a referência é o snapshot do modelo EF Core (`RuinaRpgDbContextModelSnapshot.cs`).
 
   
 
-> **Convenções**: `PK` = chave primária (Guid). `FK → X` = chave estrangeira pra tabela X. Enums são referenciados pelo nome sem listar os valores quando já enumerados em outro documento (evita duplicar dado de jogo — ver o link).
+> **Convenções**: `PK` = chave primária (Guid, salvo indicação). `FK → X` = chave estrangeira pra tabela X; `Users` = a tabela `AspNetUsers` do Identity. Colunas sem "nullable" são NOT NULL. Enums são guardados como inteiro, salvo quando a nota diz "texto", e são referenciados pelo nome sem listar os valores quando já enumerados em outro documento (evita duplicar dado de jogo — ver o link). "Soft delete" = coluna `IsDeleted`: a linha some de toda leitura mas continua existindo.
 
   
 
@@ -18,40 +18,41 @@
 
 *(ver "[[Requisitos - Convite de Jogador]]")*
 
-**Users** — estende o `AspNetUsers` do Identity.
+**Users** (`AspNetUsers`) — a tabela de usuários do ASP.NET Core Identity, com as colunas abaixo acrescentadas às do Identity. As demais tabelas do Identity (`AspNetRoles`, `AspNetUserRoles`, `AspNetUserClaims`, `AspNetRoleClaims`, `AspNetUserLogins`, `AspNetUserTokens`) existem sem alteração; o papel GM/Jogador é a coluna `Role`, não um papel do Identity.
 
 | Coluna | Tipo | Nota |
 |---|---|---|
 | Id | PK | |
 | Nickname | string | |
+| NormalizedNickname | string, único | o Nickname normalizado; garante que "Mestre" e "mestre" não coexistam e é o que a busca por apelido compara |
 | Role | enum GM \| Jogador | |
-| InvitedByGmId | FK → Users, nullable | só em usuários Jogador; setado ao resgatar um InviteCode |
-| IsRulesAuditor | bool — concedido/revogado via `make grant-rules-auditor`/`revoke-rules-auditor` (ver "[[Requisitos - Auditoria de Regras]]" R0001) |
-| LastSeenAppVersion | string, nullable | última versão do app (ver `AppVersionInfo.Current` no código) cujo popup de changelog este usuário já fechou; null = nunca fechou nenhuma |
-| MustChangePassword | bool — setado por `make reset-gm-password` (ver "[[Requisitos - Login e Cadastro]]" R0005); limpo quando o próprio usuário troca a senha |
+| InvitedByGmId | Guid, nullable | só em usuários Jogador; setado ao resgatar um InviteCode. Sem FK |
+| IsRulesAuditor | bool | concedido/revogado via `make grant-rules-auditor`/`revoke-rules-auditor` (ver "[[Requisitos - Auditoria de Regras]]" R0001) |
+| LastSeenAppVersion | string, nullable | última versão do app cujo popup de changelog este usuário já fechou; null = nunca fechou nenhuma |
+| MustChangePassword | bool | setado por `make reset-gm-password` (ver "[[Requisitos - Login e Cadastro]]" R0005); limpo quando o próprio usuário troca a senha |
 
 **InviteCodes**
 
 | Coluna | Tipo | Nota |
 |---|---|---|
 | Id | PK | |
-| Code | string(8), unique | |
+| Code | string(8), único | |
 | GmId | FK → Users | |
 | GeneratedAt | datetime | |
 | ExpiresAt | datetime | `GeneratedAt + 48h` (R0001) |
 | RevokedAt | datetime, nullable | |
-| RedeemedByUserId | FK → Users, nullable | |
+| RedeemedByUserId | FK → Users, nullable (`SetNull`) | |
 | RedeemedAt | datetime, nullable | |
 
 Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado: deriva de `RevokedAt`, `RedeemedByUserId` e `ExpiresAt` vs. agora.
 
-**RefreshTokens** — não descrita em nenhum documento de Requisitos funcional, mas exigida pela stack já decidida (ver "[[Requisitos - Técnico]]" R0001/R0004: JWT + refresh tokens).
+**RefreshTokens** — não descrita em nenhum documento de Requisitos funcional, mas exigida pela stack (ver "[[Requisitos - Técnico]]" R0001/R0004: JWT + refresh tokens).
 
 | Coluna | Tipo | Nota |
 |---|---|---|
 | Id | PK | |
 | UserId | FK → Users | |
-| TokenHash | string | nunca o token em texto puro |
+| TokenHash | string, único | nunca o token em texto puro |
 | ExpiresAt | datetime | ver `Jwt__RefreshTokenDays` |
 | RevokedAt | datetime, nullable | |
 
@@ -77,28 +78,29 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 
 *(ver "[[Requisitos - Catálogo de Itens e Equipamentos]]")*
 
-**Items** — Table-Per-Hierarchy: uma tabela, discriminada por `Tipo`.
+**Items** — Table-Per-Hierarchy: uma tabela, discriminada por `Tipo`. Rank e Subcategoria têm uma coluna própria por subtipo (`Arma_Rank`, `Arma_Subcategoria`, …), pois cada subtipo os mapeia separadamente; a Categoria da Armadura também (`Armadura_Categoria`), enquanto a do Escudo fica na coluna `Categoria`.
 
 | Coluna | Tipo | Aplica-se a |
 |---|---|---|
 | Id | PK | todos |
 | GmId | FK → Users | todos |
-| Tipo | enum ItemGeral \| Arma \| Armadura \| Escudo \| Artefato | todos (discriminador) |
+| Tipo | string(13) — `ItemGeral` \| `Arma` \| `Armadura` \| `Escudo` \| `Artefato` | todos (discriminador, texto) |
 | Nome | string | todos |
 | Peso | decimal | todos |
 | Preco | int | todos (Ciclos, R0008) |
-| ImageId | FK → Images, nullable | todos |
-| Subcategoria | string, nullable | todos os 5 tipos (coluna própria por subtipo, TPH) |
-| Descricao | text, nullable | ItemGeral |
+| ImageId | FK → Images, nullable (`SetNull`) | todos |
+| Descricao | text, nullable | todos |
+| ItemGeral_Subcategoria, Arma_Subcategoria, Armadura_Subcategoria, Escudo_Subcategoria, Artefato_Subcategoria | string, nullable | a coluna do próprio subtipo — texto livre ou o texto composto pelo construtor "Item Inicial" |
 | CapacidadeExtra | decimal, nullable | ItemGeral — ver "[[Requisitos - Ficha de Personagem]]" 2.b/5.a e "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0003 |
-| Rank | enum RankDeItem (F, E, D, C, B, A, S, SS), nullable | Arma, Armadura, Escudo — coluna própria por subtipo (mesmo motivo do Subcategoria acima); determina a Durabilidade Máxima via `DurabilidadesPorRank` (ver "Durabilidade por Rank" abaixo), NULL = sem durabilidade |
+| Arma_Rank, Armadura_Rank, Escudo_Rank | enum RankDeItem (F, E, D, C, B, A, S, SS), nullable | a coluna do próprio subtipo; determina a Durabilidade Máxima via `DurabilidadesPorRank` (abaixo), NULL = sem durabilidade |
 | Empunhadura | enum, nullable | Arma |
 | Dados | string, nullable | Arma |
 | Dano | int, nullable | Arma |
 | Critico | string, nullable | Arma |
 | Alcance | int, nullable | Arma |
 | TipoDeDano | enum, nullable | Arma |
-| Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura, Escudo |
+| Armadura_Categoria | enum Leve \| Medio \| Pesada, nullable | Armadura |
+| Categoria | enum Leve \| Medio \| Pesada, nullable | Escudo |
 | Defesa | int, nullable | Armadura |
 | RF | int, nullable | Armadura |
 | RM | int, nullable | Armadura |
@@ -111,7 +113,7 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 
 `Requisitos` guarda o que a ficha precisa ter para usar o item sem penalidade (Vocação, Classe, Atributo, Perícia, Sub-Atributo, Afinidade, Estrela); `PenalidadeDeRequisitos` guarda a penalidade aplicada enquanto eles não são cumpridos (linhas sobre Atributo/Perícia/Sub-Atributo mais o texto "Outras penalidades"). Ambos são NULL em item sem "Possui requisitos" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0014.
 
-**DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: nunca sobrescrita pelo re-seed depois de editada pelo Auditor de Regras.
+**DurabilidadesPorRank** — "[[Tabela de Durabilidade por Rank]]" convertida em tabela (dado estático, seedado a partir do documento), mesmo tratamento de `Historicos`: o seed só insere as linhas que faltam, nunca sobrescreve uma linha editada pelo Auditor de Regras.
 
 | Coluna | Tipo |
 |---|---|
@@ -156,11 +158,11 @@ Status (Ativo/Usado/Revogado/Expirado, R0002) é **computado**, não armazenado:
 |---|---|---|
 | Id | PK | |
 | SpellAbilityBankEntryId | FK → SpellAbilityBankEntries | |
-| EfeitoNome | string | ex: "Dano", "Alcance", "Aumentar Armadura" |
+| EfeitoNome | string | o `Nome` de uma linha de `Efeitos` (seção 11), sem FK |
 | Quantidade | int, nullable | pra efeitos medidos em unidades (Dano/Alcance/Duração) |
 | CustoPI | int | |
 
-O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente**, em `CharacterSpellAbilities`/`NpcSpellAbilities`/`CreatureSpellAbilities` (seção 6) — modelar como um tipo owned/complexo do EF Core reaproveitado nas 4 tabelas é razoável, já que o formato é idêntico.
+O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente**, em `CharacterSpellAbilities`/`NpcSpellAbilities`/`CreatureSpellAbilities` (seção 6).
 
 **RuneBankEntries** *(ver "[[Requisitos - Banco de Runas]]")* — biblioteca de Runas do GM; cada Runa criada numa ficha (Personagem ou NPC) tem uma cópia independente aqui.
 
@@ -171,9 +173,9 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | Nome | string | |
 | Descricao | text | |
 | Grau | int | |
-| Tipo | enum TipoDeRuna?, nullable | `Arcana` ou `Negra`, guardado como texto; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
-| Disciplina | enum DisciplinaDeRuna?, nullable | `Adicao`/`Alteracao`/`Emissao`/`Manifestacao` como texto; obrigatória na API ao criar/editar, NULL só em entradas antigas — ver R0010 do Banco de Runas |
-| ImageId | FK → Images, nullable | imagem opcional da Runa; `SetNull` ao apagar a imagem |
+| Tipo | enum TipoDeRuna (texto), nullable | `Arcana` ou `Negra`; NULL = sem tipo (Runas antigas ficam NULL). Só classificação exibida — ver R0009 do Banco de Runas |
+| Disciplina | enum DisciplinaDeRuna (texto), nullable | `Adicao`/`Alteracao`/`Emissao`/`Manifestacao`; obrigatória ao criar/editar, NULL só em entradas antigas — ver R0010 do Banco de Runas |
+| ImageId | FK → Images, nullable (`SetNull`) | imagem opcional da Runa |
 
   
 
@@ -189,9 +191,10 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | GmId | FK → Users |
 | Nome | string |
 | Descricao | text |
+| ImageId | FK → Images, nullable (`SetNull`) — imagem da campanha |
 | BonusDeCarga | decimal, padrão 0 (pode ser negativo) — somado ao Peso Máximo das fichas de Personagem da campanha (Campanha R0014) |
 
-**CampaignMembers**
+**CampaignMembers** — único por (`CampaignId`, `UserId`).
 
 | Coluna | Tipo |
 |---|---|
@@ -199,7 +202,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 | CampaignId | FK → Campaigns |
 | UserId | FK → Users |
 
-**CampaignAttachments** — polimórfico via 6 FKs anuláveis (exatamente uma preenchida por linha).
+**CampaignAttachments** — polimórfico via 6 FKs anuláveis (exatamente uma preenchida por linha); todas em cascade.
 
 | Coluna | Tipo | Nota |
 |---|---|---|
@@ -223,7 +226,7 @@ O mesmo par de tabelas (entrada + efeitos) se repete, como **cópia independente
 
 *(ver "[[Requisitos - Ficha de Personagem]]", "[[Requisitos - Ficha de NPCs]]", "[[Requisitos - Ficha de Criaturas]]")*
 
-Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabelas — a diferença real de campos entre elas (documentada como diffs) não cabe bem numa hierarquia TPH única. As três famílias replicam a mesma forma geral; as colunas abaixo cobrem a família **CharacterSheet** (Personagem) por extenso, e as duas seções seguintes só listam as **diferenças** de NPC e Criatura, no mesmo espírito dos próprios documentos de Requisitos.
+Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabelas — a diferença real de campos entre elas (documentada como diffs) não cabe bem numa hierarquia TPH única. As três famílias replicam a mesma forma geral; as colunas abaixo cobrem a família **CharacterSheet** (Personagem) por extenso, e as duas seções seguintes só listam as **diferenças** de NPC e Criatura, no mesmo espírito dos próprios documentos de Requisitos. Toda tabela filha aponta para a ficha por `CharacterSheetId`/`NpcSheetId`/`CreatureSheetId` (cascade).
 
 ## 6.1 CharacterSheets (Personagem)
 
@@ -232,29 +235,34 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK | |
 | CampaignId | FK → Campaigns | criada dentro de uma campanha (Campanha R0004) |
 | OwnerId | FK → Users | |
-| ImageId | FK → Images, nullable | 1.a |
-| Nome | string | 1.a |
+| ImageId | FK → Images, nullable (`SetNull`) | 1.a |
+| Nome | string, nullable | 1.a |
 | Linhagem | enum, nullable | 1.a |
 | Variante | enum, nullable | 1.a |
 | Vocacao | enum, nullable | 1.a |
 | SubVocacao | string, nullable | 1.a |
-| Afinidade | enum (Elemento \| Sub-Elemento), nullable | 1.a |
+| Afinidade | enum AfinidadeElemental, nullable | 1.a |
 | Propriedade | string, nullable | 1.a |
-| HistoricoId | FK → Historicos, nullable | referência ao vivo (ver legenda) — nenhum campo é copiado para a ficha |
-| Historia | text, nullable | História — HTML do texto rico, sanitizado no servidor por uma allowlist antes de gravar; NULL = vazio (ver "[[Requisitos - Ficha de Personagem]]", aba Antecedentes). Uma imagem dentro do texto só é mantida quando o `src` é exatamente o endereço de uma `Image` do app (`/images/{Path}`) que quem salva pode usar ou que a História já continha; não há FK para essas imagens — o vínculo é o endereço no HTML. A galeria fica em `CharacterSheetHistoriaImages` (abaixo). |
+| Estrela | enum, nullable | Antecedentes (R0006) — uma das Estrelas de "[[As estrelas alkerianas]]" |
+| HistoricoId | FK → Historicos, nullable (`SetNull`) | Antecedentes — referência ao vivo (ver legenda), nenhum campo é copiado para a ficha |
+| Historia | text, nullable | Antecedentes — HTML do texto rico, sanitizado no servidor por uma allowlist antes de gravar; NULL = vazio. Uma imagem dentro do texto só é mantida quando o `src` é exatamente o endereço de uma `Image` do app (`/images/{Path}`) que quem salva pode usar ou que a História já continha; não há FK para essas imagens — o vínculo é o endereço no HTML. A galeria fica em `CharacterSheetHistoriaImages` (abaixo). |
+| EquipmentKitId | FK → EquipmentKits, nullable (`SetNull`) | NULL até o jogador escolher um kit; depois disso, permanente (não pode ser trocado) |
 | Nivel | int | 1.b |
-| Circulo | int | 1.b — colunas vestigiais: mantidas no schema mas não mais atualizadas pela aplicação; a Graduação exibida (`GraduacaoLabel`/`Graduacao` na response) é hoje **computada em tempo de leitura** a partir de `EAPAtual`/`Vocacao`, não lida daqui. Mesma situação em NpcSheets (6.2), que herda esta tabela sem diferença nesses dois campos. |
-| Grau | int | 1.b — ver nota de `Circulo` acima. |
+| Circulo, Grau | int | 1.b — **vestigiais**: nada as grava (ficam 0); a Graduação exibida é computada em tempo de leitura a partir de `EAPAtual`/`Vocacao` |
 | PossuiCoracaoDeMana | bool | 1.b |
-| AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura, não gravados. Mesma coluna existe em NpcSheets (6.2), sem diferença. |
+| AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura |
 | ExperienciaAtual | int | 1.b |
-| EAPAtual | int | 1.b — coluna vestigial: mantida no schema mas não mais lida nem gravada pela aplicação; o VIS Atual exibido (`EAPAtual` na response) é **computado em tempo de leitura** (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank). `request.EAPAtual` é aceito mas ignorado. Mesma situação em NpcSheets (6.2), que herda esta coluna sem diferença. |
+| EAPAtual | int | 1.b — **vestigial**: nem lida nem gravada; o VIS Atual exibido é computado em tempo de leitura (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank) |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
-| PontosDeIgnicaoAtual, PontosDeIgnicaoTotal | int | 1.b — `request.PontosDeIgnicaoAtual` é aceito mas ignorado na atualização geral da ficha: o servidor aplica as diferenças de Nível e de bônus manual sobre o valor guardado, e a edição manual do saldo tem endpoint próprio (`PUT …/pontos-de-ignicao`). Mesma situação em NpcSheets (6.2) e, para `PontosDeIgnicao`, em CreatureSheets (6.3). |
+| PontosDeIgnicaoAtual | int | 1.b — saldo; a atualização geral da ficha só aplica sobre ele a diferença de Nível, a edição manual tem endpoint próprio |
+| PontosDeIgnicaoTotal | int | 1.b — **vestigial**: nada a grava; o Total exibido é computado a partir do Nível e de `PontosDeIgnicaoBonusManual` |
+| PontosDeIgnicaoBonusManual | int | 1.b — PI extra concedido pelo GM além do total do Nível |
+| PontosDePericiaBonusCritico | int | 2.d — pontos de Perícia ganhos ao tirar o máximo no dado ("[[Ruína RPG - Sistema Básico]]" §2), descontados do Gasto Total do orçamento de Perícias |
 | VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual | int | 1.c |
+| SinaAtual | int | 1.c — Pontos de Sina, 0 a 3 (teto fixo) |
 | Cobertura | enum Nenhuma \| Parcial \| Completa | 2.b |
 | Ciclos | int | 5.a |
-| ArcaRolada | int, nullable | 4.a — só relevante quando `Linhagem` = Humano; resolvida contra `ArcaEntries` (seção 10). Mesma coluna existe em NpcSheets (6.2), sem diferença. |
+| ArcaRolada | int, nullable | 4.a — só relevante quando `Linhagem` = Humano; resolvida contra `ArcaEntries` (seção 10) |
 | LastDismissedLevelUpLevel | int, nullable | R0002 — até qual Nível a caixa de aviso já foi fechada |
 
 **CharacterSheetHistoriaImages** (aba Antecedentes — galeria de imagens da História; join como `DiaryEntryImages`, seção 7) — a linha some junto com a ficha ou com a imagem (cascade nas duas FKs).
@@ -265,7 +273,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | ImageId | FK → Images | |
 | Ordem | int | posição na galeria (0, 1, 2…), regravada a cada alteração |
 
-**CharacterAttributes** — 1 linha por atributo (8 por ficha).
+**CharacterAttributes** — 1 linha por atributo (8 por ficha); único por (ficha, `Atributo`).
 
 | Coluna | Tipo |
 |---|---|
@@ -276,16 +284,17 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Bonus | int |
 | TemMaestria | bool |
 
-**CharacterSkills** — linhas criadas sob demanda (2.d): só existe linha para a Perícia que já recebeu pontos ou um Atributo escolhido; a ausência de linha equivale a 0 pontos e ao Atributo sugerido pela Perícia.
+**CharacterSkills** — linhas criadas sob demanda (2.d): só existe linha para a Perícia que já recebeu pontos ou um Atributo escolhido; a ausência de linha equivale a 0 pontos e ao Atributo sugerido pela Perícia. Único por (ficha, `PericiaId`).
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| PericiaId | FK → Pericias |
+| PericiaId | FK → Pericias (`Restrict`) |
 | Gasto | int |
+| AtributoEscolhido | enum Atributo, nullable — NULL = o `AtributoSugerido` da Perícia |
 
-*(Modificador e Total não são colunas — são calculados; Atributo usado no teste é escolhido no momento da rolagem, não persistido.)*
+*(Modificador e Total não são colunas — são calculados.)*
 
 **CharacterAffinities** — lista incremental (2.c). `SubElemento` é derivado pelo servidor a partir da Matriz Elemental (interseção de `Elemento` com `SegundaEssencia`) — ver Ficha de Personagem 2.c.
 
@@ -293,11 +302,13 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| Elemento | enum |
-| SubElemento | enum |
-| SegundaEssencia | enum EssenciaBasica (Ar, Água, Fogo, Terra, Alma, Vida, Mundano) — nullable |
-| SegundaEssenciaValor | int — nullable |
-| Experiencia | int |
+| Elemento | enum, nullable |
+| ElementoValor | int, nullable |
+| SubElemento | enum, nullable |
+| SubElementoValor | int, nullable |
+| SegundaEssencia | enum EssenciaBasica (Ar, Água, Fogo, Terra, Alma, Vida, Mundano), nullable |
+| SegundaEssenciaValor | int, nullable |
+| Experiencia | int, nullable |
 
 **CharacterWeapons** — arsenal (3.a). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
@@ -305,19 +316,19 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| ItemId | FK → Items (Tipo=Arma) |
+| ItemId | FK → Items (Tipo=Arma, `Restrict`) |
 | IsEquipped | bool |
-| DurabilidadeAtual | int | inicializada = Durabilidade Máxima do item (resolvida do `Items.Rank` via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) no momento em que a linha é criada; editável depois, mas sempre limitada a [0, máximo atual] — na leitura e ao salvar. Backfill único na atualização (migration `RemoveDurabilidadeMaximaDosItens`): linhas de `CharacterWeapons`/`NpcWeapons`/`CreatureWeapons` cujo item não tinha Durabilidade Máxima digitada (gravadas com 0) recebem a durabilidade do Rank do item |
+| DurabilidadeAtual | int — inicializada = Durabilidade Máxima do item (resolvida do Rank do item via `DurabilidadesPorRank`; 0 sem Rank ou se inquebrável) quando a linha é criada; editável depois, sempre limitada a [0, máximo atual] |
 
-**CharacterArmorSlots** — 3 linhas fixas por ficha (3.b). Referência ao vivo ao Catálogo, exceto Durabilidade.
+**CharacterArmorSlots** — 3 linhas fixas por ficha (3.b), único por (ficha, `Slot`). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
 | Slot | enum Capacete \| Superior \| Inferior |
-| ItemId | FK → Items (Tipo=Armadura), nullable |
-| DurabilidadeAtual | int, nullable | nulo enquanto o slot está vazio; mesma inicialização de `CharacterWeapons` |
+| ItemId | FK → Items (Tipo=Armadura, `Restrict`), nullable |
+| DurabilidadeAtual | int, nullable — nulo enquanto o slot está vazio; mesma inicialização de `CharacterWeapons` |
 
 **CharacterShields** — arsenal (3.c). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
@@ -325,9 +336,9 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| ItemId | FK → Items (Tipo=Escudo) |
+| ItemId | FK → Items (Tipo=Escudo, `Restrict`) |
 | IsEquipped | bool |
-| DurabilidadeAtual | int | mesma inicialização de `CharacterWeapons` |
+| DurabilidadeAtual | int — mesma inicialização de `CharacterWeapons` |
 
 **CharacterSpellAbilities** — cópia independente (4.b).
 
@@ -335,7 +346,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| SourceBankEntryId | FK → SpellAbilityBankEntries, nullable — a entrada escolhida (R0003 do Banco) ou a cópia criada do zero (R0001); usada para anexar a Magia/Habilidade à campanha na concessão (Campanha R0010). NULL em entradas antigas, criadas do zero antes desse vínculo. |
+| SourceBankEntryId | Guid, nullable, sem FK — a entrada do Banco escolhida (R0003 do Banco) ou a cópia criada do zero (R0001); usada para anexar a Magia/Habilidade à campanha na concessão (Campanha R0010). NULL em entradas antigas, criadas do zero antes desse vínculo. |
 | Nome | string |
 | Tipo | enum Magia \| Habilidade \| Passiva |
 | Grau | int |
@@ -344,9 +355,9 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Categoria | enum Livre \| Vocacional \| DeClasse, nullable — só em Passiva (Tipo = Passiva) |
 | Requisitos | jsonb, nullable — só em Passiva; ver "[[Requisitos - Banco de Magias e Habilidades]]" R0009 |
-| CriadaNaFicha | boolean, NOT NULL, default false — verdadeiro quando a entrada foi montada do zero na ficha; só essas podem ser editadas. Entradas anteriores à 1.5.0 ficam falsas. Vale também para `NpcSpellAbilities` e `CreatureSpellAbilities`. |
+| CriadaNaFicha | bool, default false — verdadeiro quando a entrada foi montada do zero na ficha; só essas podem ser editadas. Entradas anteriores à 1.5.0 ficam falsas. |
 
-**CharacterSpellAbilityEffects** — mesma forma de `SpellAbilityBankEffects`, FK pra `CharacterSpellAbilities`.
+**CharacterSpellAbilityEffects** — mesma forma de `SpellAbilityBankEffects`, com `CharacterSpellAbilityId` (FK → CharacterSpellAbilities, cascade) no lugar da FK do Banco.
 
 **CharacterRunes** (4.d)
 
@@ -357,9 +368,9 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nome | string |
 | Descricao | text |
 | Grau | int |
-| Tipo | enum TipoDeRuna?, nullable — `Arcana`/`Negra` como texto; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
-| Disciplina | enum DisciplinaDeRuna?, nullable — cópia da Disciplina da entrada quando a Runa parte do banco; obrigatória ao montar do zero. NULL em Runas antigas |
-| SourceBankEntryId | FK → RuneBankEntries, nullable — a entrada escolhida (R0003 do Banco de Runas) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
+| Tipo | enum TipoDeRuna (texto), nullable — `Arcana`/`Negra`; cópia do Tipo da entrada quando a Runa parte do banco. NULL = sem tipo |
+| Disciplina | enum DisciplinaDeRuna (texto), nullable — cópia da Disciplina da entrada quando a Runa parte do banco; obrigatória ao montar do zero. NULL em Runas antigas |
+| SourceBankEntryId | Guid, nullable, sem FK — a entrada do Banco de Runas escolhida (R0003) ou a cópia criada do zero (R0001). NULL em Runas antigas, criadas do zero antes desse vínculo. |
 | ImageId | FK → Images, nullable (`SetNull`) — imagem opcional; cópia da imagem da entrada quando a Runa parte do banco |
 
 **CharacterMasteries** (4.e)
@@ -369,7 +380,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | CharacterSheetId | FK |
 | Nome | string |
-| PericiaId | FK → Pericias |
+| PericiaId | FK → Pericias (`Restrict`) |
 | Atributo | enum |
 | GastoMaestria | int |
 
@@ -379,7 +390,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| ItemId | FK → Items (Tipo=ItemGeral) |
+| ItemId | FK → Items (Tipo=ItemGeral, `Restrict`) |
 | Qtd | int |
 
 **CharacterArtifacts** (5.b) — referência ao vivo ao Catálogo; limite de 3 por `TipoDeAlvo` validado na aplicação, não no schema.
@@ -388,7 +399,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| ArtifactItemId | FK → Items (Tipo=Artefato) |
+| ArtifactItemId | FK → Items (Tipo=Artefato, `Restrict`) |
 
 **CharacterAffections** (5.c)
 
@@ -405,8 +416,9 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| TraitId | FK → Traits |
+| TraitId | FK → Traits (`Restrict`) |
 | Polaridade | enum Positiva \| Negativa |
+| Especificacao | string, nullable — o complemento das Características com `RequerEspecificacao` |
 | IsRacial | bool — concedida automaticamente pela Variante (5.d), custo 0, fora do orçamento |
 | RacialVariante | enum Variante, nullable — qual Variante concedeu, null quando IsRacial é falso |
 
@@ -419,10 +431,11 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Descricao | text |
 | Custo | int |
 | Polaridade | enum Positiva \| Negativa |
+| RequerEspecificacao | bool — a Característica pede um complemento (`CharacterTraits.Especificacao`) |
 | IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Características.md |
-| IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
-| UpdatedByUserId | FK → Users, nullable |
-| UpdatedAt | DateTime, nullable |
+| IsDeleted | bool — soft delete pelo Auditor de Regras; a linha continua existindo para o re-seed nunca recriá-la |
+| UpdatedByUserId | Guid, nullable, sem FK |
+| UpdatedAt | datetime, nullable |
 
   
 
@@ -433,116 +446,108 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK |
 | Nome | string |
 | Descricao | text |
-| PericiaMaisSeisId | FK → Pericias |
-| PericiaMaisTresId | FK → Pericias |
-| IsCustomized | bool — true depois de criada/editada pelo Auditor de Regras; protege a linha de ser sobrescrita pelo re-seed a partir de Historico.md |
-| IsDeleted | bool — soft delete pelo Auditor de Regras; oculta a linha de toda leitura, mas ela continua existindo para o re-seed nunca recriá-la |
-| UpdatedByUserId | FK → Users, nullable |
-| UpdatedAt | DateTime, nullable |
+| PericiaMaisSeisId | FK → Pericias (`Restrict`) |
+| PericiaMaisTresId | FK → Pericias (`Restrict`) |
+| IsCustomized | bool — mesma lógica de `Traits.IsCustomized`, protegendo contra o re-seed a partir de Historico.md |
+| IsDeleted | bool — soft delete, mesma lógica de `Traits.IsDeleted` |
+| UpdatedByUserId | Guid, nullable, sem FK |
+| UpdatedAt | datetime, nullable |
 
-**EquipmentKits**
+**EquipmentKits** — catálogo global (não por GM) de kits de equipamento inicial, cadastrado a partir de "[[Equipagem]]" e editável pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]").
 
-Catálogo global (não por GM) de kits de equipamento inicial, cadastrado a partir de "[[Equipagem]]" e editável pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]").
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string |
+| Descricao | text — o parágrafo de sabor do kit |
+| Ciclos | int — moeda concedida ao escolher o kit |
+| IsDeleted | bool — soft delete |
 
-- `Id` (PK)
-- `Nome` (string, obrigatório)
-- `Descricao` (string, obrigatório — o parágrafo de sabor do kit)
-- `Ciclos` (int — moeda concedida ao escolher o kit)
-- `IsDeleted` (bool — soft delete)
+**EquipmentKitFixedItems** — base global (não por GM) de itens fixos dos kits, mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0014). Cada linha é um item completo, com os campos do formulário do catálogo de "[[Requisitos - Catálogo de Itens e Equipamentos]]" por Tipo, sem imagem. Único por (`Nome`, `Tipo`).
 
-**EquipmentKitFixedItems**
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string |
+| Tipo | enum ItemTipo (ItemGeral, Arma, Armadura, Escudo ou Artefato) — não muda depois de criado |
+| Dados | jsonb — os campos do item que variam por Tipo |
+| Requisitos | jsonb, nullable — requisitos para equipar |
+| PenalidadeDeRequisitos | jsonb, nullable — penalidade por não cumprir os requisitos |
+| DetalhesIncompletos | bool — true nos itens que a conversão da versão 1.4.3 só conseguiu criar com o nome; deixa de valer quando o Auditor os edita |
 
-Base global (não por GM) de itens fixos dos kits, mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0014). Cada linha é um item completo, com os campos do formulário do catálogo de "[[Requisitos - Catálogo de Itens e Equipamentos]]" por Tipo, sem imagem. Único por `Nome` + `Tipo`.
+**EquipmentKitItems** — linhas fixas de um `EquipmentKit`, referenciando um item da base `EquipmentKitFixedItems`. Ao aplicar o kit, o item é copiado para o catálogo do GM quando ele ainda não tem um de mesmo Nome e Tipo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0012).
 
-- `Id` (PK)
-- `Nome` (string, obrigatório)
-- `Tipo` (enum ItemTipo — ItemGeral, Arma, Armadura, Escudo ou Artefato; não muda depois de criado)
-- `Dados` (jsonb — os campos do item que variam por Tipo, os mesmos de `CreateItemRequest`)
-- `Requisitos` (jsonb?, opcional — requisitos para equipar)
-- `PenalidadeDeRequisitos` (jsonb?, opcional — penalidade por não cumprir os requisitos)
-- `DetalhesIncompletos` (bool — true nos itens que a conversão da versão 1.4.3 só conseguiu criar com o nome; deixa de valer quando o Auditor os edita)
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| KitId | FK → EquipmentKits (cascade) |
+| FixedItemId | FK → EquipmentKitFixedItems (`Restrict`), nullable — um item usado por um kit não excluído não pode ser excluído; NULL nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado |
+| ArmorSlot | enum ArmorSlotType, nullable — obrigatório quando o item fixo é Armadura; vazio nos demais Tipos |
+| Qtd | int |
+| Nome (string, nullable), Tipo (enum ItemTipo), SubcategoriaHint (string, nullable) | **legados**, a serem removidos: eram a referência por Nome + Tipo anterior à base; a conversão da versão 1.4.3 os transformou em `FixedItemId` |
 
-**EquipmentKitItems**
+**EquipmentKitChoiceSlots** — linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua escolha"), resolvidas ao vivo contra o catálogo do GM no momento de aplicar o kit.
 
-Linhas fixas de um `EquipmentKit` — referenciam um item da base `EquipmentKitFixedItems`. Ao aplicar o kit, o item é copiado para o catálogo do GM quando ele ainda não tem um de mesmo Nome e Tipo (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0012).
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| KitId | FK → EquipmentKits (cascade) |
+| Label | string — ex: "Arma", "Condutor" |
+| Tipo | enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral |
+| ArmorSlot | enum ArmorSlotType, nullable — obrigatório quando `Tipo` = Armadura (em qual slot de armadura da ficha o item concedido é colocado); vazio nos outros Tipos |
+| SubcategoriasCsv | string, nullable — valores aceitos separados por vírgula; cada um casa tanto com a Subcategoria legada em texto livre quanto com a Família parseada de um valor composto pelo construtor "Item Inicial" (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0013); NULL = qualquer uma |
+| Rank | enum RankDeItem, nullable — NULL = qualquer Rank |
+| Qtd | int |
+| BonusSubcategoria | string, nullable — Subcategoria do item escolhido que ativa um bônus condicional |
+| BonusFixedItemId | FK → EquipmentKitFixedItems (`Restrict`), nullable — item da base, do tipo Item Geral, concedido além da escolha só se `BonusSubcategoria` bater; NULL quando não há bônus, nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado |
+| BonusQtd | int, nullable |
+| BonusNome | string, nullable — **legado**, a ser removido; substituído por `BonusFixedItemId` |
 
-- `Id` (PK)
-- `KitId` (FK → EquipmentKits, cascade)
-- `FixedItemId` (FK → EquipmentKitFixedItems, Restrict, **anulável** — um item usado por um kit não excluído não pode ser excluído; fica NULL nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado)
-- `ArmorSlot` (enum ArmorSlotType?, opcional — obrigatório quando o item fixo é Armadura; vazio nos demais Tipos)
-- `Qtd` (int)
-- `Nome`, `Tipo`, `SubcategoriaHint` — **legados**, a serem removidos: eram a referência por Nome + Tipo anterior à base; a conversão da versão 1.4.3 os transformou em `FixedItemId`.
+**SubcategoriaOptions** — catálogo global (não por GM) de valores de Categoria/Família usados pelo construtor de Subcategoria do cadastro de Item (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") e pelos slots de escolha da Equipagem; editável pelo Auditor de Regras na página de Auditoria de Equipagem.
 
-**EquipmentKitChoiceSlots**
-
-Linhas de escolha do jogador de um `EquipmentKit` (ex: "1 Arma Rank F de sua escolha"), resolvidas ao vivo contra o catálogo do GM no momento de aplicar o kit.
-
-- `Id` (PK)
-- `KitId` (FK → EquipmentKits, cascade)
-- `Label` (string — ex: "Arma", "Condutor")
-- `Tipo` (enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral — ver "Novas colunas" abaixo para `ArmorSlot`, obrigatório quando `Tipo=Armadura`)
-- `SubcategoriasCsv` (string?, opcional — lista de valores aceitos separados por vírgula; cada valor casa tanto com a Subcategoria legada em texto livre quanto com a Família parseada de um valor composto pelo construtor "Item Inicial" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]" R0013; NULL = qualquer uma)
-- `Rank` (enum RankDeItem?, opcional — NULL = qualquer Rank)
-- `Qtd` (int)
-- `BonusSubcategoria` (string?, opcional — Subcategoria do item escolhido que ativa um bônus condicional)
-- `BonusFixedItemId` (FK → EquipmentKitFixedItems, Restrict, anulável — NULL quando não há bônus, nas linhas ainda não convertidas e nas de kits excluídos cujo item foi apagado; item da base, do tipo Item Geral, concedido além da escolha, só se `BonusSubcategoria` bater)
-- `BonusNome` (string?, **legado**, a ser removido — substituído por `BonusFixedItemId`)
-- `BonusQtd` (int?, opcional)
-
-### SubcategoriaOptions
-
-Catálogo global (não por GM) de valores de Categoria/Família usados pelo construtor de Subcategoria do cadastro de Item (ver "[[Requisitos - Catálogo de Itens e Equipamentos]]") e pelos slots de escolha da Equipagem — editável pelo Auditor de Regras na página de Auditoria de Equipagem.
-
-- `Id` (PK)
-- `Tipo` (enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral)
-- `Facet` (enum SubcategoriaFacet — Categoria ou Familia)
-- `Valor` (string, obrigatório)
-- `IsDeleted` (bool — soft delete)
-
-### Novas colunas
-
-- `CharacterSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — NULL até o jogador escolher um kit; depois disso, permanente (não pode ser trocado).
-- `NpcSheets.EquipmentKitId` (Guid?, FK → EquipmentKits, SetNull) — mesmo comportamento.
-- `Items.Subcategoria` (string?, opcional) — já existia em Item Geral e Arma; passa a existir também em Armadura, Escudo e Artefato, com o mesmo comportamento (texto livre, ou o texto composto pelo construtor "Item Inicial" — ver "[[Requisitos - Catálogo de Itens e Equipamentos]]").
-- `EquipmentKitChoiceSlots.ArmorSlot` (enum ArmorSlotType?, opcional) — obrigatório quando o slot é `Tipo=Armadura` (indica em qual slot de armadura da ficha — Capacete/Superior/Inferior — o item concedido é colocado); deve ficar vazio para os outros Tipos.
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Tipo | enum ItemTipo — Arma, Armadura, Escudo ou Artefato; nunca ItemGeral |
+| Facet | enum SubcategoriaFacet — Categoria ou Familia |
+| Valor | string |
+| IsDeleted | bool — soft delete |
 
 ## 6.2 NpcSheets — diferenças de CharacterSheets
 
 *(ver "[[Requisitos - Ficha de NPCs]]")*
 
-Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcWeapons`, ... — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`), com estas diferenças na tabela raiz:
+Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcAffinities`, `NpcWeapons`, `NpcArmorSlots`, `NpcShields`, `NpcSpellAbilities`/`NpcSpellAbilityEffects`, `NpcRunes`, `NpcMasteries`, `NpcInventoryItems`, `NpcArtifacts`, `NpcAffections`, `NpcTraits`, `NpcSheetHistoriaImages`) — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`, com a FK `NpcSheetId`. Diferenças na tabela raiz:
 
-- `OwnerId`: **nullable** — só setado se concedida a um jogador (Campanha R0010).
-- `CampaignId`: **não existe** aqui — o vínculo com campanha é via `CampaignAttachments` (seção 5), não uma FK direta.
-- Ganha `NomePublico`/`ImagemPublica` **não** — esses toggles vivem em `CampaignAttachments`, não na ficha (podem diferir por campanha).
-- `NpcRunes` ganha `SourceBankEntryId` (FK → RuneBankEntries, nullable) e `ImageId` (FK → Images, nullable, `SetNull`), como `CharacterRunes`; também ganha `Tipo` (enum TipoDeRuna?, nullable) e `Disciplina` (enum DisciplinaDeRuna?, nullable), iguais a `CharacterRunes`.
-- `HistoricoId`: FK → Historicos, nullable — referência ao vivo (ver legenda), mesmo comportamento de CharacterSheets.
-- `NpcSheetHistoriaImages` (`NpcSheetId` FK → NpcSheets, `ImageId` FK → Images, `Ordem` int; PK composta, cascade nas duas FKs): espelho de `CharacterSheetHistoriaImages`. Ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
-- `EAPAtual`: vestigial, igual a CharacterSheets — o VIS Atual do NPC é computado em tempo de leitura (Nível + Âmbares) e a coluna não é usada (ver "[[Requisitos - Ficha de NPCs]]" R0012).
-- Usa `ExperienciaAtual` (já existe) para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos** (sem coluna nova) e entregues na response somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
+- `GmId`: FK → Users — o GM dono do bestiário.
+- `OwnerId`: **nullable** (`SetNull`) — só setado se concedida a um jogador (Campanha R0010).
+- `CampaignId`: **não existe** — o vínculo com campanha é via `CampaignAttachments` (seção 5); os toggles de Nome/Imagem públicos também vivem lá (podem diferir por campanha).
+- Sem `PontosDeIgnicaoBonusManual` nem `PontosDePericiaBonusCritico`. `PontosDeIgnicaoTotal` é **vestigial**, como em CharacterSheets: desde a 1.5.0 o valor enviado na atualização é ignorado, e nada o grava além da cópia literal quando o GM concede a cópia de um NPC existente; a leitura devolve o valor guardado, sem uso. Diferente do Personagem, nenhum Total é computado a partir do Nível.
+- `NpcSheetHistoriaImages`: ao conceder a cópia de um NPC existente (Campanha R0010), as linhas são copiadas para a ficha nova.
+- Usa `ExperienciaAtual` para computar **Abate** e **Assistência**, com as mesmas fórmulas da Criatura (ver 6.3) — calculados em tempo de leitura, **não persistidos**, e entregues somente ao GM da ficha; o jogador dono de uma ficha concedida recebe `null`.
 
 ## 6.3 CreatureSheets — diferenças de CharacterSheets
 
 *(ver "[[Requisitos - Ficha de Criaturas]]")*
 
-Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefixadas `Creature`), exceto onde dito abaixo. `CreatureSpellAbilities`, `CreatureMasteries` e `CreatureArtifacts` existem sem alteração de forma.
+Mesma lógica de 6.2: família de tabelas filhas espelhando 6.1 (prefixadas `Creature`, FK `CreatureSheetId`), exceto onde dito abaixo. `CreatureSpellAbilities`/`CreatureSpellAbilityEffects`, `CreatureMasteries`, `CreatureArtifacts`, `CreatureAffections`, `CreatureArmorSlots` e `CreatureShields` existem sem alteração de forma.
 
-- `OwnerId`: nullable, mesma regra de NpcSheets.
+- `GmId`: FK → Users, como em NpcSheets.
+- `OwnerId`: nullable (`SetNull`), mesma regra de NpcSheets.
 - `CampaignId`: não existe, mesma regra de NpcSheets.
-- Troca `Linhagem`/`Variante`/`Vocacao`/`SubVocacao` por: `Raca` (string), `Arquetipo` (enum Fisico \| Arcano), `SubArquetipo` (string).
-- Troca `Circulo`/`Grau`/`EAPAtual`/`NucleosRank*` por: `Rank` (enum F..S).
-- `PontosDeIgnicao`: **um único int**, não par atual/total.
-- Sem `EstresseAtual`.
+- Troca `Linhagem`/`Variante`/`Vocacao`/`SubVocacao` por: `Raca` (string, nullable), `Arquetipo` (enum Fisico \| Arcano, nullable), `SubArquetipo` (string, nullable).
+- Troca `Circulo`/`Grau`/`EAPAtual`/`NucleosRank*` por: `Rank` (enum F..S, nullable).
+- `PontosDeIgnicao`: **um único int**, não par atual/total; sem `PontosDeIgnicaoBonusManual` nem `PontosDePericiaBonusCritico`.
+- A raiz guarda só `Id`, `GmId`, `OwnerId`, `ImageId`, `Nome`, `Raca`, `Arquetipo`, `SubArquetipo`, `Afinidade`, `Rank`, `Nivel`, `ExperienciaAtual`, `PontosDeIgnicao`, `VitalidadeAtual`, `FocoAtual`, `AdrenalinaAtual`, `Cobertura` e `LastDismissedLevelUpLevel`. Portanto **não tem** `Propriedade`, `Estrela`, `HistoricoId`, `Historia`, `EquipmentKitId`, `PossuiCoracaoDeMana`, `AfinidadeAdicional`, `EstresseAtual`, `SinaAtual`, `Ciclos` nem `ArcaRolada`.
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
 - `CreatureSkills.PericiaId` só permite as Perícias com `DisponivelParaCriaturas` (R0005 e Auditoria de Regras R0012) — restrição de aplicação, não de schema.
-- Sem `CharacterAffinities` equivalente (não existe aba de Afinidades pra Criatura).
-- `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome`/`ManualTipoDeDano`/`ManualDados`/`ManualDano` (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também fica nula nesse caso.
-- Sem `CreatureRunes` nem tabela de Contratos (não existem pra Criatura).
-- `CreatureInventoryItems` → renomeada `CreatureSpoils` (Espólios), ganha coluna `DT` (int) e **perde** `Ciclos` na ficha raiz.
-- Ganha `ExperienciaAtual` própria (já existe, herdada da estrutura de Nível) usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
-- `CreatureTraits` diverge de `CharacterTraits`/`NpcTraits`: `TraitId` também **nullable**, e ganha `CreatureExclusiveTraitId` (FK → CreatureExclusiveTraits, nullable) — exatamente uma das duas é setada por linha, mesmo padrão de `EncounterParticipant.SourceCharacterSheetId`/`SourceNpcSheetId`/`SourceCreatureSheetId` (seção 8): dois FKs nullable em vez de um só, porque uma coluna não carrega FK real pra duas tabelas diferentes ao mesmo tempo.
+- Sem equivalente de `CharacterAffinities` (não existe aba de Afinidades pra Criatura), de `CharacterRunes` nem de `CharacterSheetHistoriaImages`.
+- `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome` (string), `ManualTipoDeDano` (enum), `ManualDados` (string) e `ManualDano` (int), todas nullable (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também é nullable e fica nula nesse caso.
+- `CreatureInventoryItems` → `CreatureSpoils` (Espólios): `ItemId` (FK → Items, `Restrict`), `Qtd` (int) e `DT` (int).
+- `ExperienciaAtual` é usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
+- `CreatureTraits` diverge de `CharacterTraits`/`NpcTraits`: `TraitId` **nullable**, ganha `CreatureExclusiveTraitId` (FK → CreatureExclusiveTraits, `Restrict`, nullable) — exatamente uma das duas é setada por linha, mesmo padrão de `EncounterParticipants.Source*SheetId` (seção 8) — e não tem `IsRacial`/`RacialVariante`.
 
-**CreatureExclusiveTraits** — catálogo global e independente de `Traits` (6.1), com as mesmas colunas exceto `IsCustomized`: sem documento-fonte equivalente a `Características.md` pra essa tabela, então não há re-seed do qual proteger uma linha editada manualmente. Só o picker de característica da Ficha de Criatura (`CreatureTraits`) referencia esta tabela — Personagem, NPC e o Compêndio de Regras nunca a leem.
+**CreatureExclusiveTraits** — catálogo global e independente de `Traits` (6.1), com as mesmas colunas exceto `IsCustomized`: sem documento-fonte equivalente a `Características.md`, não há re-seed do qual proteger uma linha editada. Só `CreatureTraits` referencia esta tabela — Personagem, NPC e o Compêndio de Regras nunca a leem.
 
 | Coluna | Tipo |
 |---|---|
@@ -552,16 +557,16 @@ Mesma lógica de 6.2: família completa de tabelas filhas espelhando 6.1 (prefix
 | Custo | int |
 | Polaridade | enum Positiva \| Negativa |
 | RequerEspecificacao | bool |
-| IsDeleted | bool — soft delete pelo Auditor de Regras, mesma lógica de `Traits.IsDeleted` |
-| UpdatedByUserId | FK → Users, nullable |
-| UpdatedAt | DateTime, nullable |
+| IsDeleted | bool — soft delete pelo Auditor de Regras |
+| UpdatedByUserId | Guid, nullable, sem FK |
+| UpdatedAt | datetime, nullable |
 
 
 ## 6.4 SheetLogEntries — log de alterações de ficha
 
 *(ver "[[Requisitos - Campanha]]", R0016)*
 
-Uma linha por alteração registrada numa ficha de Personagem, NPC ou Criatura. **Exatamente uma** das três FKs de ficha (`CharacterSheetId`, `NpcSheetId`, `CreatureSheetId`) é preenchida por linha — mesmo padrão de duas/três FKs nullable de `EncounterParticipant` (seção 8). Excluir a ficha apaga seu log em cascata. As linhas são escritas apenas pelo interceptor de salvamento (ver "[[Requisitos - Técnico]]" R0012), nunca por endpoint próprio.
+Uma linha por alteração registrada numa ficha de Personagem, NPC ou Criatura. **Exatamente uma** das três FKs de ficha é preenchida por linha — mesmo padrão de `EncounterParticipants` (seção 8). Excluir a ficha apaga seu log em cascata. As linhas são escritas apenas pelo interceptor de salvamento (ver "[[Requisitos - Técnico]]" R0012), nunca por endpoint próprio.
 
 | Coluna | Tipo |
 |---|---|
@@ -569,12 +574,12 @@ Uma linha por alteração registrada numa ficha de Personagem, NPC ou Criatura. 
 | CharacterSheetId | FK → CharacterSheets, nullable, cascade |
 | NpcSheetId | FK → NpcSheets, nullable, cascade |
 | CreatureSheetId | FK → CreatureSheets, nullable, cascade |
-| OccurredAt | DateTime (UTC) |
+| OccurredAt | datetime (UTC) |
 | ActorUserId | Guid — usuário que fez a alteração (sem FK: o log sobrevive à conta) |
 | ActorNickname | string — apelido do autor no momento da alteração |
 | ActorIsGm | bool |
-| Categoria | enum Geral \| RecursoVFA \| Estresse (gravado como texto) |
-| Acao | enum Alterou \| Adicionou \| Removeu \| Criou \| Expirou (gravado como texto; Expirou só para Condições) |
+| Categoria | enum Geral \| RecursoVFA \| Estresse (texto) |
+| Acao | enum Alterou \| Adicionou \| Removeu \| Criou \| Expirou (texto; Expirou só para Condições) |
 | Secao | string — seção/aba da ficha afetada |
 | Campo | string, nullable |
 | ItemNome | string, nullable — nome do item adicionado/removido |
@@ -604,20 +609,20 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Texto | text | |
 | CreatedAt | datetime | |
 
-**DiaryEntryImages** (join — imagens podem ser upload novo ou referência a uma `Image` existente, ambos os casos só criam uma linha aqui apontando pro `ImageId` correspondente)
+**DiaryEntryImages** (join, PK composta `(DiaryEntryId, ImageId)` — imagens podem ser upload novo ou referência a uma `Image` existente; ambos os casos só criam uma linha aqui)
 
 | Coluna | Tipo |
 |---|---|
-| DiaryEntryId | FK |
+| DiaryEntryId | FK → DiaryEntries |
 | ImageId | FK → Images |
 
-**DiaryEntryRecipients** (join — só populada quando `IsSecretNote = true`)
+**DiaryEntryRecipients** (join, PK composta `(DiaryEntryId, UserId)` — só populada quando `IsSecretNote = true`)
 
 | Coluna | Tipo |
 |---|---|
-| DiaryEntryId | FK |
+| DiaryEntryId | FK → DiaryEntries |
 | UserId | FK → Users |
-| ReadAt | timestamp NULL — nulo = não lida ([[Requisitos - Campanha]] R0015) |
+| ReadAt | datetime, nullable — nulo = não lida ([[Requisitos - Campanha]] R0015) |
 
   
 
@@ -632,11 +637,11 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Id | PK |
 | CampaignId | FK → Campaigns |
 | Nome | string, nullable |
-| Status | string (enum) — `Preparacao`, `EmAndamento` ou `Finalizado`; padrão `Preparacao` |
+| Status | enum (texto) — `Preparacao`, `EmAndamento` ou `Finalizado`; padrão `Preparacao` |
 | CurrentRound | int — turno atual; `0` enquanto o encontro está em `Preparacao` (nunca iniciou) |
-| CurrentParticipantId | FK → EncounterParticipants, nullable — de quem é a vez (ON DELETE SET NULL) |
-| FinalizadoEm | timestamp, nullable — preenchido quando `Status = Finalizado` |
-| RowVersion | uint — token de concorrência otimista mapeado na coluna de sistema `xmin` do PostgreSQL (não é uma coluna criada pela migração). Duas ações de vez ou de fase simultâneas sobre o mesmo encontro: só uma é aplicada, a outra responde 409 |
+| CurrentParticipantId | FK → EncounterParticipants, nullable (`SetNull`) — de quem é a vez |
+| FinalizadoEm | datetime, nullable — preenchido quando `Status = Finalizado` |
+| xmin | coluna de sistema do PostgreSQL (não criada pela migração), usada como token de concorrência otimista: de duas ações de vez ou de fase simultâneas sobre o mesmo encontro, só uma é aplicada, a outra responde 409 |
 
 **EncounterLogEntries** — log do encontro, gravado só com o encontro em andamento.
 
@@ -645,12 +650,12 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Id | PK | |
 | EncounterId | FK → Encounters, cascade | índice `(EncounterId, Ordem)` |
 | Sequencia | bigint, identity | desempate quando duas linhas têm a mesma `Ordem` |
-| Ordem | bigint | ordem do log (valor estritamente crescente gerado na criação da linha); o log é lido por `Ordem`, com `Sequencia` como desempate |
-| OccurredAt | timestamp | |
+| Ordem | bigint | ordem do log (valor estritamente crescente gerado na criação da linha) |
+| OccurredAt | datetime | |
 | Turno | int | turno em que a linha foi gravada |
-| VezParticipantId | guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
+| VezParticipantId | Guid, nullable | de quem era a vez; sem FK, o participante pode ser removido depois |
 | VezNome | string, nullable | snapshot do nome |
-| Tipo | string (enum) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha`, `CondicaoExpirada`, `AjusteDeCondicao` |
+| Tipo | enum (texto) | `Iniciado`, `Finalizado`, `Reaberto`, `NovoTurno`, `VezPassada`, `VezVoltou`, `VezEscolhida`, `ParticipanteAdicionado`, `ParticipanteRemovido`, `CampoAlterado`, `CondicaoAdicionada`, `CondicaoRemovida`, `RecursoDaFicha`, `CondicaoExpirada`, `AjusteDeCondicao` |
 | ParticipanteNome | string, nullable | |
 | Campo | string, nullable | |
 | ValorAntes | string, nullable | |
@@ -662,10 +667,10 @@ Uma única família de tabelas cobre os três casos (diário do Personagem, diá
 | Coluna | Tipo | Nota |
 |---|---|---|
 | Id | PK | |
-| EncounterId | FK | |
-| SourceCharacterSheetId | FK → CharacterSheets, nullable | no máximo uma das três colunas `Source*SheetId` é setada (R0002) |
-| SourceNpcSheetId | FK → NpcSheets, nullable | idem |
-| SourceCreatureSheetId | FK → CreatureSheets, nullable | idem |
+| EncounterId | FK → Encounters, cascade | |
+| SourceCharacterSheetId | FK → CharacterSheets, nullable (`SetNull`) | no máximo uma das três colunas `Source*SheetId` é setada (R0002) |
+| SourceNpcSheetId | FK → NpcSheets, nullable (`SetNull`) | idem |
+| SourceCreatureSheetId | FK → CreatureSheets, nullable (`SetNull`) | idem |
 | Nome | string | snapshot, pra exibição mesmo se a origem for excluída depois |
 | Iniciativa | int | digitada manualmente pelo GM (R0003) |
 | PVAtual, PFAtual, PAAtual | int, nullable | ver regra abaixo |
@@ -681,10 +686,10 @@ A regra de PV/PF/PA não depende só de qual `Source*SheetId` está setada, mas 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
-| EncounterParticipantId | FK |
+| EncounterParticipantId | FK → EncounterParticipants, cascade |
 | Texto | string |
 
-Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`, seção abaixo) e ficam em `EncounterParticipantCondicoes`.
+Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`, seção 12) e ficam em `EncounterParticipantCondicoes`.
 
 **EncounterParticipantCondicoes** — uma Condição do catálogo aplicada a um participante. **Cópia independente** (padrão 1 da legenda): editar ou apagar a entrada do catálogo não altera a que já foi aplicada.
 
@@ -692,11 +697,11 @@ Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`,
 |---|---|---|
 | Id | PK | |
 | EncounterParticipantId | FK → EncounterParticipants, cascade | índice |
-| CondicaoId | guid, nullable | só procedência (sem FK); serve para recusar a mesma Condição duas vezes no participante |
+| CondicaoId | Guid, nullable | só procedência (sem FK); serve para recusar a mesma Condição duas vezes no participante |
 | Nome, Descricao, Icone | string | snapshot da entrada do catálogo |
 | AplicadaNoTurno | int | `CurrentRound` ao aplicar; 0 se na preparação (a contagem começa no Turno 1) |
 | DuracaoTurnos | int, nullable | a do catálogo, ou a escolhida ao aplicar; nulo = sem prazo |
-| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento, Maestrias}` com o valor como o GM ajustou; `LinhaId` (guid) é estável; `Maestrias` (lista de ids de linhas de Maestria da ficha, ou nulo = todas) só numa linha de Maestria que o GM restringiu ao aplicar |
+| Modificadores | jsonb | lista de linhas `{LinhaId, Alvo, AlvoEspecifico, TipoDeValor, Valor, Momento, Maestrias}` com o valor como o GM ajustou; `LinhaId` (Guid) é estável; `Maestrias` (lista de ids de linhas de Maestria da ficha, ou nulo = todas) só numa linha de Maestria que o GM restringiu ao aplicar |
 | Desabilitacoes | jsonb | por categoria (`Arma`, `Armadura`, `Escudo`, `Artefato`, `Magia`, `Habilidade`, `Runa`, `Passiva`): lista vazia = a categoria inteira; senão os ids das linhas da ficha |
 | AjustesAplicados | jsonb | lista `{LinhaId, Turno}` dos ajustes de valor atual já feitos (Turno 0 = linha "ao aplicar"; uma linha "a cada vez" roda no máximo uma vez por Turno, ver [[Requisitos - Gerenciador de Encontros]] R0013); começa vazia |
 
@@ -706,7 +711,7 @@ Legado: só pode ser reduzida. Condições novas vêm do catálogo (`Condicoes`,
 
 *(ver "[[Requisitos - Compêndio de Regras]]")*
 
-Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema RPG/`. A indexação para busca (R0001–R0003 daquele documento) é construída em memória/build-time a partir dos arquivos-fonte, não persistida como dado de aplicação. Exceção: **Traits** (seção 6.1) já existe como tabela porque é referenciada por FK de `CharacterTraits` — o Compêndio busca nela em vez de duplicar.
+Sem tabelas próprias — o conteúdo vem de `Docs/Sistema RPG/` (com as sobrescritas do Auditor, seção 11). A indexação para busca (R0001–R0003 daquele documento) é construída em memória a partir dos arquivos-fonte, não persistida. Exceção: **Traits** (seção 6.1) já existe como tabela porque é referenciada por FK de `CharacterTraits` — o Compêndio busca nela em vez de duplicar.
 
   
 
@@ -714,7 +719,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 
 *(ver "[[Requisitos - Habilidades Raciais]]")*
 
-**RacialAbilityOverrides** — sobrescrita do GM pro Nome/Descrição hardcoded de uma Variante (R0001); o padrão vale quando a linha não existe. Uma linha por (GM, Variante).
+**RacialAbilityOverrides** — sobrescrita do GM pro Nome/Descrição padrão de uma Variante (R0001); o padrão vale quando a linha não existe. Única por (`GmId`, `Variante`).
 
 | Coluna | Tipo |
 |---|---|
@@ -725,7 +730,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | Descricao | text |
 | NomeDaVariante | string, nullable — só usado pela variante solar de Alóra: o nome dado pelo GM, que a libera nas fichas quando preenchido (R0005) |
 
-**RacialTraitOverrides** — sobrescrita do GM pras opções de Característica Gratuita/Obrigatória de uma Variante (R0004); o padrão de "[[Ruína RPG - Sistema Básico]]" §7 vale quando a linha não existe. Uma linha por (GM, Variante); cada lista de opções é um JSON (array de {TraitNome, Especificacao}), não linhas filhas — tamanho pequeno e fixo, nunca consultado pelo conteúdo.
+**RacialTraitOverrides** — sobrescrita do GM pras opções de Característica Gratuita/Obrigatória de uma Variante (R0004); o padrão de "[[Ruína RPG - Sistema Básico]]" §7 vale quando a linha não existe. Única por (`GmId`, `Variante`); cada lista de opções é um JSON (array de {TraitNome, Especificacao}), não linhas filhas — tamanho pequeno e fixo, nunca consultado pelo conteúdo.
 
 | Coluna | Tipo |
 |---|---|
@@ -742,13 +747,13 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | GmId | PK, FK → Users (cascade) |
 | Dado | int — uma das faces D6, D8, D10, D12, D20 ou D100 (6, 8, 10, 12, 20, 100) |
 
-**ArcaEntries** — a "tabela de Arcas" (1d{dado}) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Uma linha por (GM, Roll de 1 até a face do dado) já preenchido; ausência de linha para um Roll = "não cadastrada". Reduzir o dado só esconde as linhas com Roll acima dele: elas não são apagadas e voltam se o dado aumentar.
+**ArcaEntries** — a "tabela de Arcas" (1d{dado}) referenciada pelo Racial de Sinir/Laonir, conteúdo livre do GM (R0002). Única por (`GmId`, `Roll`); ausência de linha para um Roll = "não cadastrada". Reduzir o dado só esconde as linhas com Roll acima dele: elas não são apagadas e voltam se o dado aumentar.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | GmId | FK → Users |
-| Roll | int, 1 a 100 (o máximo depende do dado do GM em `ArcaTabelas`; linhas acima do dado atual ficam escondidas, não apagadas) |
+| Roll | int, 1 a 100 (o máximo depende do dado do GM em `ArcaTabelas`) |
 | Nome | string |
 | Descricao | text |
 
@@ -760,7 +765,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | ArcaEntryId | FK → ArcaEntries (cascade) |
 | Nivel | int, de 1 ao último nível de `NiveisProgressao` |
 | Descricao | text |
-| CriadaEm | timestamptz — desempate entre evoluções do mesmo nível |
+| CriadaEm | datetime — desempate entre evoluções do mesmo nível |
 
   
 
@@ -768,17 +773,41 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 
 *(ver "[[Requisitos - Auditoria de Regras]]")*
 
-**RulebookDocumentOverrides** — sobrescrita do texto Markdown de um dos 3 documentos do Livro de Regras que não são a aba de Características (R0002); o padrão embutido no build vale quando a linha não existe. Uma linha por Slug (não por GM — vale pro servidor inteiro).
+**RulebookDocumentOverrides** — sobrescrita do texto Markdown de um documento do Livro de Regras (R0002); o padrão embutido no build vale quando a linha não existe. Uma linha por Slug (não por GM — vale pro servidor inteiro).
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
-| Slug | string, único — "sistema-basico" \| "graus-e-circulos" \| "tabela-de-niveis" |
+| Slug | string, único — identifica o documento (ex.: "sistema-basico", "graus-e-circulos", "tabela-de-niveis") |
 | MarkdownText | text |
-| UpdatedByUserId | FK → Users, NULL = escrita do sistema (ex.: a sincronização de Efeitos na inicialização do servidor — [[Requisitos - Auditoria de Regras]] R0006) |
-| UpdatedAt | DateTime |
+| UpdatedByUserId | FK → Users (`Restrict`), nullable — NULL = escrita do sistema (ex.: a sincronização de Efeitos na inicialização do servidor — R0006) |
+| UpdatedAt | datetime |
 
-**Pericias** — perícias do sistema (Auditoria de Regras R0012). Nunca apagadas de verdade.
+**Efeitos** — o catálogo de Efeitos de "[[GRAUS & CÍRCULOS]]" que uma Magia/Habilidade compra com PI (R0006/R0007). Global; semeado a partir de uma lista no código (não do Markdown), com a mesma convenção `IsCustomized`/`IsDeleted` de `Traits`. As linhas de efeito das Magias/Habilidades (`*SpellAbilityEffects`, `SpellAbilityBankEffects`) apontam pra cá pelo `Nome`, sem FK.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK |
+| Nome | string |
+| Grau | int, 1 a 9 — o Grau/Círculo a partir do qual o Efeito fica disponível |
+| Descricao | text |
+| TipoDeCusto | enum Fixo \| PorUnidade \| Manual \| ManualPorUnidade \| DerivadoDeOutroEfeito |
+| CustoFixo | int, nullable — custo do tipo Fixo |
+| CustoPorUnidade | int, nullable — custo por unidade (PorUnidade e DerivadoDeOutroEfeito) |
+| UnidadeLabel | string, nullable — rótulo da unidade quando há Quantidade |
+| QuantidadeDerivadaDeEfeito | string, nullable — no tipo DerivadoDeOutroEfeito, o Nome do Efeito da mesma Magia/Habilidade cuja Quantidade é usada |
+| MaxUnidades | int, nullable — teto de Quantidade; NULL = sem teto |
+| MaxEscalaPorGrau | bool — o teto é multiplicado pelo Grau da Magia/Habilidade |
+| MaxContandoAPartirDoGrau | int, nullable — com `MaxEscalaPorGrau`, o Grau a partir do qual a multiplicação conta |
+| CustoAlternativo | int, nullable — custo que substitui o normal a partir de `CustoAlternativoAPartirDoGrau` |
+| CustoAlternativoAPartirDoGrau | int, nullable |
+| PreRequisitosJson | text (JSON), nullable — grupos de pré-requisito: lista de grupos "ou", todos exigidos ("e") |
+| IsCustomized | bool |
+| IsDeleted | bool — soft delete (uma Magia/Habilidade pode já usar o Nome) |
+| UpdatedByUserId | Guid, nullable, sem FK |
+| UpdatedAt | datetime, nullable |
+
+**Pericias** — perícias do sistema (R0012). Nunca apagadas de verdade.
 
 | Coluna | Tipo |
 |---|---|
@@ -790,7 +819,7 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 | DisponivelParaCriaturas | bool |
 | IsDeleted | bool |
 
-**NiveisProgressao** — uma linha por nível da Tabela de Níveis (Auditoria de Regras R0013). Preenchida uma vez, a partir de "[[Tabela de Níveis]]" e das tabelas de XP/EAP, quando vazia.
+**NiveisProgressao** — uma linha por nível da Tabela de Níveis (R0013). Preenchida uma vez, a partir de "[[Tabela de Níveis]]" e das tabelas de XP/EAP, quando vazia.
 
 | Coluna | Tipo |
 |---|---|
@@ -801,26 +830,26 @@ Sem tabelas próprias — o conteúdo é estático e vem direto de `Docs/Sistema
 
 | Coluna | Tipo |
 |---|---|
-| Id | Guid (uuid), PK |
+| Id | PK |
 | Nome | string |
 | Tipo | enum Acumulativa \| PorNivel (imutável) |
 | ChaveDeSistema | string, nullable, único — preenchida nas colunas do sistema (não removíveis) |
 | Ordem | int |
 | IsDeleted | bool — reservado, não usado: remover uma coluna é exclusão física (apaga também os valores) |
 
-**TabelaDeNiveisConfig** — configuração da Tabela de Níveis, linha única (Auditoria de Regras R0013). Sem linha = padrão (tudo falso).
+**TabelaDeNiveisConfig** — configuração da Tabela de Níveis, linha única (R0013). Sem linha = padrão (tudo falso).
 
 | Coluna | Tipo |
 |---|---|
 | Id | int, PK — sempre 1 |
 | MostrarLimitesNoLivro | bool — se o Livro de Regras mostra a tabela "Limites e progressão" (padrão false) |
 
-**ValoresDeNivel** — valor de uma célula.
+**ValoresDeNivel** — valor de uma célula; PK composta `(Nivel, ColunaId)`.
 
 | Coluna | Tipo |
 |---|---|
-| Nivel | FK → NiveisProgressao (cascade), parte da PK |
-| ColunaId | FK → ColunasDeNivel (cascade), parte da PK |
+| Nivel | FK → NiveisProgressao (cascade) |
+| ColunaId | FK → ColunasDeNivel (cascade) |
 | Valor | int, nullable — vazio = 0 (Acumulativa) ou herda o nível anterior (Por nível, exceto XP e EAP) |
 
 
@@ -835,11 +864,11 @@ Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma
 | Id | PK |
 | Nome | string — único entre as linhas não apagadas (índice filtrado por `IsDeleted = false`) |
 | Descricao | text |
-| Icone | string — uma chave da lista fixa de ícones (`CondicaoIcones.Chaves`, no projeto Contracts) |
+| Icone | string — uma chave da lista fixa de ícones |
 | DuracaoPadraoTurnos | int, nullable — vazio = até ser removida; quando informado, ≥ 1 |
 | IsDeleted | bool — exclusão lógica, sempre permitida (as aplicadas são cópias independentes) |
-| UpdatedByUserId | FK → Users, nullable |
-| UpdatedAt | DateTime, nullable |
+| UpdatedByUserId | Guid, nullable, sem FK |
+| UpdatedAt | datetime, nullable |
 
 **CondicaoModificadores**
 
@@ -848,11 +877,11 @@ Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma
 | Id | PK |
 | CondicaoId | FK → Condicoes (cascade) |
 | Ordem | int |
-| Alvo | enum `AlvoDeCondicao`: Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria (texto) |
+| Alvo | enum `AlvoDeCondicao` (texto): Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria |
 | AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; nome do `Elemento` (vazio = geral); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
-| TipoDeValor | enum `TipoDeValorDeCondicao`: Fixo \| Percentual (texto); percentual entre −100 e 1000 |
+| TipoDeValor | enum `TipoDeValorDeCondicao` (texto): Fixo \| Percentual; percentual entre −100 e 1000 |
 | Valor | int, com sinal, diferente de zero |
-| Momento | enum `MomentoDeCondicao`: AoAplicar \| ACadaVez (texto), nullable — preenchido se e somente se `Alvo = RecursoAtual` |
+| Momento | enum `MomentoDeCondicao` (texto): AoAplicar \| ACadaVez, nullable — preenchido se e somente se `Alvo = RecursoAtual` |
 
 **CondicaoDesabilitacoes**
 
@@ -860,6 +889,6 @@ Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma
 |---|---|
 | Id | PK |
 | CondicaoId | FK → Condicoes (cascade) |
-| Categoria | enum `CategoriaDesabilitavel`: Arma \| Armadura \| Escudo \| Artefato \| Magia \| Habilidade \| Runa \| Passiva (texto); sem repetir na mesma Condição |
+| Categoria | enum `CategoriaDesabilitavel` (texto): Arma \| Armadura \| Escudo \| Artefato \| Magia \| Habilidade \| Runa \| Passiva; sem repetir na mesma Condição |
 
 Uma Condição precisa de ao menos um modificador ou uma desabilitação.

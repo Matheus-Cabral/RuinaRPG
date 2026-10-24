@@ -4,14 +4,14 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class MigrationTests : IClassFixture<PostgresFixture>
+public class MigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public MigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public MigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task Migrate_creates_the_AspNetUsers_and_RefreshTokens_tables()
+    public async Task Migrate_leaves_nothing_pending_and_the_model_matches_the_migrations()
     {
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>()
             .UseNpgsql(_fixture.ConnectionString)
@@ -20,7 +20,9 @@ public class MigrationTests : IClassFixture<PostgresFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("InitialCreate"));
+        (await db.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
+        db.Database.HasPendingModelChanges().Should().BeFalse();
+        (await db.Users.CountAsync()).Should().Be(0);
+        (await db.RefreshTokens.CountAsync()).Should().Be(0);
     }
 }

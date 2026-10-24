@@ -4,7 +4,7 @@ public enum AutoSaveState { Idle, Saving, Saved, Error }
 
 /// <summary>
 /// Debounces a burst of field-commit events into one save call, 400ms after the last one. One
-/// instance per page/form — not a DI service. See docs/superpowers/specs/2026-09-04-autosave-on-blur-design.md.
+/// instance per page/form — not a DI service. See docs/superpowers/archive/specs/2026-09-04-autosave-on-blur-design.md.
 /// </summary>
 public class AutoSaveCoordinator
 {

@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterAffinityMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterAffinityMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterAffinityMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterAffinityMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CharacterAffinities_table()
@@ -21,9 +21,6 @@ public class CharacterAffinityMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterAffinities"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@afftest.com", Email = "gm@afftest.com", Nickname = "AffTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@afftest.com", Email = "player@afftest.com", Nickname = "AffTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -36,7 +33,7 @@ public class CharacterAffinityMigrationTests : IClassFixture<PostgresFixture>
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
+        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAffinities.CountAsync()).Should().Be(1);

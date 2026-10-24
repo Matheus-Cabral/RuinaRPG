@@ -1,0 +1,49 @@
+@using MudBlazor
+
+@* Nível e Progressão onde o Nível é editado à mão (TipoDeFichaCliente.EditaNivelAManual: NPC e Criatura). Nível,
+   Experiência e PI têm cada um o seu endpoint (a página salva pelos retornos); Graduação, Coração de Mana e VIS só onde
+   o tipo tem Linhagem e Vocação. Abate e Assistência só vêm quando o servidor os manda (no NPC, só ao GM); a ajuda ao
+   lado deles é a do tipo (TipoDeFichaCliente.AjudaDoXpPorAbate). *@
+
+<MudNumericField T="int?" @bind-Value="Formulario.Nivel" For="@(() => Formulario.Nivel)" Label="Nível" @bind-Value:after="MudouNivelAsync" />
+@if (Estado.Tipo.TemLinhagemEVocacao)
+{
+    <GraduacaoECoracaoDeMana Formulario="Formulario" AoMudar="AoMudar" />
+}
+<MudNumericField T="int?" @bind-Value="Formulario.ExperienciaAtual" For="@(() => Formulario.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="MudouExperienciaAsync" />
+@if (Formulario.Abate is not null && Formulario.Assistencia is not null)
+{
+    <MudText>Abate: @Formulario.Abate</MudText>
+    <MudText>Assistência: @Formulario.Assistencia</MudText>
+    @if (Estado.Tipo.AjudaDoXpPorAbate is { } ajuda)
+    {
+        <InfoPopup Title="@("XP por abate e assistência")">
+            @ajuda
+        </InfoPopup>
+    }
+}
+@if (Estado.Tipo.TemLinhagemEVocacao)
+{
+    <MudText>VIS Atual: @Formulario.EAPAtual</MudText>
+}
+<MudNumericField T="int?" @bind-Value="Formulario.PontosDeIgnicaoAtual" For="@(() => Formulario.PontosDeIgnicaoAtual)" Label="@Estado.Tipo.RotuloDosPontosDeIgnicao" @bind-Value:after="MudouPontosDeIgnicaoAsync" />
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    [Parameter] public EventCallback AoMudarNivel { get; set; }
+
+    [Parameter] public EventCallback AoMudarExperiencia { get; set; }
+
+    [Parameter] public EventCallback AoMudarPontosDeIgnicao { get; set; }
+
+    private Task MudouNivelAsync() => AoMudarNivel.InvokeAsync();
+
+    private Task MudouExperienciaAsync() => AoMudarExperiencia.InvokeAsync();
+
+    private Task MudouPontosDeIgnicaoAsync() => AoMudarPontosDeIgnicao.InvokeAsync();
+}

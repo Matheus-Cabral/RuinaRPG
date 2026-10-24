@@ -1,12 +1,13 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
 
 namespace RuinaRPG.Infrastructure.CharacterSheets;
 
-public class CharacterTrait
+public class CharacterTrait : ICaracteristicaDaFicha
 {
     public Guid Id { get; set; }
-    public Guid CharacterSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public Guid TraitId { get; set; }
     public Polaridade Polaridade { get; set; }
     public string? Especificacao { get; set; }

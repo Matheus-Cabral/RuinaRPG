@@ -8,54 +8,18 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class SpellAbilityBankControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public SpellAbilityBankControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(codeMessage);
+        var codeResponse = await Client.SendAsync(codeMessage);
         var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
     }
 
     private static CreateSpellAbilityEntryRequest BolaDeFogo() => new(
@@ -65,7 +29,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     [Fact]
     public async Task Create_without_a_token_returns_401()
     {
-        var response = await _client.PostAsJsonAsync("/api/spell-ability-bank", BolaDeFogo());
+        var response = await Client.PostAsJsonAsync("/api/spell-ability-bank", BolaDeFogo());
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -75,7 +39,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("BankGm1", "bank1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, BolaDeFogo()));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, BolaDeFogo()));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>();
@@ -90,13 +54,13 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("BankGm2", "bank2@teste.com");
         var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "BankJogador1", "bankjogador1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", jogadorToken, BolaDeFogo()));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", jogadorToken, BolaDeFogo()));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private async Task<HttpResponseMessage> CreateAsync(string token, CreateSpellAbilityEntryRequest request) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, request));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", token, request));
 
     [Fact]
     public async Task List_returns_only_entries_created_by_the_authenticated_gm()
@@ -106,7 +70,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         await CreateAsync(tokenA, BolaDeFogo());
         await CreateAsync(tokenB, BolaDeFogo());
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", tokenA));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", tokenA));
 
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().ContainSingle();
@@ -121,7 +85,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var jogadorToken = await RegisterJogadorTokenAsync(gmToken, "BankJogadorScopeA", "bankjogadorscopea@teste.com");
         await CreateAsync(gmToken, BolaDeFogo());
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", jogadorToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", jogadorToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -133,7 +97,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         await CreateAsync(token, BolaDeFogo()); // Magia, Grau 3
         await CreateAsync(token, new CreateSpellAbilityEntryRequest("Fúria", "Habilidade", 1, "Aumenta o dano.", []));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Magia&grau=3", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?tipo=Magia&grau=3", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
@@ -145,7 +109,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var token = await RegisterGmAndGetTokenAsync("BankGmFilter2", "bankfilter2@teste.com");
         await CreateAsync(token, BolaDeFogo());
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?nome=bola", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank?nome=bola", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().ContainSingle(e => e.Nome == "Bola de Fogo");
@@ -160,11 +124,11 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
 
         var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo Maior", "Magia", 4, "Mais poderosa.",
             [new SpellAbilityEffectRequest("Dano", 6, 12)]);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
         var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         var updated = body!.Single(e => e.Id == entryId);
         updated.Nome.Should().Be("Bola de Fogo Maior");
@@ -182,7 +146,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
 
         var update = new UpdateSpellAbilityEntryRequest("Hack", "Magia", 1, "", []);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", tokenOther, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", tokenOther, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -194,11 +158,11 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var createResponse = await CreateAsync(token, BolaDeFogo());
         var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
         var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().BeEmpty();
     }
@@ -208,7 +172,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("BankGmDelete2", "bankdelete2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{Guid.NewGuid()}", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{Guid.NewGuid()}", token));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -221,7 +185,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var createResponse = await CreateAsync(tokenOwner, BolaDeFogo());
         var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", tokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/spell-ability-bank/{entryId}", tokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -234,11 +198,11 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var entryId = (await createResponse.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
 
         var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo", "Magia", 3, "Uma explosão de fogo.", []);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
         var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         var updated = body!.Single(e => e.Id == entryId);
         updated.GastoEmPI.Should().Be(0);
@@ -251,7 +215,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm1", "spellbankefeito1@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Bola de Fogo", "Magia", 1, "Uma bola de fogo.",
                 new List<SpellAbilityEffectRequest> { new("Dano", 2, 4) })));
 
@@ -263,7 +227,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm2", "spellbankefeito2@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Bola de Fogo Errada", "Magia", 1, "Descrição.",
                 new List<SpellAbilityEffectRequest> { new("Dano", 2, 999) })));
 
@@ -275,7 +239,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm3", "spellbankefeito3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Cura Sem Dano", "Magia", 1, "Descrição.",
                 new List<SpellAbilityEffectRequest> { new("Cura", null, 2) })));
 
@@ -288,7 +252,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         var gmToken = await RegisterGmAndGetTokenAsync("SpellBankEfeitoGm4", "spellbankefeito4@teste.com");
 
         // Grau 1's teto for Dano is 3 dados (EfeitoCustoCalculator.DanoAlcanceMaxPorGrau[1]).
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest("Dano Demais", "Magia", 1, "Descrição.",
                 new List<SpellAbilityEffectRequest> { new("Dano", 4, 8) })));
 
@@ -304,11 +268,11 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
 
         var update = new UpdateSpellAbilityEntryRequest("Bola de Fogo", "Habilidade", 3, "Uma explosão de fogo.",
             [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)]);
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{entryId}", token, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
+        var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token));
         var body = await listResponse.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         var updated = body!.Single(e => e.Id == entryId);
         updated.Tipo.Should().Be("Habilidade");
@@ -319,13 +283,13 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
     {
         var token = await RegisterGmAndGetTokenAsync("BankGmCriat1", "bankcriat1@teste.com");
         await CreateAsync(token, BolaDeFogo() with { DeCriatura = true });
-        var created = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
+        var created = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
             .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>())!.Single();
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{created.Id}", token,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/spell-ability-bank/{created.Id}", token,
             new UpdateSpellAbilityEntryRequest(created.Nome, created.Tipo, created.Grau, created.Descricao,
                 [new SpellAbilityEffectRequest("Dano", 4, 8), new SpellAbilityEffectRequest("Alcance", 2, 6)], DeCriatura: false)));
-        var updated = (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
+        var updated = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/spell-ability-bank", token)))
             .Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>())!.Single();
 
         created.DeCriatura.Should().BeTrue();
@@ -341,7 +305,7 @@ public class SpellAbilityBankControllerTests : IClassFixture<PostgresFixture>, I
         await CreateAsync(token, BolaDeFogo());
         await CreateAsync(token, new CreateSpellAbilityEntryRequest("Garras", "Habilidade", 1, "Ataque de garras.", [], DeCriatura: true));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/spell-ability-bank?deCriatura={deCriatura}", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/spell-ability-bank?deCriatura={deCriatura}", token));
 
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
         body!.Should().ContainSingle().Which.Nome.Should().Be(esperado);

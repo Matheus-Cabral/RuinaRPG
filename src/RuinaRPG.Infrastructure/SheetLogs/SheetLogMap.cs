@@ -163,12 +163,13 @@ public static class SheetLogMap
     {
         foreach (var tipo in tipos)
         {
-            var (kind, fk) = tipo.Name switch
+            var kind = tipo.Name switch
             {
-                var n when n.StartsWith("Character") => (SheetLogKind.Character, "CharacterSheetId"),
-                var n when n.StartsWith("Npc") => (SheetLogKind.Npc, "NpcSheetId"),
-                _ => (SheetLogKind.Creature, "CreatureSheetId"),
+                var n when n.StartsWith("Character") => SheetLogKind.Character,
+                var n when n.StartsWith("Npc") => SheetLogKind.Npc,
+                _ => SheetLogKind.Creature,
             };
+            const string fk = "SheetId"; // a FK é a mesma nos três tipos de ficha
             var fora = new List<string> { "Id", fk };
             if (ignorados is not null) fora.AddRange(ignorados);
             mapa[tipo] = new(kind, false, secao, fk, null, null, campos, Set(fora), Set(longos ?? []),

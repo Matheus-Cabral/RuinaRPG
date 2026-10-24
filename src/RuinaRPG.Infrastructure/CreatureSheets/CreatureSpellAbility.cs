@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.SpellsAndAbilities;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureSpellAbility
+public class CreatureSpellAbility : IMagiaDaFicha<CreatureSpellAbilityEffect>
 {
     public Guid Id { get; set; }
-    public Guid CreatureSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public Guid? SourceBankEntryId { get; set; }
     public required string Nome { get; set; }
     public SpellAbilityTipo Tipo { get; set; }

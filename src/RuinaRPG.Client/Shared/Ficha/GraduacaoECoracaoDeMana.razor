@@ -1,0 +1,19 @@
+@using MudBlazor
+@using RuinaRPG.Domain.CharacterSheets
+
+@* A Graduação (Grau ou Círculo) e o Coração de Mana, em Nível e Progressão dos tipos com Linhagem e Vocação. *@
+
+<MudText>@Formulario.GraduacaoLabel: @Formulario.Graduacao</MudText>
+@* Só as Vocações mágicas usam Círculo (1.b); o valor salvo continua lá se a Vocação mudar. *@
+@if (VocacaoArcanaCalculator.EhMagica(Enum.TryParse<Vocacao>(Formulario.Vocacao, out var vocacaoAtual) ? vocacaoAtual : null))
+{
+    <MudCheckBox T="bool" @bind-Value="Formulario.PossuiCoracaoDeMana" Label="Possui Coração de Mana?" @bind-Value:after="MudouAsync" />
+}
+
+@code {
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+}

@@ -1,0 +1,78 @@
+using Npgsql;
+using Testcontainers.PostgreSql;
+
+namespace RuinaRPG.Tests.Integration;
+
+// The one Postgres container of a test run. Booting one per test class overwhelmed this host's Docker
+// daemon - see docs/superpowers/archive/specs/2026-09-18-shared-postgres-testcontainer-design.md. Every fixture
+// gets its own database inside it instead.
+public static class SharedPostgres
+{
+    private static readonly Lazy<Task<PostgreSqlContainer>> Container = new(async () =>
+    {
+        var container = new PostgreSqlBuilder()
+            .WithImage("postgres:16-alpine")
+            .WithDatabase("ruinarpg")
+            .WithUsername("test")
+            .WithPassword("test")
+            .WithCommand("-c", "max_connections=500")
+            .Build();
+        await container.StartAsync();
+        return container;
+    });
+
+    public static async Task<string> ServerConnectionStringAsync() => (await Container.Value).GetConnectionString();
+
+    // Admin connections must not be pooled: a pooled connection returned by `await using` stays open
+    // against the shared server's connection budget for the rest of the run.
+    public static async Task ExecuteAdminAsync(string sql)
+    {
+        var admin = new NpgsqlConnectionStringBuilder(await ServerConnectionStringAsync()) { Pooling = false }.ConnectionString;
+        await using var connection = new NpgsqlConnection(admin);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    // Each class's pool is bounded so ~150 classes can't each open Npgsql's default 100 connections.
+    public static string DatabaseConnectionString(string server, string database) =>
+        new NpgsqlConnectionStringBuilder(server) { Database = database, MaxPoolSize = 8, MinPoolSize = 0 }.ConnectionString;
+
+    public static async Task DropDatabaseAsync(string database, string? connectionString)
+    {
+        if (connectionString is not null)
+            NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+        await RetryOn55006Async(
+            () => ExecuteAdminAsync($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)"),
+            $"drop of database {database}",
+            rethrowOnFinalFailure: false);
+    }
+
+    // DROP/CREATE DATABASE can raise 55006 ("being accessed by other users") while pooled backends of a
+    // just-cleared pool are still exiting. A leftover database in the throwaway container is harmless
+    // (rethrowOnFinalFailure: false); a missing clone is not (true).
+    internal static async Task RetryOn55006Async(Func<Task> action, string description, bool rethrowOnFinalFailure)
+    {
+        const int attempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await action();
+                return;
+            }
+            catch (PostgresException e) when (e.SqlState == "55006")
+            {
+                if (attempt < attempts)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    continue;
+                }
+                if (rethrowOnFinalFailure)
+                    throw;
+                await Console.Error.WriteLineAsync($"SharedPostgres: {description} gave up after {attempts} attempts (55006): {e.MessageText}");
+                return;
+            }
+        }
+    }
+}

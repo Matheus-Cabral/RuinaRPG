@@ -10,6 +10,7 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Pages;
 
+[Collection("Tempo real")]
 public class CatalogoItemFormTests : MudBunitContext
 {
     [Fact]

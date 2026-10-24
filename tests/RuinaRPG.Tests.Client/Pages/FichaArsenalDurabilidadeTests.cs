@@ -1,8 +1,8 @@
 using Bunit;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
 using RuinaRPG.Client.Pages;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
@@ -20,7 +20,8 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// atual/max pair otherwise — the arsenal responses carry a trailing `Inquebravel` flag (Task 4).
 /// Renders the full sheet page (its OnInitializedAsync loads dozens of endpoints regardless of
 /// which tab is visible) with every endpoint but weapons/armor-slots/shields stubbed to an inert
-/// default, then switches to the "Combate" tab to reach the tables under test.
+/// default, then switches to the "Combate" tab to reach the tables under test. One theory per table over the kinds;
+/// the creature's natural attack ("Ataque natural", no ItemId) is AbaCombateTests.Creature_manual_weapon_renders_like_today.
 /// </summary>
 public class FichaArsenalDurabilidadeTests : MudBunitContext
 {
@@ -76,68 +77,67 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
 
     /// <summary>MudTabs only renders the active panel's content — switch to "Combate" (the 3rd tab
     /// on all 3 sheets) to reach the Armas/Armaduras/Escudos tables.</summary>
-    private static async Task GoToCombateTabAsync<T>(IRenderedComponent<T> cut) where T : Microsoft.AspNetCore.Components.IComponent
+    private static async Task GoToCombateTabAsync<T>(IRenderedComponent<T> cut) where T : IComponent
     {
         var combateTab = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Combate");
         await cut.InvokeAsync(() => combateTab.Click());
     }
 
-    private static object Weapon(bool inquebravel, string id = "weapon-1") => new
+    // The creature's wire records name the maximum "DurabilidadeMaximo" (Personagem/NPC: "DurabilidadeMaxima"), so the
+    // field name is theory data; the shield record is the same on every kind.
+    private static Dictionary<string, object?> Weapon(bool inquebravel, string campoDoMaximo) => new()
     {
-        Id = id, ItemId = "item-1", Nome = "Espada Longa", TipoDeDano = "Cortante", Alcance = (int?)null,
-        Dados = "1d8", Dano = (int?)null, Critico = "19-20", Rank = "D", Peso = 3m, IsEquipped = false,
-        DurabilidadeAtual = inquebravel ? 0 : 40, DurabilidadeMaxima = inquebravel ? 0 : 80,
-        ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
+        ["Id"] = "weapon-1", ["ItemId"] = "item-1", ["Nome"] = "Espada Longa", ["TipoDeDano"] = "Cortante", ["Alcance"] = null,
+        ["Dados"] = "1d8", ["Dano"] = null, ["Critico"] = "19-20", ["Rank"] = "D", ["IsEquipped"] = false,
+        ["DurabilidadeAtual"] = inquebravel ? 0 : 40, [campoDoMaximo] = inquebravel ? 0 : 80,
+        ["ImageUrl"] = null, ["Descricao"] = null, ["Inquebravel"] = inquebravel,
     };
 
-    private static object CreatureWeapon(bool inquebravel, string? itemId = "item-1", string id = "weapon-1") => new
+    private static Dictionary<string, object?> ArmorSlot(bool inquebravel, string campoDoMaximo) => new()
     {
-        Id = id, ItemId = itemId, Nome = "Garra", TipoDeDano = "Cortante", Dados = "1d6", Dano = (int?)null,
-        Alcance = (int?)null, Critico = "19-20", Rank = "D", IsEquipped = false,
-        DurabilidadeAtual = itemId is null ? (int?)null : inquebravel ? 0 : 40,
-        DurabilidadeMaximo = itemId is null ? (int?)null : inquebravel ? 0 : 80,
-        ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
+        ["Slot"] = "Superior", ["ItemId"] = "item-2", ["Nome"] = "Cota de Malha", ["Categoria"] = "Média", ["Defesa"] = 2,
+        ["RF"] = 1, ["RM"] = 0, ["Peso"] = 8m,
+        ["DurabilidadeAtual"] = inquebravel ? 0 : 30, [campoDoMaximo] = inquebravel ? 0 : 60,
+        ["ImageUrl"] = null, ["Descricao"] = null, ["Inquebravel"] = inquebravel,
     };
 
-    private static object ArmorSlot(bool inquebravel, string slot = "Superior") => new
+    private static object Shield(bool inquebravel) => new
     {
-        Slot = slot, ItemId = "item-2", Nome = "Cota de Malha", Categoria = "Média", Defesa = (int?)2,
-        RF = (int?)1, RM = (int?)0, Peso = (decimal?)8m,
-        DurabilidadeAtual = inquebravel ? 0 : 30, DurabilidadeMaxima = inquebravel ? 0 : 60,
-        ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
-    };
-
-    private static object CreatureArmorSlot(bool inquebravel, string slot = "Superior") => new
-    {
-        Slot = slot, ItemId = "item-2", Nome = "Cota de Malha", Categoria = "Média", Defesa = (int?)2,
-        RF = (int?)1, RM = (int?)0, Peso = (decimal?)8m,
-        DurabilidadeAtual = inquebravel ? 0 : 30, DurabilidadeMaximo = inquebravel ? 0 : 60,
-        ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
-    };
-
-    private static object Shield(bool inquebravel, string id = "shield-1") => new
-    {
-        Id = id, ItemId = "item-3", Nome = "Broquel", Categoria = "Leve", BonusDefesa = (int?)1,
+        Id = "shield-1", ItemId = "item-3", Nome = "Broquel", Categoria = "Leve", BonusDefesa = (int?)1,
         Peso = 2m, IsEquipped = false,
         DurabilidadeAtual = inquebravel ? 0 : 15, DurabilidadeMaxima = inquebravel ? 0 : 30,
         ImageUrl = (string?)null, Descricao = (string?)null, Inquebravel = inquebravel,
     };
 
-    // ---- FichaDePersonagem ----
-
-    [Fact]
-    public async Task Personagem_weapon_table_shows_Inquebravel_and_no_atual_input_for_an_unbreakable_weapon()
+    public static TheoryData<Type, string> Tipos => new()
     {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { Weapon(inquebravel: true) });
-            return null;
-        });
+        { typeof(FichaDePersonagem), "DurabilidadeMaxima" },
+        { typeof(FichaDeNpc), "DurabilidadeMaxima" },
+        { typeof(FichaDeCriatura), "DurabilidadeMaximo" },
+    };
 
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
+    private IRenderedComponent<ComponentBase> RenderPagina(Type pagina) => pagina switch
+    {
+        _ when pagina == typeof(FichaDePersonagem) => Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1")),
+        _ when pagina == typeof(FichaDeNpc) => Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1")),
+        _ => Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1")),
+    };
+
+    /// <summary>Renders the page with <paramref name="sufixo"/> answering <paramref name="linhas"/> and opens "Combate".</summary>
+    private async Task<IRenderedComponent<ComponentBase>> RenderCombateAsync(Type pagina, string sufixo, object linhas)
+    {
+        CreateClient(request => request.RequestUri!.AbsolutePath.EndsWith(sufixo) ? Json(HttpStatusCode.OK, linhas) : null);
+        var cut = RenderPagina(pagina);
         await Task.Delay(100);
         await GoToCombateTabAsync(cut);
+        return cut;
+    }
+
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task Weapon_table_shows_Inquebravel_and_no_atual_input_for_an_unbreakable_weapon(Type pagina, string campoDoMaximo)
+    {
+        var cut = await RenderCombateAsync(pagina, "/weapons", new[] { Weapon(inquebravel: true, campoDoMaximo) });
 
         cut.Markup.Should().Contain(">Rank<");
         cut.Markup.Should().NotContain(">Tier<");
@@ -145,152 +145,36 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
         weaponSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
     }
 
-    [Fact]
-    public async Task Personagem_weapon_table_shows_atual_over_max_for_a_breakable_weapon()
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task Weapon_table_shows_atual_over_max_for_a_breakable_weapon(Type pagina, string campoDoMaximo)
     {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { Weapon(inquebravel: false) });
-            return null;
-        });
-
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
+        var cut = await RenderCombateAsync(pagina, "/weapons", new[] { Weapon(inquebravel: false, campoDoMaximo) });
 
         cut.Markup.Should().Contain("/ 80");
         cut.Markup.Should().NotContain("Inquebrável");
     }
 
-    [Fact]
-    public async Task Personagem_armor_slot_shows_Inquebravel_and_no_atual_input()
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task Armor_slot_shows_Inquebravel_and_no_atual_input(Type pagina, string campoDoMaximo)
     {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/armor-slots")) return Json(HttpStatusCode.OK, new[] { ArmorSlot(inquebravel: true) });
-            return null;
-        });
-
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
+        var cut = await RenderCombateAsync(pagina, "/armor-slots", new[] { ArmorSlot(inquebravel: true, campoDoMaximo) });
 
         var armorSection = ExtractSection(cut.Markup, "Armaduras");
         armorSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
     }
 
-    [Fact]
-    public async Task Personagem_shield_shows_Inquebravel_and_no_atual_input()
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem))]
+    [InlineData(typeof(FichaDeNpc))]
+    [InlineData(typeof(FichaDeCriatura))]
+    public async Task Shield_shows_Inquebravel_and_no_atual_input(Type pagina)
     {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/shields")) return Json(HttpStatusCode.OK, new[] { Shield(inquebravel: true) });
-            return null;
-        });
-
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
+        var cut = await RenderCombateAsync(pagina, "/shields", new[] { Shield(inquebravel: true) });
 
         var shieldSection = ExtractSection(cut.Markup, "Escudos");
         shieldSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
-    }
-
-    // ---- FichaDeNpc ----
-
-    [Fact]
-    public async Task Npc_weapon_table_shows_Inquebravel_and_no_atual_input_for_an_unbreakable_weapon()
-    {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { Weapon(inquebravel: true) });
-            return null;
-        });
-
-        var cut = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
-
-        var weaponSection = ExtractSection(cut.Markup, "Armas");
-        weaponSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
-    }
-
-    [Fact]
-    public async Task Npc_weapon_table_shows_atual_over_max_for_a_breakable_weapon()
-    {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { Weapon(inquebravel: false) });
-            return null;
-        });
-
-        var cut = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
-
-        cut.Markup.Should().Contain("/ 80");
-        cut.Markup.Should().NotContain("Inquebrável");
-    }
-
-    // ---- FichaDeCriatura ----
-
-    [Fact]
-    public async Task Criatura_weapon_table_shows_Inquebravel_for_an_unbreakable_item_weapon()
-    {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { CreatureWeapon(inquebravel: true) });
-            return null;
-        });
-
-        var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
-
-        var weaponSection = ExtractSection(cut.Markup, "Armas");
-        weaponSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
-    }
-
-    [Fact]
-    public async Task Criatura_weapon_table_still_shows_Ataque_natural_when_there_is_no_ItemId()
-    {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/weapons")) return Json(HttpStatusCode.OK, new[] { CreatureWeapon(inquebravel: false, itemId: null) });
-            return null;
-        });
-
-        var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
-
-        var weaponSection = ExtractSection(cut.Markup, "Armas");
-        weaponSection.Should().Contain("Ataque natural").And.NotContain("Inquebrável");
-    }
-
-    [Fact]
-    public async Task Criatura_armor_slot_shows_Inquebravel_and_no_atual_input()
-    {
-        CreateClient(request =>
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/armor-slots")) return Json(HttpStatusCode.OK, new[] { CreatureArmorSlot(inquebravel: true) });
-            return null;
-        });
-
-        var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        await GoToCombateTabAsync(cut);
-
-        var armorSection = ExtractSection(cut.Markup, "Armaduras");
-        armorSection.Should().Contain("Inquebrável").And.NotContain("mud-input-slot");
     }
 
     /// <summary>Crude but effective for these assertions: cuts the markup down to the &lt;tbody&gt;

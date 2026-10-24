@@ -1,6 +1,5 @@
 using FluentAssertions;
 using RuinaRPG.Domain.CharacterSheets;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.CharacterSheets;
 

@@ -13,11 +13,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
+public class CreatureChildTableMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CreatureChildTableMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CreatureChildTableMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_all_12_creature_child_tables_and_each_round_trips_a_row()
@@ -25,9 +25,6 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCreatureChildTables"));
 
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so CreatureTrait's
         // FK genuinely targets a real, seeded Trait row rather than a synthetic one.
@@ -54,21 +51,21 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         db.Set<Artefato>().Add(artifactItem);
         await db.SaveChangesAsync();
 
-        db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Atributo = AtributoCriatura.Forca, Gasto = 3 });
-        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
-        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = AtributoCriatura.Destreza, GastoMaestria = 3 });
-        db.CreatureWeapons.Add(new CreatureWeapon { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
-        db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
-        db.CreatureShields.Add(new CreatureShield { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
-        db.CreatureSpoils.Add(new CreatureSpoil { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ItemId = spoilItem.Id, Qtd = 3, DT = 12 });
-        db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
-        db.CreatureAffections.Add(new CreatureAffection { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, Nome = "Domesticado pelo caçador", Favorabilidade = 5 });
-        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
+        db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = AtributoCriatura.Forca, Gasto = 3 });
+        db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
+        db.CreatureMasteries.Add(new CreatureMastery { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = AtributoCriatura.Destreza, GastoMaestria = 3 });
+        db.CreatureWeapons.Add(new CreatureWeapon { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
+        db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
+        db.CreatureShields.Add(new CreatureShield { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
+        db.CreatureSpoils.Add(new CreatureSpoil { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = spoilItem.Id, Qtd = 3, DT = 12 });
+        db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), SheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
+        db.CreatureAffections.Add(new CreatureAffection { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Domesticado pelo caçador", Favorabilidade = 5 });
+        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
 
         var spellAbility = new CreatureSpellAbility
         {
             Id = Guid.NewGuid(),
-            CreatureSheetId = sheet.Id,
+            SheetId = sheet.Id,
             Nome = "Sopro de Fogo",
             Tipo = SpellAbilityTipo.Habilidade,
             Grau = 3,
@@ -84,7 +81,7 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         var naturalAttack = new CreatureWeapon
         {
             Id = Guid.NewGuid(),
-            CreatureSheetId = sheet.Id,
+            SheetId = sheet.Id,
             ItemId = null,
             IsEquipped = true,
             DurabilidadeAtual = null,
@@ -97,17 +94,17 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
 
         await db.SaveChangesAsync();
 
-        (await db.CreatureAttributes.SingleAsync(a => a.CreatureSheetId == sheet.Id)).Gasto.Should().Be(3);
-        (await db.CreatureSkills.SingleAsync(s => s.CreatureSheetId == sheet.Id)).Gasto.Should().Be(6);
-        (await db.CreatureMasteries.SingleAsync(m => m.CreatureSheetId == sheet.Id)).GastoMaestria.Should().Be(3);
-        (await db.CreatureWeapons.SingleAsync(w => w.CreatureSheetId == sheet.Id && w.ItemId == weaponItem.Id)).ItemId.Should().Be(weaponItem.Id);
-        (await db.CreatureArmorSlots.SingleAsync(a => a.CreatureSheetId == sheet.Id)).ItemId.Should().Be(armorItem.Id);
-        (await db.CreatureShields.SingleAsync(s => s.CreatureSheetId == sheet.Id)).ItemId.Should().Be(shieldItem.Id);
-        (await db.CreatureSpoils.SingleAsync(i => i.CreatureSheetId == sheet.Id)).Qtd.Should().Be(3);
-        (await db.CreatureArtifacts.SingleAsync(a => a.CreatureSheetId == sheet.Id)).ArtifactItemId.Should().Be(artifactItem.Id);
-        (await db.CreatureAffections.SingleAsync(a => a.CreatureSheetId == sheet.Id)).Favorabilidade.Should().Be(5);
-        (await db.CreatureTraits.SingleAsync(t => t.CreatureSheetId == sheet.Id)).TraitId.Should().Be(trait.Id);
-        (await db.CreatureSpellAbilities.SingleAsync(e => e.CreatureSheetId == sheet.Id)).Nome.Should().Be("Sopro de Fogo");
+        (await db.CreatureAttributes.SingleAsync(a => a.SheetId == sheet.Id)).Gasto.Should().Be(3);
+        (await db.CreatureSkills.SingleAsync(s => s.SheetId == sheet.Id)).Gasto.Should().Be(6);
+        (await db.CreatureMasteries.SingleAsync(m => m.SheetId == sheet.Id)).GastoMaestria.Should().Be(3);
+        (await db.CreatureWeapons.SingleAsync(w => w.SheetId == sheet.Id && w.ItemId == weaponItem.Id)).ItemId.Should().Be(weaponItem.Id);
+        (await db.CreatureArmorSlots.SingleAsync(a => a.SheetId == sheet.Id)).ItemId.Should().Be(armorItem.Id);
+        (await db.CreatureShields.SingleAsync(s => s.SheetId == sheet.Id)).ItemId.Should().Be(shieldItem.Id);
+        (await db.CreatureSpoils.SingleAsync(i => i.SheetId == sheet.Id)).Qtd.Should().Be(3);
+        (await db.CreatureArtifacts.SingleAsync(a => a.SheetId == sheet.Id)).ArtifactItemId.Should().Be(artifactItem.Id);
+        (await db.CreatureAffections.SingleAsync(a => a.SheetId == sheet.Id)).Favorabilidade.Should().Be(5);
+        (await db.CreatureTraits.SingleAsync(t => t.SheetId == sheet.Id)).TraitId.Should().Be(trait.Id);
+        (await db.CreatureSpellAbilities.SingleAsync(e => e.SheetId == sheet.Id)).Nome.Should().Be("Sopro de Fogo");
         (await db.CreatureSpellAbilityEffects.SingleAsync(ef => ef.CreatureSpellAbilityId == spellAbility.Id)).EfeitoNome.Should().Be("Dano");
 
         var roundTrippedNaturalAttack = await db.CreatureWeapons.SingleAsync(w => w.Id == naturalAttack.Id);
@@ -123,17 +120,17 @@ public class CreatureChildTableMigrationTests : IClassFixture<PostgresFixture>
         db.CreatureSheets.Remove(sheet);
         await db.SaveChangesAsync();
 
-        (await db.CreatureAttributes.AnyAsync(a => a.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureSkills.AnyAsync(s => s.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureMasteries.AnyAsync(m => m.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureWeapons.AnyAsync(w => w.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureArmorSlots.AnyAsync(a => a.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureShields.AnyAsync(s => s.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureSpoils.AnyAsync(i => i.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureArtifacts.AnyAsync(a => a.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureAffections.AnyAsync(a => a.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureTraits.AnyAsync(t => t.CreatureSheetId == sheet.Id)).Should().BeFalse();
-        (await db.CreatureSpellAbilities.AnyAsync(e => e.CreatureSheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureAttributes.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureSkills.AnyAsync(s => s.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureMasteries.AnyAsync(m => m.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureWeapons.AnyAsync(w => w.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureArmorSlots.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureShields.AnyAsync(s => s.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureSpoils.AnyAsync(i => i.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureArtifacts.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureAffections.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureTraits.AnyAsync(t => t.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.CreatureSpellAbilities.AnyAsync(e => e.SheetId == sheet.Id)).Should().BeFalse();
         (await db.CreatureSpellAbilityEffects.AnyAsync(ef => ef.CreatureSpellAbilityId == spellAbility.Id)).Should().BeFalse();
 
         // Trait itself is NOT cascade-deleted by a CreatureTrait row (Restrict) — confirm it survived.

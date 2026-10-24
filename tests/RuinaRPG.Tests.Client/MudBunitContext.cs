@@ -36,6 +36,8 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         Services.AddSingleton<INotificationConnection>(NotificationConnection);
         Services.AddScoped<SecretNoteNotifier>();
         Services.AddSingleton<IEncounterConnection>(EncounterConnection);
+        // MainLayout renders NewVersionNotice, which injects the watcher. "dev" makes it inert (no HTTP).
+        Services.AddScoped(_ => new NewVersionWatcher(new HttpClient { BaseAddress = new Uri("https://localhost/") }, "dev"));
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 

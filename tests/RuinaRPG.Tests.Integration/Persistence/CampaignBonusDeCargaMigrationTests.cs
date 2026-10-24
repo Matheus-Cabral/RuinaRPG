@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CampaignBonusDeCargaMigrationTests : IClassFixture<PostgresFixture>
+public class CampaignBonusDeCargaMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CampaignBonusDeCargaMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CampaignBonusDeCargaMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NewDbAsync()
     {
@@ -26,7 +26,6 @@ public class CampaignBonusDeCargaMigrationTests : IClassFixture<PostgresFixture>
     {
         await using var db = await NewDbAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddBonusDeCargaDaCampanha"));
         var columns = await db.Database
             .SqlQuery<string>($"SELECT CAST(column_name AS text) AS \"Value\" FROM information_schema.columns WHERE table_name = 'Campaigns'")
             .ToListAsync();

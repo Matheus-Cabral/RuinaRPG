@@ -11,25 +11,12 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SubcategoriaOptionSchemaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class SubcategoriaOptionSchemaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-
-    public SubcategoriaOptionSchemaTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync() => _factory.DisposeAsync().AsTask();
-
     [Fact]
     public async Task SubcategoriaOption_round_trips_and_the_three_item_types_persist_Subcategoria()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
 
         var option = new SubcategoriaOption { Id = Guid.NewGuid(), Tipo = ItemTipo.Arma, Facet = SubcategoriaFacet.Familia, Valor = "Varinha" };

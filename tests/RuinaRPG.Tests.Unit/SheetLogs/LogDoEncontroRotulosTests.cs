@@ -2,7 +2,6 @@ using FluentAssertions;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Infrastructure.SheetLogs;
-using Xunit;
 
 namespace RuinaRPG.Tests.Unit.SheetLogs;
 

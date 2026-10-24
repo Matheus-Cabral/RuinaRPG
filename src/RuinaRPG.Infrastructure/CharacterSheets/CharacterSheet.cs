@@ -1,8 +1,9 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.CharacterSheets;
 
-public class CharacterSheet
+public class CharacterSheet : IFichaComLinhagem, IFichaComEquipagem
 {
     // 1.a Identidade
     public Guid Id { get; set; }

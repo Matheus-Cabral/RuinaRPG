@@ -1,0 +1,87 @@
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.Fichas
+@using RuinaRPG.Domain.SpellsAndAbilities
+@using MudBlazor
+@inject IDialogService Dialogs
+
+@* A aba Magias & Habilidades das três fichas: Magias e Habilidades, Passivas e, onde o tipo tem, Runas. A Habilidade
+   Racial (só onde há Linhagem) depende do formulário auto-salvo da página e fica na página, antes desta aba. *@
+
+<Section Title="Magias e Habilidades">
+    <EditForm Model="Estado.FormularioDeMagia" OnValidSubmit="Estado.AdicionarMagiaAsync">
+        <MudSelect T="string" @bind-Value="Estado.FormularioDeMagia.Origem" Label="Origem">
+            <MudSelectItem Value="@("Zero")">Montar do zero</MudSelectItem>
+            <MudSelectItem Value="@("Banco")">Escolher do Banco de Magias</MudSelectItem>
+        </MudSelect>
+
+        @if (Estado.FormularioDeMagia.Origem == "Banco")
+        {
+            <MudSelect T="string" @bind-Value="Estado.FormularioDeMagia.SourceBankEntryId" Label="Entrada do Banco">
+                <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
+                @foreach (var entry in Estado.BancoDeMagias.Where(e => e.Tipo != "Passiva"))
+                {
+                    <MudSelectItem Value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudTextField T="string" @bind-Value="Estado.FormularioDeMagia.Nome" Label="Nome" />
+            <MudSelect T="string" @bind-Value="Estado.FormularioDeMagia.Tipo" Label="Tipo">
+                <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
+                <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
+                <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="Estado.FormularioDeMagia.Grau" Label="Grau" />
+            <MudTextField T="string" @bind-Value="Estado.FormularioDeMagia.Descricao" Label="Descrição" Lines="3" />
+
+            <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
+            <AddEfeitoForm Grau="Estado.FormularioDeMagia.Grau" EfeitosExistentes="Estado.EfeitosExistentesParaPicker()" OnAdicionar="Estado.AdicionarEfeitos" />
+            <EfeitosTable Efeitos="Estado.FormularioDeMagia.Efeitos" Grau="Estado.FormularioDeMagia.Grau" />
+        }
+
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Magia/Habilidade</MudButton>
+    </EditForm>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <tbody>
+            @foreach (var spellAbility in Estado.Magias.Where(s => s.Tipo != "Passiva"))
+            {
+                <tr>
+                    <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade))) <DesabilitadoChip Condicao="@spellAbility.DesabilitadoPor" /></td>
+                    <td>
+                        @if (spellAbility.CriadaNaFicha && spellAbility.Tipo is "Magia" or "Habilidade")
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" Class="mr-1" OnClick="@(() => EditarMagiaAsync(spellAbility))">Editar</MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverMagiaAsync(spellAbility.Id))">Remover</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<HabilidadesPassivasSection SpellAbilitiesUrl="@Estado.UrlDasMagias" Versao="Estado.CondicoesVersao" />
+
+@if (Estado.Tipo.TemRunas)
+{
+    <RunasSection />
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    private async Task EditarMagiaAsync(SpellAbilityResponse entrada)
+    {
+        var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
+            new DialogParameters<EditarMagiaHabilidadeDialog>
+            {
+                { x => x.SaveUrl, Estado.UrlDaMagia(entrada.Id) },
+                { x => x.Nome, entrada.Nome }, { x => x.Tipo, entrada.Tipo }, { x => x.Grau, entrada.Grau },
+                { x => x.Descricao, entrada.Descricao }, { x => x.Efeitos, entrada.Efeitos },
+            },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+            await Estado.RecarregarMagiasEPontosDeIgnicaoAsync();
+    }
+}

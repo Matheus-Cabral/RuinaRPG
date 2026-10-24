@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Bunit;
-using Bunit.TestDoubles;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Client.Pages;
@@ -19,6 +18,7 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// Covers Finding 3 of the autosave-on-blur final review: the "Detalhes" tab's SaveIfValidAsync
 /// never validated, so clearing "Nome" and blurring auto-saved an empty campaign name.
 /// </summary>
+[Collection("Tempo real")]
 public class CampanhaDetalheTests : MudBunitContext
 {
     private const string CampaignId = "campaign-1";

@@ -5,11 +5,11 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class TabelaDeNiveisConfigMigrationTests : IClassFixture<PostgresFixture>
+public class TabelaDeNiveisConfigMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TabelaDeNiveisConfigMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public TabelaDeNiveisConfigMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_single_row_config_table_empty_and_persists_the_flag()
@@ -18,7 +18,6 @@ public class TabelaDeNiveisConfigMigrationTests : IClassFixture<PostgresFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddTabelaDeNiveisConfig"));
         (await db.TabelaDeNiveisConfigs.CountAsync()).Should().Be(0);
 
         db.TabelaDeNiveisConfigs.Add(new TabelaDeNiveisConfig { MostrarLimitesNoLivro = true });

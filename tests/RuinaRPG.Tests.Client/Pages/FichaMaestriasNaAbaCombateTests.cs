@@ -54,12 +54,17 @@ public class FichaMaestriasNaAbaCombateTests : MudBunitContext
         return Json(new List<object>());
     }
 
-    private async Task<IRenderedComponent<T>> RenderSheetAsync<T>(Action<ComponentParameterCollectionBuilder<T>> parameters) where T : IComponent
+    private async Task<IRenderedComponent<ComponentBase>> RenderSheetAsync(Type pagina)
     {
         Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(Stub));
         Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
 
-        var cut = Render(parameters);
+        IRenderedComponent<ComponentBase> cut = pagina switch
+        {
+            _ when pagina == typeof(FichaDePersonagem) => Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1")),
+            _ when pagina == typeof(FichaDeNpc) => Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1")),
+            _ => Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1")),
+        };
         await Task.Delay(100);
         return cut;
     }
@@ -87,15 +92,10 @@ public class FichaMaestriasNaAbaCombateTests : MudBunitContext
         cut.Markup.Should().NotContain("Adicionar Maestria");
     }
 
-    [Fact]
-    public async Task Personagem_shows_Maestrias_below_Armas_on_the_Combate_tab() =>
-        await AssertMaestriasFicaAbaixoDeArmasAsync(await RenderSheetAsync<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1")));
-
-    [Fact]
-    public async Task Npc_shows_Maestrias_below_Armas_on_the_Combate_tab() =>
-        await AssertMaestriasFicaAbaixoDeArmasAsync(await RenderSheetAsync<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1")));
-
-    [Fact]
-    public async Task Criatura_shows_Maestrias_below_Armas_on_the_Combate_tab() =>
-        await AssertMaestriasFicaAbaixoDeArmasAsync(await RenderSheetAsync<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1")));
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem))]
+    [InlineData(typeof(FichaDeNpc))]
+    [InlineData(typeof(FichaDeCriatura))]
+    public async Task Maestrias_shows_below_Armas_on_the_Combate_tab(Type pagina) =>
+        await AssertMaestriasFicaAbaixoDeArmasAsync(await RenderSheetAsync(pagina));
 }

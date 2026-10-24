@@ -1,52 +1,17 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class NpcRacialTraitsControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public NpcRacialTraitsControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
     private async Task<string> CreateSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
@@ -56,7 +21,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
 
     private async Task SetVarianteAsync(string gmToken, string sheetId, string linhagem, string variante)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate(linhagem, variante)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, ValidUpdate(linhagem, variante)));
         response.EnsureSuccessStatusCode();
     }
 
@@ -66,7 +31,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm1", "npcracialtrait1@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>();
         body!.Pending.Should().BeFalse();
@@ -79,18 +44,18 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
 
-        var resolveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+        var resolveResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
             new ResolveRacialTraitChoiceRequest("Imunidade de Venenos (2 pontos)", "Crédulo")));
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var traitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Imunidade de Venenos (2 pontos)" && t.Custo == 0 && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Crédulo" && t.Custo == 0 && t.IsRacial);
         traits.TotalPositivas.Should().Be(0);
         traits.TotalNegativas.Should().Be(0);
 
-        var pendingResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
+        var pendingResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
         (await pendingResponse.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>())!.Pending.Should().BeFalse();
     }
 
@@ -101,7 +66,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
 
         var body = await response.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>();
         body!.Gratuita.Should().ContainSingle(o => o.TraitNome == "Sentidos Aguçados" && o.RequerEspecificacao);
@@ -115,7 +80,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
             new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Crédulo")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -128,12 +93,12 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
 
-        var resolveResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+        var resolveResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
             new ResolveRacialTraitChoiceRequest("Sentidos Aguçados", "Código de Honra", "Olfato", "Fiel ao seu clã")));
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var traitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().ContainSingle(t => t.Nome == "Sentidos Aguçados" && t.Especificacao == "Olfato" && t.IsRacial);
         traits.Negativas.Should().ContainSingle(t => t.Nome == "Código de Honra" && t.Especificacao == "Fiel ao seu clã" && t.IsRacial);
     }
@@ -145,7 +110,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Phylauc", "PhylacTai");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
             new ResolveRacialTraitChoiceRequest("Coragem", "Curioso")));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -157,16 +122,16 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync("NpcRacialGm4", "npcracialtrait4@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
         await SetVarianteAsync(gmToken, sheetId, "Humano", "Sinir");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/racial-traits/resolve", gmToken,
             new ResolveRacialTraitChoiceRequest("Alfabetizado", null)));
 
         await SetVarianteAsync(gmToken, sheetId, "Humano", "Laonir");
 
-        var traitsResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
-        var traits = await traitsResponse.Content.ReadFromJsonAsync<NpcTraitsListResponse>();
+        var traitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/traits", gmToken));
+        var traits = await traitsResponse.Content.ReadFromJsonAsync<TraitsListResponse>();
         traits!.Positivas.Should().NotContain(t => t.Nome == "Alfabetizado");
 
-        var pendingResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
+        var pendingResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmToken));
         (await pendingResponse.Content.ReadFromJsonAsync<PendingRacialTraitChoiceResponse>())!.Pending.Should().BeTrue();
     }
 
@@ -177,7 +142,7 @@ public class NpcRacialTraitsControllerTests : IClassFixture<PostgresFixture>, IA
         var gmTokenOther = await RegisterGmAndGetTokenAsync("NpcRacialGmOther5", "npcracialtraitother5@teste.com");
         var sheetId = await CreateSheetAsync(gmTokenOwner);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/racial-traits/pending", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

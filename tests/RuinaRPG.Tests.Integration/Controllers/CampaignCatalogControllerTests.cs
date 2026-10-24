@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Images;
 using RuinaRPG.Contracts.Items;
@@ -11,60 +10,8 @@ using RuinaRPG.Contracts.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CampaignCatalogControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CampaignCatalogControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        return ((await meResponse.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private static CreateItemRequest MinimalItem(string nome, string tipo = "ItemGeral") =>
         new(tipo, nome, 0.5m, 5, null, "Equipamentos de Aventura", "Descrição.",
             null, null, null, null, null, null, null,
@@ -74,13 +21,13 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
     private async Task<string> CreateItemAsync(string gmToken, string nome, string tipo = "ItemGeral", string? subcategoria = null)
     {
         var request = subcategoria is null ? MinimalItem(nome, tipo) : MinimalItem(nome, tipo) with { Subcategoria = subcategoria };
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken, request));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 
     private async Task<string> CreateBankEntryAsync(string gmToken, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/spell-ability-bank", gmToken,
             new CreateSpellAbilityEntryRequest(nome, "Magia", 1, "Descrição.", [])));
         return (await response.Content.ReadFromJsonAsync<SpellAbilityEntryResponse>())!.Id;
     }
@@ -94,15 +41,15 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         content.Add(fileContent, "file", "test.png");
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         return (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
     }
 
     private async Task<string> AttachAndPublishAsync(string gmToken, string campaignId, AttachToCampaignRequest request)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/attachments", gmToken, request));
         var attachmentId = (await response.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{campaignId}/attachments/{attachmentId}/visibility", gmToken, true));
         return attachmentId;
     }
 
@@ -113,7 +60,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var gmToken = await RegisterGmAndGetTokenAsync($"CatGm{suffix}", $"catgm{suffix}@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"CatPlayer{suffix}", $"catplayer{suffix}@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, $"Campanha Catalogo {suffix}");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         return new Setup(gmToken, playerToken, campaignId);
     }
 
@@ -124,10 +71,10 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var publicItemId = await CreateItemAsync(setup.GmToken, "Corda Pública");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(publicItemId, null, null, null, null));
         var privateItemId = await CreateItemAsync(setup.GmToken, "Corda Privada");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
             new AttachToCampaignRequest(privateItemId, null, null, null, null))); // attached but never made public
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
@@ -144,7 +91,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var generalId = await CreateItemAsync(setup.GmToken, "Corda", "ItemGeral");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(generalId, null, null, null, null));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items?tipo=Arma", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items?tipo=Arma", setup.PlayerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<ItemResponse>>();
         body!.Should().ContainSingle(i => i.Id == weaponId);
@@ -155,14 +102,14 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
     public async Task AvailableItems_returns_the_Rank_and_the_durability_resolved_from_it()
     {
         var setup = await BuildMemberSetupAsync("ItemsRank1");
-        var armaduraResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Peitoral D", "Armadura") with { Rank = "D" }));
+        var armaduraResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Peitoral D", "Armadura") with { Rank = "D" }));
         var armaduraId = (await armaduraResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(armaduraId, null, null, null, null));
-        var escudoResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Égide S", "Escudo") with { Rank = "S" }));
+        var escudoResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", setup.GmToken, MinimalItem("Égide S", "Escudo") with { Rank = "S" }));
         var escudoId = (await escudoResponse.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(escudoId, null, null, null, null));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
 
         var body = (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
         var armadura = body.Single(i => i.Id == armaduraId);
@@ -189,7 +136,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var artefatoId = await CreateItemAsync(setup.GmToken, "Anel do Vigor", "Artefato", "Equipamento inicial - Artefato - Anel - Atributo");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(artefatoId, null, null, null, null));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", setup.PlayerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = (await response.Content.ReadFromJsonAsync<List<ItemResponse>>())!;
@@ -204,7 +151,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var setup = await BuildMemberSetupAsync("Items3");
         var (_, outsiderToken) = await RegisterJogadorLinkedToAsync(setup.GmToken, "CatOutsiderItems3", "catoutsideritems3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", outsiderToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-items", outsiderToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -216,10 +163,10 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var publicEntryId = await CreateBankEntryAsync(setup.GmToken, "Bola de Fogo");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, publicEntryId, null));
         var privateEntryId = await CreateBankEntryAsync(setup.GmToken, "Segredo do GM");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
             new AttachToCampaignRequest(null, null, null, privateEntryId, null)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-spell-abilities", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-spell-abilities", setup.PlayerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<SpellAbilityEntryResponse>>();
@@ -234,10 +181,10 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var publicImageId = await UploadImageAsync(setup.GmToken);
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, publicImageId));
         var privateImageId = await UploadImageAsync(setup.GmToken);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
             new AttachToCampaignRequest(null, null, null, null, privateImageId)));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-images", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-images", setup.PlayerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
@@ -250,14 +197,14 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAndGetTokenAsync("CatNotFoundGm", "catnotfoundgm@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{Guid.NewGuid()}/available-images", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{Guid.NewGuid()}/available-images", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private async Task<string> CreateRuneEntryAsync(string gmToken, string nome, string disciplina = "Adicao")
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", gmToken,
             new CreateRuneBankEntryRequest(nome, "Descrição.", 1, Disciplina: disciplina)));
         return (await response.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
     }
@@ -269,11 +216,11 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var publicRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Pública", "Emissao");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, publicRuneId));
         var privateRuneId = await CreateRuneEntryAsync(setup.GmToken, "Runa Secreta");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/attachments", setup.GmToken,
             new AttachToCampaignRequest(null, null, null, null, null, privateRuneId)));
         await CreateRuneEntryAsync(setup.GmToken, "Runa Solta no Banco"); // nunca anexada
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
@@ -293,15 +240,15 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         content.Add(fileContent, "file", "test.png");
         var upload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", setup.GmToken);
-        var image = (await (await _client.SendAsync(upload)).Content.ReadFromJsonAsync<ImageUploadResponse>())!;
-        var created = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken,
+        var image = (await (await Client.SendAsync(upload)).Content.ReadFromJsonAsync<ImageUploadResponse>())!;
+        var created = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/rune-bank", setup.GmToken,
             new CreateRuneBankEntryRequest("Runa Ilustrada", "Descrição.", 1, image.Id, Disciplina: "Adicao")));
         var comImagemId = (await created.Content.ReadFromJsonAsync<RuneBankEntryResponse>())!.Id;
         var semImagemId = await CreateRuneEntryAsync(setup.GmToken, "Runa Nua");
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, comImagemId));
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, semImagemId));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", setup.PlayerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
         body!.Should().ContainSingle(e => e.Id == comImagemId && e.ImageId == image.Id && e.ImageUrl == image.Url);
@@ -317,7 +264,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, fogo));
         await AttachAndPublishAsync(setup.GmToken, setup.CampaignId, new AttachToCampaignRequest(null, null, null, null, null, gelo));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes?nome=gelo", setup.PlayerToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes?nome=gelo", setup.PlayerToken));
 
         var body = await response.Content.ReadFromJsonAsync<List<RuneBankEntryResponse>>();
         body!.Select(e => e.Id).Should().Equal(gelo);
@@ -329,7 +276,7 @@ public class CampaignCatalogControllerTests : IClassFixture<PostgresFixture>, IA
         var setup = await BuildMemberSetupAsync("Runes3");
         var (_, outsiderToken) = await RegisterJogadorLinkedToAsync(setup.GmToken, "CatOutsiderRunes3", "catoutsiderrunes3@teste.com");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", outsiderToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{setup.CampaignId}/available-runes", outsiderToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

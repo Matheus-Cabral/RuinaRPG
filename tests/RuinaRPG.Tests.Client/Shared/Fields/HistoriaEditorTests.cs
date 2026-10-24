@@ -10,11 +10,11 @@ using RuinaRPG.Client.Shared;
 using RuinaRPG.Client.Shared.Fields;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Images;
-using RuinaRPG.Tests.Client.Shared;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
+[Collection("Tempo real")]
 public class HistoriaEditorTests : MudBunitContext
 {
     private readonly List<(string Method, string Path, string Body)> _requests = new();

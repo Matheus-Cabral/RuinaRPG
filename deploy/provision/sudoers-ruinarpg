@@ -1,0 +1,6 @@
+# /etc/sudoers.d/ruinarpg (0440, root:root). Instalado por install-gate.sh depois de `visudo -cf`.
+# O usuario deploy so pode rodar o gate, nas duas formas exatas (sem argumento e `dump-only`).
+# Uma entrada sem argumentos permitiria QUALQUER argumento, por isso a forma sem argumento e escrita como "".
+# Sem a tag de override de ambiente: o cliente nao pode injetar variaveis; so SSH_ORIGINAL_COMMAND sobrevive ao sudo.
+Defaults!/opt/ruinarpg/gate.sh env_keep += "SSH_ORIGINAL_COMMAND"
+deploy ALL=(root) NOPASSWD: /opt/ruinarpg/gate.sh "", /opt/ruinarpg/gate.sh dump-only

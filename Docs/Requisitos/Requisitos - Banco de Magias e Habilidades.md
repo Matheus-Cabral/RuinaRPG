@@ -1,4 +1,4 @@
-> Esta página não corresponde a nenhum bloco do "[[01 - Visão Geral.canvas]]" ainda — é um subsistema novo, complementar a "[[Requisitos - Ficha de Personagem]]" (4.b), "[[Requisitos - Ficha de NPCs]]" e "[[Requisitos - Ficha de Criaturas]]" (R0007).
+> Esta página corresponde à ferramenta 6 do PAINEL DO *GM* no "[[01 - Visão Geral]]" — um subsistema complementar a "[[Requisitos - Ficha de Personagem]]" (4.b), "[[Requisitos - Ficha de NPCs]]" e "[[Requisitos - Ficha de Criaturas]]" (R0007).
 
   
 
@@ -26,7 +26,7 @@
 
 **Descrição**: Ao criar uma nova entrada em 4.b de uma Ficha de Personagem, de NPC ou de Criatura, o jogador/GM pode escolher entre montar do zero (ver "[[Requisitos - Ficha de Personagem]]" 4.b) ou selecionar uma entrada já existente no banco, que preenche todos os campos automaticamente. A partir da escolha, a entrada na ficha é uma cópia independente (mesmo comportamento de R0001) — editá-la depois não afeta a entrada original do banco. Nenhuma entrada nova é criada no banco: a ficha fica vinculada à entrada escolhida.
 
-**Escopo da escolha**: o GM escolhe qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** (ver "[[Requisitos - Campanha]]" R0008 e "[[Requisitos - Ficha de Personagem]]" R0003). O servidor recusa (400) uma entrada de outro GM, ou uma que o jogador não alcança — não basta o cliente só listar as públicas. No NPC/Criatura concedido a um jogador, a campanha é a da concessão.
+**Escopo da escolha**: o GM escolhe qualquer entrada do próprio banco; um jogador só pode escolher entre as entradas que o GM anexou à campanha da ficha como **públicas** (ver "[[Requisitos - Campanha]]" R0008 e "[[Requisitos - Ficha de Personagem]]" R0003). Uma entrada fora desse escopo é recusada. No NPC/Criatura concedido a um jogador, a campanha é a da concessão.
 
   
 
@@ -40,7 +40,7 @@ Para as Passivas há ainda os filtros **Categoria** (Passiva Livre, Passiva Voca
 
 # **R0005** - Campos de uma entrada do banco.
 
-**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**, e mais o checkbox **Magia/Habilidade de Criatura** (R0008), que só existe no banco. O Nome de cada Efeito e seu Custo em PI seguem o catálogo e o cálculo automático descritos em "[[Requisitos - Auditoria de Regras]]" R0006/R0007 — não são mais campos de texto/número livres. Quando o Tipo é Passiva, os campos são outros — ver R0009.
+**Descrição**: Os mesmos campos de uma entrada de Magia/Habilidade em "[[Requisitos - Ficha de Personagem]]" 4.b: **Nome**, **Tipo**, **Grau**, **Efeitos**, **Gasto em PI** (calculado) e **Custo** (calculado), **Descrição**, e mais o checkbox **Magia/Habilidade de Criatura** (R0008), que só existe no banco. O Nome de cada Efeito e seu Custo em PI seguem o catálogo e o cálculo automático descritos em "[[Requisitos - Auditoria de Regras]]" R0006/R0007. Quando o Tipo é Passiva, os campos são outros — ver R0009.
 
   
 

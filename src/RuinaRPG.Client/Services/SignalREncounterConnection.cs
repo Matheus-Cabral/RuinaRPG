@@ -13,7 +13,7 @@ public sealed class SignalREncounterConnection(HttpClient http, AuthStateService
             {
                 options.AccessTokenProvider = async () => await authState.GetAccessTokenAsync();
             })
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new LongReconnectPolicy())
             .Build();
         connection.On("ParticipantsChanged", onChanged);
         // A reconnect gets a brand-new connection id server-side, so group membership (JoinEncounter)

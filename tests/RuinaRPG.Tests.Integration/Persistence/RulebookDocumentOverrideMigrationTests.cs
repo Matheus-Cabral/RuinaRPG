@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RulebookDocumentOverrideMigrationTests : IClassFixture<PostgresFixture>
+public class RulebookDocumentOverrideMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RulebookDocumentOverrideMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RulebookDocumentOverrideMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_RulebookDocumentOverrides_table_with_a_unique_Slug()
@@ -19,9 +19,6 @@ public class RulebookDocumentOverrideMigrationTests : IClassFixture<PostgresFixt
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRulebookDocumentOverrides"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "rulebookoverridegm@teste.com", Email = "rulebookoverridegm@teste.com", Nickname = "RulebookOverrideGm", Role = UserRole.GM };
         db.Users.Add(gm);

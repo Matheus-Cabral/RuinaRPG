@@ -1,0 +1,39 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+
+@* A aba Antecedentes das fichas que a têm (Personagem e NPC; a Criatura não tem a aba). Estrela, Histórico e o texto da
+   História são do formulário auto-salvo da página (Formulario): Estrela e Histórico chamam o retorno dela que salva
+   (AoMudar), então ela re-renderiza e salva como antes. A História grava sozinha, no endpoint dela (HistoriaEditor): o
+   texto só volta ao formulário. Um erro do editor vai ao alerta da página. *@
+
+@if (Estado.Tipo.TemAntecedentes)
+{
+    <Section Title="Estrela e Histórico">
+        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" />
+        <HistoricoSelect @bind-Value="Formulario.HistoricoId" @bind-Value:after="MudouAsync" />
+    </Section>
+    <Section>
+        @if (Estado.HistoriaCarregada)
+        {
+            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErro"
+                            AvailableImages="Estado.MinhasImagens" CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" />
+        }
+        else
+        {
+            @* The editor reads Html only once, when created — wait for the sheet so it never starts empty. *@
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" /> <span>Carregando…</span>
+        }
+    </Section>
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = null!;
+
+    /// <summary>O formulário auto-salvo da página (ela o carrega e o grava).</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>Estrela ou Histórico mudou: a página agenda o salvamento geral.</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+}

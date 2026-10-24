@@ -1,0 +1,37 @@
+@using MudBlazor
+
+@* O orçamento de Perícias (só onde o tipo o tem): "Pontos de Perícia: gasto / disponível" e os pontos ganhos por
+   Acerto Crítico. "Quando um jogador tira números máximos nos dados, ele tem direito a colocar um ponto na perícia
+   correspondente ao teste": esses pontos não vêm do orçamento do nível (2.d), ficam no formulário da página e o
+   /skills/budget os desconta do Gasto Total. O "Aplicar" salva na hora e relê as abas (o orçamento vem com elas). O
+   número digitado mora no estado (DeltaDeAcertoCritico) para sobreviver à troca de aba. *@
+
+@if (Estado.OrcamentoDePericias is { } orcamento)
+{
+    <MudText Color="@(orcamento.GastoTotal > orcamento.PontosDisponiveis ? Color.Error : Color.Default)">
+        Pontos de Perícia: @orcamento.GastoTotal / @orcamento.PontosDisponiveis
+    </MudText>
+}
+<MudText Typo="Typo.body2" Color="Color.Secondary">Pontos ganhos por Acerto Crítico: @Formulario.PontosDePericiaBonusCritico</MudText>
+<div class="d-flex align-center flex-wrap mt-2" style="gap:8px">
+    <MudNumericField T="int?" @bind-Value="Estado.DeltaDeAcertoCritico" Label="Adicionar/subtrair pontos de Acerto Crítico" Style="max-width:28rem" />
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AplicarAsync">Aplicar</MudButton>
+</div>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>A página salva a ficha na hora e relê as abas 2 e 3, num evento só (a página re-renderiza no fim).</summary>
+    [Parameter] public EventCallback SalvarERecarregar { get; set; }
+
+    private async Task AplicarAsync()
+    {
+        if (!Formulario.SomarPontosDeAcertoCritico(Estado.DeltaDeAcertoCritico))
+            return;
+
+        Estado.DeltaDeAcertoCritico = null;
+        await SalvarERecarregar.InvokeAsync();
+    }
+}

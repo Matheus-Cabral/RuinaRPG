@@ -13,30 +13,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration;
 
-public class GmPasswordResetCliTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class GmPasswordResetCliTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public GmPasswordResetCliTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
     private async Task<AuthResponse> RegisterGmAsync(string nickname, string email)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
@@ -45,17 +26,17 @@ public class GmPasswordResetCliTests : IClassFixture<PostgresFixture>, IAsyncLif
     {
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(message);
+        var codeResponse = await Client.SendAsync(message);
         var code = (await codeResponse.Content.ReadFromJsonAsync<InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
     private (RuinaRpgDbContext Db, UserManager<ApplicationUser> UserManager, IServiceScope Scope) NewScopedServices()
     {
-        var scope = _factory.Services.CreateScope();
+        var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         return (db, userManager, scope);
@@ -76,7 +57,7 @@ public class GmPasswordResetCliTests : IClassFixture<PostgresFixture>, IAsyncLif
         result.Nickname.Should().Be("CliResetGm1");
         result.TemporaryPassword.Should().NotBeNullOrWhiteSpace();
 
-        var login = await _client.PostAsJsonAsync("/api/auth/login",
+        var login = await Client.PostAsJsonAsync("/api/auth/login",
             new LoginRequest("CliResetGm1", result.TemporaryPassword!));
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -105,7 +86,7 @@ public class GmPasswordResetCliTests : IClassFixture<PostgresFixture>, IAsyncLif
             await GmPasswordResetCli.ResetGmPasswordAsync(db, userManager, "clireset3@teste.com");
         }
 
-        var refresh = await _client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(tokens.RefreshToken));
+        var refresh = await Client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(tokens.RefreshToken));
 
         refresh.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

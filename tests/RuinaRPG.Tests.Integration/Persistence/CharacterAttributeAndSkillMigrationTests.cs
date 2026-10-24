@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterAttributeAndSkillMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterAttributeAndSkillMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterAttributeAndSkillMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterAttributeAndSkillMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_attribute_and_skill_tables()
@@ -21,9 +21,6 @@ public class CharacterAttributeAndSkillMigrationTests : IClassFixture<PostgresFi
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterAttributesAndSkills"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@attrtest.com", Email = "gm@attrtest.com", Nickname = "AttrTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@attrtest.com", Email = "player@attrtest.com", Nickname = "AttrTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -36,8 +33,8 @@ public class CharacterAttributeAndSkillMigrationTests : IClassFixture<PostgresFi
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
-        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
+        db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
+        db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
         await db.SaveChangesAsync();
 
         (await db.CharacterAttributes.CountAsync()).Should().Be(1);

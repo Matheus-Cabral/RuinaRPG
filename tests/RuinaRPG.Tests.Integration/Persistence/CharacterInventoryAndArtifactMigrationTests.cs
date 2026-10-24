@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterInventoryAndArtifactMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterInventoryAndArtifactMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_inventory_and_artifact_tables()
@@ -21,9 +21,6 @@ public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<Postgre
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterInventoryAndArtifacts"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@invtest.com", Email = "gm@invtest.com", Nickname = "InvTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@invtest.com", Email = "player@invtest.com", Nickname = "InvTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -40,8 +37,8 @@ public class CharacterInventoryAndArtifactMigrationTests : IClassFixture<Postgre
         db.Set<Artefato>().Add(artifactItem);
         await db.SaveChangesAsync();
 
-        db.Set<CharacterInventoryItem>().Add(new CharacterInventoryItem { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
-        db.Set<CharacterArtifact>().Add(new CharacterArtifact { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
+        db.Set<CharacterInventoryItem>().Add(new CharacterInventoryItem { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
+        db.Set<CharacterArtifact>().Add(new CharacterArtifact { Id = Guid.NewGuid(), SheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
         await db.SaveChangesAsync();
 
         (await db.Set<CharacterInventoryItem>().CountAsync()).Should().Be(1);

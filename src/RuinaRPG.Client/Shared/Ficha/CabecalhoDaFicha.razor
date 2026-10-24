@@ -1,0 +1,37 @@
+@using MudBlazor
+
+@* O alto das três páginas: trilha, título, Condições ativas (o Personagem sempre; NPC e Criatura só concedidos a um
+   jogador), o alerta de erro da página (FichaEstado.Erro) e o aviso de Novo Nível (FichaEstado.Cabecalho.cs). A página
+   continua dona da trilha, de quando reler e da marca de concedida. *@
+
+<Breadcrumbs Items="@Trilha" />
+<h1>@Estado.Tipo.Titulo</h1>
+@if (!Estado.Tipo.CondicoesSoSeConcedida || Concedida)
+{
+    <CondicoesAtivasAlert Url="@Estado.Tipo.Url(Estado.SheetId, "condicoes-ativas")" Versao="Estado.CondicoesVersao" />
+}
+
+<DismissibleAlert @bind-Message="Estado.Erro" Class="mb-3" />
+
+@if (Estado.BonusDeNovoNivel.Count > 0)
+{
+    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-3">
+        <MudText Typo="Typo.h6">Novo Nível!</MudText>
+        <ul>
+            @foreach (var bonus in Estado.BonusDeNovoNivel)
+            {
+                <li>@bonus</li>
+            }
+        </ul>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="Estado.FecharAvisoDeNovoNivelAsync">Fechar</MudButton>
+    </MudAlert>
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter, EditorRequired] public List<RuinaRPG.Client.Shared.BreadcrumbItem> Trilha { get; set; } = new();
+
+    /// <summary>A ficha foi concedida a um jogador (vem com a ficha); só conta onde <see cref="TipoDeFichaCliente.CondicoesSoSeConcedida"/>.</summary>
+    [Parameter] public bool Concedida { get; set; }
+}

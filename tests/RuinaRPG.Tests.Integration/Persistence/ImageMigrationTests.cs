@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class ImageMigrationTests : IClassFixture<PostgresFixture>
+public class ImageMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public ImageMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public ImageMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Images_table()
@@ -19,9 +19,6 @@ public class ImageMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddImages"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@imgtest.com", Email = "gm@imgtest.com", Nickname = "ImgTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

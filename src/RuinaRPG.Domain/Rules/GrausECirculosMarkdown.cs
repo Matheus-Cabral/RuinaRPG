@@ -7,7 +7,7 @@ namespace RuinaRPG.Domain.Rules;
 /// <summary>
 /// Operations on the Graus & Círculos Markdown text (the Livro de Regras' "graus-e-circulos"
 /// document): checking whether an Efeito already has a block, inserting/replacing/removing one —
-/// see docs/superpowers/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
+/// see docs/superpowers/archive/specs/2026-09-29-efeitos-no-livro-de-regras-design.md.
 ///
 /// The document is `#` sections (one per Grau, in document order: 1st `#` = Grau 1, 2nd = Grau 2, …)
 /// each containing `##` blocks. A block spans its heading line through the line before the next

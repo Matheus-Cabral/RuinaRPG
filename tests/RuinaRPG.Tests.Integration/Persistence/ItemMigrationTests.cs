@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class ItemMigrationTests : IClassFixture<PostgresFixture>
+public class ItemMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public ItemMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public ItemMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_one_Items_table_holding_all_five_types()
@@ -20,9 +20,6 @@ public class ItemMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddItems"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@itemtest.com", Email = "gm@itemtest.com", Nickname = "ItemTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

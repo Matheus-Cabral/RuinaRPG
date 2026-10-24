@@ -52,22 +52,16 @@ public class FichaDeCriaturaCaracteristicasTests : MudBunitContext
         Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
     }
 
-    [Fact]
-    public async Task The_new_characteristic_button_only_renders_for_the_rules_auditor()
+    // Só o Auditor de Regras vê o botão; um GM que não é o Auditor, não.
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task The_new_characteristic_button_only_renders_for_the_rules_auditor(bool auditor, int botoes)
     {
-        RegisterHttp(auditor: true);
+        RegisterHttp(auditor);
         var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
         await Task.Delay(100);
-        cut.FindAll("button:contains('Nova característica de criatura')").Should().HaveCount(1);
-    }
-
-    [Fact]
-    public async Task The_new_characteristic_button_is_hidden_from_a_gm_who_is_not_the_auditor()
-    {
-        RegisterHttp(auditor: false);
-        var cut = Render<FichaDeCriatura>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-        cut.FindAll("button:contains('Nova característica de criatura')").Should().BeEmpty();
+        cut.FindAll("button:contains('Nova característica de criatura')").Should().HaveCount(botoes);
     }
 
     [Fact]

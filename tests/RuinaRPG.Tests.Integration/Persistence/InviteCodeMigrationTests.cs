@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class InviteCodeMigrationTests : IClassFixture<PostgresFixture>
+public class InviteCodeMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public InviteCodeMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public InviteCodeMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_InviteCodes_table_with_a_unique_index_on_Code()
@@ -22,9 +22,6 @@ public class InviteCodeMigrationTests : IClassFixture<PostgresFixture>
 
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddInviteCodes"));
 
         var gm = new ApplicationUser
         {

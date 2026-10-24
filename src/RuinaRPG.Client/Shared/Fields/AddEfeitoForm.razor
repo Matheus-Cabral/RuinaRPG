@@ -74,7 +74,7 @@ else if (_selecionado is not null)
             _todos = await Http.GetFromJsonAsync<List<EfeitoResponse>>("efeitos") ?? [];
 
         // Não filtra mais por pré-requisito satisfeito — ver
-        // docs/superpowers/specs/2026-09-17-pre-requisitos-automaticos-de-efeitos-design.md: um
+        // docs/superpowers/archive/specs/2026-09-17-pre-requisitos-automaticos-de-efeitos-design.md: um
         // Efeito cujo pré-requisito falta é auto-resolvido ao confirmar (ResolverEAdicionarAsync),
         // não escondido do dropdown.
         _disponiveis = _todos

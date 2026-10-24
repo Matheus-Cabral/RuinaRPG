@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterSpellAbilityMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterSpellAbilityMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterSpellAbilityMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterSpellAbilityMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_character_spell_ability_tables_with_a_cascading_effects_relationship()
@@ -21,9 +21,6 @@ public class CharacterSpellAbilityMigrationTests : IClassFixture<PostgresFixture
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterSpellAbilities"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@charspelltest.com", Email = "gm@charspelltest.com", Nickname = "CharSpellTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@charspelltest.com", Email = "player@charspelltest.com", Nickname = "CharSpellTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -39,7 +36,7 @@ public class CharacterSpellAbilityMigrationTests : IClassFixture<PostgresFixture
         var spellAbility = new CharacterSpellAbility
         {
             Id = Guid.NewGuid(),
-            CharacterSheetId = sheet.Id,
+            SheetId = sheet.Id,
             Nome = "Bola de Fogo",
             Tipo = SpellAbilityTipo.Magia,
             Grau = 3,

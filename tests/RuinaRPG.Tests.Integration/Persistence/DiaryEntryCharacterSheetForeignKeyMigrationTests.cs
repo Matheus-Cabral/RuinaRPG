@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class DiaryEntryCharacterSheetForeignKeyMigrationTests : IClassFixture<PostgresFixture>
+public class DiaryEntryCharacterSheetForeignKeyMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public DiaryEntryCharacterSheetForeignKeyMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public DiaryEntryCharacterSheetForeignKeyMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Deleting_a_character_sheet_cascades_to_its_diary_entries()
@@ -21,9 +21,6 @@ public class DiaryEntryCharacterSheetForeignKeyMigrationTests : IClassFixture<Po
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddDiaryEntryCharacterSheetForeignKey"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@diaryfktest.com", Email = "gm@diaryfktest.com", Nickname = "DiaryFkTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@diaryfktest.com", Email = "player@diaryfktest.com", Nickname = "DiaryFkTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

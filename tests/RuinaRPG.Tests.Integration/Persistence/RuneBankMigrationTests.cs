@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Runes;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
+public class RuneBankMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RuneBankMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public RuneBankMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_rune_bank_table_and_the_new_columns()
@@ -20,9 +20,6 @@ public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRuneBank"));
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = $"gm{suffix}@runebank.test", Email = $"gm{suffix}@runebank.test", Nickname = $"RuneBank{suffix}", Role = UserRole.GM };
@@ -50,7 +47,6 @@ public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddRuneImage"));
         (await ColumnsOfAsync(db, "RuneBankEntries")).Should().Contain("ImageId");
         (await ColumnsOfAsync(db, "CharacterRunes")).Should().Contain("ImageId");
         (await ColumnsOfAsync(db, "NpcRunes")).Should().Contain("ImageId");
@@ -63,7 +59,6 @@ public class RuneBankMigrationTests : IClassFixture<PostgresFixture>
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
 
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddTipoDeRuna"));
         foreach (var table in new[] { "RuneBankEntries", "CharacterRunes", "NpcRunes" })
         {
             (await ColumnsOfAsync(db, table)).Should().Contain("Tipo");

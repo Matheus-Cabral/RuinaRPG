@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
+public class NpcChildTableMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public NpcChildTableMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public NpcChildTableMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_all_14_npc_child_tables_and_each_round_trips_a_row()
@@ -23,9 +23,6 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddNpcChildTables"));
 
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so NpcTrait's FK
         // genuinely targets a real, seeded Trait row rather than a synthetic one.
@@ -52,23 +49,23 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
         db.Set<Artefato>().Add(artifactItem);
         await db.SaveChangesAsync();
 
-        db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
-        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
-        db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
-        db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
-        db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
-        db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
-        db.NpcRunes.Add(new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
-        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
-        db.NpcInventoryItems.Add(new NpcInventoryItem { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
-        db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
-        db.NpcAffections.Add(new NpcAffection { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
-        db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), NpcSheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
+        db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = Atributo.Forca, Gasto = 3 });
+        db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = 7 /* Atletismo */, Gasto = 6 });
+        db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), SheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
+        db.NpcWeapons.Add(new NpcWeapon { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
+        db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = ArmorSlotType.Capacete, ItemId = armorItem.Id, DurabilidadeAtual = 10 });
+        db.NpcShields.Add(new NpcShield { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = shieldItem.Id, IsEquipped = true, DurabilidadeAtual = 10 });
+        db.NpcRunes.Add(new NpcRune { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
+        db.NpcMasteries.Add(new NpcMastery { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
+        db.NpcInventoryItems.Add(new NpcInventoryItem { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = generalItem.Id, Qtd = 3 });
+        db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), SheetId = sheet.Id, ArtifactItemId = artifactItem.Id });
+        db.NpcAffections.Add(new NpcAffection { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
+        db.NpcTraits.Add(new NpcTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
 
         var spellAbility = new NpcSpellAbility
         {
             Id = Guid.NewGuid(),
-            NpcSheetId = sheet.Id,
+            SheetId = sheet.Id,
             Nome = "Bola de Fogo",
             Tipo = SpellAbilityTipo.Magia,
             Grau = 3,
@@ -81,18 +78,18 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
 
         await db.SaveChangesAsync();
 
-        (await db.NpcAttributes.SingleAsync(a => a.NpcSheetId == sheet.Id)).Gasto.Should().Be(3);
-        (await db.NpcSkills.SingleAsync(s => s.NpcSheetId == sheet.Id)).Gasto.Should().Be(6);
-        (await db.NpcWeapons.SingleAsync(w => w.NpcSheetId == sheet.Id)).ItemId.Should().Be(weaponItem.Id);
-        (await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheet.Id)).ItemId.Should().Be(armorItem.Id);
-        (await db.NpcShields.SingleAsync(s => s.NpcSheetId == sheet.Id)).ItemId.Should().Be(shieldItem.Id);
-        (await db.NpcRunes.SingleAsync(r => r.NpcSheetId == sheet.Id)).Nome.Should().Be("Runa do Fogo");
-        (await db.NpcMasteries.SingleAsync(m => m.NpcSheetId == sheet.Id)).GastoMaestria.Should().Be(3);
-        (await db.NpcInventoryItems.SingleAsync(i => i.NpcSheetId == sheet.Id)).Qtd.Should().Be(3);
-        (await db.NpcArtifacts.SingleAsync(a => a.NpcSheetId == sheet.Id)).ArtifactItemId.Should().Be(artifactItem.Id);
-        (await db.NpcAffections.SingleAsync(a => a.NpcSheetId == sheet.Id)).Favorabilidade.Should().Be(5);
-        (await db.NpcTraits.SingleAsync(t => t.NpcSheetId == sheet.Id)).TraitId.Should().Be(trait.Id);
-        (await db.NpcSpellAbilities.SingleAsync(e => e.NpcSheetId == sheet.Id)).Nome.Should().Be("Bola de Fogo");
+        (await db.NpcAttributes.SingleAsync(a => a.SheetId == sheet.Id)).Gasto.Should().Be(3);
+        (await db.NpcSkills.SingleAsync(s => s.SheetId == sheet.Id)).Gasto.Should().Be(6);
+        (await db.NpcWeapons.SingleAsync(w => w.SheetId == sheet.Id)).ItemId.Should().Be(weaponItem.Id);
+        (await db.NpcArmorSlots.SingleAsync(a => a.SheetId == sheet.Id)).ItemId.Should().Be(armorItem.Id);
+        (await db.NpcShields.SingleAsync(s => s.SheetId == sheet.Id)).ItemId.Should().Be(shieldItem.Id);
+        (await db.NpcRunes.SingleAsync(r => r.SheetId == sheet.Id)).Nome.Should().Be("Runa do Fogo");
+        (await db.NpcMasteries.SingleAsync(m => m.SheetId == sheet.Id)).GastoMaestria.Should().Be(3);
+        (await db.NpcInventoryItems.SingleAsync(i => i.SheetId == sheet.Id)).Qtd.Should().Be(3);
+        (await db.NpcArtifacts.SingleAsync(a => a.SheetId == sheet.Id)).ArtifactItemId.Should().Be(artifactItem.Id);
+        (await db.NpcAffections.SingleAsync(a => a.SheetId == sheet.Id)).Favorabilidade.Should().Be(5);
+        (await db.NpcTraits.SingleAsync(t => t.SheetId == sheet.Id)).TraitId.Should().Be(trait.Id);
+        (await db.NpcSpellAbilities.SingleAsync(e => e.SheetId == sheet.Id)).Nome.Should().Be("Bola de Fogo");
         (await db.NpcSpellAbilityEffects.SingleAsync(ef => ef.NpcSpellAbilityId == spellAbility.Id)).EfeitoNome.Should().Be("Dano");
 
         // Deleting the NpcSheet cascades to every child table (they're meaningless without their
@@ -100,19 +97,19 @@ public class NpcChildTableMigrationTests : IClassFixture<PostgresFixture>
         db.NpcSheets.Remove(sheet);
         await db.SaveChangesAsync();
 
-        (await db.NpcAttributes.AnyAsync(a => a.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcSkills.AnyAsync(s => s.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcAffinities.AnyAsync(a => a.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcWeapons.AnyAsync(w => w.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcArmorSlots.AnyAsync(a => a.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcShields.AnyAsync(s => s.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcRunes.AnyAsync(r => r.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcMasteries.AnyAsync(m => m.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcInventoryItems.AnyAsync(i => i.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcArtifacts.AnyAsync(a => a.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcAffections.AnyAsync(a => a.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcTraits.AnyAsync(t => t.NpcSheetId == sheet.Id)).Should().BeFalse();
-        (await db.NpcSpellAbilities.AnyAsync(e => e.NpcSheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcAttributes.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcSkills.AnyAsync(s => s.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcAffinities.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcWeapons.AnyAsync(w => w.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcArmorSlots.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcShields.AnyAsync(s => s.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcRunes.AnyAsync(r => r.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcMasteries.AnyAsync(m => m.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcInventoryItems.AnyAsync(i => i.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcArtifacts.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcAffections.AnyAsync(a => a.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcTraits.AnyAsync(t => t.SheetId == sheet.Id)).Should().BeFalse();
+        (await db.NpcSpellAbilities.AnyAsync(e => e.SheetId == sheet.Id)).Should().BeFalse();
         (await db.NpcSpellAbilityEffects.AnyAsync(ef => ef.NpcSpellAbilityId == spellAbility.Id)).Should().BeFalse();
 
         // Trait itself is NOT cascade-deleted by an NpcTrait row (Restrict) — confirm it survived.

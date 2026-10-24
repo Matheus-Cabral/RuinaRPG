@@ -1,0 +1,42 @@
+@using MudBlazor
+
+@* Os Espólios (só nos tipos com Espólios, TipoDeFichaCliente.TemEspolios), no lugar do Inventário na aba Posses. O
+   seletor busca itens de qualquer Tipo: o servidor aceita qualquer Item do Catálogo como espólio. *@
+
+<Section Title="Espólios">
+    <EditForm Model="Estado.FormularioDeEspolio" OnValidSubmit="Estado.AdicionarEspolioAsync">
+        <CatalogoItemPicker @bind-Value="Estado.FormularioDeEspolio.ItemId" SearchItems="Estado.BuscarTodosOsItensAsync" Placeholder="Buscar item..." PodeCriar="@Estado.IsGmCaller" />
+        <MudNumericField T="int" @bind-Value="Estado.FormularioDeEspolio.Qtd" Label="Quantidade" />
+        <MudNumericField T="int" @bind-Value="Estado.FormularioDeEspolio.DT" Label="DT" />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Espólio</MudButton>
+    </EditForm>
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Custo</th>
+                <th>Qtd</th>
+                <th>Total</th>
+                <th>DT</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var spoil in Estado.Espolios)
+            {
+                <tr>
+                    <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /></td>
+                    <td>@spoil.Custo</td>
+                    <td><MudNumericField T="int?" Value="@spoil.Qtd" ValueChanged="@(v => Estado.AtualizarQtdDoEspolioAsync(spoil.Id, v))" Style="width:5em; display:inline-flex;" /></td>
+                    <td>@spoil.CustoTotal</td>
+                    <td>@spoil.DT</td>
+                    <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverEspolioAsync(spoil.Id))">Remover</MudButton></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+}

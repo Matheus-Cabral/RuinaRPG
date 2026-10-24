@@ -2,7 +2,7 @@ namespace RuinaRPG.Domain.Enums;
 
 /// <summary>
 /// How an Efeito's CustoPI is produced when added to a Magia/Habilidade — see
-/// docs/superpowers/specs/2026-09-14-custeio-automatico-de-efeitos-design.md.
+/// docs/superpowers/archive/specs/2026-09-14-custeio-automatico-de-efeitos-design.md.
 /// </summary>
 public enum TipoDeCusto
 {

@@ -1,173 +1,23 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Domain.Condicoes;
-using RuinaRPG.Contracts.NpcSheets;
-using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Infrastructure.Campaigns;
+using RuinaRPG.Api.Controllers.Fichas;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
-using RuinaRPG.Domain.Runes;
-using RuinaRPG.Infrastructure.Runes;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/runes")]
-public class NpcRunesController(RuinaRpgDbContext db, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class NpcRunesController(RuinaRpgDbContext db, ITipoDeFicha<NpcSheet> tipo)
+    : RunasDaFichaController<NpcSheet, NpcRune>(db, tipo)
 {
-    [HttpPost]
-    public async Task<ActionResult<NpcRuneResponse>> Add(Guid sheetId, AddNpcRuneRequest request)
-    {
-        var sheet = await db.NpcSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+    protected override (string? Nome, string? Descricao, int? Grau, string? SourceBankEntryId, string? ImageId, string? Tipo, string? Disciplina) Ler(AddRuneRequest r) =>
+        (r.Nome, r.Descricao, r.Grau, r.SourceBankEntryId, r.ImageId, r.Tipo, r.Disciplina);
 
-        var callerId = CurrentUserId();
-        if (!GrantedSheetAuthorization.CanEdit(callerId, sheet.OwnerId, sheet.GmId))
-            return NotFound();
+    protected override NpcRune Nova(string nome, string descricao) => new() { Nome = nome, Descricao = descricao };
 
-        var fromScratch = request.Nome is not null && request.Descricao is not null && request.Grau is not null;
-        var fromBank = request.SourceBankEntryId is not null;
-        if (fromScratch == fromBank) // both or neither
-            return BadRequest("Informe exatamente um: Nome, Descricao e Grau para montar do zero, ou SourceBankEntryId.");
-
-        // A NPC sheet has no CampaignId column: the campaign of a granted NPC is resolved through the
-        // grant-link CampaignAttachment (same rule NpcSpellAbilitiesController uses). Only a Jogador
-        // (caller != GM) ever needs it.
-        Guid? campaignId = null;
-        if (callerId != sheet.GmId)
-        {
-            campaignId = await db.CampaignAttachments
-                .Where(a => a.NpcSheetId == sheetId && db.CampaignMembers.Any(m => m.CampaignId == a.CampaignId && m.UserId == sheet.OwnerId))
-                .Select(a => (Guid?)a.CampaignId)
-                .FirstOrDefaultAsync();
-        }
-
-        string nome, descricao;
-        int grau;
-        TipoDeRuna? tipo;
-        DisciplinaDeRuna? disciplina;
-        Guid? sourceBankEntryId = null;
-        Guid? imageId = null;
-
-        if (fromBank)
-        {
-            if (!Guid.TryParse(request.SourceBankEntryId, out var bankEntryId))
-                return BadRequest("Entrada do banco não encontrada.");
-
-            var bankEntry = await db.RuneBankEntries.FirstOrDefaultAsync(e => e.Id == bankEntryId && e.GmId == sheet.GmId);
-            if (bankEntry is null)
-                return BadRequest("Entrada do banco não encontrada.");
-
-            // Um jogador só alcança as entradas anexadas como públicas à campanha da concessão.
-            if (callerId != sheet.GmId
-                && (campaignId is null
-                    || !await db.CampaignAttachments.AnyAsync(a => a.CampaignId == campaignId && a.IsPublic && a.RuneBankEntryId == bankEntryId)))
-                return BadRequest("Entrada do banco não encontrada.");
-
-            // Ao partir do banco a imagem vem da entrada (Requisitos - Banco de Runas R0005).
-            if (!string.IsNullOrWhiteSpace(request.ImageId))
-                return BadRequest("Ao escolher do banco, a imagem vem da entrada.");
-
-            nome = bankEntry.Nome; descricao = bankEntry.Descricao; grau = bankEntry.Grau; tipo = bankEntry.Tipo;
-            disciplina = bankEntry.Disciplina;
-            sourceBankEntryId = bankEntryId;
-            imageId = bankEntry.ImageId;
-        }
-        else
-        {
-            if (!RuneTipo.TryParse(request.Tipo, out tipo))
-                return BadRequest(RuneTipo.UnknownMessage);
-
-            if (!RuneDisciplina.TryParse(request.Disciplina, out disciplina))
-                return BadRequest(RuneDisciplina.UnknownMessage);
-            if (disciplina is null)
-                return BadRequest(RuneDisciplina.RequiredMessage);
-
-            if (!RuneImageAccess.TryParseImageId(request.ImageId, out imageId))
-                return BadRequest("ImageId inválido.");
-
-            if (imageId is not null && !await RuneImageAccess.CanUseAsync(db, imageId.Value, callerId, sheet.GmId, campaignId))
-                return BadRequest("Imagem não encontrada.");
-
-            nome = request.Nome!; descricao = request.Descricao!; grau = request.Grau!.Value;
-        }
-
-        var rune = new NpcRune { Id = Guid.NewGuid(), NpcSheetId = sheetId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, SourceBankEntryId = sourceBankEntryId, ImageId = imageId };
-        db.NpcRunes.Add(rune);
-
-        // Requisitos - Banco de Runas R0001: uma criação do zero grava também uma cópia independente no
-        // banco do GM, e a Runa da ficha guarda o vínculo com ela. Partir de uma entrada do banco (R0003) só
-        // copia para a ficha — reusa a entrada, sem duplicá-la; para um jogador ela já é pública na campanha.
-        if (!fromBank)
-        {
-            var bankCopy = new RuneBankEntry { Id = Guid.NewGuid(), GmId = sheet.GmId, Nome = nome, Descricao = descricao, Grau = grau, Tipo = tipo, Disciplina = disciplina, ImageId = imageId };
-            db.RuneBankEntries.Add(bankCopy);
-            rune.SourceBankEntryId = bankCopy.Id;
-
-            if (callerId != sheet.GmId && campaignId is not null)
-            {
-                db.CampaignAttachments.Add(new CampaignAttachment
-                {
-                    Id = Guid.NewGuid(),
-                    CampaignId = campaignId.Value,
-                    RuneBankEntryId = bankCopy.Id,
-                    IsPublic = true
-                });
-            }
-        }
-
-        await db.SaveChangesAsync();
-        return Created(string.Empty, await ToResponseAsync(rune, await RuneImageAccess.UrlsAsync(db, [rune.ImageId])));
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<List<NpcRuneResponse>>> List(Guid sheetId)
-    {
-        var sheet = await db.NpcSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound();
-
-        var runes = await db.NpcRunes.Where(r => r.NpcSheetId == sheetId).ToListAsync();
-        var urls = await RuneImageAccess.UrlsAsync(db, runes.Select(r => r.ImageId));
-        var respostas = new List<NpcRuneResponse>();
-        foreach (var r in runes)
-            respostas.Add(await ToResponseAsync(r, urls));
-        return respostas;
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid sheetId, Guid id)
-    {
-        var sheet = await db.NpcSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound();
-
-        var rune = await db.NpcRunes.FirstOrDefaultAsync(r => r.Id == id && r.NpcSheetId == sheetId);
-        if (rune is null)
-            return NotFound();
-
-        db.NpcRunes.Remove(rune);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    private async Task<NpcRuneResponse> ToResponseAsync(NpcRune r, Dictionary<Guid, string> imageUrls)
-    {
-        var sheetId = r.NpcSheetId;
-        return new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, RuneImageAccess.UrlOf(imageUrls, r.ImageId), RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina),
-            DesabilitadoPor: (await condicoes.ParaNpcAsync((await db.NpcSheets.FindAsync(sheetId))!)).DesabilitadoPor(CategoriaDesabilitavel.Runa, r.Id));
-    }
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    protected override RuneResponse Resposta(NpcRune r, string? imageUrl, string? desabilitadoPor) =>
+        new(r.Id.ToString(), r.Nome, r.Descricao, r.Grau, imageUrl, RuneTipo.Format(r.Tipo), RuneDisciplina.Format(r.Disciplina), DesabilitadoPor: desabilitadoPor);
 }

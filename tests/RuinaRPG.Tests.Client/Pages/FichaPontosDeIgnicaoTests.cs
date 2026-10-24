@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Pages;
-using RuinaRPG.Client.Shared;
 using RuinaRPG.Client.Shared.Fields;
 using RuinaRPG.Tests.Client.Shared;
 using System.Net;
@@ -20,6 +19,7 @@ namespace RuinaRPG.Tests.Client.Pages;
 /// Ficha de Personagem 1.b e Ficha de NPC R0005: a ficha exibe só os Pontos de Ignição atuais, e o
 /// campo de bônus manual é largo o bastante para o rótulo.
 /// </summary>
+[Collection("Tempo real")]
 public class FichaPontosDeIgnicaoTests : MudBunitContext
 {
     private sealed class FakeAuthStateProvider : AuthenticationStateProvider
@@ -63,26 +63,19 @@ public class FichaPontosDeIgnicaoTests : MudBunitContext
         Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
     }
 
-    [Fact]
-    public async Task Personagem_no_longer_shows_the_Pontos_de_Ignicao_Total()
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "Pontos de Ignição")]
+    public async Task The_sheet_shows_only_the_current_Pontos_de_Ignicao_not_the_Total(Type pagina, string rotulo)
     {
         RegisterHttp();
-        var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
+        var cut = RenderPagina(pagina);
         await Task.Delay(100);
 
         cut.Markup.Should().NotContain("Pontos de Ignição Total");
-        cut.FindComponents<MudNumericField<int?>>().Should().Contain(c => c.Instance.Label == "Pontos de Ignição Atual");
-    }
-
-    [Fact]
-    public async Task Npc_no_longer_has_the_Pontos_de_Ignicao_Total_field()
-    {
-        RegisterHttp();
-        var cut = Render<FichaDeNpc>(p => p.Add(x => x.SheetId, "sheet-1"));
-        await Task.Delay(100);
-
         cut.FindComponents<MudNumericField<int?>>().Should().NotContain(c => c.Instance.Label == "Pontos de Ignição Total");
-        cut.FindComponents<MudNumericField<int?>>().Should().Contain(c => c.Instance.Label == "Pontos de Ignição Atual");
+        cut.FindComponents<MudNumericField<int?>>().Should().Contain(c => c.Instance.Label == rotulo);
     }
 
     [Fact]

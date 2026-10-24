@@ -5,29 +5,10 @@ using RuinaRPG.Contracts.Auth;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class AuthControllerLoginTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public AuthControllerLoginTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
     private async Task RegisterAsync(string nickname, string email, string senha) =>
-        await _client.PostAsJsonAsync("/api/auth/register/gm",
+        await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest(nickname, email, senha, senha));
 
     [Fact]
@@ -35,7 +16,7 @@ public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         await RegisterAsync("LoginGm", "login@teste.com", "Senha!123");
 
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm", "Senha!123"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -47,7 +28,7 @@ public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         await RegisterAsync("LoginGm2", "login2@teste.com", "Senha!123");
 
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm2", "SenhaErrada"));
+        var response = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm2", "SenhaErrada"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var body = await response.Content.ReadAsStringAsync();
@@ -57,9 +38,9 @@ public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLi
     [Fact]
     public async Task Login_with_unknown_nickname_returns_the_same_401_message_as_wrong_password()
     {
-        var unknownResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("NaoExiste", "Qualquer1!"));
+        var unknownResponse = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("NaoExiste", "Qualquer1!"));
         await RegisterAsync("LoginGm3", "login3@teste.com", "Senha!123");
-        var wrongPasswordResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm3", "SenhaErrada"));
+        var wrongPasswordResponse = await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LoginGm3", "SenhaErrada"));
 
         var unknownBody = await unknownResponse.Content.ReadAsStringAsync();
         var wrongPasswordBody = await wrongPasswordResponse.Content.ReadAsStringAsync();
@@ -70,10 +51,10 @@ public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLi
     public async Task Refresh_with_a_valid_token_returns_a_new_token_pair()
     {
         await RegisterAsync("RefreshGm", "refresh@teste.com", "Senha!123");
-        var login = await (await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("RefreshGm", "Senha!123")))
+        var login = await (await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("RefreshGm", "Senha!123")))
             .Content.ReadFromJsonAsync<AuthResponse>();
 
-        var response = await _client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(login!.RefreshToken));
+        var response = await Client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(login!.RefreshToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -84,13 +65,13 @@ public class AuthControllerLoginTests : IClassFixture<PostgresFixture>, IAsyncLi
     public async Task Logout_revokes_the_refresh_token_so_it_cannot_be_reused()
     {
         await RegisterAsync("LogoutGm", "logout@teste.com", "Senha!123");
-        var login = await (await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LogoutGm", "Senha!123")))
+        var login = await (await Client.PostAsJsonAsync("/api/auth/login", new LoginRequest("LogoutGm", "Senha!123")))
             .Content.ReadFromJsonAsync<AuthResponse>();
 
-        var logoutResponse = await _client.PostAsJsonAsync("/api/auth/logout", new RefreshRequest(login!.RefreshToken));
+        var logoutResponse = await Client.PostAsJsonAsync("/api/auth/logout", new RefreshRequest(login!.RefreshToken));
         logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var reuseResponse = await _client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(login.RefreshToken));
+        var reuseResponse = await Client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(login.RefreshToken));
         reuseResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

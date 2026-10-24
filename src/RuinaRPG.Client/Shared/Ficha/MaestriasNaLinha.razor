@@ -1,0 +1,40 @@
+@using MudBlazor
+@inject PericiaCatalogo Catalogo
+
+@* A tabela das Maestrias com edição na linha (só nos tipos que a têm, TipoDeFichaCliente.EditaMaestriaNaLinha: o
+   PUT masteries/{id} só existe para eles). Os outros tipos mostram uma linha de texto por Maestria, na AbaCombate. *@
+
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+    <thead><tr><th>Nome</th><th>Perícia</th><th>Atributo</th><th>Gasto Maestria</th><th>Total</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var mastery in Estado.Maestrias)
+        {
+            <tr>
+                <td><MudTextField T="string" Value="@mastery.Nome" ValueChanged="@(v => Estado.AtualizarMaestriaAsync(mastery.Id, "Nome", v))" /></td>
+                <td>
+                    <MudSelect T="string" Value="@mastery.Pericia" ValueChanged="@(v => Estado.AtualizarMaestriaAsync(mastery.Id, "Pericia", v))">
+                        @foreach (var skill in Estado.Pericias)
+                        {
+                            <MudSelectItem Value="@skill.Pericia">@Estado.NomeDaPericia(skill.Pericia, Catalogo)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td>
+                    <MudSelect T="string" Value="@mastery.Atributo" ValueChanged="@(v => Estado.AtualizarMaestriaAsync(mastery.Id, "Atributo", v))">
+                        @foreach (var attr in Estado.Atributos)
+                        {
+                            <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </td>
+                <td><MudNumericField T="int" Value="@mastery.GastoMaestria" ValueChanged="@(v => Estado.AtualizarMaestriaAsync(mastery.Id, "GastoMaestria", v))" /></td>
+                <td>@mastery.Total</td>
+                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverMaestriaAsync(mastery.Id))">Remover</MudButton></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+}

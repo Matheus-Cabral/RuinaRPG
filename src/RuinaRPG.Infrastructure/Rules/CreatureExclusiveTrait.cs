@@ -4,7 +4,7 @@ namespace RuinaRPG.Infrastructure.Rules;
 
 /// <summary>
 /// Same shape as Trait, but a genuinely separate table — only a Ficha de Criatura can pick from
-/// this catalog (see CreaturePossessionsController.AddTrait). No IsCustomized: unlike Trait,
+/// this catalog (see CreatureTraitsController.AddTrait). No IsCustomized: unlike Trait,
 /// nothing seeds this table from a markdown document, every row is created manually by the Rules
 /// Auditor, so there is nothing for a future seeder to "not overwrite".
 /// </summary>

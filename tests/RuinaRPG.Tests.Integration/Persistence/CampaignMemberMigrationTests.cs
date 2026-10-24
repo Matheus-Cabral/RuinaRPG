@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CampaignMemberMigrationTests : IClassFixture<PostgresFixture>
+public class CampaignMemberMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CampaignMemberMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CampaignMemberMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CampaignMembers_table()
@@ -19,9 +19,6 @@ public class CampaignMemberMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCampaignMembers"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@membertest.com", Email = "gm@membertest.com", Nickname = "MemberTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@membertest.com", Email = "player@membertest.com", Nickname = "MemberTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

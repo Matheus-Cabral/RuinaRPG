@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using RuinaRPG.Api;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules.Niveis;
 using RuinaRPG.Infrastructure.Persistence;
@@ -9,11 +11,11 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Tests.Integration.Rules;
 
-public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
+public class TabelaDeNiveisSeederTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TabelaDeNiveisSeederTests(PostgresFixture fixture) => _fixture = fixture;
+    public TabelaDeNiveisSeederTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private RuinaRpgDbContext NewDb() =>
         new(new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
@@ -90,6 +92,7 @@ public class TabelaDeNiveisSeederTests : IClassFixture<PostgresFixture>
     public async Task Api_host_starts_with_the_table_seeded()
     {
         await using var factory = new ApiFactory(_fixture.ConnectionString);
+        await DatabaseInitializer.InitializeAsync(factory.Services, NullLogger.Instance);
         using var scope = factory.Services.CreateScope();
 
         var tabela = await scope.ServiceProvider.GetRequiredService<ITabelaDeNiveis>().ObterAsync();

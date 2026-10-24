@@ -10,6 +10,7 @@ using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Condicoes;
 using RuinaRPG.Contracts.Encounters;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.SpellsAndAbilities;
 using RuinaRPG.Domain.CharacterSheets;
@@ -28,30 +29,11 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// a Maestria "Espadas" (3 + 0 + Força = 13); Artefatos de Dano Cortante +10 e Redução Física +4; e, onde a ficha
 /// tem Afinidades, a Afinidade Fogo com uma linha de Fogo valendo 6 (Eficiência 3 e Dano 3 na Tabela de Afinidades).
 /// </summary>
-public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string Personagem = "character-sheets";
     private const string Npc = "npc-sheets";
     private const string Criatura = "creature-sheets";
-
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CondicoesNaFichaTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     // ---------- infraestrutura ----------
 
@@ -79,7 +61,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null, HttpStatusCode? esperado = null)
     {
-        var response = await _client.SendAsync(Authed(method, url, token, body));
+        var response = await Client.SendAsync(Authed(method, url, token, body));
         if (esperado is { } status)
             response.StatusCode.Should().Be(status, $"{method} {url}: {await response.Content.ReadAsStringAsync()}");
         else
@@ -98,10 +80,10 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
     private async Task<Mesa> MesaAsync(string tag)
     {
-        var registro = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"CfGm{tag}", $"cfgm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var registro = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"CfGm{tag}", $"cfgm{tag}@teste.com", "Senha!123", "Senha!123"));
         var gm = (await registro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         Guid gmId;
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             var user = await db.Users.SingleAsync(u => u.NormalizedEmail == $"CFGM{tag}@TESTE.COM".ToUpperInvariant());
@@ -111,7 +93,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         }
 
         var codigo = (await (await EnviarAsync(HttpMethod.Post, "/api/invite-codes", gm)).Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var jogadorRegistro = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"CfJg{tag}", $"cfjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
+        var jogadorRegistro = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"CfJg{tag}", $"cfjg{tag}@teste.com", "Senha!123", "Senha!123", codigo));
         var jogador = (await jogadorRegistro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var jogadorId = (await LerAsync<MeResponse>(jogador, "/api/auth/me")).Id;
 
@@ -156,7 +138,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         await EnviarAsync(HttpMethod.Put, $"/api/{rota}/{id}/skills/{chave}", mesa.Gm, new { Gasto = 0, AtributoEscolhido = "Forca" });
         await EnviarAsync(HttpMethod.Post, $"/api/{rota}/{id}/masteries", mesa.Gm, new { Nome = "Espadas", Pericia = chave, Atributo = "Forca", GastoMaestria = 3 });
 
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var sheetId = Guid.Parse(id);
         var cortante = new Artefato { Id = Guid.NewGuid(), GmId = mesa.GmId, Nome = "Gume", Peso = 0, Preco = 0, TipoDeAlvo = TipoDeAlvo.Dano, Alvo = "Cortante", Valor = 10 };
@@ -165,21 +147,21 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         foreach (var artefato in new[] { cortante, reducao })
         {
             if (rota == Personagem)
-                db.CharacterArtifacts.Add(new CharacterArtifact { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.CharacterArtifacts.Add(new CharacterArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
             else if (rota == Npc)
-                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), NpcSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.NpcArtifacts.Add(new NpcArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
             else
-                db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), CreatureSheetId = sheetId, ArtifactItemId = artefato.Id });
+                db.CreatureArtifacts.Add(new CreatureArtifact { Id = Guid.NewGuid(), SheetId = sheetId, ArtifactItemId = artefato.Id });
         }
         if (rota == Personagem)
         {
             (await db.CharacterSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
         }
         else if (rota == Npc)
         {
             (await db.NpcSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), NpcSheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
         }
         await db.SaveChangesAsync();
 
@@ -579,7 +561,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
             (new() { [1] = [espadas] }, "Espadas não é da Perícia da linha"),
         })
         {
-            var response = await _client.SendAsync(Authed(HttpMethod.Post, url, mesa.Gm, new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: escolha)));
+            var response = await Client.SendAsync(Authed(HttpMethod.Post, url, mesa.Gm, new AplicarCondicaoRequest(condicaoId, null, null, null, MaestriasEscolhidas: escolha)));
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, motivo);
         }
         (await LerAsync<List<CondicaoAtivaNaFichaResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/condicoes-ativas")).Should().BeEmpty();
@@ -842,9 +824,9 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         // O teto do orçamento continua o mesmo: o que cabe sem Condição cabe, um ponto a mais não.
         var atributos = JsonSerializer.Deserialize<AttributePointBudgetResponse>(orcamentoDeAtributos, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         var livre = atributos.PontosDisponiveis - atributos.GastoTotal;
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre + 1, 0, false))))
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateAttributeRequest(livre + 1, 0, false))))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateCharacterAttributeRequest(livre, 0, false), HttpStatusCode.NoContent);
+        await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/Destreza", mesa.Gm, new UpdateAttributeRequest(livre, 0, false), HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -855,7 +837,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var cumprida = await CriarPassivaAsync(mesa, "Braço Forte", new RequisitosDePassivaDto(Atributos: [new("Forca", 8)]));
         var pendente = await CriarPassivaAsync(mesa, "Pés Leves", new RequisitosDePassivaDto(Atributos: [new("Agilidade", 8)]));
         var jaNaFicha = (await (await EnviarAsync(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Gm,
-            new AddCharacterSpellAbilityRequest(cumprida, null, null, null, null, null), HttpStatusCode.Created)).Content.ReadFromJsonAsync<CharacterSpellAbilityResponse>())!.Id;
+            new AddSpellAbilityRequest(cumprida, null, null, null, null, null), HttpStatusCode.Created)).Content.ReadFromJsonAsync<SpellAbilityResponse>())!.Id;
         var disponiveisAntes = await TextoAsync(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities/passivas-disponiveis");
 
         // Com a Condição a ficha MOSTRA Força 4 (abaixo do requisito) e Agilidade 12 (acima do requisito).
@@ -866,10 +848,10 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         numeros["Atributo:Agilidade"].Should().Be(12);
 
         (await TextoAsync(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities/passivas-disponiveis")).Should().Be(disponiveisAntes);
-        var naFicha = await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities");
+        var naFicha = await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities");
         naFicha.Single(e => e.Id == jaNaFicha).RequisitosPendentes.Should().BeEmpty("a Força sem Condições continua 10");
-        var recusada = await _client.SendAsync(Authed(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Jogador,
-            new AddCharacterSpellAbilityRequest(pendente, null, null, null, null, null)));
+        var recusada = await Client.SendAsync(Authed(HttpMethod.Post, $"/api/character-sheets/{ficha.Id}/spell-abilities", mesa.Jogador,
+            new AddSpellAbilityRequest(pendente, null, null, null, null, null)));
         recusada.StatusCode.Should().Be(HttpStatusCode.BadRequest, "a Agilidade sem Condições continua 6");
         (await recusada.Content.ReadAsStringAsync()).Should().Contain("Agilidade ≥ 8");
     }
@@ -913,15 +895,15 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         // A página aberta lê tudo sob a Condição e salva de volta, campo por campo, sem o jogador mudar nada.
         var lida = await LerAsync<CharacterSheetResponse>(mesa.Jogador, raiz);
         await EnviarAsync(HttpMethod.Put, raiz, mesa.Jogador, ComoPut(lida));
-        foreach (var a in await LerAsync<List<CharacterAttributeResponse>>(mesa.Jogador, $"{raiz}/attributes"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/{a.Atributo}", mesa.Jogador, new UpdateCharacterAttributeRequest(a.Gasto, a.Bonus, a.TemMaestria));
-        foreach (var p in await LerAsync<List<CharacterSkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateCharacterSkillRequest(p.Gasto, p.AtributoEscolhido));
-        foreach (var m in await LerAsync<List<CharacterMasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
+        foreach (var a in await LerAsync<List<AttributeResponse>>(mesa.Jogador, $"{raiz}/attributes"))
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/attributes/{a.Atributo}", mesa.Jogador, new UpdateAttributeRequest(a.Gasto, a.Bonus, a.TemMaestria));
+        foreach (var p in await LerAsync<List<SkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
+        foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateCharacterMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
-        foreach (var a in await LerAsync<List<CharacterAffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
+        foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
-                new UpdateCharacterAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
+                new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
 
         await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
 
@@ -932,14 +914,14 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
     /// <summary>As linhas da ficha como estão no banco (o que uma Condição nunca pode alterar).</summary>
     private async Task<string> GuardadoAsync(Ficha f)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         var sheet = await db.CharacterSheets.AsNoTracking().SingleAsync(s => s.Id == id);
-        var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.CharacterSheetId == id).OrderBy(a => a.Atributo).ToListAsync();
-        var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.CharacterSheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
-        var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.CharacterSheetId == id).OrderBy(m => m.Id).ToListAsync();
-        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.CharacterSheetId == id).OrderBy(a => a.Id).ToListAsync();
+        var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Atributo).ToListAsync();
+        var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.SheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
+        var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.SheetId == id).OrderBy(m => m.Id).ToListAsync();
+        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Id).ToListAsync();
         return JsonSerializer.Serialize(new { sheet, atributos, pericias, maestrias, afinidades });
     }
 
@@ -1016,12 +998,12 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         foreach (var intruso in new[] { outraMesa.Gm, outraMesa.Jogador })
         {
             // O mesmo resultado dos demais GETs calculados de cada controller.
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-            (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
-        (await _client.GetAsync($"/api/character-sheets/{personagem.Id}/condicoes-ativas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await _client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/condicoes-ativas", mesa.Gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.GetAsync($"/api/character-sheets/{personagem.Id}/condicoes-ativas")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/condicoes-ativas", mesa.Gm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     // ---------- Condições que desabilitam ----------
@@ -1047,7 +1029,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
     /// </summary>
     private async Task<Guid> AdicionarLinhaAsync(Mesa mesa, Ficha f, string categoria, string nome, bool penalizada = false, RuinaRPG.Domain.SpellsAndAbilities.RequisitosDePassiva? requisitos = null)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var sheetId = Guid.Parse(f.Id);
         var linhaId = Guid.NewGuid();
@@ -1073,25 +1055,25 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         switch (f.Rota, categoria)
         {
-            case (Personagem, "Arma"): db.CharacterWeapons.Add(new CharacterWeapon { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Personagem, "Escudo"): db.CharacterShields.Add(new CharacterShield { Id = linhaId, CharacterSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Personagem, "Artefato"): db.CharacterArtifacts.Add(new CharacterArtifact { Id = linhaId, CharacterSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Personagem, "Arma"): db.CharacterWeapons.Add(new CharacterWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Escudo"): db.CharacterShields.Add(new CharacterShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Personagem, "Artefato"): db.CharacterArtifacts.Add(new CharacterArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Personagem, "Armadura"):
-                var slotP = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotP = await db.CharacterArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotP.ItemId = item!.Id; linhaId = slotP.Id; break;
-            case (Personagem, "Runa"): db.CharacterRunes.Add(new CharacterRune { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
-            case (Npc, "Arma"): db.NpcWeapons.Add(new NpcWeapon { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Npc, "Escudo"): db.NpcShields.Add(new NpcShield { Id = linhaId, NpcSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Npc, "Artefato"): db.NpcArtifacts.Add(new NpcArtifact { Id = linhaId, NpcSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Personagem, "Runa"): db.CharacterRunes.Add(new CharacterRune { Id = linhaId, SheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Npc, "Arma"): db.NpcWeapons.Add(new NpcWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Escudo"): db.NpcShields.Add(new NpcShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Npc, "Artefato"): db.NpcArtifacts.Add(new NpcArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Npc, "Armadura"):
-                var slotN = await db.NpcArmorSlots.SingleAsync(a => a.NpcSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotN = await db.NpcArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotN.ItemId = item!.Id; linhaId = slotN.Id; break;
-            case (Npc, "Runa"): db.NpcRunes.Add(new NpcRune { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
-            case (Criatura, "Arma"): db.CreatureWeapons.Add(new CreatureWeapon { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Criatura, "Escudo"): db.CreatureShields.Add(new CreatureShield { Id = linhaId, CreatureSheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
-            case (Criatura, "Artefato"): db.CreatureArtifacts.Add(new CreatureArtifact { Id = linhaId, CreatureSheetId = sheetId, ArtifactItemId = item!.Id }); break;
+            case (Npc, "Runa"): db.NpcRunes.Add(new NpcRune { Id = linhaId, SheetId = sheetId, Nome = nome, Descricao = ".", Grau = 1 }); break;
+            case (Criatura, "Arma"): db.CreatureWeapons.Add(new CreatureWeapon { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Escudo"): db.CreatureShields.Add(new CreatureShield { Id = linhaId, SheetId = sheetId, ItemId = item!.Id, IsEquipped = true }); break;
+            case (Criatura, "Artefato"): db.CreatureArtifacts.Add(new CreatureArtifact { Id = linhaId, SheetId = sheetId, ArtifactItemId = item!.Id }); break;
             case (Criatura, "Armadura"):
-                var slotC = await db.CreatureArmorSlots.SingleAsync(a => a.CreatureSheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
+                var slotC = await db.CreatureArmorSlots.SingleAsync(a => a.SheetId == sheetId && a.Slot == ArmorSlotType.Capacete);
                 slotC.ItemId = item!.Id; linhaId = slotC.Id; break;
             default:
                 var tipo = categoria switch
@@ -1103,11 +1085,11 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
                     _ => throw new ArgumentException(categoria)
                 };
                 if (f.Rota == Personagem)
-                    db.CharacterSpellAbilities.Add(new CharacterSpellAbility { Id = linhaId, CharacterSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.CharacterSpellAbilities.Add(new CharacterSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 else if (f.Rota == Npc)
-                    db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = linhaId, NpcSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.NpcSpellAbilities.Add(new NpcSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 else
-                    db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = linhaId, CreatureSheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
+                    db.CreatureSpellAbilities.Add(new CreatureSpellAbility { Id = linhaId, SheetId = sheetId, Nome = nome, Tipo = tipo, Descricao = ".", Requisitos = requisitos });
                 break;
         }
         await db.SaveChangesAsync();
@@ -1117,30 +1099,30 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
     /// <summary>O que o banco guarda das linhas de equipamento: equipado ou não, e qual Item cada slot de armadura veste.</summary>
     private async Task<List<string>> EstadoGuardadoAsync(Ficha f)
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var id = Guid.Parse(f.Id);
         var linhas = new List<string>();
         if (f.Rota == Personagem)
         {
-            linhas.AddRange((await db.CharacterWeapons.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CharacterShields.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CharacterArmorSlots.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.CharacterArtifacts.Where(x => x.CharacterSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.CharacterWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CharacterArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CharacterArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         else if (f.Rota == Npc)
         {
-            linhas.AddRange((await db.NpcWeapons.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.NpcShields.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.NpcArmorSlots.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.NpcArtifacts.Where(x => x.NpcSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.NpcWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.NpcArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.NpcArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         else
         {
-            linhas.AddRange((await db.CreatureWeapons.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CreatureShields.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
-            linhas.AddRange((await db.CreatureArmorSlots.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
-            linhas.AddRange((await db.CreatureArtifacts.Where(x => x.CreatureSheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
+            linhas.AddRange((await db.CreatureWeapons.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"arma {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureShields.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"escudo {x.Id} {x.ItemId} {x.IsEquipped}"));
+            linhas.AddRange((await db.CreatureArmorSlots.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"slot {x.Id} {x.Slot} {x.ItemId}"));
+            linhas.AddRange((await db.CreatureArtifacts.Where(x => x.SheetId == id).ToListAsync()).Select(x => $"artefato {x.Id} {x.ArtifactItemId}"));
         }
         return linhas.Order().ToList();
     }
@@ -1189,8 +1171,8 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         marcas["Anel"].Should().Be($"Antimagia {mesa.Tag}");
         marcas.Where(m => m.Key != "Anel").Should().OnlyContain(m => m.Value == null);
         (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
-        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Nome == "Pele").RequisitosPendentes.Should().BeNullOrEmpty();
-        (await LerAsync<List<CharacterSpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Id == passiva.ToString()).DesabilitadoPor.Should().BeNull();
+        (await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Nome == "Pele").RequisitosPendentes.Should().BeNullOrEmpty();
+        (await LerAsync<List<SpellAbilityResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/spell-abilities")).Single(a => a.Id == passiva.ToString()).DesabilitadoPor.Should().BeNull();
 
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
@@ -1230,7 +1212,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         var aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Desarmado", "Escudo"));
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:defesaNatural", 8)));
-        var escudos = await LerAsync<List<CharacterShieldResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/shields");
+        var escudos = await LerAsync<List<ShieldResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/shields");
         escudos.Single().Id.Should().Be(escudo.ToString());
         escudos.Single().IsEquipped.Should().BeTrue("o estado guardado não muda");
         escudos.Single().DesabilitadoPor.Should().Be($"Desarmado {mesa.Tag}");
@@ -1239,7 +1221,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         aplicada = await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Sem peça", "Armadura"));
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(Com(antes, ("Sub:reducaoFisica", 4), ("Sub:reducaoMagica", 0)));
-        (await LerAsync<List<CharacterArmorSlotResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/armor-slots")).Single(s => s.Nome == "Elmo").DesabilitadoPor.Should().Be($"Sem peça {mesa.Tag}");
+        (await LerAsync<List<ArmorSlotResponse>>(mesa.Gm, $"/api/character-sheets/{ficha.Id}/armor-slots")).Single(s => s.Nome == "Elmo").DesabilitadoPor.Should().Be($"Sem peça {mesa.Tag}");
         (await EstadoGuardadoAsync(ficha)).Should().Equal(estado);
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(antes);
@@ -1266,7 +1248,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         // Durante: a penalidade some de TUDO o que a ficha mostra, e volta a ser o número de quem não tem a arma.
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(semArma);
         (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Should().BeEmpty();
-        var arma = (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single();
+        var arma = (await LerAsync<List<WeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single();
         arma.DesabilitadoPor.Should().Be($"Manco {mesa.Tag}");
         arma.IsEquipped.Should().BeTrue();
         // A avaliação do requisito do item não usa Condições: segue dizendo o que falta e qual seria a penalidade.
@@ -1278,7 +1260,7 @@ public class CondicoesNaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifet
         await RemoverAsync(mesa, encounterId, participantId, aplicada);
         (await NumerosAsync(ficha, mesa.Gm)).Should().Equal(comPenalidade);
         (await LerAsync<List<PenalidadeAtivaResponse>>(mesa.Gm, $"{url}/equipment-penalties")).Select(p => p.ItemNome).Should().Equal("Montante");
-        (await LerAsync<List<CharacterWeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single().DesabilitadoPor.Should().BeNull();
+        (await LerAsync<List<WeaponResponse>>(mesa.Gm, $"{url}/weapons")).Single().DesabilitadoPor.Should().BeNull();
 
         // Encerrar o encontro com a Condição ativa também traz a penalidade de volta.
         await AplicarDesabilitandoAsync(mesa, encounterId, participantId, await CriarCondicaoQueDesabilitaAsync(mesa, "Manco 2", "Arma"));

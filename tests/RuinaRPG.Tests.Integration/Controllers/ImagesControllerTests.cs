@@ -7,45 +7,18 @@ using RuinaRPG.Contracts.Images;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class ImagesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
     private static readonly byte[] PngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
-
-    public ImagesControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(codeMessage);
+        var codeResponse = await Client.SendAsync(codeMessage);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
@@ -64,7 +37,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
     [Fact]
     public async Task Upload_without_a_token_returns_401()
     {
-        var response = await _client.PostAsync("/api/images", BuildUpload(PngBytes));
+        var response = await Client.PostAsync("/api/images", BuildUpload(PngBytes));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -76,7 +49,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
@@ -101,7 +74,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
@@ -120,7 +93,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jogadorToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -133,7 +106,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(fakeBytes, "fake.png") };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -141,7 +114,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
     [Fact]
     public async Task Mine_without_a_token_returns_401()
     {
-        var response = await _client.GetAsync("/api/images/mine");
+        var response = await Client.GetAsync("/api/images/mine");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -153,14 +126,14 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var tokenB = await RegisterGmAndGetTokenAsync("ImageGm4", "image4@teste.com");
         var uploadA = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         uploadA.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
-        await _client.SendAsync(uploadA);
+        await Client.SendAsync(uploadA);
         var uploadB = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         uploadB.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenB);
-        await _client.SendAsync(uploadB);
+        await Client.SendAsync(uploadB);
 
         var mineMessage = new HttpRequestMessage(HttpMethod.Get, "/api/images/mine");
         mineMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
-        var response = await _client.SendAsync(mineMessage);
+        var response = await Client.SendAsync(mineMessage);
 
         var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         body.Should().ContainSingle();
@@ -174,7 +147,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         var firstUpload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         firstUpload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var firstResponse = await _client.SendAsync(firstUpload);
+        var firstResponse = await Client.SendAsync(firstUpload);
         var firstBody = await firstResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
 
         // A short delay guarantees the two uploads land at distinct CreatedAt instants, so
@@ -184,12 +157,12 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
 
         var secondUpload = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes) };
         secondUpload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var secondResponse = await _client.SendAsync(secondUpload);
+        var secondResponse = await Client.SendAsync(secondUpload);
         var secondBody = await secondResponse.Content.ReadFromJsonAsync<ImageUploadResponse>();
 
         var mineMessage = new HttpRequestMessage(HttpMethod.Get, "/api/images/mine");
         mineMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(mineMessage);
+        var response = await Client.SendAsync(mineMessage);
 
         var body = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         body.Should().HaveCount(2);
@@ -201,23 +174,23 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
     {
         var codeMessage = new HttpRequestMessage(HttpMethod.Post, "/api/invite-codes");
         codeMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var codeResponse = await _client.SendAsync(codeMessage);
+        var codeResponse = await Client.SendAsync(codeMessage);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
         me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
+        var meResponse = await Client.SendAsync(me);
         var meBody = await meResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Auth.MeResponse>();
         return (meBody!.Id, tokens.AccessToken);
     }
 
     private async Task<string> CreateCampaignAndAddMemberAsync(string gmToken, string playerId)
     {
-        var campaignResponse = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/campaigns")
+        var campaignResponse = await Client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/campaigns")
         {
             Headers = { Authorization = new AuthenticationHeaderValue("Bearer", gmToken) },
             Content = JsonContent.Create(new RuinaRPG.Contracts.Campaigns.CreateCampaignRequest("Campanha Upload", ""))
@@ -229,7 +202,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
             Headers = { Authorization = new AuthenticationHeaderValue("Bearer", gmToken) },
             Content = JsonContent.Create(new RuinaRPG.Contracts.Campaigns.AddCampaignMemberRequest(playerId))
         };
-        await _client.SendAsync(memberMessage);
+        await Client.SendAsync(memberMessage);
         return campaignId;
     }
 
@@ -242,14 +215,14 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
 
         var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
         availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
-        var availableResponse = await _client.SendAsync(availableMessage);
+        var availableResponse = await Client.SendAsync(availableMessage);
         var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         available!.Should().ContainSingle(i => i.Id == imageId);
     }
@@ -265,12 +238,12 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
 
         var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
         availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var availableResponse = await _client.SendAsync(availableMessage);
+        var availableResponse = await Client.SendAsync(availableMessage);
         var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         available!.Should().NotContain(i => i.Id == imageId);
     }
@@ -284,7 +257,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = BuildUpload(PngBytes, campaignId: campaignId) };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", playerToken);
 
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created); // upload itself never fails on this
         var imageId = (await response.Content.ReadFromJsonAsync<ImageUploadResponse>())!.Id;
@@ -293,7 +266,7 @@ public class ImagesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifet
         // though the player who uploaded isn't a member of this campaign.
         var availableMessage = new HttpRequestMessage(HttpMethod.Get, $"/api/campaigns/{campaignId}/available-images");
         availableMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", gmToken);
-        var availableResponse = await _client.SendAsync(availableMessage);
+        var availableResponse = await Client.SendAsync(availableMessage);
         var available = await availableResponse.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>();
         available!.Should().NotContain(i => i.Id == imageId);
     }

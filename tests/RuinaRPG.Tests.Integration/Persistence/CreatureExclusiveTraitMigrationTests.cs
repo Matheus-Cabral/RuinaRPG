@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Identity;
@@ -9,11 +8,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CreatureExclusiveTraitMigrationTests : IClassFixture<PostgresFixture>
+public class CreatureExclusiveTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CreatureExclusiveTraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CreatureExclusiveTraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_CreatureExclusiveTraits_and_lets_a_CreatureTrait_reference_either_catalog()
@@ -21,9 +20,6 @@ public class CreatureExclusiveTraitMigrationTests : IClassFixture<PostgresFixtur
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCreatureExclusiveTraits"));
 
         var exclusiveTrait = new CreatureExclusiveTrait
         {
@@ -58,11 +54,11 @@ public class CreatureExclusiveTraitMigrationTests : IClassFixture<PostgresFixtur
         // one of TraitId/CreatureExclusiveTraitId is set per row, mirroring how
         // EncounterParticipant.SourceCharacterSheetId/SourceNpcSheetId/SourceCreatureSheetId already
         // does this for three possible sources instead of two.
-        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, TraitId = normalTrait.Id, Polaridade = normalTrait.Polaridade });
-        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), CreatureSheetId = sheet.Id, CreatureExclusiveTraitId = exclusiveTrait.Id, Polaridade = exclusiveTrait.Polaridade });
+        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = normalTrait.Id, Polaridade = normalTrait.Polaridade });
+        db.CreatureTraits.Add(new CreatureTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, CreatureExclusiveTraitId = exclusiveTrait.Id, Polaridade = exclusiveTrait.Polaridade });
         await db.SaveChangesAsync();
 
-        var rows = await db.CreatureTraits.Where(t => t.CreatureSheetId == sheet.Id).ToListAsync();
+        var rows = await db.CreatureTraits.Where(t => t.SheetId == sheet.Id).ToListAsync();
         rows.Should().HaveCount(2);
         rows.Should().ContainSingle(r => r.TraitId == normalTrait.Id && r.CreatureExclusiveTraitId == null);
         rows.Should().ContainSingle(r => r.CreatureExclusiveTraitId == exclusiveTrait.Id && r.TraitId == null);

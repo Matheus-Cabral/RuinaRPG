@@ -1,0 +1,134 @@
+name: release
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      head:
+        description: "sha a validar (padrão: HEAD do branch)"
+        required: false
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Somente PRs do próprio repositório e do dono
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            test "${{ github.actor }}" = "${{ github.repository_owner }}"
+          else
+            test "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}"
+            test "${{ github.event.pull_request.user.login }}" = "${{ github.repository_owner }}"
+          fi
+
+  ci:
+    needs: gate
+    runs-on: [self-hosted, ruinarpg]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: dotnet build --no-incremental -warnaserror
+      - run: dotnet test tests/RuinaRPG.Tests.Unit --no-build
+      - run: dotnet test tests/RuinaRPG.Tests.Client --no-build
+      - run: dotnet test tests/RuinaRPG.Tests.Integration --no-build
+      - run: python3 -m unittest deploy/tests/test_compare.py
+      - run: deploy/tests/run-bats.sh deploy/tests/gate.bats deploy/tests/fingerprint.bats deploy/tests/nginx.bats
+
+  clone:
+    needs: ci
+    runs-on: [self-hosted, ruinarpg]
+    outputs:
+      compat: ${{ steps.run.outputs.compat }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: run
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head || github.sha }}
+        run: |
+          wd="$RUNNER_TEMP/clone-${{ github.run_id }}"
+          head="$HEAD_SHA"
+          base="$(git rev-parse origin/main)"
+          set +e; deploy/clone.sh run "$base" "$head" "$wd"; code=$?; set -e
+          echo "compat=$(cat "$wd/compat" 2>/dev/null || echo ok)" >> "$GITHUB_OUTPUT"
+          # Only the public report (counts only) leaves clone.sh's workdir; report-full.md, with sampled
+          # primary keys, stays in $wd on this VM and is never copied, scrubbed or uploaded.
+          cp "$wd/report.md" "$RUNNER_TEMP/report.md" || true
+          exit $code
+      # A cancelled job can kill clone.sh before its EXIT trap finishes the teardown.
+      - name: Teardown do clone
+        if: always()
+        run: deploy/clone.sh teardown "$RUNNER_TEMP/clone-${{ github.run_id }}"
+      # Postgres DETAIL and CONTEXT lines can carry row values (e-mails, a whole row from psql COPY, …):
+      # never upload them.
+      - name: Remover linhas DETAIL e CONTEXT dos logs
+        if: always()
+        run: |
+          find "$RUNNER_TEMP/clone-${{ github.run_id }}/logs" "$RUNNER_TEMP/report.md" -type f \
+            -exec sed -i -e '/DETAIL:/d' -e '/CONTEXT:/d' {} + 2>/dev/null || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clone-logs
+          path: ${{ runner.temp }}/clone-${{ github.run_id }}/logs
+          retention-days: 3
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clone-report
+          path: ${{ runner.temp }}/report.md
+          retention-days: 3
+
+  # GitHub-hosted on purpose: the merge token must never reach the self-hosted runner, where PR code runs
+  # as the runner's user. Needs no checkout — only gh and the clone report. A superseded (cancelled) run
+  # reports nothing; the run that replaced it does.
+  report:
+    needs: [gate, ci, clone]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.gate.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: clone-report, path: report }
+        continue-on-error: true
+      - name: Rótulo de janela
+        if: needs.clone.result == 'success'
+        env:
+          COMPAT: ${{ needs.clone.outputs.compat }}
+        run: |
+          if [ "$COMPAT" = "janela" ]; then gh pr edit "$PR" --add-label deploy:janela; else gh pr edit "$PR" --remove-label deploy:janela || true; fi
+      # A failed validation turns the PR into a draft; a passing one (e.g. after a fix) makes it ready again
+      # and enables auto-merge — GitHub does not auto-merge a draft.
+      - name: Sucesso → pronto e auto-merge
+        if: needs.ci.result == 'success' && needs.clone.result == 'success'
+        run: |
+          if [ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" = true ]; then gh pr ready "$PR"; fi
+          gh pr merge "$PR" --auto --merge
+      - name: Falha → comentário e rascunho
+        if: needs.ci.result != 'success' || needs.clone.result != 'success'
+        run: |
+          {
+            echo "## Validação do release falhou"
+            echo "- ci: ${{ needs.ci.result }}"
+            echo "- clone: ${{ needs.clone.result }}"
+            echo
+            cat report/report.md 2>/dev/null || echo "(sem relatório do clone — veja os logs da execução)"
+            echo
+            echo "Logs completos: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > comment.md
+          gh pr comment "$PR" --body-file comment.md
+          if [ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" != true ]; then gh pr ready "$PR" --undo; fi

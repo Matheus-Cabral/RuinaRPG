@@ -15,3 +15,7 @@ obj/
 .env.*
 !.env.example
 .worktrees/
+tools/bench/results/
+deploy/tests/.bats/
+deploy/state/
+__pycache__/

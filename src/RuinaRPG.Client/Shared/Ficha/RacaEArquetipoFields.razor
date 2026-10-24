@@ -1,0 +1,32 @@
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+
+@* A Identidade dos tipos sem Linhagem e Vocação (a Criatura): Raça, Arquétipo, Sub Arquétipo, Afinidade e Rank, cada
+   um no salvamento geral. *@
+
+<MudTextField T="string" @bind-Value="Formulario.Raca" Label="Raça" @bind-Value:after="MudouAsync" />
+<MudSelect T="string" @bind-Value="Formulario.Arquetipo" Label="Arquétipo" @bind-Value:after="MudouAsync">
+    <MudSelectItem Value="@("")">Escolha um Arquétipo</MudSelectItem>
+    <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
+    <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
+</MudSelect>
+<MudTextField T="string" @bind-Value="Formulario.SubArquetipo" Label="Sub Arquétipo" @bind-Value:after="MudouAsync" />
+<AfinidadeSelect @bind-Value="Formulario.Afinidade" @bind-Value:after="MudouAsync" />
+<MudSelect T="string" @bind-Value="Formulario.Rank" Label="Rank" @bind-Value:after="MudouAsync">
+    <MudSelectItem Value="@("")">Escolha um Rank</MudSelectItem>
+    <MudSelectItem Value="@("F")">F</MudSelectItem>
+    <MudSelectItem Value="@("E")">E</MudSelectItem>
+    <MudSelectItem Value="@("D")">D</MudSelectItem>
+    <MudSelectItem Value="@("C")">C</MudSelectItem>
+    <MudSelectItem Value="@("B")">B</MudSelectItem>
+    <MudSelectItem Value="@("A")">A</MudSelectItem>
+    <MudSelectItem Value="@("S")">S</MudSelectItem>
+</MudSelect>
+
+@code {
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    private Task MudouAsync() => AoMudar.InvokeAsync();
+}

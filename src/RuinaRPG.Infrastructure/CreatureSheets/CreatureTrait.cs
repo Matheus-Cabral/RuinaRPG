@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.Enums;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureTrait
+public class CreatureTrait : ILinhaDaFicha
 {
     public Guid Id { get; set; }
-    public Guid CreatureSheetId { get; set; }
+    public Guid SheetId { get; set; }
 
     // Exactly one of these two is set per row — which catalog this grant's characteristic came
     // from. Two nullable FKs instead of one non-nullable column, because a single column can't

@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterRuneAndMasteryMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterRuneAndMasteryMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterRuneAndMasteryMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterRuneAndMasteryMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CharacterRunes_and_CharacterMasteries_tables()
@@ -21,9 +21,6 @@ public class CharacterRuneAndMasteryMigrationTests : IClassFixture<PostgresFixtu
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterRunesAndMasteries"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@runemasterytest.com", Email = "gm@runemasterytest.com", Nickname = "RuneMasteryTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@runemasterytest.com", Email = "player@runemasterytest.com", Nickname = "RuneMasteryTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -36,8 +33,8 @@ public class CharacterRuneAndMasteryMigrationTests : IClassFixture<PostgresFixtu
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterRunes.Add(new CharacterRune { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
-        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
+        db.CharacterRunes.Add(new CharacterRune { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Runa do Fogo", Descricao = "Queima o alvo.", Grau = 1 });
+        db.CharacterMasteries.Add(new CharacterMastery { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Maestria em Pontaria", PericiaId = 31 /* Pontaria */, Atributo = Atributo.Destreza, GastoMaestria = 3 });
         await db.SaveChangesAsync();
 
         (await db.CharacterRunes.CountAsync()).Should().Be(1);

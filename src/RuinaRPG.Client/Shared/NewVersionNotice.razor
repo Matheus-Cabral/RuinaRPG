@@ -1,0 +1,36 @@
+@using MudBlazor
+@using Microsoft.JSInterop
+@using RuinaRPG.Client.Services
+@implements IDisposable
+@inject NewVersionWatcher Watcher
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@code {
+    private DotNetObjectReference<NewVersionWatcher>? _ref;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        Watcher.NewVersionAvailable += Show;
+        Watcher.Start();
+        _ref = DotNetObjectReference.Create(Watcher);
+        try { await JS.InvokeVoidAsync("ruinaVersion.onFocus", _ref); } catch (JSException) { }
+        await Watcher.CheckAsync();
+    }
+
+    private void Show() => InvokeAsync(() => Snackbar.Add("Nova versão disponível", Severity.Info, options =>
+    {
+        options.Icon = Icons.Material.Filled.Refresh;
+        options.RequireInteraction = true;
+        options.Action = "Recarregar";
+        options.OnClick = _ => { Navigation.NavigateTo(Navigation.Uri, forceLoad: true); return Task.CompletedTask; };
+    }));
+
+    public void Dispose()
+    {
+        Watcher.NewVersionAvailable -= Show;
+        _ref?.Dispose();
+    }
+}

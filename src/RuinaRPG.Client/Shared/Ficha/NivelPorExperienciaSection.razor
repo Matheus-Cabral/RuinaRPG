@@ -1,0 +1,61 @@
+@using MudBlazor
+
+@* Nível e Progressão onde o Nível vem da Experiência (o Personagem: o servidor o calcula, a página só o mostra). A
+   Experiência vai no salvamento geral; o PI tem endpoint próprio. Os "Aplicar" de XP e de PI (bônus manual) mudam o
+   formulário e a página salva na hora (SalvarAgora), fora do autosave. Os números digitados moram no estado
+   (DeltaDeExperiencia, DeltaDeBonusManualDePi) para sobreviver à troca de aba. *@
+
+<MudText Typo="Typo.h6">Nível: @Formulario.Nivel</MudText>
+<GraduacaoECoracaoDeMana Formulario="Formulario" AoMudar="AoMudar" />
+<MudNumericField T="int?" @bind-Value="Formulario.ExperienciaAtual" For="@(() => Formulario.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="MudouExperienciaAsync" />
+<MudText Typo="Typo.body2" Color="Color.Secondary">
+    @(Formulario.XpParaProximoNivel is not null ? $"Faltam {Formulario.XpParaProximoNivel} XP para o próximo nível" : "Nível máximo atingido")
+</MudText>
+<div class="d-flex align-center mt-2" style="gap:8px">
+    <MudNumericField T="int?" @bind-Value="Estado.DeltaDeExperiencia" Label="Adicionar/subtrair XP" Style="max-width:22rem" />
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AplicarXpAsync">Aplicar</MudButton>
+</div>
+<MudText>VIS Atual: @Formulario.EAPAtual</MudText>
+<MudNumericField T="int?" @bind-Value="Formulario.PontosDeIgnicaoAtual" For="@(() => Formulario.PontosDeIgnicaoAtual)" Label="Pontos de Ignição Atual" @bind-Value:after="MudouPontosDeIgnicaoAsync" />
+<div class="d-flex align-center mt-2" style="gap:8px">
+    <MudNumericField T="int?" @bind-Value="Estado.DeltaDeBonusManualDePi" Label="Adicionar/subtrair PI (bônus manual)" Style="max-width:22rem" />
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AplicarPiAsync">Aplicar</MudButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    [Parameter] public EventCallback AoMudarExperiencia { get; set; }
+
+    [Parameter] public EventCallback AoMudarPontosDeIgnicao { get; set; }
+
+    [Parameter] public EventCallback SalvarAgora { get; set; }
+
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    private Task MudouExperienciaAsync() => AoMudarExperiencia.InvokeAsync();
+
+    private Task MudouPontosDeIgnicaoAsync() => AoMudarPontosDeIgnicao.InvokeAsync();
+
+    // Nível vem do servidor pela Experiência: a recarga depois de salvar traz o Nível novo.
+    private async Task AplicarXpAsync()
+    {
+        if (!Formulario.SomarExperiencia(Estado.DeltaDeExperiencia))
+            return;
+
+        Estado.DeltaDeExperiencia = null;
+        await SalvarAgora.InvokeAsync();
+    }
+
+    // O servidor soma o mesmo valor ao saldo de PI; a recarga depois de salvar o traz de volta.
+    private async Task AplicarPiAsync()
+    {
+        if (!Formulario.SomarBonusManualDePi(Estado.DeltaDeBonusManualDePi))
+            return;
+
+        Estado.DeltaDeBonusManualDePi = null;
+        await SalvarAgora.InvokeAsync();
+    }
+}

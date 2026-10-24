@@ -1,0 +1,781 @@
+[
+  {
+    "Slug": "sistema-basico",
+    "Titulo": "Sistema B\u00E1sico",
+    "IntroHtml": null,
+    "Sections": [
+      {
+        "Id": "atributos",
+        "Titulo": "1. Atributos",
+        "Html": "\u003Cp\u003EOs atributos definem as capacidades inatas do seu personagem. No in\u00EDcio, o jogador distribui 9 pontos entre os oito atributos abaixo.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EInstinto: Percep\u00E7\u00E3o, intui\u00E7\u00E3o e sentidos.\u003C/li\u003E\n\u003Cli\u003EVontade: For\u00E7a de vontade, conex\u00E3o com magia e resist\u00EAncia mental.\u003C/li\u003E\n\u003Cli\u003EVigor: Pontos de Vida (PV) e resist\u00EAncia f\u00EDsica geral.\u003C/li\u003E\n\u003Cli\u003EInflu\u00EAncia: Carisma, l\u00E1bia, capacidade de lideran\u00E7a e persuas\u00E3o.\u003C/li\u003E\n\u003Cli\u003EAgilidade: Velocidade de movimento, reflexos e esquiva.\u003C/li\u003E\n\u003Cli\u003EDestreza: Coordena\u00E7\u00E3o motora, pontaria e precis\u00E3o manual.\u003C/li\u003E\n\u003Cli\u003EAstucia: Intelig\u00EAncia, conhecimento acad\u00EAmico, racioc\u00EDnio l\u00F3gico e foco.\u003C/li\u003E\n\u003Cli\u003EFor\u00E7a: Pot\u00EAncia bruta, capacidade de carga e dano f\u00EDsico.\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "pericias-e-progressao",
+        "Titulo": "2. Per\u00EDcias e Progress\u00E3o",
+        "Html": "\u003Cp\u003EAs per\u00EDcias representam o treinamento e o conhecimento pr\u00E1tico do personagem. Elas n\u00E3o adicionam dados \u00E0 rolagem, apenas modificadores num\u00E9ricos fixos ao resultado do dado.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EO Modificador de Per\u00EDcia: A cada 3 pontos acumulados em uma per\u00EDcia, ela concede \u002B1 permanente no resultado das rolagens.\u003C/li\u003E\n\u003Cli\u003EA Influ\u00EAncia do Atributo: A pontua\u00E7\u00E3o total no Atributo chave da per\u00EDcia tamb\u00E9m \u00E9 somada integralmente como modificador.\u003C/li\u003E\n\u003Cli\u003EF\u00F3rmula do Teste: (Dado da Cena) \u002B (Modificador de Per\u00EDcia) \u002B (Valor Total do Atributo)\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022aprendizado-e-crescimento\u0022\u003EAprendizado e Crescimento\u003C/h3\u003E\n\u003Cul\u003E\n\u003Cli\u003EAprendizado: Se voc\u00EA tirar o valor m\u00E1ximo no dado em uma rolagem de per\u00EDcia (um \u0026quot;Acerto Cr\u00EDtico\u0026quot;), a per\u00EDcia utilizada ganha \u002B1 ponto de aprendizado (independentemente do sucesso ou falha na a\u00E7\u00E3o).\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "pontos-de-adrenalina-pa",
+        "Titulo": "3. Pontos de Adrenalina (PA)",
+        "Html": "\u003Cp\u003EOs Pontos de Adrenalina representam o esfor\u00E7o usado em cena. Eles determinam o tamanho do dado que voc\u00EA rola e o valor necess\u00E1rio para um Acerto Cr\u00EDtico.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EReserva Inicial: O jogador come\u00E7a com 10 PA m\u00E1ximos.\u003C/li\u003E\n\u003Cli\u003EComo Usar: Antes de fazer uma rolagem (teste ou conflito), voc\u00EA pode gastar PA para elevar a escala do seu dado. O novo dado substitui o anterior e dura at\u00E9 o final da cena ou combate.\u003C/li\u003E\n\u003Cli\u003EEvolu\u00E7\u00E3o do Dado e Cr\u00EDtico: Subir a escala do dado tamb\u00E9m aumenta o valor do Acerto Cr\u00EDtico em \u002B1 a cada degrau.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022escala-de-dados\u0022\u003EEscala de Dados\u003C/h3\u003E\n\u003Cp\u003EN\u00E3o h\u00E1 rolagem de dano separada. O resultado num\u00E9rico cru do dado (ap\u00F3s somar os modificadores) \u00E9 o seu dano total.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EPadr\u00E3o (S\u00F3brio): Sem gastar PA, voc\u00EA rola 1d10.\u003C/li\u003E\n\u003Cli\u003E1 PA: Sobe o dado para 1d12.\u003C/li\u003E\n\u003Cli\u003E2 PA: Sobe o dado para 1d20.\u003C/li\u003E\n\u003Cli\u003E3 PA: Sobe o dado para 1d20 \u002B 1d10.\u003C/li\u003E\n\u003Cli\u003E4 PA: Sobe o dado para 1d20 \u002B 1d12.\u003C/li\u003E\n\u003Cli\u003E5 PA: Sobe o dado para 2d20.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022recuperacao-de-pa\u0022\u003ERecupera\u00E7\u00E3o de PA\u003C/h3\u003E\n\u003Cul\u003E\n\u003Cli\u003EDescanso Curto: Recupera 1d6 PA.\u003C/li\u003E\n\u003Cli\u003EDescanso Longo: Recupera 1d8 PA.\u003C/li\u003E\n\u003Cli\u003EDescanso Completo (Fim do dia): Recupera todos os PA (volta ao m\u00E1ximo de 10).\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "sistema-de-acoes-em-combate",
+        "Titulo": "4. Sistema de A\u00E7\u00F5es em Combate",
+        "Html": "\u003Cp\u003EDurante um turno de combate, cada jogador possui 3 A\u00E7\u00F5es Padr\u00E3o para gastar como desejar. A gest\u00E3o dessas a\u00E7\u00F5es \u00E9 o n\u00FAcleo t\u00E1tico do confronto.\u003C/p\u003E\n\u003Ch3 id=\u0022usos-das-acoes\u0022\u003EUsos das A\u00E7\u00F5es\u003C/h3\u003E\n\u003Cp\u003EVoc\u00EA pode gastar suas a\u00E7\u00F5es para realizar as seguintes atividades:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAtacar: Realizar uma manobra ofensiva contra um inimigo.\u003C/li\u003E\n\u003Cli\u003EMover: Deslocar-se pelo grid t\u00E1tico.\u003C/li\u003E\n\u003Cli\u003EUsar Item: Consumir um item (t\u00F4nico) ou equipamento.\u003C/li\u003E\n\u003Cli\u003ESacar Arma: Preparar uma arma desembainhada (exceto se possuir a caracter\u00EDstica \u0026quot;Saque R\u00E1pido\u0026quot;).\u003C/li\u003E\n\u003Cli\u003EFintar: Uma manobra enganosa (veja \u0026quot;Manobra de Finta\u0026quot; abaixo).\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022reacoes-e-defesa-passiva\u0022\u003ERea\u00E7\u00F5es e Defesa Passiva\u003C/h3\u003E\n\u003Cp\u003EAs a\u00E7\u00F5es tamb\u00E9m s\u00E3o essenciais para a sobreviv\u00EAncia fora do seu turno.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EGuarda Baixa: Se o turno do jogador terminar e ele n\u00E3o tiver guardado nenhuma a\u00E7\u00E3o (ficando com 0 a\u00E7\u00F5es dispon\u00EDveis), ele n\u00E3o poder\u00E1 tentar se defender ativamente.\n\u003Cul\u003E\n\u003Cli\u003ENeste estado, o inimigo s\u00F3 errar\u00E1 o ataque se tirar um Erro Cr\u00EDtico (Falha Cr\u00EDtica no dado).\u003C/li\u003E\n\u003C/ul\u003E\n\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022defesa-vs-esquiva\u0022\u003EDefesa vs Esquiva\u003C/h3\u003E\n\u003Cp\u003EQuando atacado, o jogador deve escolher entre Defender ou Esquivar.\u003C/p\u003E\n\u003Ch4 id=\u0022defender\u0022\u003E\uD83D\uDEE1\uFE0F Defender\u003C/h4\u003E\n\u003Cp\u003EA defesa \u00E9 baseada na solidez e no equipamento.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EMec\u00E2nica: Usa sempre um n\u00FAmero fixo (somat\u00F3rio de atributos, per\u00EDcia e equipamentos).\u003C/li\u003E\n\u003Cli\u003EAux\u00EDlio: Defesa pode ser usada a favor de um aliado, defendendo de um ataque certeiro, mas somente se voc\u00EA estiver ao alcance do mesmo e tiver ponto de a\u00E7\u00E3o pra defesa.\u003C/li\u003E\n\u003Cli\u003ERolagem de Confirma\u00E7\u00E3o: Voc\u00EA rola o dado apenas para confirmar se tirou um Cr\u00EDtico (positivo ou negativo), o que influencia o Aprendizado da per\u00EDcia.\u003C/li\u003E\n\u003Cli\u003ESucesso: O dano \u00E9 absorvido pelo equipamento (Escudo ou Broquel).\u003C/li\u003E\n\u003Cli\u003EFalha (n\u00E3o cr\u00EDtica): A a\u00E7\u00E3o de defender sempre anula o dano parcial. Voc\u00EA recebe metade do dano e seu equipamento de defesa recebe a outra metade.\u003C/li\u003E\n\u003Cli\u003EFalha Cr\u00EDtica: Voc\u00EA ignora a defesa e toma o dano completo do ataque.\u003C/li\u003E\n\u003Cli\u003EInimigo Cr\u00EDtico: Se o inimigo acertar um ataque cr\u00EDtico, voc\u00EA recebe o dobro de dano (levando o parcial do n\u00FAmero dobrado se a defesa falhou, ou o total dobrado se falhou criticamente).\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022esquiva\u0022\u003E\uD83E\uDD38\u200D\u2642\uFE0F Esquiva\u003C/h4\u003E\n\u003Cp\u003EA esquiva \u00E9 baseada na agilidade e depende inteiramente da rolagem.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EMec\u00E2nica: Voc\u00EA rola o dado e soma o modificador de esquiva.\u003C/li\u003E\n\u003Cli\u003ESucesso: Voc\u00EA se esquiva perfeitamente e n\u00E3o toma dano algum.\u003C/li\u003E\n\u003Cli\u003EEsquiva Cr\u00EDtica: Caso tire um acerto cr\u00EDtico na esquiva, voc\u00EA dobra o dado rolado e soma ao sub-atributo de esquiva (ex: \u002B40 se for 1d20, \u002B24 se for 1d12, seguindo a escala).\u003C/li\u003E\n\u003Cli\u003EFalha: Voc\u00EA falha em se mover a tempo e toma o dano completo do ataque.\u003C/li\u003E\n\u003Cli\u003EFalha Cr\u00EDtica: Voc\u00EA toma o dano completo que o ataque teria, incluindo o n\u00FAmero m\u00E1ximo no dado \u002B o modificador de dano inimigo somado.\u003C/li\u003E\n\u003Cli\u003EInimigo Cr\u00EDtico: Se o inimigo acertar um ataque cr\u00EDtico, voc\u00EA recebe o dobro de dano.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022manobra-de-finta\u0022\u003EManobra de Finta\u003C/h3\u003E\n\u003Cp\u003EO jogador pode gastar 1 a\u00E7\u00E3o para realizar uma finta t\u00E1tica contra um oponente adjacente.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ECusto: O jogador gasta 1 de suas 3 a\u00E7\u00F5es.\u003C/li\u003E\n\u003Cli\u003EEfeito no Inimigo: O inimigo alvo da finta \u00E9 for\u00E7ado a perder 1 a\u00E7\u00E3o de sua pr\u00F3pria reserva no pr\u00F3ximo turno dele.\u003C/li\u003E\n\u003Cli\u003EVantagem: O jogador que realizou a finta recebe Vantagem na sua pr\u00F3xima rolagem de ataque contra aquele inimigo, logo ap\u00F3s a finta.\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "iniciativa",
+        "Titulo": "5. Iniciativa",
+        "Html": "\u003Cp\u003EA Iniciativa \u00E9 um valor fixo calculado no in\u00EDcio da cena, dispensando rolagens na maioria das situa\u00E7\u00F5es.\u003C/p\u003E\n\u003Col\u003E\n\u003Cli\u003EC\u00E1lculo Base: Some o seu sub-atributo Iniciativa (constante na ficha) com o valor m\u00E1ximo do Dado da Cena atual.\n\u003Cul\u003E\n\u003Cli\u003EExemplo: Se sua Iniciativa na ficha \u00E9 8 e voc\u00EA est\u00E1 usando o dado s\u00F3brio (1d10), sua Iniciativa total \u00E9 18 (8\u002B10). Se voc\u00EA gastou 1 PA (1d12), sua Iniciativa vai para 20 (8\u002B12).\u003C/li\u003E\n\u003C/ul\u003E\n\u003C/li\u003E\n\u003Cli\u003EIniciativa Din\u00E2mica: Antes de definir a ordem, voc\u00EA pode queimar PA para aumentar seu Dado da Cena e, consequentemente, sua Iniciativa.\u003C/li\u003E\n\u003Cli\u003EEmpates: Se houver empate na Iniciativa, os envolvidos rolam 1d20. Quem tirar o maior valor age primeiro.\u003C/li\u003E\n\u003C/ol\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "sistema-de-viagem",
+        "Titulo": "6. Sistema de Viagem",
+        "Html": "\u003Cp\u003EAs viagens s\u00E3o perigosas e exigem preparo. Antes de partir, o grupo deve decidir qual ser\u00E1 o foco da jornada. O teste \u00E9: (Dado da Cena) \u002B (Modificador de Per\u00EDcia) \u002B (Atributo Relacionado).\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EDADO DE SEGURAN\u00C7A (Foco: Prontid\u00E3o)\n\u003Cul\u003E\n\u003Cli\u003EO grupo prioriza um caminho seguro e vigiado.\u003C/li\u003E\n\u003Cli\u003EBenef\u00EDcio: Mesmo que a rolagem seja baixa, o grupo evita o \u0026quot;pior cen\u00E1rio\u0026quot; ou encontros aleat\u00F3rios perigosos.\u003C/li\u003E\n\u003C/ul\u003E\n\u003C/li\u003E\n\u003Cli\u003EDADO DE EXPLORA\u00C7\u00C3O (Foco: Sobreviv\u00EAncia)\n\u003Cul\u003E\n\u003Cli\u003EO grupo busca atalhos, recursos e tesouros pelo caminho.\u003C/li\u003E\n\u003Cli\u003EBenef\u00EDcio: Sucesso garante esp\u00F3lios (comida, itens, dinheiro abandonado).\u003C/li\u003E\n\u003C/ul\u003E\n\u003C/li\u003E\n\u003Cli\u003EDADO DE CA\u00C7A (Foco: Investiga\u00E7\u00E3o)\n\u003Cul\u003E\n\u003Cli\u003EO grupo ca\u00E7a criaturas (Mundanos) para se alimentar ou vender partes valiosas.\u003C/li\u003E\n\u003Cli\u003EBenef\u00EDcio: Garante suprimentos ou itens de valor.\u003C/li\u003E\n\u003Cli\u003ERisco: O ca\u00E7ador pode acabar virando a ca\u00E7a.\u003C/li\u003E\n\u003C/ul\u003E\n\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "linhagens-e-variantes",
+        "Titulo": "7. Linhagens e Variantes",
+        "Html": "\u003Cp\u003EAs ra\u00E7as de Trevo s\u00E3o influenciadas pelos archaios: Hel\u00F4nios (Sol) ou Nyxara (Lua), que moldam suas caracter\u00EDsticas f\u00EDsicas e m\u00E1gicas.\u003C/p\u003E\n\u003Ch3 id=\u0022humano\u0022\u003E\uD83D\uDC64 Humano\u003C/h3\u003E\n\u003Cp\u003EVers\u00E1teis e numerosos, adaptam-se a qualquer caminho.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAtributo B\u00F4nus: \u002B2 pontos livres para distribuir em qualquer atributo.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022sinir-variante-do-sol\u0022\u003ESinir (Variante do Sol) \u2600\uFE0F\u003C/h4\u003E\n\u003Cp\u003EMarcados pelo Le\u00E3o, possuem sangue quente e pele escura.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Arca): Role 1d18 na tabela de Arcas.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Alfabetizado, Sedutor ou Apar\u00EAncia Inofensiva.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022laonir-variante-da-lua\u0022\u003ELaonir (Variante da Lua) \uD83C\uDF19\u003C/h4\u003E\n\u003Cp\u003ETocados pela Fada, possuem a mente calma e a pele clara.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Arca): Role 1d18 na tabela de Arcas.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Alfabetizado, Sedutor ou Apar\u00EAncia Inofensiva.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022phylauc\u0022\u003E\uD83E\uDD81 Phylauc\u003C/h3\u003E\n\u003Cp\u003EFelinos humanoides que prezam pela honra, for\u00E7a e instinto selvagem.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAtributo B\u00F4nus: \u002B2 For\u00E7a ou \u002B2 Destreza.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022phylactai-variante-do-sol\u0022\u003EPhylac\u0027tai (Variante do Sol) \u2600\uFE0F\u003C/h4\u003E\n\u003Cp\u003EL\u00EDderes natos com grandes jubas, os mais pr\u00F3ximos da divindade Le\u00E3o.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Lei da Selva): Recupera uma quantidade de PV igual ao Foco (PF) gasto em habilidades e magias.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Coragem, Imunidade a Venenos ou Sentidos Agu\u00E7ados.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Obrigat\u00F3ria: Escolha uma: C\u00F3digo de Honra ou Cr\u00E9dulo.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022esphylauc-variante-da-lua\u0022\u003EEs\u0027Phylauc (Variante da Lua) \uD83C\uDF19\u003C/h4\u003E\n\u003Cp\u003E\u00C1geis e m\u00EDsticos, assemelham-se a panteras ou gatos selvagens.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Lei da Selva): Recupera uma quantidade de PV igual ao Foco (PF) gasto em habilidades e magias.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Coragem, Imunidade a Venenos ou Sentidos Agu\u00E7ados.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Obrigat\u00F3ria: Escolha uma: C\u00F3digo de Honra ou Cr\u00E9dulo.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022nephrytes\u0022\u003E\uD83E\uDD85 Nephrytes\u003C/h3\u003E\n\u003Cp\u003EP\u00E1ssaros humanoides nativos da ilha voadora, valorizam a liberdade acima de tudo.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAtributo B\u00F4nus: \u002B2 Agilidade.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022yavos-variante-da-lua\u0022\u003EYavos (Variante da Lua) \uD83C\uDF19\u003C/h4\u003E\n\u003Cp\u003E\u00C1geis e mestres da velocidade no ar.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Sobre Voo): Passiva. Capacidade de voo livre.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Saque R\u00E1pido ou Vis\u00E3o Noturna.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Obrigat\u00F3ria: Escolha uma: Curioso ou Covarde.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022koroanos-variante-do-sol\u0022\u003EKoroanos (Variante do Sol) \u2600\uFE0F\u003C/h4\u003E\n\u003Cp\u003ERaros, com asas claras, conhecidos pela for\u00E7a e esp\u00EDrito aventureiro.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Sobre Voo): Passiva. Capacidade de voo livre.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Saque R\u00E1pido ou Vis\u00E3o Noturna.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Obrigat\u00F3ria: Escolha uma: Distra\u00E7\u00E3o ou Covarde.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch3 id=\u0022econos\u0022\u003E\uD83C\uDF33 Ec\u00F4nos\u003C/h3\u003E\n\u003Cp\u003EOs \u0026quot;Repatriados\u0026quot;. Eram criaturas vagantes sem livre arb\u00EDtrio, mas foram aben\u00E7oados pela lua e agora s\u00E3o um povo Liberto.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAtributo B\u00F4nus: \u002B2 Astucia.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Ch4 id=\u0022alora-variante-da-lua\u0022\u003EAl\u00F3ra (Variante da Lua) \uD83C\uDF19\u003C/h4\u003E\n\u003Cp\u003EA \u00FAnica variante conhecida. S\u00E3o seres com grande afinidade com a magia e o misticismo.\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ERacial (Amplificador M\u00EDstico): Ao usar qualquer item ou artefato de origem hol\u00EDstica, o Al\u00F3ra pode aumentar a escala do dado da rolagem em \u002B1 degrau (ex: de d6 para d8, de d10 para d12).\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Gratuita: Escolha uma: Detectar Magia ou Amado por feras.\u003C/li\u003E\n\u003Cli\u003ECaracter\u00EDstica Obrigat\u00F3ria: Fraqueza Elemental (fogo) (sobe \u002B1 de dano extra caso receba dano de Fogo).\u003C/li\u003E\n\u003C/ul\u003E\n",
+        "Grupo": null
+      }
+    ]
+  },
+  {
+    "Slug": "caracteristicas",
+    "Titulo": "Caracter\u00EDsticas",
+    "IntroHtml": null,
+    "Sections": [
+      {
+        "Id": "alfabetizado",
+        "Titulo": "Alfabetizado",
+        "Html": "Saber ler e escrever \u0026#233; um conhecimento destinado a um n\u0026#250;mero um tanto limitado de pessoas. Essa caracter\u0026#237;stica permite ao jogador ser parte desse n\u0026#250;mero. (Caso n\u0026#227;o a possua seu personagem \u0026#233; automaticamente um analfabeto. Oque n\u0026#227;o o impede de pagar por um escriba para ensin\u0026#225;-lo)\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "amado-por-feras",
+        "Titulo": "Amado por feras",
+        "Html": "animais e criaturas selvagens n\u0026#227;o-inteligentes reagem ao Personagem com curiosidade e simpatia em vez de agressividade \u2014 n\u0026#227;o o atacam a menos que provocados ou famintos, e podem ser calmados com um Teste de Empatia c/ Animais em vantagem. (Por ora, exclusiva da Caracter\u0026#237;stica Gratuita do Al\u0026#243;ra \u2014 ver \u0026quot;[[Ru\u0026#237;na RPG - Sistema B\u0026#225;sico]]\u0026quot; \u0026#167;7 \u2014 sujeita a revis\u0026#227;o.)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "ambidestria",
+        "Titulo": "Ambidestria",
+        "Html": "o Personagem pode manusear armas e instrumentos tanto com a m\u0026#227;o direita quanto com a esquerda, com igual efici\u0026#234;ncia. Tamb\u0026#233;m pode usar duas armas brancas ao mesmo tempo, se forem pequenas o bastante para o uso com uma \u0026#250;nica m\u0026#227;o. Est\u0026#227;o fora dessa categoria arcos, bestas, lan\u0026#231;as, a maioria dos machados e martelos e as grandes espadas. A ambidestria afeta apenas Per\u0026#237;cias baseadas em Destreza ou For\u0026#231;a, n\u0026#227;o em Agilidade.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "apar-ncia-inofensiva-2-pontos",
+        "Titulo": "Apar\u00EAncia Inofensiva (2 pontos)",
+        "Html": "voc\u0026#234; n\u0026#227;o aparenta ser perigoso. Na verdade, os oponentes menosprezam sua presen\u0026#231;a, ningu\u0026#233;m acredita que voc\u0026#234; seja capaz de realizar algum grande feito e dificilmente o tomar\u0026#227;o como uma amea\u0026#231;a (a n\u0026#227;o ser aqueles que j\u0026#225; conhecem o Personagem h\u0026#225; tempo suficiente para saber se isso \u0026#233; verdade ou n\u0026#227;o).\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "apar-ncia-inofensiva-3-pontos",
+        "Titulo": "Apar\u00EAncia Inofensiva (3 pontos)",
+        "Html": "Considere que o personagem automaticamente voc\u0026#234; recebe vantagem em testes de Iniciativa quando um combate come\u0026#231;ar. Por\u0026#233;m, depois de enfrentar um advers\u0026#225;rio uma vez, ele poder\u0026#225; j\u0026#225; estar ciente do seu potencial e n\u0026#227;o lhe permitir\u0026#225; nenhuma vantagem (ent\u0026#227;o a Iniciativa deve ser testada normalmente)\u003Cp\u003E\u003Cem\u003ECusto: 3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "arma-ou-artefato-m-gico-2-pontos",
+        "Titulo": "Arma ou Artefato M\u00E1gico (2 pontos)",
+        "Html": "o Personagem pode possuir uma arma m\u0026#225;gica pequena ou m\u0026#233;dia (adaga ou espada curta), com b\u0026#244;nus de \u002B1d (\u002B1 de dano m\u0026#225;gico elemental).\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "arma-ou-artefato-m-gico-4-pontos",
+        "Titulo": "Arma ou Artefato M\u00E1gico (4 pontos)",
+        "Html": "o Personagem pode possuir uma arma mais poderosa, com b\u0026#244;nus de at\u0026#233; \u002B2d (\u002B3 O item pode ter um efeito m\u0026#225;gico n\u0026#227;o elemental de terceiro c\u0026#237;rculo, como \u201Cenraizar, envenenamento, dreno de vida ou amedrontar). Pode ser um Artefato Rank D ou um amuleto de prote\u0026#231;\u0026#227;o contra um elemento.\u003Cp\u003E\u003Cem\u003ECusto: 4 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "bom-senso",
+        "Titulo": "Bom Senso",
+        "Html": "Permite ao jogador aux\u0026#237;lio do mestre com uma dica por sess\u0026#227;o, a escolha de uso do pr\u0026#243;prio jogador.\u003Cp\u003E\u003Cem\u003ECusto: 3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "concentra-o",
+        "Titulo": "Concentra\u00E7\u00E3o",
+        "Html": "o Personagem \u0026#233; capaz de concentrar-se em seus afazeres com extrema facilidade. Fa\u0026#231;a um Teste de Vontade e, se for bem sucedido, tornar\u0026#225; a dificuldade do ato que esteja sendo realizado mais f\u0026#225;cil (Rola com vantagem).\u003Cbr /\u003E\u003Cbr /\u003EObs: Concentra\u0026#231;\u0026#227;o s\u0026#243; pode ser utilizada em per\u0026#237;cias de estudo.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "controle-de-multid-es",
+        "Titulo": "Controle de Multid\u00F5es",
+        "Html": "voc\u0026#234; tem o Dom da Palavra, e uma aura que desperta a confian\u0026#231;a das multid\u0026#245;es. O personagem sabe atrair a aten\u0026#231;\u0026#227;o dos ouvintes e pode manipul\u0026#225;-los a seguirem ordens (com um Teste de Lideran\u0026#231;a). Este controle permite incitar revoltas, espalhar desconfian\u0026#231;as, vender produtos ou discursar em p\u0026#250;blico com uma margem de sucesso muito maior do que qualquer um obteria. (Rolagem com vantagem)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "coragem",
+        "Titulo": "Coragem",
+        "Html": "voc\u0026#234; \u0026#233; totalmente desprovido do medo convencional, tal que em situa\u0026#231;\u0026#245;es cr\u0026#237;ticas, onde a maioria das pessoas fugiriam apavoradas, voc\u0026#234; continua firme. No caso de uma aventura de horror, ou em Testes de Resist\u0026#234;ncia contra magias que gerem esse efeito, (Todo teste de for\u0026#231;a de vontade contra efeitos de medo \u0026#233; rolado com vantagem).\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "detectar-magia",
+        "Titulo": "Detectar Magia",
+        "Html": "com um Teste de Ins, o personagem \u0026#233; capaz de detectar res\u0026#237;duos m\u0026#237;sticos em objetos, descobrindo se tais materiais, locais ou criaturas s\u0026#227;o ou n\u0026#227;o naturais.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "d-vida-de-gratid-o-1-ponto",
+        "Titulo": "D\u00EDvida de Gratid\u00E3o (1 ponto)",
+        "Html": "algu\u0026#233;m lhe deve alguns favores menores (como conseguir um desconto para comprar armas, uma autoriza\u0026#231;\u0026#227;o jur\u0026#237;dica para prosseguir as investiga\u0026#231;\u0026#245;es ou um testemunho falso) e os atender\u0026#225; somente se isto n\u0026#227;o vier a prejudic\u0026#225;-lo sob circunst\u0026#226;ncia nenhuma.\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "d-vida-de-gratid-o-2-pontos",
+        "Titulo": "D\u00EDvida de Gratid\u00E3o (2 pontos)",
+        "Html": "a d\u0026#237;vida lhe vale favores maiores (como fornecer informa\u0026#231;\u0026#245;es sigilosas ou realizar algum \u201Cservi\u0026#231;o sujo\u201D) e a pessoa que lhe deve ir\u0026#225; ajudar mesmo que isso possa vir a coloc\u0026#225;la em situa\u0026#231;\u0026#245;es perigosas.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "d-vida-de-gratid-o-3-pontos",
+        "Titulo": "D\u00EDvida de Gratid\u00E3o (3 pontos)",
+        "Html": "algu\u0026#233;m lhe deve a vida, e far\u0026#225; tudo que estiver a seu alcance para ajud\u0026#225;-lo, n\u0026#227;o importam as conseq\u0026#252;\u0026#234;ncias. (S\u0026#243; poss\u0026#237;vel comprar caso tenha ajudado o alvo em um caso de vida ou morte)\u003Cp\u003E\u003Cem\u003ECusto: 3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "hom-nculo",
+        "Titulo": "Hom\u00FAnculo",
+        "Html": "o Personagem possui um hom\u0026#250;nculo, Algo similar a um humanoide, Hom\u0026#250;nculos s\u0026#227;o seres parasit\u0026#225;rios e precisam de um corpo morto para habitar em aux\u0026#237;lio do usu\u0026#225;rio, eles devem ser plantados na regi\u0026#227;o mais pr\u0026#243;xima do c\u0026#233;rebro. Ap\u0026#243;s isso o mesmo atender\u0026#225; pelas mesmas caracter\u0026#237;sticas que o corpo no qual habita possui, hom\u0026#250;nculos inicialmente n\u0026#227;o podem habitar em corpos de criaturas com densa quantidade arcana, por\u0026#233;m evoluem no corpo utilizado como a pr\u0026#243;pria criatura.\u003Cbr /\u003E\u003Cbr /\u003EObs.: Caso o hom\u0026#250;nculo seja colocado em um corpo ainda vivo, o hom\u0026#250;nculo e o alvo dever\u0026#227;o passar ambos por um teste de for\u0026#231;a de vontade (Sendo a do hom\u0026#250;nculo 1), em caso de falha o hom\u0026#250;nculo pode acabar por perdendo sua vida antes de tomar o hospedeiro.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "imunidade-de-venenos-2-pontos",
+        "Titulo": "Imunidade de Venenos (2 pontos)",
+        "Html": "por algum motivo, seu Personagem nasceu com imunidade alta a venenos naturais e recebe um b\u0026#244;nus de 1D contra venenos, seja m\u0026#225;gico ou natural.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "imunidade-de-venenos-3-pontos",
+        "Titulo": "Imunidade de Venenos (3 pontos)",
+        "Html": "al\u0026#233;m dos venenos naturais, seu Personagem tamb\u0026#233;m possui alta imunidade a venenos artificiais, criados atrav\u0026#233;s de po\u0026#231;\u0026#245;es e alquimia, possuindo 2D de prote\u0026#231;\u0026#227;o contra venenos, seja m\u0026#225;gico, natural ou artificial.\u003Cp\u003E\u003Cem\u003ECusto: 3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "legilim-ncia",
+        "Titulo": "Legilim\u00EAncia",
+        "Html": "o personagem \u0026#233; capaz de enxergar a aura emotiva das pessoas (atrav\u0026#233;s de um Teste de Percep\u0026#231;\u0026#227;o), obtendo assim informa\u0026#231;\u0026#245;es sobre o emocional do alvo a partir de um espectro de cores.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "leitor-vido",
+        "Titulo": "Leitor \u00C1vido",
+        "Html": "Apenas pode ser adquirido por um personagem que possui a caracter\u0026#237;stica \u201CAlfabetizado\u201D, o jogador tem mais facilidade com textos, permitindo absorver conhecimento de maneira mais refinada, o possuidor de tal caracter\u0026#237;stica recebe 2 pontos ao inv\u0026#233;s de um quando estuda um livro sobre alguma das disciplinas.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "ling-sta",
+        "Titulo": "Ling\u00FC\u00EDsta",
+        "Html": "O usu\u0026#225;rio possui conhecimento de uma l\u0026#237;ngua n\u0026#227;o comum, seja ela escrita ou falada. (a l\u0026#237;ngua deve ser escrita em conjunto com a caracter\u0026#237;stica)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "presen-a-invis-vel",
+        "Titulo": "Presen\u00E7a Invis\u00EDvel",
+        "Html": "voc\u0026#234; tem a habilidade de n\u0026#227;o ser notado, as pessoas s\u0026#243; percebem sua presen\u0026#231;a quando voc\u0026#234; se anuncia. O personagem n\u0026#227;o est\u0026#225; realmente invis\u0026#237;vel, mas parece t\u0026#227;o insignificante que as pessoas n\u0026#227;o prestam aten\u0026#231;\u0026#227;o nele, a menos que venha a se expor abertamente. (O Usu\u0026#225;rio tem vantagem em todos os testes relacionados a furtividade)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "resist-ncia-a-dor",
+        "Titulo": "Resist\u00EAncia a Dor",
+        "Html": "o personagem possui alta resist\u0026#234;ncia \u0026#224; dor, n\u0026#227;o importa quanto dano f\u0026#237;sico sofra, ele n\u0026#227;o sentir\u0026#225; os ferimentos com a mesma intensidade que as demais pessoas sentem, e nem receber penalidades correspondentes por isso. Considere que o personagem mant\u0026#234;m-se consciente mesmo quando seus PVs atingirem o valor 0, e s\u0026#243; ir\u0026#225; desmaiar (morrer) quando chegarem a \u2013 5 (\u0026#224; exce\u0026#231;\u0026#227;o de golpe localizados na cabe\u0026#231;a, desferidos para atordo\u0026#225;-lo). (M\u0026#237;nimo 7 em Vigor)\u003Cp\u003E\u003Cem\u003ECusto: 3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "saque-r-pido",
+        "Titulo": "Saque R\u00E1pido",
+        "Html": "Permite ao jogador sacar a arma como uma a\u0026#231;\u0026#227;o livre.\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "sedutor",
+        "Titulo": "Sedutor",
+        "Html": "O Personagem recebe Vantagem em qualquer Teste envolvendo sedu\u0026#231;\u0026#227;o. Al\u0026#233;m disso, ele exerce uma sedu\u0026#231;\u0026#227;o natural em qualquer membro do sexo oposto (e em algumas pessoas do mesmo sexo tamb\u0026#233;m!). (M\u0026#237;nimo 5 em Influ\u0026#234;ncia)\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "sentidos-agu-ados",
+        "Titulo": "Sentidos Agu\u00E7ados",
+        "Html": "o Personagem possui sentidos mais agu\u0026#231;ados do que os outros Personagens. Sua vis\u0026#227;o, audi\u0026#231;\u0026#227;o, tato, olfato e/ou paladar s\u0026#227;o muito mais desenvolvidos. Em Testes de Percep\u0026#231;\u0026#227;o que utilizem esses sentidos, devem ser rolados com Vantagem. (um personagem pode ter no m\u0026#225;ximo 2 sentidos agu\u0026#231;ados.)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "sono-f-cil",
+        "Titulo": "Sono F\u00E1cil",
+        "Html": "Jogadores com essa caracter\u0026#237;stica n\u0026#227;o recebem estresse ao dormir em ambientes n\u0026#227;o favor\u0026#225;veis ou desconfort\u0026#225;veis\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "sono-leve-1-ponto",
+        "Titulo": "Sono Leve (1 ponto)",
+        "Html": "seu Personagem possui sono leve e pode acordar com qualquer barulho, movimento brusco ou agita\u0026#231;\u0026#227;o pr\u0026#243;ximo do local onde ele est\u0026#225; dormindo. Muito bom para os que n\u0026#227;o querem ser pegos de surpresa durante o descanso.\u003Cp\u003E\u003Cem\u003ECusto: 1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "sono-leve-2-pontos",
+        "Titulo": "Sono Leve (2 pontos)",
+        "Html": "sono reparador, voc\u0026#234; consegue dormir bem em qualquer lugar, isso permite que voc\u0026#234; durma menos para reaver as for\u0026#231;as (Descansos curtos equivalem como longos para o jogador que possui tal caracter\u0026#237;stica)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "s-bio",
+        "Titulo": "S\u00E1bio",
+        "Html": "existe uma Per\u0026#237;cia (exceto Per\u0026#237;cias de combate) na qual seu Personagem possui profici\u0026#234;ncia acad\u0026#234;mica, permitindo rolar testes com revis\u0026#227;o para utilizar-se da mesma. (M\u0026#237;nimo 5 em Ast\u0026#250;cia)\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "vis-o-noturna",
+        "Titulo": "Vis\u00E3o Noturna",
+        "Html": "tanto \u0026#224; noite quanto em ambientes fechados, o personagem pode ver normalmente sem sofrer qualquer penalidade devido ao escuro do ambiente.\u003Cp\u003E\u003Cem\u003ECusto: 2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Positivas"
+      },
+      {
+        "Id": "alco-latra",
+        "Titulo": "Alco\u00F3latra",
+        "Html": "o personagem \u0026#233; viciado em \u0026#225;lcool, ou uma bebida espec\u0026#237;fica. Sempre que ele estiver pr\u0026#243;ximo da bebida, o jogador deve fazer um Teste de For\u0026#231;a de Vontade caso ele queira evit\u0026#225;-la. Para um personagem b\u0026#234;bado, TODOS os Testes s\u0026#227;o com desvantagem. (um personagem alco\u0026#243;latra recebe 1 ponto de estresse a cada 2 dias sem bebida. Esse estresse n\u0026#227;o pode ser perdido com nada al\u0026#233;m do consumo da bebida alco\u0026#243;lica)\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "alergia",
+        "Titulo": "Alergia",
+        "Html": "o Personagem \u0026#233; al\u0026#233;rgico a alguma coisa (poeira, p\u0026#234;lo de animais, certos perfumes). Ao entrar em contato com essa subst\u0026#226;ncia, come\u0026#231;a a espirrar sem parar, o que prejudica suas a\u0026#231;\u0026#245;es f\u0026#237;sicas (o Mestre pode impor penalidades conforme o tipo de a\u0026#231;\u0026#227;o que ele pretender realizar).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "alergia-grave",
+        "Titulo": "Alergia Grave",
+        "Html": "id\u0026#234;ntico ao anterior, por\u0026#233;m os efeitos s\u0026#227;o bem mais graves. Uma r\u0026#225;pida exposi\u0026#231;\u0026#227;o, pode gerar irrita\u0026#231;\u0026#227;o nos olhos, e quanto mais tempo durar, maiores ser\u0026#227;o os males, tais como: irrita\u0026#231;\u0026#227;o na pele, v\u0026#244;mitos, parada respirat\u0026#243;ria, sendo que uma exposi\u0026#231;\u0026#227;o prolongada pode levar \u0026#224; morte.\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "andr-gino",
+        "Titulo": "Andr\u00F3gino",
+        "Html": "o Personagem tem a apar\u0026#234;ncia f\u0026#237;sica trocada, seu corpo tem os tra\u0026#231;os do sexo oposto, o que faz com que ele seja facilmente confundido com uma mulher (se o personagem for um homem) ou com um homem (se for uma mulher). Ter\u0026#225; um corpo truculento, se for mulher, e um corpo fr\u0026#225;gil se for homem\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "apar-ncia-trocada",
+        "Titulo": "Apar\u00EAncia Trocada",
+        "Html": "o Personagem \u0026#233; incrivelmente id\u0026#234;ntico a uma outra pessoa. Ambos s\u0026#227;o fisicamente iguais, mas possuem personalidades e comportamento muito diferentes. Mesmo para os amigos mais pr\u0026#243;ximos, \u0026#233; quase imposs\u0026#237;vel distinguir quem \u0026#233; quem apenas baseando-se na apar\u0026#234;ncia. Isso pode trazer muitos problemas para o Personagem, pois geralmente o seu \u201Cg\u0026#234;meo\u201D costuma meter-se em encrencas e voc\u0026#234; acaba sendo considerado culpado.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "assassino-serial",
+        "Titulo": "Assassino Serial",
+        "Html": "De tempos em tempos o personagem precisa cometer assassinatos, quanto mais tempo passar sem matar, pior seu estado mental come\u0026#231;a a ficar (Prazo m\u0026#225;ximo de 4 dias sem assassinatos, ap\u0026#243;s isso o jogador deve fazer testes de for\u0026#231;a de vontade para n\u0026#227;o acabar perdendo o controle e come\u0026#231;ar a atacar membros da equipe ou pessoas aleat\u0026#243;rias em plena vista).\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "canibal",
+        "Titulo": "Canibal",
+        "Html": "por alguma raz\u0026#227;o, o Personagem aprecia uma iguaria mundana: a carne humana. Caso fique muito tempo sem usufruir da mesma, o personagem acaba por enfrentar efeitos da abstin\u0026#234;ncia, e isso pode incluir Fraqueza corporal, Mente debilitada entre outros.\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "cleptoman-aco",
+        "Titulo": "Cleptoman\u00EDaco",
+        "Html": "seu personagem PRECISA roubar alguma coisa sempre que tiver oportunidade. Pode ser algum tipo espec\u0026#237;fico de objeto, coisas aleat\u0026#243;rias, e at\u0026#233; mesmo objetos de muito valor. (Normalmente Cleptoman\u0026#237;acos roubam itens de maior valor para os mesmos)\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "complexo-de-culpa",
+        "Titulo": "Complexo de Culpa",
+        "Html": "voc\u0026#234; se sente terrivelmente culpado por alguma coisa que fez no passado e julga-se respons\u0026#225;vel por todas as conseq\u0026#252;\u0026#234;ncias disto. \u0026#192;s vezes, o motivo do acontecimento realmente foi culpa sua, em outros casos n\u0026#227;o, mas igualmente o Personagem se atribui como um respons\u0026#225;vel direto. Em todas as situa\u0026#231;\u0026#245;es que lembrem o motivo que ocasionou seu complexo, deve fazer um Teste de For\u0026#231;a de Vontade. Em caso de falha, o personagem ficar\u0026#225; extremamente deprimido e todos os seus Testes se tornam Dif\u0026#237;ceis.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "cora-o-mole",
+        "Titulo": "Cora\u00E7\u00E3o Mole",
+        "Html": "o seu Personagem \u0026#233; muito sentimental e n\u0026#227;o \u0026#233; capaz de ver ningu\u0026#233;m sofrer. Ele acredita que todos, sem distin\u0026#231;\u0026#227;o, merecem a clem\u0026#234;ncia, o perd\u0026#227;o e uma segunda chance. Por isso, ele NUNCA recusa nenhum pedido de ajuda e jamais ir\u0026#225; matar ou ferir gravemente seu oponente durante uma batalha, preferindo deix\u0026#225;-lo inconsciente ou at\u0026#233; mesmo perder a luta. O sofrimento \u0026#233; algo que ningu\u0026#233;m merece.\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "covarde",
+        "Titulo": "Covarde",
+        "Html": "seu personagem tem um senso de sobreviv\u0026#234;ncia muito agu\u0026#231;ado, muito al\u0026#233;m da compreens\u0026#227;o de seus companheiros. Isso o leva a tomar atitudes extremas para se manter vivo, tais como fugir ou se esconder ao menor sinal de perigo. Portanto, o Personagem nunca ir\u0026#225; envolver-se em situa\u0026#231;\u0026#245;es que ofere\u0026#231;am um grande risco. Mesmo que queira, s\u0026#243; ser\u0026#225; capaz de deixar sua seguran\u0026#231;a de lado se for bem sucedido em um Teste de Vontade.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "cr-dulo",
+        "Titulo": "Cr\u00E9dulo",
+        "Html": "o personagem \u0026#233; uma pessoa extremamente cr\u0026#233;dula e ing\u0026#234;nua, inocente ao ponto de acreditar em qualquer coisa que digam a ele. Para ele, todas as pessoas s\u0026#227;o boas e confi\u0026#225;veis, e s\u0026#243; querem o seu bem. Isso faz com que seja facilmente enganado, tra\u0026#237;do e iludido. Quando algu\u0026#233;m quiser contar uma mentira para o Personagem cr\u0026#233;dulo, nem precisa fazer Teste de L\u0026#225;bia.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "curioso",
+        "Titulo": "Curioso",
+        "Html": "sua curiosidade \u0026#233; muito maior que o seu ju\u0026#237;zo, e toda vez que algo lhe chamar a aten\u0026#231;\u0026#227;o, o Personagem ficar\u0026#225; compelido a investig\u0026#225;-lo o mais depressa poss\u0026#237;vel. Deve realizar um Teste de For\u0026#231;a de Vontade para n\u0026#227;o abandonar tudo o que estiver fazendo e seguir essa pista misteriosa.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "c-digo-de-honra",
+        "Titulo": "C\u00F3digo de Honra",
+        "Html": "o personagem segue algum r\u0026#237;gido c\u0026#243;digo de conduta e jamais poder\u0026#225; desobedec\u0026#234;-lo, nem mesmo que sua vida dependa disso. Existem muitos c\u0026#243;digos de honra, como:\u003Cbr /\u003E\u003Cbr /\u003EO C\u0026#243;digo dos Cavalheiros (que impede o personagem de atacar, sob qualquer circunst\u0026#226;ncias, mulheres ou f\u0026#234;meas de qualquer esp\u0026#233;cie)\u003Cbr /\u003E\u003Cbr /\u003EO C\u0026#243;digo de Combate (nunca usar armas superiores ao do seu advers\u0026#225;rio, nem atacar oponentes ca\u0026#237;dos ou em desvantagem num\u0026#233;rica)\u003Cbr /\u003E\u003Cbr /\u003EO C\u0026#243;digo do Ca\u0026#231;ador (nunca abandonar uma ca\u0026#231;a abatida ou matar filhotes ou f\u0026#234;meas gr\u0026#225;vidas de qualquer esp\u0026#233;cie, no m\u0026#225;ximo combater e captur\u0026#225;-los)\u003Cbr /\u003E\u003Cbr /\u003EE o C\u0026#243;digo dos Her\u0026#243;is (sempre cumprir sua palavra, sempre proteger qualquer pessoa ou criatura mais fraca que voc\u0026#234;, jamais recusar um pedido de ajuda).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "deficiente-f-sico-3-pontos",
+        "Titulo": "Deficiente F\u00EDsico (3 pontos)",
+        "Html": "Voc\u0026#234; possui uma defici\u0026#234;ncia pequena, como ser cego de um olho, n\u0026#227;o ter uma m\u0026#227;o ou at\u0026#233; ser quase surdo. Todos de Per\u0026#237;cia relacionados \u0026#224; sua defici\u0026#234;ncia devem ser rolados com revis\u0026#227;o negativa.\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "deficiente-f-sico-6-pontos",
+        "Titulo": "Deficiente F\u00EDsico (6 pontos)",
+        "Html": "sua defici\u0026#234;ncia \u0026#233; um pouco mais grave, podendo ser completamente cego, n\u0026#227;o ter um bra\u0026#231;o, ser surdo ou n\u0026#227;o sentir cheiros. Todos os Testes de Atributos relacionados \u0026#224; sua defici\u0026#234;ncia s\u0026#227;o rolados com desvantagem e revis\u0026#227;o negativa.\u003Cp\u003E\u003Cem\u003ECusto: -6 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "deficiente-f-sico-8-pontos",
+        "Titulo": "Deficiente F\u00EDsico (8 pontos)",
+        "Html": "sua defici\u0026#234;ncia \u0026#233; grave e prejudica muito sua vida. Voc\u0026#234; pode ser um parapl\u0026#233;gico, ser surdo-mudo ou n\u0026#227;o ter ambos os bra\u0026#231;os. Voc\u0026#234; n\u0026#227;o pode realizar certas proezas relacionadas \u0026#224; sua defici\u0026#234;ncia, como andar, escutar ou falar.\u003Cp\u003E\u003Cem\u003ECusto: -8 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "depend-ncia",
+        "Titulo": "Depend\u00EAncia",
+        "Html": "para se manter vivo o personagem precisa se alimentar de algo ex\u0026#243;tico e que causa um grande asco aos humanos, como carne de rec\u0026#233;m nascidos, sangue de mundano, ou outra coisa proibida. O personagem deve ingerir uma quantidade satisfat\u0026#243;ria desse alimento desumano todo o dia. Se n\u0026#227;o o fizer, perder\u0026#225; 1 PV a cada dia, at\u0026#233; morrer ou at\u0026#233; que volte a se alimentar.\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "desvantagem-elemental",
+        "Titulo": "Desvantagem Elemental",
+        "Html": "O usu\u0026#225;rio por algum motivo \u0026#233; mais sens\u0026#237;vel a um elemento da natureza (escolher previamente entre \u0026#225;gua, terra, fogo, vento ou sagrado), tomando o dobro de dano para qualquer ataque vindo do tal elemento.\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "dificuldade-de-fala",
+        "Titulo": "Dificuldade de Fala",
+        "Html": "o personagem \u0026#233; gago, tem a l\u0026#237;ngua presa, ou qualquer outro problemas de dic\u0026#231;\u0026#227;o que dificulta o entendimento do que ele fala pelas outras pessoas.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "distra-o",
+        "Titulo": "Distra\u00E7\u00E3o",
+        "Html": "o personagem n\u0026#227;o consegue se concentrar em nada, vivendo no mundo das nuvens. Todos os Testes de For\u0026#231;a de Vontade para se concentrar s\u0026#227;o em desvantagem. Um personagem com Distra\u0026#231;\u0026#227;o n\u0026#227;o pode comprar o Aprimoramento Concentra\u0026#231;\u0026#227;o.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "esquizofr-nico",
+        "Titulo": "Esquizofr\u00EAnico",
+        "Html": "o personagem vive em um mundo s\u0026#243; seu. Pode ser perseguido por \u2018\u2019eles\u2019\u2019, ser o \u0026#250;nico que sabe a verdade, ter del\u0026#237;rios de grandeza, achar que \u0026#233; uma figura hist\u0026#243;rica reencarnada. Costuma ter id\u0026#233;ias absurdas, e acreditar nelas como se fossem verdadeiras (pois para ele s\u0026#227;o).\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fanfarronice",
+        "Titulo": "Fanfarronice",
+        "Html": "O personagem \u0026#233; um trovador. Sempre est\u0026#225; contando vantagem de si mesmo. Conta hist\u0026#243;rias absurdas sobre coisas que fez (ou que os outros fizeram, dizendo que foi ele mesmo), se julga superior aos outros e n\u0026#227;o gosta que lhe olhem atravessado. Quer se demonstrar o maioral e isso geralmente incomoda os outros (n\u0026#227;o \u0026#233; um Megaloman\u0026#237;aco, mas \u0026#224;s vezes pode agir como tal).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fan-tico",
+        "Titulo": "Fan\u00E1tico",
+        "Html": "sua vida \u0026#233; devotada a algum objetivo espec\u0026#237;fico. O Personagem persegue incessantemente esse objetivo, e todos seus atos s\u0026#227;o guiados por ele. Toda a vida dele \u0026#233; regida por esta causa e nada o far\u0026#225; desistir dela, pois ele acredita que valha qualquer sacrif\u0026#237;cio em seu nome. Pode ser fanatismo religioso, nacionalismo fervoroso, a busca incans\u0026#225;vel por um artefato lend\u0026#225;rio, uma vingan\u0026#231;a pessoal.\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fetiche-material-2-pontos",
+        "Titulo": "Fetiche Material (2 pontos)",
+        "Html": "o personagem precisa de um tipo de chave para poder usar sua magia. Essa chave \u0026#233; um objeto que ele carrega sempre consigo, uma esp\u0026#233;cie de recept\u0026#225;culo do seu poder m\u0026#225;gico (como um cajado, amuleto, bola de cristal ou anel). Sem esse objeto, o personagem n\u0026#227;o consegue realizar nenhum efeito m\u0026#225;gico (caso ele seja destru\u0026#237;do, ser\u0026#225; preciso encantar um novo objeto, o que \u0026#233; um processo longo e demorado para o Mago).\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fetiche-material-4-pontos",
+        "Titulo": "Fetiche Material (4 pontos)",
+        "Html": "idem ao anterior, por\u0026#233;m o fetiche do personagem \u0026#233; um objeto muito grande e dif\u0026#237;cil de ser deslocado (um altar de m\u0026#225;rmore maci\u0026#231;o, um \u0026#243;rg\u0026#227;o ou at\u0026#233; uma \u0026#225;rvore).\u003Cp\u003E\u003Cem\u003ECusto: -4 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fobia-2-pontos",
+        "Titulo": "Fobia (2 pontos)",
+        "Html": "voc\u0026#234; teme algo (lugares fechados ou altos, aranhas, espinhos, mortos, cobras, fogo, dem\u0026#244;nios), e quando se v\u0026#234; pr\u0026#243;ximo ao objeto de seu temor, deve fazer um Teste de For\u0026#231;a de Vontade. Caso falhe, todos os Testes seguintes que forem F\u0026#225;ceis passam a serem Normais, os Normais passam a serem Dif\u0026#237;ceis e os Dif\u0026#237;ceis ser\u0026#227;o considerados falhas autom\u0026#225;ticas. No caso de uma falha cr\u0026#237;tica, voc\u0026#234; simplesmente entra em desespero e foge imediatamente.\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "fobia-3-pontos",
+        "Titulo": "Fobia (3 pontos)",
+        "Html": "id\u0026#234;ntico ao anterior, mas aqui voc\u0026#234; sente um pavor indescrit\u0026#237;vel por algo, e caso se depare com a causa deste medo irracional, dever\u0026#225; fazer um Teste de for\u0026#231;a de vontade. Em caso de uma falha, o personagem foge em p\u0026#226;nico. Se for uma falha cr\u0026#237;tica, ele fica paralisado e impedido de realizar qualquer a\u0026#231;\u0026#227;o por 3d6 rodadas.\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "galante",
+        "Titulo": "Galante",
+        "Html": "seu personagem \u0026#233; um sedutor nato (ou ao menos tenta ser um). Possui um fraco pelo sexo oposto, nunca deixando passar a chance de conquistar um novo \u201Ctrof\u0026#233;u\u201D. Fa\u0026#231;a um Teste de vontade para resistir \u0026#224; oportunidade de tentar conquistar um(a) amante.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "gan-ncia",
+        "Titulo": "Gan\u00E2ncia",
+        "Html": "a fraqueza dos homens. O personagem possui inveja de tudo que os outros possuem e ele n\u0026#227;o. Sua cobi\u0026#231;a sempre o leva a querer mais e mais. Nenhuma riqueza \u0026#233; suficiente para ele. Para obter tudo o que deseja, o Personagem n\u0026#227;o mede conseq\u0026#252;\u0026#234;ncias e realizar\u0026#225; qualquer ato para satisfazer sua gan\u0026#226;ncia (desde roubar at\u0026#233; fazer pactos com dem\u0026#244;nios).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "gula",
+        "Titulo": "Gula",
+        "Html": "o apetite do personagem \u0026#233; algo fora dos padr\u0026#245;es normais, ele come o dobro ou o triplo do que uma pessoa comum. Al\u0026#233;m disso, o Personagem sempre encontra tempo para um lanchinho nas ocasi\u0026#245;es mais inusitadas.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "h-bitos-detest-veis",
+        "Titulo": "H\u00E1bitos Detest\u00E1veis",
+        "Html": "voc\u0026#234; possui alguns atos involunt\u0026#225;rios que chocam e enojam as pessoas, tais como: cuspir o tempo todo, co\u0026#231;ar as partes \u0026#237;ntimas, n\u0026#227;o tomar banho com regularidade, entre outros.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "inculto",
+        "Titulo": "Inculto",
+        "Html": "Al\u0026#233;m de n\u0026#227;o saber ler, o usu\u0026#225;rio possui imensa dificuldade em aprender, rolando todos os testes relacionados com desvantagem. Al\u0026#233;m disso, tem a caracter\u0026#237;stica inculto impede adquirir posteriormente a caracter\u0026#237;stica \u201CLeitor \u0026#193;vido\u201D\u003Cp\u003E\u003Cem\u003ECusto: -3 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "intoler-ncia",
+        "Titulo": "Intoler\u00E2ncia",
+        "Html": "existe algo que voc\u0026#234; n\u0026#227;o tolera, seja uma situa\u0026#231;\u0026#227;o (ver algu\u0026#233;m batendo numa mulher, reprimir-lhe apontando o dedo indicador, garotos pichando as paredes, fumantes), um animal, ou alguma coisa. Quando o Personagem encontra-se na circunst\u0026#226;ncia que causa sua intoler\u0026#226;ncia, ele imediatamente deixar\u0026#225; tudo o que est\u0026#225; fazendo de lado e ir\u0026#225; tomar satisfa\u0026#231;\u0026#245;es com o respons\u0026#225;vel. Pode chegar a agredi-lo caso tenha motivo para isso (o Mestre pode exigir um Teste de vontade para verificar se o personagem perdeu totalmente a calma com ele).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "mania",
+        "Titulo": "Mania",
+        "Html": "o personagem tem algum tipo de mania, \u0026#233; um h\u0026#225;bito, um modus operandi. Pode ser colecionar alguma coisa, agir de determinada maneira, ou ir a certos lugares. Ele se sente compelido a realizar essa mania com freq\u0026#252;\u0026#234;ncia (pelo menos uma vez por semana). O Mestre pode usar isto como uma maneira de atrair ou emboscar o personagem (por exemplo, se um Personagem tem a mania de todo o domingo ir ao parque, os inimigos dele saber\u0026#227;o onde encontr\u0026#225;-lo quando quiserem lhe armar uma armadilha).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "mania-de-persegui-o-1-ponto",
+        "Titulo": "Mania de Persegui\u00E7\u00E3o (1 ponto)",
+        "Html": "o Personagem \u0026#233; extremamente paran\u0026#243;ico, acreditando fervorosamente que \u201Celes\u201D est\u0026#227;o atr\u0026#225;s dele, que est\u0026#225; sempre sendo vigiado ou perseguido onde quer que ele v\u0026#225;. O Personagem sempre ir\u0026#225; desconfiar de todos, por mais amigos que sejam.\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "mania-de-persegui-o-2-pontos",
+        "Titulo": "Mania de Persegui\u00E7\u00E3o (2 pontos)",
+        "Html": "igual ao anterior, mas nesse caso ele realmente est\u0026#225; sendo perseguido por algu\u0026#233;m (embora n\u0026#227;o tenha certeza absoluta disso). Pode ser algum esp\u0026#237;rito, dem\u0026#244;nio, ca\u0026#231;adores ou uma outra entidade que est\u0026#225; no seu encal\u0026#231;o e ele teme se encontrar com ela.\u003Cp\u003E\u003Cem\u003ECusto: -2 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "teimosia",
+        "Titulo": "Teimosia",
+        "Html": "voc\u0026#234; \u0026#233; teimoso como uma mula. N\u0026#227;o importa o que os outros digam, o personagem acredita ferreamente que ele, e somente ele, est\u0026#225; certo. Nunca ir\u0026#225; concordar com ningu\u0026#233;m, pois cr\u0026#234; que sempre est\u0026#227;o errados. Isso pode levar o Personagem a enfrentar problemas, principalmente em situa\u0026#231;\u0026#245;es em que um grupo deve tomar uma decis\u0026#227;o em conjunto. O Personagem vai tentar de todas as maneiras poss\u0026#237;veis convencer os outros que o seu ponto de vista \u0026#233; o correto, chegando, inclusive, a usar de m\u0026#233;todos menos ortodoxos (agredir os companheiros, assassinar os ref\u0026#233;ns, atrair a aten\u0026#231;\u0026#227;o do inimigo , etc).\u003Cp\u003E\u003Cem\u003ECusto: -1 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      },
+      {
+        "Id": "vulner-vel-a-exaust-o",
+        "Titulo": "Vulner\u00E1vel a Exaust\u00E3o",
+        "Html": "O usu\u0026#225;rio por alguma doen\u0026#231;a acometida sobre si t\u0026#234;m maior dificuldade em manter a energia em atividades prolongadas. Ap\u0026#243;s esfor\u0026#231;os f\u0026#237;sicos intensos, longas viagens ou combate prolongado (2 A\u0026#231;\u0026#245;es em combate), ele precisa realizar testes de Fortitude que aumentam de dificuldade a cada esfor\u0026#231;o extra. Em caso de falha o usu\u0026#225;rio passa a tomar desvantagem em testes f\u0026#237;sicos, caso force uma segunda vez e falhe, al\u0026#233;m de permanecer com a rolagem em desvantagem o usu\u0026#225;rio passa a ter o estado \u201Cfadiga\u201D at\u0026#233; um descanso.\u003Cp\u003E\u003Cem\u003ECusto: -10 ponto(s)\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": "Negativas"
+      }
+    ]
+  },
+  {
+    "Slug": "graus-e-circulos",
+    "Titulo": "Graus \u0026 C\u00EDrculos",
+    "IntroHtml": "\u003Cp\u003ECampe\u00E3o e Ca\u00E7ador progridem por \u003Cstrong\u003EGrau\u003C/strong\u003E; as demais voca\u00E7\u00F5es (Feiticeiro, Adepto, Bruxo) progridem por \u003Cstrong\u003EC\u00EDrculo\u003C/strong\u003E. Grau \u00E9 desbloqueado desde o princ\u00EDpio de jogo. C\u00EDrculo, por outro lado, exige que o personagem tenha um \u003Cstrong\u003Ecora\u00E7\u00E3o de mana\u003C/strong\u003E \u2014 um n\u00FAcleo m\u00E1gico criado por um mago (qualquer classe que utiliza magia) \u2014 sem ele, o C\u00EDrculo permanece 0 mesmo com EAP acumulado. Um cora\u00E7\u00E3o de mana pode ser perdido depois de criado, voltando o C\u00EDrculo a 0 at\u00E9 que outro seja obtido.\u003C/p\u003E\n\u003Ctable\u003E\n\u003Cthead\u003E\n\u003Ctr\u003E\n\u003Cth\u003E\u003Cem\u003EGrau\u003C/em\u003E\u003C/th\u003E\n\u003Cth\u003E\u003Cem\u003EDano / Dura\u00E7\u00E3o\u003C/em\u003E\u003C/th\u003E\n\u003Cth\u003E\u003C/th\u003E\n\u003Cth\u003E\u003Cem\u003EAlcance\u003C/em\u003E\u003C/th\u003E\n\u003Cth\u003E\u003Cem\u003EGasto\u003C/em\u003E\u003C/th\u003E\n\u003C/tr\u003E\n\u003C/thead\u003E\n\u003Ctbody\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E1\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 3 dados\u003C/td\u003E\n\u003Ctd\u003Ed2\u003C/td\u003E\n\u003Ctd\u003Emax. 2 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E2 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E2\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 4 dados\u003C/td\u003E\n\u003Ctd\u003Ed4\u003C/td\u003E\n\u003Ctd\u003Emax. 3 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E4 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E3\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 5 dados\u003C/td\u003E\n\u003Ctd\u003Ed6\u003C/td\u003E\n\u003Ctd\u003Emax. 4 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E8 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E4\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 6 dados\u003C/td\u003E\n\u003Ctd\u003Ed8\u003C/td\u003E\n\u003Ctd\u003Emax. 5 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E16 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E5\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 7 dados\u003C/td\u003E\n\u003Ctd\u003Ed10\u003C/td\u003E\n\u003Ctd\u003Emax. 6 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E32 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E6\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 8 dados\u003C/td\u003E\n\u003Ctd\u003Ed12\u003C/td\u003E\n\u003Ctd\u003Emax. 7 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E64 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E7\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 9 dados\u003C/td\u003E\n\u003Ctd\u003Ed20\u003C/td\u003E\n\u003Ctd\u003Emax. 8 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E128 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E8\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 10 dados\u003C/td\u003E\n\u003Ctd\u003Ed30\u003C/td\u003E\n\u003Ctd\u003Emax. 9 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E256 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003Ctr\u003E\n\u003Ctd\u003E\u003Cstrong\u003E9\u003C/strong\u003E\u003C/td\u003E\n\u003Ctd\u003Emax. 11 dados\u003C/td\u003E\n\u003Ctd\u003Ed100\u003C/td\u003E\n\u003Ctd\u003Emax. 10 p\u00E9s\u003C/td\u003E\n\u003Ctd\u003E512 PI\u003C/td\u003E\n\u003C/tr\u003E\n\u003C/tbody\u003E\n\u003C/table\u003E\n\u003Cp\u003ECusto: 1,25 de arcana por PI (arredondado para cima)\u003C/p\u003E\n\u003Cp\u003EAtualiza\u00E7\u00E3o: Pagar a diferen\u00E7a dos Graus\u003C/p\u003E\n\u003Cdiv class=\u0022rulebook-reference-images\u0022 style=\u0022display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px\u0022\u003E\n    \u003Cfigure style=\u0022margin:0\u0022\u003E\n        \u003Cimg src=\u0022/rulebook/Escolas_de_Magia.png\u0022 alt=\u0022Escolas de Magia\u0022 style=\u0022max-width:100%\u0022 /\u003E\n        \u003Cfigcaption\u003EEscolas de Magia\u003C/figcaption\u003E\n    \u003C/figure\u003E\n    \u003Cfigure style=\u0022margin:0\u0022\u003E\n        \u003Cimg src=\u0022/rulebook/Matriz_Elemental.png\u0022 alt=\u0022Matriz Elemental\u0022 style=\u0022max-width:100%\u0022 /\u003E\n        \u003Cfigcaption\u003EMatriz Elemental\u003C/figcaption\u003E\n    \u003C/figure\u003E\n\u003C/div\u003E",
+    "Sections": [
+      {
+        "Id": "o-grau-circulo-i",
+        "Titulo": "1\u00BA GRAU / C\u00CDRCULO I",
+        "Html": "\u003Ch2 id=\u0022efeitos-basicos\u0022\u003EEfeitos B\u00E1sicos\u003C/h2\u003E\n\u003Cp\u003EDano: 2 Pontos por Dado.\u003C/p\u003E\n\u003Cp\u003EAlcance: 3 Pontos por P\u00E9.\u003C/p\u003E\n\u003Cp\u003EDura\u00E7\u00E3o: 4 Pontos por Dado.\u003C/p\u003E\n\u003Ch2 id=\u0022aumentar-armadura\u0022\u003EAumentar Armadura\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI por Ponto de Redu\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003EMax. 5 de Redu\u00E7\u00E3o por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EConcede ao personagem Redu\u00E7\u00E3o F\u00EDsica.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022aumentar-atributo\u0022\u003EAumentar Atributo\u003C/h2\u003E\n\u003Cp\u003E\u003Cstrong\u003EGasto:\u003C/strong\u003E 2 PI por Ponto de Atributo.\u003C/p\u003E\n\u003Cp\u003EMax. 2 Pontos de Atributo por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EO Personagem \u00E9 capaz de aumentar um de seus atributos temporariamente.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022contrato-magico\u0022\u003EContrato M\u00E1gico\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EEssencial para os bruxos que expressam sua magia como Invoca\u00E7\u00E3o, esse efeito permite que o usu\u00E1rio crie um v\u00EDnculo arcano com uma criatura para cada c\u00EDrculo do mago.\u003C/p\u003E\n\u003Cp\u003EAo criar um contrato com a criatura, automaticamente \u00E9 criada uma habilidade com o Grau equivalente ao Rank da criatura, que serve para manifest\u00E1-la e que possui a mesma dura\u00E7\u00E3o da magia de contrato. O Invocador pode at\u00E9 incluir novos Efeitos nessas manifesta\u00E7\u00F5es, que se ativam no momento da invoca\u00E7\u00E3o da criatura.\u003C/p\u003E\n\u003Cp\u003EMetade da Mana Total da criatura \u00E9 adicionada \u00E0 Mana Total do Invocador, ao se firmar o contrato.\u003C/p\u003E\n\u003Ch2 id=\u0022cura\u0022\u003ECura\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI\u003C/p\u003E\n\u003Cp\u003EOs dados de dano da habilidade servem para recuperar Vitalidade ao inv\u00E9s de retir\u00E1-la.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022deslocamento\u0022\u003EDeslocamento\u003C/h2\u003E\n\u003Cp\u003EGasto: 1 PI\u003C/p\u003E\n\u003Cp\u003EO alvo \u00E9 abruptamente for\u00E7ado a se deslocar pelo grid de batalha, seja para tr\u00E1s, para frente, para os lados ou at\u00E9 para cima, a depender do tipo de habilidade usada.\u003C/p\u003E\n\u003Cp\u003ERegra Especial - Queda: Caso o efeito seja utilizado para arremessar o alvo para cima, o dano da queda \u00E9 igual a 1d por P\u00E9 ca\u00EDdo.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Alcance.\u003C/p\u003E\n\u003Ch2 id=\u0022miragem\u0022\u003EMiragem\u003C/h2\u003E\n\u003Cp\u003EGasto: 1 PI por Sentido\u003C/p\u003E\n\u003Cp\u003EO personagem pode acometer algu\u00E9m com o efeito de Miragem, onde ele cria uma ilus\u00E3o para este alvo, e que n\u00E3o \u00E9 tang\u00EDvel, mas pode enganar a vis\u00E3o, o olfato ou a audi\u00E7\u00E3o do alvo.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022regeneracao\u0022\u003ERegenera\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EO personagem pode acometer algu\u00E9m com o efeito de Regenera\u00E7\u00E3o em um alvo, o curando em 1d por turno da habilidade, al\u00E9m de retir\u00E1-lo de qualquer efeito negativo de c\u00EDrculo ou grau igual ou inferior \u00E0 habilidade.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-ii",
+        "Titulo": "2\u00BA GRAU / C\u00CDRCULO II",
+        "Html": "\u003Ch2 id=\u0022aceleracao\u0022\u003EAcelera\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EO Alvo acometido por Acelera\u00E7\u00E3o recebe metade de sua movimenta\u00E7\u00E3o como movimenta\u00E7\u00E3o adicional.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022amedrontar\u0022\u003EAmedrontar\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EO Alvo fica impossibilitado de se mover na dire\u00E7\u00E3o do causador do efeito\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022diminuir-atributo\u0022\u003EDiminuir Atributo\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI por Ponto de Atributo.\u003C/p\u003E\n\u003Cp\u003EMax. 2 Pontos de Atributo por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EO Personagem \u00E9 capaz de diminuir um atributo de seu alvo temporariamente.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022encantamento-elemental\u0022\u003EEncantamento Elemental\u003C/h2\u003E\n\u003Cp\u003E\u003Cstrong\u003EGasto:\u003C/strong\u003E 2 PI\u003C/p\u003E\n\u003Cp\u003EO usu\u00E1rio pode encantar suas armas com suas ess\u00EAncias m\u00E1gicas, causando dano m\u00E1gico adicional em seus ataques.\u003C/p\u003E\n\u003Cp\u003ES\u00E3o obrigat\u00F3rias as compras de Dura\u00E7\u00E3o e Dano.\u003C/p\u003E\n\u003Cp\u003ERegra Especial - Condi\u00E7\u00F5es: A partir do quarto c\u00EDrculo / grau, ao gasto de 4 PI ao inv\u00E9s de 2, o usu\u00E1rio pode comprar este efeito para aplicar Condi\u00E7\u00F5es \u00E0 arma ao inv\u00E9s de dano.\u003C/p\u003E\n\u003Ch2 id=\u0022enraizar\u0022\u003EEnraizar\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI\u003C/p\u003E\n\u003Cp\u003EEnquanto sob esta condi\u00E7\u00E3o, o alvo n\u00E3o pode se deslocar, mas ainda pode atacar, se defender e at\u00E9 esquivar.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022envenenar\u0022\u003EEnvenenar\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003ECorta pela metade todas as curas recebidas pelo Alvo, que tamb\u00E9m recebe 1d de Dano por turno.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022libra\u0022\u003ELibra\u003C/h2\u003E\n\u003Cp\u003EGasto: Vari\u00E1vel\u003C/p\u003E\n\u003Cp\u003EO usu\u00E1rio \u00E9 capaz de ver certas caracter\u00EDsticas do alvo. S\u00E3o obrigat\u00F3rias as compras de Alcance e Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003E4 Pontos: Capaz de ver a Vitalidade atual do alvo.\u003C/p\u003E\n\u003Cp\u003E6 Pontos: Capaz de ver a Arcana atual do alvo.\u003C/p\u003E\n\u003Cp\u003EO usu\u00E1rio pode ter ambos em uma mesma magia, mas deve pagar por ambos separadamente.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-ii-1",
+        "Titulo": "3\u00BA GRAU / C\u00CDRCULO II",
+        "Html": "\u003Ch2 id=\u0022area\u0022\u003E\u00C1rea\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI por anel.\u003C/p\u003E\n\u003Cp\u003EA habilidade age em uma \u00E1rea, calculada em an\u00E9is a partir de um epicentro.\u003C/p\u003E\n\u003Cp\u003ERegra Especial - Condi\u00E7\u00F5es: Caso a habilidade possua uma condi\u00E7\u00E3o, n\u00E3o apenas ela s\u00F3 se aplica no epicentro, mas Dados de Condi\u00E7\u00E3o s\u00E3o cortados pela metade.\u003C/p\u003E\n\u003Cp\u003EMax. 1 Anel por C\u00EDrculo/Grau. Esta regra n\u00E3o se aplica a Detrito.\u003C/p\u003E\n\u003Ch2 id=\u0022armadura-arcana\u0022\u003EArmadura Arcana\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI por Ponto de Redu\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003EMax. 5 de Redu\u00E7\u00E3o por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EConcede ao personagem Redu\u00E7\u00E3o M\u00E1gica.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022ato-multiplo\u0022\u003EAto M\u00FAltiplo\u003C/h2\u003E\n\u003Cp\u003EGasto: X PI por Dado\u003C/p\u003E\n\u003Cp\u003EMax. 1 Dado por C\u00EDrculo, contando a partir do terceiro\u003C/p\u003E\n\u003Cp\u003EEsse efeito permite que m\u00FAltiplos ataques r\u00E1pidos sejam feitos com uma \u00FAnica a\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003ESistematicamente, a habilidade pode exceder o n\u00FAmero de dados permitido pelo Grau/C\u00EDrculo, por\u00E9m gasta mais da durabilidade da arma e/ou mais proj\u00E9teis se este for o caso.\u003C/p\u003E\n\u003Ch2 id=\u0022aumentar-max.vitalidade\u0022\u003EAumentar Max. Vitalidade\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI por Dado\u003C/p\u003E\n\u003Cp\u003EMax. 2 Dados por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EO personagem \u00E9 capaz de, temporariamente, aumentar sua vitalidade m\u00E1xima.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o\u003C/p\u003E\n\u003Ch2 id=\u0022congelar\u0022\u003ECongelar\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EMuito parecido com Enraizamento, o alvo se torna incapaz de se deslocar, por\u00E9m com o b\u00F4nus de causar 1d de dano por turno de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022dreno-de-vitalidade\u0022\u003EDreno de Vitalidade\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI por Dado\u003C/p\u003E\n\u003Cp\u003EPermite ao usu\u00E1rio absorver parte do dano causado pela habilidade para recuperar sua Vitalidade. A magia n\u00E3o pode ter mais dados de recupera\u00E7\u00E3o do que de dano. Os dados de dreno n\u00E3o s\u00E3o rolados, mas selecionados a partir dos de dano.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022reflexao\u0022\u003EReflex\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EPermite o usu\u00E1rio causar dano toda vez que recebe um ataque corpo-a-corpo.\u003C/p\u003E\n\u003Cp\u003ES\u00E3o obrigat\u00F3rias as compras de Dano e Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022protecao\u0022\u003EProte\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EConjura no alvo uma prote\u00E7\u00E3o que serve como uma esp\u00E9cie de \u201Cvida extra\u201D, tomando dano no lugar do protegido at\u00E9 que a dura\u00E7\u00E3o acabe ou o escudo se quebre.\u003C/p\u003E\n\u003Cp\u003ES\u00E3o obrigat\u00F3rias as compras de Dano e Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022provocar\u0022\u003EProvocar\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EAo ser acometido por esta Condi\u00E7\u00E3o, o alvo \u00E9 obrigado a atacar o causador dela pela dura\u00E7\u00E3o do Efeito.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022marionete-arcana\u0022\u003EMarionete Arcana\u003C/h2\u003E\n\u003Cp\u003EGasto: 5 PI\u003C/p\u003E\n\u003Cp\u003EConjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma ess\u00EAncia elemental. a criatura ter\u00E1 de vida a quantidade de arcana a ela concedida ap\u00F3s a utiliza\u00E7\u00E3o da magia, ficando a cargo do mago a quantidade que dever\u00E1 ser concedida e n\u00E3o afetando o custo ja pago pela ultiliza\u00E7\u00E3o do feiti\u00E7o que a invocou.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-iv",
+        "Titulo": "4\u00BA GRAU / C\u00CDRCULO IV",
+        "Html": "\u003Ch2 id=\u0022abencoar\u0022\u003EAben\u00E7oar\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EUm efeito exclusivo ao Caminho da B\u00EAn\u00E7\u00E3o dos Adeptos. Quando sob este efeito, qualquer alvo recebe um acr\u00E9scimo na precis\u00E3o de seus ataques. Todos os acertos do personagem acometido por Aben\u00E7oar s\u00E3o aumentados em 50%.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022aumentar-max.arcana\u0022\u003EAumentar Max. Arcana\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI por Dado\u003C/p\u003E\n\u003Cp\u003EMax. 2 Dados por Grau/C\u00EDrculo.\u003C/p\u003E\n\u003Cp\u003EO personagem \u00E9 capaz de, temporariamente, aumentar sua Arcana m\u00E1xima.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022confusao\u0022\u003EConfus\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003ECaso o alvo acometido por essa condi\u00E7\u00E3o falhe seu ataque, todos dentro do alcance do ataque \u2013 incluindo o pr\u00F3prio confuso \u2013 devem rolar 1d100 e, quem rolar o menor n\u00FAmero tomar\u00E1 o ataque no lugar.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022dreno-de-arcana\u0022\u003EDreno de Arcana\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI por Dado\u003C/p\u003E\n\u003Cp\u003EPermite ao usu\u00E1rio absorver parte do dano causado pela habilidade para recuperar sua Arcana. A magia n\u00E3o pode ter mais dados de recupera\u00E7\u00E3o do que de dano. Os dados de dreno n\u00E3o s\u00E3o rolados, mas selecionados a partir dos de dano.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022decair\u0022\u003EDecair\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EOs pontos fracos do Alvo ficam expostos e ataques contra ele causam dano adicional.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o e Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022detrito\u0022\u003EDetrito\u003C/h2\u003E\n\u003Cp\u003EGasto: 2 PI\u003C/p\u003E\n\u003Cp\u003EUma condi\u00E7\u00E3o aplicada a uma \u00E1rea ao inv\u00E9s de um Alvo. Todos dentro da \u00E1rea afetada s\u00E3o acometidos pela outra condi\u00E7\u00E3o da habilidade.\u003C/p\u003E\n\u003Cp\u003ES\u00E3o obrigat\u00F3rias as compras de Dura\u00E7\u00E3o, \u00C1rea e de uma das seguintes condi\u00E7\u00F5es: Atordoar, Congelar, Enraizar ou Selar.\u003C/p\u003E\n\u003Ch2 id=\u0022fadiga\u0022\u003EFadiga\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI\u003C/p\u003E\n\u003Cp\u003EO alvo n\u00E3o pode defender e seus golpes f\u00EDsicos t\u00EAm o dano cortado pela metade.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022imagem-ilusoria\u0022\u003EImagem Ilus\u00F3ria\u003C/h2\u003E\n\u003Cp\u003EGasto: X PI\u003C/p\u003E\n\u003Cp\u003EO Personagem \u00E9 capaz de criar uma imagem ilus\u00F3ria.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-v",
+        "Titulo": "5\u00BA GRAU / C\u00CDRCULO V",
+        "Html": "\u003Ch2 id=\u0022feixe\u0022\u003EFeixe\u003C/h2\u003E\n\u003Cp\u003EGasto: 10 PI\u003C/p\u003E\n\u003Cp\u003EA habilidade afeta n\u00E3o apenas o hex final do alcance, mas todos entre este e o originador do ataque.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Alcance.\u003C/p\u003E\n\u003Cp\u003ERegra Especial - Condi\u00E7\u00F5es: Caso a habilidade possua uma condi\u00E7\u00E3o, ela s\u00F3 se aplica ao primeiro alvo atingido, livrando os alvos atr\u00E1s dele. Diferentemente de \u00E1rea, os dados de Condi\u00E7\u00E3o s\u00E3o rolados normalmente.\u003C/p\u003E\n\u003Ch2 id=\u0022acoes-por-turno\u0022\u003EA\u00E7\u00F5es por Turno\u003C/h2\u003E\n\u003Cp\u003EGasto: 20 PI por A\u00E7\u00E3o\u003C/p\u003E\n\u003Cp\u003EMax. 2 a\u00E7\u00F5es\u003C/p\u003E\n\u003Cp\u003EA\u00E7\u00F5es por turno s\u00E3o muito valiosas em um sistema onde se fortalecer depende da rolagem dos dados. Com esse efeito o personagem pode realizar m\u00FAltiplas a\u00E7\u00F5es em um \u00FAnico turno de batalha.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022cegueira\u0022\u003ECegueira\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EO Alvo n\u00E3o pode realizar ataques f\u00EDsicos como golpes com armas brancas e tiros de arco, se limitando a apenas ataques m\u00E1gicos.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022defesa-verdadeira\u0022\u003EDefesa Verdadeira\u003C/h2\u003E\n\u003Cp\u003EGasto: 6 PI\u003C/p\u003E\n\u003Cp\u003EO Alvo passa a, quando defender, aplicar o n\u00FAmero das rolagens de dados.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022deflexao\u0022\u003EDeflex\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 8 PI\u003C/p\u003E\n\u003Cp\u003ETipo: Reativo\u003C/p\u003E\n\u003Cp\u003EPermite o usu\u00E1rio reagir a golpes a dist\u00E2ncia redirecionando-os de volta ao originador do ataque.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022deflexao-magica\u0022\u003EDeflex\u00E3o M\u00E1gica\u003C/h2\u003E\n\u003Cp\u003EGasto: 8 PI\u003C/p\u003E\n\u003Cp\u003EPermite ao usu\u00E1rio reagir a ataques m\u00E1gicos direcionando-os de volta ao originador do ataque.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dano.\u003C/p\u003E\n\u003Ch2 id=\u0022encantamento-pessoal\u0022\u003EEncantamento Pessoal\u003C/h2\u003E\n\u003Cp\u003EGasto: 5 PI\u003C/p\u003E\n\u003Cp\u003EParecido com Encantamento Elemental, por\u00E9m encanta uma pessoa ou criatura ao inv\u00E9s de um equipamento, prevenindo cen\u00E1rios como inimigos pegando as armas encantadas de aliados.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022encantar\u0022\u003EEncantar\u003C/h2\u003E\n\u003Cp\u003EGasto: 10 PI\u003C/p\u003E\n\u003Cp\u003EO alvo encantado \u00E9 obrigado a se aproximar e defender o causador do efeito.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-vi",
+        "Titulo": "6\u00BA GRAU / C\u00CDRCULO VI",
+        "Html": "\u003Ch2 id=\u0022amplificacao-arcana\u0022\u003EAmplifica\u00E7\u00E3o Arcana\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EAp\u00F3s utilizar uma magia com esse efeito, a pr\u00F3xima magia que o mago conjurar ter\u00E1 o dobro do dano, por\u00E9m tamb\u00E9m ter\u00E1 o dobro do custo\u003C/p\u003E\n\u003Ch2 id=\u0022furia\u0022\u003EF\u00FAria\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI\u003C/p\u003E\n\u003Cp\u003EO alvo passa a ter seu dano dobrado, mas o torna incontrol\u00E1vel, o fazendo atacar sempre a entidade mais pr\u00F3xima; aliado ou inimigo.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n\u003Ch2 id=\u0022julgamento\u0022\u003EJulgamento\u003C/h2\u003E\n\u003Cp\u003EGasto: 5 PI\u003C/p\u003E\n\u003Cp\u003EO Alvo recebe 1d de dano por Turno quaisquer efeitos positivos que ele possua s\u00E3o retirados imediatamente.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-vii",
+        "Titulo": "7\u00BA GRAU / C\u00CDRCULO VII",
+        "Html": "\u003Ch2 id=\u0022absorcao\u0022\u003EAbsor\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003EGasto: 3 PI por Dado\u003C/p\u003E\n\u003Cp\u003EMax. 3 Dados por Grau/C\u00EDrculo contando a partir do s\u00E9timo\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o\u003C/p\u003E\n\u003Ch2 id=\u0022critico-aprimorado\u0022\u003ECr\u00EDtico Aprimorado\u003C/h2\u003E\n\u003Cp\u003EGasto: 4 PI por 5% de Taxa Cr\u00EDtica\u003C/p\u003E\n\u003Cp\u003EMax. 20%\u003C/p\u003E\n\u003Cp\u003EPela dura\u00E7\u00E3o da habilidade o personagem precisa de n\u00FAmeros menores no d20 para que suas rolagens sejam consideradas cr\u00EDticas.\u003C/p\u003E\n\u003Cp\u003EObrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-viii",
+        "Titulo": "8\u00BA GRAU / C\u00CDRCULO VIII",
+        "Html": "\u003Ch2 id=\u0022atordoamento\u0022\u003EAtordoamento\u003C/h2\u003E\n\u003Cp\u003EGasto: 10 PI\u003C/p\u003E\n\u003Cp\u003EO alvo atordoado perde completamente a sua a\u00E7\u00E3o, se tornando incapaz de agir, se mover, defender, esquivar ou qualquer outra a\u00E7\u00E3o ou rea\u00E7\u00E3o exceto por testes para tentar sair da condi\u00E7\u00E3o.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "o-grau-circulo-ix",
+        "Titulo": "9\u00BA GRAU / C\u00CDRCULO IX",
+        "Html": "\u003Ch2 id=\u0022imunidade\u0022\u003EImunidade\u003C/h2\u003E\n\u003Cp\u003EGasto: X PI\u003C/p\u003E\n\u003Cp\u003EO alvo se torna completamente imune ao dano de algum elemento em espec\u00EDfico. Caso este seja um elemento b\u00E1sico, ele tamb\u00E9m corta parcialmente o dano de elementos compostos.\u003C/p\u003E\n\u003Cp\u003E\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o.\u003C/p\u003E\n",
+        "Grupo": null
+      }
+    ]
+  },
+  {
+    "Slug": "tabela-de-niveis",
+    "Titulo": "Tabela de N\u00EDveis",
+    "IntroHtml": "\u003Ctable class=\u0022tabela-de-niveis tabela-de-niveis-bonus\u0022\u003E\u003Cthead\u003E\u003Ctr\u003E\u003Cth\u003EN\u00EDvel\u003C/th\u003E\u003Cth\u003EB\u00F4nus\u003C/th\u003E\u003C/tr\u003E\u003C/thead\u003E\u003Ctbody\u003E\u003Ctr\u003E\u003Ctd\u003E1\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B9\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B4\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B10\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003EPontos de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus de Vida Aprimorado\u003Cbr /\u003E\u002BStatus de Foco Aprimorado\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E2\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E3\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E4\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E5\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E6\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E7\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E8\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E9\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B4\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E10\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B2\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003Cbr /\u003E\u002B Primeira Passiva\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E11\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E12\u003C/td\u003E\u003Ctd\u003EPontos de Per\u00EDcia: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E13\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E14\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E15\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B2\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E16\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E17\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E18\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E19\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B8\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E20\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B2\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003Cbr /\u003E\u002B Evolu\u00E7\u00E3o de Voca\u00E7\u00E3o\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E21\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E22\u003C/td\u003E\u003Ctd\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E23\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E24\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E25\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B3\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B4\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E26\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E27\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E28\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E29\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B12\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E30\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B4\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003Cbr /\u003E\u002B Segunda Passiva\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E31\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E32\u003C/td\u003E\u003Ctd\u003EPontos de Per\u00EDcia: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E33\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E34\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E35\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B4\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B6\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E36\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E37\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E38\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E39\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B16\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E40\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B6\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E41\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E42\u003C/td\u003E\u003Ctd\u003EPontos de Per\u00EDcia: \u002B4\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E43\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E44\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B2\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E45\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B5\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B8\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B24\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E46\u003C/td\u003E\u003Ctd\u003EEspa\u00E7os de Caracter\u00EDstica: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E47\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E48\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B1\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E49\u003C/td\u003E\u003Ctd\u003EPontos de Igni\u00E7\u00E3o: \u002B20\u003Cbr /\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco\u003C/td\u003E\u003C/tr\u003E\u003Ctr\u003E\u003Ctd\u003E50\u003C/td\u003E\u003Ctd\u003EPontos de Atributo: \u002B8\u003Cbr /\u003EPontos de Per\u00EDcia: \u002B4\u003Cbr /\u003EPontos de Igni\u00E7\u00E3o: \u002B30\u003Cbr /\u003EEspa\u00E7os de Maestria: \u002B1\u003Cbr /\u003E\u002BStatus Aprimorado de Vida/Foco (Total)\u003Cbr /\u003E\u002B Ultima Passiva\u003C/td\u003E\u003C/tr\u003E\u003C/tbody\u003E\u003C/table\u003E",
+    "Sections": []
+  },
+  {
+    "Slug": "estrelas-alkerianas",
+    "Titulo": "As Estrelas",
+    "IntroHtml": "\u003Cp\u003ENo calend\u00E1rio Alkeriano, cada uma das dez Coroas est\u00E1 associada a uma Estrela. A Estrela representa uma tend\u00EAncia de comportamento atribu\u00EDda aos nascidos durante aquela Coroa, influenciando a maneira como costumam agir, pensar e reagir diante das situa\u00E7\u00F5es.\u003C/p\u003E\n\u003Cp\u003EA Estrela n\u00E3o define completamente uma pessoa. Ela representa uma inclina\u00E7\u00E3o natural, que pode ser seguida, contrariada ou interpretada de diferentes maneiras. Quanto mais um personagem age de acordo com sua Estrela, mais a Sina parece acompanh\u00E1-lo.\u003C/p\u003E\n\u003Chr /\u003E\n\u003Cfigure style=\u0022margin:0 0 16px\u0022\u003E\n    \u003Cimg src=\u0022/rulebook/Calendario alkeriano.jpeg\u0022 alt=\u0022Calend\u00E1rio Alkeriano\u0022 style=\u0022max-width:100%\u0022 /\u003E\n    \u003Cfigcaption\u003ECalend\u00E1rio Alkeriano\u003C/figcaption\u003E\n\u003C/figure\u003E",
+    "Sections": [
+      {
+        "Id": "sina",
+        "Titulo": "Sina",
+        "Html": "\u003Cp\u003ESina representa a influ\u00EAncia da Estrela sobre aqueles que seguem seu caminho. Sempre que um personagem realizar uma a\u00E7\u00E3o que esteja claramente alinhada com a sua Estrela, o Mestre pode conceder 1 Ponto de Sina.\u003C/p\u003E\n\u003Cp\u003EUm personagem pode possuir no m\u00E1ximo 3 Pontos de Sina ao mesmo tempo.\u003C/p\u003E\n\u003Cp\u003EA a\u00E7\u00E3o deve representar genuinamente o comportamento da Estrela. O jogador n\u00E3o recebe Sina simplesmente por declarar que seu personagem possui determinado tra\u00E7o; \u00E9 necess\u00E1rio demonstr\u00E1-lo atrav\u00E9s de suas decis\u00F5es durante a aventura.\u003C/p\u003E\n\u003Cp\u003EOs Pontos de Sina podem ser utilizados das seguintes maneiras:\u003C/p\u003E\n\u003Ch2 id=\u0022repetir-um-resultado\u0022\u003ERepetir um resultado\u003C/h2\u003E\n\u003Cp\u003ECusto: 1 Ponto de Sina\u003C/p\u003E\n\u003Cp\u003EAp\u00F3s obter um resultado ruim em uma rolagem, o personagem pode gastar 1 Ponto de Sina para realizar a rolagem novamente.\u003C/p\u003E\n\u003Cp\u003EO novo resultado substitui o anterior.\u003C/p\u003E\n\u003Ch2 id=\u0022favorecer-um-aliado\u0022\u003EFavorecer um aliado\u003C/h2\u003E\n\u003Cp\u003ECusto: 2 Pontos de Sina\u003C/p\u003E\n\u003Cp\u003EQuando um aliado obtiver um resultado ruim em uma rolagem, o personagem pode gastar 2 Pontos de Sina para permitir que o aliado realize a rolagem novamente.\u003C/p\u003E\n\u003Cp\u003EO novo resultado substitui o anterior.\u003C/p\u003E\n\u003Ch2 id=\u0022superar-um-teste\u0022\u003ESuperar um teste\u003C/h2\u003E\n\u003Cp\u003ECusto: 3 Pontos de Sina\u003C/p\u003E\n\u003Cp\u003EO personagem pode gastar 3 Pontos de Sina para passar automaticamente em um teste, sem realizar a rolagem.\u003C/p\u003E\n\u003Cp\u003EO Mestre pode determinar que determinadas situa\u00E7\u00F5es n\u00E3o permitem esse uso, especialmente quando o resultado depender de circunst\u00E2ncias que n\u00E3o podem ser superadas apenas pela capacidade ou determina\u00E7\u00E3o do personagem.\u003C/p\u003E\n\u003Ch2 id=\u0022romper-uma-condicao\u0022\u003ERomper uma condi\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003ECusto: 1 Ponto de Sina\u003C/p\u003E\n\u003Cp\u003EO personagem pode gastar 1 Ponto de Sina para sair imediatamente de uma condi\u00E7\u00E3o imposta, quando isso for narrativamente poss\u00EDvel.\u003C/p\u003E\n\u003Ch2 id=\u0022inspiracao\u0022\u003EInspira\u00E7\u00E3o\u003C/h2\u003E\n\u003Cp\u003ECusto: 2 Pontos de Sina\u003C/p\u003E\n\u003Cp\u003EO personagem pode gastar 2 Pontos de Sina para receber uma inspira\u00E7\u00E3o, pista ou dica relacionada \u00E0 cena atual.\u003C/p\u003E\n\u003Cp\u003EO Mestre decide a informa\u00E7\u00E3o fornecida e pode determinar que determinadas cenas n\u00E3o permitem esse uso.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "i-aeurer",
+        "Titulo": "\uD83C\uDF3F I \u2014 AEURER",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Curiosidade\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Aeurer possuem uma necessidade constante de descobrir e experimentar. O desconhecido desperta sua aten\u00E7\u00E3o, e raramente se contentam com uma explica\u00E7\u00E3o simples quando acreditam que existe algo al\u00E9m dela.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EFazer perguntas sobre aquilo que n\u00E3o compreendem.\u003C/li\u003E\n\u003Cli\u003EInvestigar lugares, objetos e acontecimentos desconhecidos.\u003C/li\u003E\n\u003Cli\u003EExperimentar coisas novas mesmo sem saber exatamente o resultado.\u003C/li\u003E\n\u003Cli\u003EQuestionar tradi\u00E7\u00F5es e explica\u00E7\u00F5es baseadas apenas no costume.\u003C/li\u003E\n\u003Cli\u003ETentar descobrir o que existe por tr\u00E1s de portas fechadas ou assuntos proibidos.\u003C/li\u003E\n\u003Cli\u003EAprender atrav\u00E9s da pr\u00F3pria experi\u00EAncia, mesmo quando isso envolve cometer erros.\u003C/li\u003E\n\u003Cli\u003ESe interessar especialmente por hist\u00F3rias, criaturas, culturas e fen\u00F4menos desconhecidos.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Abrir uma passagem desconhecida porque o personagem precisa descobrir para onde ela leva.\u003C/p\u003E\n\u003Cp\u003ESina: A curiosidade de Aeurer \u00E9 recompensada quando o personagem escolhe descobrir algo em vez de simplesmente ignor\u00E1-lo.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "ii-liora",
+        "Titulo": "\uD83C\uDF19 II \u2014 LIORA",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Introspec\u00E7\u00E3o\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Liora costumam voltar seus pensamentos para dentro. Antes de revelar aquilo que sentem ou tomar determinadas decis\u00F5es, procuram compreender seus pr\u00F3prios sentimentos, desejos e inseguran\u00E7as.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EPensar sobre acontecimentos importantes depois que eles acontecem.\u003C/li\u003E\n\u003Cli\u003EGuardar assuntos pessoais at\u00E9 encontrar algu\u00E9m em quem confiem.\u003C/li\u003E\n\u003Cli\u003ERefletir sobre seus pr\u00F3prios erros e decis\u00F5es.\u003C/li\u003E\n\u003Cli\u003EQuestionar por que determinadas situa\u00E7\u00F5es os afetaram.\u003C/li\u003E\n\u003Cli\u003EPrecisar de algum tempo sozinhos depois de acontecimentos emocionalmente intensos.\u003C/li\u003E\n\u003Cli\u003EPensar cuidadosamente antes de revelar seus sentimentos.\u003C/li\u003E\n\u003Cli\u003ERelembrar experi\u00EAncias passadas para compreender melhor situa\u00E7\u00F5es presentes.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Depois de uma discuss\u00E3o, o personagem prefere se afastar por alguns minutos para entender por que aquilo o afetou antes de responder.\u003C/p\u003E\n\u003Cp\u003ESina: A introspec\u00E7\u00E3o de Liora \u00E9 recompensada quando o personagem procura compreender a si mesmo antes de agir.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "iii-vaelen",
+        "Titulo": "\uD83C\uDF33 III \u2014 VAELEN",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Prote\u00E7\u00E3o\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Vaelen desenvolvem naturalmente um forte impulso de proteger aquilo e aqueles que consideram importantes. Quando algu\u00E9m est\u00E1 em perigo, sua primeira preocupa\u00E7\u00E3o costuma ser impedir que o dano aconte\u00E7a.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EColocar-se entre uma amea\u00E7a e algu\u00E9m indefeso.\u003C/li\u003E\n\u003Cli\u003EAssumir responsabilidade por pessoas que dependem deles.\u003C/li\u003E\n\u003Cli\u003EAjudar companheiros feridos ou vulner\u00E1veis antes de cuidar de si mesmos.\u003C/li\u003E\n\u003Cli\u003EDefender aqueles que consideram importantes quando s\u00E3o atacados.\u003C/li\u003E\n\u003Cli\u003ECuidar de animais, objetos, lugares ou pessoas que estejam sob sua responsabilidade.\u003C/li\u003E\n\u003Cli\u003EPermanecer ao lado de algu\u00E9m mesmo quando a situa\u00E7\u00E3o se torna perigosa.\u003C/li\u003E\n\u003Cli\u003ESentir culpa quando algu\u00E9m sofre por uma situa\u00E7\u00E3o que acreditam que poderiam ter evitado.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Permanecer em combate para proteger um companheiro ferido, mesmo quando seria mais seguro recuar.\u003C/p\u003E\n\u003Cp\u003ESina: A prote\u00E7\u00E3o de Vaelen \u00E9 recompensada quando o personagem coloca-se deliberadamente entre o perigo e aquilo que decidiu proteger.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "iv-theron",
+        "Titulo": "\u2600\uFE0F IV \u2014 THERON",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Impulsividade\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Theron tendem a agir antes de pensar completamente nas consequ\u00EAncias. S\u00E3o espont\u00E2neos, intensos e frequentemente preferem cometer um erro tentando alguma coisa a permanecer parados esperando pelo momento perfeito.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EAgir rapidamente diante de situa\u00E7\u00F5es inesperadas.\u003C/li\u003E\n\u003Cli\u003EFalar aquilo que pensam sem preparar cuidadosamente as palavras.\u003C/li\u003E\n\u003Cli\u003EAceitar oportunidades assim que aparecem.\u003C/li\u003E\n\u003Cli\u003ETomar decis\u00F5es durante momentos de press\u00E3o sem esperar por um plano completo.\u003C/li\u003E\n\u003Cli\u003EInterromper discuss\u00F5es quando acreditam que \u00E9 hora de agir.\u003C/li\u003E\n\u003Cli\u003EExperimentar ideias assim que surgem.\u003C/li\u003E\n\u003Cli\u003EArrepender-se de decis\u00F5es precipitadas depois de j\u00E1 t\u00EA-las tomado.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Saltar sobre um inimigo para salvar um companheiro antes mesmo de saber se conseguir\u00E1 vencer a luta.\u003C/p\u003E\n\u003Cp\u003ESina: A impulsividade de Theron \u00E9 recompensada quando o personagem age espontaneamente, assumindo as consequ\u00EAncias de sua decis\u00E3o.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "v-maetus",
+        "Titulo": "\uD83D\uDD25 V \u2014 MAETUS",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Ambi\u00E7\u00E3o\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Maetus raramente se contentam com aquilo que j\u00E1 possuem. Existe neles o desejo de crescer, conquistar e superar seus pr\u00F3prios limites. Sua ambi\u00E7\u00E3o pode estar relacionada a poder, riqueza, conhecimento, reconhecimento ou qualquer outro objetivo que considerem importante.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EEstabelecer objetivos pessoais que desejam alcan\u00E7ar.\u003C/li\u003E\n\u003Cli\u003EProcurar maneiras de melhorar suas habilidades.\u003C/li\u003E\n\u003Cli\u003EEnxergar pessoas mais habilidosas como refer\u00EAncias ou rivais.\u003C/li\u003E\n\u003Cli\u003EAceitar desafios que possam aumentar sua reputa\u00E7\u00E3o.\u003C/li\u003E\n\u003Cli\u003EBuscar reconhecimento por suas conquistas.\u003C/li\u003E\n\u003Cli\u003EDesejar alcan\u00E7ar posi\u00E7\u00F5es maiores do que aquelas que ocupam.\u003C/li\u003E\n\u003Cli\u003ESentir insatisfa\u00E7\u00E3o quando acreditam que poderiam ter feito mais.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Aceitar um desafio dif\u00EDcil porque venc\u00EA-lo provaria que o personagem est\u00E1 mais pr\u00F3ximo de superar seu atual limite.\u003C/p\u003E\n\u003Cp\u003ESina: A ambi\u00E7\u00E3o de Maetus \u00E9 recompensada quando o personagem escolhe buscar crescimento, reconhecimento ou conquista mesmo diante de dificuldades.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "vi-almora",
+        "Titulo": "\uD83C\uDF41 VI \u2014 ALMORA",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Generosidade\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Almora possuem uma tend\u00EAncia a compartilhar aquilo que possuem. Para eles, recursos, conhecimento e oportunidades podem ter mais valor quando s\u00E3o utilizados para beneficiar outras pessoas.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EDividir comida ou recursos quando algu\u00E9m possui menos.\u003C/li\u003E\n\u003Cli\u003EOferecer ajuda sem exigir pagamento.\u003C/li\u003E\n\u003Cli\u003ECompartilhar conhecimentos que poderiam guardar para si.\u003C/li\u003E\n\u003Cli\u003EOferecer presentes ou recompensas espontaneamente.\u003C/li\u003E\n\u003Cli\u003EAjudar pessoas necessitadas mesmo quando n\u00E3o possuem obriga\u00E7\u00E3o.\u003C/li\u003E\n\u003Cli\u003ESentir desconforto ao possuir muito enquanto algu\u00E9m pr\u00F3ximo possui muito pouco.\u003C/li\u003E\n\u003Cli\u003ESacrificar parte do que possuem para beneficiar algu\u00E9m importante.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Entregar parte de seus pr\u00F3prios suprimentos a um desconhecido que n\u00E3o possui comida.\u003C/p\u003E\n\u003Cp\u003ESina: A generosidade de Almora \u00E9 recompensada quando o personagem abre m\u00E3o voluntariamente de algo que possui para beneficiar outra pessoa.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "vii-elvani",
+        "Titulo": "\uD83E\uDDED VII \u2014 ELVANI",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Prud\u00EAncia\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Elvani preferem compreender os riscos antes de se comprometer. Costumam pensar nas consequ\u00EAncias de suas decis\u00F5es e procuram evitar situa\u00E7\u00F5es nas quais o pre\u00E7o do erro seja alto demais.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EPerguntar o que pode dar errado antes de agir.\u003C/li\u003E\n\u003Cli\u003EBuscar informa\u00E7\u00F5es antes de entrar em lugares desconhecidos.\u003C/li\u003E\n\u003Cli\u003EAvaliar cuidadosamente acordos e promessas.\u003C/li\u003E\n\u003Cli\u003EGuardar recursos para situa\u00E7\u00F5es futuras.\u003C/li\u003E\n\u003Cli\u003EProcurar falhas nos planos apresentados por outras pessoas.\u003C/li\u003E\n\u003Cli\u003EPreparar alternativas caso seu primeiro plano fracasse.\u003C/li\u003E\n\u003Cli\u003ERecusar riscos quando n\u00E3o enxergam uma recompensa que os justifique.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Recusar-se a entrar em uma ru\u00EDna desconhecida at\u00E9 descobrir quem a construiu e quais perigos foram encontrados por exploradores anteriores.\u003C/p\u003E\n\u003Cp\u003ESina: A prud\u00EAncia de Elvani \u00E9 recompensada quando o personagem escolhe se preparar ou reduzir um risco antes de agir.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "viii-sareli",
+        "Titulo": "\uD83C\uDF00 VIII \u2014 SARELI",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Vingan\u00E7a\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Sareli possuem dificuldade em simplesmente esquecer aqueles que os prejudicaram. Para eles, certas a\u00E7\u00F5es deixam marcas que n\u00E3o podem ser apagadas apenas com um pedido de desculpas.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003ELembrar de trai\u00E7\u00F5es e ofensas por muito tempo.\u003C/li\u003E\n\u003Cli\u003EGuardar informa\u00E7\u00F5es sobre aqueles que consideram inimigos.\u003C/li\u003E\n\u003Cli\u003ERecusar perd\u00E3o quando acreditam que o arrependimento n\u00E3o \u00E9 sincero.\u003C/li\u003E\n\u003Cli\u003EProcurar uma oportunidade de confrontar quem os prejudicou.\u003C/li\u003E\n\u003Cli\u003EConsiderar que determinadas a\u00E7\u00F5es precisam ter consequ\u00EAncias.\u003C/li\u003E\n\u003Cli\u003EPlanejar cuidadosamente quando desejam retribuir uma ofensa.\u003C/li\u003E\n\u003Cli\u003ETer dificuldade em abandonar conflitos que consideram pessoais.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Poupar um inimigo derrotado porque ainda n\u00E3o chegou o momento que o personagem considera adequado para cobrar sua d\u00EDvida.\u003C/p\u003E\n\u003Cp\u003ESina: A vingan\u00E7a de Sareli \u00E9 recompensada quando o personagem mant\u00E9m viva uma d\u00EDvida pessoal e age deliberadamente para retribuir aquilo que sofreu.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "ix-gaelion",
+        "Titulo": "\uD83D\uDC3A IX \u2014 GAELION",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela da Lealdade\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Gaelion atribuem grande import\u00E2ncia aos v\u00EDnculos que estabelecem. Uma vez que consideram algu\u00E9m parte de seu grupo, tendem a defend\u00EA-lo e permanecer ao seu lado mesmo diante de dificuldades.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EDefender amigos quando s\u00E3o atacados ou injustamente acusados.\u003C/li\u003E\n\u003Cli\u003ECumprir promessas feitas a pessoas pr\u00F3ximas.\u003C/li\u003E\n\u003Cli\u003EN\u00E3o abandonar companheiros feridos ou em perigo.\u003C/li\u003E\n\u003Cli\u003EGuardar segredos confiados por aqueles em quem confiam.\u003C/li\u003E\n\u003Cli\u003EDar novas oportunidades a pessoas importantes.\u003C/li\u003E\n\u003Cli\u003EConsiderar a palavra de um companheiro antes da opini\u00E3o de um estranho.\u003C/li\u003E\n\u003Cli\u003EPermanecer ao lado de algu\u00E9m mesmo quando discordam de suas escolhas.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Recusar uma recompensa ou oportunidade porque, para aceit\u00E1-la, precisaria abandonar um companheiro.\u003C/p\u003E\n\u003Cp\u003ESina: A lealdade de Gaelion \u00E9 recompensada quando o personagem escolhe permanecer ao lado de algu\u00E9m que considera parte de seu grupo, mesmo quando isso lhe traz preju\u00EDzo.\u003C/p\u003E\n\u003Chr /\u003E\n",
+        "Grupo": null
+      },
+      {
+        "Id": "x-sadir",
+        "Titulo": "\u2726 X \u2014 SADIR",
+        "Html": "\u003Cp\u003E\u003Cem\u003EEstrela do Ego\u00EDsmo\u003C/em\u003E\u003C/p\u003E\n\u003Cp\u003EOs nascidos sob Sadir tendem a considerar seus pr\u00F3prios interesses antes dos interesses dos outros. Isso n\u00E3o significa necessariamente crueldade: eles simplesmente n\u00E3o enxergam como sua responsabilidade sacrificar aquilo que possuem por qualquer pessoa.\u003C/p\u003E\n\u003Cp\u003ETendem a:\u003C/p\u003E\n\u003Cul\u003E\n\u003Cli\u003EPerguntar o que ganhar\u00E3o antes de aceitar uma tarefa arriscada.\u003C/li\u003E\n\u003Cli\u003ENegociar recompensas antes de oferecer seus servi\u00E7os.\u003C/li\u003E\n\u003Cli\u003EEvitar colocar a pr\u00F3pria vida em perigo por desconhecidos.\u003C/li\u003E\n\u003Cli\u003EGuardar recursos que considerem importantes para si.\u003C/li\u003E\n\u003Cli\u003EManter informa\u00E7\u00F5es que possam lhes proporcionar alguma vantagem.\u003C/li\u003E\n\u003Cli\u003EPensar primeiro em sua pr\u00F3pria sobreviv\u00EAncia diante de situa\u00E7\u00F5es extremas.\u003C/li\u003E\n\u003Cli\u003EAjudar outras pessoas quando existe uma raz\u00E3o pessoal para faz\u00EA-lo.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cp\u003EExemplo de a\u00E7\u00E3o alinhada: Recusar-se a entrar em uma situa\u00E7\u00E3o mortal at\u00E9 que o grupo ofere\u00E7a uma recompensa que considere suficiente.\u003C/p\u003E\n\u003Cp\u003ESina: O ego\u00EDsmo de Sadir \u00E9 recompensado quando o personagem coloca deliberadamente seus pr\u00F3prios interesses, recursos ou seguran\u00E7a acima dos interesses de outras pessoas.\u003C/p\u003E\n",
+        "Grupo": null
+      }
+    ]
+  },
+  {
+    "Slug": "historicos",
+    "Titulo": "Hist\u00F3ricos",
+    "IntroHtml": "\u003Cp\u003EOs hist\u00F3ricos representam experi\u00EAncias, interesses e h\u00E1bitos que marcaram a vida do personagem antes de sua jornada come\u00E7ar. Eles n\u00E3o determinam uma profiss\u00E3o. Um personagem com Estudo Acad\u00EAmico, por exemplo, n\u00E3o precisa ser um acad\u00EAmico; ele apenas passou tempo suficiente estudando para desenvolver habilidades relacionadas ao conhecimento.\u003C/p\u003E\n\u003Cp\u003ECada historico concede \u002B6 em uma per\u00EDcia e \u002B3 em outra.\u003C/p\u003E\n\u003Chr /\u003E\n",
+    "Sections": [
+      {
+        "Id": "afinidade-animal",
+        "Titulo": "Afinidade Animal",
+        "Html": "O personagem sempre teve facilidade para se aproximar de animais. Anos convivendo com eles ensinaram-no a reconhecer comportamentos, sinais de medo e formas de estabelecer confian\u0026#231;a.\u003Cp\u003E\u003Cem\u003E\u002B6 Empatia c/ Animais / \u002B3 Sobreviv\u0026#234;ncia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "aprendiz-autodidata",
+        "Titulo": "Aprendiz Autodidata",
+        "Html": "O personagem nunca precisou de algu\u0026#233;m para dizer o que deveria aprender. Quando algo despertava seu interesse, passava horas pesquisando, testando e descobrindo sozinho.\u003Cp\u003E\u003Cem\u003E\u002B6 Conhecimentos / \u002B3 Investiga\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "autossufici-ncia",
+        "Titulo": "Autossufici\u00EAncia",
+        "Html": "O personagem aprendeu a depender principalmente de si mesmo. Anos viajando sozinho fizeram com que desenvolvesse confian\u0026#231;a para tomar decis\u0026#245;es sem precisar esperar que algu\u0026#233;m lhe mostrasse o caminho.\u003Cp\u003E\u003Cem\u003E\u002B6 Senso Comum / \u002B3 Navega\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "busca-por-desafios",
+        "Titulo": "Busca por Desafios",
+        "Html": "O personagem nunca se satisfez completamente com aquilo que j\u0026#225; conseguia fazer. Sempre procurou situa\u0026#231;\u0026#245;es capazes de testar seus limites e descobrir at\u0026#233; onde suas capacidades poderiam chegar.\u003Cp\u003E\u003Cem\u003E\u002B6 For\u0026#231;a de Vontade / \u002B3 Brigar\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "caminho-devocional",
+        "Titulo": "Caminho Devocional",
+        "Html": "O personagem passou anos viajando voluntariamente entre lugares sagrados. O contato com diferentes tradi\u0026#231;\u0026#245;es e caminhos fortaleceu tanto seu conhecimento religioso quanto sua capacidade de se orientar.\u003Cp\u003E\u003Cem\u003E\u002B6 Religi\u0026#227;o / \u002B3 Navega\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "curiosidade-alqu-mica",
+        "Titulo": "Curiosidade Alqu\u00EDmica",
+        "Html": "Reagentes, plantas e subst\u0026#226;ncias despertavam a curiosidade do personagem. Depois de anos experimentando por conta pr\u0026#243;pria, desenvolveu uma compreens\u0026#227;o pr\u0026#225;tica sobre aquilo que antes parecia incompreens\u0026#237;vel.\u003Cp\u003E\u003Cem\u003E\u002B6 Alquimia / \u002B3 Herborismo\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "curiosidade-insaci-vel",
+        "Titulo": "Curiosidade Insaci\u00E1vel",
+        "Html": "O personagem simplesmente n\u0026#227;o consegue deixar um mist\u0026#233;rio em paz. Lugares estranhos, mecanismos desconhecidos, criaturas incomuns e acontecimentos inexplic\u0026#225;veis inevitavelmente despertam sua aten\u0026#231;\u0026#227;o.\u003Cp\u003E\u003Cem\u003E\u002B6 Investiga\u0026#231;\u0026#227;o / \u002B3 Conhecimentos\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "destreza-manual",
+        "Titulo": "Destreza Manual",
+        "Html": "Desde cedo, o personagem gostava de brincar com objetos pequenos, esconder coisas e realizar pequenos truques. Com o tempo, desenvolveu uma precis\u0026#227;o que poucos possuem.\u003Cp\u003E\u003Cem\u003E\u002B6 Crime / \u002B3 Furtividade\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "disciplina-f-sica",
+        "Titulo": "Disciplina F\u00EDsica",
+        "Html": "O personagem transformou o pr\u0026#243;prio corpo em um objeto de aperfei\u0026#231;oamento constante. Anos de treinamento fizeram da for\u0026#231;a, velocidade e coordena\u0026#231;\u0026#227;o parte de sua rotina.\u003Cp\u003E\u003Cem\u003E\u002B6 Atletismo / \u002B3 Acrobacia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "disciplina-marcial",
+        "Titulo": "Disciplina Marcial",
+        "Html": "Por vontade pr\u0026#243;pria, o personagem dedicou anos ao aperfei\u0026#231;oamento f\u0026#237;sico e t\u0026#233;cnico. A repeti\u0026#231;\u0026#227;o constante transformou movimentos aprendidos em h\u0026#225;bitos naturais.\u003Cp\u003E\u003Cem\u003E\u002B6 Armas Brancas / \u002B3 Reflexos\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "estudo-acad-mico",
+        "Titulo": "Estudo Acad\u00EAmico",
+        "Html": "O personagem passou anos cercado por livros, mestres e estudos. Mesmo sem seguir uma carreira acad\u0026#234;mica, esse per\u0026#237;odo desenvolveu sua capacidade de compreender assuntos complexos e encontrar informa\u0026#231;\u0026#245;es.\u003Cp\u003E\u003Cem\u003E\u002B6 Arcano / \u002B3 Biblioteca\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "estudo-de-l-nguas",
+        "Titulo": "Estudo de L\u00EDnguas",
+        "Html": "O personagem sempre teve interesse por outros povos e formas de comunica\u0026#231;\u0026#227;o. Anos tentando compreender diferentes idiomas fizeram com que palavras estrangeiras deixassem de parecer completamente estranhas.\u003Cp\u003E\u003Cem\u003E\u002B6 Lingu\u0026#237;stica / \u002B3 Conhecimentos\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "fasc-nio-pelo-oculto",
+        "Titulo": "Fasc\u00EDnio pelo Oculto",
+        "Html": "O sobrenatural come\u0026#231;ou como uma curiosidade, mas o personagem continuou procurando respostas onde outros preferiam n\u0026#227;o olhar. Anos estudando o desconhecido deixaram marcas em seu conhecimento.\u003Cp\u003E\u003Cem\u003E\u002B6 Ocultismo / \u002B3 Investiga\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "fasc-nio-pelo-passado",
+        "Titulo": "Fasc\u00EDnio pelo Passado",
+        "Html": "Ru\u0026#237;nas abandonadas sempre despertaram sua curiosidade. O personagem passou anos explorando lugares esquecidos, aprendendo a procurar pistas sobre aquilo que existiu antes de seu tempo.\u003Cp\u003E\u003Cem\u003E\u002B6 Investiga\u0026#231;\u0026#227;o / \u002B3 Artefatos M\u0026#225;gicos\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "fasc-nio-por-rel-quias",
+        "Titulo": "Fasc\u00EDnio por Rel\u00EDquias",
+        "Html": "Objetos antigos sempre chamaram sua aten\u0026#231;\u0026#227;o. O personagem passou anos procurando, examinando e tentando compreender pe\u0026#231;as esquecidas, desenvolvendo um olhar apurado para reconhecer seu valor.\u003Cp\u003E\u003Cem\u003E\u002B6 Artefatos M\u0026#225;gicos / \u002B3 Avalia\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "for-a-da-f",
+        "Titulo": "For\u00E7a da F\u00E9",
+        "Html": "A f\u0026#233; ocupou uma parte importante da vida do personagem. Seus estudos, pr\u0026#225;ticas e convic\u0026#231;\u0026#245;es deram-lhe uma compreens\u0026#227;o mais profunda da religi\u0026#227;o e uma vontade dif\u0026#237;cil de abalar.\u003Cp\u003E\u003Cem\u003E\u002B6 Religi\u0026#227;o / \u002B3 For\u0026#231;a de Vontade\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "h-bito-de-enganar",
+        "Titulo": "H\u00E1bito de Enganar",
+        "Html": "O personagem descobriu que palavras bem escolhidas podiam abrir caminhos que for\u0026#231;a nenhuma conseguiria. Depois de anos usando mentiras, desculpas e hist\u0026#243;rias, aprendeu a controlar melhor aquilo que os outros acreditam.\u003Cp\u003E\u003Cem\u003E\u002B6 Engana\u0026#231;\u0026#227;o / \u002B3 L\u0026#225;bia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "instinto-selvagem",
+        "Titulo": "Instinto Selvagem",
+        "Html": "A conviv\u0026#234;ncia prolongada com a natureza transformou a maneira como o personagem percebe o mundo. Aprendeu a reconhecer rastros, encontrar alimento e identificar perigos antes que se aproximassem.\u003Cp\u003E\u003Cem\u003E\u002B6 Sobreviv\u0026#234;ncia / \u002B3 Percep\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "instinto-de-desconfian-a",
+        "Titulo": "Instinto de Desconfian\u00E7a",
+        "Html": "Alguma experi\u0026#234;ncia ensinou o personagem que as apar\u0026#234;ncias podem enganar. Desde ent\u0026#227;o, desenvolveu o h\u0026#225;bito de questionar inten\u0026#231;\u0026#245;es e procurar aquilo que est\u0026#225; escondido.\u003Cp\u003E\u003Cem\u003E\u002B6 Intui\u0026#231;\u0026#227;o / \u002B3 Senso Comum\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "mente-inventiva",
+        "Titulo": "Mente Inventiva",
+        "Html": "Desmontar, construir e modificar coisas sempre despertou seu interesse. Depois de anos tentando descobrir como as coisas funcionavam, desenvolveu facilidade para criar suas pr\u0026#243;prias solu\u0026#231;\u0026#245;es.\u003Cp\u003E\u003Cem\u003E\u002B6 Of\u0026#237;cio / \u002B3 Investiga\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "obsess-o-por-artefatos",
+        "Titulo": "Obsess\u00E3o por Artefatos",
+        "Html": "O contato com um artefato m\u0026#225;gico despertou uma curiosidade que nunca desapareceu. Desde ent\u0026#227;o, o personagem passou anos tentando compreender objetos semelhantes e os mist\u0026#233;rios por tr\u0026#225;s deles.\u003Cp\u003E\u003Cem\u003E\u002B6 Artefatos M\u0026#225;gicos / \u002B3 Arcano\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "olhar-atento",
+        "Titulo": "Olhar Atento",
+        "Html": "O personagem sempre preferiu observar antes de participar. Anos prestando aten\u0026#231;\u0026#227;o nas pessoas e no ambiente fizeram com que detalhes ignorados pelos outros dificilmente passassem despercebidos.\u003Cp\u003E\u003Cem\u003E\u002B6 Percep\u0026#231;\u0026#227;o / \u002B3 Intui\u0026#231;\u0026#227;o\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "resili-ncia",
+        "Titulo": "Resili\u00EAncia",
+        "Html": "Alguma experi\u0026#234;ncia obrigou o personagem a suportar condi\u0026#231;\u0026#245;es nas quais desistir n\u0026#227;o era uma op\u0026#231;\u0026#227;o. Depois de sobreviver, descobriu que conseguia suportar muito mais do que imaginava.\u003Cp\u003E\u003Cem\u003E\u002B6 Fortitude / \u002B3 Sobreviv\u0026#234;ncia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "temperamento-combativo",
+        "Titulo": "Temperamento Combativo",
+        "Html": "O personagem cresceu se envolvendo em conflitos f\u0026#237;sicos. Brigas, disputas e confrontos acabaram ensinando aquilo que nenhum treinamento formal poderia ensinar.\u003Cp\u003E\u003Cem\u003E\u002B6 Brigar / \u002B3 Fortitude\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "veia-art-stica",
+        "Titulo": "Veia Art\u00EDstica",
+        "Html": "Criar sempre foi uma maneira de se expressar. Ao longo dos anos, o personagem desenvolveu sua sensibilidade atrav\u0026#233;s de desenhos, m\u0026#250;sica, escrita, escultura ou qualquer outra forma de arte.\u003Cp\u003E\u003Cem\u003E\u002B6 Art\u0026#237;stico / \u002B3 L\u0026#225;bia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      },
+      {
+        "Id": "vida-errante",
+        "Titulo": "Vida Errante",
+        "Html": "O personagem nunca criou ra\u0026#237;zes por muito tempo. Anos viajando entre diferentes regi\u0026#245;es ensinaram-no a encontrar seu caminho e sobreviver longe de lugares conhecidos.\u003Cp\u003E\u003Cem\u003E\u002B6 Navega\u0026#231;\u0026#227;o / \u002B3 Sobreviv\u0026#234;ncia\u003C/em\u003E\u003C/p\u003E",
+        "Grupo": null
+      }
+    ]
+  }
+]

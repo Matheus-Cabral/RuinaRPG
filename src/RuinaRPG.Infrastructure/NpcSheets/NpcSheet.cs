@@ -1,8 +1,9 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcSheet
+public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem
 {
     // 1.a Identidade
     public Guid Id { get; set; }
@@ -79,8 +80,8 @@ public class NpcSheet
     /// <summary>
     /// Tracks the last Nível the GM dismissed the level-up notice for — see
     /// NpcSheetsController.LevelUpNotice/.DismissLevelUpNotice, same mechanism as
-    /// CharacterSheet's own property, per Requisitos - Ficha de NPCs R0002 ("estrutura idêntica
-    /// à Ficha de Personagem").
+    /// CharacterSheet's own property, per the preamble of Requisitos - Ficha de NPCs ("mesma estrutura
+    /// completa" da Ficha de Personagem).
     /// </summary>
     public int? LastDismissedLevelUpLevel { get; set; }
 }

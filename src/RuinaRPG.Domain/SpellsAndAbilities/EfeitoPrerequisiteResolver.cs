@@ -2,7 +2,7 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 
 /// <summary>
 /// The result of trying to resolve one target Efeito's unmet prerequisites — see
-/// docs/superpowers/specs/2026-09-17-pre-requisitos-automaticos-de-efeitos-design.md.
+/// docs/superpowers/archive/specs/2026-09-17-pre-requisitos-automaticos-de-efeitos-design.md.
 /// </summary>
 public sealed record EfeitoResolutionResult(
     IReadOnlyList<EfeitoRegra> ParaAutoAdicionar,

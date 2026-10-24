@@ -5,622 +5,54 @@
 @inject SecretNoteNotifier Notifier
 @inject PericiaCatalogo Pericias
 @inject AuthenticationStateProvider AuthProvider
-@inject IDialogService Dialogs
-@using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CreatureSheets
-@using RuinaRPG.Contracts.SpellsAndAbilities
-@using RuinaRPG.Domain.SpellsAndAbilities
-@using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Contracts.Images
-@using RuinaRPG.Contracts.Items
-@using RuinaRPG.Contracts.Rules
-@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 @using RuinaRPG.Contracts.Notifications
-@using System.ComponentModel.DataAnnotations
 
 <div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
-<Breadcrumbs Items="@Crumbs" />
-<h1>Ficha de Criatura</h1>
-@if (_concedida)
-{
-    <CondicoesAtivasAlert Url="@($"creature-sheets/{SheetId}/condicoes-ativas")" Versao="_condicoesVersao" />
-}
-
-<DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
-
-@if (_levelUpBonuses.Count > 0)
-{
-    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-3">
-        <MudText Typo="Typo.h6">Novo Nível!</MudText>
-        <ul>
-            @foreach (var bonus in _levelUpBonuses)
-            {
-                <li>@bonus</li>
-            }
-        </ul>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="DismissLevelUpAsync">Fechar</MudButton>
-    </MudAlert>
-}
+<CascadingValue Value="_estado" IsFixed="false">
+<CabecalhoDaFicha Trilha="@Crumbs" Concedida="_concedida" />
 
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
-        <EditForm Model="_form">
-            <DataAnnotationsValidator />
-            <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
-            <Section Title="Identidade">
-                <div class="mb-4">
-                    <MudAvatar Style="width:96px;height:96px;cursor:pointer" @onclick="@(() => _imageExpanded = true)">
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" ObjectFit="ObjectFit.Cover" />
-                        }
-                        else
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Person" />
-                        }
-                    </MudAvatar>
-                </div>
-
-                <MudDialog @bind-Visible="_imageExpanded">
-                    <DialogContent>
-                        @if (_form.ImageUrl is not null)
-                        {
-                            <MudImage Src="@_form.ImageUrl" Width="240" Class="mb-2" />
-                        }
-                        <div>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _imageEditing = !_imageEditing)" title="Editar imagem" />
-                            @if (_form.ImageId is not null)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="RemoveImage" title="Remover imagem" />
-                            }
-                        </div>
-
-                        @if (_imageEditing)
-                        {
-                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadImageAsync" Class="mt-2">
-                                <CustomContent Context="fileUploadContext">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => fileUploadContext.OpenFilePickerAsync())">Enviar nova imagem</MudButton>
-                                </CustomContent>
-                            </MudFileUpload>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="@(() => _imageGalleryOpen = true)">Escolher imagem já enviada</MudButton>
-                            <ImageGalleryDialog @bind-Visible="_imageGalleryOpen" Images="_myImages" AllowClear="true"
-                                                 IsSelectedFunc="@(id => id == _form.ImageId)"
-                                                 OnPick="@(id => { SelectExistingImage(id); _imageGalleryOpen = false; })" />
-                        }
-                    </DialogContent>
-                    <DialogActions>
-                        <MudButton OnClick="@(() => _imageExpanded = false)">Fechar</MudButton>
-                    </DialogActions>
-                </MudDialog>
-
-                <MudTextField T="string" @bind-Value="_form.Nome" Label="Nome" @bind-Value:after="NotifySavedAsync" />
-                <MudTextField T="string" @bind-Value="_form.Raca" Label="Raça" @bind-Value:after="NotifySavedAsync" />
-                <MudSelect T="string" @bind-Value="_form.Arquetipo" Label="Arquétipo" @bind-Value:after="NotifySavedAsync">
-                    <MudSelectItem Value="@("")">Escolha um Arquétipo</MudSelectItem>
-                    <MudSelectItem Value="@("Fisico")">Físico</MudSelectItem>
-                    <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
-                </MudSelect>
-                <MudTextField T="string" @bind-Value="_form.SubArquetipo" Label="Sub Arquétipo" @bind-Value:after="NotifySavedAsync" />
-                <AfinidadeSelect @bind-Value="_form.Afinidade" @bind-Value:after="NotifySavedAsync" />
-                <MudSelect T="string" @bind-Value="_form.Rank" Label="Rank" @bind-Value:after="NotifySavedAsync">
-                    <MudSelectItem Value="@("")">Escolha um Rank</MudSelectItem>
-                    <MudSelectItem Value="@("F")">F</MudSelectItem>
-                    <MudSelectItem Value="@("E")">E</MudSelectItem>
-                    <MudSelectItem Value="@("D")">D</MudSelectItem>
-                    <MudSelectItem Value="@("C")">C</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("A")">A</MudSelectItem>
-                    <MudSelectItem Value="@("S")">S</MudSelectItem>
-                </MudSelect>
-            </Section>
-
-            <Section Title="Nível e Progressão">
-                <MudNumericField T="int?" @bind-Value="_form.Nivel" For="@(() => _form.Nivel)" Label="Nível" @bind-Value:after="NotifyNivelChangedAsync" />
-                <MudNumericField T="int?" @bind-Value="_form.ExperienciaAtual" For="@(() => _form.ExperienciaAtual)" Label="Experiência Atual" @bind-Value:after="NotifyExperienciaAtualChangedAsync" />
-                <MudText>Abate: @_form.Abate</MudText>
-                <MudText>Assistência: @_form.Assistencia</MudText>
-                <MudNumericField T="int?" @bind-Value="_form.PontosDeIgnicao" For="@(() => _form.PontosDeIgnicao)" Label="Pontos de Ignição" @bind-Value:after="NotifyPontosDeIgnicaoChangedAsync" />
-            </Section>
-        </EditForm>
-
-        <Section Title="Características">
-            <EditForm Model="_traitForm" OnValidSubmit="AddTraitAsync">
-                <div class="d-flex align-center" style="gap:8px">
-                    <div style="flex:1">
-                        <EntityPicker @ref="_traitPicker" @bind-Value="_traitForm.TraitId" SearchItems="SearchTraitsAsync" Placeholder="Buscar característica..." />
-                    </div>
-                    @if (_isRulesAuditor)
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="NovaCaracteristicaDeCriaturaAsync">Nova característica de criatura</MudButton>
-                    }
-                </div>
-                <MudTextField @bind-Value="_traitForm.Especificacao" Label="Especificação (se exigida pela característica)" Class="mt-3" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Característica</MudButton>
-            </EditForm>
-            <OrcamentoDeCaracteristicas TotalPositivas="@(_traits?.TotalPositivas ?? 0)" TotalNegativas="@(_traits?.TotalNegativas ?? 0)"
-                                        LimitePositivas="@(_traits?.PontosDisponiveis ?? 0)" LimiteNegativas="@(_traits?.PontosDisponiveisNegativas ?? 0)" />
-            <MudText Typo="Typo.h6" Class="mt-3">Positivas (Total: @(_traits?.TotalPositivas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Positivas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.h6" Class="mt-3">Negativas (Total: @(_traits?.TotalNegativas ?? 0))</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <tbody>
-                    @foreach (var trait in _traits?.Negativas ?? new())
-                    {
-                        <tr>
-                            <td>@trait.Nome (@trait.Custo) — @trait.Descricao@(string.IsNullOrWhiteSpace(trait.Especificacao) ? "" : $" ({trait.Especificacao})")</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTraitAsync(trait.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaInformacoesBasicas Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
+                               AoMudarExperiencia="NotifyExperienciaAtualChangedAsync" AoMudarPontosDeIgnicao="NotifyPontosDeIgnicaoChangedAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Atributos & Perícias">
-        <PenalidadesAtivasAlert Url="@($"creature-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
-        <Section Title="Atributos">
-            @if (_attributeBudget is not null)
-            {
-                <MudText Color="@(_attributeBudget.GastoTotal > _attributeBudget.PontosDisponiveis ? Color.Error : Color.Default)">
-                    Pontos de Atributo: @_attributeBudget.GastoTotal / @_attributeBudget.PontosDisponiveis
-                </MudText>
-            }
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Proeficiência</th><th>Total</th></tr></thead>
-                <tbody>
-                    @foreach (var attr in _attributes)
-                    {
-                        <tr>
-                            <td>@AtributoDisplay.Label(attr.Atributo)</td>
-                            <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Gasto", v))" /></td>
-                            <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "Bonus", v))" /></td>
-                            <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => UpdateAttributeAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
-                            <td>@attr.Total</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Perícias">
-            <MudText>Pontos de Perícia Gastos: @_skills.Sum(s => s.Gasto)</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
-                <tbody>
-                    @foreach (var skill in _skills)
-                    {
-                        <tr>
-                            <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
-                            <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => UpdateSkillGastoAsync(skill.Pericia, v))" /></td>
-                            <td>@skill.Modificador</td>
-                            <td>
-                                <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => UpdateSkillAtributoAsync(skill.Pericia, v))">
-                                    <MudSelectItem Value="@("")">—</MudSelectItem>
-                                    @foreach (var attr in _attributes)
-                                    {
-                                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </td>
-                            <td>@skill.Total</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaAtributosEPericias Formulario="_form" />
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
-        <PenalidadesAtivasAlert Url="@($"creature-sheets/{SheetId}/equipment-penalties")" Versao="_penalidadesVersao" />
-        <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
-        <Section>
-            <MudNumericField T="int?" @bind-Value="_form.AdrenalinaAtual" For="@(() => _form.AdrenalinaAtual)" Label="Adrenalina (PA)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.AdrenalinaMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.FocoAtual" For="@(() => _form.FocoAtual)" Label="Arcana (PF)" Adornment="Adornment.End" AdornmentText="@($"/ {_form.FocoMaximo}")" @bind-Value:after="NotifySavedAsync" />
-            <MudNumericField T="int?" @bind-Value="_form.VitalidadeAtual" For="@(() => _form.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {_form.VitalidadeMaximo}")" @bind-Value:after="NotifySavedAsync" />
-        </Section>
-
-        @if (_subAttributes is not null)
-        {
-            <SubAtributosSection SubAtributos="_subAttributes" Cobertura="@_form.Cobertura" CoberturaChanged="@(v => UpdateCoberturaAsync(v))" />
-        }
-
-        @if (_modificadorDeDano is not null)
-        {
-            <Section Title="Modificador de Dano">
-                <MudText>Cortante: @_modificadorDeDano.Cortante</MudText>
-                <MudText>Perfurante: @_modificadorDeDano.Perfurante</MudText>
-                <MudText>Contundente: @_modificadorDeDano.Contundente</MudText>
-                <MudText>Mágico: @_modificadorDeDano.Arcano</MudText>
-            @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(_modificadorDeDano.DanoElemental))
-            {
-                <MudText>@linha</MudText>
-            }
-            </Section>
-        }
-
-        <Section Title="Armas">
-            <EditForm Model="_weaponForm" OnValidSubmit="AddWeaponAsync">
-                <MudSelect T="string" @bind-Value="_weaponForm.Origem" Label="Origem">
-                    <MudSelectItem Value="@("Catalogo")">Vincular ao Catálogo</MudSelectItem>
-                    <MudSelectItem Value="@("Manual")">Preencher manualmente (ataque natural)</MudSelectItem>
-                </MudSelect>
-
-                @if (_weaponForm.Origem == "Catalogo")
-                {
-                    <CatalogoItemPicker @bind-Value="_weaponForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Arma"))" Placeholder="Buscar arma..." Tipo="Arma" PodeCriar="@_isGmCaller" />
-                }
-                else
-                {
-                    <MudTextField T="string" @bind-Value="_weaponForm.ManualNome" Label="Nome" />
-                    <MudSelect T="string" @bind-Value="_weaponForm.ManualTipoDeDano" Label="Tipo de Dano">
-                        <MudSelectItem Value="@("")">Escolha um Tipo de Dano</MudSelectItem>
-                        <MudSelectItem Value="@("Cortante")">Cortante</MudSelectItem>
-                        <MudSelectItem Value="@("Perfurante")">Perfurante</MudSelectItem>
-                        <MudSelectItem Value="@("Contundente")">Contundente</MudSelectItem>
-                        <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
-                    </MudSelect>
-                    <MudTextField T="string" @bind-Value="_weaponForm.ManualDados" Label="Dados" />
-                    <MudNumericField T="int" @bind-Value="_weaponForm.ManualDano" Label="Dano" />
-                }
-
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Arma</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Tipo de Dano</th>
-                        <th>Alcance</th>
-                        <th>Dados</th>
-                        <th>Dano</th>
-                        <th>Crítico</th>
-                        <th>Rank</th>
-                        <th>Durabilidade</th>
-                        <th>Equipada</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var weapon in _weapons)
-                    {
-                        <tr>
-                            <td>
-                                <ClickableItemName Nome="@weapon.Nome" ImageUrl="@weapon.ImageUrl" Descricao="@weapon.Descricao" Requisitos="@weapon.Requisitos" RequisitosPendentes="@weapon.RequisitosPendentes" Penalidade="@weapon.Penalidade" OutrasPenalidades="@weapon.OutrasPenalidades" EmUso="@weapon.IsEquipped" /> <DesabilitadoChip Condicao="@weapon.DesabilitadoPor" />
-                            </td>
-                            <td>@(weapon.TipoDeDano ?? "—")</td>
-                            <td>@(weapon.Alcance?.ToString() ?? "—")</td>
-                            <td>@(weapon.Dados ?? "—")</td>
-                            <td>@(weapon.Dano?.ToString() ?? "—")</td>
-                            <td>@(weapon.Critico ?? "—")</td>
-                            <td>@(weapon.Rank ?? "—")</td>
-                            <td>
-                                @if (weapon.ItemId is null)
-                                {
-                                    <text>Ataque natural</text>
-                                }
-                                else if (weapon.Inquebravel)
-                                {
-                                    <text>Inquebrável</text>
-                                }
-                                else
-                                {
-                                    <text><MudNumericField T="int?" Value="@weapon.DurabilidadeAtual" ValueChanged="@(v => UpdateWeaponDurabilidadeAsync(weapon.Id, v))" Style="width:5em; display:inline-flex;" /> / @weapon.DurabilidadeMaximo</text>
-                                }
-                            </td>
-                            <td>@(weapon.IsEquipped ? "Equipada" : "")</td>
-                            <td>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => EquipWeaponAsync(weapon.Id, !weapon.IsEquipped))">@(weapon.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteWeaponAsync(weapon.Id))">Remover</MudButton>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Maestrias">
-            <EditForm Model="_masteryForm" OnValidSubmit="AddMasteryAsync">
-                <MudTextField T="string" @bind-Value="_masteryForm.Nome" Label="Nome" />
-                <MudSelect T="string" @bind-Value="_masteryForm.Pericia" Label="Perícia">
-                    <MudSelectItem Value="@("")">Escolha uma Perícia</MudSelectItem>
-                    @foreach (var skill in _skills)
-                    {
-                        <MudSelectItem Value="@skill.Pericia">@PericiaLabel(skill.Pericia)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSelect T="string" @bind-Value="_masteryForm.Atributo" Label="Atributo">
-                    <MudSelectItem Value="@("")">Escolha um Atributo</MudSelectItem>
-                    @foreach (var attr in _attributes)
-                    {
-                        <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudNumericField T="int" @bind-Value="_masteryForm.GastoMaestria" Label="Gasto Maestria" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var mastery in _masteries)
-                    {
-                        <tr>
-                            <td>@mastery.Nome — @PericiaLabel(mastery.Pericia) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteMasteryAsync(mastery.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Armaduras">
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead>
-                    <tr>
-                        <th>Slot</th>
-                        <th>Armadura</th>
-                        <th>Categoria</th>
-                        <th>Defesa</th>
-                        <th>RF</th>
-                        <th>RM</th>
-                        <th>Peso</th>
-                        <th>Durabilidade</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var slot in _armorSlots)
-                    {
-                        <tr>
-                            <td>@slot.Slot</td>
-                            <td>
-                                @if (slot.Nome is not null)
-                                {
-                                    <ClickableItemName Nome="@slot.Nome" ImageUrl="@slot.ImageUrl" Descricao="@slot.Descricao" Requisitos="@slot.Requisitos" RequisitosPendentes="@slot.RequisitosPendentes" Penalidade="@slot.Penalidade" OutrasPenalidades="@slot.OutrasPenalidades" /> <DesabilitadoChip Condicao="@slot.DesabilitadoPor" />
-                                }
-                                else
-                                {
-                                    @:—
-                                }
-                            </td>
-                            <td>@(slot.Categoria ?? "—")</td>
-                            <td>@(slot.Defesa?.ToString() ?? "—")</td>
-                            <td>@(slot.RF?.ToString() ?? "—")</td>
-                            <td>@(slot.RM?.ToString() ?? "—")</td>
-                            <td>@(slot.Peso?.ToString() ?? "—")</td>
-                            <td>
-                                @if (slot.ItemId is not null)
-                                {
-                                    @if (slot.Inquebravel)
-                                    {
-                                        <text>Inquebrável</text>
-                                    }
-                                    else
-                                    {
-                                        <MudNumericField T="int?" Value="@slot.DurabilidadeAtual" ValueChanged="@(v => UpdateArmorSlotDurabilidadeAsync(slot.Slot, v))" Style="width:5em; display:inline-flex;" />
-                                        <text> / @slot.DurabilidadeMaximo</text>
-                                    }
-                                }
-                            </td>
-                            <td>
-                                @if (slot.ItemId is not null)
-                                {
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, null))">Remover</MudButton>
-                                }
-                                else
-                                {
-                                    <span style="display: inline-block; width: 16em; vertical-align: middle;">
-                                        <CatalogoItemPicker Value="@_armorSlotForm[slot.Slot]" ValueChanged="@(v => _armorSlotForm[slot.Slot] = v ?? "")" SearchItems="@(q => SearchItemsByTipoAsync(q, "Armadura"))" Placeholder="Buscar armadura..." Tipo="Armadura" PodeCriar="@_isGmCaller" />
-                                    </span>
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AssignArmorSlotAsync(slot.Slot, _armorSlotForm.GetValueOrDefault(slot.Slot)))">Atribuir</MudButton>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Escudos">
-            <EditForm Model="_shieldForm" OnValidSubmit="AddShieldAsync">
-                <CatalogoItemPicker @bind-Value="_shieldForm.ItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Escudo"))" Placeholder="Buscar escudo..." Tipo="Escudo" PodeCriar="@_isGmCaller" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Adicionar Escudo</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Categoria</th>
-                        <th>Bônus de Defesa</th>
-                        <th>Peso</th>
-                        <th>Durabilidade</th>
-                        <th>Equipado</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var shield in _shields)
-                    {
-                        <tr>
-                            <td>
-                                <ClickableItemName Nome="@shield.Nome" ImageUrl="@shield.ImageUrl" Descricao="@shield.Descricao" Requisitos="@shield.Requisitos" RequisitosPendentes="@shield.RequisitosPendentes" Penalidade="@shield.Penalidade" OutrasPenalidades="@shield.OutrasPenalidades" EmUso="@shield.IsEquipped" /> <DesabilitadoChip Condicao="@shield.DesabilitadoPor" />
-                            </td>
-                            <td>@(shield.Categoria ?? "—")</td>
-                            <td>@(shield.BonusDefesa?.ToString() ?? "—")</td>
-                            <td>@shield.Peso</td>
-                            <td>
-                                @if (shield.Inquebravel)
-                                {
-                                    <text>Inquebrável</text>
-                                }
-                                else
-                                {
-                                    <MudNumericField T="int?" Value="@shield.DurabilidadeAtual" ValueChanged="@(v => UpdateShieldDurabilidadeAsync(shield.Id, v))" Style="width:5em; display:inline-flex;" />
-                                    <text> / @shield.DurabilidadeMaxima</text>
-                                }
-                            </td>
-                            <td>@(shield.IsEquipped ? "Equipado" : "")</td>
-                            <td>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => EquipShieldAsync(shield.Id, !shield.IsEquipped))">@(shield.IsEquipped ? "Desequipar" : "Equipar")</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteShieldAsync(shield.Id))">Remover</MudButton>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaCombate Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" SalvarERecarregar="SalvarERecarregarAbasAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
-        <Section Title="Magias e Habilidades">
-            <EditForm Model="_spellAbilityForm" OnValidSubmit="AddSpellAbilityAsync">
-                <MudSelect T="string" @bind-Value="_spellAbilityForm.Origem" Label="Origem">
-                    <MudSelectItem Value="@("Zero")">Montar do zero</MudSelectItem>
-                    <MudSelectItem Value="@("Banco")">Escolher do Banco de Magias</MudSelectItem>
-                </MudSelect>
-
-                @if (_spellAbilityForm.Origem == "Banco")
-                {
-                    <MudSelect T="string" @bind-Value="_spellAbilityForm.SourceBankEntryId" Label="Entrada do Banco">
-                        <MudSelectItem Value="@("")">Escolha uma entrada</MudSelectItem>
-                        @foreach (var entry in _bankEntries.Where(e => e.Tipo != "Passiva"))
-                        {
-                            <MudSelectItem Value="@entry.Id">@entry.Nome (@entry.Tipo, Grau @entry.Grau)</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-                else
-                {
-                    <MudTextField T="string" @bind-Value="_spellAbilityForm.Nome" Label="Nome" />
-                    <MudSelect T="string" @bind-Value="_spellAbilityForm.Tipo" Label="Tipo">
-                        <MudSelectItem Value="@("Magia")">Magia</MudSelectItem>
-                        <MudSelectItem Value="@("Habilidade")">Habilidade</MudSelectItem>
-                        <MudSelectItem Value="@("Racial")">Racial</MudSelectItem>
-                    </MudSelect>
-                    <MudNumericField T="int" @bind-Value="_spellAbilityForm.Grau" Label="Grau" />
-                    <MudTextField T="string" @bind-Value="_spellAbilityForm.Descricao" Label="Descrição" Lines="3" />
-
-                    <MudText Typo="Typo.h6" Class="mt-3">Efeitos</MudText>
-                    <AddEfeitoForm Grau="_spellAbilityForm.Grau" EfeitosExistentes="EfeitosExistentesParaPicker()" OnAdicionar="OnEfeitoAdicionado" />
-                    <EfeitosTable Efeitos="_spellAbilityForm.Efeitos" Grau="_spellAbilityForm.Grau" />
-                }
-
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Magia/Habilidade</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var spellAbility in _spellAbilities.Where(s => s.Tipo != "Passiva"))
-                    {
-                        <tr>
-                            <td>@spellAbility.Nome (@spellAbility.Tipo, Grau @spellAbility.Grau) — Gasto em PI @spellAbility.GastoEmPI, Custo @spellAbility.Custo — @spellAbility.Descricao — Efeitos: @SpellAbilityEffectSummaryFormatter.Formatar(spellAbility.Grau, spellAbility.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade))) <DesabilitadoChip Condicao="@spellAbility.DesabilitadoPor" /></td>
-                            <td>
-                                @if (spellAbility.CriadaNaFicha && spellAbility.Tipo is "Magia" or "Habilidade")
-                                {
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" Class="mr-1" OnClick="@(() => EditSpellAbilityAsync(spellAbility))">Editar</MudButton>
-                                }
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpellAbilityAsync(spellAbility.Id))">Remover</MudButton>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <HabilidadesPassivasSection SpellAbilitiesUrl="@($"creature-sheets/{SheetId}/spell-abilities")" Versao="_condicoesVersao" />
+        <AbaMagiasEHabilidades />
     </MudTabPanel>
 
     <MudTabPanel Text="Posses">
-        <Section Title="Espólios">
-            <EditForm Model="_spoilForm" OnValidSubmit="AddSpoilAsync">
-                <CatalogoItemPicker @bind-Value="_spoilForm.ItemId" SearchItems="SearchAllItemsAsync" Placeholder="Buscar item..." PodeCriar="@_isGmCaller" />
-                <MudNumericField T="int" @bind-Value="_spoilForm.Qtd" Label="Quantidade" />
-                <MudNumericField T="int" @bind-Value="_spoilForm.DT" Label="DT" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Espólio</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Custo</th>
-                        <th>Qtd</th>
-                        <th>Total</th>
-                        <th>DT</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var spoil in _spoils)
-                    {
-                        <tr>
-                            <td><ClickableItemName Nome="@spoil.Nome" ImageUrl="@spoil.ImageUrl" Descricao="@spoil.Descricao" /></td>
-                            <td>@spoil.Custo</td>
-                            <td><MudNumericField T="int?" Value="@spoil.Qtd" ValueChanged="@(v => UpdateSpoilQtdAsync(spoil.Id, v))" Style="width:5em; display:inline-flex;" /></td>
-                            <td>@spoil.CustoTotal</td>
-                            <td>@spoil.DT</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteSpoilAsync(spoil.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
-
-        <Section Title="Artefatos">
-            <EditForm Model="_artifactForm" OnValidSubmit="AddArtifactAsync">
-                <CatalogoItemPicker @bind-Value="_artifactForm.ArtifactItemId" SearchItems="@(q => SearchItemsByTipoAsync(q, "Artefato"))" Placeholder="Buscar artefato..." Tipo="Artefato" PodeCriar="@_isGmCaller" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Artefato</MudButton>
-            </EditForm>
-            @foreach (var group in _artifacts.GroupBy(a => a.TipoDeAlvo))
-            {
-                <MudText Typo="Typo.h6" Class="mt-3">@group.Key</MudText>
-                <MudSimpleTable Dense="true" Hover="true">
-                    <tbody>
-                        @foreach (var artifact in group)
-                        {
-                            <tr>
-                                <td><ClickableItemName Nome="@artifact.Nome" ImageUrl="@artifact.ImageUrl" Descricao="@artifact.Descricao" Requisitos="@artifact.Requisitos" RequisitosPendentes="@artifact.RequisitosPendentes" Penalidade="@artifact.Penalidade" OutrasPenalidades="@artifact.OutrasPenalidades" /> <DesabilitadoChip Condicao="@artifact.DesabilitadoPor" /> — Alvo @artifact.Alvo — Valor @artifact.Valor
-                                </td>
-                                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteArtifactAsync(artifact.Id))">Remover</MudButton></td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-            }
-        </Section>
-
-        <Section Title="Afeições">
-            <EditForm Model="_affectionForm" OnValidSubmit="AddAffectionAsync">
-                <MudTextField T="string" @bind-Value="_affectionForm.Nome" Label="Nome" />
-                <MudNumericField T="int" @bind-Value="_affectionForm.Favorabilidade" Label="Favorabilidade" />
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Afeição</MudButton>
-            </EditForm>
-            <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-                <tbody>
-                    @foreach (var affection in _affections)
-                    {
-                        <tr>
-                            <td>@affection.Nome — Favorabilidade @affection.Favorabilidade</td>
-                            <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteAffectionAsync(affection.Id))">Remover</MudButton></td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-        </Section>
+        <AbaPosses />
     </MudTabPanel>
 </MudTabs>
+</CascadingValue>
 
 </div>
 
 @code {
     [Parameter] public string SheetId { get; set; } = "";
+
+    // O estado que as abas compartilhadas recebem em cascata (E). Os campos abaixo continuam com os nomes de antes,
+    // mas o valor mora no estado: a página e as abas leem e escrevem o mesmo.
+    private FichaEstado _estado = null!;
+    private string? _errorMessage { get => _estado.Erro; set => _estado.Erro = value; }
+    private bool _isGmCaller { get => _estado.IsGmCaller; set => _estado.IsGmCaller = value; }
+    private string? _campaignId { get => _estado.CampaignId; set => _estado.CampaignId = value; }
+    private List<ImageSummaryResponse> _myImages { get => _estado.MinhasImagens; set => _estado.MinhasImagens = value; }
+    private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
+    private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
 
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
@@ -629,102 +61,15 @@
         new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Criatura" : _form.Nome),
     };
 
-    private readonly SheetFormModel _form = new();
+    // A Criatura sempre tem Abate e Assistência (0 antes da carga, como sempre mostrou).
+    private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
-    private string? _errorMessage;
-    private bool _isGmCaller;
-    private string? _campaignId;
-    private List<ImageSummaryResponse> _myImages = new();
-    private bool _imageExpanded;
-    private bool _imageEditing;
-    private bool _imageGalleryOpen;
-    private List<CreatureAttributeResponse> _attributes = new();
-    private AttributePointBudgetResponse? _attributeBudget;
-    private List<CreatureSkillResponse> _skills = new();
-
-    // O nome vem da própria resposta das perícias da ficha (sempre fresca); o catálogo da sessão pode
-    // estar desatualizado se o Auditor adicionou/renomeou uma perícia depois que ele foi carregado.
-    private string PericiaLabel(string chave) =>
-        _skills.FirstOrDefault(s => s.Pericia == chave)?.Nome ?? Pericias.Label(chave);
-    private int _penalidadesVersao;
-    private List<CreatureWeaponResponse> _weapons = new();
-    private readonly WeaponFormModel _weaponForm = new();
-    private List<CreatureArmorSlotResponse> _armorSlots = new();
-    private List<CreatureShieldResponse> _shields = new();
-    private readonly ShieldFormModel _shieldForm = new();
-    // Pre-seeded with the 3 fixed ArmorSlotType values so @bind's getter never sees a missing key.
-    private readonly Dictionary<string, string> _armorSlotForm = new() { ["Capacete"] = "", ["Superior"] = "", ["Inferior"] = "" };
-    private SubAttributesResponse? _subAttributes;
-    private ModificadorDeDanoResponse? _modificadorDeDano;
-    private List<CreatureSpellAbilityResponse> _spellAbilities = new();
-    private List<SpellAbilityEntryResponse> _bankEntries = new();
-    private readonly SpellAbilityFormModel _spellAbilityForm = new();
-    private List<CreatureMasteryResponse> _masteries = new();
-    private readonly MasteryFormModel _masteryForm = new();
-    private List<CreatureSpoilResponse> _spoils = new();
-    private readonly SpoilFormModel _spoilForm = new();
-    private List<CreatureArtifactResponse> _artifacts = new();
-    private readonly ArtifactFormModel _artifactForm = new();
-    private List<CreatureAffectionResponse> _affections = new();
-    private readonly AffectionFormModel _affectionForm = new();
-    private CreatureTraitsListResponse? _traits;
-    private List<string> _levelUpBonuses = new();
-    private readonly TraitFormModel _traitForm = new();
-
-    private async Task<List<PickerOption>> SearchItemsByTipoAsync(string query, string tipo)
-    {
-        var url = _isGmCaller
-            ? $"items?nome={Uri.EscapeDataString(query)}&tipo={tipo}"
-            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}&tipo={tipo}";
-        var response = await Http.GetAsync(url);
-        if (!response.IsSuccessStatusCode) return new();
-        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
-        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
-    }
-
-    // Espólios has no Tipo restriction server-side (AddSpoil accepts any catalog Item) — unlike
-    // Inventário/Weapon/Armor/Artefato, which are each scoped to a single Tipo.
-    private async Task<List<PickerOption>> SearchAllItemsAsync(string query)
-    {
-        var url = _isGmCaller
-            ? $"items?nome={Uri.EscapeDataString(query)}"
-            : $"campaigns/{_campaignId}/available-items?nome={Uri.EscapeDataString(query)}";
-        var response = await Http.GetAsync(url);
-        if (!response.IsSuccessStatusCode) return new();
-        var items = await response.Content.ReadFromJsonAsync<List<ItemResponse>>() ?? new();
-        return items.Select(i => new PickerOption(i.Id, i.Nome)).ToList();
-    }
-
-    private EntityPicker? _traitPicker;
-    private bool _isRulesAuditor;
-
-    // Só o catálogo exclusivo de criatura (Ficha de Criaturas 5.d).
-    private async Task<List<PickerOption>> SearchTraitsAsync(string query)
-    {
-        var response = await Http.GetAsync($"creature-exclusive-traits?nome={Uri.EscapeDataString(query ?? "")}");
-        if (!response.IsSuccessStatusCode)
-            return new();
-        var traits = await response.Content.ReadFromJsonAsync<List<CreatureExclusiveTraitResponse>>() ?? new();
-        return traits.Select(t => new PickerOption(t.Id, $"{t.Nome} ({t.Custo}, {t.Polaridade})")).ToList();
-    }
-
-    private async Task LoadIsRulesAuditorAsync()
-    {
-        var response = await Http.GetAsync("auth/me");
-        if (response.IsSuccessStatusCode)
-            _isRulesAuditor = (await response.Content.ReadFromJsonAsync<MeResponse>())?.IsRulesAuditor ?? false;
-    }
-
-    private async Task NovaCaracteristicaDeCriaturaAsync()
-    {
-        var dialog = await Dialogs.ShowAsync<CaracteristicaDeCriaturaDialog>("Nova característica de criatura",
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-        if ((await dialog.Result) is { Canceled: false, Data: CreatureExclusiveTraitResponse criada } && _traitPicker is not null)
-            await _traitPicker.SelectExternallyAsync(new PickerOption(criada.Id, $"{criada.Nome} ({criada.Custo}, {criada.Polaridade})"));
-    }
 
     protected override void OnInitialized()
     {
+        _estado = new FichaEstado(Http, TipoDeFichaCliente.Criatura, SheetId);
+        _estado.RecarregarPontosDeIgnicao = RecarregarPontosDeIgnicaoAsync;
+        _estado.Alterado += OnEstadoAlterado;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
         // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
         // trocar o campo que está sendo editado (RecargaAdiada).
@@ -751,7 +96,6 @@
     }
 
     private RecargaAdiada _recarga = null!;
-    private int _condicoesVersao;
     // Só uma ficha concedida a um jogador tem Condições vivas; a do Mestre mostra o efeito só no Resumo do encontro.
     private bool _concedida;
 
@@ -780,15 +124,19 @@
     // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
     private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
     {
-        await LoadSheetAsync(); await LoadTabs2And3Async(); await LoadSpellAbilitiesAsync(); await LoadArtifactsAsync();
+        await LoadSheetAsync(); await _estado.CarregarAtributosECombateAsync(); await _estado.CarregarMagiasAsync(); await _estado.CarregarArtefatosAsync();
         _penalidadesVersao++;
         StateHasChanged();
     });
 
     private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
 
+    // Uma aba filha mudou o estado fora de um evento da página (ex.: Erro depois de um POST recusado).
+    private void OnEstadoAlterado() => InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
+        _estado.Alterado -= OnEstadoAlterado;
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
         Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
         _recarga.Dispose();
@@ -807,22 +155,9 @@
         await LoadImagesAsync();
 
         await Task.WhenAll(
-            LoadLevelUpNoticeAsync(), LoadTabs2And3Async(),
-            LoadSpellAbilitiesAsync(), LoadMasteriesAsync(),
-            LoadSpoilsAsync(), LoadArtifactsAsync(), LoadAffectionsAsync(), LoadTraitsAsync(), LoadIsRulesAuditorAsync());
-    }
-
-    private async Task LoadLevelUpNoticeAsync()
-    {
-        var response = await Http.GetAsync($"creature-sheets/{SheetId}/level-up-notice");
-        if (response.IsSuccessStatusCode)
-            _levelUpBonuses = (await response.Content.ReadFromJsonAsync<LevelUpNoticeResponse>())!.BonusTexts;
-    }
-
-    private async Task DismissLevelUpAsync()
-    {
-        await Http.PostAsync($"creature-sheets/{SheetId}/dismiss-level-up-notice", null);
-        _levelUpBonuses.Clear();
+            _estado.CarregarAvisoDeNovoNivelAsync(), _estado.CarregarAtributosECombateAsync(),
+            _estado.CarregarMagiasAsync(), _estado.CarregarMaestriasAsync(),
+            _estado.CarregarEspoliosAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(), _estado.CarregarAuditorDeRegrasAsync());
     }
 
     private async Task LoadImagesAsync()
@@ -831,42 +166,6 @@
         var response = await Http.GetAsync(url);
         if (response.IsSuccessStatusCode)
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
-    }
-
-    private async Task UploadImageAsync(IBrowserFile file)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20_000_000));
-        content.Add(fileContent, "file", file.Name);
-        if (!_isGmCaller && _campaignId is not null)
-            content.Add(new StringContent(_campaignId), "campaignId");
-
-        var response = await Http.PostAsync("images", content);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível enviar a imagem.";
-            return;
-        }
-
-        var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
-        _form.ImageId = body!.Id;
-        _form.ImageUrl = body.Url;
-        _myImages.Insert(0, new ImageSummaryResponse(body.Id, body.Url, DateTime.UtcNow));
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void SelectExistingImage(string? id)
-    {
-        _form.ImageId = id;
-        _form.ImageUrl = id is null ? null : _myImages.FirstOrDefault(i => i.Id == id)?.Url;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-    }
-
-    private void RemoveImage()
-    {
-        _form.ImageId = null;
-        _form.ImageUrl = null;
-        _autoSave.NotifyChanged(SaveIfValidAsync);
     }
 
     private async Task LoadSheetAsync()
@@ -893,7 +192,7 @@
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
         _form.Abate = sheet.Abate;
         _form.Assistencia = sheet.Assistencia;
-        _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
+        _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicao;
         _form.VitalidadeAtual = sheet.VitalidadeAtual;
         _form.FocoAtual = sheet.FocoAtual;
         _form.AdrenalinaAtual = sheet.AdrenalinaAtual;
@@ -907,7 +206,7 @@
 
     private async Task<bool> SaveIfValidAsync()
     {
-        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.PontosDeIgnicao is null
+        if (_form.Nivel is null || _form.ExperienciaAtual is null || _form.PontosDeIgnicaoAtual is null
             || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null)
         {
             _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
@@ -915,7 +214,7 @@
         }
 
         var request = new UpdateCreatureSheetRequest(_form.ImageId, _form.Nome, _form.Raca, _form.Arquetipo, _form.SubArquetipo,
-            _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicao!.Value,
+            _form.Afinidade, _form.Rank, _form.Nivel!.Value, _form.ExperienciaAtual!.Value, _form.PontosDeIgnicaoAtual!.Value,
             _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura,
             _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada);
 
@@ -924,10 +223,10 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
@@ -966,13 +265,13 @@
 
     private async Task<bool> SavePontosDeIgnicaoAsync()
     {
-        if (_form.PontosDeIgnicao is null)
+        if (_form.PontosDeIgnicaoAtual is null)
         {
             _errorMessage = "Informe os Pontos de Ignição.";
             return false;
         }
 
-        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicao.Value);
+        var response = await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicaoAtual.Value);
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
@@ -994,10 +293,10 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
@@ -1014,18 +313,19 @@
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
         await LoadSheetAsync();
-        await LoadLevelUpNoticeAsync();
-        await LoadTabs2And3Async();
+        await _estado.CarregarAvisoDeNovoNivelAsync();
+        await _estado.CarregarAtributosECombateAsync();
         _penalidadesVersao++;
-        await LoadTraitsAsync();
+        await _estado.CarregarCaracteristicasAsync();
         return true;
     }
 
     /// <summary>
     /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via _autoSave.NotifyChanged), for
-    /// the pre-existing immediate-save handler below (UpdateCoberturaAsync) that has no separate
-    /// sub-resource PUT endpoint of its own. Preserves its original behavior of surfacing a save
-    /// failure via _errorMessage instead of letting SaveIfValidAsync's exception go unhandled.
+    /// the pre-existing immediate-save handler (the Cobertura, through SalvarERecarregarAbasAsync) that
+    /// has no separate sub-resource PUT endpoint of its own. Preserves its original behavior of
+    /// surfacing a save failure via _errorMessage instead of letting SaveIfValidAsync's exception go
+    /// unhandled.
     /// </summary>
     private async Task SaveIgnoringResultAsync()
     {
@@ -1039,206 +339,14 @@
         }
     }
 
-    private async Task UpdateCoberturaAsync(string? value)
+    /// <summary>
+    /// A Cobertura da aba Combate: salva na hora e relê as abas 2 e 3 (a Defesa Natural vem com os
+    /// Sub-Atributos; o salvamento só relê a ficha), num evento só da página.
+    /// </summary>
+    private async Task SalvarERecarregarAbasAsync()
     {
-        _form.Cobertura = value ?? "Nenhuma";
         await SaveIgnoringResultAsync();
-        await LoadTabs2And3Async(); // Cobertura feeds Defesa Natural, loaded here, not by LoadSheetAsync.
-    }
-
-    private async Task LoadTabs2And3Async()
-    {
-        _attributes = await Http.GetFromJsonAsync<List<CreatureAttributeResponse>>($"creature-sheets/{SheetId}/attributes") ?? new();
-        _attributeBudget = await Http.GetFromJsonAsync<AttributePointBudgetResponse>($"creature-sheets/{SheetId}/attributes/budget");
-        _skills = await Http.GetFromJsonAsync<List<CreatureSkillResponse>>($"creature-sheets/{SheetId}/skills") ?? new();
-        _weapons = await Http.GetFromJsonAsync<List<CreatureWeaponResponse>>($"creature-sheets/{SheetId}/weapons") ?? new();
-        _armorSlots = await Http.GetFromJsonAsync<List<CreatureArmorSlotResponse>>($"creature-sheets/{SheetId}/armor-slots") ?? new();
-        _shields = await Http.GetFromJsonAsync<List<CreatureShieldResponse>>($"creature-sheets/{SheetId}/shields") ?? new();
-        _subAttributes = await Http.GetFromJsonAsync<SubAttributesResponse>($"creature-sheets/{SheetId}/sub-attributes");
-        _modificadorDeDano = await Http.GetFromJsonAsync<ModificadorDeDanoResponse>($"creature-sheets/{SheetId}/modificador-de-dano");
-    }
-
-    private async Task UpdateAttributeAsync(string atributo, string field, object? value)
-    {
-        var current = _attributes.Single(a => a.Atributo == atributo);
-        var gasto = field == "Gasto" ? (int.TryParse(value?.ToString(), out var g) ? g : current.Gasto) : current.Gasto;
-        var bonus = field == "Bonus" ? (int.TryParse(value?.ToString(), out var b) ? b : current.Bonus) : current.Bonus;
-        var temMaestria = field == "TemMaestria" ? (bool)(value ?? false) : current.TemMaestria;
-
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/attributes/{atributo}", new UpdateCreatureAttributeRequest(gasto, bonus, temMaestria));
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateSkillGastoAsync(string pericia, object? value)
-    {
-        var current = _skills.Single(s => s.Pericia == pericia);
-        var gasto = int.TryParse(value?.ToString(), out var g) ? g : current.Gasto;
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(gasto, current.AtributoEscolhido));
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateSkillAtributoAsync(string pericia, object? value)
-    {
-        var current = _skills.Single(s => s.Pericia == pericia);
-        var atributoEscolhido = value?.ToString();
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/skills/{pericia}", new UpdateCreatureSkillRequest(current.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task AddWeaponAsync()
-    {
-        var request = _weaponForm.Origem == "Catalogo"
-            ? new AddCreatureWeaponRequest(_weaponForm.ItemId, null, null, null, null)
-            : new AddCreatureWeaponRequest(null, _weaponForm.ManualNome, _weaponForm.ManualTipoDeDano, _weaponForm.ManualDados, _weaponForm.ManualDano);
-
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/weapons", request);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar a arma.";
-            return;
-        }
-
-        _weaponForm.ItemId = "";
-        _weaponForm.ManualNome = "";
-        _weaponForm.ManualTipoDeDano = "";
-        _weaponForm.ManualDados = "";
-        _weaponForm.ManualDano = 0;
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task EquipWeaponAsync(string weaponId, bool isEquipped)
-    {
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/weapons/{weaponId}", isEquipped);
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateWeaponDurabilidadeAsync(string weaponId, object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var durabilidade))
-            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/weapons/{weaponId}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
-    }
-
-    private async Task AssignArmorSlotAsync(string slot, string? itemId)
-    {
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/armor-slots/{slot}", new UpdateCreatureArmorSlotRequest(string.IsNullOrWhiteSpace(itemId) ? null : itemId));
-        _armorSlotForm[slot] = "";
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateArmorSlotDurabilidadeAsync(string slot, object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var durabilidade))
-            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/armor-slots/{slot}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
-    }
-
-    private async Task AddShieldAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/shields", new AddCreatureShieldRequest(_shieldForm.ItemId));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar o escudo.";
-            return;
-        }
-        _shieldForm.ItemId = "";
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task EquipShieldAsync(string shieldId, bool isEquipped)
-    {
-        await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/shields/{shieldId}", isEquipped);
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task DeleteShieldAsync(string shieldId)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/shields/{shieldId}");
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task UpdateShieldDurabilidadeAsync(string shieldId, object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var durabilidade))
-            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/shields/{shieldId}/durabilidade", durabilidade);
-        await LoadTabs2And3Async();
-    }
-
-    private async Task DeleteWeaponAsync(string weaponId)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/weapons/{weaponId}");
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task LoadSpellAbilitiesAsync()
-    {
-        _spellAbilities = await Http.GetFromJsonAsync<List<CreatureSpellAbilityResponse>>($"creature-sheets/{SheetId}/spell-abilities") ?? new();
-        var bankUrl = _isGmCaller ? "spell-ability-bank" : $"campaigns/{_campaignId}/available-spell-abilities";
-        _bankEntries = await Http.GetFromJsonAsync<List<SpellAbilityEntryResponse>>(bankUrl) ?? new();
-    }
-
-    private IReadOnlyList<(string Nome, int? Quantidade)> EfeitosExistentesParaPicker() =>
-        _spellAbilityForm.Efeitos.Select(e => (e.EfeitoNome, e.Quantidade)).ToList();
-
-    private void OnEfeitoAdicionado(List<RuinaRPG.Client.Shared.Fields.EfeitoAdicionadoResult> resultados) =>
-        _spellAbilityForm.Efeitos.AddRange(resultados.Select(r => new RuinaRPG.Client.Shared.Fields.EfeitoLinha(r.EfeitoNome, r.Quantidade, r.CustoPI)));
-
-    private async Task AddSpellAbilityAsync()
-    {
-        var request = _spellAbilityForm.Origem == "Banco"
-            ? new AddCreatureSpellAbilityRequest(_spellAbilityForm.SourceBankEntryId, null, null, null, null, null)
-            : new AddCreatureSpellAbilityRequest(null, _spellAbilityForm.Nome, _spellAbilityForm.Tipo, _spellAbilityForm.Grau, _spellAbilityForm.Descricao,
-                _spellAbilityForm.Efeitos.Select(e => new SpellAbilityEffectRequest(e.EfeitoNome, e.Quantidade, e.CustoPI)).ToList());
-
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spell-abilities", request);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a magia/habilidade.";
-            return;
-        }
-
-        _spellAbilityForm.SourceBankEntryId = "";
-        _spellAbilityForm.Nome = "";
-        _spellAbilityForm.Tipo = "Magia";
-        _spellAbilityForm.Grau = 0;
-        _spellAbilityForm.Descricao = "";
-        _spellAbilityForm.Efeitos.Clear();
-        await LoadSpellAbilitiesAsync();
-        await RecarregarPontosDeIgnicaoAsync();
-    }
-
-    private async Task DeleteSpellAbilityAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/spell-abilities/{id}");
-        await LoadSpellAbilitiesAsync();
-        await RecarregarPontosDeIgnicaoAsync();
-    }
-
-    private async Task EditSpellAbilityAsync(CreatureSpellAbilityResponse entrada)
-    {
-        var dialog = await Dialogs.ShowAsync<EditarMagiaHabilidadeDialog>("Editar " + entrada.Tipo,
-            new DialogParameters<EditarMagiaHabilidadeDialog>
-            {
-                { x => x.SaveUrl, $"creature-sheets/{SheetId}/spell-abilities/{entrada.Id}" },
-                { x => x.Nome, entrada.Nome }, { x => x.Tipo, entrada.Tipo }, { x => x.Grau, entrada.Grau },
-                { x => x.Descricao, entrada.Descricao }, { x => x.Efeitos, entrada.Efeitos },
-            },
-            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
-        if ((await dialog.Result) is { Canceled: false })
-        {
-            await LoadSpellAbilitiesAsync();
-            await RecarregarPontosDeIgnicaoAsync();
-        }
+        await _estado.CarregarAtributosECombateAsync();
     }
 
     /// <summary>
@@ -1254,237 +362,7 @@
 
         var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         if (sheet is not null)
-            _form.PontosDeIgnicao = sheet.PontosDeIgnicao;
+            _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicao;
     }
 
-    private async Task LoadMasteriesAsync()
-    {
-        _masteries = await Http.GetFromJsonAsync<List<CreatureMasteryResponse>>($"creature-sheets/{SheetId}/masteries") ?? new();
-    }
-
-    private async Task AddMasteryAsync()
-    {
-        var request = new AddCreatureMasteryRequest(_masteryForm.Nome, _masteryForm.Pericia, _masteryForm.Atributo, _masteryForm.GastoMaestria);
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/masteries", request);
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar a maestria.";
-            return;
-        }
-
-        _masteryForm.Nome = "";
-        _masteryForm.GastoMaestria = 0;
-        await LoadMasteriesAsync();
-    }
-
-    private async Task DeleteMasteryAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/masteries/{id}");
-        await LoadMasteriesAsync();
-    }
-
-    private async Task LoadSpoilsAsync()
-    {
-        _spoils = await Http.GetFromJsonAsync<List<CreatureSpoilResponse>>($"creature-sheets/{SheetId}/spoils") ?? new();
-    }
-
-    private async Task AddSpoilAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/spoils", new AddCreatureSpoilRequest(_spoilForm.ItemId, _spoilForm.Qtd, _spoilForm.DT));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar o espólio.";
-            return;
-        }
-
-        _spoilForm.ItemId = "";
-        _spoilForm.Qtd = 1;
-        _spoilForm.DT = 0;
-        await LoadSpoilsAsync();
-    }
-
-    private async Task UpdateSpoilQtdAsync(string id, object? value)
-    {
-        if (int.TryParse(value?.ToString(), out var qtd))
-            await Http.PutAsJsonAsync($"creature-sheets/{SheetId}/spoils/{id}/qtd", qtd);
-        await LoadSpoilsAsync();
-    }
-
-    private async Task DeleteSpoilAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/spoils/{id}");
-        await LoadSpoilsAsync();
-    }
-
-    private async Task LoadArtifactsAsync()
-    {
-        _artifacts = await Http.GetFromJsonAsync<List<CreatureArtifactResponse>>($"creature-sheets/{SheetId}/artifacts") ?? new();
-    }
-
-    private async Task AddArtifactAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/artifacts", new AddCreatureArtifactRequest(_artifactForm.ArtifactItemId));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar o artefato.";
-            return;
-        }
-
-        _artifactForm.ArtifactItemId = "";
-        await LoadArtifactsAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task DeleteArtifactAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/artifacts/{id}");
-        await LoadArtifactsAsync();
-        await LoadTabs2And3Async();
-        _penalidadesVersao++;
-    }
-
-    private async Task LoadAffectionsAsync()
-    {
-        _affections = await Http.GetFromJsonAsync<List<CreatureAffectionResponse>>($"creature-sheets/{SheetId}/affections") ?? new();
-    }
-
-    private async Task AddAffectionAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/affections", new AddCreatureAffectionRequest(_affectionForm.Nome, _affectionForm.Favorabilidade));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = "Não foi possível adicionar a afeição.";
-            return;
-        }
-
-        _affectionForm.Nome = "";
-        _affectionForm.Favorabilidade = 0;
-        await LoadAffectionsAsync();
-    }
-
-    private async Task DeleteAffectionAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/affections/{id}");
-        await LoadAffectionsAsync();
-    }
-
-    private async Task LoadTraitsAsync()
-    {
-        _traits = await Http.GetFromJsonAsync<CreatureTraitsListResponse>($"creature-sheets/{SheetId}/traits");
-    }
-
-    private async Task AddTraitAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"creature-sheets/{SheetId}/traits", new AddCreatureTraitRequest(_traitForm.TraitId, _traitForm.Especificacao));
-        if (!response.IsSuccessStatusCode)
-        {
-            _errorMessage = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a característica.";
-            return;
-        }
-
-        _traitForm.TraitId = "";
-        _traitForm.Especificacao = "";
-        await LoadTraitsAsync();
-    }
-
-    private async Task DeleteTraitAsync(string id)
-    {
-        await Http.DeleteAsync($"creature-sheets/{SheetId}/traits/{id}");
-        await LoadTraitsAsync();
-    }
-
-    private class SheetFormModel
-    {
-        public string? ImageId { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? Nome { get; set; }
-        public string? Raca { get; set; }
-        public string? Arquetipo { get; set; }
-        public string? SubArquetipo { get; set; }
-        public string? Afinidade { get; set; }
-        public string? Rank { get; set; }
-        [Required(ErrorMessage = "Informe o Nível.")]
-        public int? Nivel { get; set; } = 1;
-        [Required(ErrorMessage = "Informe a Experiência Atual.")]
-        public int? ExperienciaAtual { get; set; }
-        public int Abate { get; set; }
-        public int Assistencia { get; set; }
-        [Required(ErrorMessage = "Informe os Pontos de Ignição.")]
-        public int? PontosDeIgnicao { get; set; }
-        [Required(ErrorMessage = "Informe a Vitalidade.")]
-        public int? VitalidadeAtual { get; set; }
-        [Required(ErrorMessage = "Informe o Foco.")]
-        public int? FocoAtual { get; set; }
-        [Required(ErrorMessage = "Informe a Adrenalina.")]
-        public int? AdrenalinaAtual { get; set; }
-        // Os Atuais como a ficha foi carregada: o servidor só grava o Atual que o jogador editou (ele também os escreve).
-        public int? VitalidadeAtualCarregada { get; private set; }
-        public int? FocoAtualCarregado { get; private set; }
-        public int? AdrenalinaAtualCarregada { get; private set; }
-        public void GuardarAtuaisCarregados() =>
-            (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual);
-        public string Cobertura { get; set; } = "Nenhuma";
-        public int VitalidadeMaximo { get; set; }
-        public int FocoMaximo { get; set; }
-        public int AdrenalinaMaximo { get; set; }
-    }
-
-    private class WeaponFormModel
-    {
-        public string Origem { get; set; } = "Catalogo";
-        public string ItemId { get; set; } = "";
-        public string ManualNome { get; set; } = "";
-        public string ManualTipoDeDano { get; set; } = "";
-        public string ManualDados { get; set; } = "";
-        public int ManualDano { get; set; }
-    }
-
-    private class ShieldFormModel
-    {
-        public string ItemId { get; set; } = "";
-    }
-
-    private class SpellAbilityFormModel
-    {
-        public string Origem { get; set; } = "Zero";
-        public string SourceBankEntryId { get; set; } = "";
-        public string Nome { get; set; } = "";
-        public string Tipo { get; set; } = "Magia";
-        public int Grau { get; set; }
-        public string Descricao { get; set; } = "";
-        public List<RuinaRPG.Client.Shared.Fields.EfeitoLinha> Efeitos { get; set; } = new();
-    }
-
-    private class MasteryFormModel
-    {
-        public string Nome { get; set; } = "";
-        public string Pericia { get; set; } = "";
-        public string Atributo { get; set; } = "";
-        public int GastoMaestria { get; set; }
-    }
-
-    private class SpoilFormModel
-    {
-        public string ItemId { get; set; } = "";
-        public int Qtd { get; set; } = 1;
-        public int DT { get; set; }
-    }
-
-    private class ArtifactFormModel
-    {
-        public string ArtifactItemId { get; set; } = "";
-    }
-
-    private class AffectionFormModel
-    {
-        public string Nome { get; set; } = "";
-        public int Favorabilidade { get; set; }
-    }
-
-    private class TraitFormModel
-    {
-        public string TraitId { get; set; } = "";
-        public string? Especificacao { get; set; }
-    }
 }

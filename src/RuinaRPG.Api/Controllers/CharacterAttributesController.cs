@@ -1,14 +1,9 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Api.Services;
+using RuinaRPG.Api.Controllers.Fichas;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Items;
-using RuinaRPG.Domain.Rules;
-using RuinaRPG.Domain.Rules.Niveis;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules.Niveis;
 
@@ -17,89 +12,14 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/attributes")]
-public class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, RuinaRPG.Api.Services.CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class CharacterAttributesController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CharacterSheet> tipo, RuinaRPG.Api.Services.CharacterSheetStats stats)
+    : AtributosDaFichaController<CharacterSheet, CharacterAttribute, Atributo>(db, tabelaDeNiveis, tipo)
 {
-    [HttpGet]
-    public async Task<ActionResult<List<CharacterAttributeResponse>>> List(Guid sheetId)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+    protected override (int Gasto, int Bonus, bool TemMaestria) Ler(UpdateAttributeRequest request) => (request.Gasto, request.Bonus, request.TemMaestria);
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        // Display order is independent of the enum's underlying (persisted) int value —
-        // see AttributeDisplayOrder's doc comment — so this sorts in memory, not in SQL.
-        var attributes = (await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).ToListAsync())
-            .OrderBy(a => AttributeDisplayOrder.Rank(a.Atributo))
+    // Artefatos (Posses 5.b: estar na ficha é estar equipado), penalidades de equipamento ativas e Condições: CharacterSheetStats.
+    protected override async Task<List<AttributeResponse>> ListarAsync(CharacterSheet ficha) =>
+        (await stats.AtributosAsync(ficha, await Tipo.CondicoesAsync(ficha)))
+            .Select(a => new AttributeResponse(a.Atributo, a.Gasto, a.Bonus, a.TemMaestria, a.Total))
             .ToList();
-
-        // Artefatos (Posses 5.b: estar na ficha é estar equipado) + penalidades de equipamento ativas.
-        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
-        var artefatos = await stats.ModificadoresAsync(sheet, efeitos);
-
-        return attributes
-            .Select(a => new CharacterAttributeResponse(a.Atributo.ToString(), a.Gasto, a.Bonus, a.TemMaestria,
-                efeitos.NoAtributo(a.Atributo.ToString(), AttributeTotalCalculator.Total(a.Gasto, a.Bonus, a.TemMaestria,
-                    artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.Atributo, a.Atributo.ToString())))))
-            .ToList();
-    }
-
-    [HttpGet("budget")]
-    public async Task<ActionResult<AttributePointBudgetResponse>> Budget(Guid sheetId)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var gastoTotal = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId).SumAsync(a => a.Gasto);
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
-        return new AttributePointBudgetResponse(gastoTotal, pontosDisponiveis);
-    }
-
-    [HttpPut("{atributo}")]
-    public async Task<IActionResult> Update(Guid sheetId, Atributo atributo, UpdateCharacterAttributeRequest request)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
-
-        // "A soma de Gasto de todos os 8 atributos ... não pode ultrapassar o total de pontos que
-        // o personagem já recebeu (criação + níveis)" (2.a). Rejected rather than clamped. O
-        // Auditor pode reduzir o orçamento da Tabela de Níveis, deixando uma ficha acima dele; por
-        // isso a checagem vale só ao SUBIR o Gasto — baixar ou manter (e editar Bônus/Maestria)
-        // é sempre permitido.
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        if (request.Gasto > attribute.Gasto)
-        {
-            var gastoDosOutros = await db.CharacterAttributes.Where(a => a.CharacterSheetId == sheetId && a.Atributo != atributo).SumAsync(a => a.Gasto);
-            var pontosDisponiveis = AttributePointBudgetCalculator.Compute(sheet.Nivel, tabela);
-            if (gastoDosOutros + request.Gasto > pontosDisponiveis)
-                return BadRequest($"Gasto excede os {pontosDisponiveis} pontos de Atributo disponíveis.");
-        }
-        if (LimitesDeNivel.Gasto(atributo.ToString(), attribute.Gasto, request.Gasto, tabela.Limite(ChavesDeNivel.MaxAtributo, sheet.Nivel), sheet.Nivel) is { } erroDeLimite)
-            return BadRequest(erroDeLimite);
-
-        attribute.Gasto = request.Gasto;
-        attribute.Bonus = request.Bonus;
-        attribute.TemMaestria = request.TemMaestria;
-        await db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

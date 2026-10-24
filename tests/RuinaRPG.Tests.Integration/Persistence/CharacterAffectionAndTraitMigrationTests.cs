@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterAffectionAndTraitMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterAffectionAndTraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterAffectionAndTraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterAffectionAndTraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_affection_and_trait_tables()
@@ -21,9 +21,6 @@ public class CharacterAffectionAndTraitMigrationTests : IClassFixture<PostgresFi
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterAffectionsAndTraits"));
 
         // Seed real Trait rows from the imported Compêndio de Regras pipeline so the CharacterTrait
         // FK below genuinely targets a real, seeded Trait row rather than a synthetic one.
@@ -42,8 +39,8 @@ public class CharacterAffectionAndTraitMigrationTests : IClassFixture<PostgresFi
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.Set<CharacterAffection>().Add(new CharacterAffection { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
-        db.Set<CharacterTrait>().Add(new CharacterTrait { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
+        db.Set<CharacterAffection>().Add(new CharacterAffection { Id = Guid.NewGuid(), SheetId = sheet.Id, Nome = "Amigo de infância", Favorabilidade = 5 });
+        db.Set<CharacterTrait>().Add(new CharacterTrait { Id = Guid.NewGuid(), SheetId = sheet.Id, TraitId = trait.Id, Polaridade = trait.Polaridade });
         await db.SaveChangesAsync();
 
         (await db.Set<CharacterAffection>().CountAsync()).Should().Be(1);

@@ -1,0 +1,22 @@
+@using MudBlazor
+
+@* A tabela das Afeições com edição na linha (só nos tipos que a têm, TipoDeFichaCliente.EditaAfeicaoNaLinha: o
+   PUT affections/{id} só existe para eles). Os outros tipos mostram uma linha de texto por Afeição, na AbaPosses. *@
+
+<MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+    <thead><tr><th>Nome</th><th>Favorabilidade</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var affection in Estado.Afeicoes)
+        {
+            <tr>
+                <td><MudTextField T="string" Value="@affection.Nome" ValueChanged="@(v => Estado.AtualizarAfeicaoAsync(affection.Id, "Nome", v))" /></td>
+                <td><MudNumericField T="int" Value="@affection.Favorabilidade" ValueChanged="@(v => Estado.AtualizarAfeicaoAsync(affection.Id, "Favorabilidade", v))" /></td>
+                <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverAfeicaoAsync(affection.Id))">Remover</MudButton></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+}

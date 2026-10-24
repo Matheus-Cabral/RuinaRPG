@@ -1,12 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
-using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Condicoes;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -18,340 +14,37 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}")]
-public class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CharacterSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class CharacterArsenalController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, EquipmentPenaltyService penalidades, CharacterSheetStats stats, ITipoDeFicha<CharacterSheet> tipo)
+    : ArsenalDaFichaController<CharacterSheet, CharacterWeapon, CharacterArmorSlot, CharacterShield, WeaponResponse, ArmorSlotResponse, AddWeaponRequest>(
+        db, durabilidades, penalidades, tipo)
 {
-    [HttpPost("weapons")]
-    public async Task<ActionResult<CharacterWeaponResponse>> AddWeapon(Guid sheetId, AddCharacterWeaponRequest request)
+    protected override Task<ActionResult?> PreencherArmaAsync(CharacterWeapon arma, AddWeaponRequest request) => PreencherArmaDoCatalogoAsync(request.ItemId, LigarAoCatalogo(arma));
+
+    protected override async Task<ActionResult?> AjustarDurabilidadeDaArmaAsync(CharacterWeapon arma, int durabilidadeAtual)
     {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        if (!Guid.TryParse(request.ItemId, out var itemId))
-            return BadRequest("ItemId inválido.");
-
-        var item = await db.Set<Arma>().FirstOrDefaultAsync(a => a.Id == itemId);
-        if (item is null)
-            return BadRequest("Item de arma não encontrado.");
-
-        var weapon = new CharacterWeapon { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
-        db.CharacterWeapons.Add(weapon);
-        await db.SaveChangesAsync();
-
-        return Created(string.Empty, await ToWeaponResponseAsync(weapon, await durabilidades.TabelaAsync()));
-    }
-
-    [HttpGet("weapons")]
-    public async Task<ActionResult<List<CharacterWeaponResponse>>> ListWeapons(Guid sheetId)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var weapons = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId).ToListAsync();
-        var tabela = await durabilidades.TabelaAsync();
-        var responses = new List<CharacterWeaponResponse>();
-        foreach (var weapon in weapons)
-            responses.Add(await ToWeaponResponseAsync(weapon, tabela));
-        return responses;
-    }
-
-    [HttpPut("weapons/{id}")]
-    public async Task<IActionResult> UpdateWeapon(Guid sheetId, Guid id, [FromBody] bool isEquipped)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
-        if (weapon is null)
-            return NotFound();
-
-        if (isEquipped)
-        {
-            // Default rule (no Ambidestria exception — see plan out-of-scope): only 1 weapon equipped at a time.
-            var currentlyEquipped = await db.CharacterWeapons.Where(w => w.CharacterSheetId == sheetId && w.IsEquipped).ToListAsync();
-            foreach (var other in currentlyEquipped)
-                other.IsEquipped = false;
-        }
-        weapon.IsEquipped = isEquipped;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpPut("weapons/{id}/durabilidade")]
-    public async Task<IActionResult> UpdateWeaponDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
-        if (weapon is null)
-            return NotFound();
-
-        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.a).
-        var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
-        weapon.DurabilidadeAtual = DurabilidadeDeItem.LimitarAtual(durabilidadeAtual, (await durabilidades.ResolverAsync(item.Rank)).Maxima);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpDelete("weapons/{id}")]
-    public async Task<IActionResult> DeleteWeapon(Guid sheetId, Guid id)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var weapon = await db.CharacterWeapons.FirstOrDefaultAsync(w => w.Id == id && w.CharacterSheetId == sheetId);
-        if (weapon is null)
-            return NotFound();
-
-        db.CharacterWeapons.Remove(weapon);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpGet("armor-slots")]
-    public async Task<ActionResult<List<CharacterArmorSlotResponse>>> ListArmorSlots(Guid sheetId)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var slots = await db.CharacterArmorSlots.Where(a => a.CharacterSheetId == sheetId).ToListAsync();
-        var tabela = await durabilidades.TabelaAsync();
-        var responses = new List<CharacterArmorSlotResponse>();
-        foreach (var slot in slots)
-            responses.Add(await ToArmorSlotResponseAsync(slot, tabela));
-        return responses;
-    }
-
-    [HttpPut("armor-slots/{slot}")]
-    public async Task<IActionResult> UpdateArmorSlot(Guid sheetId, ArmorSlotType slot, UpdateCharacterArmorSlotRequest request)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == slot);
-
-        if (request.ItemId is null)
-        {
-            armorSlot.ItemId = null;
-            armorSlot.DurabilidadeAtual = null;
-        }
-        else
-        {
-            if (!Guid.TryParse(request.ItemId, out var itemId))
-                return BadRequest("ItemId inválido.");
-
-            var item = await db.Set<Armadura>().FirstOrDefaultAsync(a => a.Id == itemId);
-            if (item is null)
-                return BadRequest("Item de armadura não encontrado.");
-
-            armorSlot.ItemId = itemId;
-            armorSlot.DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0;
-        }
-
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpPut("armor-slots/{slot}/durabilidade")]
-    public async Task<IActionResult> UpdateArmorSlotDurability(Guid sheetId, ArmorSlotType slot, [FromBody] int durabilidadeAtual)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var armorSlot = await db.CharacterArmorSlots.SingleAsync(a => a.CharacterSheetId == sheetId && a.Slot == slot);
-        if (armorSlot.ItemId is null)
-            return BadRequest("Nenhuma armadura equipada nesse slot.");
-
-        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.b).
-        var item = await db.Set<Armadura>().SingleAsync(a => a.Id == armorSlot.ItemId);
-        armorSlot.DurabilidadeAtual = DurabilidadeDeItem.LimitarAtual(durabilidadeAtual, (await durabilidades.ResolverAsync(item.Rank)).Maxima);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpPost("shields")]
-    public async Task<ActionResult<CharacterShieldResponse>> AddShield(Guid sheetId, AddCharacterShieldRequest request)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        if (!Guid.TryParse(request.ItemId, out var itemId))
-            return BadRequest("ItemId inválido.");
-
-        var item = await db.Set<Escudo>().FirstOrDefaultAsync(e => e.Id == itemId);
-        if (item is null)
-            return BadRequest("Item de escudo não encontrado.");
-
-        var shield = new CharacterShield { Id = Guid.NewGuid(), CharacterSheetId = sheetId, ItemId = itemId, IsEquipped = false, DurabilidadeAtual = (await durabilidades.ResolverAsync(item.Rank)).Maxima ?? 0 };
-        db.CharacterShields.Add(shield);
-        await db.SaveChangesAsync();
-
-        return Created(string.Empty, await ToShieldResponseAsync(shield, await durabilidades.TabelaAsync()));
-    }
-
-    [HttpGet("shields")]
-    public async Task<ActionResult<List<CharacterShieldResponse>>> ListShields(Guid sheetId)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var shields = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId).ToListAsync();
-        var tabela = await durabilidades.TabelaAsync();
-        var responses = new List<CharacterShieldResponse>();
-        foreach (var shield in shields)
-            responses.Add(await ToShieldResponseAsync(shield, tabela));
-        return responses;
-    }
-
-    [HttpPut("shields/{id}")]
-    public async Task<IActionResult> UpdateShield(Guid sheetId, Guid id, [FromBody] bool isEquipped)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
-        if (shield is null)
-            return NotFound();
-
-        if (isEquipped)
-        {
-            // Same "1 equipped at a time" default rule as weapons (UpdateWeapon) — no exception modeled yet.
-            var currentlyEquipped = await db.CharacterShields.Where(s => s.CharacterSheetId == sheetId && s.IsEquipped).ToListAsync();
-            foreach (var other in currentlyEquipped)
-                other.IsEquipped = false;
-        }
-        shield.IsEquipped = isEquipped;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpPut("shields/{id}/durabilidade")]
-    public async Task<IActionResult> UpdateShieldDurability(Guid sheetId, Guid id, [FromBody] int durabilidadeAtual)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
-        if (shield is null)
-            return NotFound();
-
-        // "Atual ... não pode exceder o Máximo" (Ficha de Personagem 3.c).
-        var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
-        shield.DurabilidadeAtual = DurabilidadeDeItem.LimitarAtual(durabilidadeAtual, (await durabilidades.ResolverAsync(item.Rank)).Maxima);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    [HttpDelete("shields/{id}")]
-    public async Task<IActionResult> DeleteShield(Guid sheetId, Guid id)
-    {
-        var authError = await CheckEditAuthorizationAsync(sheetId);
-        if (authError is not null)
-            return authError;
-
-        var shield = await db.CharacterShields.FirstOrDefaultAsync(s => s.Id == id && s.CharacterSheetId == sheetId);
-        if (shield is null)
-            return NotFound();
-
-        db.CharacterShields.Remove(shield);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    private async Task<ActionResult?> CheckEditAuthorizationAsync(Guid sheetId)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
+        arma.DurabilidadeAtual = await DurabilidadeDeArmaLimitadaAsync(arma.ItemId, durabilidadeAtual);
         return null;
     }
 
-    // O retrato da ficha SEM penalidades é calculado uma vez por requisição, e só se algum item tiver Requisitos.
-    private Task<FichaParaRequisitos>? _fichaSemPenalidades;
+    protected override Task<WeaponResponse> RespostaDeArmaAsync(CharacterSheet ficha, CharacterWeapon arma, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela) =>
+        RespostaDeArmaDoCatalogoAsync(ficha, arma.ItemId, arma.Id, tabela, (item, d) =>
+            new WeaponResponse(arma.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, arma.IsEquipped, DurabilidadeDeItem.LimitarAtual(arma.DurabilidadeAtual, d.Maxima), d.Maxima ?? 0, d.ImageUrl, item.Descricao, d.Inquebravel,
+                d.Avaliacao.Requisitos, d.Avaliacao.RequisitosPendentes, d.Avaliacao.Penalidade, d.Avaliacao.OutrasPenalidades, d.DesabilitadoPor));
 
-    private Func<Task<FichaParaRequisitos>> FichaSemPenalidades(Guid sheetId) =>
-        () => _fichaSemPenalidades ??= CalcularFichaAsync(sheetId);
+    protected override ArmorSlotResponse SlotVazio(CharacterArmorSlot slot) =>
+        new(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null);
 
-    private async Task<FichaParaRequisitos> CalcularFichaAsync(Guid sheetId) =>
-        await stats.FichaParaRequisitosAsync((await db.CharacterSheets.FindAsync(sheetId))!);
+    protected override ArmorSlotResponse RespostaDeSlot(CharacterArmorSlot slot, Armadura item, DetalhesDoItemEquipado d) =>
+        new(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, d.Maxima), d.Maxima, d.ImageUrl, item.Descricao, d.Inquebravel,
+            d.Avaliacao.Requisitos, d.Avaliacao.RequisitosPendentes, d.Avaliacao.Penalidade, d.Avaliacao.OutrasPenalidades, d.DesabilitadoPor);
 
-    private async Task<CharacterWeaponResponse> ComAvaliacaoAsync(CharacterWeaponResponse r, Item item, Guid sheetId)
-    {
-        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
-    }
+    protected override ShieldResponse RespostaDeEscudo(CharacterShield escudo, Escudo item, DetalhesDoItemEquipado d) =>
+        new(escudo.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, escudo.IsEquipped, DurabilidadeDeItem.LimitarAtual(escudo.DurabilidadeAtual, d.Maxima), d.Maxima ?? 0, d.ImageUrl, item.Descricao, d.Inquebravel,
+            d.Avaliacao.Requisitos, d.Avaliacao.RequisitosPendentes, d.Avaliacao.Penalidade, d.Avaliacao.OutrasPenalidades, d.DesabilitadoPor);
 
-    private async Task<CharacterArmorSlotResponse> ComAvaliacaoAsync(CharacterArmorSlotResponse r, Item item, Guid sheetId)
-    {
-        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
-    }
+    protected override string? ItemIdDoSlot(UpdateArmorSlotRequest request) => request.ItemId;
 
-    private async Task<CharacterShieldResponse> ComAvaliacaoAsync(CharacterShieldResponse r, Item item, Guid sheetId)
-    {
-        var a = await penalidades.AvaliarAsync(item, FichaSemPenalidades(sheetId));
-        return r with { Requisitos = a.Requisitos, RequisitosPendentes = a.RequisitosPendentes, Penalidade = a.Penalidade, OutrasPenalidades = a.OutrasPenalidades };
-    }
+    protected override string ItemIdDoEscudo(AddShieldRequest request) => request.ItemId;
 
-    private async Task<CharacterWeaponResponse> ToWeaponResponseAsync(CharacterWeapon weapon, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
-    {
-        var item = await db.Set<Arma>().SingleAsync(a => a.Id == weapon.ItemId);
-        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        var resposta = new CharacterWeaponResponse(weapon.Id.ToString(), item.Id.ToString(), item.Nome, item.TipoDeDano?.ToString(), item.Alcance, item.Dados, item.Dano, item.Critico, item.Rank?.ToString(), item.Peso, weapon.IsEquipped, DurabilidadeDeItem.LimitarAtual(weapon.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Arma, weapon.CharacterSheetId, weapon.Id) }, item, weapon.CharacterSheetId);
-    }
-
-    private async Task<CharacterArmorSlotResponse> ToArmorSlotResponseAsync(CharacterArmorSlot slot, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
-    {
-        if (slot.ItemId is null)
-            return new CharacterArmorSlotResponse(slot.Slot.ToString(), null, null, null, null, null, null, null, null, null, null, null);
-
-        var item = await db.Set<Armadura>().SingleAsync(a => a.Id == slot.ItemId);
-        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        var resposta = new CharacterArmorSlotResponse(slot.Slot.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.Defesa, item.RF, item.RM, item.Peso, slot.DurabilidadeAtual is null ? null : DurabilidadeDeItem.LimitarAtual(slot.DurabilidadeAtual.Value, maxima), maxima, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Armadura, slot.CharacterSheetId, slot.Id) }, item, slot.CharacterSheetId);
-    }
-
-    private async Task<CharacterShieldResponse> ToShieldResponseAsync(CharacterShield shield, IReadOnlyDictionary<RankDeItem, DurabilidadeDeRank> tabela)
-    {
-        var item = await db.Set<Escudo>().SingleAsync(e => e.Id == shield.ItemId);
-        var imageUrl = await ResolveImageUrlAsync(item.ImageId);
-        var (maxima, inquebravel) = DurabilidadeDeItem.Resolver(item.Rank, tabela);
-        var resposta = new CharacterShieldResponse(shield.Id.ToString(), item.Id.ToString(), item.Nome, item.Categoria?.ToString(), item.BonusDefesa, item.Peso, shield.IsEquipped, DurabilidadeDeItem.LimitarAtual(shield.DurabilidadeAtual, maxima), maxima ?? 0, imageUrl, item.Descricao, inquebravel);
-        return await ComAvaliacaoAsync(resposta with { DesabilitadoPor = await DesabilitadoPorAsync(CategoriaDesabilitavel.Escudo, shield.CharacterSheetId, shield.Id) }, item, shield.CharacterSheetId);
-    }
-
-    private async Task<string?> ResolveImageUrlAsync(Guid? imageId)
-    {
-        if (imageId is null)
-            return null;
-
-        var image = await db.Images.FindAsync(imageId.Value);
-        return image is not null ? $"/images/{image.Path}" : null;
-    }
-
-    // Condições ativas da ficha que desabilitam esta linha (null se nenhuma). O Id é o da linha da ficha, o mesmo de itens-desabilitaveis.
-    private async Task<string?> DesabilitadoPorAsync(CategoriaDesabilitavel categoria, Guid sheetId, Guid linhaId) =>
-        (await condicoes.ParaPersonagemAsync(sheetId)).DesabilitadoPor(categoria, linhaId);
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+    protected override Task<FichaParaRequisitos> FichaParaRequisitosAsync(CharacterSheet ficha) => stats.FichaParaRequisitosAsync(ficha);
 }

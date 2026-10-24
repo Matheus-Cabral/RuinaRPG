@@ -9,11 +9,11 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 // Personagem — Afeições e Características task has a real Trait table + seeded rows to reference.
 // This is this branch's own coverage of that imported pipeline (migration + seed), independent of
 // whatever test suite the Compêndio de Regras plan eventually brings with its own merge.
-public class TraitMigrationAndSeedTests : IClassFixture<PostgresFixture>
+public class TraitMigrationAndSeedTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TraitMigrationAndSeedTests(PostgresFixture fixture) => _fixture = fixture;
+    public TraitMigrationAndSeedTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_traits_table_and_SeedAsync_populates_it_from_the_real_document()
@@ -21,9 +21,6 @@ public class TraitMigrationAndSeedTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddTraits"));
 
         var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
         var result = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);

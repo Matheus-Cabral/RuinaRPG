@@ -10,36 +10,8 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class CondicoesControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public CondicoesControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task GrantRulesAuditorAsync(string email)
-    {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
-        user.IsRulesAuditor = true;
-        await db.SaveChangesAsync();
-    }
-
     private HttpRequestMessage Authed(HttpMethod method, string url, string token, object? body = null)
     {
         var message = new HttpRequestMessage(method, url);
@@ -51,7 +23,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private async Task<string> RegisterGmAsync(string nickname, string email, bool auditor)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
         var token = (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         if (auditor)
             await GrantRulesAuditorAsync(email);
@@ -66,7 +38,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     ["Magia", "Runa"]);
 
     private async Task<List<CondicaoResponse>> ListAsync(string token, string? nome = null) =>
-        (await (await _client.SendAsync(Authed(HttpMethod.Get, "/api/condicoes" + (nome is null ? "" : $"?nome={nome}"), token))).Content.ReadFromJsonAsync<List<CondicaoResponse>>())!;
+        (await (await Client.SendAsync(Authed(HttpMethod.Get, "/api/condicoes" + (nome is null ? "" : $"?nome={nome}"), token))).Content.ReadFromJsonAsync<List<CondicaoResponse>>())!;
 
     [Theory]
     [InlineData("Hipnotizado")]
@@ -75,7 +47,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var token = await RegisterGmAsync($"CondGmIc{icone}", $"condic{icone.ToLowerInvariant()}@teste.com", true);
 
-        var create = await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida($"Com ícone {icone}") with { Icone = icone }));
+        var create = await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida($"Com ícone {icone}") with { Icone = icone }));
 
         create.StatusCode.Should().Be(HttpStatusCode.Created);
         (await ListAsync(token)).Single(c => c.Nome == $"Com ícone {icone}").Icone.Should().Be(icone);
@@ -86,7 +58,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var token = await RegisterGmAsync("CondGm1", "cond1@teste.com", true);
 
-        var create = await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida()));
+        var create = await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida()));
         create.StatusCode.Should().Be(HttpStatusCode.Created);
         var criada = (await create.Content.ReadFromJsonAsync<CondicaoResponse>())!;
         criada.Modificadores.Should().HaveCount(2);
@@ -101,7 +73,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
 
         var novo = new SalvarCondicaoRequest("Envenenado grave", null, "Fogo", null,
             [new CondicaoModificadorDto("Dano", null, "Fixo", 2, null)], ["Arma"]);
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{criada.Id}", token, novo))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{criada.Id}", token, novo))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var editada = (await ListAsync(token)).Single(c => c.Id == criada.Id);
         editada.Nome.Should().Be("Envenenado grave");
@@ -109,7 +81,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         editada.Modificadores.Should().ContainSingle().Which.Alvo.Should().Be("Dano");
         editada.Desabilitacoes.Should().Equal("Arma");
 
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{criada.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{criada.Id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await ListAsync(token)).Should().NotContain(c => c.Id == criada.Id);
     }
 
@@ -118,25 +90,25 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var auditor = await RegisterGmAsync("CondGm2", "cond2@teste.com", true);
         var gm = await RegisterGmAsync("CondGm3", "cond3@teste.com", false);
-        var criada = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", auditor, Valida("Lenta")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var criada = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", auditor, Valida("Lenta")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
 
-        (await _client.SendAsync(Authed(HttpMethod.Get, "/api/condicoes", gm))).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Client.SendAsync(Authed(HttpMethod.Get, "/api/condicoes", gm))).StatusCode.Should().Be(HttpStatusCode.OK);
         (await ListAsync(gm, "Lent")).Should().Contain(c => c.Id == criada.Id);
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", gm, Valida("Outra")))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{criada.Id}", gm, Valida("Outra")))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{criada.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", gm, Valida("Outra")))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{criada.Id}", gm, Valida("Outra")))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{criada.Id}", gm))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
     public async Task A_duplicate_name_is_rejected_but_reusable_after_a_soft_delete()
     {
         var token = await RegisterGmAsync("CondGm4", "cond4@teste.com", true);
-        var primeira = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var primeira = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
 
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{primeira.Id}", token));
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).StatusCode.Should().Be(HttpStatusCode.Created);
+        await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{primeira.Id}", token));
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Repetida")))).StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
@@ -145,7 +117,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
         var token = await RegisterGmAsync("CondGm5", "cond5@teste.com", true);
         var semMomento = Valida("Sem momento") with { Modificadores = [new CondicaoModificadorDto("RecursoAtual", "Vitalidade", "Fixo", -2, null)] };
 
-        var response = await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, semMomento));
+        var response = await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, semMomento));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("momento");
@@ -156,26 +128,26 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var token = await RegisterGmAsync("CondGm6", "cond6@teste.com", true);
 
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Icone ruim") with { Icone = "Banana" }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Icone ruim") with { Icone = "Banana" }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var pericia = (n: "Pericia ruim", chave: "Inexistente");
         var ruim = Valida(pericia.n) with { Modificadores = [new CondicaoModificadorDto("Pericia", pericia.chave, "Fixo", -1, null)] };
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, ruim))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, ruim))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var boa = Valida("Pericia boa") with { Modificadores = [new CondicaoModificadorDto("Pericia", "Prontidao", "Fixo", -1, null)] };
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, boa))).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, boa))).StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
     public async Task Delete_is_a_soft_delete_that_keeps_the_children_and_hides_the_row_from_later_calls()
     {
         var token = await RegisterGmAsync("CondGm7", "cond7@teste.com", true);
-        var criada = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Soft")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var criada = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Soft")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
         var id = Guid.Parse(criada.Id);
 
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
             (await db.Condicoes.SingleAsync(c => c.Id == id)).IsDeleted.Should().BeTrue();
@@ -183,16 +155,16 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
             (await db.CondicaoDesabilitacoes.CountAsync(d => d.CondicaoId == id)).Should().Be(2);
         }
 
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{id}", token, Valida("Soft")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{id}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{id}", token, Valida("Soft")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
     public async Task The_nome_query_excludes_conditions_that_do_not_match()
     {
         var token = await RegisterGmAsync("CondGm8", "cond8@teste.com", true);
-        var alfa = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Filtro Alfa")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
-        var beta = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Outra Beta")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var alfa = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Filtro Alfa")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        var beta = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Outra Beta")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
 
         var filtradas = await ListAsync(token, "alfa");
 
@@ -204,11 +176,11 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     public async Task Update_onto_another_conditions_name_returns_400_but_keeping_its_own_name_returns_204()
     {
         var token = await RegisterGmAsync("CondGm9", "cond9@teste.com", true);
-        await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Um")));
-        var dois = (await (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Dois")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
+        await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Um")));
+        var dois = (await (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, Valida("Nome Dois")))).Content.ReadFromJsonAsync<CondicaoResponse>())!;
 
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Um")))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Dois")))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Um")))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{dois.Id}", token, Valida("Nome Dois")))).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     public static IEnumerable<object[]> PayloadsComEnumInvalido() =>
@@ -227,7 +199,7 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var token = await RegisterGmAsync("CondGmEnum" + Guid.NewGuid().ToString("N")[..6], $"condenum{Guid.NewGuid():N}@teste.com", true);
 
-        (await _client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, payload))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.SendAsync(Authed(HttpMethod.Post, "/api/condicoes", token, payload))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -235,13 +207,13 @@ public class CondicoesControllerTests : IClassFixture<PostgresFixture>, IAsyncLi
     {
         var token = await RegisterGmAsync("CondGm10", "cond10@teste.com", true);
 
-        (await _client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{Guid.NewGuid()}", token, Valida("Fantasma")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{Guid.NewGuid()}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Put, $"/api/condicoes/{Guid.NewGuid()}", token, Valida("Fantasma")))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(Authed(HttpMethod.Delete, $"/api/condicoes/{Guid.NewGuid()}", token))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
     public async Task An_unauthenticated_GET_returns_401()
     {
-        (await _client.GetAsync("/api/condicoes")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.GetAsync("/api/condicoes")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

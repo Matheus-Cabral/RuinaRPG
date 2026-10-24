@@ -138,11 +138,11 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
     private async Task SeedBlankNpcChildrenAsync(Guid npcSheetId)
     {
         foreach (var atributo in Enum.GetValues<Atributo>())
-            db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Atributo = atributo });
+            db.NpcAttributes.Add(new NpcAttribute { Id = Guid.NewGuid(), SheetId = npcSheetId, Atributo = atributo });
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
-            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
+            db.NpcSkills.Add(new NpcSkill { Id = Guid.NewGuid(), SheetId = npcSheetId, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), NpcSheetId = npcSheetId, Slot = slot });
+            db.NpcArmorSlots.Add(new NpcArmorSlot { Id = Guid.NewGuid(), SheetId = npcSheetId, Slot = slot });
     }
 
     /// <summary>
@@ -152,11 +152,11 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
     private async Task SeedBlankCreatureChildrenAsync(Guid creatureSheetId)
     {
         foreach (var atributo in Enum.GetValues<AtributoCriatura>())
-            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Atributo = atributo });
+            db.CreatureAttributes.Add(new CreatureAttribute { Id = Guid.NewGuid(), SheetId = creatureSheetId, Atributo = atributo });
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted && p.DisponivelParaCriaturas))
-            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
+            db.CreatureSkills.Add(new CreatureSkill { Id = Guid.NewGuid(), SheetId = creatureSheetId, PericiaId = pericia.Id, AtributoEscolhido = Enum.TryParse<AtributoCriatura>(pericia.AtributoSugerido?.ToString(), out var sugerido) ? sugerido : null });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), CreatureSheetId = creatureSheetId, Slot = slot });
+            db.CreatureArmorSlots.Add(new CreatureArmorSlot { Id = Guid.NewGuid(), SheetId = creatureSheetId, Slot = slot });
     }
 
     /// <summary>
@@ -223,36 +223,36 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
         };
 
         // Deep-copy every child table — mechanical, one loop per table, same shape each time.
-        foreach (var i in await db.NpcSheetHistoriaImages.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcSheetHistoriaImages.Add(new() { NpcSheetId = copy.Id, ImageId = i.ImageId, Ordem = i.Ordem });
-        foreach (var a in await db.NpcAttributes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcAttributes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
-        foreach (var s in await db.NpcSkills.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcSkills.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
-        foreach (var a in await db.NpcAffinities.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Elemento = a.Elemento, ElementoValor = a.ElementoValor, SubElemento = a.SubElemento, SubElementoValor = a.SubElementoValor, SegundaEssencia = a.SegundaEssencia, SegundaEssenciaValor = a.SegundaEssenciaValor, Experiencia = a.Experiencia });
-        foreach (var r in await db.NpcRunes.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcRunes.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau, Tipo = r.Tipo, Disciplina = r.Disciplina, ImageId = r.ImageId });
-        foreach (var m in await db.NpcMasteries.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcMasteries.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
-        foreach (var w in await db.NpcWeapons.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcWeapons.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ItemId = w.ItemId, IsEquipped = w.IsEquipped, DurabilidadeAtual = w.DurabilidadeAtual });
-        foreach (var slot in await db.NpcArmorSlots.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcArmorSlots.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Slot = slot.Slot, ItemId = slot.ItemId, DurabilidadeAtual = slot.DurabilidadeAtual });
-        foreach (var sh in await db.NpcShields.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcShields.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ItemId = sh.ItemId, IsEquipped = sh.IsEquipped, DurabilidadeAtual = sh.DurabilidadeAtual });
-        foreach (var inv in await db.NpcInventoryItems.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcInventoryItems.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ItemId = inv.ItemId, Qtd = inv.Qtd });
-        foreach (var art in await db.NpcArtifacts.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcArtifacts.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
-        foreach (var sa in await db.NpcSpellAbilities.Where(x => x.NpcSheetId == sourceId).ToListAsync())
+        foreach (var i in await db.NpcSheetHistoriaImages.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcSheetHistoriaImages.Add(new() { SheetId = copy.Id, ImageId = i.ImageId, Ordem = i.Ordem });
+        foreach (var a in await db.NpcAttributes.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcAttributes.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
+        foreach (var s in await db.NpcSkills.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcSkills.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
+        foreach (var a in await db.NpcAffinities.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Elemento = a.Elemento, ElementoValor = a.ElementoValor, SubElemento = a.SubElemento, SubElementoValor = a.SubElementoValor, SegundaEssencia = a.SegundaEssencia, SegundaEssenciaValor = a.SegundaEssenciaValor, Experiencia = a.Experiencia });
+        foreach (var r in await db.NpcRunes.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcRunes.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau, Tipo = r.Tipo, Disciplina = r.Disciplina, ImageId = r.ImageId });
+        foreach (var m in await db.NpcMasteries.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcMasteries.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
+        foreach (var w in await db.NpcWeapons.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcWeapons.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = w.ItemId, IsEquipped = w.IsEquipped, DurabilidadeAtual = w.DurabilidadeAtual });
+        foreach (var slot in await db.NpcArmorSlots.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcArmorSlots.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Slot = slot.Slot, ItemId = slot.ItemId, DurabilidadeAtual = slot.DurabilidadeAtual });
+        foreach (var sh in await db.NpcShields.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcShields.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = sh.ItemId, IsEquipped = sh.IsEquipped, DurabilidadeAtual = sh.DurabilidadeAtual });
+        foreach (var inv in await db.NpcInventoryItems.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcInventoryItems.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = inv.ItemId, Qtd = inv.Qtd });
+        foreach (var art in await db.NpcArtifacts.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcArtifacts.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
+        foreach (var sa in await db.NpcSpellAbilities.Where(x => x.SheetId == sourceId).ToListAsync())
         {
             var efeitos = await db.NpcSpellAbilityEffects.Where(x => x.NpcSpellAbilityId == sa.Id).ToListAsync();
             var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
                 efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: false, sa.Categoria, sa.Requisitos);
             var saCopy = new NpcSpellAbility
             {
-                Id = Guid.NewGuid(), NpcSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
+                Id = Guid.NewGuid(), SheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
                 Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
@@ -260,10 +260,10 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             foreach (var eff in efeitos)
                 db.NpcSpellAbilityEffects.Add(new() { Id = Guid.NewGuid(), NpcSpellAbilityId = saCopy.Id, EfeitoNome = eff.EfeitoNome, Quantidade = eff.Quantidade, CustoPI = eff.CustoPI });
         }
-        foreach (var aff in await db.NpcAffections.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcAffections.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, Nome = aff.Nome, Favorabilidade = aff.Favorabilidade });
-        foreach (var t in await db.NpcTraits.Where(x => x.NpcSheetId == sourceId).ToListAsync())
-            db.NpcTraits.Add(new() { Id = Guid.NewGuid(), NpcSheetId = copy.Id, TraitId = t.TraitId, Polaridade = t.Polaridade });
+        foreach (var aff in await db.NpcAffections.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcAffections.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = aff.Nome, Favorabilidade = aff.Favorabilidade });
+        foreach (var t in await db.NpcTraits.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcTraits.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, TraitId = t.TraitId, Polaridade = t.Polaridade });
 
         return copy;
     }
@@ -284,34 +284,34 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             AdrenalinaAtual = source.AdrenalinaAtual, Cobertura = source.Cobertura
         };
 
-        foreach (var a in await db.CreatureAttributes.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureAttributes.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
-        foreach (var s in await db.CreatureSkills.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureSkills.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
-        foreach (var m in await db.CreatureMasteries.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureMasteries.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
-        foreach (var w in await db.CreatureWeapons.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
+        foreach (var a in await db.CreatureAttributes.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureAttributes.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
+        foreach (var s in await db.CreatureSkills.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureSkills.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
+        foreach (var m in await db.CreatureMasteries.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureMasteries.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = m.Nome, PericiaId = m.PericiaId, Atributo = m.Atributo, GastoMaestria = m.GastoMaestria });
+        foreach (var w in await db.CreatureWeapons.Where(x => x.SheetId == sourceId).ToListAsync())
             db.CreatureWeapons.Add(new()
             {
-                Id = Guid.NewGuid(), CreatureSheetId = copy.Id, ItemId = w.ItemId, IsEquipped = w.IsEquipped, DurabilidadeAtual = w.DurabilidadeAtual,
+                Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = w.ItemId, IsEquipped = w.IsEquipped, DurabilidadeAtual = w.DurabilidadeAtual,
                 ManualNome = w.ManualNome, ManualTipoDeDano = w.ManualTipoDeDano, ManualDados = w.ManualDados, ManualDano = w.ManualDano
             });
-        foreach (var slot in await db.CreatureArmorSlots.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureArmorSlots.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Slot = slot.Slot, ItemId = slot.ItemId, DurabilidadeAtual = slot.DurabilidadeAtual });
-        foreach (var sh in await db.CreatureShields.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureShields.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, ItemId = sh.ItemId, IsEquipped = sh.IsEquipped, DurabilidadeAtual = sh.DurabilidadeAtual });
-        foreach (var sp in await db.CreatureSpoils.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureSpoils.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, ItemId = sp.ItemId, Qtd = sp.Qtd, DT = sp.DT });
-        foreach (var art in await db.CreatureArtifacts.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureArtifacts.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
-        foreach (var sa in await db.CreatureSpellAbilities.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
+        foreach (var slot in await db.CreatureArmorSlots.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureArmorSlots.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Slot = slot.Slot, ItemId = slot.ItemId, DurabilidadeAtual = slot.DurabilidadeAtual });
+        foreach (var sh in await db.CreatureShields.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureShields.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = sh.ItemId, IsEquipped = sh.IsEquipped, DurabilidadeAtual = sh.DurabilidadeAtual });
+        foreach (var sp in await db.CreatureSpoils.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureSpoils.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ItemId = sp.ItemId, Qtd = sp.Qtd, DT = sp.DT });
+        foreach (var art in await db.CreatureArtifacts.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureArtifacts.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ArtifactItemId = art.ArtifactItemId });
+        foreach (var sa in await db.CreatureSpellAbilities.Where(x => x.SheetId == sourceId).ToListAsync())
         {
             var efeitos = await db.CreatureSpellAbilityEffects.Where(x => x.CreatureSpellAbilityId == sa.Id).ToListAsync();
             var entradaDoBanco = await PublicarMagiaNaCampanhaAsync(campaignId, gmId, sa.SourceBankEntryId, sa.Nome, sa.Tipo, sa.Grau, sa.GastoEmPI, sa.Custo, sa.Descricao,
                 efeitos.Select(e => (e.EfeitoNome, e.Quantidade, e.CustoPI)), deCriatura: true, sa.Categoria, sa.Requisitos);
             var saCopy = new CreatureSpellAbility
             {
-                Id = Guid.NewGuid(), CreatureSheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
+                Id = Guid.NewGuid(), SheetId = copy.Id, SourceBankEntryId = entradaDoBanco, Nome = sa.Nome,
                 Tipo = sa.Tipo, Grau = sa.Grau, GastoEmPI = sa.GastoEmPI, Custo = sa.Custo, Descricao = sa.Descricao,
                 Categoria = sa.Categoria, Requisitos = sa.Requisitos, CriadaNaFicha = sa.CriadaNaFicha
             };
@@ -319,10 +319,10 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             foreach (var eff in efeitos)
                 db.CreatureSpellAbilityEffects.Add(new() { Id = Guid.NewGuid(), CreatureSpellAbilityId = saCopy.Id, EfeitoNome = eff.EfeitoNome, Quantidade = eff.Quantidade, CustoPI = eff.CustoPI });
         }
-        foreach (var aff in await db.CreatureAffections.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureAffections.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, Nome = aff.Nome, Favorabilidade = aff.Favorabilidade });
-        foreach (var t in await db.CreatureTraits.Where(x => x.CreatureSheetId == sourceId).ToListAsync())
-            db.CreatureTraits.Add(new() { Id = Guid.NewGuid(), CreatureSheetId = copy.Id, TraitId = t.TraitId, CreatureExclusiveTraitId = t.CreatureExclusiveTraitId, Polaridade = t.Polaridade });
+        foreach (var aff in await db.CreatureAffections.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureAffections.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = aff.Nome, Favorabilidade = aff.Favorabilidade });
+        foreach (var t in await db.CreatureTraits.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.CreatureTraits.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, TraitId = t.TraitId, CreatureExclusiveTraitId = t.CreatureExclusiveTraitId, Polaridade = t.Polaridade });
 
         return copy;
     }

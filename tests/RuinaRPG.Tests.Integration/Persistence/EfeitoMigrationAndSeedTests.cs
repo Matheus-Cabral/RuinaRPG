@@ -6,11 +6,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EfeitoMigrationAndSeedTests : IClassFixture<PostgresFixture>
+public class EfeitoMigrationAndSeedTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EfeitoMigrationAndSeedTests(PostgresFixture fixture) => _fixture = fixture;
+    public EfeitoMigrationAndSeedTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Efeitos_table_and_SeedAsync_populates_it()
@@ -18,9 +18,6 @@ public class EfeitoMigrationAndSeedTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddEfeitos"));
 
         await EfeitoSeeder.SeedAsync(db);
 

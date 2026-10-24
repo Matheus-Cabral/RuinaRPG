@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EncounterParticipantCondicoesMigrationTests : IClassFixture<PostgresFixture>
+public class EncounterParticipantCondicoesMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EncounterParticipantCondicoesMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public EncounterParticipantCondicoesMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_table_with_jsonb_columns_a_cascading_participant_FK_and_round_trips_the_snapshot()

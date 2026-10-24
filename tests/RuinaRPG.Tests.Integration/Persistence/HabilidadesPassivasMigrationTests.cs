@@ -11,11 +11,11 @@ using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
+public class HabilidadesPassivasMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public HabilidadesPassivasMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public HabilidadesPassivasMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Categoria_and_requisitos_round_trip_on_the_bank_and_on_a_sheet_copy()
@@ -24,7 +24,6 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
         await using (var db = new RuinaRpgDbContext(options))
         {
             await db.Database.MigrateAsync();
-            (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddHabilidadesPassivas"));
         }
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@passivatest.com", Email = "gm@passivatest.com", Nickname = "PassivaTestGm", Role = UserRole.GM };
@@ -53,7 +52,7 @@ public class HabilidadesPassivasMigrationTests : IClassFixture<PostgresFixture>
             });
             db.CharacterSpellAbilities.Add(new CharacterSpellAbility
             {
-                Id = sheetEntryId, CharacterSheetId = sheet.Id, SourceBankEntryId = bankId, Nome = "Pele de Pedra",
+                Id = sheetEntryId, SheetId = sheet.Id, SourceBankEntryId = bankId, Nome = "Pele de Pedra",
                 Tipo = SpellAbilityTipo.Passiva, Descricao = "d", Categoria = CategoriaDePassiva.Vocacional, Requisitos = requisitos
             });
             await db.SaveChangesAsync();

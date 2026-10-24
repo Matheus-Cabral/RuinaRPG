@@ -1,104 +1,90 @@
 # Ruína RPG
 
-**Ruína RPG** é um sistema de RPG de mesa, e este repositório reúne, lado a lado:
+**Ruína RPG** é um sistema de RPG de mesa. Este repositório guarda duas coisas lado a lado:
 
-1. **A documentação de design do jogo** (`Docs/`) — um vault do [Obsidian](https://obsidian.md/) com o livro de regras completo e os requisitos de software do aplicativo web que o acompanha, tudo em **português do Brasil**.
-2. **O aplicativo web** que implementa esses requisitos — uma solução .NET 8 (`RuinaRPG.sln`) com API em ASP.NET Core, cliente Blazor WebAssembly, PostgreSQL via EF Core e deploy via Docker/nginx.
-
-O app gerencia fichas de personagem, campanhas e bestiários para as mesas de Ruína RPG: GMs curam catálogos de itens/magias/monstros e conduzem campanhas; jogadores criam e evoluem suas fichas dentro delas.
-
-> `Docs/` é a fonte da verdade do produto — toda mudança de código deve rastrear até um requisito em `Docs/Requisitos/`.
+1. **A documentação do jogo** (`Docs/`): um vault do [Obsidian](https://obsidian.md/) com o livro de regras e os requisitos do aplicativo web, tudo em português do Brasil.
+2. **O aplicativo web** que implementa esses requisitos: gerencia fichas de personagem, NPCs e criaturas, campanhas, catálogos de itens e magias, encontros e o livro de regras. GMs curam os catálogos e conduzem campanhas; jogadores criam e evoluem suas fichas dentro delas.
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
-| API | ASP.NET Core 8 |
+| API | ASP.NET Core 8 (`src/RuinaRPG.Api`) |
 | Banco de dados | PostgreSQL, via EF Core / Npgsql |
 | Tempo real | SignalR |
-| Cliente | Blazor WebAssembly 8 |
-| Deploy | Docker Compose + nginx (reverse proxy + serve do cliente) |
-| Testes | xUnit (`RuinaRPG.Tests.Unit`, `.Integration`, `.Client`) — a integração usa Testcontainers para subir um Postgres real |
-
-## Estrutura do repositório
-
-```
-Docs/                     Vault Obsidian — regras do jogo e requisitos do app (PT-BR)
-  Sistema RPG/             Livro de regras: atributos, perícias, combate, magia, linhagens...
-  Requisitos/              Requisitos de software do app, um documento por área
-docs/superpowers/plans/   Planos de implementação (pasta minúscula, não confundir com Docs/)
-src/
-  RuinaRPG.Domain          C# puro, sem dependência de EF Core/ASP.NET/Identity
-  RuinaRPG.Infrastructure  DbContext, entidades do Identity, migrations, serviços de JWT
-  RuinaRPG.Contracts       Records de request/response compartilhados entre API e cliente
-  RuinaRPG.Api             Web API (controllers) — composition root em Program.cs
-  RuinaRPG.Client          Blazor WebAssembly, servido pelo nginx
-tests/
-  RuinaRPG.Tests.Unit
-  RuinaRPG.Tests.Integration
-  RuinaRPG.Tests.Client
-infra/nginx/               Imagem nginx: builda o cliente Blazor, serve estático e faz proxy de /api/ e /hubs/
-```
-
-Sete arquivos de `Docs/Sistema RPG/` (`Ruína RPG - Sistema Básico.md`, `Tabela de Níveis.md`, `Tabela de Vocação.md`, `Tabela de Arquetipos.md`, `Tabela de Circulo e Grau por EAP.md`, `Tabelas de XP, Atributos, Características e EAP.md`, `GRAUS & CÍRCULOS.md`) são embarcados como build resources em `RuinaRPG.Infrastructure` e parseados em runtime por `IRulesDataProvider` — editar a estrutura de tabelas neles pode quebrar a API, não só a documentação.
+| Cliente | Blazor WebAssembly 8 (`src/RuinaRPG.Client`), servido pelo nginx |
+| Deploy | Docker Compose, blue-green atrás do nginx (`deploy/`) |
+| Testes | xUnit: `tests/RuinaRPG.Tests.Unit`, `.Client` e `.Integration` (Postgres real via Testcontainers) |
 
 ## Como rodar localmente
 
-Pré-requisitos: [Docker](https://docs.docker.com/get-docker/) e `make`.
+Pré-requisitos: Docker, `make` e git.
 
 ```bash
 cp .env.example .env
-make deploy   # builda as imagens e sobe db, api e nginx
+make deploy
 ```
 
-A aplicação fica disponível em <http://localhost>, e `/api/health` deve responder `OK`.
+`make deploy` builda as imagens, aplica migrations e seeders e sobe `db`, a API (cor `api-blue` ou `api-green`) e o nginx. O app fica em <http://localhost>, e <http://localhost/api/health> deve responder `OK`.
 
-### Outros alvos do Makefile
+O deploy faz um backup antes de migrar, em `/var/backups/ruinarpg` por padrão, que só o root grava. Para rodar sem `sudo`, aponte para uma pasta sua: `RUINA_BACKUP_DIR=$HOME/ruina-backups make deploy`.
+
+O `.env.example` vem com `ASPNETCORE_ENVIRONMENT=Development`: migrations pendentes são aplicadas na subida da API e o Swagger fica exposto. Em produção use `Production`, em que só o `deploy.sh` migra. Os segredos vêm do `.env`; a API não sobe sem as variáveis `Jwt__*` (chave de assinatura com 32 bytes ou mais).
 
 | Alvo | Efeito |
 |---|---|
-| `make deploy` (ou `make up`) | Builda as imagens e sobe todos os containers. |
+| `make deploy` (ou `make up`) | Implanta o HEAD como está: build, migrations, troca de cor. Recusa alterações locais em arquivos versionados. |
 | `make down` | Para os containers, mantendo imagens e volumes. |
-| `make clean` | Remove containers, imagens locais e órfãos. **Mantém** os volumes nomeados (`pgdata`/`images`). |
-| `make clean-data` | Igual a `clean`, mas **também apaga os volumes de dados nomeados**. Destrutivo — os dados se vão. |
+| `make clean` | Remove containers, imagens locais e órfãos. **Mantém** os volumes `pgdata` e `images`. |
+| `make clean-data` | Igual a `clean`, mas **apaga também os volumes de dados**. Destrutivo. |
 | `make logs` | Segue os logs dos containers. |
-| `make migrate` | Aplica as migrations do EF Core pendentes contra a stack em execução. |
-
-### Desenvolvimento vs. Produção
-
-`.env.example` vem com `ASPNETCORE_ENVIRONMENT=Development`, o modo certo para rodar local: migrations pendentes são aplicadas automaticamente na subida da API e o Swagger fica exposto. **Um deploy real deve usar `ASPNETCORE_ENVIRONMENT=Production`**, onde as migrations nunca são automáticas — `make migrate` se torna um passo explícito obrigatório depois de `make deploy`. Todo segredo vem de variáveis de ambiente; a API se recusa a iniciar se as variáveis `Jwt__*` estiverem ausentes ou a chave de assinatura tiver menos de 32 bytes.
+| `make migrate` | Reaplica migrations e seeders com a imagem da cor ativa. |
+| `make status` | Cor ativa, releases e backups mais recentes. |
+| `make rollback` | Volta para a release anterior. Num deploy em janela, restaura o backup da janela. |
+| `make grant-rules-auditor` / `revoke-rules-auditor` / `reset-gm-password` | Com `EMAIL=...`: dá ou tira o papel de Auditor de Regras de um GM, ou redefine a senha dele. |
 
 ## Build e testes
 
-```bash
-dotnet build   # builda a solução inteira — deve terminar com 0 warnings, 0 errors
-dotnet test    # roda os testes unitários e de integração
-```
-
-`dotnet test` **requer um daemon Docker em execução**: os testes de integração sobem um PostgreSQL real via Testcontainers. Para restringir a execução:
+Pré-requisitos: .NET 8 SDK e um daemon Docker em execução (os testes de integração sobem um Postgres).
 
 ```bash
-dotnet test --filter FullyQualifiedName~SomeTests
+dotnet build                                 # deve terminar com 0 warnings e 0 errors
+dotnet test tests/RuinaRPG.Tests.Unit
+dotnet test tests/RuinaRPG.Tests.Client      # ~3 min
+dotnet test tests/RuinaRPG.Tests.Integration # ~5 min
 ```
 
-**TDD é obrigatório** neste projeto (`Docs/Requisitos/Requisitos - Técnico.md`, R0011): o teste que falha vem antes do código mínimo que o faz passar, para cada unidade de comportamento.
+Rode os três projetos um de cada vez, como o CI faz: juntos, eles carregam a CPU a ponto de quebrar os testes do cliente que medem janelas de tempo. Para rodar só uma parte: `dotnet test tests/<projeto> --filter FullyQualifiedName~NomeDoTeste`.
 
-### Migrations do EF Core
+Outras verificações:
 
 ```bash
-dotnet ef migrations add <Nome> \
-  --project src/RuinaRPG.Infrastructure \
-  --startup-project src/RuinaRPG.Api \
-  --output-dir Persistence/Migrations
+deploy/tests/run-bats.sh                          # testes do pipeline (deploy, gate, clone...)
+python3 -m unittest deploy/tests/test_compare.py  # comparador de impressões digitais dos dados
+python3 tools/docs/verificar-wikilinks.py         # [[wikilinks]] sem destino em Docs/
 ```
 
-## Documentação
+## Como uma release chega à produção
 
-A documentação completa do jogo e dos requisitos do app vive em `Docs/` (abra a pasta como vault no Obsidian para navegar pelos `[[wikilinks]]`). Pontos de entrada úteis:
+O deploy normal é automático (`Docs/Requisitos/Requisitos - Técnico.md`, R0013 a R0016):
 
-- `Docs/Requisitos/Requisitos - Ficha de Personagem.md` — documento âncora da ficha de personagem; `Ficha de NPCs` e `Ficha de Criaturas` são diffs sobre ele.
-- `Docs/Requisitos/Requisitos - Técnico.md` — stack, layout da solução, variáveis de ambiente e modelo de auth/deploy.
-- `Docs/Requisitos/Requisitos - Modelo de Dados.md` — schema relacional implementado por `src/`.
-- `Docs/Sistema RPG/Ruína RPG - Sistema Básico.md` — mecânicas centrais do sistema de RPG.
+1. **PR para `main`.** O `release.yml` valida só PRs do dono, abertos a partir do próprio repositório: roda o CI completo e depois monta um clone descartável com um dump real da produção, onde implanta o `main` e em seguida o PR. Confere as impressões digitais dos dados antes e depois, o smoke somente-leitura e se a versão anterior ainda funciona com o novo schema.
+2. **Auto-merge.** Aprovado, o PR sai de rascunho e o auto-merge é habilitado.
+3. **Deploy.** Na `main`, o `deploy.yml` implanta em produção (blue-green, sem downtime), roda o smoke e reverte sozinho se algo falhar. Um PR com o rótulo `deploy:janela` é implantado em janela de manutenção, com backup restaurável.
 
-Diretrizes completas para quem for editar o código ou a documentação estão em [`CLAUDE.md`](./CLAUDE.md).
+**Validação reprovada:** o PR volta a rascunho e recebe o comentário "Validação do release falhou", com o resultado do `ci` e do `clone` e o relatório do clone (etapa que falhou, dados perdidos ou alterados). Dados que mudam de propósito são declarados em `deploy/data-changes.yml`. Os logs completos ficam na execução e no artefato `clone-logs` (3 dias).
+
+**Ensaio sem PR:** Actions > `release` > *Run workflow* roda a mesma validação, sem comentar nem fazer merge.
+
+**Caminho manual de emergência**, na VM de produção, sempre com `sudo`: `sudo make deploy`, `sudo make migrate`, `sudo make status`, `sudo make rollback`; `sudo deploy/deploy.sh deploy <sha> --window` para uma janela; `sudo deploy/deploy.sh backup` e `sudo deploy/deploy.sh restore <diretório>`. Cada deploy, rollback e restore fica registrado em `deploy/state/deploy.log`. Em produção os backups ficam em `/var/backups/ruinarpg` (os 5 mais recentes, mais o da janela e o do último deploy). As cópias fora da máquina não ficam na VM de produção: o `deploy.yml` (depois de cada deploy) e o `deploy/clone.sh` (a cada validação) as gravam na VM de validação, onde roda o runner, em `/var/backups/ruinarpg-offsite`.
+
+O provisionamento único das máquinas, chaves e segredos está em [`deploy/provision/README.md`](deploy/provision/README.md).
+
+## Onde está a documentação
+
+Abra `Docs/` como vault no Obsidian para navegar pelos `[[wikilinks]]`.
+
+- `Docs/Sistema RPG/` — o livro de regras. Comece por `Ruína RPG - Sistema Básico.md`.
+- `Docs/Requisitos/` — os requisitos do app, um documento por área. `01 - Visão Geral.md` mapeia cada página do app ao documento que a especifica; `Requisitos - Técnico.md` e `Requisitos - Modelo de Dados.md` descrevem a stack, o deploy e o schema.
+- `docs/superpowers/` (minúsculo, fora do vault) — specs e planos de implementação; os já entregues ficam em `docs/superpowers/archive/`.
+- [`CLAUDE.md`](./CLAUDE.md) — orientações para o agente que edita o código e a documentação.

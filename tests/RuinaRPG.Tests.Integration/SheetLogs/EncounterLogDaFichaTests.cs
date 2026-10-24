@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
@@ -20,30 +19,11 @@ namespace RuinaRPG.Tests.Integration.SheetLogs;
 /// Gerenciador de Encontros R0010 / Técnico R0012: a Vitalidade, o Foco ou a Adrenalina de uma ficha que
 /// participa de um encontro em andamento, quando mudam, entram também no log desse encontro.
 /// </summary>
-public class EncounterLogDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncounterLogDaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     private const string RecursoDaFicha = "RecursoDaFicha";
     private const string NomeDoPersonagem = "Vann Astrel";
     private const string NomeDoNpc = "Sentinela da Ruína";
-
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncounterLogDaFichaTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
 
     private static string Rotulo<T>(string propriedade) => SheetLogMap.Entidades[typeof(T)].Campos[propriedade];
 
@@ -53,7 +33,7 @@ public class EncounterLogDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLi
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (body is not null)
             message.Content = JsonContent.Create(body);
-        return await _client.SendAsync(message);
+        return await Client.SendAsync(message);
     }
 
     private async Task<HttpResponseMessage> SendOkAsync(HttpMethod method, string url, string token, object? body = null)
@@ -71,11 +51,11 @@ public class EncounterLogDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLi
     /// <summary>Um GM, um jogador ligado a ele, uma campanha com o jogador e a Ficha de Personagem dele, já preenchida.</summary>
     private async Task<Cenario> CenarioAsync(string sufixo)
     {
-        var gm = await _client.PostAsJsonAsync("/api/auth/register/gm",
+        var gm = await Client.PostAsJsonAsync("/api/auth/register/gm",
             new RegisterGmRequest($"EncGm{sufixo}", $"encgm{sufixo.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123"));
         var gmToken = (await gm.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var code = (await ReadAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>(HttpMethod.Post, "/api/invite-codes", gmToken)).Code;
-        var player = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var player = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest($"EncJogador{sufixo}", $"encjogador{sufixo.ToLowerInvariant()}@teste.com", "Senha!123", "Senha!123", code));
         var playerToken = (await player.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
         var playerId = Guid.Parse((await ReadAsync<MeResponse>(HttpMethod.Get, "/api/auth/me", playerToken)).Id);
@@ -135,7 +115,7 @@ public class EncounterLogDaFichaTests : IClassFixture<PostgresFixture>, IAsyncLi
 
     private async Task<int> TotalDeLinhasDeEncontroAsync()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().EncounterLogEntries.CountAsync();
     }
 

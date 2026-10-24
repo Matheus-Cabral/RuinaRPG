@@ -32,7 +32,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Controllers/rotas-da-api.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Rules/rulebook-equipagem.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Rules/livro-de-regras.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Rules/compendio.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\RuinaRPG.Api\RuinaRPG.Api.csproj" />
+    <ProjectReference Include="..\..\tools\RuinaRPG.Smoke\RuinaRPG.Smoke.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Rules;
 
-public class EquipmentKitFixedItemBackfillTests : IClassFixture<PostgresFixture>
+public class EquipmentKitFixedItemBackfillTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EquipmentKitFixedItemBackfillTests(PostgresFixture fixture) => _fixture = fixture;
+    public EquipmentKitFixedItemBackfillTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private async Task<RuinaRpgDbContext> NovoDbAsync()
     {

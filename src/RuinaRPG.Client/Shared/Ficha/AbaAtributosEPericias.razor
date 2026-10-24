@@ -1,0 +1,101 @@
+@using MudBlazor
+
+@* A aba Atributos & Perícias das três fichas: a Progressão do nível (onde o tipo a mostra), os Atributos, as Perícias
+   (com o orçamento e o Acerto Crítico onde o tipo tem orçamento; senão, só o total gasto) e as Afinidades (onde o tipo
+   as tem). Nível, Acerto Crítico e Afinidade Adicional são do formulário auto-salvo da página (Formulario): a
+   Afinidade Adicional vai no autosave (AoMudar), o Acerto Crítico salva na hora e relê as abas (SalvarERecarregar). *@
+
+<PenalidadesAtivasAlert Url="@Estado.Tipo.Url(Estado.SheetId, "equipment-penalties")" Versao="Estado.PenalidadesVersao" />
+@if (Estado.Tipo.MostraProgressaoDoNivel)
+{
+    <ProgressaoDoNivelSection Nivel="@(Formulario.Nivel ?? 1)" />
+}
+<Section Title="Atributos">
+    @if (Estado.OrcamentoDeAtributos is { } orcamento)
+    {
+        <MudText Color="@(orcamento.GastoTotal > orcamento.PontosDisponiveis ? Color.Error : Color.Default)">
+            Pontos de Atributo: @orcamento.GastoTotal / @orcamento.PontosDisponiveis
+        </MudText>
+    }
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead><tr><th>Atributo</th><th>Gasto</th><th>Bônus</th><th>Proeficiência</th><th>Total</th></tr></thead>
+        <tbody>
+            @foreach (var attr in Estado.Atributos)
+            {
+                <tr>
+                    <td>@AtributoDisplay.Label(attr.Atributo)</td>
+                    <td><MudNumericField T="int?" Value="@attr.Gasto" ValueChanged="@(v => Estado.AtualizarAtributoAsync(attr.Atributo, "Gasto", v))" /></td>
+                    <td><MudNumericField T="int?" Value="@attr.Bonus" ValueChanged="@(v => Estado.AtualizarAtributoAsync(attr.Atributo, "Bonus", v))" /></td>
+                    <td><MudCheckBox T="bool" Value="@attr.TemMaestria" ValueChanged="@(v => Estado.AtualizarAtributoAsync(attr.Atributo, "TemMaestria", v))" Dense="true" /></td>
+                    <td>@attr.Total</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<br/>
+
+<Section Title="Perícias">
+    @if (Estado.Tipo.TemOrcamentoDePericias)
+    {
+        <OrcamentoDePericiasSection Formulario="Formulario" SalvarERecarregar="SalvarERecarregar" />
+    }
+    else
+    {
+        <MudText>Pontos de Perícia Gastos: @Estado.Pericias.Sum(s => s.Gasto)</MudText>
+    }
+    @* A margem de cima vem com o bloco do Acerto Crítico logo acima. *@
+    <MudSimpleTable Dense="true" Hover="true" Class="@(Estado.Tipo.TemOrcamentoDePericias ? "mt-3" : null)">
+        <thead><tr><th>Perícia</th><th>Gasto</th><th>Modificador</th><th>Atributo</th><th>Total</th></tr></thead>
+        <tbody>
+            @foreach (var skill in Estado.Pericias)
+            {
+                <tr>
+                    <td><PericiaNome Nome="@skill.Nome" Descricao="@skill.Descricao" /></td>
+                    <td><MudNumericField T="int?" Value="@skill.Gasto" ValueChanged="@(v => Estado.AtualizarGastoDaPericiaAsync(skill.Pericia, v))" /></td>
+                    <td>
+                        @if (skill.ContaHistorico)
+                        {
+                            <b title="Inclui bônus de Histórico">@skill.Modificador</b>
+                        }
+                        else
+                        {
+                            @skill.Modificador
+                        }
+                    </td>
+                    <td>
+                        <MudSelect T="string" Value="@skill.AtributoEscolhido" ValueChanged="@(v => Estado.AtualizarAtributoDaPericiaAsync(skill.Pericia, v))">
+                            <MudSelectItem Value="@("")">—</MudSelectItem>
+                            @foreach (var attr in Estado.Atributos)
+                            {
+                                <MudSelectItem Value="@attr.Atributo">@AtributoDisplay.Label(attr.Atributo)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </td>
+                    <td>@skill.Total</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</Section>
+
+<br/>
+
+@if (Estado.Tipo.TemAfinidades)
+{
+    <AfinidadesSection Formulario="Formulario" AoMudar="AoMudar" />
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>O formulário auto-salvo da página (o Nível, os pontos de Acerto Crítico, a Afinidade Adicional).</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>Onde há Afinidades: a página auto-salva a ficha (a Afinidade Adicional).</summary>
+    [Parameter] public EventCallback AoMudar { get; set; }
+
+    /// <summary>Onde há orçamento de Perícias: a página salva a ficha na hora e relê as abas 2 e 3 (o Acerto Crítico).</summary>
+    [Parameter] public EventCallback SalvarERecarregar { get; set; }
+}

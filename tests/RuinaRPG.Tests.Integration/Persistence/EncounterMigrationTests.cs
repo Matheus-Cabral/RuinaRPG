@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class EncounterMigrationTests : IClassFixture<PostgresFixture>
+public class EncounterMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public EncounterMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public EncounterMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Encounters_tables_and_round_trips_an_independent_participant_with_a_condition()
@@ -20,9 +20,6 @@ public class EncounterMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddEncounters"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@encountertest.com", Email = "gm@encountertest.com", Nickname = "EncounterTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

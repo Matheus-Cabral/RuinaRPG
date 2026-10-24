@@ -14,49 +14,21 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Aba Antecedentes (Personagem e NPC): a galeria de imagens da História (GET/PUT …/historia/imagens) e as
 /// imagens dentro do texto (PUT …/historia só mantém &lt;img&gt; de imagens do app que quem salva pode usar).
 /// </summary>
-public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class HistoriaImagensControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public HistoriaImagensControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private static HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
     private async Task<string> RegisterGmAsync(string tag)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"HImgGm{tag}", $"himggm{tag}@teste.com", "Senha!123", "Senha!123"));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest($"HImgGm{tag}", $"himggm{tag}@teste.com", "Senha!123", "Senha!123"));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
 
     private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorAsync(string gmToken, string tag)
     {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"HImgJog{tag}", $"himgjog{tag}@teste.com", "Senha!123", "Senha!123", code));
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest($"HImgJog{tag}", $"himgjog{tag}@teste.com", "Senha!123", "Senha!123", code));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        var me = await _client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens!.AccessToken));
+        var me = await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/auth/me", tokens!.AccessToken));
         return ((await me.Content.ReadFromJsonAsync<MeResponse>())!.Id, tokens.AccessToken);
     }
 
@@ -67,10 +39,10 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAsync(tag);
         var (playerId, playerToken) = await RegisterJogadorAsync(gmToken, tag);
-        var campaign = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest($"Campanha HImg {tag}", "")));
+        var campaign = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest($"Campanha HImg {tag}", "")));
         var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
-        var sheet = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        var sheet = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return new Setup(gmToken, playerToken, playerId, campaignId, (await sheet.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id);
     }
 
@@ -79,18 +51,18 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAsync(tag);
         var (playerId, playerToken) = await RegisterJogadorAsync(gmToken, tag);
-        var campaign = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest($"Campanha HImg {tag}", "")));
+        var campaign = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest($"Campanha HImg {tag}", "")));
         var campaignId = (await campaign.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sourceId = prepareSource is null ? null : await prepareSource(gmToken);
-        var grant = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Npc", sourceId)));
+        var grant = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken, new GrantSheetRequest(playerId, "Npc", sourceId)));
         grant.StatusCode.Should().Be(HttpStatusCode.Created);
         return new Setup(gmToken, playerToken, playerId, campaignId, (await grant.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId);
     }
 
     private async Task<string> CreateNpcAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
@@ -105,30 +77,30 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
             content.Add(new StringContent(campaignId), "campaignId");
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/images") { Content = content };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var response = await _client.SendAsync(message);
+        var response = await Client.SendAsync(message);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<ImageUploadResponse>();
         return (body!.Id, body.Url);
     }
 
     private Task<HttpResponseMessage> PutGalleryAsync(string basePath, string token, params string[] imageIds) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{basePath}/historia/imagens", token, new UpdateHistoriaImagensRequest(imageIds.ToList())));
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{basePath}/historia/imagens", token, new UpdateHistoriaImagensRequest(imageIds.ToList())));
 
     private async Task<List<HistoriaImagemResponse>> GetGalleryAsync(string basePath, string token)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{basePath}/historia/imagens", token));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{basePath}/historia/imagens", token));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<List<HistoriaImagemResponse>>())!;
     }
 
     private Task<HttpResponseMessage> PutHistoriaAsync(string basePath, string token, string html) =>
-        _client.SendAsync(AuthedRequest(HttpMethod.Put, $"{basePath}/historia", token, new UpdateHistoriaRequest(html)));
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"{basePath}/historia", token, new UpdateHistoriaRequest(html)));
 
     private async Task<string?> GetCharacterHistoriaAsync(string sheetId, string token) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token))).Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Historia;
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", token))).Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Historia;
 
     private async Task<string?> GetNpcHistoriaAsync(string sheetId, string token) =>
-        (await (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", token))).Content.ReadFromJsonAsync<NpcSheetResponse>())!.Historia;
+        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", token))).Content.ReadFromJsonAsync<NpcSheetResponse>())!.Historia;
 
     private static string Character(string sheetId) => $"/api/character-sheets/{sheetId}";
     private static string Npc(string sheetId) => $"/api/npc-sheets/{sheetId}";
@@ -259,10 +231,10 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
         var s = await CharacterSetupAsync("C9");
         var publica = await UploadAsync(s.GmToken);
         var privada = await UploadAsync(s.GmToken);
-        var attach = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{s.CampaignId}/attachments", s.GmToken, new AttachToCampaignRequest(null, null, null, null, publica.Id)));
+        var attach = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{s.CampaignId}/attachments", s.GmToken, new AttachToCampaignRequest(null, null, null, null, publica.Id)));
         var attachmentId = (await attach.Content.ReadFromJsonAsync<CampaignAttachmentResponse>())!.Id;
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{s.CampaignId}/attachments/{attachmentId}/visibility", s.GmToken, true))).EnsureSuccessStatusCode();
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{s.CampaignId}/attachments", s.GmToken, new AttachToCampaignRequest(null, null, null, null, privada.Id)));
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/campaigns/{s.CampaignId}/attachments/{attachmentId}/visibility", s.GmToken, true))).EnsureSuccessStatusCode();
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{s.CampaignId}/attachments", s.GmToken, new AttachToCampaignRequest(null, null, null, null, privada.Id)));
 
         (await PutGalleryAsync(Character(s.SheetId), s.PlayerToken, publica.Id)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await PutGalleryAsync(Character(s.SheetId), s.PlayerToken, publica.Id, privada.Id)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -276,11 +248,11 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
         var strangerImage = await UploadAsync(strangerToken);
         var otherGm = await RegisterGmAsync("C10outro");
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(s.SheetId)}/historia/imagens", strangerToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(s.SheetId)}/historia/imagens", otherGm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(s.SheetId)}/historia/imagens", strangerToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(s.SheetId)}/historia/imagens", otherGm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await PutGalleryAsync(Character(s.SheetId), strangerToken, strangerImage.Id)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await _client.GetAsync($"{Character(s.SheetId)}/historia/imagens")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await _client.PutAsJsonAsync($"{Character(s.SheetId)}/historia/imagens", new UpdateHistoriaImagensRequest([]))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.GetAsync($"{Character(s.SheetId)}/historia/imagens")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await Client.PutAsJsonAsync($"{Character(s.SheetId)}/historia/imagens", new UpdateHistoriaImagensRequest([]))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await GetGalleryAsync(Character(s.SheetId), s.PlayerToken)).Should().BeEmpty();
     }
 
@@ -289,7 +261,7 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
     {
         var gmToken = await RegisterGmAsync("C11");
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(Guid.NewGuid().ToString())}/historia/imagens", gmToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Character(Guid.NewGuid().ToString())}/historia/imagens", gmToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await PutGalleryAsync(Character(Guid.NewGuid().ToString()), gmToken)).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -393,9 +365,9 @@ public class HistoriaImagensControllerTests : IClassFixture<PostgresFixture>, IA
         var sheetId = await CreateNpcAsync(gmToken);
         var otherImage = await UploadAsync(otherGm);
 
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Npc(sheetId)}/historia/imagens", otherGm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Npc(sheetId)}/historia/imagens", otherGm))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await PutGalleryAsync(Npc(sheetId), otherGm, otherImage.Id)).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Npc(sheetId)}/historia/imagens", playerToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"{Npc(sheetId)}/historia/imagens", playerToken))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await PutGalleryAsync(Npc(Guid.NewGuid().ToString()), gmToken)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await GetGalleryAsync(Npc(sheetId), gmToken)).Should().BeEmpty();
     }

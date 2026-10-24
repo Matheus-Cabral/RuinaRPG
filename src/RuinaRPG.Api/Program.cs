@@ -1,14 +1,19 @@
 using RuinaRPG.Api;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Infrastructure.CharacterSheets;
+using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.Images;
 using RuinaRPG.Infrastructure.Invites;
 using RuinaRPG.Infrastructure.Items;
+using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
+using RuinaRPG.Contracts;
+using RuinaRPG.Domain;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.Rules.Niveis;
@@ -97,6 +102,9 @@ builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
 builder.Services.AddScoped<CreatureSheetStats>();
+builder.Services.AddScoped<ITipoDeFicha<CharacterSheet>, TipoPersonagem>();
+builder.Services.AddScoped<ITipoDeFicha<NpcSheet>, TipoNpc>();
+builder.Services.AddScoped<ITipoDeFicha<CreatureSheet>, TipoCriatura>();
 builder.Services.AddScoped<ResumoDeFichaDoParticipante>();
 
 builder.Services.Configure<ImageStorageOptions>(options =>
@@ -178,6 +186,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Production and Development keep 10/min (Técnico R0006); the integration tests raise it, since one
+// host now serves a whole test class.
+var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 10);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -185,7 +196,7 @@ builder.Services.AddRateLimiter(options =>
         partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         factory: _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 10,
+            PermitLimit = loginPermitLimit,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
@@ -213,6 +224,8 @@ app.UseCors("Default");
 // reachable form; the bare /health stays for container-internal healthchecks.
 app.MapGet("/health", () => Results.Ok("OK"));
 app.MapGet("/api/health", () => Results.Ok("OK"));
+// Read by the client to notice a new deploy (Técnico R0014); anonymous like /api/health.
+app.MapGet("/api/version", () => new VersionResponse(AppVersionInfo.Current, BuildInfo.ShaOf(typeof(Program).Assembly)));
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -225,43 +238,7 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (args.Contains("--migrate"))
 {
-    using var migrateScope = app.Services.CreateScope();
-    var migrateDb = migrateScope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-    migrateDb.Database.Migrate();
-
-    var migrateCaracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
-    var migrateSeedResult = await TraitSeeder.SeedAsync(migrateDb, migrateCaracteristicasMarkdown);
-    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", migrateSeedResult.Inserted, migrateSeedResult.Updated);
-
-    var migrateHistoricoMarkdown = RulesDataProvider.ReadResource("Historico.md");
-    var migrateHistoricoSeedResult = await HistoricoSeeder.SeedAsync(migrateDb, migrateHistoricoMarkdown);
-    app.Logger.LogInformation("Historico seed: {InsertedCount} new row(s) inserted", migrateHistoricoSeedResult.Inserted);
-
-    await EfeitoSeeder.SeedAsync(migrateDb);
-    app.Logger.LogInformation("Efeito seed: catalog synced");
-
-    var migrateLivroEfeitosCount = await migrateScope.ServiceProvider.GetRequiredService<LivroDeRegrasEfeitosSync>().SincronizarFaltantesAsync();
-    app.Logger.LogInformation("Livro de Regras (Graus & Círculos): {InsertedCount} Efeito block(s) added", migrateLivroEfeitosCount);
-
-    var migrateCatalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(migrateDb);
-    app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", migrateCatalogSeedCount);
-
-    var migrateEquipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(migrateDb);
-    app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", migrateEquipmentKitSeedResult);
-
-    var migrateFixedItemBackfillResult = await EquipmentKitFixedItemBackfill.RunAsync(migrateDb);
-    app.Logger.LogInformation("EquipmentKit fixed-item backfill: {CreatedCount} fixed item(s) created", migrateFixedItemBackfillResult);
-
-    var migrateDurabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
-    var migrateDurabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(migrateDb, migrateDurabilidadeMarkdown);
-    app.Logger.LogInformation("DurabilidadePorRank seed: {InsertedCount} new row(s) inserted", migrateDurabilidadeSeedResult);
-
-    var migrateAfinidadesSeedResult = await TabelaDeAfinidadesSeeder.SeedAsync(migrateDb, RulesDataProvider.ReadResource("Tabela de Afinidades.md"));
-    app.Logger.LogInformation("TabelaDeAfinidades seed: {InsertedCount} new row(s) inserted", migrateAfinidadesSeedResult);
-
-    var migrateRules = new RulesDataProvider();
-    var migrateNiveisSeedResult = await TabelaDeNiveisSeeder.SeedAsync(migrateDb, RulesDataProvider.ReadResource("Tabela de Níveis.md"), migrateRules.XpPorNivel, migrateRules.EapPorNivel);
-    app.Logger.LogInformation("TabelaDeNiveis seed: {InsertedCount} new row(s)/column(s) inserted", migrateNiveisSeedResult);
+    await DatabaseInitializer.InitializeAsync(app.Services, app.Logger);
     return;
 }
 
@@ -310,45 +287,7 @@ if (args.Contains("--reset-gm-password"))
 }
 
 if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-    db.Database.Migrate();
-
-    var caracteristicasMarkdown = RulesDataProvider.ReadResource("Caracteristicas.md");
-    var seedResult = await TraitSeeder.SeedAsync(db, caracteristicasMarkdown);
-    app.Logger.LogInformation("Trait seed: {InsertedCount} new row(s) inserted, {UpdatedCount} existing row(s) updated", seedResult.Inserted, seedResult.Updated);
-
-    var historicoMarkdown = RulesDataProvider.ReadResource("Historico.md");
-    var historicoSeedResult = await HistoricoSeeder.SeedAsync(db, historicoMarkdown);
-    app.Logger.LogInformation("Historico seed: {InsertedCount} new row(s) inserted", historicoSeedResult.Inserted);
-
-    await EfeitoSeeder.SeedAsync(db);
-    app.Logger.LogInformation("Efeito seed: catalog synced");
-
-    var livroEfeitosCount = await scope.ServiceProvider.GetRequiredService<LivroDeRegrasEfeitosSync>().SincronizarFaltantesAsync();
-    app.Logger.LogInformation("Livro de Regras (Graus & Círculos): {InsertedCount} Efeito block(s) added", livroEfeitosCount);
-
-    var catalogSeedCount = await DefaultCatalogSeeder.SeedMissingAsync(db);
-    app.Logger.LogInformation("Default catalog seed: {SeededGmCount} GM(s) with an empty catalog seeded", catalogSeedCount);
-
-    var equipmentKitSeedResult = await EquipmentKitSeeder.SeedAsync(db);
-    app.Logger.LogInformation("EquipmentKit seed: {InsertedCount} new kit(s) inserted", equipmentKitSeedResult);
-
-    var fixedItemBackfillResult = await EquipmentKitFixedItemBackfill.RunAsync(db);
-    app.Logger.LogInformation("EquipmentKit fixed-item backfill: {CreatedCount} fixed item(s) created", fixedItemBackfillResult);
-
-    var durabilidadeMarkdown = RulesDataProvider.ReadResource("Tabela de Durabilidade por Rank.md");
-    var durabilidadeSeedResult = await DurabilidadePorRankSeeder.SeedAsync(db, durabilidadeMarkdown);
-    app.Logger.LogInformation("DurabilidadePorRank seed: {InsertedCount} new row(s) inserted", durabilidadeSeedResult);
-
-    var afinidadesSeedResult = await TabelaDeAfinidadesSeeder.SeedAsync(db, RulesDataProvider.ReadResource("Tabela de Afinidades.md"));
-    app.Logger.LogInformation("TabelaDeAfinidades seed: {InsertedCount} new row(s) inserted", afinidadesSeedResult);
-
-    var niveisRules = scope.ServiceProvider.GetRequiredService<IRulesDataProvider>();
-    var niveisSeedResult = await TabelaDeNiveisSeeder.SeedAsync(db, RulesDataProvider.ReadResource("Tabela de Níveis.md"), niveisRules.XpPorNivel, niveisRules.EapPorNivel);
-    app.Logger.LogInformation("TabelaDeNiveis seed: {InsertedCount} new row(s)/column(s) inserted", niveisSeedResult);
-}
+    await DatabaseInitializer.InitializeAsync(app.Services, app.Logger);
 
 app.Run();
 

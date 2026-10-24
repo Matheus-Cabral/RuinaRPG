@@ -8,11 +8,11 @@ using RuinaRPG.Infrastructure.SpellsAndAbilities;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SpellAbilityBankMigrationTests : IClassFixture<PostgresFixture>
+public class SpellAbilityBankMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SpellAbilityBankMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SpellAbilityBankMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_bank_tables_with_a_cascading_effects_relationship()
@@ -20,9 +20,6 @@ public class SpellAbilityBankMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddSpellAbilityBank"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@banktest.com", Email = "gm@banktest.com", Nickname = "BankTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

@@ -1,0 +1,31 @@
+@using MudBlazor
+
+@* A escolha da arma onde o tipo tem arma manual (TipoDeFichaCliente.TemArmaManual): a Origem, e então o item do Catálogo
+   ou os campos do ataque natural (Ficha de Criaturas 3.a). Fica dentro do formulário "Adicionar Arma" da AbaCombate. *@
+
+<MudSelect T="string" @bind-Value="Estado.FormularioDeArma.Origem" Label="Origem">
+    <MudSelectItem Value="@("Catalogo")">Vincular ao Catálogo</MudSelectItem>
+    <MudSelectItem Value="@("Manual")">Preencher manualmente (ataque natural)</MudSelectItem>
+</MudSelect>
+
+@if (Estado.FormularioDeArma.Origem == "Catalogo")
+{
+    <SeletorDeItem @bind-Value="Estado.FormularioDeArma.ItemId" Tipo="Arma" Placeholder="Buscar arma..." />
+}
+else
+{
+    <MudTextField T="string" @bind-Value="Estado.FormularioDeArma.ManualNome" Label="Nome" />
+    <MudSelect T="string" @bind-Value="Estado.FormularioDeArma.ManualTipoDeDano" Label="Tipo de Dano">
+        <MudSelectItem Value="@("")">Escolha um Tipo de Dano</MudSelectItem>
+        <MudSelectItem Value="@("Cortante")">Cortante</MudSelectItem>
+        <MudSelectItem Value="@("Perfurante")">Perfurante</MudSelectItem>
+        <MudSelectItem Value="@("Contundente")">Contundente</MudSelectItem>
+        <MudSelectItem Value="@("Arcano")">Arcano</MudSelectItem>
+    </MudSelect>
+    <MudTextField T="string" @bind-Value="Estado.FormularioDeArma.ManualDados" Label="Dados" />
+    <MudNumericField T="int" @bind-Value="Estado.FormularioDeArma.ManualDano" Label="Dano" />
+}
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+}

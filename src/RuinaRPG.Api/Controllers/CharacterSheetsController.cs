@@ -1,17 +1,12 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
-using RuinaRPG.Contracts.Condicoes;
-using RuinaRPG.Contracts.Items;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Condicoes;
-using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -20,74 +15,75 @@ using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
-// Not route-attributed at the class level (unlike every previous controller in this codebase)
-// because its actions live under two different route prefixes:
-// api/campaigns/{campaignId}/character-sheets and api/character-sheets/{id}.
+// A rota da classe é a da ficha (api/character-sheets/{id}/…); criar e listar ficam sob a campanha
+// e "mine" sob o jogador, com rotas absolutas (começam com "/", ignoram a da classe).
 [ApiController]
 [Authorize]
-public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CondicoesAtivasDaFicha condicoes) : ControllerBase
+[Route("api/character-sheets")]
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo)
+    : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
-    [HttpPost("api/campaigns/{campaignId}/character-sheets")]
+    [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
     public async Task<ActionResult<CharacterSheetResponse>> Create(Guid campaignId, CreateCharacterSheetRequest request)
     {
         var gmId = CurrentUserId();
-        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        var campaignExists = await Db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
         if (!campaignExists)
             return NotFound();
 
         if (!Guid.TryParse(request.OwnerId, out var ownerId))
             return BadRequest("O jogador informado não é membro desta campanha.");
 
-        var isMember = await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == ownerId);
+        var isMember = await Db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == ownerId);
         if (!isMember)
             return BadRequest("O jogador informado não é membro desta campanha.");
 
         var sheet = new CharacterSheet { Id = Guid.NewGuid(), CampaignId = campaignId, OwnerId = ownerId };
         // Ficha nova já nasce com o que a Tabela de Níveis concede até o nível inicial (1.b).
-        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(sheet.Nivel, await tabelaDeNiveis.ObterAsync());
-        db.CharacterSheets.Add(sheet);
+        sheet.PontosDeIgnicaoAtual = PontosDeIgnicaoPorNivel.Inicial(sheet.Nivel, await TabelaDeNiveis.ObterAsync());
+        Db.CharacterSheets.Add(sheet);
 
         foreach (var atributo in Enum.GetValues<Atributo>())
-            db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Atributo = atributo });
+            Db.CharacterAttributes.Add(new CharacterAttribute { Id = Guid.NewGuid(), SheetId = sheet.Id, Atributo = atributo });
         foreach (var pericia in (await pericias.TodasAsync()).Where(p => !p.IsDeleted))
-            db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
+            Db.CharacterSkills.Add(new CharacterSkill { Id = Guid.NewGuid(), SheetId = sheet.Id, PericiaId = pericia.Id, AtributoEscolhido = pericia.AtributoSugerido });
         foreach (var slot in Enum.GetValues<ArmorSlotType>())
-            db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = slot });
+            Db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = slot });
 
-        await db.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
         return Created(string.Empty, await ToResponseAsync(sheet));
     }
 
-    [HttpDelete("api/character-sheets/{id}")]
+    [HttpDelete("{id}")]
     [Authorize(Roles = "GM")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var gmId = CurrentUserId();
-        var sheet = await db.CharacterSheets
-            .Join(db.Campaigns, s => s.CampaignId, c => c.Id, (s, c) => new { Sheet = s, c.GmId })
+        var sheet = await Db.CharacterSheets
+            .Join(Db.Campaigns, s => s.CampaignId, c => c.Id, (s, c) => new { Sheet = s, c.GmId })
             .Where(x => x.Sheet.Id == id && x.GmId == gmId)
             .Select(x => x.Sheet)
             .FirstOrDefaultAsync();
         if (sheet is null)
             return NotFound();
 
-        db.CharacterSheets.Remove(sheet);
-        await db.SaveChangesAsync();
+        Db.CharacterSheets.Remove(sheet);
+        await Db.SaveChangesAsync();
         return NoContent();
     }
 
-    [HttpGet("api/campaigns/{campaignId}/character-sheets")]
+    [HttpGet("/api/campaigns/{campaignId}/character-sheets")]
     [Authorize(Roles = "GM")]
     public async Task<ActionResult<List<CharacterSheetResponse>>> ListForCampaign(Guid campaignId)
     {
         var gmId = CurrentUserId();
-        var campaignExists = await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
+        var campaignExists = await Db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
         if (!campaignExists)
             return NotFound();
 
-        var sheets = await db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
+        var sheets = await Db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
         var responses = new List<CharacterSheetResponse>();
         foreach (var sheet in sheets)
             responses.Add(await ToResponseAsync(sheet));
@@ -99,113 +95,45 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     /// a player lands on a list of their own character sheets across every campaign, not scoped
     /// to one — unlike ListForCampaign above, which is the GM's per-campaign roster view.
     /// </summary>
-    [HttpGet("~/api/character-sheets/mine")]
+    [HttpGet("/api/character-sheets/mine")]
     [Authorize(Roles = "Jogador")]
     public async Task<ActionResult<List<MyCharacterSheetSummaryResponse>>> ListMine()
     {
         var playerId = CurrentUserId();
 
-        var sheets = await db.CharacterSheets
+        var sheets = await Db.CharacterSheets
             .Where(s => s.OwnerId == playerId)
-            .GroupJoin(db.Campaigns, s => s.CampaignId, c => c.Id, (s, campaigns) => new { Sheet = s, Campaign = campaigns.FirstOrDefault() })
+            .GroupJoin(Db.Campaigns, s => s.CampaignId, c => c.Id, (s, campaigns) => new { Sheet = s, Campaign = campaigns.FirstOrDefault() })
             .ToListAsync();
 
         var responses = new List<MyCharacterSheetSummaryResponse>();
         foreach (var x in sheets)
         {
-            string? imageUrl = null;
-            if (x.Sheet.ImageId is not null)
-            {
-                var image = await db.Images.FindAsync(x.Sheet.ImageId.Value);
-                imageUrl = image is not null ? $"/images/{image.Path}" : null;
-            }
-
             responses.Add(new MyCharacterSheetSummaryResponse(
-                x.Sheet.Id.ToString(), imageUrl, x.Sheet.Nome, x.Sheet.Nivel,
+                x.Sheet.Id.ToString(), await UrlDaImagemAsync(Db, x.Sheet.ImageId), x.Sheet.Nome, x.Sheet.Nivel,
                 x.Sheet.CampaignId.ToString(), x.Campaign?.Nome ?? ""));
         }
 
         return responses;
     }
 
-    [HttpGet("api/character-sheets/{id}")]
+    [HttpGet("{id}")]
     public async Task<ActionResult<CharacterSheetResponse>> Get(Guid id)
     {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
+        // NotFound e não Forbid — não confirma a um estranho que a ficha existe.
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
+            return erro;
 
         return await ToResponseAsync(sheet);
     }
 
-    [HttpGet("api/character-sheets/{id}/racial-ability")]
-    public async Task<ActionResult<RacialAbilityResponse>> RacialAbility(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        var arcaDado = await db.DadoDeArcaDoGmAsync(campaignGmId);
-        if (sheet.Variante is null)
-            return new RacialAbilityResponse(null, null, null, null, null, new(), arcaDado);
-
-        var over = await db.RacialAbilityOverrides.FirstOrDefaultAsync(o => o.GmId == campaignGmId && o.Variante == sheet.Variante.Value);
-        var (nome, descricao) = over is not null
-            ? (over.Nome, over.Descricao)
-            : (RacialAbilityLookup.For(sheet.Variante.Value, arcaDado).Nome, RacialAbilityLookup.For(sheet.Variante.Value, arcaDado).Descricao);
-
-        string? arcaNome = null;
-        string? arcaDescricao = null;
-        var arcaEvolucoes = new List<ArcaEvolucaoResponse>();
-        var arcaForaDaTabela = sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada > arcaDado;
-        if (sheet.Linhagem == Linhagem.Humano && sheet.ArcaRolada is not null && !arcaForaDaTabela)
-        {
-            var arca = await db.ArcaEntries.Include(a => a.Evolucoes)
-                .FirstOrDefaultAsync(a => a.GmId == campaignGmId && a.Roll == sheet.ArcaRolada.Value);
-            // An Arca row created only to hold evoluções has an empty Nome — the sheet treats it as not registered.
-            arcaNome = string.IsNullOrEmpty(arca?.Nome) ? null : arca.Nome;
-            arcaDescricao = string.IsNullOrEmpty(arca?.Descricao) ? null : arca.Descricao;
-            if (arca is not null)
-                arcaEvolucoes = ArcaEvolucaoRules.Desbloqueadas(arca.Evolucoes, e => e.Nivel, e => e.CriadaEm, sheet.Nivel)
-                    .Select(e => new ArcaEvolucaoResponse(e.Id, e.Nivel, e.Descricao)).ToList();
-        }
-
-        return new RacialAbilityResponse(nome, descricao, sheet.ArcaRolada, arcaNome, arcaDescricao, arcaEvolucoes, arcaDado, arcaForaDaTabela);
-    }
-
-    [HttpGet("api/character-sheets/{id}/variantes-liberadas")]
-    public async Task<ActionResult<List<VarianteLiberadaResponse>>> VariantesLiberadas(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return NotFound(); // NotFound rather than Forbid — avoids confirming the sheet exists to a stranger
-
-        return await VarianteLiberadaResolver.ListAsync(db, campaignGmId);
-    }
-
-    [HttpPut("api/character-sheets/{id}")]
+    [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateCharacterSheetRequest request)
     {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
+        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+            return erro;
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
+        var campaignGmId = await Tipo.MestreAsync(sheet);
         if (!TryParseImageId(request.ImageId, out var imageId))
             return BadRequest("ImageId inválido.");
 
@@ -215,7 +143,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
             return BadRequest("Variante inválida.");
         if (linhagem is not null && variante is not null && !LinhagemVarianteValidator.IsValidCombination(linhagem.Value, variante.Value))
             return BadRequest("A Variante escolhida não pertence à Linhagem escolhida.");
-        if (await VarianteLiberadaResolver.EscolhaBloqueadaAsync(db, campaignGmId, variante, sheet.Variante))
+        if (await VarianteLiberadaResolver.EscolhaBloqueadaAsync(Db, campaignGmId, variante, sheet.Variante))
             return BadRequest("Essa Variante ainda não foi liberada pelo GM.");
         if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
             return BadRequest("Vocação inválida.");
@@ -237,7 +165,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         {
             if (!Guid.TryParse(request.HistoricoId, out var parsedHistoricoId))
                 return BadRequest("HistoricoId inválido.");
-            if (!await db.Historicos.AnyAsync(h => h.Id == parsedHistoricoId && !h.IsDeleted))
+            if (!await Db.Historicos.AnyAsync(h => h.Id == parsedHistoricoId && !h.IsDeleted))
                 return BadRequest("Histórico não encontrado.");
             historicoId = parsedHistoricoId;
         }
@@ -260,7 +188,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         sheet.HistoricoId = historicoId;
         // Nível is a pure function of Experiência Atual now (1.b, "Para o próximo") — no more
         // GM-editable override for Ficha de Personagem, unlike NPC/Criatura sheets.
-        var tabela = await tabelaDeNiveis.ObterAsync();
+        var tabela = await TabelaDeNiveis.ObterAsync();
         var nivel = NivelCalculator.Compute(request.ExperienciaAtual, tabela.ComoXpPorNivel());
         var nivelAntigo = sheet.Nivel;
         sheet.Nivel = nivel;
@@ -306,7 +234,7 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
         // a ficha continua podendo salvar os outros campos mantendo a mesma ArcaRolada.
         if (request.ArcaRolada != sheet.ArcaRolada)
         {
-            var arcaDado = await db.DadoDeArcaDoGmAsync(campaignGmId);
+            var arcaDado = await Db.DadoDeArcaDoGmAsync(campaignGmId);
             if (request.ArcaRolada < 1 || request.ArcaRolada > arcaDado)
                 return BadRequest($"ArcaRolada deve estar entre 1 e {arcaDado}.");
         }
@@ -319,314 +247,32 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
 
         if (varianteChanged)
         {
-            var staleRacialTraits = await db.CharacterTraits.Where(t => t.CharacterSheetId == id && t.IsRacial).ToListAsync();
-            db.CharacterTraits.RemoveRange(staleRacialTraits);
+            var staleRacialTraits = await Db.CharacterTraits.Where(t => t.SheetId == id && t.IsRacial).ToListAsync();
+            Db.CharacterTraits.RemoveRange(staleRacialTraits);
         }
 
-        await db.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var affectedEncounterIds = await db.EncounterParticipants
-            .Where(p => p.SourceCharacterSheetId == id)
-            .Select(p => p.EncounterId)
-            .Distinct()
-            .ToListAsync();
-        foreach (var encounterId in affectedEncounterIds)
-        {
-            // Item 3 of the gap audit: the sheet is already saved at this point — a hub failure
-            // (e.g. the SignalR backplane being briefly unreachable) must not surface as a 500 to
-            // a caller whose save genuinely succeeded. Live sync just falls behind until the next
-            // change; it doesn't lose data.
-            try
-            {
-                await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
-        }
+        await NotificarEncontrosAsync(id);
 
         return NoContent();
-    }
-
-    /// <summary>
-    /// Edição manual do saldo de Pontos de Ignição (1.b) — fora do Update genérico de propósito: lá o
-    /// saldo só recebe as diferenças de nível e de bônus manual, para que um formulário desatualizado
-    /// nunca escreva por cima do que o servidor debitou ou devolveu. Mesma autorização do Update.
-    /// </summary>
-    [HttpPut("api/character-sheets/{id}/pontos-de-ignicao")]
-    public async Task<IActionResult> UpdatePontosDeIgnicao(Guid id, [FromBody] int pontos)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        if (pontos < 0)
-            return BadRequest("Os Pontos de Ignição não podem ser negativos.");
-
-        sheet.PontosDeIgnicaoAtual = pontos;
-        await db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Aba História — kept out of UpdateCharacterSheetRequest on purpose, so the general autosave
-    /// (fired by any other field) can never overwrite the backstory with a stale copy, and vice versa.
-    /// Same authorization as Update.
-    /// </summary>
-    [HttpPut("api/character-sheets/{id}/historia")]
-    public async Task<IActionResult> UpdateHistoria(Guid id, UpdateHistoriaRequest request)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        // The limit applies to what's stored (sanitizing can grow CSS values); the raw cap only bounds the work.
-        if (request.Historia is { Length: > HistoriaSanitizer.MaxRawLength })
-            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
-
-        // Imagens dentro do texto: só as do app que quem salva pode usar (ou que a História já trazia) —
-        // qualquer outro <img> é removido, sem erro (HistoriaSanitizer / HistoriaImageAccess).
-        var imagens = await HistoriaImageAccess.AllowedInlineFilesAsync(db, request.Historia, sheet.Historia, CurrentUserId(), campaignGmId, sheet.CampaignId);
-        var clean = HistoriaSanitizer.Sanitize(request.Historia, imagens);
-        if (clean is { Length: > HistoriaSanitizer.MaxLength })
-            return BadRequest(HistoriaSanitizer.MaxLengthMessage);
-
-        sheet.Historia = clean;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    /// <summary>Aba História — a galeria de imagens anexadas, na ordem em que aparecem. Quem pode abrir a ficha pode ver.</summary>
-    [HttpGet("api/character-sheets/{id}/historia/imagens")]
-    public async Task<ActionResult<List<HistoriaImagemResponse>>> HistoriaImagens(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return NotFound(); // NotFound rather than Forbid — same as Get
-
-        var ids = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).OrderBy(i => i.Ordem).Select(i => i.ImageId).ToListAsync();
-        return await HistoriaImageAccess.ToResponseAsync(db, ids);
-    }
-
-    /// <summary>
-    /// Aba História — substitui a galeria pela lista recebida (anexar, remover e reordenar são o mesmo PUT).
-    /// Mesma autorização de UpdateHistoria; uma imagem nova na galeria precisa ser de quem salva
-    /// (HistoriaImageAccess), senão 400 e nada muda.
-    /// </summary>
-    [HttpPut("api/character-sheets/{id}/historia/imagens")]
-    public async Task<ActionResult<List<HistoriaImagemResponse>>> UpdateHistoriaImagens(Guid id, UpdateHistoriaImagensRequest request)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        if (!HistoriaImageAccess.TryParseIds(request.ImageIds, out var ids))
-            return BadRequest(HistoriaImageAccess.InvalidIdMessage);
-        if (ids.Count > HistoriaImageAccess.MaxImagens)
-            return BadRequest(HistoriaImageAccess.MaxImagensMessage);
-
-        var existing = await db.CharacterSheetHistoriaImages.Where(i => i.CharacterSheetId == id).ToListAsync();
-        var novas = ids.Where(imageId => existing.All(e => e.ImageId != imageId)).ToList();
-        if ((await HistoriaImageAccess.UsableAsync(db, novas, CurrentUserId(), campaignGmId, sheet.CampaignId)).Count != novas.Count)
-            return BadRequest(HistoriaImageAccess.NotFoundMessage);
-
-        db.CharacterSheetHistoriaImages.RemoveRange(existing.Where(e => !ids.Contains(e.ImageId)));
-        for (var ordem = 0; ordem < ids.Count; ordem++)
-        {
-            var imageId = ids[ordem];
-            if (existing.FirstOrDefault(e => e.ImageId == imageId) is { } row)
-                row.Ordem = ordem;
-            else
-                db.CharacterSheetHistoriaImages.Add(new CharacterSheetHistoriaImage { CharacterSheetId = id, ImageId = imageId, Ordem = ordem });
-        }
-        await db.SaveChangesAsync();
-
-        return await HistoriaImageAccess.ToResponseAsync(db, ids);
-    }
-
-    [HttpGet("api/character-sheets/{id}/level-up-notice")]
-    public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        return new LevelUpNoticeResponse(tabela.LinhasDeBonusAcumuladas(sheet.LastDismissedLevelUpLevel ?? 0, sheet.Nivel).ToList());
-    }
-
-    [HttpPost("api/character-sheets/{id}/dismiss-level-up-notice")]
-    public async Task<IActionResult> DismissLevelUpNotice(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        sheet.LastDismissedLevelUpLevel = sheet.Nivel;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Read-only, everything derived live — nothing here is persisted. The computation itself
-    /// lives in CharacterSheetStats.SubAtributosAsync, shared with the FichaParaRequisitos
-    /// snapshot used by Passiva requisitos.
-    /// </summary>
-    [HttpGet("api/character-sheets/{id}/sub-attributes")]
-    public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        return await stats.SubAtributosAsync(sheet, await condicoes.ParaPersonagemAsync(sheet.Id));
-    }
-
-    /// <summary>
-    /// As Condições ativas na ficha (de todo encontro em andamento em que ela participa), com o que cada uma muda e
-    /// os Turnos que faltam. Para quem pode editar a ficha, como os demais valores calculados.
-    /// </summary>
-    [HttpGet("api/character-sheets/{id}/condicoes-ativas")]
-    public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        return await condicoes.ListarDoPersonagemAsync(sheet.Id);
-    }
-
-    /// <summary>Equipamentos em uso cujos Requisitos a ficha não cumpre, com o que falta e a penalidade aplicada.</summary>
-    [HttpGet("api/character-sheets/{id}/equipment-penalties")]
-    public async Task<ActionResult<List<PenalidadeAtivaResponse>>> EquipmentPenalties(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        return await penalidades.ComoRespostaAsync(await stats.PenalidadesAtivasAsync(sheet, await condicoes.ParaPersonagemAsync(sheet.Id)));
-    }
-
-    /// <summary>
-    /// Ficha de Personagem 3.f: one read-only value per Tipo de Dano, each the sum of equipped
-    /// Artefatos whose Tipo de alvo is Dano and whose Alvo is that Tipo de Dano — mirrors
-    /// "Modificador de dano [tipo] = Artefato" in Formulas.md.
-    /// </summary>
-    [HttpGet("api/character-sheets/{id}/modificador-de-dano")]
-    public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(id);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
-        return efeitos.NoModificadorDeDano(await stats.ModificadoresAsync(sheet, efeitos));
-    }
-
-    /// <summary>
-    /// A null request value means "not set" and maps to null on the entity. A non-null value
-    /// that fails to parse is malformed input, not an absent one — the caller must 400 rather
-    /// than silently persisting null (e.g. a garbage Variante silently skipping
-    /// LinhagemVarianteValidator).
-    /// </summary>
-    private static bool TryParseEnum<TEnum>(string? value, out TEnum? parsed) where TEnum : struct, Enum
-    {
-        if (value is null)
-        {
-            parsed = null;
-            return true;
-        }
-
-        if (Enum.TryParse<TEnum>(value, out var result))
-        {
-            parsed = result;
-            return true;
-        }
-
-        parsed = null;
-        return false;
-    }
-
-    /// <summary>
-    /// Treats null, empty, or whitespace-only as "no image" (returns true with imageId null).
-    /// A non-empty string that isn't a valid Guid is rejected (returns false) rather than
-    /// throwing. Mirrors ItemsController's TryParseImageId.
-    /// </summary>
-    private static bool TryParseImageId(string? raw, out Guid? imageId)
-    {
-        imageId = null;
-        if (string.IsNullOrWhiteSpace(raw))
-            return true;
-
-        if (!Guid.TryParse(raw, out var parsed))
-            return false;
-
-        imageId = parsed;
-        return true;
     }
 
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
     {
-        string? imageUrl = null;
-        if (s.ImageId is not null)
-        {
-            var image = await db.Images.FindAsync(s.ImageId.Value);
-            imageUrl = image is not null ? $"/images/{image.Path}" : null;
-        }
+        var imageUrl = await UrlDaImagemAsync(Db, s.ImageId);
 
         // EAPAtual is no longer a stored/editable value — same treatment already given to
         // Círculo/Grau, which became a pure function instead of a directly-set column. "Segue a
         // tabela [XP/EAP por Nível] e é somado pelo resultado de Âmbares Absorvidos" (1.b).
-        var tabela = await tabelaDeNiveis.ObterAsync();
+        var tabela = await TabelaDeNiveis.ObterAsync();
         var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, tabela.ComoEapPorNivel());
 
         var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await db.CharacterAffinities.Where(a => a.CharacterSheetId == s.Id)
+        var linhasDeAfinidade = await Db.CharacterAffinities.Where(a => a.SheetId == s.Id)
             .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
             .ToListAsync();
         var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
@@ -654,7 +300,5 @@ public class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider 
     /// máximo", 1.c): os totais com as Condições ativas da ficha (CharacterSheetStats.MaximosAsync).
     /// </summary>
     private async Task<(int Vitalidade, int Foco, int Adrenalina, int Estresse)> ComputeResourceMaximumsAsync(CharacterSheet sheet, RuinaRPG.Domain.CharacterSheets.Vocacao? vocacao, int nivel) =>
-        await stats.MaximosAsync(sheet, await condicoes.ParaPersonagemAsync(sheet.Id), vocacao, nivel);
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+        await Stats.MaximosAsync(sheet, await Tipo.CondicoesAsync(sheet), vocacao, nivel);
 }

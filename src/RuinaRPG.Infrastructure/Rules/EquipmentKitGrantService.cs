@@ -164,7 +164,7 @@ public class EquipmentKitGrantService(RuinaRpgDbContext db, DurabilidadePorRankP
     }
 
     /// <summary>
-    /// Mirrors CharacterPossessionsController/NpcPossessionsController's AddArtifact "limite de 3
+    /// Mirrors CharacterArtifactsController/NpcArtifactsController's AddArtifact "limite de 3
     /// por TipoDeAlvo validado na aplicação, não no schema" cap (Requisitos - Modelo de Dados). No
     /// seeded kit grants an Artefato today, but the Auditoria page's Tipo dropdown allows authoring
     /// one, so the same cap must hold when a kit's Artefato grant(s) land on a sheet — counting the

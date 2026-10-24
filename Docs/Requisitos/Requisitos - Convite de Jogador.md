@@ -1,4 +1,4 @@
-> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 1, "Convidar jogador") do "[[01 - Visão Geral.canvas]]".
+> Esta página se baseia no bloco **PAINEL DO *GM*** (ferramenta 1, "Convidar jogador") do "[[01 - Visão Geral]]".
 
   
 
@@ -21,7 +21,7 @@
 **Descrição**: Abaixo do botão de geração, uma lista exibe todos os códigos já gerados pelo GM, com as colunas:
 
 - **Código**: o valor alfanumérico gerado.
-- **Status**: uma tag indicando o estado atual do código — **Ativo**, **Usado** ou **Revogado** (ver [[#**R0005** - O GM deve poder revogar manualmente um código Ativo.|R0005]]).
+- **Status**: uma tag indicando o estado atual do código — **Ativo**, **Usado**, **Expirado** (R0004) ou **Revogado** (ver [[#**R0005** - O GM deve poder revogar manualmente um código Ativo.|R0005]]).
 - **Gerado em**: data e hora da geração do código.
 - **Expira em**: data e hora em que o código deixa de ser válido (Gerado em + 48h). Exibe travessão quando o código já não está mais **Ativo**.
 - **Resgatado por**: nickname e e-mail do jogador que usou o código para se cadastrar. Exibe travessão enquanto o código não for usado.
@@ -31,7 +31,7 @@
 
 # **R0003** - Ao ser resgatado, o código deve vincular o jogador ao GM.
 
-**Descrição**: Quando um jogador usa o código no cadastro (ver aba "Cadastro de jogadores" no `PÁGINA DE CADASTRO` do "[[01 - Visão Geral.canvas]]"), a conta criada é automaticamente vinculada à conta do GM que gerou aquele código. Na lista de códigos (R0002), o status muda para **Usado** e as colunas **Resgatado por** e **Resgatado em** passam a exibir os dados do jogador e o momento do resgate. Um código **Usado** não pode ser resgatado novamente.
+**Descrição**: Quando um jogador usa o código no cadastro (ver aba "Cadastro de jogadores" no `PÁGINA DE CADASTRO` do "[[01 - Visão Geral]]"), a conta criada é automaticamente vinculada à conta do GM que gerou aquele código. Na lista de códigos (R0002), o status muda para **Usado** e as colunas **Resgatado por** e **Resgatado em** passam a exibir os dados do jogador e o momento do resgate. Um código **Usado** não pode ser resgatado novamente.
 
   
 

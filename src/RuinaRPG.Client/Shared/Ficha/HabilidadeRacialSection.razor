@@ -1,0 +1,48 @@
+@using RuinaRPG.Contracts.CharacterSheets
+@using MudBlazor
+
+@* A Habilidade Racial, no topo da aba Magias & Habilidades. Não é a aba que a põe: as páginas de Personagem e de NPC
+   (os tipos com Linhagem) a colocam logo antes de <AbaMagiasEHabilidades />, e a Criatura não a tem. A habilidade vem
+   do estado (a página a relê depois de salvar). O Humano rola a Arca: o número vive no formulário auto-salvo da
+   página, que salva na hora (SalvarAgora); depois a habilidade é relida. *@
+
+<Section Title="Habilidade Racial">
+    <MudText>@(Habilidade?.Nome ?? "—")</MudText>
+    <MudText>@(Habilidade?.Descricao ?? "—")</MudText>
+    @if (Formulario.Linhagem == "Humano")
+    {
+        <MudNumericField T="int?" Value="@Formulario.ArcaRolada" ValueChanged="@((int? v) => RolarArcaAsync(v))" Label="@($"Número rolado (1d{ArcaDado})")" Min="1" Max="@ArcaDado" Style="width:12em;" Class="mt-2" />
+        @if (Habilidade?.ArcaRolada is not null)
+        {
+            <MudText Class="mt-1">@(Habilidade.ArcaForaDaTabela ? $"Arca fora da tabela (o dado atual é D{Habilidade.ArcaDado}). Role de novo." : Habilidade.ArcaNome ?? "Arca não cadastrada.")</MudText>
+            @if (Habilidade.ArcaDescricao is not null)
+            {
+                <MudText>@Habilidade.ArcaDescricao</MudText>
+            }
+            <ArcaEvolucoesButton Evolucoes="@Habilidade.ArcaEvolucoes" />
+        }
+    }
+</Section>
+
+@code {
+    [CascadingParameter] public FichaEstado Estado { get; set; } = default!;
+
+    /// <summary>O formulário auto-salvo da página: a Linhagem (só o Humano rola a Arca) e o número rolado.</summary>
+    [Parameter, EditorRequired] public FormularioDaFicha Formulario { get; set; } = default!;
+
+    /// <summary>A página salva a ficha na hora, fora do autosave (e relê o que depende do Nível).</summary>
+    [Parameter] public EventCallback SalvarAgora { get; set; }
+
+    private RacialAbilityResponse? Habilidade => Estado.HabilidadeRacial;
+
+    // As Evoluções de Arca liberadas dependem do número rolado: relê a habilidade depois de salvar.
+    private async Task RolarArcaAsync(int? valor)
+    {
+        Formulario.ArcaRolada = valor;
+        await SalvarAgora.InvokeAsync();
+        await Estado.CarregarHabilidadeRacialAsync();
+    }
+
+    // Dado da Tabela de Arcas do GM (vem da habilidade racial); D20 até carregar.
+    private int ArcaDado => Habilidade?.ArcaDado ?? 20;
+}

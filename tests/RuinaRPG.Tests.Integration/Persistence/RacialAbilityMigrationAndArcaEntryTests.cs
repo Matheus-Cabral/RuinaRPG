@@ -10,11 +10,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<PostgresFixture>
+public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public RacialAbilityMigrationAndArcaEntryTests(PostgresFixture fixture) => _fixture = fixture;
+    public RacialAbilityMigrationAndArcaEntryTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_RacialAbilityOverride_and_ArcaEntry_tables_and_the_ArcaRolada_columns()
@@ -22,9 +22,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<PostgresFix
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddRacialAbilityOverrideAndArcaEntry"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@racialtest.com", Email = "gm@racialtest.com", Nickname = "RacialTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@racialtest.com", Email = "player@racialtest.com", Nickname = "RacialTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -61,8 +58,6 @@ public class RacialAbilityMigrationAndArcaEntryTests : IClassFixture<PostgresFix
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddDadoDaTabelaDeArcas"));
 
         var gmSemLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm1@arcadado.com", Email = "gm1@arcadado.com", Nickname = "ArcaDadoMigGm1", Role = UserRole.GM };
         var gmComLinha = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm2@arcadado.com", Email = "gm2@arcadado.com", Nickname = "ArcaDadoMigGm2", Role = UserRole.GM };

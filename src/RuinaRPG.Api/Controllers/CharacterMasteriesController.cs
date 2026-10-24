@@ -1,12 +1,10 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Api.Services;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
@@ -16,78 +14,32 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets/{sheetId}/masteries")]
-public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<CharacterSheet> tipo)
+    : MaestriasDaFichaController<CharacterSheet, CharacterMastery, CharacterSkill, CharacterAttribute, Atributo>(db, pericias, tipo)
 {
-    [HttpPost]
-    public async Task<ActionResult<CharacterMasteryResponse>> Add(Guid sheetId, AddCharacterMasteryRequest request)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+    protected override CharacterMastery Nova(Guid sheetId, string nome, int periciaId, Atributo atributo, int gastoMaestria) =>
+        new() { Id = Guid.NewGuid(), SheetId = sheetId, Nome = nome, PericiaId = periciaId, Atributo = atributo, GastoMaestria = gastoMaestria };
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
+    protected override (string Nome, string Pericia, string? Atributo, int GastoMaestria) Ler(AddMasteryRequest request) =>
+        (request.Nome, request.Pericia, request.Atributo, request.GastoMaestria);
 
-        var pericia = await pericias.AtivaPorChaveAsync(request.Pericia);
-        if (pericia is null)
-            return BadRequest("Perícia ou Atributo desconhecido.");
-        if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
-            return BadRequest("Perícia ou Atributo desconhecido.");
+    protected override MasteryResponse Resposta(string id, string nome, string pericia, string atributo, int gastoMaestria, int total) =>
+        new(id, nome, pericia, atributo, gastoMaestria, total);
 
-        var mastery = new CharacterMastery { Id = Guid.NewGuid(), CharacterSheetId = sheetId, Nome = request.Nome, PericiaId = pericia.Id, Atributo = atributo, GastoMaestria = request.GastoMaestria };
-        db.CharacterMasteries.Add(mastery);
-        await db.SaveChangesAsync();
-
-        var porId = await pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheetId, mastery.Id, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaPersonagemAsync(sheet.Id));
-        return Created(string.Empty, ToResponse(mastery, total, porId));
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<List<CharacterMasteryResponse>>> List(Guid sheetId)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var porId = await pericias.PorIdAsync();
-        var masteries = (await db.CharacterMasteries.Where(m => m.CharacterSheetId == sheetId).ToListAsync())
-            .Where(m => porId.TryGetValue(m.PericiaId, out var p) && !p.IsDeleted)
-            .ToList();
-        var responses = new List<CharacterMasteryResponse>();
-        var efeitos = await condicoes.ParaPersonagemAsync(sheet.Id);
-        foreach (var mastery in masteries)
-        {
-            var total = await ComputeTotalAsync(sheetId, mastery.Id, porId[mastery.PericiaId], mastery.Atributo, mastery.GastoMaestria, efeitos);
-            responses.Add(ToResponse(mastery, total, porId));
-        }
-
-        return responses;
-    }
-
+    // Só o Personagem edita uma Maestria existente; NPC e Criatura só criam e apagam.
     [HttpPut("{id}")]
-    public async Task<ActionResult<CharacterMasteryResponse>> Update(Guid sheetId, Guid id, UpdateCharacterMasteryRequest request)
+    public async Task<ActionResult<MasteryResponse>> Update(Guid sheetId, Guid id, UpdateCharacterMasteryRequest request)
     {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+            return erro;
 
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var pericia = await pericias.AtivaPorChaveAsync(request.Pericia);
+        var pericia = await Pericias.AtivaPorChaveAsync(request.Pericia);
         if (pericia is null)
-            return BadRequest("Perícia ou Atributo desconhecido.");
+            return BadRequest(PericiaOuAtributoDesconhecido);
         if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
-            return BadRequest("Perícia ou Atributo desconhecido.");
+            return BadRequest(PericiaOuAtributoDesconhecido);
 
-        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CharacterSheetId == sheetId);
+        var mastery = await Db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
         if (mastery is null)
             return NotFound();
 
@@ -95,51 +47,10 @@ public class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaCatalogo
         mastery.PericiaId = pericia.Id;
         mastery.Atributo = atributo;
         mastery.GastoMaestria = request.GastoMaestria;
-        await db.SaveChangesAsync();
+        await Db.SaveChangesAsync();
 
-        var porId = await pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheetId, mastery.Id, pericia, atributo, mastery.GastoMaestria, await condicoes.ParaPersonagemAsync(sheet.Id));
-        return Ok(ToResponse(mastery, total, porId));
+        var porId = await Pericias.PorIdAsync();
+        var total = await ComputeTotalAsync(sheet, mastery.Id, pericia, atributo, mastery.GastoMaestria, await Tipo.CondicoesAsync(sheet));
+        return Ok(ParaResposta(mastery, total, porId));
     }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid sheetId, Guid id)
-    {
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        var campaignGmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, campaignGmId))
-            return Forbid();
-
-        var mastery = await db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.CharacterSheetId == sheetId);
-        if (mastery is null)
-            return NotFound();
-
-        db.CharacterMasteries.Remove(mastery);
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Condições: o Atributo entra já ajustado pelas linhas de Atributo, e o total passa pelas linhas de Maestria
-    /// daquela Perícia. (A fórmula da Maestria nunca somou Artefatos nem penalidades; isso não muda aqui.)
-    /// </summary>
-    private async Task<int> ComputeTotalAsync(Guid sheetId, Guid maestriaId, PericiaDefinicao pericia, Atributo atributo, int gastoMaestria, EfeitosDeCondicao efeitos)
-    {
-        var periciaId = pericia.Id;
-        var skill = await db.CharacterSkills.FirstOrDefaultAsync(s => s.CharacterSheetId == sheetId && s.PericiaId == periciaId);
-        var attribute = await db.CharacterAttributes.SingleAsync(a => a.CharacterSheetId == sheetId && a.Atributo == atributo);
-        var historicoId = await db.CharacterSheets.Where(s => s.Id == sheetId).Select(s => s.HistoricoId).SingleAsync();
-        var historico = historicoId is null ? null : await db.Historicos.FindAsync(historicoId.Value);
-        var bruto = SkillFormulas.Modificador(skill?.Gasto ?? 0, HistoricoBonusCalculator.For(periciaId, historico?.PericiaMaisSeisId, historico?.PericiaMaisTresId));
-        var atributoTotal = efeitos.NoAtributo(atributo.ToString(), AttributeTotalCalculator.Total(attribute.Gasto, attribute.Bonus, attribute.TemMaestria, artefatos: 0));
-        return efeitos.NaMaestria(pericia.Chave, maestriaId, gastoMaestria + bruto + atributoTotal);
-    }
-
-    private static CharacterMasteryResponse ToResponse(CharacterMastery m, int total, IReadOnlyDictionary<int, PericiaDefinicao> porId) =>
-        new(m.Id.ToString(), m.Nome, porId[m.PericiaId].Chave, m.Atributo.ToString(), m.GastoMaestria, total);
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

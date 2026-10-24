@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.CreatureSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Campaigns;
@@ -13,11 +12,11 @@ using RuinaRPG.Infrastructure.SheetLogs;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class SheetLogEntryMigrationTests : IClassFixture<PostgresFixture>
+public class SheetLogEntryMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public SheetLogEntryMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public SheetLogEntryMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     private static SheetLogEntry Entrada(Guid atorId, Guid? personagem = null, Guid? npc = null, Guid? criatura = null) => new()
     {
@@ -43,8 +42,6 @@ public class SheetLogEntryMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        (await db.Database.GetAppliedMigrationsAsync()).Should().Contain(m => m.EndsWith("AddSheetLogEntries"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@sheetlogtest.com", Email = "gm@sheetlogtest.com", Nickname = "SheetLogTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@sheetlogtest.com", Email = "player@sheetlogtest.com", Nickname = "SheetLogTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

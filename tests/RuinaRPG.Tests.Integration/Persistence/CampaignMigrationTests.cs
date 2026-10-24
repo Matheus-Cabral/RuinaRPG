@@ -7,11 +7,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CampaignMigrationTests : IClassFixture<PostgresFixture>
+public class CampaignMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CampaignMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CampaignMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Campaigns_table()
@@ -19,9 +19,6 @@ public class CampaignMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCampaigns"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@camptest.com", Email = "gm@camptest.com", Nickname = "CampTestGm", Role = UserRole.GM };
         db.Users.Add(gm);

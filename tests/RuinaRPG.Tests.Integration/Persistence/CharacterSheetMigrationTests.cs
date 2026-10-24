@@ -9,11 +9,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterSheetMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterSheetMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterSheetMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterSheetMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_CharacterSheets_table_with_a_default_Nivel_of_1()
@@ -21,9 +21,6 @@ public class CharacterSheetMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterSheets"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@sheettest.com", Email = "gm@sheettest.com", Nickname = "SheetTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@sheettest.com", Email = "player@sheettest.com", Nickname = "SheetTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };

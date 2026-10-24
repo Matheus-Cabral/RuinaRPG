@@ -1,100 +1,56 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using RuinaRPG.Contracts.Auth;
-using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
 
-public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncountersControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncountersControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
+    private async Task<string> RegisterJogadorAndGetTokenAsync(string gmToken, string nickname, string email)
     {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private async Task<string> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
+        var codeResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return tokens!.AccessToken;
     }
 
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private async Task<string> CreateEncounterAsync(string gmToken, string campaignId, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest(nome)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest(nome)));
         return (await response.Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
     }
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
     private async Task<string> AddParticipantAsync(string gmToken, string encounterId, string npcSheetId, int iniciativa)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(null, npcSheetId, null, iniciativa)));
         return (await response.Content.ReadFromJsonAsync<EncounterParticipantResponse>())!.Id;
     }
 
     private async Task<List<EncounterParticipantResponse>> ListParticipantsAsync(string gmToken, string encounterId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/encounters/{encounterId}/participants", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<EncounterParticipantResponse>>())!;
     }
 
     private async Task SetAcoesRestantesAsync(string gmToken, string encounterId, EncounterParticipantResponse participant, int acoesRestantes) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{participant.Id}", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}/participants/{participant.Id}", gmToken,
             new UpdateParticipantRequest(participant.Iniciativa, participant.PV, participant.PF, participant.PA, acoesRestantes, new List<string>())));
 
     private async Task<HttpResponseMessage> PostAsync(string gmToken, string url) =>
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, url, gmToken));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, url, gmToken));
 
     private async Task<HttpResponseMessage> StartAsync(string gmToken, string encounterId) =>
         await PostAsync(gmToken, $"/api/encounters/{encounterId}/start");
@@ -104,7 +60,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
     private async Task<EncounterResponse> GetAsync(string gmToken, string campaignId, string encounterId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         return (await response.Content.ReadFromJsonAsync<List<EncounterResponse>>())!.Single(e => e.Id == encounterId);
     }
 
@@ -126,7 +82,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var gm = await RegisterGmAndGetTokenAsync("EncAdv0", "encadv0@teste.com");
         var (_, enc, ids) = await EncounterWithAsync(gm, 10);
         await StartAsync(gm, enc);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/encounters/{enc}/participants/{ids[0]}", gm));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/api/encounters/{enc}/participants/{ids[0]}", gm));
 
         var r = await AdvanceAsync(gm, enc);
 
@@ -319,12 +275,12 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         };
         foreach (var req in requests)
         {
-            var r = await _client.SendAsync(req);
+            var r = await Client.SendAsync(req);
             r.StatusCode.Should().Be(HttpStatusCode.Conflict, $"{req.Method} {req.RequestUri}");
             (await BodyAsync(r)).Should().Contain("Encontro finalizado.");
         }
 
-        var rename = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{enc}", gm, new UpdateEncounterRequest("Novo")));
+        var rename = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{enc}", gm, new UpdateEncounterRequest("Novo")));
         rename.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
@@ -378,7 +334,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
             (HttpMethod.Delete, $"/api/encounters/{enc}/participants/{ids[0]}"),
         })
         {
-            var r = await _client.SendAsync(AuthedRequest(method, url, other));
+            var r = await Client.SendAsync(AuthedRequest(method, url, other));
             r.StatusCode.Should().Be(HttpStatusCode.NotFound, $"{method} {url}");
         }
     }
@@ -389,7 +345,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var gmToken = await RegisterGmAndGetTokenAsync("EncGm1", "enc1@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha com Encontro");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken,
             new CreateEncounterRequest("Emboscada na Ponte")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -405,7 +361,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var gmToken = await RegisterGmAndGetTokenAsync("EncGmFase", "encfase@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Fase");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken,
             new CreateEncounterRequest("Fase")));
 
         var body = await response.Content.ReadFromJsonAsync<EncounterResponse>();
@@ -422,10 +378,10 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var tokenB = await RegisterGmAndGetTokenAsync("EncGmB", "encb@teste.com");
         var campaignA = await CreateCampaignAsync(tokenA, "Campanha A");
         var campaignB = await CreateCampaignAsync(tokenB, "Campanha B");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/encounters", tokenA, new CreateEncounterRequest("Encontro A")));
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignB}/encounters", tokenB, new CreateEncounterRequest("Encontro B")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignA}/encounters", tokenA, new CreateEncounterRequest("Encontro A")));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignB}/encounters", tokenB, new CreateEncounterRequest("Encontro B")));
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignA}/encounters", tokenA));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignA}/encounters", tokenA));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<List<EncounterResponse>>();
@@ -438,10 +394,10 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
     public async Task Create_by_a_jogador_returns_403()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("EncGmJog", "encgmjog@teste.com");
-        var jogadorToken = await RegisterJogadorLinkedToAsync(gmToken, "EncJogador", "encjogador@teste.com");
+        var jogadorToken = await RegisterJogadorAndGetTokenAsync(gmToken, "EncJogador", "encjogador@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha do Jogador");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", jogadorToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", jogadorToken,
             new CreateEncounterRequest("Não deveria funcionar")));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -454,7 +410,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var gmTokenOther = await RegisterGmAndGetTokenAsync("EncOther", "encother@teste.com");
         var campaignOfOwner = await CreateCampaignAsync(gmTokenOwner, "Campanha do Dono");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignOfOwner}/encounters", gmTokenOther,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignOfOwner}/encounters", gmTokenOther,
             new CreateEncounterRequest("Invasão")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -470,7 +426,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var npcId = await CreateNpcSheetAsync(gmTokenOwner);
         await AddParticipantAsync(gmTokenOwner, encounterId, npcId, 10);
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmTokenOther));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmTokenOther));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -506,11 +462,11 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var npcOther = await CreateNpcSheetAsync(gmToken);
         await AddParticipantAsync(gmToken, otherEncounterId, npcOther, 100);
 
-        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        var advanceResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
 
         advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var encountersList = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        var encountersList = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         var encounters = await encountersList.Content.ReadFromJsonAsync<List<EncounterResponse>>();
         var encounter = encounters!.Should().ContainSingle(e => e.Id == encounterId).Which;
         encounter.CurrentRound.Should().Be(1);
@@ -539,14 +495,14 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         // Start: Turno 1 on index 0. Advance once: index 0 -> 1 (still Turno 1).
         await StartAsync(gmToken, encounterId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
 
         // Advance again: index 1 was the last participant -> wraps to Turno 2, index 0.
-        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        var advanceResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
 
         advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var encountersList = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        var encountersList = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         var encounters = await encountersList.Content.ReadFromJsonAsync<List<EncounterResponse>>();
         var encounter = encounters!.Should().ContainSingle(e => e.Id == encounterId).Which;
         encounter.CurrentRound.Should().Be(2);
@@ -585,7 +541,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         foreach (var p in beforeOrder)
             await SetAcoesRestantesAsync(gmToken, encounterId, p, 0);
 
-        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        var advanceResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
         advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // AdvanceTurn must have reset the SAME participant that List put at index 1 — not a
@@ -617,7 +573,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
 
         // Start (Alta), then first advance: 0 (Alta) -> 1 (Media). Confirmed by the existing AdvanceTurn test above.
         await StartAsync(gmToken, encounterId);
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
 
         // Now insert a participant with a HIGHER Iniciativa than the currently-active one (Media,
         // 10) but lower than Alta (20) — this reorders the list to [Alta 20, Nova 15, Media 10, Baixa 5],
@@ -631,7 +587,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         foreach (var p in await ListParticipantsAsync(gmToken, encounterId))
             await SetAcoesRestantesAsync(gmToken, encounterId, p, 0);
 
-        var advanceResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
+        var advanceResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/advance-turn", gmToken));
         advanceResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var after = await ListParticipantsAsync(gmToken, encounterId);
@@ -647,11 +603,11 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Renomear");
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Nome Original");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmToken,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmToken,
             new UpdateEncounterRequest("Nome Novo")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var list = await _client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
+        var list = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/encounters", gmToken));
         var body = await list.Content.ReadFromJsonAsync<List<EncounterResponse>>();
         body!.Should().ContainSingle(e => e.Id == encounterId && e.Nome == "Nome Novo");
     }
@@ -664,7 +620,7 @@ public class EncountersControllerTests : IClassFixture<PostgresFixture>, IAsyncL
         var campaignId = await CreateCampaignAsync(gmTokenOwner, "Campanha Renomear Alheia");
         var encounterId = await CreateEncounterAsync(gmTokenOwner, campaignId, "Nome Original");
 
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmTokenOther,
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/encounters/{encounterId}", gmTokenOther,
             new UpdateEncounterRequest("Nome Novo")));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);

@@ -4,11 +4,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CondicoesMigrationTests : IClassFixture<PostgresFixture>
+public class CondicoesMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CondicoesMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CondicoesMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_three_Condicao_tables_with_a_unique_Nome_among_non_deleted_rows()

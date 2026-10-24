@@ -1,7 +1,6 @@
 using Bunit;
 using Bunit.Rendering;
 using FluentAssertions;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Pages;
@@ -13,6 +12,7 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Pages;
 
+[Collection("Tempo real")]
 public class BancoDeMagiasFormTests : MudBunitContext
 {
     // Info popups' inline <MudDialog> only renders its content through a MudDialogProvider present

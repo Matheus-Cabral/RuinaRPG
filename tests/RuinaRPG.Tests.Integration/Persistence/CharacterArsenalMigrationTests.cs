@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
-using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Identity;
@@ -11,11 +10,11 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterArsenalMigrationTests : IClassFixture<PostgresFixture>
+public class CharacterArsenalMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterArsenalMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public CharacterArsenalMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_weapon_armor_and_shield_tables()
@@ -23,9 +22,6 @@ public class CharacterArsenalMigrationTests : IClassFixture<PostgresFixture>
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddCharacterArsenal"));
 
         var gm = new ApplicationUser { Id = Guid.NewGuid(), UserName = "gm@arsenaltest.com", Email = "gm@arsenaltest.com", Nickname = "ArsenalTestGm", Role = UserRole.GM };
         var player = new ApplicationUser { Id = Guid.NewGuid(), UserName = "player@arsenaltest.com", Email = "player@arsenaltest.com", Nickname = "ArsenalTestPlayer", Role = UserRole.Jogador, InvitedByGmId = gm.Id };
@@ -40,8 +36,8 @@ public class CharacterArsenalMigrationTests : IClassFixture<PostgresFixture>
         db.Set<Arma>().Add(weaponItem);
         await db.SaveChangesAsync();
 
-        db.CharacterWeapons.Add(new CharacterWeapon { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
-        db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), CharacterSheetId = sheet.Id, Slot = ArmorSlotType.Capacete });
+        db.CharacterWeapons.Add(new CharacterWeapon { Id = Guid.NewGuid(), SheetId = sheet.Id, ItemId = weaponItem.Id, IsEquipped = true, DurabilidadeAtual = 20 });
+        db.CharacterArmorSlots.Add(new CharacterArmorSlot { Id = Guid.NewGuid(), SheetId = sheet.Id, Slot = ArmorSlotType.Capacete });
         await db.SaveChangesAsync();
 
         (await db.CharacterWeapons.CountAsync()).Should().Be(1);

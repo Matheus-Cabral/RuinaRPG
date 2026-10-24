@@ -6,11 +6,11 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class TraitMigrationTests : IClassFixture<PostgresFixture>
+public class TraitMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
-    private readonly PostgresFixture _fixture;
+    private readonly BlankDatabaseFixture _fixture;
 
-    public TraitMigrationTests(PostgresFixture fixture) => _fixture = fixture;
+    public TraitMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
     public async Task Migrate_creates_the_Traits_table()
@@ -21,9 +21,6 @@ public class TraitMigrationTests : IClassFixture<PostgresFixture>
 
         await using var db = new RuinaRpgDbContext(options);
         await db.Database.MigrateAsync();
-
-        var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        appliedMigrations.Should().Contain(m => m.EndsWith("AddTraits"));
 
         db.Traits.Add(new Trait { Id = Guid.NewGuid(), Nome = "Teste", Descricao = "Descrição de teste", Custo = 2, Polaridade = Polaridade.Positiva });
         await db.SaveChangesAsync();

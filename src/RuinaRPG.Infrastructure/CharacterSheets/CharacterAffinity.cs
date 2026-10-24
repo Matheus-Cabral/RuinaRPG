@@ -1,11 +1,12 @@
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.CharacterSheets;
 
-public class CharacterAffinity
+public class CharacterAffinity : IAfinidadeDaFicha
 {
     public Guid Id { get; set; }
-    public Guid CharacterSheetId { get; set; }
+    public Guid SheetId { get; set; }
     public Elemento? Elemento { get; set; }
     public int? ElementoValor { get; set; }
     public SubElemento? SubElemento { get; set; }

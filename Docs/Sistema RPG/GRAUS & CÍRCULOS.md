@@ -1,4 +1,3 @@
-
 Campeão e Caçador progridem por **Grau**; as demais vocações (Feiticeiro, Adepto, Bruxo) progridem por **Círculo**. Grau é desbloqueado desde o princípio de jogo. Círculo, por outro lado, exige que o personagem tenha um **coração de mana** — um núcleo mágico criado por um mago (qualquer classe que utiliza magia) — sem ele, o Círculo permanece 0 mesmo com EAP acumulado. Um coração de mana pode ser perdido depois de criado, voltando o Círculo a 0 até que outro seja obtido.
 
 | *Grau* | *Dano / Duração* |      | *Alcance*   | *Gasto* |
@@ -17,7 +16,7 @@ Custo: 1,25 de arcana por PI (arredondado para cima)
 
 Atualização: Pagar a diferença dos Graus
 
-# 1º GRAU / CÍRCULO I  
+# 1º GRAU / CÍRCULO I
 
 ## Efeitos Básicos
 
@@ -89,9 +88,9 @@ Gasto: 3 PI
 
 O personagem pode acometer alguém com o efeito de Regeneração em um alvo, o curando em 1d por turno da habilidade, além de retirá-lo de qualquer efeito negativo de círculo ou grau igual ou inferior à habilidade.
 
-É obrigatória a compra de Duração.  
+É obrigatória a compra de Duração.
 
-# 2º GRAU / CÍRCULO II  
+# 2º GRAU / CÍRCULO II
 
 ## Aceleração
 
@@ -155,9 +154,9 @@ O usuário é capaz de ver certas características do alvo. São obrigatórias a
 
 6 Pontos: Capaz de ver a Arcana atual do alvo.
 
-O usuário pode ter ambos em uma mesma magia, mas deve pagar por ambos separadamente.  
+O usuário pode ter ambos em uma mesma magia, mas deve pagar por ambos separadamente.
 
-# 3º GRAU / CÍRCULO II  
+# 3º GRAU / CÍRCULO II
 
 ## Área
 
@@ -185,7 +184,7 @@ Gasto: X PI por Dado
 
 Max. 1 Dado por Círculo, contando a partir do terceiro
 
-Esse efeito permite que múltiplos ataques rápidos sejam feitos com uma única ação. 
+Esse efeito permite que múltiplos ataques rápidos sejam feitos com uma única ação.
 
 Sistematicamente, a habilidade pode exceder o número de dados permitido pelo Grau/Círculo, porém gasta mais da durabilidade da arma e/ou mais projéteis se este for o caso.
 
@@ -206,9 +205,6 @@ Gasto: 4 PI
 Muito parecido com Enraizamento, o alvo se torna incapaz de se deslocar, porém com o bônus de causar 1d de dano por turno de Duração.
 
 É obrigatória a compra de Duração.
-
-  
-  
 
 ## Dreno de Vitalidade
 
@@ -242,17 +238,15 @@ Ao ser acometido por esta Condição, o alvo é obrigado a atacar o causador del
 
 É obrigatória a compra de Duração.
 
-  
-
 ## Marionete Arcana
 
 Gasto: 5 PI
 
 Conjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma essência elemental. a criatura terá de vida a quantidade de arcana a ela concedida após a utilização da magia, ficando a cargo do mago a quantidade que deverá ser concedida e não afetando o custo ja pago pela ultilização do feitiço que a invocou.
 
-É obrigatória a compra de Duração.  
+É obrigatória a compra de Duração.
 
-# 4º GRAU / CÍRCULO IV  
+# 4º GRAU / CÍRCULO IV
 
 ## Abençoar
 
@@ -318,9 +312,9 @@ Gasto: X PI
 
 O Personagem é capaz de criar uma imagem ilusória.
 
-É obrigatória a compra de Duração.  
+É obrigatória a compra de Duração.
 
-# 5º GRAU / CÍRCULO V  
+# 5º GRAU / CÍRCULO V
 
 ## Feixe
 
@@ -376,8 +370,6 @@ Permite ao usuário reagir a ataques mágicos direcionando-os de volta ao origin
 
 É obrigatória a compra de Dano.
 
-  
-
 ## Encantamento Pessoal
 
 Gasto: 5 PI
@@ -392,9 +384,9 @@ Gasto: 10 PI
 
 O alvo encantado é obrigado a se aproximar e defender o causador do efeito.
 
-Obrigatória a compra de Duração.  
+Obrigatória a compra de Duração.
 
-# 6º GRAU / CÍRCULO VI  
+# 6º GRAU / CÍRCULO VI
 
 ## Amplificação Arcana
 
@@ -416,9 +408,9 @@ Gasto: 5 PI
 
 O Alvo recebe 1d de dano por Turno quaisquer efeitos positivos que ele possua são retirados imediatamente.
 
-Obrigatória a compra de Duração.  
+Obrigatória a compra de Duração.
 
-# 7º GRAU / CÍRCULO VII  
+# 7º GRAU / CÍRCULO VII
 
 ## Absorção
 
@@ -436,9 +428,9 @@ Max. 20%
 
 Pela duração da habilidade o personagem precisa de números menores no d20 para que suas rolagens sejam consideradas críticas.
 
-Obrigatória a compra de Duração.  
+Obrigatória a compra de Duração.
 
-# 8º GRAU / CÍRCULO VIII  
+# 8º GRAU / CÍRCULO VIII
 
 ## Atordoamento
 
@@ -446,12 +438,9 @@ Gasto: 10 PI
 
 O alvo atordoado perde completamente a sua ação, se tornando incapaz de agir, se mover, defender, esquivar ou qualquer outra ação ou reação exceto por testes para tentar sair da condição.
 
-É obrigatória a compra de Duração.  
+É obrigatória a compra de Duração.
 
-  
-  
-
-# 9º GRAU / CÍRCULO IX  
+# 9º GRAU / CÍRCULO IX
 
 ## Imunidade
 

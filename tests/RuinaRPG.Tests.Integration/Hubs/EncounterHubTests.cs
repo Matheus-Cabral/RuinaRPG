@@ -1,8 +1,6 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.SignalR.Client;
-using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Encounters;
@@ -10,75 +8,17 @@ using RuinaRPG.Contracts.NpcSheets;
 
 namespace RuinaRPG.Tests.Integration.Hubs;
 
-public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public EncounterHubTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm",
-            new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        return tokens!.AccessToken;
-    }
-
-    private async Task<(string PlayerId, string PlayerToken)> RegisterJogadorLinkedToAsync(string gmToken, string nickname, string email)
-    {
-        var codeResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/invite-codes", gmToken));
-        var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
-            new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
-        var tokens = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-        var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
-        var meResponse = await _client.SendAsync(me);
-        var meBody = await meResponse.Content.ReadFromJsonAsync<MeResponse>();
-        return (meBody!.Id, tokens.AccessToken);
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
-    private async Task<string> CreateCampaignAsync(string gmToken, string nome)
-    {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/campaigns", gmToken, new CreateCampaignRequest(nome, "")));
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
-    }
-
     private async Task<string> CreateEncounterAsync(string gmToken, string campaignId, string nome)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest(nome)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/encounters", gmToken, new CreateEncounterRequest(nome)));
         return (await response.Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
     }
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/npc-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<NpcSheetResponse>())!.Id;
     }
 
@@ -88,7 +28,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
     private async Task<string> CreateCharacterSheetAsync(string gmToken, string campaignId, string playerId)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", gmToken, new CreateCharacterSheetRequest(playerId)));
         return (await response.Content.ReadFromJsonAsync<CharacterSheetResponse>())!.Id;
     }
 
@@ -100,7 +40,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 
     private async Task<string> CreateCreatureSheetAsync(string gmToken)
     {
-        var response = await _client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/creature-sheets", gmToken));
         return (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.CreatureSheets.CreatureSheetResponse>())!.Id;
     }
 
@@ -110,10 +50,10 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     private async Task<HubConnection> ConnectAndJoinAsync(string token, string encounterId)
     {
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/encounters"), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, "/hubs/encounters"), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
 
@@ -142,9 +82,9 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
     private async Task<HubConnection> ConnectWithQueryStringTokenAndJoinAsync(string token, string encounterId)
     {
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, $"/hubs/encounters?access_token={token}"), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, $"/hubs/encounters?access_token={token}"), options =>
             {
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
 
@@ -159,17 +99,17 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var gmToken = await RegisterGmAndGetTokenAsync("HubGm1", "hub1@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer1", "hubplayer1@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Hub Personagem");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Hub Personagem");
         var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(sheetId, null, null, 8)));
 
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
         var waitTask = WaitForParticipantsChangedAsync(connection);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidCharacterUpdate("Vann Astrel", 5)));
         updateResponse.EnsureSuccessStatusCode();
 
@@ -182,17 +122,17 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var gmToken = await RegisterGmAndGetTokenAsync("HubGm2", "hub2@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer2", "hubplayer2@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Hub Npc Concedido");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Hub Npc Concedido");
 
         // Grant a fresh NPC to the player — this sets NpcSheet.OwnerId, making it live-sourced
         // per EncounterParticipantsController's own logic (mirrors Task 4's pattern).
-        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+        var grantResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
             new GrantSheetRequest(playerId, "Npc", null)));
         grantResponse.EnsureSuccessStatusCode();
         var npcId = (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(null, npcId, null, 10)));
         addResponse.EnsureSuccessStatusCode();
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
@@ -201,7 +141,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
         var waitTask = WaitForParticipantsChangedAsync(connection);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken,
             ValidNpcUpdate("Goblin Concedido", 7)));
         updateResponse.EnsureSuccessStatusCode();
 
@@ -214,15 +154,15 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var gmToken = await RegisterGmAndGetTokenAsync("HubGm5", "hub5@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer5", "hubplayer5@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Hub Criatura Concedida");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Hub Criatura Concedida");
 
-        var grantResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
+        var grantResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/grants", gmToken,
             new GrantSheetRequest(playerId, "Creature", null)));
         grantResponse.EnsureSuccessStatusCode();
         var creatureId = (await grantResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
 
-        var addResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        var addResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(null, null, creatureId, 10)));
         addResponse.EnsureSuccessStatusCode();
         var added = await addResponse.Content.ReadFromJsonAsync<EncounterParticipantResponse>();
@@ -231,7 +171,7 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
         var waitTask = WaitForParticipantsChangedAsync(connection);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken,
             ValidCreatureUpdate("Lobo Concedido", 7)));
         updateResponse.EnsureSuccessStatusCode();
 
@@ -247,17 +187,17 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var gmToken = await RegisterGmAndGetTokenAsync("HubGm3", "hub3@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer3", "hubplayer3@teste.com");
         var campaignId = await CreateCampaignAsync(gmToken, "Campanha Hub Querystring");
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var encounterId = await CreateEncounterAsync(gmToken, campaignId, "Encontro Hub Querystring");
         var sheetId = await CreateCharacterSheetAsync(gmToken, campaignId, playerId);
 
-        await _client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
+        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", gmToken,
             new AddParticipantRequest(sheetId, null, null, 8)));
 
         await using var connection = await ConnectWithQueryStringTokenAndJoinAsync(gmToken, encounterId);
         var waitTask = WaitForParticipantsChangedAsync(connection);
 
-        var updateResponse = await _client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
+        var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidCharacterUpdate("Vann Querystring", 3)));
         updateResponse.EnsureSuccessStatusCode();
 
@@ -271,9 +211,9 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         // not silently allowed through. No AccessTokenProvider and no ?access_token= query
         // string, so negotiate hits the hub with no credentials at all.
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/encounters"), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, "/hubs/encounters"), options =>
             {
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
 
@@ -294,10 +234,10 @@ public class EncounterHubTests : IClassFixture<PostgresFixture>, IAsyncLifetime
         var (_, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "HubPlayer4", "hubplayer4@teste.com");
 
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/encounters"), options =>
+            .WithUrl(new Uri(Client.BaseAddress!, "/hubs/encounters"), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(playerToken);
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
 

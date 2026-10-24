@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -17,50 +16,16 @@ namespace RuinaRPG.Tests.Integration.Controllers;
 /// Auditoria da Tabela de Níveis. A tabela é global ao banco da classe: todo teste que a edita
 /// restaura o que mudou no finally, para os demais continuarem vendo 50 níveis e todas as colunas de sistema.
 /// </summary>
-public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public class TabelaDeNiveisControllerTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
-    private readonly PostgresFixture _postgres;
-    private ApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    public TabelaDeNiveisControllerTests(PostgresFixture postgres) => _postgres = postgres;
-
-    public Task InitializeAsync()
-    {
-        _factory = new ApiFactory(_postgres.ConnectionString);
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return _factory.DisposeAsync().AsTask();
-    }
-
-    private HttpRequestMessage AuthedRequest(HttpMethod method, string url, string token, object? body = null)
-    {
-        var message = new HttpRequestMessage(method, url);
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-            message.Content = JsonContent.Create(body);
-        return message;
-    }
-
     private Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null) =>
-        _client.SendAsync(AuthedRequest(method, url, token, body));
-
-    private async Task<string> RegisterGmAndGetTokenAsync(string nickname, string email)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register/gm", new RegisterGmRequest(nickname, email, "Senha!123", "Senha!123"));
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
-    }
+        Client.SendAsync(AuthedRequest(method, url, token, body));
 
     private async Task<string> RegisterJogadorTokenAsync(string gmToken, string nickname, string email)
     {
         var codeResponse = await SendAsync(HttpMethod.Post, "/api/invite-codes", gmToken);
         var code = (await codeResponse.Content.ReadFromJsonAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>())!.Code;
-        var response = await _client.PostAsJsonAsync("/api/auth/register/jogador",
+        var response = await Client.PostAsJsonAsync("/api/auth/register/jogador",
             new RegisterJogadorRequest(nickname, email, "Senha!123", "Senha!123", code));
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
     }
@@ -68,7 +33,7 @@ public class TabelaDeNiveisControllerTests : IClassFixture<PostgresFixture>, IAs
     private async Task<string> RegisterAuditorAsync(string nickname, string email)
     {
         var token = await RegisterGmAndGetTokenAsync(nickname, email);
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         var user = await db.Users.SingleAsync(u => u.NormalizedEmail == email.ToUpperInvariant());
         user.IsRulesAuditor = true;

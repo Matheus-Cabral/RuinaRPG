@@ -1,0 +1,101 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, ruinarpg]
+    environment: production
+    env:
+      # The workflow's own token is enough to read the PR and comment on it; the merge PAT stays off the runner.
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: PR e modo
+        id: pr
+        run: |
+          pr=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number // empty')
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+          window=""
+          if [ -n "$pr" ] && gh pr view "$pr" -R "${{ github.repository }}" --json labels --jq '.labels[].name' | grep -qx 'deploy:janela'; then window="--window"; fi
+          echo "window=$window" >> "$GITHUB_OUTPUT"
+      # The deploy key (Environment secret) is not the runner's on-disk key: that one is forced to
+      # `gate.sh dump-only` on production and can never deploy. This one lives only in an agent for this job.
+      - name: Chave de deploy em um ssh-agent do job
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PROD_SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          d="$RUNNER_TEMP/prod-ssh"
+          rm -rf "$d" && mkdir -p "$d"
+          test -n "$DEPLOY_SSH_KEY" && test -n "$PROD_SSH_KNOWN_HOSTS"
+          # A unix socket path must fit in 108 bytes.
+          test "${#d}" -lt 90 || { echo "RUNNER_TEMP longo demais para o socket do ssh-agent: $d" >&2; exit 1; }
+          # Long enough for a window deploy with a slow build; the key is removed at the end of the job anyway.
+          eval "$(ssh-agent -s -a "$d/agent.sock" -t 7200)" >/dev/null
+          echo "PROD_SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | SSH_AUTH_SOCK="$d/agent.sock" ssh-add -q -
+          # IdentitiesOnly needs an IdentityFile: the public half selects the agent's key and nothing else.
+          SSH_AUTH_SOCK="$d/agent.sock" ssh-add -L > "$d/deploy_key.pub"
+          printf '%s\n' "$PROD_SSH_KNOWN_HOSTS" > "$d/known_hosts"
+          # ssh only ever uses this config: the deploy key from this agent and the pinned host key.
+          echo "PROD_SSH_CONFIG=$d/config" >> "$GITHUB_ENV"
+          cat > "$d/config" <<CONFIG
+          Host ruinarpg-prod
+            HostName 192.168.80.10
+            User deploy
+            BatchMode yes
+            IdentityAgent $d/agent.sock
+            IdentityFile $d/deploy_key.pub
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile $d/known_hosts
+            GlobalKnownHostsFile /dev/null
+          CONFIG
+      - name: Deploy
+        id: deploy
+        env:
+          WINDOW: ${{ steps.pr.outputs.window }}
+        run: |
+          set -o pipefail
+          # The gate's grammar is exact: no trailing space when there is no --window.
+          cmd="deploy ${{ github.sha }}"
+          if [ -n "$WINDOW" ]; then cmd="$cmd $WINDOW"; fi
+          ssh -F "$PROD_SSH_CONFIG" ruinarpg-prod "$cmd" | tee "$RUNNER_TEMP/deploy.log"
+      - name: Cópia do backup fora da máquina
+        if: always()
+        run: |
+          set -o pipefail
+          # Dumps hold every account's password hash: owner-only.
+          umask 077
+          off=/var/backups/ruinarpg-offsite
+          name="$(date -u +%Y%m%dT%H%M%SZ)-pos-deploy"
+          # Hidden while incomplete, so a failed copy never counts as one of the kept ones.
+          mkdir -p "$off/.$name.partial" && chmod 700 "$off"
+          ssh -F "$PROD_SSH_CONFIG" ruinarpg-prod dump | tar -C "$off/.$name.partial" -xf -
+          mv "$off/.$name.partial" "$off/$name"
+          # Names start with a UTC timestamp: keep the newest five post-deploy copies. clone.sh's copies
+          # (-clone-<sha>) are counted and pruned by clone.sh, never here.
+          find "$off" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9]{8}T[0-9]{6}Z-pos-deploy' -printf '%f\n' |
+            sort -r | tail -n +6 | while IFS= read -r old; do rm -rf "${off:?}/$old"; done
+          # A copy killed halfway (cancelled job, dropped connection) stays hidden; drop it after a day.
+          find "$off" -mindepth 1 -maxdepth 1 -type d -name '.*.partial' -mtime +0 -exec rm -rf {} +
+      - name: Resultado no PR
+        if: always() && steps.pr.outputs.number != ''
+        run: |
+          { echo "## Deploy em produção: ${{ steps.deploy.outcome }}"; echo '```'; tail -n 20 "$RUNNER_TEMP/deploy.log" 2>/dev/null; echo '```'; } > c.md
+          gh pr comment "${{ steps.pr.outputs.number }}" -R "${{ github.repository }}" --body-file c.md
+      - name: Encerrar o ssh-agent e apagar a chave
+        if: always()
+        run: |
+          if [ -n "${PROD_SSH_AGENT_PID:-}" ]; then SSH_AGENT_PID="$PROD_SSH_AGENT_PID" ssh-agent -k >/dev/null || true; fi
+          rm -rf "$RUNNER_TEMP/prod-ssh"

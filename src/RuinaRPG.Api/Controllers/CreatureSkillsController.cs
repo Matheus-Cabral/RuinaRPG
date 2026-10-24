@@ -1,70 +1,26 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Api.Services;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Contracts.CreatureSheets;
-using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.CreatureSheets;
-using RuinaRPG.Domain.Items;
 using RuinaRPG.Infrastructure.CreatureSheets;
 using RuinaRPG.Infrastructure.Persistence;
 using RuinaRPG.Infrastructure.Rules;
+using RuinaRPG.Infrastructure.Rules.Niveis;
 
 namespace RuinaRPG.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/creature-sheets/{sheetId}/skills")]
-public class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, RuinaRPG.Api.Services.CreatureSheetStats stats, RuinaRPG.Api.Services.CondicoesAtivasDaFicha condicoes) : ControllerBase
+public sealed class CreatureSkillsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<CreatureSheet> tipo, RuinaRPG.Api.Services.CreatureSheetStats stats)
+    : PericiasDaFichaController<CreatureSheet, CreatureSkill, AtributoCriatura, CreatureSkillResponse>(db, pericias, tabelaDeNiveis, tipo)
 {
-    [HttpGet]
-    public async Task<ActionResult<List<CreatureSkillResponse>>> List(Guid sheetId)
-    {
-        var sheet = await db.CreatureSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
+    protected override (int Gasto, string? AtributoEscolhido) Ler(UpdateSkillRequest request) => (request.Gasto, request.AtributoEscolhido);
 
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound();
-
-        return (await stats.PericiasAsync(sheet, await condicoes.ParaCriaturaAsync(sheet)))
+    protected override async Task<List<CreatureSkillResponse>> ListarAsync(CreatureSheet ficha) =>
+        (await stats.PericiasAsync(ficha, await Tipo.CondicoesAsync(ficha)))
             .Select(p => new CreatureSkillResponse(p.Chave, p.Gasto, p.Modificador, p.Atributo, p.Total, p.Nome, p.Descricao))
             .ToList();
-    }
-
-    [HttpPut("{pericia}")]
-    public async Task<IActionResult> Update(Guid sheetId, string pericia, UpdateCreatureSkillRequest request)
-    {
-        // Chave desconhecida ou Perícia removida: resolvida antes de tudo, como a antiga falha de binding da rota.
-        var def = await pericias.AtivaPorChaveAsync(pericia);
-        if (def is null)
-            return NotFound();
-
-        var sheet = await db.CreatureSheets.FindAsync(sheetId);
-        if (sheet is null)
-            return NotFound();
-
-        if (!GrantedSheetAuthorization.CanEdit(CurrentUserId(), sheet.OwnerId, sheet.GmId))
-            return NotFound();
-
-        // R0005's "lista fixa mais curta" — só Perícias com DisponivelParaCriaturas aparecem na Criatura.
-        if (!def.DisponivelParaCriaturas)
-            return BadRequest("Perícia fora da lista permitida para Criaturas.");
-
-        var skill = await db.CreatureSkills.SingleOrDefaultAsync(s => s.CreatureSheetId == sheetId && s.PericiaId == def.Id);
-        if (skill is null)
-        {
-            skill = new CreatureSkill { Id = Guid.NewGuid(), CreatureSheetId = sheetId, PericiaId = def.Id };
-            db.CreatureSkills.Add(skill);
-        }
-        skill.Gasto = request.Gasto;
-        skill.AtributoEscolhido = Enum.TryParse<AtributoCriatura>(request.AtributoEscolhido, out var parsedAtributo) ? parsedAtributo : null;
-        await db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }

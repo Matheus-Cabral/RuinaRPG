@@ -1,0 +1,1 @@
+upstream app { server api-blue:8080; }

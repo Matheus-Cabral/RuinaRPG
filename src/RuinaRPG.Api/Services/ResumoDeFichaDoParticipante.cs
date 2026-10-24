@@ -49,9 +49,9 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
                 return new Numeros(await npcStats.AtributosAsync(ficha, e), sub, (vitalidade, foco, adrenalina, estresse), await npcStats.PericiasAsync(ficha, e));
             };
 
-            var traits = await db.NpcTraits.Where(t => t.NpcSheetId == ficha.Id).Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new ResumoDeCaracteristica(t.Nome, nt.Polaridade.ToString(), nt.Especificacao)).ToListAsync();
-            var equipados = (await db.NpcWeapons.Where(w => w.NpcSheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
-                .Concat(await db.NpcShields.Where(s => s.NpcSheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
+            var traits = await db.NpcTraits.Where(t => t.SheetId == ficha.Id).Join(db.Traits, nt => nt.TraitId, t => t.Id, (nt, t) => new ResumoDeCaracteristica(t.Nome, nt.Polaridade.ToString(), nt.Especificacao)).ToListAsync();
+            var equipados = (await db.NpcWeapons.Where(w => w.SheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
+                .Concat(await db.NpcShields.Where(s => s.SheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
             return await ComporAsync(participante, "Npc", ficha.Id, ficha.Nome, ficha.ImageId, ficha.Nivel, null, ficha.OwnerId is not null,
                 (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), ficha.EstresseAtual, efeitos, ativas, calcular, traits, equipados);
         }
@@ -70,12 +70,12 @@ public class ResumoDeFichaDoParticipante(RuinaRpgDbContext db, NpcSheetStats npc
                 return new Numeros(await criaturaStats.AtributosAsync(ficha, e), await criaturaStats.SubAtributosAsync(ficha, e), (vitalidade, foco, adrenalina, null), await criaturaStats.PericiasAsync(ficha, e));
             };
 
-            var normais = await db.CreatureTraits.Where(t => t.CreatureSheetId == ficha.Id && t.TraitId != null)
+            var normais = await db.CreatureTraits.Where(t => t.SheetId == ficha.Id && t.TraitId != null)
                 .Join(db.Traits, ct => ct.TraitId, t => t.Id, (ct, t) => new ResumoDeCaracteristica(t.Nome, ct.Polaridade.ToString(), ct.Especificacao)).ToListAsync();
-            var exclusivas = await db.CreatureTraits.Where(t => t.CreatureSheetId == ficha.Id && t.CreatureExclusiveTraitId != null)
+            var exclusivas = await db.CreatureTraits.Where(t => t.SheetId == ficha.Id && t.CreatureExclusiveTraitId != null)
                 .Join(db.Set<CreatureExclusiveTrait>(), ct => ct.CreatureExclusiveTraitId, t => t.Id, (ct, t) => new ResumoDeCaracteristica(t.Nome, ct.Polaridade.ToString(), ct.Especificacao)).ToListAsync();
-            var equipados = (await db.CreatureWeapons.Where(w => w.CreatureSheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
-                .Concat(await db.CreatureShields.Where(s => s.CreatureSheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
+            var equipados = (await db.CreatureWeapons.Where(w => w.SheetId == ficha.Id && w.IsEquipped).Select(w => w.Id).ToListAsync())
+                .Concat(await db.CreatureShields.Where(s => s.SheetId == ficha.Id && s.IsEquipped).Select(s => s.Id).ToListAsync()).ToHashSet();
             return await ComporAsync(participante, "Criatura", ficha.Id, ficha.Nome, ficha.ImageId, ficha.Nivel, ficha.Rank?.ToString(), ficha.OwnerId is not null,
                 (ficha.VitalidadeAtual, ficha.FocoAtual, ficha.AdrenalinaAtual), null, efeitos, ativas, calcular, [.. normais, .. exclusivas], equipados);
         }
