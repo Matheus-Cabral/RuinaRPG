@@ -150,7 +150,10 @@ set_env() {
 }
 
 do_checkout() {
-  git -C "$SOURCE_REPO" worktree add --detach "$WD/repo" "$1"
+  # cmd_run runs under umask 077 (dumps hold password hashes), but the worktree is the docker build
+  # context: its file modes end up in the images (0600 files make nginx answer 403). Only this command
+  # gets umask 022; .env is chmod 600 below.
+  (umask 022 && git -C "$SOURCE_REPO" worktree add --detach "$WD/repo" "$1")
   cp "$WD/repo/.env.example" "$WD/repo/.env"
   chmod 600 "$WD/repo/.env"
   set_env "$WD/repo/.env" ASPNETCORE_ENVIRONMENT Production

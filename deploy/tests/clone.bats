@@ -96,6 +96,26 @@ teardown_file() {
   [ -d "$wd/logs" ]
 }
 
+@test "clone worktree is world-readable (the images inherit its modes) while .env stays 600" {
+  clone_env
+  wd="$BATS_FILE_TMPDIR/wd-modes"
+  export RUINA_OFFSITE_DIR="$BATS_FILE_TMPDIR/offsite-modes"  # keep the next test's offsite count at 1
+  mkdir -p "$BATS_FILE_TMPDIR/shim"
+  # Stops the run right after .env exists (set_env's first openssl call), recording the modes seen then.
+  cat > "$BATS_FILE_TMPDIR/shim/openssl" <<SHIM
+#!/usr/bin/env bash
+stat -c %a "$wd/repo/.env" > "$BATS_FILE_TMPDIR/modes-env"
+stat -c %a "$wd/repo/Makefile" > "$BATS_FILE_TMPDIR/modes-tracked"
+exit 1
+SHIM
+  chmod +x "$BATS_FILE_TMPDIR/shim/openssl"
+  PATH="$BATS_FILE_TMPDIR/shim:$PATH" run "$RUINA_REPO_DIR/deploy/clone.sh" run "$SHA" "$SHA" "$wd"
+  echo "$output"
+  [ "$(cat "$BATS_FILE_TMPDIR/modes-env")" = 600 ]
+  [[ "$(cat "$BATS_FILE_TMPDIR/modes-tracked")" =~ ^6[46]4$|^644$ ]]
+  [ -z "$(leftovers)" ]
+}
+
 @test "clone run passes for an unchanged version and reports compat ok" {
   clone_env
   wd="$BATS_FILE_TMPDIR/wd1"
