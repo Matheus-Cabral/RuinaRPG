@@ -6,6 +6,7 @@ bats_require_minimum_version 1.5.0
 REPO="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 PACOTE="$REPO/tools/virada/pacote.sh"
 RESTAURAR="$REPO/tools/virada/restaurar-pacote.sh"
+ENSAIO="$REPO/tools/virada/ensaio-150.sh"
 
 setup_file() {
   export PROD="ruinarpg-bats-virada-$$"
@@ -13,6 +14,14 @@ setup_file() {
   export PORTA=18091
   export API_IMG="ruinarpg-bats-virada-api:$$" NGINX_IMG="ruinarpg-bats-virada-nginx:$$"
   export GUARDA="ruinarpg-bats-virada-guarda:$$"
+  # ensaio-150.sh: projeto descartável, porta alta, checkout com o nome do projeto, .env de mentira.
+  export ENS="ruinarpg-bats-ensaio-$$" ENS_PORTA=18093
+  export ENS_DIR="$BATS_FILE_TMPDIR/$ENS" ENS_SEGREDO="segredo-do-ensaio-$$-0123456789abcdef0123456789"
+  export RUINA_ENSAIO_PROJECT="$ENS" RUINA_ENSAIO_PORTA="$ENS_PORTA" RUINA_ENSAIO_ENV="$BATS_FILE_TMPDIR/ensaio.env"
+  printf '%s\n' 'ASPNETCORE_ENVIRONMENT=Development' 'POSTGRES_USER=ensaio' 'POSTGRES_PASSWORD=senha-ensaio' \
+    "JWT_SIGNING_KEY=$ENS_SEGREDO" 'JWT_ISSUER=RuinaRPG' 'JWT_AUDIENCE=RuinaRPG' 'JWT_ACCESS_TOKEN_MINUTES=15' \
+    'JWT_REFRESH_TOKEN_DAYS=30' 'CORS_ALLOWED_ORIGINS=http://localhost' 'IMG_MAX_SIZE_MB=10' \
+    'INVITE_CODE_EXPIRATION_HOURS=48' > "$RUINA_ENSAIO_ENV"
   local b="$BATS_FILE_TMPDIR/build"
   mkdir -p "$b/api" "$b/nginx" "$BATS_FILE_TMPDIR/prod"
   docker image inspect busybox:1.36 >/dev/null 2>&1 || docker pull -q busybox:1.36 >/dev/null
@@ -82,6 +91,11 @@ EOF
 prod_compose() { docker compose -p "$PROD" -f "$BATS_FILE_TMPDIR/prod/docker-compose.yml" "$@"; }
 
 teardown_file() {
+  "$ENSAIO" desfazer "$ENS_DIR" --remover-stack-atual >/dev/null 2>&1 || true
+  docker compose -p "$ENS" -f "$BATS_FILE_TMPDIR/atual.yml" down --volumes >/dev/null 2>&1 || true
+  git -C "$REPO" worktree remove --force "$ENS_DIR" >/dev/null 2>&1 || true
+  git -C "$REPO" worktree prune || true
+  docker rmi "$ENS-api" "$ENS-nginx" >/dev/null 2>&1 || true
   "$RESTAURAR" --remover --projeto "$REST" >/dev/null 2>&1 || true
   "$RESTAURAR" --remover --projeto "$REST-b" >/dev/null 2>&1 || true
   prod_compose down --volumes --remove-orphans >/dev/null 2>&1 || true
@@ -280,4 +294,102 @@ pacote_dir() { cat "$BATS_FILE_TMPDIR/pacote"; }
   run "$RESTAURAR" --remover --projeto "$REST-b"
   [ "$status" -eq 0 ]
   [ -z "$(leftovers "$REST-b")" ]
+}
+
+# Uma "stack atual" qualquer no projeto do ensaio (como a 2.0.0 de desenvolvimento em ruinarpg).
+atual_compose() { docker compose -p "$ENS" -f "$BATS_FILE_TMPDIR/atual.yml" "$@"; }
+
+@test "ensaio-150.sh recusa nome de projeto, diretório e pacote errados" {
+  RUINA_ENSAIO_PROJECT=ruinarpg-bats_x run "$ENSAIO" preparar "$(pacote_dir)" "$BATS_TEST_TMPDIR/ruinarpg-bats_x"
+  [ "$status" -eq 2 ]
+  RUINA_ENSAIO_PROJECT=outra run "$ENSAIO" desfazer "$BATS_TEST_TMPDIR/outra"
+  [ "$status" -eq 2 ]
+  # O diretório tem de se chamar como o projeto (o Makefile da 1.5.0 roda "docker compose" sem -p).
+  run "$ENSAIO" preparar "$(pacote_dir)" "$BATS_TEST_TMPDIR/RuinaRPG"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"$ENS"* ]]
+  run "$ENSAIO" preparar "$(cat "$BATS_FILE_TMPDIR/banco")" "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"completo"* ]]
+  [ ! -e "$ENS_DIR" ]
+  [ -z "$(leftovers "$ENS")" ]
+}
+
+@test "ensaio-150.sh recusa uma stack existente com o mesmo nome sem --remover-stack-atual" {
+  printf '%s\n' 'services:' '  web:' '    image: busybox:1.36' '    command: ["sleep", "3600"]' \
+    '    volumes: ["velho:/dados"]' 'volumes:' '  velho:' > "$BATS_FILE_TMPDIR/atual.yml"
+  atual_compose up -d
+  run "$ENSAIO" preparar "$(pacote_dir)" "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--remover-stack-atual"* ]]
+  [ "$(atual_compose ps -q --status running | wc -l)" -eq 1 ]
+  docker volume inspect "${ENS}_velho" >/dev/null
+  [ ! -e "$ENS_DIR" ]
+}
+
+@test "ensaio-150.sh preparar com --remover-stack-atual sobe a 1.5.0 no formato da produção" {
+  d="$(pacote_dir)"
+  run --separate-stderr "$ENSAIO" preparar "$d" "$ENS_DIR" --remover-stack-atual
+  echo "$output"; echo "$stderr"
+  [ "$status" -eq 0 ]
+  [ "$output" = "OK ensaio $ENS em $ENS_DIR (porta $ENS_PORTA)" ]
+  # O segredo do .env nunca aparece.
+  [[ "$output$stderr" != *"$ENS_SEGREDO"* ]]
+  # A stack atual sumiu, com o volume.
+  [ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$ENS" --filter "label=com.docker.compose.service=web")" ]
+  ! docker volume inspect "${ENS}_velho" >/dev/null 2>&1
+  # Checkout: worktree da 1.5.0, .env 600 em Production com os valores do .env de origem.
+  [ "$(git -C "$ENS_DIR" rev-parse HEAD)" = "$(git -C "$REPO" rev-parse 729dac9)" ]
+  git -C "$REPO" worktree list --porcelain | grep -qxF "worktree $ENS_DIR"
+  [ "$(stat -c %a "$ENS_DIR/.env")" = 600 ]
+  [ "$(grep -c '^ASPNETCORE_ENVIRONMENT=' "$ENS_DIR/.env")" -eq 1 ]
+  grep -qx 'ASPNETCORE_ENVIRONMENT=Production' "$ENS_DIR/.env"
+  grep -qx "JWT_SIGNING_KEY=$ENS_SEGREDO" "$ENS_DIR/.env"
+  # Os comandos do runbook funcionam ao pé da letra no checkout: compose sem -p acha o projeto.
+  [ "$(cd "$ENS_DIR" && docker compose ps --services --status running | sort | tr '\n' ' ')" = "api db nginx " ]
+  [ "$(docker inspect -f '{{.State.Status}}' "$ENS-nginx-1" "$ENS-api-1" "$ENS-db-1" | sort -u)" = running ]
+  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$ENS-api-1" | grep -qx 'ASPNETCORE_ENVIRONMENT=Production'
+  # Imagens com os nomes que o compose da 1.5.0 deriva, apontando para as do pacote.
+  [ "$(docker image inspect -f '{{.Id}}' "$ENS-api")" = "$(awk -F'\t' '$1=="api"{print $3}' "$d/imagens.tsv")" ]
+  [ "$(docker image inspect -f '{{.Id}}' "$ENS-nginx")" = "$(awk -F'\t' '$1=="nginx"{print $3}' "$d/imagens.tsv")" ]
+  # Porta, api e volume de imagens.
+  [ "$(curl -fsS "http://127.0.0.1:$ENS_PORTA/api/health")" = '"OK"' ]
+  curl -fsS -o "$BATS_TEST_TMPDIR/img" "http://127.0.0.1:$ENS_PORTA/images/0001-retrato.png"
+  cmp "$BATS_TEST_TMPDIR/img" "$BATS_FILE_TMPDIR/0001-retrato.png"
+  # Banco: usuário do .env, banco ruinarpg, contagens do pacote.
+  docker exec -i "$ENS-db-1" psql -X -q -At -U ensaio -d ruinarpg < "$REPO/tools/virada/contagens.sql" > "$BATS_TEST_TMPDIR/c.tsv"
+  cmp "$BATS_TEST_TMPDIR/c.tsv" "$d/contagens.tsv"
+  # O pacote continua íntegro e nada temporário ficou nele.
+  (cd "$d" && sha256sum -c --strict --quiet SHA256SUMS)
+  [ -z "$(find "$d" -name '.ensaio.*')" ]
+  # Um checkout que já existe é recusado.
+  run "$ENSAIO" preparar "$d" "$ENS_DIR" --remover-stack-atual
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"desfazer"* ]]
+}
+
+@test "ensaio-150.sh desfazer remove a stack e o worktree e mantém as imagens" {
+  run "$ENSAIO" desfazer "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "${lines[-1]}" = "OK desfeito $ENS" ]
+  [ -z "$(leftovers "$ENS")" ]
+  [ ! -e "$ENS_DIR" ]
+  ! git -C "$REPO" worktree list --porcelain | grep -qxF "worktree $ENS_DIR"
+  docker image inspect "$ENS-api" "$ENS-nginx" >/dev/null
+}
+
+@test "ensaio-150.sh desfazer recusa um projeto que não veio do checkout sem --remover-stack-atual" {
+  atual_compose up -d
+  run "$ENSAIO" desfazer "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--remover-stack-atual"* ]]
+  [ "$(atual_compose ps -q --status running | wc -l)" -eq 1 ]
+  run "$ENSAIO" desfazer "$ENS_DIR" --remover-stack-atual
+  [ "$status" -eq 0 ]
+  [ -z "$(leftovers "$ENS")" ]
 }

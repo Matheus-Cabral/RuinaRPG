@@ -48,6 +48,35 @@ tools/virada/restaurar-pacote.sh --remover [--projeto ruinarpg-pacote]
   re-marcar nesta VM o nome da imagem da 1.5.0 (ex.: `ruinarpg-api:latest`); a stack de desenvolvimento
   usa tags por sha e não é afetada.
 
+## `ensaio-150.sh` — roda NESTA VM
+
+```
+tools/virada/ensaio-150.sh preparar <dir-pacote> <dir-checkout> [--remover-stack-atual]
+tools/virada/ensaio-150.sh desfazer <dir-checkout> [--remover-stack-atual]
+```
+
+- Recria aqui uma stack da 1.5.0 igual à da produção, carregada do pacote completo, para ensaiar o
+  runbook da virada ao pé da letra: `<dir-checkout>` vira um `git worktree` de `729dac9` com o `.env`
+  deste repositório (forçado `ASPNETCORE_ENVIRONMENT=Production`, arquivo 600; nada do `.env` é
+  impresso), as imagens do pacote são marcadas com os nomes que o compose da 1.5.0 deriva para os
+  serviços com `build:` (`ruinarpg-api`, `ruinarpg-nginx`) e o projeto sobe pelo `docker-compose.yml` da
+  1.5.0 (sem build). Restaura `db.dump` e `images.tar`, confere as contagens antes e depois de a api
+  subir e o formato: só `db`, `api`, `nginx` (`ruinarpg-db-1`, `ruinarpg-api-1`, `ruinarpg-nginx-1`),
+  nginx na porta 80, api em Production com as imagens do pacote, `/api/health` e o volume de imagens
+  servido. Imprime `OK ensaio <projeto> em <dir> (porta N)`.
+- O nome do diretório tem de ser o do projeto (ex.: `/home/pro/ensaio/RuinaRPG` para `ruinarpg`, como
+  `/home/ruina/RuinaRPG` na produção): o Makefile da 1.5.0 roda `docker compose` sem `-p`.
+- Se o projeto já existe (nesta VM, a stack 2.0.0 de desenvolvimento em `ruinarpg`), recusa; com
+  `--remover-stack-atual` a remove **com os volumes**.
+- `desfazer` remove o projeto (também uma 2.0.0 que o ensaio tenha instalado no checkout) e o worktree;
+  recusa um projeto com contêineres de outro diretório sem `--remover-stack-atual`. As imagens ficam.
+- `RUINA_ENSAIO_PROJECT` (padrão `ruinarpg`; ou `ruinarpg-bats-*`/`ruinarpg-ensaio-*`),
+  `RUINA_ENSAIO_PORTA` (padrão 80; outra porta vai num `docker-compose.override.yml` em 127.0.0.1),
+  `RUINA_ENSAIO_ENV` (padrão `<repo>/.env`). Os testes usam `ruinarpg-bats-ensaio-*` e porta alta.
+
+`comum.sh` tem as funções que `restaurar-pacote.sh` e `ensaio-150.sh` dividem (checksum, restauração,
+contagens, health, imagem do nginx, remoção do projeto).
+
 ## `contagens.sql`
 
 Uma linha `tabela<TAB>linhas` por tabela do schema `public` (inclui Identity e

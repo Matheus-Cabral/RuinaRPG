@@ -25,12 +25,10 @@ shopt -s inherit_errexit
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$here/../.." && pwd)"
 SQL="$here/contagens.sql"
-PG_IMAGE="postgres:16-alpine"
+# shellcheck source=comum.sh
+source "$here/comum.sh"
 : "${RUINA_HEALTH_TIMEOUT:=180}"
 
-log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2; }
-die() { log "ERRO: $*"; exit 1; }
-fatal() { log "ERRO: $*"; exit 2; }
 usage() { echo "uso: $0 <dir-pacote> [--projeto ruinarpg-pacote] [--porta 8091] | $0 --remover [--projeto ruinarpg-pacote]" >&2; exit 2; }
 
 PROJ="ruinarpg-pacote" PORT=8091 DIR="" REMOVER=""
@@ -51,25 +49,6 @@ done
 if ! [[ "$PORT" =~ ^[1-9][0-9]{0,4}$ ]] || (( PORT > 65535 )); then fatal "--porta inválida: $PORT"; fi
 [[ "$RUINA_HEALTH_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || fatal "RUINA_HEALTH_TIMEOUT deve ser um inteiro >= 1"
 
-project_leftovers() {
-  docker ps -aq --filter "label=com.docker.compose.project=$PROJ"
-  docker volume ls -q --filter "label=com.docker.compose.project=$PROJ"
-  docker volume ls -q | { grep -E "^${PROJ}_" || true; }
-  docker network ls -q --filter "label=com.docker.compose.project=$PROJ"
-}
-
-# Pelos rótulos e pelo prefixo dos volumes: não depende do arquivo compose (temporário) da restauração.
-remove_project() {
-  local ids
-  mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$PROJ")
-  (( ${#ids[@]} == 0 )) || docker rm -f "${ids[@]}" >/dev/null
-  mapfile -t ids < <({ docker volume ls -q --filter "label=com.docker.compose.project=$PROJ"
-                       docker volume ls -q | { grep -E "^${PROJ}_" || true; }; } | sort -u)
-  (( ${#ids[@]} == 0 )) || docker volume rm -f "${ids[@]}" >/dev/null
-  mapfile -t ids < <(docker network ls -q --filter "label=com.docker.compose.project=$PROJ")
-  (( ${#ids[@]} == 0 )) || docker network rm "${ids[@]}" >/dev/null
-}
-
 if [[ -n "$REMOVER" ]]; then
   remove_project
   [[ -z "$(project_leftovers)" ]] || die "sobrou algo do projeto $PROJ"
@@ -85,20 +64,7 @@ DIR="$(cd "$DIR" && pwd)"
 
 # ---------------------------------------------------------------- 1. checksum
 
-[[ -f "$DIR/SHA256SUMS" ]] || die "pacote sem SHA256SUMS: $DIR"
-for f in dump.tar contagens.tsv; do
-  awk '{print $2}' "$DIR/SHA256SUMS" | grep -qx "$f" || die "SHA256SUMS não cobre $f"
-done
-COMPLETO=""
-if awk '{print $2}' "$DIR/SHA256SUMS" | grep -qx imagens-docker.tar; then
-  awk '{print $2}' "$DIR/SHA256SUMS" | grep -qx imagens.tsv || die "SHA256SUMS cobre imagens-docker.tar mas não imagens.tsv"
-  COMPLETO=1
-fi
-log "conferindo SHA256SUMS de $DIR"
-if ! out="$(cd "$DIR" && sha256sum -c --strict SHA256SUMS 2>&1)"; then
-  printf '%s\n' "$out" | grep -v ': OK$' >&2 || true
-  die "SHA256SUMS não confere: pacote corrompido ou incompleto"
-fi
+verify_package "$DIR"
 
 [[ -z "$(project_leftovers)" ]] || fatal "o projeto $PROJ já existe; rode $0 --remover --projeto $PROJ antes"
 
@@ -109,22 +75,10 @@ chmod 700 "$TMP"
 trap 'rm -rf "$TMP"' EXIT
 trap 'exit 130' INT TERM HUP
 
-tar -C "$TMP" -xf "$DIR/dump.tar" db.dump images.tar sha || die "dump.tar não tem db.dump, images.tar e sha"
-[[ "$(head -c 5 "$TMP/db.dump")" == PGDMP ]] || die "db.dump não é um pg_dump -Fc"
+extract_dump "$DIR" "$TMP"
 
 API_ID="" NGINX_ID=""
-if [[ -n "$COMPLETO" ]]; then
-  log "carregando imagens-docker.tar"
-  docker load -q -i "$DIR/imagens-docker.tar" >&2
-  # imagens.tsv: serviço<TAB>nome<TAB>id. A api é a linha 2 e o nginx a 3 (db, api, nginx), qualquer que
-  # seja o nome do serviço; o id carregado tem de bater.
-  API_ID="$(awk -F'\t' 'NR==2{print $3}' "$DIR/imagens.tsv")"
-  NGINX_ID="$(awk -F'\t' 'NR==3{print $3}' "$DIR/imagens.tsv")"
-  for id in "$API_ID" "$NGINX_ID"; do
-    [[ "$id" =~ ^sha256:[0-9a-f]{64}$ ]] || die "imagens.tsv inválido: '$id'"
-    docker image inspect "$id" >/dev/null 2>&1 || die "imagem $id não veio em imagens-docker.tar"
-  done
-fi
+[[ -z "$COMPLETO" ]] || load_images "$DIR"
 
 docker image inspect "$PG_IMAGE" >/dev/null 2>&1 || docker pull -q "$PG_IMAGE" >/dev/null
 DBPASS="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
@@ -189,24 +143,11 @@ dc up -d --wait db >&2 2>&1
 
 # ---------------------------------------------------------------- 3. restauração
 
-log "restaurando db.dump"
-dc exec -T db sh -c 'exec pg_restore --no-owner --no-privileges --exit-on-error --single-transaction -U ruinarpg -d ruinarpg' \
-  < "$TMP/db.dump" || die "pg_restore falhou"
-log "restaurando images.tar"
-docker run --rm -i --network none -v "${PROJ}_images:/images" --entrypoint tar "$PG_IMAGE" -C /images -xf - \
-  < "$TMP/images.tar" || die "restauração do volume de imagens falhou"
+restore_dump "$TMP/db.dump" "$TMP/images.tar" ruinarpg ruinarpg
 
 # ---------------------------------------------------------------- 4. contagens e fingerprint
 
-log "conferindo as contagens"
-dc exec -T db psql -X -q -At -v ON_ERROR_STOP=1 -U ruinarpg -d ruinarpg < "$SQL" > "$TMP/contagens.tsv"
-if ! cmp -s "$TMP/contagens.tsv" "$DIR/contagens.tsv"; then
-  log "contagens divergentes (tabela: pacote -> restaurado):"
-  join -t $'\t' -a 1 -a 2 -e '-' -o 0,1.2,2.2 <(LC_ALL=C sort "$DIR/contagens.tsv") <(LC_ALL=C sort "$TMP/contagens.tsv") |
-    awk -F'\t' '$2 != $3 { printf "  %s: %s -> %s\n", $1, $2, $3 }' >&2
-  die "as contagens do banco restaurado não batem com contagens.tsv"
-fi
-log "contagens iguais ($(wc -l < "$DIR/contagens.tsv") tabelas)"
+check_counts "$DIR/contagens.tsv" ruinarpg ruinarpg "$TMP/contagens.tsv"
 
 log "fingerprint"
 RUINA_COMPOSE_FILE="$CF" RUINA_DB_USER=ruinarpg RUINA_DB_NAME=ruinarpg \
@@ -225,30 +166,7 @@ fi
 
 log "subindo api e nginx em 127.0.0.1:$PORT"
 dc up -d >&2 2>&1
-deadline=$((SECONDS + RUINA_HEALTH_TIMEOUT)) body=""
-while (( SECONDS < deadline )); do
-  body="$(curl -fsS -m 3 "http://127.0.0.1:$PORT/api/health" 2>/dev/null || true)"
-  [[ "$body" == '"OK"' ]] && break
-  sleep 2
-done
-[[ "$body" == '"OK"' ]] || { dc logs --tail 50 api >&2 || true; die "a api não respondeu em http://127.0.0.1:$PORT/api/health em ${RUINA_HEALTH_TIMEOUT}s"; }
-log "api respondeu"
-
-# O primeiro arquivo do volume (ordem de bytes) com nome seguro para URL. Compara os bytes: o nginx da
-# 1.5.0 devolve index.html com 200 para um caminho que não existe.
-first="$(tar -tf "$TMP/images.tar" | grep -v '/$' | sed 's|^\./||' | LC_ALL=C sort | { grep -E '^[A-Za-z0-9._/-]+$' || true; } | head -1)"
-if [[ -z "$first" ]]; then
-  if (( NIMG == 0 )); then
-    log "aviso: o volume de imagens do pacote está vazio; verificação do nginx pulada"
-  else
-    die "nenhum arquivo do volume de imagens tem nome seguro para URL; verifique o nginx à mão"
-  fi
-else
-  mkdir "$TMP/img"
-  tar -C "$TMP/img" -xf "$TMP/images.tar" "./$first" 2>/dev/null || tar -C "$TMP/img" -xf "$TMP/images.tar" "$first"
-  curl -fsS -m 10 -o "$TMP/servida" "http://127.0.0.1:$PORT/images/$first" || die "o nginx não serviu /images/$first"
-  cmp -s "$TMP/servida" "$TMP/img/$first" || die "o nginx serviu /images/$first com bytes diferentes do pacote"
-  log "nginx serviu /images/$first"
-fi
+wait_health "$PORT" "$RUINA_HEALTH_TIMEOUT"
+check_nginx_image "$PORT" "$TMP/images.tar" "$TMP"
 
 echo "OK pacote $DIR"
