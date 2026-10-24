@@ -194,7 +194,7 @@ pacote_dir() { cat "$BATS_FILE_TMPDIR/pacote"; }
   # recebe SIGPIPE.
   run bash -c '"$1" "$2" 2>&1 >/dev/null | grep -q -m1 gerando; exit "${PIPESTATUS[0]}"' _ "$PACOTE" "$BATS_TEST_TMPDIR/d"
   echo "status $status"
-  [ "$status" -ne 0 ]
+  [ "$status" -eq 141 ]
   [ -z "$(ls -A "$BATS_TEST_TMPDIR/d")" ]
 }
 
@@ -348,6 +348,7 @@ atual_compose() { docker compose -p "$ENS" -f "$BATS_FILE_TMPDIR/atual.yml" "$@"
   [ "$(grep -c '^ASPNETCORE_ENVIRONMENT=' "$ENS_DIR/.env")" -eq 1 ]
   grep -qx 'ASPNETCORE_ENVIRONMENT=Production' "$ENS_DIR/.env"
   grep -qx "JWT_SIGNING_KEY=$ENS_SEGREDO" "$ENS_DIR/.env"
+  [ "$(cat "$ENS_DIR/.ensaio-150")" = "$ENS" ]
   # Os comandos do runbook funcionam ao pé da letra no checkout: compose sem -p acha o projeto.
   [ "$(cd "$ENS_DIR" && docker compose ps --services --status running | sort | tr '\n' ' ')" = "api db nginx " ]
   [ "$(docker inspect -f '{{.State.Status}}' "$ENS-nginx-1" "$ENS-api-1" "$ENS-db-1" | sort -u)" = running ]
@@ -380,6 +381,52 @@ atual_compose() { docker compose -p "$ENS" -f "$BATS_FILE_TMPDIR/atual.yml" "$@"
   [ ! -e "$ENS_DIR" ]
   ! git -C "$REPO" worktree list --porcelain | grep -qxF "worktree $ENS_DIR"
   docker image inspect "$ENS-api" "$ENS-nginx" >/dev/null
+  # Um segundo desfazer recusa e não apaga nada (um volume que aparecer no projeto sobrevive).
+  docker volume create "${ENS}_pgdata" >/dev/null
+  run "$ENSAIO" desfazer "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  docker volume inspect "${ENS}_pgdata" >/dev/null
+  docker volume rm "${ENS}_pgdata" >/dev/null
+}
+
+@test "ensaio-150.sh desfazer sem a marca do preparar recusa e não apaga os volumes do projeto" {
+  # Como a stack de desenvolvimento derrubada: só volumes, nenhum contêiner.
+  docker volume create "${ENS}_pgdata" >/dev/null
+  mkdir -p "$BATS_TEST_TMPDIR/outro"
+  run "$ENSAIO" desfazer "$BATS_TEST_TMPDIR/outro/$ENS"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  docker volume inspect "${ENS}_pgdata" >/dev/null
+  # Um worktree deste repositório que não foi criado por preparar (sem a marca) também é recusado.
+  git -C "$REPO" worktree add -q --detach "$ENS_DIR" 729dac9
+  run "$ENSAIO" desfazer "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--remover-stack-atual"* ]]
+  docker volume inspect "${ENS}_pgdata" >/dev/null
+  [ -d "$ENS_DIR" ]
+  git -C "$REPO" worktree remove --force "$ENS_DIR"
+  docker volume rm "${ENS}_pgdata" >/dev/null
+}
+
+@test "ensaio-150.sh preparar que falha indica o desfazer e o desfazer limpa" {
+  # Um pacote cujas contagens não batem com o banco: falha depois de criar checkout e stack.
+  c="$BATS_TEST_TMPDIR/contagem"
+  cp -a "$(pacote_dir)" "$c"
+  sed -i 's/^Fichas\t25$/Fichas\t26/' "$c/contagens.tsv"
+  (cd "$c" && sha256sum contagens.tsv dump.tar imagens-docker.tar imagens.tsv > SHA256SUMS)
+  run "$ENSAIO" preparar "$c" "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Fichas"* ]]
+  [[ "$output" == *"desfazer $ENS_DIR"* ]]
+  [ -z "$(find "$c" -name '.ensaio.*')" ]
+  run "$ENSAIO" desfazer "$ENS_DIR"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ -z "$(leftovers "$ENS")" ]
+  [ ! -e "$ENS_DIR" ]
 }
 
 @test "ensaio-150.sh desfazer recusa um projeto que não veio do checkout sem --remover-stack-atual" {

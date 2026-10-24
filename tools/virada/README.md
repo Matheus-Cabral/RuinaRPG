@@ -68,8 +68,11 @@ tools/virada/ensaio-150.sh desfazer <dir-checkout> [--remover-stack-atual]
   `/home/ruina/RuinaRPG` na produção): o Makefile da 1.5.0 roda `docker compose` sem `-p`.
 - Se o projeto já existe (nesta VM, a stack 2.0.0 de desenvolvimento em `ruinarpg`), recusa; com
   `--remover-stack-atual` a remove **com os volumes**.
-- `desfazer` remove o projeto (também uma 2.0.0 que o ensaio tenha instalado no checkout) e o worktree;
-  recusa um projeto com contêineres de outro diretório sem `--remover-stack-atual`. As imagens ficam.
+- `desfazer` remove o projeto (também uma 2.0.0 que o ensaio tenha instalado no checkout) e o worktree.
+  Sem `--remover-stack-atual` só age num worktree com a marca `.ensaio-150` gravada por `preparar` e sem
+  contêineres do projeto vindos de outro diretório; senão recusa sem apagar nada (diretório errado,
+  segundo `desfazer`, stack de desenvolvimento só com volumes). As imagens ficam. Um `preparar` que falha
+  deixa tudo para inspeção e indica o `desfazer`.
 - `RUINA_ENSAIO_PROJECT` (padrão `ruinarpg`; ou `ruinarpg-bats-*`/`ruinarpg-ensaio-*`),
   `RUINA_ENSAIO_PORTA` (padrão 80; outra porta vai num `docker-compose.override.yml` em 127.0.0.1),
   `RUINA_ENSAIO_ENV` (padrão `<repo>/.env`). Os testes usam `ruinarpg-bats-ensaio-*` e porta alta.

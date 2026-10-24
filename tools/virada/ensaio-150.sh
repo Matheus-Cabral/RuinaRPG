@@ -24,8 +24,10 @@
 # roda "docker compose" sem -p.
 #
 # desfazer: derruba o projeto (contêineres, volumes, redes — também os de uma 2.0.0 que o ensaio tenha
-# instalado ali) e remove o worktree. Recusa se o projeto tem contêineres de outro diretório (ex.: a
-# stack de desenvolvimento), a não ser com --remover-stack-atual. As imagens da 1.5.0 ficam.
+# instalado ali) e remove o worktree. Sem --remover-stack-atual só age quando <dir-checkout> é um worktree
+# deste repositório com a marca .ensaio-150 que preparar grava (o projeto foi criado por ele) e nenhum
+# contêiner do projeto vem de outro diretório; senão recusa (código 2) sem apagar nada — um diretório
+# errado ou um segundo desfazer nunca apaga os volumes de outra stack. As imagens da 1.5.0 ficam.
 #
 # Ambiente: RUINA_ENSAIO_PROJECT (ruinarpg; ou ruinarpg-bats-*/ruinarpg-ensaio-* descartáveis),
 # RUINA_ENSAIO_PORTA (80; outra porta vai num docker-compose.override.yml em 127.0.0.1),
@@ -93,6 +95,8 @@ project_dirs() {
     docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "${ids[@]}" | sort -u
 }
 
+MARCA=".ensaio-150"
+
 is_worktree() {
   git -C "$REPO" worktree list --porcelain | grep -qxF "worktree $1"
 }
@@ -102,9 +106,14 @@ is_worktree() {
 if [[ "$CMD" == desfazer ]]; then
   [[ "$DIR" != "$REPO" ]] || fatal "recuso remover o checkout principal: $DIR"
   if [[ -e "$DIR" ]] && ! is_worktree "$DIR"; then fatal "$DIR não é um worktree deste repositório"; fi
-  outros="$(project_dirs | { grep -vxF "$DIR" || true; })"
-  if [[ -n "$outros" && -z "$REMOVER_ATUAL" ]]; then
-    fatal "o projeto $PROJ tem contêineres de outro diretório ($(echo "$outros" | tr '\n' ' ')); não é o ensaio — passe --remover-stack-atual para removê-lo mesmo assim"
+  if [[ -z "$REMOVER_ATUAL" ]]; then
+    # O projeto só é do ensaio se preparar criou este checkout (a marca tem o nome do projeto).
+    if ! is_worktree "$DIR" || [[ "$(cat "$DIR/$MARCA" 2>/dev/null || true)" != "$PROJ" ]]; then
+      fatal "$DIR não é um checkout de ensaio do projeto $PROJ criado por preparar (worktree com $MARCA); nada removido — passe --remover-stack-atual para remover o projeto $PROJ mesmo assim"
+    fi
+    outros="$(project_dirs | { grep -vxF "$DIR" || true; })"
+    [[ -z "$outros" ]] ||
+      fatal "o projeto $PROJ tem contêineres de outro diretório ($(echo "$outros" | tr '\n' ' ')); não é o ensaio — passe --remover-stack-atual para removê-lo mesmo assim"
   fi
   log "removendo o projeto $PROJ (contêineres, volumes, redes)"
   remove_project
@@ -149,6 +158,16 @@ fi
 
 log "criando o worktree da 1.5.0 ($REV150) em $DIR"
 git -C "$REPO" worktree add -q --detach "$DIR" "$REV150" >&2
+# Marca que este checkout e o projeto são do ensaio: desfazer sem --remover-stack-atual exige a marca.
+echo "$PROJ" > "$DIR/$MARCA"
+TMP=""
+on_exit() {
+  local rc=$?
+  [[ -z "$TMP" ]] || rm -rf "$TMP"
+  (( rc == 0 )) || log "preparar falhou (código $rc); stack e checkout ficam para inspeção — para limpar: $0 desfazer $DIR"
+}
+trap on_exit EXIT
+trap 'exit 130' INT TERM HUP
 (
   umask 077
   { grep -v '^ASPNETCORE_ENVIRONMENT=' "$ENV_SRC" || true; echo "ASPNETCORE_ENVIRONMENT=Production"; } > "$DIR/.env"
@@ -161,8 +180,6 @@ fi
 
 TMP="$(mktemp -d "$PKG/.ensaio.XXXXXX")"
 chmod 700 "$TMP"
-trap 'rm -rf "$TMP"' EXIT
-trap 'exit 130' INT TERM HUP
 extract_dump "$PKG" "$TMP"
 
 # ---------------------------------------------------------------- 4. imagens com os nomes do compose
