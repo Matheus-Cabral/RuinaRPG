@@ -60,8 +60,8 @@ public class ChangelogDialogTests : MudBunitContext
     {
         var cut = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Carregamento mais rápido:").And.Contain("Nova versão disponível")
-            .And.Contain("Vitalidade e Foco").And.Contain("Runas").And.Contain("ficha de Criatura");
+        cut.Markup.Should().Contain("Mais rapidez:").And.Contain("Melhorias e correções:")
+            .And.NotContain("Nova versão disponível").And.NotContain("Vitalidade e Foco");
     }
 
     [Fact]

@@ -3,13 +3,10 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 2.0.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão.
-           RASCUNHO — aguardando aprovação do usuário: o texto abaixo é uma proposta e só vai para a main
-           (PR da virada, sub-projeto H) depois que o usuário aprovar a redação. *@
+        @* Texto da versão 2.0.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Carregamento mais rápido:</b> o site abre mais depressa. Os arquivos chegam comprimidos e o navegador reaproveita o que não mudou de uma versão para outra.</li>
-            <li><b>Aviso de nova versão:</b> quando uma versão nova é publicada, aparece o aviso "Nova versão disponível" com o botão Recarregar.</li>
-            <li><b>Fichas iguais entre Personagem, NPC e Criatura:</b> na aba Combate, Vitalidade e Foco aparecem na mesma ordem nas três fichas. A ficha de NPC mostra as Runas na mesma tabela da ficha de Personagem. Na ficha de Criatura, uma alteração de atributo ou perícia recusada agora mostra o motivo, como nas outras fichas.</li>
+            <li><b>Mais rapidez:</b> o site e as fichas carregam mais depressa.</li>
+            <li><b>Melhorias e correções:</b> ajustes internos que deixam o sistema mais estável e preparado para as próximas versões.</li>
         </ul>
         @* Sem o bloco "Para Auditores" nesta versão: nenhuma página de Auditoria mudou. Quando uma versão mexer
            numa página de Auditoria, volte com o bloco, mostrado só com IsRulesAuditor:
