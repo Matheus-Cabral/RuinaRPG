@@ -4,6 +4,8 @@ Registro de cada passo do roteiro [`2026-10-23-h-roteiro-da-virada.md`](2026-10-
 um bloco por execução (repita o bloco se o passo rodar de novo; no ensaio, um registro por ensaio, com
 "Ensaio n" no título da seção). **Nunca** cole aqui senha, conteúdo do `.env`, pks de amostra, e-mails ou
 outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RESULT`/`Resultado`.
+Nos passos longos a saída relevante sai do log do passo (`$LOGS/<passo>.log`, com a linha
+`== <passo> código N`); os valores guardados (`guardado: VAR=…`) vão para a tabela abaixo.
 
 | Campo | Valor |
 |---|---|
@@ -13,6 +15,11 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 | Pacote (`$PACOTE`) | |
 | Dump final (`$BANCO`) | |
 | sha do merge (`$MERGE`) | |
+| Arquivo de estado (`~/.virada/estado-<alvo>.env`) | |
+| Fuso do banco (P7 / K4 / J4) | |
+| Rota pública fechada (J1) | |
+| Rota pública reaberta (J8) | |
+| Backup da 2.0.0 na Volta (`$VOLTA_BKP`) | |
 | Início da janela (J1) | |
 | Fim da janela (V5) | |
 | Tempo fora do ar | |
@@ -29,7 +36,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 
 ## 1. Preflight (O1)
 
-### P1 Docker, compose, git
+### P1 Shell e sudo da conta, Docker, compose, git
 
 - **Comando:**
 - **Saída relevante:**
@@ -77,7 +84,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### P7 Histórico de migrations
+### P7 Histórico de migrations e fuso do banco
 
 - **Comando:**
 - **Saída relevante:**
@@ -251,9 +258,17 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
+### R8 Pré-build das imagens do merge
+
+- **Comando:**
+- **Saída relevante:**
+- **Resultado:** passou / falhou
+- **Quem aprovou:**
+- **Horário (UTC):**
+
 ## 5. Janela (O4)
 
-### J1 Parar nginx e api da 1.5.0 (início da janela)
+### J1 Rota pública fechada pelo usuário; nginx e api da 1.5.0 parados (início da janela)
 
 - **Comando:**
 - **Saída relevante:**
@@ -309,7 +324,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### J8 Site fechado, fingerprint e comparação: diferença zero (site reaberto)
+### J8 Site fechado, fingerprint e comparação: diferença zero (site e rota pública reabertos)
 
 - **Comando:**
 - **Saída relevante:**
@@ -369,7 +384,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 
 ## 7. Volta para a 1.5.0 (só se houver perda de dados)
 
-### X0 Reconfirmar o nome do contêiner do banco
+### X0 Rota fechada, deploy.yml rejeitado, nome do contêiner do banco
 
 - **Comando:**
 - **Saída relevante:**
@@ -385,7 +400,15 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### X2 Restaurar o dump final
+### X1b Backup do banco da 2.0.0 (`$VOLTA_BKP`)
+
+- **Comando:**
+- **Saída relevante:**
+- **Resultado:** passou / falhou
+- **Quem aprovou:**
+- **Horário (UTC):**
+
+### X2 Conferir o SHA256SUMS e restaurar o dump final
 
 - **Comando:**
 - **Saída relevante:**
@@ -401,7 +424,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### X4 Religar a 1.5.0
+### X4 Religar a 1.5.0 e reabrir a rota pública
 
 - **Comando:**
 - **Saída relevante:**
