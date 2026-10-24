@@ -38,8 +38,9 @@ shas e as linhas `OK`/`RESULT`.
    ```
    O usuário acrescenta a chave pública ao `~/.ssh/authorized_keys` da conta que ele escolher na produção
    (uma conta que pode rodar `sudo docker …`).
-2. A senha do sudo dessa conta vai para um arquivo 600 nesta VM. O usuário a digita (nada aparece na tela,
-   nada vai para o histórico do shell):
+2. A senha do sudo dessa conta vai para um arquivo 600 nesta VM. **O usuário roda este passo no próprio
+   terminal** (ou no Claude Code com o prefixo `!`), porque o `read -rs` precisa de um TTY que o agente não
+   tem. Ele digita a senha (nada aparece na tela, nada vai para o histórico do shell):
    ```bash
    install -d -m 700 /home/pro/.ruinarpg-virada
    (umask 077 && IFS= read -rs -p 'senha do sudo na produção: ' s && printf '%s\n' "$s" > /home/pro/.ruinarpg-virada/sudo; unset s; echo)
@@ -74,6 +75,8 @@ trazer() { prod "tar -C $BKP -cf - $1" | (umask 077 && tar -C "$LOCAL" -xpf -); 
 
 - As strings passadas a `prod` usam aspas duplas: `$REPO`, `$BKP` etc. são expandidas **nesta VM** antes de
   irem para a produção. `\$` fica para o lado remoto.
+- `prod` supõe que o shell de login da conta na produção é o bash (a string vai quotada com `printf %q`);
+  confira no P1 com `ssh … "$PROD" 'echo $SHELL'` (deve ser `/bin/bash`).
 - `prod` lê a senha a cada chamada; o comando remoto não pode ler do stdin (use arquivos, nunca `-i` sem
   pipe). Uma desconexão no meio de um `deploy.sh deploy` vira falha e o `deploy.sh` desfaz a troca; confira
   sempre `deploy/state/deploy.log` e `deploy.sh status` antes de repetir qualquer coisa.
@@ -184,7 +187,7 @@ Passou se: `pacote.sh` (700) e `contagens.sql` (600) em `$FERR`.
 
 **K2. Gerar o pacote completo.** Aval: **sim** (escreve em `$BKP`; não para nada nem escreve no banco).
 ```bash
-PACOTE="$(basename "$(prod "$FERR/pacote.sh $BKP")")"; echo "$PACOTE"
+out="$(prod "$FERR/pacote.sh $BKP")" || { echo "FALHOU (código $?)"; false; } && PACOTE="$(basename "$out")" && echo "$PACOTE"
 ```
 Passou se: imprime `<AAAAMMDDTHHMMSSZ>-pacote-150` e o código de saída é 0. Se falhar: o script apaga o
 parcial; leia a mensagem (`investigue` = imagem trocada, ver P3) e pare.
@@ -261,9 +264,12 @@ seção 5 de novo → seção 6 de novo. No ensaio:
 - `MERGE` é o sha de `origin/release/2.0.0` (`MERGE="$(git rev-parse origin/release/2.0.0)"`). No worktree
   o checkout é sempre por sha: `release/2.0.0` já está em `/home/pro/RuinaRPG` e `git checkout release/2.0.0`
   falha ali.
-- Passos só da produção (pulados no ensaio): K1 por `scp`, J6 (`install-gate.sh`), J8 (aprovação do
+- Passos só da produção (pulados no ensaio): K1 por `scp`, J6 (`install-gate.sh`), J9 (aprovação do
   `deploy.yml`), as consultas pelo Cloudflare de V3 (use `URL=http://127.0.0.1`).
 - Se a 2.0.0 deixar arquivos de root no worktree, o `desfazer` avisa; remova-os à mão.
+- O ensaio **não** exercita o caminho de comandos da produção (sem ssh, sem `sudo -S`, e com
+  `RUINA_PACOTE_SEM_ROOT=1`): as primeiras execuções reais desse caminho são as de O1 (0.1, preflight, K1–K3),
+  que por isso são só leitura ou escrevem fora dos dados.
 
 **E5. Desmontar e devolver a stack de desenvolvimento.**
 ```bash
@@ -304,7 +310,9 @@ Passou se: `changes: []` e `desfazer-ssh-ok` (correção do "Critical #1" da rev
 
 **R4. Texto do `ChangelogDialog` aprovado.** O usuário aprova a redação proposta em
 `src/RuinaRPG.Client/Shared/ChangelogDialog.razor` (versão 2.0.0); o comentário "RASCUNHO" sai num commit
-antes do PR. Aval: **sim**.
+antes do PR. O item "Aviso de nova versão" (o aviso "Nova versão disponível" do F) foi acrescentado
+pelo implementador além da lista combinada (carregamento, unificações do E): o usuário decide se fica ou
+sai. Aval: **sim**.
 
 **R5. Re-marcar as imagens da 1.5.0 para o retorno.** Aval: **sim**.
 ```bash
@@ -339,7 +347,7 @@ Anote o sha do merge: `git fetch origin && MERGE="$(git rev-parse origin/main)";
 
 ## 5. Janela (spec H.4) — no horário combinado
 
-Marque o horário de início no registro: a janela (tempo fora do ar) começa em J1 e termina em V6.
+Marque o horário de início no registro: a janela (tempo fora do ar) começa em J1 e termina em V5.
 
 **J1. Abrir a janela: parar `nginx` e `api` da 1.5.0, manter o `db`.** Aval: **sim**.
 ```bash
@@ -350,7 +358,7 @@ Se falhar: `docker start $API150 $NGINX150` devolve a 1.5.0; parar e investigar.
 
 **J2. Dump final (só banco + volume de imagens).** Aval: **sim**.
 ```bash
-BANCO="$(basename "$(prod "$FERR/pacote.sh --so-banco $BKP")")"; echo "$BANCO"
+out="$(prod "$FERR/pacote.sh --so-banco $BKP")" || { echo "FALHOU (código $?)"; false; } && BANCO="$(basename "$out")" && echo "$BANCO"
 ```
 Passou se: `<AAAAMMDDTHHMMSSZ>-banco-150`, código 0.
 
@@ -401,10 +409,52 @@ Se falhar:
 - falhou antes da troca (build, migrate, health): o `deploy.sh` desfaz o que fez; o histórico pode já estar
   consolidado (notas de B). **Não** rode `make migrate` nem `deploy.sh migrate`. Corrigir e repetir J7
   (a 2.0.0 aceita a baseline) ou, por decisão do usuário, seção 7 (Volta);
-- `smoke=failed` num primeiro deploy: a cor nova fica ativa; avaliar com o usuário (V1–V5) antes de decidir;
+- `smoke=failed` num primeiro deploy: a cor nova fica ativa; fazer o J8 mesmo assim e avaliar com o usuário (V1–V4) antes de decidir;
 - conexão caiu: `prod "tail -n 50 $REPO/deploy/state/deploy.log; cd $REPO && deploy/deploy.sh status"`.
 
-**J8. Rejeitar a aprovação pendente do `deploy.yml`** (aprovar só reimplantaria o mesmo sha no green, em
+**J8. Fechar a rota pública e comparar os dados: diferença zero.** Logo depois da linha `RESULT` do J7,
+antes de qualquer verificação pelo site. A partir da troca do nginx no J7 o site já responde pelo túnel, e
+qualquer acesso real escreve no banco (a renovação do token grava `RefreshTokens.RevokedAt`; fechar o
+diálogo da 2.0.0 grava `AspNetUsers.LastSeenAppVersion`) — o fingerprint tem de ser tirado com o site
+fechado e o site só reabre depois da comparação. Aval: **sim**.
+```bash
+FP="fingerprint-producao-200-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+prod "docker stop ruinarpg-web-1 ruinarpg-api-blue-1 && cd $REPO && (umask 077 && deploy/fingerprint.sh ruinarpg $BKP/$FP); rc=\$?; docker start ruinarpg-api-blue-1; exit \$rc"; echo "código $?"
+prod "cat $BKP/$FP" | (umask 077 && cat > "$LOCAL/$FP")
+(umask 077 && printf 'changes: []\n' > "$LOCAL/allowlist-vazia.yml")
+python3 deploy/compare.py "$LOCAL/$BANCO/fingerprint.jsonl" "$LOCAL/$FP" "$LOCAL/allowlist-vazia.yml" --full "$LOCAL/comparacao-$BANCO.md"; echo "código $?"
+```
+Só se a comparação deu `Resultado: OK`, reabrir o site:
+```bash
+prod "docker start ruinarpg-web-1 && sleep 3 && curl -fsS http://127.0.0.1/api/health"; echo
+```
+Passou se: o primeiro comando sai com `código 0` (o `api-blue` volta sempre, mesmo se o fingerprint falhar;
+o `web` fica parado de propósito); a comparação imprime `Resultado: OK` e `código 0`; o site reabre com
+`OK`. Linhas novas criadas pelos seeders da 2.0.0 não contam; qualquer linha **perdida** ou **alterada**
+conta.
+
+Como ler um `Resultado: FALHOU` (o detalhe, com pks de amostra, está em `$LOCAL/comparacao-$BANCO.md` —
+**não** publicar):
+- linhas **perdidas** (`lost`) em qualquer tabela, ou **alteradas** fora das colunas abaixo → perda de
+  dados: avise o usuário e recomende a seção 7 (Volta); a decisão é dele;
+- linhas alteradas **só** em colunas que o uso normal escreve — `RefreshTokens.RevokedAt` (renovação de
+  token), `AspNetUsers.LastSeenAppVersion` (diálogo de novidades fechado) — vêm de algum acesso real entre
+  a troca do nginx e o J8 (o smoke do J7 roda com o site já trocado). São esperadas e **nunca** motivo para
+  a Volta: confira no relatório completo que são só essas colunas, registre e reabra o site.
+
+Depois que o site reabre, qualquer fingerprint novo (ex.: D5) mostra essas mesmas alterações e outras
+escritas legítimas dos usuários: nunca são motivo para a Volta.
+
+Se falhar:
+- o fingerprint falhou (código ≠ 0 no primeiro comando): o `api-blue` já voltou; o site continua fechado.
+  Leia o erro e repita o primeiro comando;
+- a comparação deu perda de dados: o site continua fechado enquanto o usuário decide (assim ninguém escreve
+  na 2.0.0). Volta → seção 7 (X1 para tudo). Sem Volta (decisão do usuário, registrada) →
+  `prod "docker start ruinarpg-web-1"`.
+Em nenhum caso o J8 termina com o `web` parado sem uma decisão registrada.
+**Ensaio:** igual.
+
+**J9. Rejeitar a aprovação pendente do `deploy.yml`** (aprovar só reimplantaria o mesmo sha no green, em
 janela: inútil). O usuário, em GitHub > Actions > o run `deploy` do merge > *Review deployments* >
 **Reject**. Ou:
 ```bash
@@ -416,6 +466,9 @@ Aval: **sim**. Passou se: o run termina como rejeitado, sem ter rodado nenhum pa
 **Ensaio:** pulado.
 
 ## 6. Verificação (notas, passo 9; spec H.4)
+
+O site já reabriu no J8, depois da comparação de dados. Daqui em diante, linhas alteradas pelo uso
+normal (J8, "Como ler") são esperadas.
 
 **V1. Estado das cores.**
 ```bash
@@ -444,23 +497,7 @@ Passou se: todas `200`; `/`, `blazor.boot.json`, `app.css` e o `.wasm` com `cach
 sobrescreve: conferir o painel (não é perda de dados; não justifica voltar).
 **Ensaio:** com `URL=http://127.0.0.1` (sem Cloudflare).
 
-**V4. Fingerprint da produção = fingerprint do dump final, diferença zero.** Aval: **sim** (para a api da
-2.0.0 por um ou dois minutos, para que ninguém escreva enquanto o fingerprint é tirado).
-```bash
-FP="fingerprint-producao-200-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
-prod "docker stop ruinarpg-api-blue-1 && cd $REPO && (umask 077 && deploy/fingerprint.sh ruinarpg $BKP/$FP); rc=\$?; docker start ruinarpg-api-blue-1; exit \$rc"
-prod "cat $BKP/$FP" | (umask 077 && cat > "$LOCAL/$FP")
-(umask 077 && printf 'changes: []\n' > "$LOCAL/allowlist-vazia.yml")
-python3 deploy/compare.py "$LOCAL/$BANCO/fingerprint.jsonl" "$LOCAL/$FP" "$LOCAL/allowlist-vazia.yml" --full "$LOCAL/comparacao-$BANCO.md"; echo "código $?"
-curl -fsS "$URL/api/health"; echo
-```
-Passou se: `Resultado: OK`, `código 0`, e a api voltou (`OK`; o cliente repete as requisições durante a
-parada). Linhas novas criadas pelos seeders da 2.0.0 não contam; qualquer linha **perdida** ou **alterada**
-conta. Se falhar (`Resultado: FALHOU`): o detalhe (com pks de amostra) está em
-`$LOCAL/comparacao-$BANCO.md` — **não** publicar. Avise o usuário e recomende a seção 7 (Volta); a decisão é
-dele.
-
-**V5. Conferência manual do usuário**, pelo site público:
+**V4. Conferência manual do usuário**, pelo site público:
 - entrar como Mestre e como jogador (contas reais que ele conheça);
 - o diálogo "Novidades da Versão 2.0.0" aparece uma vez e some ao fechar;
 - abrir fichas de Personagem, NPC e Criatura: valores, Combate, Magias, Posses, Diário, imagens;
@@ -471,12 +508,19 @@ dele.
 Passou se: o usuário confirma. Problema de dados → seção 7 por decisão dele; problema só de tela →
 correção pelo pipeline (2.0.1), sem voltar.
 
-**V6. Fechar a janela.** Anote o horário de fim no registro (tempo fora do ar = J1 → V6). Os contêineres
+**V5. Fechar a janela.** Anote o horário de fim no registro (tempo fora do ar = J1 → V5). Os contêineres
 `$API150` e `$NGINX150` ficam **parados, não removidos** (notas, passo 10).
 
 ## 7. Volta para a 1.5.0 (spec H.5; notas, passo 11) — só se houver perda de dados
 
 Usa o **dump final** (`$BANCO`), nunca o `--migrate` da 1.5.0. Cada passo: aval **sim**.
+
+**X0. Reconfirmar o nome do contêiner do banco.** O J7 recria o `db` pelo compose da 2.0.0: num compose v1
+o nome muda (`ruinarpg_db_1` → `ruinarpg-db-1`), e `sqlprod` usa `$DB`.
+```bash
+prod "docker ps -a --filter label=com.docker.compose.project=ruinarpg --filter label=com.docker.compose.service=db --format '{{.Names}} {{.State}}'"
+```
+Passou se: um único contêiner `running`; ajuste `DB=<nome>` se diferir.
 
 **X1. Parar a 2.0.0.**
 ```bash
@@ -507,7 +551,17 @@ sqlprod "$(cat tools/virada/contagens.sql)" | diff - "$LOCAL/$BANCO/contagens.ts
 curl -fsS "$URL/api/health"; echo
 ```
 Passou se: `OK` na produção e pelo `$URL`; `contagens-iguais` (a 1.5.0 em Production não migra ao subir).
-Depois, o usuário repete V5 na 1.5.0. **Nunca** `make migrate`/`make deploy` da 1.5.0 aqui.
+Se falhar (ex.: `network … not found`, ou a api não acha o `db`): o J7 recriou o `db` (o healthcheck mudou na
+2.0.0) e a rede pode ter sido recriada, ou a produção usa compose v1. Reconecte os contêineres antigos à rede
+do projeto com os aliases dos serviços e religue:
+```bash
+prod "docker network inspect -f '{{.Name}} {{.Id}}' ruinarpg_default; docker inspect -f '{{json .NetworkSettings.Networks}}' $API150 $NGINX150"
+prod "docker network disconnect -f ruinarpg_default $API150; docker network disconnect -f ruinarpg_default $NGINX150; docker network connect --alias api ruinarpg_default $API150 && docker network connect --alias nginx ruinarpg_default $NGINX150 && docker start $API150 $NGINX150 && sleep 10 && curl -fsS http://127.0.0.1/api/health; echo"
+```
+(O `disconnect -f` pode dizer que o contêiner não está na rede: é esperado. Se `ruinarpg_default` não existir,
+crie-a antes com `docker network create ruinarpg_default` e conecte também o `$DB` com `--alias db`.) Depois
+repita as contagens acima.
+Depois, o usuário repete V4 na 1.5.0. **Nunca** `make migrate`/`make deploy` da 1.5.0 aqui.
 
 Depois de uma volta: a `main` já tem a 2.0.0 e o `deploy.yml` de qualquer merge novo vai pedir aprovação —
 **não aprovar** até uma nova virada ser combinada. Uma nova tentativa recomeça na seção 5 (J5 remove o
@@ -534,8 +588,8 @@ legacy guardam as imagens) e, com o aval do usuário, a remoção do resto.
 1. Restaurar o dump final numa stack descartável nesta VM:
    `tools/virada/restaurar-pacote.sh "$LOCAL/$BANCO" --projeto ruinarpg-pacote-recuperacao` (o
    `fingerprint.jsonl` do pacote é o "antes").
-2. Tirar um fingerprint novo da produção (como em V4, sem precisar parar a api se a comparação for só de
-   linhas perdidas) e comparar: `python3 deploy/compare.py "$LOCAL/$BANCO/fingerprint.jsonl" <fingerprint novo> "$LOCAL/allowlist-vazia.yml" --full <relatório>`.
+2. Tirar um fingerprint novo da produção (`deploy/fingerprint.sh` como no J8, sem parar o site: aqui só as
+   linhas perdidas interessam) e comparar: `python3 deploy/compare.py "$LOCAL/$BANCO/fingerprint.jsonl" <fingerprint novo> "$LOCAL/allowlist-vazia.yml" --full <relatório>`.
    As linhas `lost` são as candidatas; as `altered` incluem as mudanças legítimas feitas pelos usuários
    desde a virada e são analisadas uma a uma com o usuário.
 3. Para cada tabela com linhas perdidas, gerar na stack descartável os `INSERT` dessas linhas (pelas pks do

@@ -14,7 +14,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 | Dump final (`$BANCO`) | |
 | sha do merge (`$MERGE`) | |
 | Início da janela (J1) | |
-| Fim da janela (V6) | |
+| Fim da janela (V5) | |
 | Tempo fora do ar | |
 
 ## 0. Acesso
@@ -309,7 +309,15 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### J8 Rejeitar a aprovação do deploy.yml
+### J8 Site fechado, fingerprint e comparação: diferença zero (site reaberto)
+
+- **Comando:**
+- **Saída relevante:**
+- **Resultado:** passou / falhou
+- **Quem aprovou:**
+- **Horário (UTC):**
+
+### J9 Rejeitar a aprovação do deploy.yml
 
 - **Comando:**
 - **Saída relevante:**
@@ -343,7 +351,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### V4 Fingerprint: diferença zero
+### V4 Conferência manual do usuário
 
 - **Comando:**
 - **Saída relevante:**
@@ -351,15 +359,7 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Quem aprovou:**
 - **Horário (UTC):**
 
-### V5 Conferência manual do usuário
-
-- **Comando:**
-- **Saída relevante:**
-- **Resultado:** passou / falhou
-- **Quem aprovou:**
-- **Horário (UTC):**
-
-### V6 Fim da janela (tempo fora do ar)
+### V5 Fim da janela (tempo fora do ar)
 
 - **Comando:**
 - **Saída relevante:**
@@ -368,6 +368,14 @@ outro dado pessoal: só comandos, caminhos, shas, contagens e as linhas `OK`/`RE
 - **Horário (UTC):**
 
 ## 7. Volta para a 1.5.0 (só se houver perda de dados)
+
+### X0 Reconfirmar o nome do contêiner do banco
+
+- **Comando:**
+- **Saída relevante:**
+- **Resultado:** passou / falhou
+- **Quem aprovou:**
+- **Horário (UTC):**
 
 ### X1 Parar a 2.0.0
 
