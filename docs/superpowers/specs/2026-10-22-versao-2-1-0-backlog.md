@@ -61,3 +61,24 @@ in `TipoDeFichaCliente` instead of reusing UI capability flags to pick Creature 
 - **A robust, complete backup system for production** (scheduled, kept off the production VM, restore
   tested, monitored). Until then, 2.0.0's cutover (H) takes only the backups the cutover needs. Comes after
   the 2.1.0 features.
+
+## Decisões do usuário (2026-10-24)
+
+- **Cemitério:** só o GM e o dono da ficha a veem. É a base das outras funcionalidades e começa primeiro.
+- **Remover jogador da campanha:** as fichas dele nessa campanha vão para o cemitério.
+- **Conta de jogador:** o GM escolhe entre **desativar** e **excluir**; nos dois casos o jogador sai das
+  campanhas e as fichas dele vão para o cemitério.
+- **Itens 1, 5–8:** decididos, só implementar.
+- **Sugestões da revisão do E:** aceitas (base comum das páginas de ficha; fato próprio de "formato de
+  dados" em `TipoDeFichaCliente`).
+- **Divergências do D:**
+  1. Jogador apagando NPC/Criatura concedido — corrigir, seguir a Campanha R0010 (só o GM apaga).
+  2. Maestria PUT — seguir os requisitos (NPC/Criatura também editam, "mesma estrutura do Personagem").
+  3. Orçamento de Perícias — só o Personagem; manter.
+  4. Afeição PUT — só o Personagem; manter.
+  5. Inventário do NPC aceitar qualquer item — correto; manter.
+  6. Magias 404 × 403 — todos os tipos devem funcionar do mesmo jeito (padronizar).
+  7. Peso carregado da Criatura — atualizar para a fórmula de 2026-09-08.
+  8. Leituras 404 × 403 — averiguar caso a caso.
+- **Propostas do G (`2026-10-23-g-propostas-sistema-rpg.md`):** só corrigir ortografia; o resto fica como está.
+- **Deploy automático:** configurar (provisionar o pipeline) antes de publicar a 2.1.0.
