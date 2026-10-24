@@ -99,8 +99,6 @@ class CompareTests(unittest.TestCase):
             code, out = run(base, base, "changes:\n  - " + bad + "\n")
             self.assertEqual(code, 2, bad)
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class PublicReportTests(unittest.TestCase):
@@ -132,3 +130,17 @@ class PublicReportTests(unittest.TestCase):
         self.assertIn("1019", full)
         self.assertNotIn("1020", full)
         self.assertIn("777", full)
+
+    def test_duplicate_key_error_does_not_leak_the_pk(self):
+        d = tempfile.mkdtemp()
+        pa, pb, pl = (os.path.join(d, n) for n in ("a", "b", "l"))
+        write(pa, [row("Users", "SECRETPK", Name="a"), row("Users", "SECRETPK", Name="a")])
+        write(pb, [row("Users", "SECRETPK", Name="a")]); open(pl, "w").write("changes: []\n")
+        p = subprocess.run([sys.executable, COMPARE, pa, pb, pl], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("Users", p.stderr)
+        self.assertNotIn("SECRETPK", p.stderr + p.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

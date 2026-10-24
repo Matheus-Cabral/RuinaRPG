@@ -29,7 +29,7 @@ def load(path):
             else:
                 key = (o["table"], str(o["pk"]))
                 if key in keyed:
-                    raise InfraError(f"chave duplicada {key} em {path}")
+                    raise InfraError(f"chave duplicada na tabela {o['table']} em {path}")
                 keyed[key] = row
     return keyed, multi
 
