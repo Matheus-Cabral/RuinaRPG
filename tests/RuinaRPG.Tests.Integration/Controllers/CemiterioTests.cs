@@ -144,4 +144,44 @@ public class CemiterioTests(ApiFixture fixture) : ApiTestBase(fixture)
         var depois = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{c.CampaignId}/player-view", c.PlayerToken));
         (await depois.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>())!.MinhasFichas.Should().NotContain(f => f.Id == c.SheetId);
     }
+
+    private Task<HttpResponseMessage> DefinirMorteAsync(string token, string sheetId, bool morto) =>
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/morte", token, new DefinirMorteRequest(morto)));
+
+    [Fact]
+    public async Task GM_marca_e_desmarca_morto()
+    {
+        var c = await MontarAsync();
+        (await DefinirMorteAsync(c.GmToken, c.SheetId, true)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetAsync(c.GmToken, c.SheetId)).MotivosDoCemiterio.Should().Equal("Morte");
+        (await DefinirMorteAsync(c.GmToken, c.SheetId, false)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetAsync(c.GmToken, c.SheetId)).NoCemiterio.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Dono_nao_pode_marcar_morto()
+    {
+        var c = await MontarAsync();
+        (await DefinirMorteAsync(c.PlayerToken, c.SheetId, true)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Outro_GM_recebe_404()
+    {
+        var c = await MontarAsync();
+        var outroGm = await RegisterGmAndGetTokenAsync(Unique("Gm"), Unique("gm") + "@t.com");
+        (await DefinirMorteAsync(outroGm, c.SheetId, true)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await DefinirMorteAsync(c.GmToken, Guid.NewGuid().ToString(), true)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Marcar_morto_entra_no_log_da_ficha()
+    {
+        var c = await MontarAsync();
+        (await DefinirMorteAsync(c.GmToken, c.SheetId, true)).EnsureSuccessStatusCode();
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/sheet-logs/character/{c.SheetId}", c.GmToken));
+        var pagina = (await response.Content.ReadFromJsonAsync<RuinaRPG.Contracts.SheetLogs.SheetLogPageResponse>())!;
+        var linha = pagina.Itens.Single(i => i.Campo == "Morto");
+        linha.ActorIsGm.Should().BeTrue();
+    }
 }

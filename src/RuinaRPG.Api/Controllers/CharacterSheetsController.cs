@@ -6,6 +6,7 @@ using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -20,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets")]
-public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio)
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes)
     : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
@@ -71,6 +72,42 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
         Db.CharacterSheets.Remove(sheet);
         await Db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>Cemitério de fichas: o GM marca ou desmarca "Morto". Avisa o dono só se a ficha entrou ou saiu do cemitério.</summary>
+    [HttpPut("{id}/morte")]
+    [Authorize(Roles = "GM")]
+    [PermitidoNoCemiterio]
+    public async Task<IActionResult> DefinirMorte(Guid id, DefinirMorteRequest request)
+    {
+        var gmId = CurrentUserId();
+        var sheet = await Db.CharacterSheets
+            .Join(Db.Campaigns, s => s.CampaignId, c => c.Id, (s, c) => new { Sheet = s, c.GmId })
+            .Where(x => x.Sheet.Id == id && x.GmId == gmId)
+            .Select(x => x.Sheet)
+            .FirstOrDefaultAsync();
+        if (sheet is null)
+            return NotFound();
+
+        var estavaNoCemiterio = (await cemiterio.MotivosAsync(sheet)).Count > 0;
+        sheet.Morto = request.Morto;
+        await Db.SaveChangesAsync();
+        var estaNoCemiterio = (await cemiterio.MotivosAsync(sheet)).Count > 0;
+
+        if (estavaNoCemiterio != estaNoCemiterio)
+        {
+            try
+            {
+                await notificacoes.Clients.User(sheet.OwnerId.ToString()).SendAsync(NotificationEvents.FichaNoCemiterioAlterada, sheet.Id.ToString());
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to push FichaNoCemiterioAlterada for sheet {SheetId}", sheet.Id);
+            }
+            await NotificarEncontrosAsync(id);
+        }
+
         return NoContent();
     }
 

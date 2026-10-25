@@ -275,6 +275,7 @@ PUT /api/campaigns/{id} (id:Guid:Path, request:UpdateCampaignRequest:Body) -> Ta
 PUT /api/character-sheets/{id} (id:Guid:Path, request:UpdateCharacterSheetRequest:Body) -> Task<IActionResult> [authorize(policy=,roles=)]
 PUT /api/character-sheets/{id}/historia (id:Guid:Path, request:UpdateHistoriaRequest:Body) -> Task<IActionResult> [authorize(policy=,roles=)]
 PUT /api/character-sheets/{id}/historia/imagens (id:Guid:Path, request:UpdateHistoriaImagensRequest:Body) -> Task<ActionResult<List<HistoriaImagemResponse>>> [authorize(policy=,roles=)]
+PUT /api/character-sheets/{id}/morte (id:Guid:Path, request:DefinirMorteRequest:Body) -> Task<IActionResult> [authorize(policy=,roles=);authorize(policy=,roles=GM)]
 PUT /api/character-sheets/{id}/pontos-de-ignicao (id:Guid:Path, pontos:Int32:Body) -> Task<IActionResult> [authorize(policy=,roles=)]
 PUT /api/character-sheets/{sheetId}/affections/{id} (sheetId:Guid:Path, id:Guid:Path, request:UpdateCharacterAffectionRequest:Body) -> Task<ActionResult<AffectionResponse>> [authorize(policy=,roles=)]
 PUT /api/character-sheets/{sheetId}/affinities/{id} (sheetId:Guid:Path, id:Guid:Path, request:UpdateAffinityRequest:Body) -> Task<ActionResult<AffinityResponse>> [authorize(policy=,roles=)]
