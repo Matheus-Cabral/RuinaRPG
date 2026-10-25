@@ -59,6 +59,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "GM")]
+    [PermitidoNoCemiterio]
     public async Task<IActionResult> Delete(Guid id)
     {
         var gmId = CurrentUserId();

@@ -39,6 +39,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     }
 
     [HttpPost("{id}/dismiss-level-up-notice")]
+    [PermitidoNoCemiterio]
     public async Task<IActionResult> DismissLevelUpNotice(Guid id)
     {
         if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
