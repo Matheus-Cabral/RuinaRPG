@@ -657,6 +657,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Linhagem")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("Morto")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Nivel")
                         .HasColumnType("integer");
 

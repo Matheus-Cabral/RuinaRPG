@@ -67,7 +67,8 @@ public class ConsolidacaoDoHistoricoTests
 
             await db.Database.MigrateAsync();
 
-            (await HistoricoAsync(db)).Should().Equal(HistoricoDeMigracoes150.Baseline);
+            // A baseline cria o schema da 1.5.0 mais o das migrations seguintes; o histórico fica com todas.
+            (await HistoricoAsync(db)).Should().Equal(db.Database.GetMigrations().Order(StringComparer.Ordinal));
             (await db.Pericias.CountAsync()).Should().Be(39);
         });
     }
@@ -85,7 +86,8 @@ public class ConsolidacaoDoHistoricoTests
             await HistoricoDeMigracoes150.ConsolidarAsync(db, NullLogger.Instance);
 
             (await HistoricoAsync(db)).Should().Equal(HistoricoDeMigracoes150.Baseline);
-            (await db.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
+            // Um banco da 1.5.0 fica só com a baseline; as migrations posteriores ainda estão pendentes.
+            (await db.Database.GetPendingMigrationsAsync()).Should().Equal(db.Database.GetMigrations().Where(m => m != HistoricoDeMigracoes150.Baseline));
             (await GmAsync(db, gm.Id))!.Nickname.Should().Be("ConsolidacaoGm");
             (await db.Pericias.CountAsync()).Should().Be(pericias);
         });

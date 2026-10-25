@@ -75,6 +75,7 @@ public static class SheetLogMap
         {
             ["PontosDeIgnicaoBonusManual"] = "Pontos de Ignição (bônus manual)",
             ["PontosDePericiaBonusCritico"] = "Pontos de Acerto Crítico",
+            ["Morto"] = "Morto",
         };
         mapa[typeof(CharacterSheet)] = new(SheetLogKind.Character, true, "Informações Básicas", null, null, null,
             personagem, Set(["Id", "CampaignId", "OwnerId", "LastDismissedLevelUpLevel", .. vestigiais]), Set(["Historia"]),

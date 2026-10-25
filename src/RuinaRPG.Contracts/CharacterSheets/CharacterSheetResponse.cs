@@ -51,4 +51,6 @@ public record CharacterSheetResponse(
     string? Historia,
     int AfinidadeAdicional,
     int VocacaoArcanaGasta,
-    int VocacaoArcanaMaxima);
+    int VocacaoArcanaMaxima,
+    bool NoCemiterio,
+    List<string> MotivosDoCemiterio);

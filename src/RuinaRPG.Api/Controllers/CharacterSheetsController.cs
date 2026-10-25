@@ -20,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets")]
-public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo)
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio)
     : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
@@ -84,9 +84,10 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             return NotFound();
 
         var sheets = await Db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
+        var motivos = await cemiterio.MotivosAsync(sheets);
         var responses = new List<CharacterSheetResponse>();
         foreach (var sheet in sheets)
-            responses.Add(await ToResponseAsync(sheet));
+            responses.Add(await ToResponseAsync(sheet, motivos[sheet.Id]));
         return responses;
     }
 
@@ -106,12 +107,14 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             .GroupJoin(Db.Campaigns, s => s.CampaignId, c => c.Id, (s, campaigns) => new { Sheet = s, Campaign = campaigns.FirstOrDefault() })
             .ToListAsync();
 
+        var motivos = await cemiterio.MotivosAsync(sheets.Select(x => x.Sheet).ToList());
         var responses = new List<MyCharacterSheetSummaryResponse>();
         foreach (var x in sheets)
         {
             responses.Add(new MyCharacterSheetSummaryResponse(
                 x.Sheet.Id.ToString(), await UrlDaImagemAsync(Db, x.Sheet.ImageId), x.Sheet.Nome, x.Sheet.Nivel,
-                x.Sheet.CampaignId.ToString(), x.Campaign?.Nome ?? ""));
+                x.Sheet.CampaignId.ToString(), x.Campaign?.Nome ?? "",
+                motivos[x.Sheet.Id].Count > 0, MotivosComoTexto(motivos[x.Sheet.Id])));
         }
 
         return responses;
@@ -258,7 +261,12 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
         return NoContent();
     }
 
+    private static List<string> MotivosComoTexto(IReadOnlyList<MotivoDoCemiterio> motivos) => motivos.Select(m => m.ToString()).ToList();
+
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
+        => await ToResponseAsync(s, await cemiterio.MotivosAsync(s));
+
+    private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s, IReadOnlyList<MotivoDoCemiterio> motivosDoCemiterio)
     {
         var imageUrl = await UrlDaImagemAsync(Db, s.ImageId);
 
@@ -292,7 +300,8 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
-            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap));
+            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
+            motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio));
     }
 
     /// <summary>

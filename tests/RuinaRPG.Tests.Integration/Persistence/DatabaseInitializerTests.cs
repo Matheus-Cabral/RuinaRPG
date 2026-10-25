@@ -70,6 +70,8 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
         await using (var scope = services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+            // Um banco da 1.5.0 ainda não tem as colunas das migrations posteriores à baseline.
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"CharacterSheets\" DROP COLUMN \"Morto\"");
             await db.Database.ExecuteSqlRawAsync("DELETE FROM \"__EFMigrationsHistory\"");
             foreach (var id in HistoricoDeMigracoes150.Ids)
                 await db.Database.ExecuteSqlAsync($"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({id}, '8.0.10')");
@@ -80,7 +82,7 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
 
         await using var check = services.CreateAsyncScope();
         var migrated = check.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        (await migrated.Database.GetAppliedMigrationsAsync()).Should().Equal(HistoricoDeMigracoes150.Baseline);
+        (await migrated.Database.GetAppliedMigrationsAsync()).Should().Equal(migrated.Database.GetMigrations());
         (await CountSeededTablesAsync(services)).Should().Equal(before);
     }
 }

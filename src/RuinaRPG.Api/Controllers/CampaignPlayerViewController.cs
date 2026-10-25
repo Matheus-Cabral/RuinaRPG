@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Infrastructure.Campaigns;
@@ -13,7 +14,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/campaigns/{campaignId}/player-view")]
-public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
+public class CampaignPlayerViewController(RuinaRpgDbContext db, CemiterioDaFicha cemiterio) : ControllerBase
 {
     /// <summary>
     /// R0009's own precondition: a player has no way to discover which campaign(s) they belong to
@@ -51,8 +52,9 @@ public class CampaignPlayerViewController(RuinaRpgDbContext db) : ControllerBase
         var minhasFichasEntities = await db.CharacterSheets
             .Where(s => s.CampaignId == campaignId && s.OwnerId == callerId)
             .ToListAsync();
+        var motivos = await cemiterio.MotivosAsync(minhasFichasEntities);
         var minhasFichas = new List<CharacterSheetSummary>();
-        foreach (var s in minhasFichasEntities)
+        foreach (var s in minhasFichasEntities.Where(s => motivos[s.Id].Count == 0))
             minhasFichas.Add(new CharacterSheetSummary(s.Id.ToString(), s.Nome, s.Nivel, await ResolveImageUrlAsync(s.ImageId)));
 
         var meusNpcsEntities = await db.CampaignAttachments

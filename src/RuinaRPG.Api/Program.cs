@@ -59,6 +59,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentActor, HttpCurrentActor>();
 builder.Services.AddScoped<SheetLogDoServidor>();
+builder.Services.AddScoped<CemiterioDaFicha>();
 builder.Services.AddScoped<SheetLogInterceptor>();
 builder.Services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
     .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
