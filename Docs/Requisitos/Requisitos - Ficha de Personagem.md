@@ -2,7 +2,7 @@
 
   
 
-> **Modelo de edição**: salvo indicação em contrário, todos os campos da ficha são editáveis pelo jogador dono da ficha. Apenas a **criação** e a **exclusão** de uma ficha são exclusivas do **GM** (ver [[01 - Visão Geral]]).
+> **Modelo de edição**: salvo indicação em contrário, todos os campos da ficha são editáveis pelo jogador dono da ficha. Apenas a **criação** e a **exclusão** de uma ficha são exclusivas do **GM** (ver [[01 - Visão Geral]]). Uma ficha no **cemitério** (R0010) não é editável por ninguém, nem pelo GM, salvo as exceções daquele requisito.
 
   
 
@@ -513,3 +513,16 @@ Uma Passiva que já está na ficha **permanece** quando a ficha deixa de cumprir
 - *O que ignora as Condições*: o orçamento de pontos de Atributo e de Perícia, os limites por Nível, o contador de Vocação Arcana (2.c), os Requisitos de Passiva (R0008) e os Requisitos e Penalidades de equipamento — todos usam a ficha sem Condições, e ignoram também o desabilitar (um Artefato desabilitado continua contando para cumprir um requisito): o que a ficha cumpre ou não cumpre não muda por uma Condição.
 
 Quem pode editar a ficha vê a lista das Condições ativas, com nome, descrição, ícone, Turnos restantes e, em texto, o que cada uma muda.
+
+  
+
+# **R0010** - Uma ficha no cemitério pode ser lida, mas não editada.
+
+**Descrição**: Uma Ficha de Personagem sai de jogo quando o personagem morre, quando o jogador deixa de ser membro da campanha ou quando a conta dele deixa de estar ativa. Ela não some, porque é a história do personagem, mas também não é mais mexida: fica no **cemitério**. Vale só para a Ficha de Personagem; as Fichas de NPC e de Criatura não têm dono jogador e não vão para o cemitério.
+
+- *Motivos*: uma ficha está no cemitério enquanto houver ao menos um destes motivos: **Personagem morto** (a caixa *Morto*, abaixo), **Jogador removido da campanha** (o dono não é mais membro da campanha da ficha, ver "[[Requisitos - Campanha]]" R0003) e **Conta do jogador inativa** (a conta do dono desativada ou excluída; este motivo chega com a funcionalidade de desativar/excluir conta, em desenho posterior da 2.1.0, e até lá não ocorre). Os motivos de remoção e de conta são **calculados** do estado atual, não guardados: a ficha **sai** do cemitério quando nenhum motivo resta. Desmarcar *Morto* só a tira se o dono ainda for membro com conta ativa, e o jogador voltar a ser membro só a tira se ela não estiver marcada como morta.
+- *Quem vê*: só o GM da campanha e o jogador dono (inclusive o jogador removido da campanha, que continua dono). A lista aparece na aba Cemitério da campanha, para o GM ("[[Requisitos - Campanha]]" R0017), e numa seção **Cemitério** do painel do jogador, abaixo da lista de fichas (ver [[01 - Visão Geral]]), com imagem, nome, nível e campanha; a seção não aparece quando está vazia. Enquanto estiver no cemitério, a ficha não aparece na lista de fichas do painel, na aba Membros nem em Minhas Campanhas.
+- *Leitura e edição*: ler a ficha continua sendo do dono e do GM; **editar** exige, além disso, que a ficha não esteja no cemitério. Toda escrita na ficha e em suas partes (abas, Diário, Equipagem inicial, imagens da História, valores gravados por um Encontro) é recusada, com a mensagem "Esta ficha está no cemitério e não pode ser editada." As únicas exceções são a caixa *Morto*, a **exclusão** da ficha pelo GM e dispensar o aviso de subida de Nível (R0002), que é estado da tela e não conteúdo da ficha.
+- *Modo leitura*: todas as abas abrem sem controles de edição (campos desabilitados, sem botões de adicionar ou remover, sem salvamento automático). No topo, um aviso fixo diz "Esta ficha está no cemitério" e os motivos ("Personagem morto", "Jogador removido da campanha", "Conta do jogador inativa"). Voltar leva o GM à aba Cemitério da campanha e o jogador ao seu painel.
+- *Caixa Morto*: no cabeçalho da ficha, junto do Nome, uma caixa de seleção **Morto** que só o **GM** da campanha vê e usa (o jogador não a vê: o aviso já diz o motivo). Continua utilizável com a ficha em modo leitura. Marcar ou desmarcar entra no log da ficha como alteração do GM no campo *Morto* ("[[Requisitos - Campanha]]" R0016) e avisa o dono; a ficha aberta do dono passa a modo leitura, ou volta a ser editável, sem recarregar a página.
+- *Encontros*: ver "[[Requisitos - Gerenciador de Encontros]]" R0002 e R0015.

@@ -235,6 +235,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK | |
 | CampaignId | FK → Campaigns | criada dentro de uma campanha (Campanha R0004) |
 | OwnerId | FK → Users | |
+| Morto | bool, NOT NULL, padrão `false` | cabeçalho da ficha — a marca de morte, só o GM a altera; um dos motivos do cemitério (Ficha de Personagem R0010). Os outros motivos (dono removido da campanha, conta inativa) são calculados, não guardados |
 | ImageId | FK → Images, nullable (`SetNull`) | 1.a |
 | Nome | string, nullable | 1.a |
 | Linhagem | enum, nullable | 1.a |

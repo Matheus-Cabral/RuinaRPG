@@ -20,7 +20,7 @@
 
 **Descrição**: Para cada participante adicionado, o GM escolhe a origem:
 
-- **Ficha de Personagem** de um jogador membro da campanha, incluindo Fichas de NPC/Criatura concedidas a ele (ver "[[Requisitos - Campanha]]" R0010).
+- **Ficha de Personagem** de um jogador membro da campanha, incluindo Fichas de NPC/Criatura concedidas a ele (ver "[[Requisitos - Campanha]]" R0010). Uma Ficha de Personagem no cemitério ("[[Requisitos - Ficha de Personagem]]" R0010) não pode ser adicionada: o seletor não a oferece e o servidor recusa com a mensagem "Esta ficha está no cemitério e não pode entrar em encontros."
 - **Ficha de NPC ou de Criatura** do GM (não concedida a nenhum jogador). Pode ser adicionada mais de uma vez ao mesmo Encontro (ex: 3 goblins) — cada adição gera uma **instância** independente, sem duplicar a ficha original no Bestiário/NPCs do GM. Quando a mesma ficha é adicionada mais de uma vez, as instâncias depois da primeira recebem um número no nome ("Goblin", "Goblin 2", "Goblin 3"), usando o menor número a partir de 2 que não esteja em uso no Encontro.
 
   
@@ -37,7 +37,7 @@
 
 O comportamento de PV/PF/PA difere conforme a origem do participante (R0002):
 
-- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA refletem em tempo real os valores salvos na ficha correspondente. O GM pode editá-los no Encontro, e a edição grava **na própria ficha**: cada valor fica no máximo que a ficha mostra com as Condições ativas (o mesmo limite do salvamento da ficha), e só o recurso que o GM de fato mudou é gravado — o que ele não tocou fica como está, então uma mudança simultânea do jogador não se perde. A alteração entra no log da ficha como feita pelo GM ("[[Requisitos - Campanha]]" R0016) e, com o Encontro em andamento, no log do Encontro (R0010), uma linha por recurso. A ficha aberta do dono e a do GM mostram os valores novos na hora, sem perder o campo em edição.
+- **Ficha de Personagem** (do jogador dono, incluindo pets/invocações concedidos): PV/PF/PA refletem em tempo real os valores salvos na ficha correspondente. O GM pode editá-los no Encontro, e a edição grava **na própria ficha**: cada valor fica no máximo que a ficha mostra com as Condições ativas (o mesmo limite do salvamento da ficha), e só o recurso que o GM de fato mudou é gravado — o que ele não tocou fica como está, então uma mudança simultânea do jogador não se perde. Numa ficha no cemitério (R0015) a edição é desabilitada. A alteração entra no log da ficha como feita pelo GM ("[[Requisitos - Campanha]]" R0016) e, com o Encontro em andamento, no log do Encontro (R0010), uma linha por recurso. A ficha aberta do dono e a do GM mostram os valores novos na hora, sem perder o campo em edição.
 - **Ficha de NPC/Criatura do GM**: PV/PF/PA são uma **cópia independente** daquela instância, iniciando nos valores atuais da ficha original no momento em que foi adicionada ao Encontro, e editável livremente pelo GM ali. Alterações feitas no Encontro não se propagam de volta para a ficha original, e vice-versa.
 
   
@@ -114,7 +114,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 - escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
 - restringir cada modificador de Maestria a Maestrias escolhidas da ficha do participante (só as da Perícia do modificador, quando ele tem uma); sem escolha, o modificador vale em todas, como na entrada. As Maestrias escolhidas aparecem pelo nome na explicação da Condição na ficha.
 
-A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
+Num participante cuja ficha está no cemitério (R0015) o GM não aplica nem remove Condições. A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
 
 Uma Condição só está **ativa** com o Encontro em andamento e enquanto a duração não venceu (R0012): na preparação ela fica no participante sem efeito nenhum, e começa a valer ao Iniciar. O efeito nos valores depende da origem do participante (R0002): numa Ficha de Personagem, ou numa Ficha de NPC/Criatura concedida a um jogador, a ficha mostra os valores com a Condição enquanto ela está ativa (ver "[[Requisitos - Ficha de Personagem]]" R0009), e o dono da ficha é avisado sempre que as Condições ativas dela mudam; numa Ficha de NPC/Criatura do GM, a ficha original nunca muda e a Condição só vale para aquela instância no Encontro, e o GM a vê no resumo da ficha (R0014).
 
@@ -143,7 +143,7 @@ A expiração acontece só ao entrar num Turno novo (pela **Próxima vez**, ao p
 
 Um modificador **percentual** é um percentual do **total** do recurso, arredondado para baixo: o máximo da ficha com as Condições ativas; numa instância do GM, o máximo da ficha original calculado com as Condições **daquela instância**. Se a ficha original já não existe, o percentual é pulado (um fixo ainda roda).
 
-**Log**: cada ajuste vira uma linha no log do Encontro (R0010) com o participante, o recurso, o valor antes e depois e o nome da Condição; um ajuste pulado também vira uma linha, dizendo por quê ("Estresse não é acompanhado no encontro" ou "ficha de origem removida"). O ajuste na ficha não gera, além disso, a linha de alteração de recurso da ficha.
+**Log**: cada ajuste vira uma linha no log do Encontro (R0010) com o participante, o recurso, o valor antes e depois e o nome da Condição; um ajuste pulado também vira uma linha, dizendo por quê ("Estresse não é acompanhado no encontro", "ficha de origem removida" ou "ficha no cemitério", R0015). O ajuste na ficha não gera, além disso, a linha de alteração de recurso da ficha.
 
 **Ações simultâneas**: duas ações do GM que poderiam rodar o mesmo ajuste ao mesmo tempo (ex: um clique duplo em **Passar a vez para este**, ou aplicar uma Condição enquanto a vez avança) nunca o aplicam duas vezes: uma delas é recusada com o aviso de que o Encontro foi alterado por outra ação, e o GM recarrega e tenta de novo.
 
@@ -173,3 +173,17 @@ Uma linha de equipamento ou de magia que uma Condição desabilita (R0011) apare
 - **Ficha concedida** a um jogador: as Condições **da ficha** — as mesmas que o dono e o GM veem na própria ficha, o que inclui as de outro Encontro em andamento de que ela também participa. Assim o resumo nunca difere da ficha. O Atual é o da ficha.
 
 **Ficha removida**: se a ficha de origem já não existe, o resumo não está disponível e o popup avisa isso. O resumo apenas lê: não grava nada na ficha, no participante nem no log. Há um atalho para abrir a **ficha completa** numa aba nova.
+
+  
+
+# **R0015** - Um participante cuja ficha está no cemitério fica no Encontro, só para leitura.
+
+**Descrição**: Quando a Ficha de Personagem de um participante entra no cemitério ("[[Requisitos - Ficha de Personagem]]" R0010) com o Encontro em preparação ou em andamento, ele **continua** como participante até o fim, mas ninguém edita a ficha, nem o sistema:
+
+- o GM não edita o PV/PF/PA dele no Encontro (R0003) e não aplica nem remove Condições nele (R0011);
+- os ajustes de valor atual das Condições (R0013), inclusive o corte do valor atual ao novo máximo quando Condições passam a valer, que gravariam na ficha são **pulados** e viram uma linha no log do Encontro (R0010) com o motivo "ficha no cemitério";
+- a expiração das Condições (R0012) continua, com a linha automática no log da ficha e o aviso ao dono, porque é estado do Encontro e não muda valor gravado na ficha;
+- a vez, a ordem de Iniciativa e as Ações seguem como para qualquer participante;
+- o GM pode removê-lo a qualquer momento (R0008).
+
+O cliente mostra esse participante com os controles de edição desabilitados e um indicador visual (ícone).
