@@ -1,11 +1,22 @@
 @using MudBlazor
 
-@* O alto das três páginas: trilha, título, Condições ativas (o Personagem sempre; NPC e Criatura só concedidos a um
+@* O alto das três páginas: trilha, título, a caixa "Morto" do GM e o aviso do cemitério (onde o tipo tem cemitério; ficam
+   fora da desabilitação em cascata das abas), Condições ativas (o Personagem sempre; NPC e Criatura só concedidos a um
    jogador), o alerta de erro da página (FichaEstado.Erro) e o aviso de Novo Nível (FichaEstado.Cabecalho.cs). A página
    continua dona da trilha, de quando reler e da marca de concedida. *@
 
 <Breadcrumbs Items="@Trilha" />
 <h1>@Estado.Tipo.Titulo</h1>
+@if (Estado.Tipo.TemCemiterio && Estado.IsGmCaller)
+{
+    <MudCheckBox T="bool" Value="Estado.Morto" ValueChanged="Estado.DefinirMorteAsync" Label="Morto" Color="Color.Error" />
+}
+@if (Estado.SomenteLeitura)
+{
+    <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Lock" Class="mb-3">
+        Esta ficha está no cemitério: @(string.Join(", ", Estado.MotivosDoCemiterio.Select(FichaEstado.RotuloDoMotivo))).
+    </MudAlert>
+}
 @if (!Estado.Tipo.CondicoesSoSeConcedida || Concedida)
 {
     <CondicoesAtivasAlert Url="@Estado.Tipo.Url(Estado.SheetId, "condicoes-ativas")" Versao="Estado.CondicoesVersao" />

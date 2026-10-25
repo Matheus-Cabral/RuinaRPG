@@ -52,6 +52,27 @@ public class RichTextEditorTests : MudBunitContext
     }
 
     [Fact]
+    public void SomenteLeitura_creates_a_read_only_editor()
+    {
+        Render<RichTextEditor>(p => p.Add(x => x.SomenteLeitura, true));
+
+        JSInterop.VerifyInvoke("ruinaRichText.create").Arguments[3].Should().BeEquivalentTo(new { somenteLeitura = true });
+    }
+
+    [Fact]
+    public void Changing_SomenteLeitura_after_creation_follows_it_in_the_js_editor()
+    {
+        // A ficha entra ou sai do cemitério com a aba aberta (o aviso em tempo real).
+        var cut = Render<RichTextEditor>(p => p.Add(x => x.SomenteLeitura, false));
+
+        cut.Render(p => p.Add(x => x.SomenteLeitura, true));
+        cut.Render(p => p.Add(x => x.SomenteLeitura, true));
+        cut.Render(p => p.Add(x => x.SomenteLeitura, false));
+
+        JSInterop.Invocations["ruinaRichText.setReadOnly"].Select(i => i.Arguments[1]).Should().Equal(true, false);
+    }
+
+    [Fact]
     public async Task Disposing_destroys_the_js_editor()
     {
         var cut = Render<RichTextEditor>();

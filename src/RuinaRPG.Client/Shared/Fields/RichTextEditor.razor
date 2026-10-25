@@ -26,6 +26,12 @@
     [Parameter] public Func<Stream, string, Task<string?>>? UploadImage { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
 
+    /// <summary>Só leitura (ficha no cemitério). Diferente do Html, vale também depois de criado: o editor segue a mudança.</summary>
+    [Parameter] public bool SomenteLeitura { get; set; }
+
+    // O estado que o editor JS tem agora (o da criação, depois o do último setReadOnly).
+    private bool _somenteLeituraNoEditor;
+
     /// <summary>Same cap as every other upload in the app (ImagesController's RequestSizeLimit / nginx).</summary>
     public const int MaxUploadBytes = 20_000_000;
 
@@ -38,12 +44,17 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
+        {
+            if (_created && !_disposed && SomenteLeitura != _somenteLeituraNoEditor)
+                await AplicarSomenteLeituraAsync();
             return;
+        }
 
         _selfRef = DotNetObjectReference.Create(this);
         try
         {
-            await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "", new { imagens = UploadImage is not null });
+            _somenteLeituraNoEditor = SomenteLeitura;
+            await JS.InvokeVoidAsync("ruinaRichText.create", _host, _selfRef, Html ?? "", new { imagens = UploadImage is not null, somenteLeitura = SomenteLeitura });
         }
         catch (JSException)
         {
@@ -60,6 +71,15 @@
             return;
         }
         _created = true;
+        // SomenteLeitura mudou enquanto o Jodit carregava.
+        if (SomenteLeitura != _somenteLeituraNoEditor)
+            await AplicarSomenteLeituraAsync();
+    }
+
+    private async Task AplicarSomenteLeituraAsync()
+    {
+        _somenteLeituraNoEditor = SomenteLeitura;
+        await JS.InvokeVoidAsync("ruinaRichText.setReadOnly", _host, SomenteLeitura);
     }
 
     [JSInvokable]

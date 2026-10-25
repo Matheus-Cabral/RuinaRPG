@@ -15,7 +15,7 @@
     <Section>
         @if (Estado.HistoriaCarregada)
         {
-            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErro"
+            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErro" SomenteLeitura="Estado.SomenteLeitura"
                             AvailableImages="Estado.MinhasImagens" CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" />
         }
         else

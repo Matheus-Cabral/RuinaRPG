@@ -32,6 +32,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     public event Action<CondicoesAlteradasNotification>? CondicoesAlteradas;
 
     /// <summary>
+    /// A Ficha de Personagem of this user entered or left the cemetery (the GM's "Morto" box): the sheet page reloads
+    /// its read-only state. Carries the sheet id. May be raised off the renderer's context — use InvokeAsync.
+    /// </summary>
+    public event Action<string>? FichaNoCemiterioAlterada;
+
+    /// <summary>
     /// Idempotent, and safe to call on every navigation: MainLayout does exactly that, which is
     /// also what brings a connection that gave up reconnecting back to life.
     /// </summary>
@@ -57,7 +63,7 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
         await refresh();
         try
         {
-            await connection.StartAsync(OnReceivedAsync, refresh, OnCondicoesAlteradasAsync);
+            await connection.StartAsync(OnReceivedAsync, refresh, OnCondicoesAlteradasAsync, OnFichaNoCemiterioAlteradaAsync);
         }
         catch (Exception)
         {
@@ -100,6 +106,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     private Task OnCondicoesAlteradasAsync(CondicoesAlteradasNotification notification)
     {
         CondicoesAlteradas?.Invoke(notification);
+        return Task.CompletedTask;
+    }
+
+    private Task OnFichaNoCemiterioAlteradaAsync(string sheetId)
+    {
+        FichaNoCemiterioAlterada?.Invoke(sheetId);
         return Task.CompletedTask;
     }
 

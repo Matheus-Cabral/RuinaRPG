@@ -49,6 +49,10 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         _ => new[] { "Painel → painel", "Bestiário do GM → bestiario", "Lobo Cinzento → #" },
     };
 
+    // 2.1.0 (cemitério): o GM tem a caixa "Morto" logo depois do título na Ficha de Personagem.
+    protected static string[] CaixaMorto(string tipo, string papel) =>
+        tipo == "Personagem" && papel == "GM" ? new[] { "[ ]", "Morto" } : Array.Empty<string>();
+
     protected static string Titulo(string tipo) => tipo switch
     {
         "Personagem" => "Ficha de Personagem",
@@ -241,6 +245,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
             var cut = await RenderFichaAsync(tipo, papel);
 
             var esperado = new List<string>(Trilha(tipo)) { Titulo(tipo) };
+            esperado.AddRange(CaixaMorto(tipo, papel));
             if (MostraCondicoes(tipo, papel))
                 esperado.AddRange(LeituraDaCondicao);
             esperado.AddRange(new[] { "Novo Nível!", "+1 Vigor", "+2 Pontos de Perícia", "Fechar" });
@@ -258,7 +263,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         {
             var cut = await RenderFichaAsync(tipo, papel);
 
-            LeituraDoCabecalho(cut).Should().Equal(new List<string>(Trilha(tipo)) { Titulo(tipo) });
+            LeituraDoCabecalho(cut).Should().Equal(new List<string>(Trilha(tipo)) { Titulo(tipo) }.Concat(CaixaMorto(tipo, papel)));
         }
 
         [Theory]

@@ -12,6 +12,7 @@ public sealed class FakeNotificationConnection : INotificationConnection
     private Func<SecretNoteNotification, Task>? _onReceived;
     private Func<Task>? _onChanged;
     private Func<CondicoesAlteradasNotification, Task>? _onCondicoes;
+    private Func<string, Task>? _onFichaNoCemiterio;
 
     public bool IsActive { get; private set; }
     public int StartCount { get; private set; }
@@ -19,7 +20,7 @@ public sealed class FakeNotificationConnection : INotificationConnection
     public bool StartShouldThrow { get; set; }
 
     public Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged,
-        Func<CondicoesAlteradasNotification, Task> onCondicoes)
+        Func<CondicoesAlteradasNotification, Task> onCondicoes, Func<string, Task> onFichaNoCemiterio)
     {
         StartCount++;
         if (StartShouldThrow)
@@ -28,6 +29,7 @@ public sealed class FakeNotificationConnection : INotificationConnection
         _onReceived = onReceived;
         _onChanged = onChanged;
         _onCondicoes = onCondicoes;
+        _onFichaNoCemiterio = onFichaNoCemiterio;
         IsActive = true;
         return Task.CompletedTask;
     }
@@ -42,6 +44,8 @@ public sealed class FakeNotificationConnection : INotificationConnection
     public Task RaiseReceivedAsync(SecretNoteNotification notification) => _onReceived!(notification);
 
     public Task RaiseCondicoesAlteradasAsync(CondicoesAlteradasNotification notification) => _onCondicoes!(notification);
+
+    public Task RaiseFichaNoCemiterioAlteradaAsync(string sheetId) => _onFichaNoCemiterio!(sheetId);
 
     public Task RaiseChangedAsync() => _onChanged!();
 

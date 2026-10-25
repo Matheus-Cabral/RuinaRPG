@@ -18,7 +18,7 @@
     </div>
     <AutoSaveIndicator State="_autoSave.State" LastSavedAt="_autoSave.LastSavedAt" />
 </div>
-<RichTextEditor Html="@Html" HtmlChanged="OnHtmlChangedAsync" OnCommit="OnCommit" UploadImage="UploadInlineImageAsync" OnError="OnError" />
+<RichTextEditor Html="@Html" SomenteLeitura="SomenteLeitura" HtmlChanged="OnHtmlChangedAsync" OnCommit="OnCommit" UploadImage="UploadInlineImageAsync" OnError="OnError" />
 
 <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Galeria de imagens</MudText>
 <ImageAttachmentField AvailableImages="_pool" SelectedIds="_galleryIds" SelectedIdsChanged="OnGalleryChangedAsync"
@@ -32,6 +32,12 @@
     [Parameter] public string? Html { get; set; }
     [Parameter] public EventCallback<string?> HtmlChanged { get; set; }
     [Parameter] public EventCallback<string> OnError { get; set; }
+
+    /// <summary>
+    /// A ficha está no cemitério: o editor de texto fica só leitura (ele é JS e não lê a desabilitação em cascata, que
+    /// cobre a galeria abaixo dele).
+    /// </summary>
+    [Parameter] public bool SomenteLeitura { get; set; }
 
     /// <summary>The page's image pool ("minhas imagens" for the GM, the campaign's public images for a player).</summary>
     [Parameter] public List<ImageSummaryResponse> AvailableImages { get; set; } = new();

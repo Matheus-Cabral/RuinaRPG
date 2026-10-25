@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Images;
 
@@ -37,6 +38,55 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
 
     /// <summary>Os Sub-Atributos, relidos com o Combate (abas 2 e 3); a aba Posses mostra o Peso deles.</summary>
     public SubAttributesResponse? SubAtributos { get; set; }
+
+    /// <summary>
+    /// A ficha está no cemitério (Ficha de Personagem R0010): as abas ficam desabilitadas em cascata e nada é salvo. Vem
+    /// com a ficha (<see cref="DefinirCemiterio"/>); onde o tipo não tem cemitério, sempre falso.
+    /// </summary>
+    public bool SomenteLeitura { get; private set; }
+
+    /// <summary>Os motivos do cemitério como o servidor os manda (<c>Morte</c>, <c>RemovidoDaCampanha</c>, <c>ContaInativa</c>).</summary>
+    public IReadOnlyList<string> MotivosDoCemiterio { get; private set; } = [];
+
+    /// <summary>A caixa "Morto" do GM: marcada quando um dos motivos é a morte.</summary>
+    public bool Morto => MotivosDoCemiterio.Contains("Morte");
+
+    /// <summary>O rótulo de um motivo do cemitério, como o cliente o mostra.</summary>
+    public static string RotuloDoMotivo(string motivo) => motivo switch
+    {
+        "Morte" => "Personagem morto",
+        "RemovidoDaCampanha" => "Jogador removido da campanha",
+        "ContaInativa" => "Conta do jogador inativa",
+        _ => motivo,
+    };
+
+    /// <summary>
+    /// O estado do cemitério que veio com a ficha. Só leitura fecha a escolha pendente de Característica Racial (um
+    /// diálogo fora das abas, que a cascata não alcança).
+    /// </summary>
+    public void DefinirCemiterio(bool noCemiterio, IReadOnlyList<string>? motivos)
+    {
+        if (!Tipo.TemCemiterio)
+            return;
+        SomenteLeitura = noCemiterio;
+        MotivosDoCemiterio = motivos ?? [];
+        if (SomenteLeitura)
+            EscolhaRacialAberta = false;
+    }
+
+    /// <summary>Relê só o estado do cemitério (o aviso em tempo real, a caixa "Morto"); o alerta de erro fica como está.</summary>
+    public async Task RecarregarCemiterioAsync()
+    {
+        if (!Tipo.TemCemiterio)
+            return;
+        var response = await Http.GetAsync(Tipo.Url(SheetId));
+        if (!response.IsSuccessStatusCode)
+            return;
+        var ficha = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
+        if (ficha is not null)
+            DefinirCemiterio(ficha.NoCemiterio, ficha.MotivosDoCemiterio);
+        NotificarAlteracao();
+    }
 
     /// <summary>Algo mudou fora de um evento da própria página (uma aba filha): a página re-renderiza.</summary>
     public event Action? Alterado;

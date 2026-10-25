@@ -15,7 +15,8 @@
     {
         <div class="mt-2">
             <MudText Typo="Typo.body2">Pontos de Sina</MudText>
-            <MudRating SelectedValue="Formulario.SinaAtual" SelectedValueChanged="MudarSinaAsync" MaxValue="3" Size="Size.Large" Class="rr-sina-rating" />
+            @* O MudRating não lê a desabilitação em cascata (ficha no cemitério). *@
+            <MudRating SelectedValue="Formulario.SinaAtual" SelectedValueChanged="MudarSinaAsync" MaxValue="3" Size="Size.Large" Class="rr-sina-rating" Disabled="Estado.SomenteLeitura" />
         </div>
     }
     <MudNumericField T="int?" @bind-Value="Formulario.VitalidadeAtual" For="@(() => Formulario.VitalidadeAtual)" Label="Vitalidade" Adornment="Adornment.End" AdornmentText="@($"/ {Formulario.VitalidadeMaximo}")" @bind-Value:after="AoMudarAsync" />

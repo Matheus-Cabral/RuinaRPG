@@ -56,6 +56,19 @@ public class SecretNoteNotifierTests
     }
 
     [Fact]
+    public async Task A_sheet_entering_or_leaving_the_cemetery_is_relayed_with_its_id()
+    {
+        var notifier = CreateNotifier();
+        await notifier.StartAsync(notasSecretas: false);
+        var received = new List<string>();
+        notifier.FichaNoCemiterioAlterada += received.Add;
+
+        await _connection.RaiseFichaNoCemiterioAlteradaAsync("s1");
+
+        received.Should().Equal("s1");
+    }
+
+    [Fact]
     public async Task Start_without_secret_notes_connects_relays_conditions_and_never_loads_the_counts()
     {
         var notifier = CreateNotifier();

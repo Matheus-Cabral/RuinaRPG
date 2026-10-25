@@ -13,7 +13,9 @@ public interface INotificationConnection : IAsyncDisposable
 
     /// <summary><paramref name="onChanged"/> also runs after an automatic reconnect, since events may have been missed.</summary>
     /// <param name="onCondicoes">The server changed the Condições acting on a sheet the user owns (the sheet pages reload).</param>
-    Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged, Func<CondicoesAlteradasNotification, Task> onCondicoes);
+    /// <param name="onFichaNoCemiterio">A sheet the user owns entered or left the cemetery (its id; the sheet page reloads).</param>
+    Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged, Func<CondicoesAlteradasNotification, Task> onCondicoes,
+        Func<string, Task> onFichaNoCemiterio);
 
     Task StopAsync();
 }

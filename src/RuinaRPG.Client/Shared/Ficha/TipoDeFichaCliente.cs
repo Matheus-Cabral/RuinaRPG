@@ -102,6 +102,12 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>A aba Diário.</summary>
     public required bool TemDiario { get; init; }
 
+    /// <summary>
+    /// O cemitério (Ficha de Personagem R0010): a ficha vem com <c>NoCemiterio</c> e os motivos, fica só leitura no
+    /// cemitério, e o GM tem a caixa "Morto" no cabeçalho.
+    /// </summary>
+    public required bool TemCemiterio { get; init; }
+
     /// <summary>O endereço da busca de Características (<c>traits</c> ou <c>creature-exclusive-traits</c>).</summary>
     public required string UrlDeBuscaDeCaracteristicas { get; init; }
 
@@ -135,6 +141,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemEspolios = false,
         TemAntecedentes = true,
         TemDiario = true,
+        TemCemiterio = true,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
 
@@ -166,6 +173,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemEspolios = false,
         TemAntecedentes = true,
         TemDiario = false,
+        TemCemiterio = false,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
 
@@ -196,6 +204,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         TemEspolios = true,
         TemAntecedentes = false,
         TemDiario = false,
+        TemCemiterio = false,
         UrlDeBuscaDeCaracteristicas = "creature-exclusive-traits",
     };
 }
