@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Contracts.Notifications;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -85,5 +86,32 @@ public class CemiterioHubTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         (await chegou.WaitAsync(StaysSilent)).Should().BeFalse("o estado continua no cemitério (RemovidoDaCampanha)");
         recebidas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Marcar_morto_avisa_os_encontros_da_ficha()
+    {
+        var c = await MontarAsync();
+        var encounterId = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{c.CampaignId}/encounters", c.GmToken, new CreateEncounterRequest("Encontro"))))
+            .Content.ReadFromJsonAsync<EncounterResponse>())!.Id;
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/encounters/{encounterId}/participants", c.GmToken, new AddParticipantRequest(c.SheetId, null, null, 10))))
+            .EnsureSuccessStatusCode();
+
+        var connection = new HubConnectionBuilder()
+            .WithUrl(new Uri(Client.BaseAddress!, "/hubs/encounters"), options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(c.GmToken);
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
+            })
+            .Build();
+        await using var _ = connection;
+        var chegou = new SemaphoreSlim(0);
+        connection.On("ParticipantsChanged", () => chegou.Release());
+        await connection.StartAsync();
+        await connection.InvokeAsync("JoinEncounter", encounterId);
+
+        (await DefinirMorteAsync(c, true)).EnsureSuccessStatusCode();
+
+        (await chegou.WaitAsync(Arrives)).Should().BeTrue("o encontro mostra o participante no cemitério");
     }
 }

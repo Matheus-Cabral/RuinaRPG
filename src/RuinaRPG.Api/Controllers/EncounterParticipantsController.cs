@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Hubs;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Encounters;
@@ -18,9 +19,12 @@ namespace RuinaRPG.Api.Controllers;
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
 public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro,
-    CharacterSheetStats personagens, NpcSheetStats npcs, CreatureSheetStats criaturas, CondicoesAtivasDaFicha condicoes,
+    CharacterSheetStats personagens, NpcSheetStats npcs, CreatureSheetStats criaturas, CondicoesAtivasDaFicha condicoes, CemiterioDaFicha cemiterio,
     IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<EncounterParticipantsController> logger) : ControllerBase
 {
+    /// <summary>Gerenciador de Encontros R0002: uma Ficha de Personagem no cemitério não entra num encontro.</summary>
+    public const string RecusaDoCemiterio = "Esta ficha está no cemitério e não pode entrar em encontros.";
+
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
     {
@@ -46,6 +50,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             // R0002: the CharacterSheet must belong to the encounter's own campaign. Wrong campaign is
             // treated identically to "doesn't exist" — no distinct message, same convention used elsewhere.
             if (sheet is null || sheet.CampaignId != encounter!.CampaignId) return BadRequest("Ficha de Personagem não encontrada.");
+            if ((await cemiterio.MotivosAsync(sheet)).Count > 0) return Conflict(RecusaDoCemiterio);
             participant.SourceCharacterSheetId = sheet.Id;
             participant.Nome = sheet.Nome ?? "";
             // PV/PF/PA stay null — always live-sourced for a CharacterSheet (owner's own, or a granted pet).
@@ -106,7 +111,8 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteAdicionado, participant.Nome);
         await db.SaveChangesAsync();
 
-        return Created(string.Empty, await ToResponseAsync(participant, new List<string>(), new List<CondicaoAplicadaResponse>()));
+        // Uma ficha no cemitério foi recusada acima: o participante novo nunca está nele.
+        return Created(string.Empty, await ToResponseAsync(participant, new List<string>(), new List<CondicaoAplicadaResponse>(), noCemiterio: false));
     }
 
     /// <summary>
@@ -157,6 +163,11 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         if (request.Condicoes.Any(t => !existingConditions.Any(c => c.Texto == t)))
             return BadRequest("Novas condições vêm do catálogo.");
 
+        // R0015: numa ficha no cemitério o GM não edita PV/PF/PA nem remove Condições; Iniciativa e Ações seguem.
+        if (participant.SourceCharacterSheetId is { } fichaId && await cemiterio.NoCemiterioAsync(fichaId)
+            && (EditaRecurso(request) || existingConditions.Any(c => !request.Condicoes.Contains(c.Texto))))
+            return Conflict(FichaNoCemiterioFilter.Mensagem);
+
         var antes = (participant.Iniciativa, participant.AcoesRestantes, participant.PVAtual, participant.PFAtual, participant.PAAtual);
 
         participant.Iniciativa = request.Iniciativa;
@@ -186,6 +197,10 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             await AvisarFichaAlteradaAsync(fichaAlterada);
         return NoContent();
     }
+
+    /// <summary>O GM mudou algum recurso: enviado diferente do carregado (a mesma regra de <see cref="GravarNaFichaAsync"/>).</summary>
+    private static bool EditaRecurso(UpdateParticipantRequest r) =>
+        (r.PV is { } pv && pv != r.PVCarregado) || (r.PF is { } pf && pf != r.PFCarregado) || (r.PA is { } pa && pa != r.PACarregado);
 
     private static int? DaInstancia(int? guardado, int? enviado, int? carregado) =>
         carregado is null || enviado != carregado ? enviado : guardado;
@@ -349,19 +364,25 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             .GroupBy(c => c.EncounterParticipantId)
             .ToDictionary(g => g.Key, g => g.Select(c => CondicaoAplicadaMapper.ToResponse(c, encounter!)).ToList());
 
+        var fichaIds = participants.Where(p => p.SourceCharacterSheetId is not null).Select(p => p.SourceCharacterSheetId!.Value).Distinct().ToList();
+        var fichas = await db.CharacterSheets.Where(s => fichaIds.Contains(s.Id)).ToListAsync();
+        var motivos = await cemiterio.MotivosAsync(fichas);
+
         var responses = new List<EncounterParticipantResponse>();
         foreach (var participant in participants)
             responses.Add(await ToResponseAsync(participant, conditionsByParticipantId.GetValueOrDefault(participant.Id, new List<string>()),
-                aplicadasByParticipantId.GetValueOrDefault(participant.Id, new List<CondicaoAplicadaResponse>())));
+                aplicadasByParticipantId.GetValueOrDefault(participant.Id, new List<CondicaoAplicadaResponse>()),
+                participant.SourceCharacterSheetId is { } fichaId && motivos.TryGetValue(fichaId, out var daFicha) && daFicha.Count > 0));
         return responses;
     }
 
-    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p, List<string> condicoes, List<CondicaoAplicadaResponse> condicoesAplicadas)
+    /// <param name="noCemiterio">Só uma Ficha de Personagem pode estar no cemitério; NPC/Criatura respondem sempre false.</param>
+    private async Task<EncounterParticipantResponse> ToResponseAsync(EncounterParticipant p, List<string> condicoes, List<CondicaoAplicadaResponse> condicoesAplicadas, bool noCemiterio)
     {
         if (p.SourceCharacterSheetId is not null)
         {
             var sheet = await db.CharacterSheets.FindAsync(p.SourceCharacterSheetId.Value);
-            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true, condicoes, condicoesAplicadas, "Personagem");
+            return new EncounterParticipantResponse(p.Id.ToString(), p.Nome, p.Iniciativa, sheet?.VitalidadeAtual, sheet?.FocoAtual, sheet?.AdrenalinaAtual, p.AcoesRestantes, IsLiveSourced: true, condicoes, condicoesAplicadas, "Personagem", noCemiterio);
         }
         if (p.SourceNpcSheetId is not null)
         {

@@ -17,6 +17,10 @@ public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
         return Cemiterio.Motivos(sheet.Morto, donoEhMembro);
     }
 
+    /// <summary>A Ficha de Personagem existe e está no cemitério. Ficha apagada não está.</summary>
+    public async Task<bool> NoCemiterioAsync(Guid characterSheetId) =>
+        await db.CharacterSheets.FindAsync(characterSheetId) is { } sheet && (await MotivosAsync(sheet)).Count > 0;
+
     public async Task<Dictionary<Guid, IReadOnlyList<MotivoDoCemiterio>>> MotivosAsync(IReadOnlyCollection<CharacterSheet> sheets)
     {
         var campanhas = sheets.Select(s => s.CampaignId).Distinct().ToList();
