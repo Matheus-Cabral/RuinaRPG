@@ -7,12 +7,13 @@
 # Cada argumento e o deploy/state/colors.env de um checkout que faz deploy neste host (por exemplo
 # /home/pro/RuinaRPG/deploy/state/colors.env, a stack de dev): as imagens de CURRENT_SHA e
 # PREVIOUS_SHA desses arquivos nunca sao removidas, mesmo paradas ha mais de 7 dias, porque sao
-# a release ativa e o alvo do rollback. Um arquivo listado que nao pode ser lido aborta tudo antes
-# de remover qualquer imagem.
+# a release ativa e o alvo do rollback. Um arquivo listado que existe mas nao pode ser lido aborta tudo
+# antes de remover qualquer imagem; um que nao existe (checkout que ainda nao fez deploy) e pulado.
 set -euo pipefail
 
 keep=" "
 for f in "$@"; do
+  [[ -e "$f" ]] || { echo "sem estado (ainda sem deploy): $f" >&2; continue; }
   [[ -r "$f" ]] || { echo "estado ilegivel: $f; nenhuma imagem removida" >&2; exit 1; }
   for key in CURRENT_SHA PREVIOUS_SHA; do
     v="$(sed -n "s/^$key=//p" "$f" | tail -1)"

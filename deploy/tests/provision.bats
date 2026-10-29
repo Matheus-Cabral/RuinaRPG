@@ -137,10 +137,20 @@ FAKE
   echo "$output"
   [ "$status" -eq 0 ]
   [ "$(cat "$calls")" = "rm ruinarpg-smoke:ccc" ]
-  # A state file that cannot be read: nothing is removed.
+  # A state file that exists but cannot be read: nothing is removed.
   : > "$calls"
-  PATH="$bin:$PATH" run bash "$P/runner-cleanup.sh" "$s1" "$BATS_TEST_TMPDIR/missing.env"
-  [ "$status" -ne 0 ]
-  [ ! -s "$calls" ]
+  locked="$BATS_TEST_TMPDIR/locked.env"; printf 'CURRENT_SHA=ccc\n' > "$locked"; chmod 000 "$locked"
+  if [[ ! -r "$locked" ]]; then
+    PATH="$bin:$PATH" run bash "$P/runner-cleanup.sh" "$s1" "$locked"
+    [ "$status" -ne 0 ]
+    [ ! -s "$calls" ]
+  fi
+  # A checkout that never deployed has no colors.env and nothing to protect: the cleanup goes on.
+  : > "$calls"
+  PATH="$bin:$PATH" run bash "$P/runner-cleanup.sh" "$s2" "$BATS_TEST_TMPDIR/missing.env"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$calls")" = "rm ruinarpg-api:aaa
+rm ruinarpg-smoke:ccc" ]
   grep -qF /home/pro/RuinaRPG/deploy/state/colors.env "$P/runner.md"
 }

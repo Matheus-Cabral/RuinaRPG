@@ -590,8 +590,9 @@ roll_back() {
 undo_on_failure() {
   local rc=$?
   [[ -n "$UNDO_ARMED" && $rc -ne 0 ]] || return 0
-  UNDO_ARMED=""
+  # Signals first: one landing before the trap is ignored would stop the undo halfway.
   trap '' HUP INT TERM
+  UNDO_ARMED=""
   log "deploy falhou (código $rc): desfazendo a troca para api-$NEW"
   roll_back "$DEPLOY_SHA" none
 }
@@ -609,6 +610,8 @@ arm_undo() {
 smoke_failed() {
   local sha="$1"
   log "smoke falhou em api-$NEW"
+  # From here the run either rolls back or records the first deploy: a signal must not cut it short.
+  trap '' HUP INT TERM
   UNDO_ARMED=""
   [[ "$OLD" != none ]] || {
     ACTIVE="$NEW" CURRENT_SHA="$sha" MODE="$RUN_MODE"
@@ -699,9 +702,10 @@ cmd_deploy() {
   point_client_at "$sha"
 
   if ! run_smoke "$NEW" "$sha"; then smoke_failed "$sha"; fi
-  UNDO_ARMED=""
   # Committed: nginx and the client serve the new color, so nothing may stop the run before save_state.
+  # Signals are ignored before the undo is disarmed, so none can land in between.
   trap '' HUP INT TERM
+  UNDO_ARMED=""
   finish_deploy "$sha"
   result "$sha" "$NEW" ok none
 }
