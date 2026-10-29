@@ -8,6 +8,6 @@ public static class NotificationEvents
     public const string CondicoesAlteradas = "CondicoesAlteradas";
     public const string FichaNoCemiterioAlterada = "FichaNoCemiterioAlterada";
 
-    /// <summary>O jogador entrou ou saiu de uma campanha (Campanha R0018): o painel aberto recarrega as campanhas e as fichas.</summary>
+    /// <summary>O jogador foi removido de uma campanha (também ao ter a conta desativada ou excluída) ou foi adicionado a uma, inclusive ao voltar a ela (Campanha R0018): o painel aberto recarrega as campanhas e as fichas.</summary>
     public const string CampanhasDoJogadorAlteradas = "CampanhasDoJogadorAlteradas";
 }

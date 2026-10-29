@@ -19,6 +19,7 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
 {
     private readonly HashSet<Guid> _encontrosAAvisar = [];
     private readonly HashSet<Guid> _jogadoresAAvisar = [];
+    private readonly List<(Guid JogadorId, Guid FichaId)> _fichasAAvisar = [];
 
     /// <summary>
     /// Para cada campanha de <paramref name="campanhaIds"/>: os participantes vindos de uma Ficha de Personagem dele ou de
@@ -54,6 +55,8 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
 
         db.CampaignMembers.RemoveRange(await db.CampaignMembers.Where(m => m.UserId == jogadorId && campanhaIds.Contains(m.CampaignId)).ToListAsync());
         _jogadoresAAvisar.Add(jogadorId);
+        var personagens = await db.CharacterSheets.Where(s => s.OwnerId == jogadorId && campanhaIds.Contains(s.CampaignId)).Select(s => s.Id).ToListAsync();
+        _fichasAAvisar.AddRange(personagens.Select(f => (jogadorId, f)));
     }
 
     private async Task SairDosEncontrosAsync(Guid jogadorId, IReadOnlyCollection<Guid> campanhaIds, HashSet<(Guid CampaignId, Guid FichaId)> concedidasNaSaida)
@@ -86,7 +89,7 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
 
     /// <summary>
     /// Depois do salvamento que deu certo: os avisos das Condições, ParticipantsChanged aos encontros que perderam
-    /// participantes e CampanhasDoJogadorAlteradas ao jogador. Uma falha dos hubs vai para o log e não derruba a ação.
+    /// participantes, FichaNoCemiterioAlterada ao jogador por Ficha de Personagem que saiu junto e CampanhasDoJogadorAlteradas. Uma falha dos hubs vai para o log e não derruba a ação.
     /// </summary>
     public async Task NotificarAsync()
     {
@@ -102,16 +105,9 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
                 logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
             }
         }
+        foreach (var (jogadorId, fichaId) in _fichasAAvisar)
+            await notificacoes.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.FichaNoCemiterioAlterada, fichaId.ToString());
         foreach (var jogadorId in _jogadoresAAvisar)
-        {
-            try
-            {
-                await notificacoes.Clients.User(jogadorId.ToString()).SendAsync(NotificationEvents.CampanhasDoJogadorAlteradas);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to push CampanhasDoJogadorAlteradas to player {PlayerId}", jogadorId);
-            }
-        }
+            await notificacoes.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.CampanhasDoJogadorAlteradas);
     }
 }

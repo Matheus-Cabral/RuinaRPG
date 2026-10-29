@@ -21,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/campaigns")]
 [Authorize(Roles = "GM")]
-public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, SaidaDoJogador saida, ILogger<CampaignsController> logger) : ControllerBase
+public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, SaidaDoJogador saida, CemiterioDaFicha cemiterio, ILogger<CampaignsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CampaignResponse>> Create(CreateCampaignRequest request)
@@ -124,9 +124,24 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             // lose the race against the unique index on (CampaignId, UserId). Treat that as the
             // same idempotent success instead of letting it surface as a 500.
             db.ChangeTracker.Clear();
+            return NoContent();
         }
 
+        await AvisarEntradaAsync(campaignId, player.Id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Campanha R0018: ao voltar, o jogador recebe o painel atualizado e, por Ficha de Personagem sua na campanha que saiu
+    /// do cemitério, FichaNoCemiterioAlterada (a ficha aberta volta a ser editável).
+    /// </summary>
+    private async Task AvisarEntradaAsync(Guid campaignId, Guid jogadorId)
+    {
+        var fichas = await db.CharacterSheets.Where(f => f.CampaignId == campaignId && f.OwnerId == jogadorId).ToListAsync();
+        var motivos = await cemiterio.MotivosAsync(fichas);
+        foreach (var ficha in fichas.Where(f => motivos[f.Id].Count == 0))
+            await notifications.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.FichaNoCemiterioAlterada, ficha.Id.ToString());
+        await notifications.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.CampanhasDoJogadorAlteradas);
     }
 
     /// <summary>

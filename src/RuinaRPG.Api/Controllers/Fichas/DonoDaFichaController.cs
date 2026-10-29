@@ -43,6 +43,9 @@ public abstract class DonoDaFichaController<TSheet>(RuinaRpgDbContext db, ITipoD
             if (!Guid.TryParse(request.DonoId, out var donoId) || !await MembroAtivoDeUmaCampanhaDaFichaAsync(sheetId, gmId, donoId))
                 return BadRequest(RecusaDoDono);
             ficha.OwnerId = donoId;
+            // Ficha concedida é privada (Campanha R0008/R0018/R0019): o Mestre não a vê em Anexos para voltar a publicar o nome ou a imagem.
+            foreach (var anexo in await Anexos(sheetId).ToListAsync())
+                anexo.IsPublic = anexo.NpcNomePublico = anexo.NpcImagemPublica = anexo.CreatureNomePublico = anexo.CreatureImagemPublica = false;
         }
 
         await Db.SaveChangesAsync();

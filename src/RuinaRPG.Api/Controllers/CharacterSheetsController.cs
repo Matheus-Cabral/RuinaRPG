@@ -98,14 +98,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
         if (estavaNoCemiterio != estaNoCemiterio)
         {
-            try
-            {
-                await notificacoes.Clients.User(sheet.OwnerId.ToString()).SendAsync(NotificationEvents.FichaNoCemiterioAlterada, sheet.Id.ToString());
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to push FichaNoCemiterioAlterada for sheet {SheetId}", sheet.Id);
-            }
+            await notificacoes.AvisarUsuarioAsync(logger, sheet.OwnerId, NotificationEvents.FichaNoCemiterioAlterada, sheet.Id.ToString());
             await NotificarEncontrosAsync(id);
         }
 

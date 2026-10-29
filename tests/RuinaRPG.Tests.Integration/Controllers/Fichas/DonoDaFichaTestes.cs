@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Auth;
+using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
@@ -52,6 +53,30 @@ public abstract class DonoDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFic
         return (await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>())!.MeusCompanheiros;
     }
 
+    private async Task<List<PublicAttachmentSummary>> AnexosPublicosParaAsync(string token, string campaignId)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/player-view", token));
+        return (await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>())!.AnexosPublicos;
+    }
+
+    private async Task PublicarAnexosAsync(string sheetId)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var id = Guid.Parse(sheetId);
+        await db.CampaignAttachments.Where(a => a.NpcSheetId == id || a.CreatureSheetId == id).ExecuteUpdateAsync(s => s
+            .SetProperty(a => a.IsPublic, true).SetProperty(a => a.NpcNomePublico, true).SetProperty(a => a.NpcImagemPublica, true)
+            .SetProperty(a => a.CreatureNomePublico, true).SetProperty(a => a.CreatureImagemPublica, true));
+    }
+
+    private async Task<List<CampaignAttachment>> AnexosDaFichaAsync(string sheetId)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var id = Guid.Parse(sheetId);
+        return await db.CampaignAttachments.AsNoTracking().Where(a => a.NpcSheetId == id || a.CreatureSheetId == id).ToListAsync();
+    }
+
     private async Task DesativarContaAsync(string userId)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
@@ -71,6 +96,23 @@ public abstract class DonoDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFic
         (await LerFichaAsync(novoToken, c.SheetId)).Should().Be(HttpStatusCode.OK);
         (await LerFichaAsync(c.DonoToken, c.SheetId)).Should().Be(HttpStatusCode.NotFound);
         (await MeusCompanheirosAsync(novoToken, c.CampaignId)).Should().ContainSingle(s => s.Id == c.SheetId);
+    }
+
+    [Fact]
+    public async Task Dar_a_ficha_a_um_jogador_torna_privados_os_anexos_dela()
+    {
+        var c = await ConcessaoAsync();
+        var (_, outroToken) = await OutroMembroAsync(c);
+        (await AlterarDonoAsync(c.GmToken, c.SheetId, null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await PublicarAnexosAsync(c.SheetId);
+        (await AnexosPublicosParaAsync(outroToken, c.CampaignId)).Should().ContainSingle(a => a.Id != "", "o anexo público é visível a todos os membros");
+
+        var response = await AlterarDonoAsync(c.GmToken, c.SheetId, c.DonoId);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await AnexosPublicosParaAsync(outroToken, c.CampaignId)).Should().BeEmpty();
+        (await AnexosDaFichaAsync(c.SheetId)).Should().OnlyContain(a =>
+            !a.IsPublic && !a.NpcNomePublico && !a.NpcImagemPublica && !a.CreatureNomePublico && !a.CreatureImagemPublica);
     }
 
     [Fact]
