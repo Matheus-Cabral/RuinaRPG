@@ -57,6 +57,15 @@ validate_config() {
 
 # deploy.sh and lib.sh's compose() read these; nothing inherited from the caller may point them at
 # another stack.
+# The lock is shared by every OS user on the host (the runner and a developer use the same project and
+# port), so it is created readable by all and opened read-only: flock needs no write access, and a lock
+# file another user created can still be taken.
+open_lock() {
+  local f="${TMPDIR:-/tmp}/$RUINA_CLONE_PROJECT.lock"
+  [[ -e "$f" ]] || (umask 022 && : > "$f") 2>/dev/null || true
+  exec 8< "$f" || fatal "não consigo abrir o lock $f (dono: $(stat -c %U "$f" 2>/dev/null || echo ?))"
+}
+
 export_clone_env() {
   export RUINA_REPO_DIR="$WD/repo"
   export RUINA_PROJECT="$RUINA_CLONE_PROJECT"
@@ -322,7 +331,7 @@ cmd_run() {
   export_clone_env
 
   # One clone per project at a time: the project name and the port are shared by every run.
-  exec 8> "${TMPDIR:-/tmp}/$RUINA_CLONE_PROJECT.lock"
+  open_lock
   log "aguardando o lock de $RUINA_CLONE_PROJECT"
   flock 8
 
@@ -384,7 +393,7 @@ cmd_teardown() {
   fi
   export_clone_env
   # A run still tearing itself down holds the lock; wait for it, but never forever.
-  exec 8> "${TMPDIR:-/tmp}/$RUINA_CLONE_PROJECT.lock"
+  open_lock
   flock -w 600 8 || log "aviso: lock de $RUINA_CLONE_PROJECT ocupado; removendo mesmo assim"
   if [[ -z "$WD" ]]; then
     remove_project || fatal "o projeto $RUINA_CLONE_PROJECT não foi removido por completo"
