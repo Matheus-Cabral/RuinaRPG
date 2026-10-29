@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RuinaRPG.Contracts.Auth;
 using RuinaRPG.Domain;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Domain.Invites;
 using RuinaRPG.Infrastructure.Auth;
@@ -151,6 +152,10 @@ public class AuthController(
         if (user is null || !await userManager.CheckPasswordAsync(user, request.Senha))
             return Unauthorized("Credenciais inválidas.");
 
+        // Conferido só depois da senha, para que uma senha errada não revele o estado (R0002).
+        if (user.Estado != EstadoDaConta.Ativa)
+            return Unauthorized(TextosDaConta.ContaDesativada);
+
         return Ok(await IssueTokensAsync(user));
     }
 
@@ -164,9 +169,12 @@ public class AuthController(
         if (stored is null || !stored.IsActive)
             return Unauthorized();
 
-        stored.RevokedAt = DateTime.UtcNow;
         var user = await userManager.FindByIdAsync(stored.UserId.ToString());
-        var response = await IssueTokensAsync(user!);
+        if (user is null || user.Estado != EstadoDaConta.Ativa)
+            return Unauthorized();
+
+        stored.RevokedAt = DateTime.UtcNow;
+        var response = await IssueTokensAsync(user);
         await db.SaveChangesAsync();
 
         return Ok(response);
