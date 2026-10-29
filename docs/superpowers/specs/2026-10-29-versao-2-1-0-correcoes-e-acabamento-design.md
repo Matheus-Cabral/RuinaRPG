@@ -51,13 +51,13 @@ Lista completa em `2026-10-18-versao-2-0-0-d-backend-design.md`, seção "Diverg
 4. **Afeição existente (PUT)** → só o Personagem tem; **mantém**.
 5. **Inventário do NPC aceita qualquer item** → correto; **mantém**.
 6. **Magias: o Personagem nega leitura com 404 e escrita com 403** → o usuário disse "todos deveriam funcionar
-   assim". **Proposta:** regra única para os recursos da Ficha de Personagem — **leitura por quem não tem acesso:
+   assim". **Decidido pelo usuário (2026-10-29): só a Ficha de Personagem.** Regra única para os recursos da Ficha de Personagem — **leitura por quem não tem acesso:
    404** (não confirma que a ficha existe) e **escrita por quem não tem acesso: 403**. As Magias já seguem isso.
 7. **Peso carregado da Criatura** → atualizar para a fórmula de 2026-09-08 (só Inventário e Armas/Escudos
    **desequipados** contam), igual a Personagem e NPC. O hook `CargaAsync` sobrescrito em `CreatureSheetStats`
    deixa de existir. *(Chamada minha: o peso é calculado na leitura, nada gravado muda; nenhuma migração de
    dados.)*
-8. **Leituras 404 × 403 do Personagem** → "averigue caso a caso". **Proposta:** pela regra do item 6, os cinco GET
+8. **Leituras 404 × 403 do Personagem** → "averigue caso a caso". **Aprovado pelo usuário (2026-10-29):** pela regra do item 6, os cinco GET
    que hoje negam com 403 — `level-up-notice`, `sub-attributes`, `condicoes-ativas`, `equipment-penalties`,
    `modificador-de-dano` — passam a negar com **404**, como os outros GET da ficha. Caso a caso: todos são leituras
    da própria ficha que revelam o mesmo que o GET da ficha (já 404); nenhum é escrita. NPC e Criatura **não mudam**
