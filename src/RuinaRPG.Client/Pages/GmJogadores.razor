@@ -1,6 +1,7 @@
 @page "/painel/jogadores"
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Players
+@using RuinaRPG.Domain.Auth
 @using MudBlazor
 
 <Breadcrumbs Items="@Crumbs" />
@@ -9,6 +10,14 @@
 
 <Section Title="Filtros">
     <MudTextField T="string" @bind-Value="_query" Immediate="true" @bind-Value:after="DebouncedSearchAsync" Label="Buscar por nickname ou e-mail" />
+</Section>
+
+<Section Title="Jogadores">
+    <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
+
+    <div data-testid="jogadores-ativos">
+        @TabelaDeJogadores(Ativos, ativos: true)
+    </div>
 </Section>
 
 <Section Title="Jogadores">
@@ -37,6 +46,65 @@
     </MudSimpleTable>
 </Section>
 
+@if (Desativados.Any())
+{
+    <Section Title="Desativados">
+        <div data-testid="jogadores-desativados">
+            <MudText Typo="Typo.h5">Desativados</MudText>
+            @TabelaDeJogadores(Desativados, ativos: false)
+        </div>
+    </Section>
+}
+
+@code {
+    private RenderFragment TabelaDeJogadores(IEnumerable<PlayerSearchResultResponse> jogadores, bool ativos) => __builder =>
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+            <thead>
+                <tr>
+                    <th>Nickname</th>
+                    <th>E-mail</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var player in jogadores)
+                {
+                    <tr>
+                        <td>@player.Nickname</td>
+                        <td>@player.Email</td>
+                        <td>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartReset(player.Id, player.Nickname))">Redefinir senha</MudButton>
+                            @if (ativos)
+                            {
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.PersonOff" data-testid="@($"desativar-{player.Id}")" OnClick="@(() => ChangeStateAsync(player.Id, "desativar"))">Desativar</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.PersonAdd" data-testid="@($"reativar-{player.Id}")" OnClick="@(() => ChangeStateAsync(player.Id, "reativar"))">Reativar</MudButton>
+                            }
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Delete" data-testid="@($"excluir-{player.Id}")" OnClick="@(() => StartDelete(player))">Excluir</MudButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    };
+}
+
+<MudDialog @bind-Visible="_deleteDialogOpen">
+    <TitleContent>Excluir @_deletingPlayer?.Nickname</TitleContent>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_deleteErrorMessage" Class="mb-3" />
+        <MudText>Esta ação não pode ser desfeita. Digite o apelido do jogador para confirmar.</MudText>
+        <MudTextField T="string" @bind-Value="_typedNickname" Immediate="true" Label="Apelido" data-testid="apelido-exclusao" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelDelete">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@(_typedNickname != _deletingPlayer?.Nickname)" data-testid="confirmar-exclusao" OnClick="ConfirmDeleteAsync">Excluir</MudButton>
+    </DialogActions>
+</MudDialog>
+
 <MudDialog @bind-Visible="_resetDialogOpen">
     <TitleContent>Redefinir senha de @_resettingPlayerNickname</TitleContent>
     <DialogContent>
@@ -57,7 +125,15 @@
         new("Jogadores"),
     };
 
+    private const string EstadoDesativada = nameof(EstadoDaConta.Desativada);
+
     private string _query = "";
+    private IEnumerable<PlayerSearchResultResponse> Ativos => _players.Where(p => p.Estado != EstadoDesativada);
+    private IEnumerable<PlayerSearchResultResponse> Desativados => _players.Where(p => p.Estado == EstadoDesativada);
+    private PlayerSearchResultResponse? _deletingPlayer;
+    private bool _deleteDialogOpen;
+    private string _typedNickname = "";
+    private string? _deleteErrorMessage;
     private List<PlayerSearchResultResponse> _players = new();
     private string? _errorMessage;
     private string? _resettingPlayerId;
@@ -98,6 +174,46 @@
 
         _errorMessage = null;
         _players = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
+    }
+
+    private async Task ChangeStateAsync(string playerId, string action)
+    {
+        var response = await Http.PostAsync($"players/{playerId}/{action}", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível alterar o estado da conta.";
+            return;
+        }
+
+        await SearchAsync();
+    }
+
+    private void StartDelete(PlayerSearchResultResponse player)
+    {
+        _deletingPlayer = player;
+        _typedNickname = "";
+        _deleteDialogOpen = true;
+    }
+
+    private void CancelDelete()
+    {
+        _deleteDialogOpen = false;
+        _deletingPlayer = null;
+        _typedNickname = "";
+        _deleteErrorMessage = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"players/{_deletingPlayer!.Id}/excluir", new ExcluirContaRequest(_typedNickname));
+        if (!response.IsSuccessStatusCode)
+        {
+            _deleteErrorMessage = "Não foi possível excluir a conta.";
+            return;
+        }
+
+        CancelDelete();
+        await SearchAsync();
     }
 
     private void StartReset(string playerId, string nickname)

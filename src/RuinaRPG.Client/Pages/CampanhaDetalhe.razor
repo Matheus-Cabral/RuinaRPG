@@ -780,7 +780,8 @@
     {
         var response = await Http.GetAsync($"players?q={Uri.EscapeDataString(_memberSearch)}");
         if (response.IsSuccessStatusCode)
-            _searchResults = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
+            _searchResults = (await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new())
+                .Where(p => p.Estado == nameof(RuinaRPG.Domain.Auth.EstadoDaConta.Ativa)).ToList();
     }
 
     private async Task AddMemberAsync(string playerId)

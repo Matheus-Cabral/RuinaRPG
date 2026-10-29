@@ -854,4 +854,36 @@ public class CampanhaDetalheTests : MudBunitContext
 
         dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Novo dono"));
     }
+
+    [Fact]
+    public void Busca_de_membro_mostra_so_ativos()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("players"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<RuinaRPG.Contracts.Players.PlayerSearchResultResponse>
+                    {
+                        new("1", "Ana", "ana@x.com", "Ativa"),
+                        new("2", "Beto", "beto@x.com", "Desativada"),
+                    })
+                };
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }));
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+
+        cut.Find("input[type=text]").Input("a");
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.Should().Contain("Ana (ana@x.com)");
+            cut.Markup.Should().NotContain("Beto");
+        });
+    }
 }
