@@ -33,6 +33,23 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     /// <summary>A campanha da ficha (vem com a ficha); com ela o jogador busca o que a campanha liberou.</summary>
     public string? CampaignId { get; set; }
 
+    /// <summary>O nome da campanha da concessão (vem com a ficha de NPC/Criatura); <c>null</c> numa ficha só do GM.</summary>
+    public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// A trilha do NPC e da Criatura (2.1.0 A.1): o GM vê Painel, a lista do GM (<see cref="TipoDeFichaCliente.ListaDoGm"/>)
+    /// e a ficha; o jogador dono, que não abre as páginas do GM, vê Painel, Minhas Campanhas, a campanha e a ficha.
+    /// </summary>
+    public List<RuinaRPG.Client.Shared.BreadcrumbItem> TrilhaDaFichaConcedivel(string? nome)
+    {
+        var ficha = new RuinaRPG.Client.Shared.BreadcrumbItem(string.IsNullOrWhiteSpace(nome) ? Tipo.Titulo : nome);
+        if (!IsGmCaller && CampaignId is not null && CampaignName is not null)
+            return new() { new("Painel", "painel"), new("Minhas Campanhas", "minhas-campanhas"), new(CampaignName, $"campanhas/{CampaignId}/jogador"), ficha };
+
+        var lista = Tipo.ListaDoGm!.Value;
+        return new() { new("Painel", "painel"), new(lista.Rotulo, lista.Rota), ficha };
+    }
+
     /// <summary>A galeria de imagens: as do GM, ou as liberadas na campanha para o jogador.</summary>
     public List<ImageSummaryResponse> MinhasImagens { get; set; } = new();
 

@@ -256,7 +256,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
             s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.EstresseAtual,
             s.Cobertura.ToString(), s.Ciclos, graduacao, graduacaoLabel,
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
-            campaignId?.ToString(), s.ImageId?.ToString(), s.ArcaRolada,
+            campaignId?.ToString(), await NomeDaCampanhaAsync(Db, campaignId), s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
             s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
             abate, assistencia);

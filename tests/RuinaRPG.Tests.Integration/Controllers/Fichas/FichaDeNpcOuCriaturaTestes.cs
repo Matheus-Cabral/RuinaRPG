@@ -55,6 +55,20 @@ public abstract class FichaDeNpcOuCriaturaTestes<TTipo>(ApiFixture fixture) : Te
     }
 
     [Fact]
+    public async Task Resposta_da_ficha_concedida_traz_a_campanha()
+    {
+        var concedida = await FichaDeJogadorAsync();
+        var soDoGm = await NovaFichaAsync();
+
+        var daConcessao = await (await GetAsync(UrlDaFicha(concedida.SheetId), concedida.Token)).Content.ReadFromJsonAsync<FichaLida>();
+        var doGm = await (await GetAsync(UrlDaFicha(soDoGm.SheetId), soDoGm.GmToken)).Content.ReadFromJsonAsync<FichaLida>();
+
+        daConcessao!.CampaignId.Should().Be(concedida.CampaignId);
+        daConcessao.CampaignName.Should().Be("Campanha");
+        doGm!.CampaignName.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Get_by_the_owning_gm_returns_200()
     {
         var f = await NovaFichaAsync();

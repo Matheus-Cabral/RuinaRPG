@@ -35,17 +35,22 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     protected static readonly string[] LeituraDaCondicao = { "Condições ativas", "Atordoado", "— 2 turnos", "Tonto.", "Vigor −2" };
 
-    protected static string[] Trilha(string tipo) => tipo switch
+    // 2.1.0 (A.1): o jogador dono de um NPC/Criatura concedido vê o caminho pela campanha, como no Personagem; o GM, o de hoje.
+    protected static string[] Trilha(string tipo, string papel) => (tipo, papel) switch
     {
-        "Personagem" => new[] { "Painel", "/", "Campanhas", "/", "Crônicas de Alker", "/", "Aria" },
-        "NPC" => new[] { "Painel", "/", "NPCs do GM", "/", "Borin" },
+        ("Personagem", _) => new[] { "Painel", "/", "Campanhas", "/", "Crônicas de Alker", "/", "Aria" },
+        ("NPC", "Jogador") => new[] { "Painel", "/", "Minhas Campanhas", "/", "Crônicas de Alker", "/", "Borin" },
+        ("Criatura", "Jogador") => new[] { "Painel", "/", "Minhas Campanhas", "/", "Crônicas de Alker", "/", "Lobo Cinzento" },
+        ("NPC", _) => new[] { "Painel", "/", "NPCs do GM", "/", "Borin" },
         _ => new[] { "Painel", "/", "Bestiário do GM", "/", "Lobo Cinzento" },
     };
 
-    protected static string[] LinksDaTrilha(string tipo) => tipo switch
+    protected static string[] LinksDaTrilha(string tipo, string papel) => (tipo, papel) switch
     {
-        "Personagem" => new[] { "Painel → painel", "Campanhas → campanhas", "Crônicas de Alker → campanhas/c1", "Aria → #" },
-        "NPC" => new[] { "Painel → painel", "NPCs do GM → npcs", "Borin → #" },
+        ("Personagem", _) => new[] { "Painel → painel", "Campanhas → campanhas", "Crônicas de Alker → campanhas/c1", "Aria → #" },
+        ("NPC", "Jogador") => new[] { "Painel → painel", "Minhas Campanhas → minhas-campanhas", "Crônicas de Alker → campanhas/c1/jogador", "Borin → #" },
+        ("Criatura", "Jogador") => new[] { "Painel → painel", "Minhas Campanhas → minhas-campanhas", "Crônicas de Alker → campanhas/c1/jogador", "Lobo Cinzento → #" },
+        ("NPC", _) => new[] { "Painel → painel", "NPCs do GM → npcs", "Borin → #" },
         _ => new[] { "Painel → painel", "Bestiário do GM → bestiario", "Lobo Cinzento → #" },
     };
 
@@ -244,7 +249,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
             var cut = await RenderFichaAsync(tipo, papel);
 
-            var esperado = new List<string>(Trilha(tipo)) { Titulo(tipo) };
+            var esperado = new List<string>(Trilha(tipo, papel)) { Titulo(tipo) };
             esperado.AddRange(CaixaMorto(tipo, papel));
             if (MostraCondicoes(tipo, papel))
                 esperado.AddRange(LeituraDaCondicao);
@@ -253,8 +258,31 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
             cut.FindAll(".mud-breadcrumb-item")
                 .Select(li => li.QuerySelector("a") is { } a ? $"{TextoNormalizado(li)} → {a.GetAttribute("href")}" : TextoNormalizado(li))
-                .Should().Equal(LinksDaTrilha(tipo));
+                .Should().Equal(LinksDaTrilha(tipo, papel));
             TextoNormalizado(cut.Find("h1")).Should().Be(Titulo(tipo));
+        }
+
+        public static TheoryData<string> NpcECriatura => new() { "NPC", "Criatura" };
+
+        [Theory]
+        [MemberData(nameof(NpcECriatura))]
+        public async Task Jogador_ve_a_trilha_pela_campanha(string tipo)
+        {
+            var cut = await RenderFichaAsync(tipo, "Jogador");
+
+            var links = cut.FindAll(".mud-breadcrumb-item a").Select(a => a.GetAttribute("href")).ToList();
+            links.Should().Equal("painel", "minhas-campanhas", "campanhas/c1/jogador", "#");
+            links.Should().NotContain(new[] { "npcs", "bestiario" });
+        }
+
+        [Theory]
+        [MemberData(nameof(NpcECriatura))]
+        public async Task GM_ve_a_trilha_de_hoje(string tipo)
+        {
+            var cut = await RenderFichaAsync(tipo, "GM");
+
+            cut.FindAll(".mud-breadcrumb-item a").Select(a => a.GetAttribute("href"))
+                .Should().Equal("painel", tipo == "NPC" ? "npcs" : "bestiario", "#");
         }
 
         [Theory]
@@ -263,7 +291,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         {
             var cut = await RenderFichaAsync(tipo, papel);
 
-            LeituraDoCabecalho(cut).Should().Equal(new List<string>(Trilha(tipo)) { Titulo(tipo) }.Concat(CaixaMorto(tipo, papel)));
+            LeituraDoCabecalho(cut).Should().Equal(new List<string>(Trilha(tipo, papel)) { Titulo(tipo) }.Concat(CaixaMorto(tipo, papel)));
         }
 
         [Theory]

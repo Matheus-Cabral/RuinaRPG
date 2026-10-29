@@ -54,12 +54,7 @@
     private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
 
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
-    {
-        new("Painel", "painel"),
-        new("Bestiário do GM", "bestiario"),
-        new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Criatura" : _form.Nome),
-    };
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.TrilhaDaFichaConcedivel(_form.Nome);
 
     // A Criatura sempre tem Abate e Assistência (0 antes da carga, como sempre mostrou).
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };
@@ -192,6 +187,7 @@
         }
 
         _campaignId = sheet.CampaignId;
+        _estado.CampaignName = sheet.CampaignName;
         _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;

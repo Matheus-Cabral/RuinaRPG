@@ -175,6 +175,6 @@ public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNive
             s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, abate, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,
-            campaignId?.ToString(), s.ImageId?.ToString());
+            campaignId?.ToString(), await NomeDaCampanhaAsync(Db, campaignId), s.ImageId?.ToString());
     }
 }

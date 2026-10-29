@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Persistence;
 
@@ -51,6 +52,10 @@ public abstract class FichaControllerBase<TSheet>(ITipoDeFicha<TSheet> tipo) : C
         var image = await db.Images.FindAsync(imageId.Value);
         return image is not null ? $"/images/{image.Path}" : null;
     }
+
+    /// <summary>O nome da campanha da concessão (<see cref="ITipoDeFicha{TSheet}.CampanhaAsync"/>), ou null sem campanha.</summary>
+    protected static async Task<string?> NomeDaCampanhaAsync(RuinaRpgDbContext db, Guid? campaignId) =>
+        campaignId is null ? null : await db.Campaigns.Where(c => c.Id == campaignId).Select(c => c.Nome).FirstOrDefaultAsync();
 
     /// <summary>Resultado de <see cref="FichaEditavelAsync"/>: a ficha editável, ou o erro a devolver no lugar dela.</summary>
     protected sealed class AcessoAFicha

@@ -105,6 +105,12 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// </summary>
     public required bool TemCemiterio { get; init; }
 
+    /// <summary>
+    /// A lista do GM onde a ficha mora (NPC: "NPCs do GM", <c>npcs</c>; Criatura: "Bestiário do GM", <c>bestiario</c>): o
+    /// segundo item da trilha para o GM. <c>null</c> onde a trilha sempre passa pela campanha (Personagem).
+    /// </summary>
+    public (string Rotulo, string Rota)? ListaDoGm { get; init; }
+
     /// <summary>O endereço da busca de Características (<c>traits</c> ou <c>creature-exclusive-traits</c>).</summary>
     public required string UrlDeBuscaDeCaracteristicas { get; init; }
 
@@ -145,6 +151,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     {
         TipoDaNotificacao = "npc",
         Titulo = "Ficha de NPC",
+        ListaDoGm = ("NPCs do GM", "npcs"),
         CondicoesSoSeConcedida = true,
         TemLinhagemEVocacao = true,
         TemTracosRaciais = true,
@@ -176,6 +183,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     {
         TipoDaNotificacao = "creature",
         Titulo = "Ficha de Criatura",
+        ListaDoGm = ("Bestiário do GM", "bestiario"),
         CondicoesSoSeConcedida = true,
         TemLinhagemEVocacao = false,
         TemTracosRaciais = false,

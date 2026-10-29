@@ -61,12 +61,7 @@
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
     private bool _historiaLoaded { get => _estado.HistoriaCarregada; set => _estado.HistoriaCarregada = value; }
 
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
-    {
-        new("Painel", "painel"),
-        new("NPCs do GM", "npcs"),
-        new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de NPC" : _form.Nome),
-    };
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.TrilhaDaFichaConcedivel(_form.Nome);
 
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Npc);
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
@@ -198,6 +193,7 @@
         }
 
         _campaignId = sheet.CampaignId;
+        _estado.CampaignName = sheet.CampaignName;
         _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;

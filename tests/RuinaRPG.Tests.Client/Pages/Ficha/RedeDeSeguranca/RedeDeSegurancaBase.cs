@@ -555,7 +555,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         },
         "NPC" => new
         {
-            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
             nome = "Borin", linhagem = "Nephrytes", variante = "Koroanos", vocacao = "Campeao", subVocacao = "Duelista", afinidade = "Terra", propriedade = "Uma forja",
             nivel = 4, circulo = 0, grau = 2, possuiCoracaoDeMana = false, experienciaAtual = 200, eapAtual = 8,
             nucleosRankF = 0, nucleosRankE = 1, nucleosRankD = 1, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
@@ -569,7 +569,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         },
         _ => new
         {
-            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
             nome = "Lobo Cinzento", raca = "Lobo", arquetipo = "Fisico", subArquetipo = "Caçador", afinidade = "Ar", rank = "D",
             nivel = 2, experienciaAtual = 60, abate = 40, assistencia = 20, pontosDeIgnicao = 5,
             vitalidadeAtual = 18, focoAtual = 4, adrenalinaAtual = 2, cobertura = "Nenhuma",

@@ -97,6 +97,16 @@ public class TipoDeFichaClienteTests
         Ler<string?>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
     }
 
+    // 2.1.0 A.1: a lista do GM é o segundo item da trilha do GM; o Personagem não tem (a trilha dele passa pela campanha).
+    [Theory]
+    [InlineData(nameof(TipoDeFichaCliente.ListaDoGm), "NPCs do GM", "npcs", "Bestiário do GM", "bestiario")]
+    public void Lista_do_GM_per_kind(string membro, string npcRotulo, string npcRota, string criaturaRotulo, string criaturaRota)
+    {
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Personagem, membro).Should().BeNull();
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Npc, membro).Should().Be((npcRotulo, npcRota));
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Criatura, membro).Should().Be((criaturaRotulo, criaturaRota));
+    }
+
     // Nenhum fato fica sem teste: cada propriedade pública de TipoDeFichaCliente aparece num InlineData acima.
     [Fact]
     public void Every_member_is_pinned_by_a_test()
