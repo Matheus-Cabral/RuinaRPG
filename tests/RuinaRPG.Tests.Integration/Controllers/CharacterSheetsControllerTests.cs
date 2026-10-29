@@ -760,7 +760,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
     }
 
     [Fact]
-    public async Task SubAttributes_by_an_unrelated_jogador_returns_403()
+    public async Task SubAttributes_by_an_unrelated_jogador_returns_404()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub3", "sheetsub3@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub3", "sheetplayersub3@teste.com");
@@ -771,7 +771,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", otherToken));
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

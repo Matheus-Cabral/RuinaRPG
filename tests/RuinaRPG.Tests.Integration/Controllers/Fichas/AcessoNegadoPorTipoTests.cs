@@ -7,7 +7,7 @@ using RuinaRPG.Contracts.NpcSheets;
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 // Spec D, Review Focus 1–2: o código genérico mantém o status de acesso negado de cada tipo
-// (Personagem 403, NPC/Criatura 404) e checa a chave de Perícia antes da ficha.
+// (Personagem 403 na escrita e 404 na leitura, NPC/Criatura 404) e checa a chave de Perícia antes da ficha.
 public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     public static TheoryData<string, string, string, int> Casos => new()
@@ -57,11 +57,11 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "GET", "equipagem/kits", 403 }, { "npc", "GET", "equipagem/kits", 404 },
         { "character", "POST", "equipagem/choose", 403 }, { "npc", "POST", "equipagem/choose", 404 },
         // Endpoints da própria ficha (rotas com {id}; sufixo vazio é a ficha em si).
-        { "character", "GET", "sub-attributes", 403 }, { "npc", "GET", "sub-attributes", 404 }, { "creature", "GET", "sub-attributes", 404 },
-        { "character", "GET", "condicoes-ativas", 403 }, { "npc", "GET", "condicoes-ativas", 404 }, { "creature", "GET", "condicoes-ativas", 404 },
-        { "character", "GET", "equipment-penalties", 403 }, { "npc", "GET", "equipment-penalties", 404 }, { "creature", "GET", "equipment-penalties", 404 },
-        { "character", "GET", "modificador-de-dano", 403 }, { "npc", "GET", "modificador-de-dano", 404 }, { "creature", "GET", "modificador-de-dano", 404 },
-        { "character", "GET", "level-up-notice", 403 }, { "npc", "GET", "level-up-notice", 404 }, { "creature", "GET", "level-up-notice", 404 },
+        { "character", "GET", "sub-attributes", 404 }, { "npc", "GET", "sub-attributes", 404 }, { "creature", "GET", "sub-attributes", 404 },
+        { "character", "GET", "condicoes-ativas", 404 }, { "npc", "GET", "condicoes-ativas", 404 }, { "creature", "GET", "condicoes-ativas", 404 },
+        { "character", "GET", "equipment-penalties", 404 }, { "npc", "GET", "equipment-penalties", 404 }, { "creature", "GET", "equipment-penalties", 404 },
+        { "character", "GET", "modificador-de-dano", 404 }, { "npc", "GET", "modificador-de-dano", 404 }, { "creature", "GET", "modificador-de-dano", 404 },
+        { "character", "GET", "level-up-notice", 404 }, { "npc", "GET", "level-up-notice", 404 }, { "creature", "GET", "level-up-notice", 404 },
         { "character", "POST", "dismiss-level-up-notice", 403 }, { "npc", "POST", "dismiss-level-up-notice", 404 }, { "creature", "POST", "dismiss-level-up-notice", 404 },
         { "character", "PUT", "pontos-de-ignicao", 403 }, { "npc", "PUT", "pontos-de-ignicao", 404 }, { "creature", "PUT", "pontos-de-ignicao", 404 },
         { "npc", "PUT", "nivel", 404 }, { "creature", "PUT", "nivel", 404 },

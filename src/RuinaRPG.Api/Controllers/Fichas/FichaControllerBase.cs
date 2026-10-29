@@ -31,8 +31,8 @@ public abstract class FichaControllerBase<TSheet>(ITipoDeFicha<TSheet> tipo) : C
     /// <summary>
     /// Como <see cref="FichaEditavelAsync"/>, mas o acesso negado é 404 nos três tipos: as leituras do Personagem
     /// que não revelam que a ficha existe (a ficha em si, Habilidade Racial, Variantes liberadas, galeria da História,
-    /// os GET de Magias) negam com 404, e não com o 403 dos demais endpoints (a de Magias é divergência acidental
-    /// mantida — ver "Divergências encontradas" na spec D).
+    /// os GET de Magias e os da própria ficha: nível, valores calculados, Condições, penalidades, modificador de dano)
+    /// negam com 404, e não com o 403 das escritas.
     /// </summary>
     protected async Task<AcessoAFicha> FichaParaLeituraAsync(Guid sheetId)
     {

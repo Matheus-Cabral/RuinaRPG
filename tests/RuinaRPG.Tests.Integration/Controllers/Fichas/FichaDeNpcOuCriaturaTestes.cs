@@ -118,6 +118,28 @@ public abstract class FichaDeNpcOuCriaturaTestes<TTipo>(ApiFixture fixture) : Te
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    /// <summary>Só o GM apaga (spec 2.1.0 B.1): o Jogador a quem a ficha foi concedida edita, mas não apaga.</summary>
+    [Fact]
+    public async Task Dono_jogador_nao_apaga_ficha_concedida()
+    {
+        var f = await FichaDeJogadorAsync();
+
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, UrlDaFicha(f.SheetId), f.Token));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetAsync(UrlDaFicha(f.SheetId), f.GmToken)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GM_apaga_ficha_concedida()
+    {
+        var f = await FichaDeJogadorAsync();
+
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, UrlDaFicha(f.SheetId), f.GmToken));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
     /// <summary>Outro Mestre recebe 404 em todos os endpoints da ficha (não confirma que ela existe).</summary>
     [Fact]
     public async Task Get_by_a_different_gm_returns_404()

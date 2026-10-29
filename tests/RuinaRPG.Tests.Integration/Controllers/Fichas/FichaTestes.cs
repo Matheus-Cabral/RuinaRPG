@@ -79,6 +79,40 @@ public abstract class FichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTi
         body!.AdrenalinaMaximo.Should().Be(15); // 10 + Artefato(5)
     }
 
+    /// <summary>Leitura sem acesso nega com 404 nos três tipos (Personagem: spec 2.1.0 B.6; NPC/Criatura já negavam com 404).</summary>
+    [Theory]
+    [InlineData("level-up-notice")]
+    [InlineData("sub-attributes")]
+    [InlineData("condicoes-ativas")]
+    [InlineData("equipment-penalties")]
+    [InlineData("modificador-de-dano")]
+    public async Task Estranho_le_os_GET_da_ficha_com_404(string sufixo)
+    {
+        var f = await NovaFichaAsync();
+        var intruso = await Tipo.CriarIntrusoAsync(this, f);
+
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, sufixo), intruso));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Theory]
+    [InlineData("level-up-notice")]
+    [InlineData("sub-attributes")]
+    [InlineData("condicoes-ativas")]
+    [InlineData("equipment-penalties")]
+    [InlineData("modificador-de-dano")]
+    public async Task Dono_e_GM_continuam_lendo_os_GET_da_ficha(string sufixo)
+    {
+        var f = await NovaFichaAsync();
+
+        var doEditor = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, sufixo), f.Token));
+        var doGm = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, sufixo), f.GmToken));
+
+        doEditor.StatusCode.Should().Be(HttpStatusCode.OK);
+        doGm.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task LevelUpNotice_lists_bonus_text_for_every_level_gained_since_the_last_dismissal()
     {

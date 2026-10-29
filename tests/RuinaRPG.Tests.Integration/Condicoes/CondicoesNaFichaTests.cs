@@ -997,8 +997,8 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         foreach (var intruso in new[] { outraMesa.Gm, outraMesa.Jogador })
         {
-            // O mesmo resultado dos demais GETs calculados de cada controller.
-            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            // As leituras da própria ficha negam com 404 nos três tipos (spec 2.1.0 B.6).
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         }

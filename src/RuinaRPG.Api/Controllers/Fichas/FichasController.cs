@@ -31,7 +31,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     [HttpGet("{id}/level-up-notice")]
     public async Task<ActionResult<LevelUpNoticeResponse>> LevelUpNotice(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
             return erro;
 
         var tabela = await TabelaDeNiveis.ObterAsync();
@@ -57,7 +57,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     [HttpGet("{id}/sub-attributes")]
     public async Task<ActionResult<SubAttributesResponse>> SubAttributes(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
             return erro;
 
         return await Stats.SubAtributosAsync(sheet, await Tipo.CondicoesAsync(sheet));
@@ -71,7 +71,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     [HttpGet("{id}/condicoes-ativas")]
     public async Task<ActionResult<List<CondicaoAtivaNaFichaResponse>>> CondicoesAtivas(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
             return erro;
 
         return await Tipo.ListarCondicoesAsync(sheet);
@@ -81,7 +81,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     [HttpGet("{id}/equipment-penalties")]
     public async Task<ActionResult<List<PenalidadeAtivaResponse>>> EquipmentPenalties(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
             return erro;
 
         return await penalidades.ComoRespostaAsync(await Stats.PenalidadesAtivasAsync(sheet, await Tipo.CondicoesAsync(sheet)));
@@ -95,7 +95,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     [HttpGet("{id}/modificador-de-dano")]
     public async Task<ActionResult<ModificadorDeDanoResponse>> ModificadorDeDano(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(id)).Negado(out var erro, out var sheet))
             return erro;
 
         var efeitos = await Tipo.CondicoesAsync(sheet);
@@ -122,11 +122,14 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
         return NoContent();
     }
 
-    /// <summary>Apaga a ficha (NPC e Criatura: quem pode editá-la; o Personagem tem o seu, só do Mestre da campanha). Só para NPC/Criatura: não usar no Personagem (o delete dele é só do Mestre).</summary>
+    /// <summary>Apaga a ficha (NPC e Criatura): só o Mestre dela, nem o Jogador a quem foi concedida; qualquer outro recebe a negação do tipo (404). O Personagem tem o seu, só do Mestre da campanha: não usar nele.</summary>
     protected async Task<IActionResult> ApagarAsync(Guid id)
     {
-        if ((await FichaEditavelAsync(id)).Negado(out var erro, out var sheet))
-            return erro;
+        var sheet = await Tipo.CarregarAsync(id);
+        if (sheet is null)
+            return NotFound();
+        if (await Tipo.MestreAsync(sheet) != CurrentUserId())
+            return Tipo.Negado(this);
 
         Db.Set<TSheet>().Remove(sheet);
         await Db.SaveChangesAsync();
