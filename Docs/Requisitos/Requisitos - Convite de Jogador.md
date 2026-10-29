@@ -49,10 +49,39 @@
 
 # **R0006** - O GM deve poder filtrar/buscar jogadores vinculados a ele.
 
-**Descrição**: A página contém um campo de busca que filtra os jogadores vinculados à conta do GM (isto é, que se cadastraram usando um dos seus códigos) por **nickname** ou **e-mail**. A busca é usada como base para a ação de redefinição de senha (ver [[#**R0007** - O GM deve poder redefinir a senha de um jogador.|R0007]]).
+**Descrição**: A página contém um campo de busca que filtra os jogadores vinculados à conta do GM (isto é, que se cadastraram usando um dos seus códigos) por **nickname** ou **e-mail**. A busca é usada como base para a ação de redefinição de senha (ver [[#**R0007** - O GM deve poder redefinir a senha de um jogador.|R0007]]) e para as ações de conta (R0008 e R0009).
+
+A lista e a busca mostram os jogadores com conta **Ativa**, cada um com as ações **Desativar** e **Excluir**. Uma seção separada, **Desativados**, lista os jogadores com conta desativada, com as ações **Reativar** e **Excluir**. Jogadores com conta excluída não aparecem em lugar nenhum desta página nem em qualquer seletor de jogador (concessão, Notas Secretas, membros).
 
   
 
 # **R0007** - O GM deve poder redefinir a senha de um jogador.
 
-**Descrição**: A partir de um jogador encontrado pelo filtro (R0006), o GM pode abrir um formulário de redefinição de senha com os campos **Nova senha** e **Confirmação da nova senha**. O GM não precisa informar a senha atual do jogador para concluir a redefinição. Ao confirmar, a senha do jogador é substituída pela informada; cabe ao GM comunicar a nova senha ao jogador por fora do sistema.
+**Descrição**: A partir de um jogador encontrado pelo filtro (R0006), o GM pode abrir um formulário de redefinição de senha com os campos **Nova senha** e **Confirmação da nova senha**. O GM não precisa informar a senha atual do jogador para concluir a redefinição. Ao confirmar, a senha do jogador é substituída pela informada; cabe ao GM comunicar a nova senha ao jogador por fora do sistema. A redefinição vale para contas ativas e desativadas, nunca para excluídas.
+
+  
+
+# **R0008** - O GM deve poder desativar e reativar a conta de um jogador.
+
+> **Quem pode**: só o GM que convidou o jogador (o vínculo de R0003). Para qualquer outro GM a conta do jogador não existe. Só contas de jogador têm esse estado: **Ativa** (padrão), **Desativada** e **Excluída** (ver "[[Requisitos - Modelo de Dados]]" 1).
+
+**Descrição**: **Desativar** (de uma conta Ativa) tira o jogador de jogo temporariamente, com confirmação. Em uma única operação — nada fica pela metade se algo falhar — o sistema:
+
+- remove o jogador de **todas** as campanhas do GM em que ele é membro, com os mesmos efeitos de "[[Requisitos - Campanha]]" R0018 (fichas ao cemitério pelos motivos de "[[Requisitos - Ficha de Personagem]]" R0010, concessões de volta ao GM, saída dos Encontros ativos);
+- encerra as sessões abertas do jogador: a conta não consegue mais entrar nem usar o sistema, mesmo com uma sessão ainda válida. O login é recusado com a mensagem "Esta conta está desativada. Fale com o seu GM." (ver "[[Requisitos - Login e Cadastro]]" R0002).
+
+A conta desativada deixa de aparecer na lista de adicionar membro à campanha (Campanha R0003) e passa à seção **Desativados** de R0006.
+
+**Reativar** (de uma conta Desativada) volta a conta a Ativa e libera o login. **Nenhuma campanha é restaurada**: o GM adiciona o jogador de novo a cada campanha (Campanha R0003), e as fichas dele saem do cemitério sozinhas ao voltar a ser membro, se não estiverem marcadas como mortas. As concessões não voltam sozinhas (Campanha R0019).
+
+  
+
+# **R0009** - O GM deve poder excluir a conta de um jogador.
+
+**Descrição**: **Excluir** (de uma conta Ativa ou Desativada) tira o jogador de vez e é **irreversível**. A confirmação é forte: o GM digita o **apelido** do jogador para confirmar. Em uma única operação o sistema faz o que Desativar faz (R0008) e então:
+
+- a conta passa a **Excluída**. A linha da conta **não é apagada**, porque fichas, logs, notas e anexos apontam para ela; ela vira um registro de conta excluída, sem e-mail, senha nem demais dados de login, de modo que ninguém entra com ela;
+- o **e-mail fica livre**: o mesmo e-mail pode se cadastrar de novo, como uma conta nova ("[[Requisitos - Login e Cadastro]]" R0003);
+- o **apelido é mantido e continua reservado**: ninguém pode se cadastrar com ele (Login e Cadastro R0003), e ele identifica de quem era cada ficha.
+
+Todas as fichas do jogador vão para o cemitério e lá ficam, pelo motivo "Conta do jogador excluída". Imagens enviadas por ele, diários das fichas e o log das fichas ficam como estão. A conta excluída não aparece em nenhuma lista nem seletor de jogador (R0006).

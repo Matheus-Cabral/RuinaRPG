@@ -28,7 +28,7 @@
 
 # **R0003** - O GM deve poder adicionar jogadores como membros da campanha.
 
-**Descrição**: Dentro de uma campanha, o GM escolhe, entre os jogadores já vinculados à sua conta (ver "[[Requisitos - Convite de Jogador]]"), quais fazem parte dela. Um jogador pode ser membro de mais de uma campanha do mesmo GM.
+**Descrição**: Dentro de uma campanha, o GM escolhe, entre os jogadores já vinculados à sua conta (ver "[[Requisitos - Convite de Jogador]]"), quais fazem parte dela. Um jogador pode ser membro de mais de uma campanha do mesmo GM. A lista de escolha traz só jogadores com conta **Ativa**: contas desativadas ou excluídas não aparecem (ver "[[Requisitos - Convite de Jogador]]" R0008 e R0009). Para tirar um membro, ver [[#**R0018** - O GM deve poder remover um jogador da campanha.|R0018]].
 
   
 
@@ -83,7 +83,7 @@ Cada grupo tem os seus próprios filtros, que afetam só ele: busca por nome (ex
 - **Cópia de uma existente**: o GM escolhe uma ficha já cadastrada no Bestiário/NPCs do GM (ver "[[Requisitos - Ficha de NPCs]]" e "[[Requisitos - Ficha de Criaturas]]"); uma cópia independente é criada para o jogador — editar a cópia não afeta o original, e vice-versa.
 - **Em branco**: uma ficha nova, vazia, do tipo escolhido (NPC ou Criatura), é criada já vinculada ao jogador.
 
-Em ambos os casos, a partir da concessão a ficha passa a ter um **jogador dono** e segue o mesmo modelo de edição de uma Ficha de Personagem (o jogador dono edita os campos livremente; criação e exclusão continuam exclusivas do GM) — mantendo, porém, a estrutura de campos de NPC ou Criatura (ver "[[Requisitos - Ficha de NPCs]]" R0001 e "[[Requisitos - Ficha de Criaturas]]" R0001, que descrevem o modelo padrão sem jogador dono). No painel do jogador, fichas concedidas aparecem numa seção própria, separada da lista de Fichas de Personagem (ex: "Meus Companheiros"), já que têm estrutura de campos diferente.
+Em ambos os casos, a partir da concessão a ficha passa a ter um **jogador dono** e segue o mesmo modelo de edição de uma Ficha de Personagem (o jogador dono edita os campos livremente; criação e exclusão continuam exclusivas do GM) — mantendo, porém, a estrutura de campos de NPC ou Criatura (ver "[[Requisitos - Ficha de NPCs]]" R0001 e "[[Requisitos - Ficha de Criaturas]]" R0001, que descrevem o modelo padrão sem jogador dono). Com a ficha concedida, o GM pode **mudar o dono** (ver [[#**R0019** - O GM deve poder alterar o dono de uma ficha de NPC ou Criatura.|R0019]]), e ela volta ao GM quando o jogador é removido da campanha (R0018). No painel do jogador, fichas concedidas aparecem numa seção própria, separada da lista de Fichas de Personagem (ex: "Meus Companheiros"), já que têm estrutura de campos diferente.
 
 Na **cópia de uma existente**, cada Magia/Habilidade da ficha copiada fica **anexada à campanha como pública** (R0008), para o jogador vê-la e reaproveitá-la ("[[Requisitos - Banco de Magias e Habilidades]]" R0003). O anexo usa a entrada do banco de onde aquela Magia/Habilidade veio — nenhuma entrada nova é criada; se ela já estava anexada como privada, passa a pública. Uma Magia/Habilidade antiga, sem vínculo com o banco, reaproveita uma entrada idêntica do banco do GM (mesmo Nome, Tipo, Grau e Descrição); só na falta dela é criada uma entrada nova, à qual a cópia passa a ficar vinculada.
 
@@ -96,6 +96,8 @@ Na **cópia de uma existente**, cada Magia/Habilidade da ficha copiada fica **an
 De dentro da campanha, o GM cria uma Nota Secreta escolhendo um ou mais jogadores membros como destinatários. Mesmo padrão de entrada dos outros diários: **Data/hora** (automática), **Texto** e **Imagens** (opcionais). O GM pode editar ou excluir uma Nota Secreta já publicada.
 
 Uma Nota Secreta só é visível ao GM e aos jogadores destinatários escolhidos — os demais membros da campanha não a veem, nem sabem que ela existe. É via de mão única: o jogador só lê, não há resposta pelo sistema.
+
+Quando o jogador destinatário é removido da campanha (R0018), as Notas Secretas endereçadas a ele **ficam** como estão (o destinatário continua registrado): ele só deixa de ter acesso a elas por não ser mais membro, e volta a vê-las se for adicionado de novo à campanha.
 
 # **R0012** - Conteúdo criado por um jogador é anexado à campanha automaticamente como público.
 
@@ -135,4 +137,24 @@ Vale a mesma restrição de R0011: quem não é destinatário não recebe aviso 
 
 # **R0017** - O GM vê as fichas no cemitério na aba Cemitério.
 
-**Descrição**: Dentro da campanha, uma aba **Cemitério** lista todas as Fichas de Personagem da campanha que estão no cemitério ("[[Requisitos - Ficha de Personagem]]" R0010), com imagem, nome, Nível, dono e o(s) motivo(s) (Personagem morto, Jogador removido da campanha, Conta do jogador inativa), mais o ícone de log da ficha (R0016). Cada ficha abre em modo leitura; a lista vazia mostra uma mensagem simples. Essas fichas deixam de aparecer na lista de fichas do membro, na aba Membros (R0009). O jogador dono vê as dele na seção Cemitério do painel do jogador (ver [[01 - Visão Geral]]), inclusive depois de removido da campanha. A ficha volta à aba Membros quando nenhum motivo resta. Uma ficha no cemitério não pode ser adicionada a um Encontro ("[[Requisitos - Gerenciador de Encontros]]" R0002 e R0015).
+**Descrição**: Dentro da campanha, uma aba **Cemitério** lista todas as Fichas de Personagem da campanha que estão no cemitério ("[[Requisitos - Ficha de Personagem]]" R0010), com imagem, nome, Nível, dono e o(s) motivo(s) (Personagem morto, Jogador removido da campanha, Conta do jogador desativada, Conta do jogador excluída), mais o ícone de log da ficha (R0016). Para o dono de uma conta excluída a lista mostra o apelido, que continua guardado (ver "[[Requisitos - Convite de Jogador]]" R0009). Cada ficha abre em modo leitura; a lista vazia mostra uma mensagem simples. Essas fichas deixam de aparecer na lista de fichas do membro, na aba Membros (R0009). O jogador dono vê as dele na seção Cemitério do painel do jogador (ver [[01 - Visão Geral]]), inclusive depois de removido da campanha. A ficha volta à aba Membros quando nenhum motivo resta. Uma ficha no cemitério não pode ser adicionada a um Encontro ("[[Requisitos - Gerenciador de Encontros]]" R0002 e R0015).
+
+  
+
+# **R0018** - O GM deve poder remover um jogador da campanha.
+
+**Descrição**: Na aba **Membros**, cada membro tem a ação **Remover da campanha** (ícone, com confirmação que diz o que vai acontecer: fichas ao cemitério, concessões de volta ao GM e saída dos Encontros ativos). Os efeitos valem juntos, numa única operação — se algo falhar, nada muda:
+
+- O jogador deixa de ser membro da campanha, que some de Minhas Campanhas dele. As Fichas de Personagem dele nessa campanha vão para o cemitério pelo motivo "Jogador removido da campanha" (R0017; "[[Requisitos - Ficha de Personagem]]" R0010); ele continua dono delas e as vê na seção Cemitério do painel.
+- As Fichas de NPC e de Criatura **concedidas** a ele nessa campanha (R0010) **voltam ao GM** (ficam sem dono) e continuam anexadas à campanha. Uma ficha só conta como concedida nesta campanha se ele é o dono e ela está anexada a esta campanha; se estiver anexada também a outra campanha em que ele continua membro, o dono não muda. A ficha devolvida vira um anexo comum do GM — **privado**, como o anexo de qualquer concessão (R0008) — e aparece na aba **Anexos**.
+- Ele **sai dos Encontros em preparação ou em andamento** da campanha: todo participante vindo de uma Ficha de Personagem dele ou de uma ficha que estava concedida a ele é removido como em "[[Requisitos - Gerenciador de Encontros]]" R0008 (passagem da vez, log do Encontro). Encontros finalizados não mudam.
+- As Notas Secretas endereçadas a ele ficam (R0011), assim como as entradas de diário.
+- Se o jogador estiver com o sistema aberto, o painel dele é atualizado por um aviso em tempo real.
+
+Adicionar o jogador de novo (R0003) tira do cemitério as fichas não marcadas como mortas; as concessões **não** voltam sozinhas — o GM usa R0019. Desativar ou excluir a conta aplica esta mesma saída em todas as campanhas do GM (ver "[[Requisitos - Convite de Jogador]]" R0008 e R0009).
+
+  
+
+# **R0019** - O GM deve poder alterar o dono de uma ficha de NPC ou Criatura.
+
+**Descrição**: Uma Ficha de NPC ou de Criatura do GM anexada à campanha tem a ação **Alterar dono**, que o GM encontra em **Concessões existentes** (fichas com dono) e na aba **Anexos** (fichas de NPC e Criatura sem dono, como as devolvidas por R0018). O GM escolhe **um membro com conta Ativa** da campanha, ou devolve a ficha ao GM (sem dono). A ficha é a mesma, não uma cópia: histórico e log (R0016) continuam. Se ela é participante de um Encontro ativo, o participante continua ligado à mesma ficha. Uma ficha com dono é uma concessão (R0010); sem dono, é um anexo comum do GM.

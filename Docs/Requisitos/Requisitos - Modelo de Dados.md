@@ -29,6 +29,7 @@
 | InvitedByGmId | Guid, nullable | só em usuários Jogador; setado ao resgatar um InviteCode. Sem FK |
 | IsRulesAuditor | bool | concedido/revogado via `make grant-rules-auditor`/`revoke-rules-auditor` (ver "[[Requisitos - Auditoria de Regras]]" R0001) |
 | LastSeenAppVersion | string, nullable | última versão do app cujo popup de changelog este usuário já fechou; null = nunca fechou nenhuma |
+| AccountState | enum Ativa \| Desativada \| Excluída, NOT NULL, padrão Ativa | só tem efeito em usuários Jogador. Desativada: login recusado e jogador fora das campanhas (ver "[[Requisitos - Convite de Jogador]]" R0008). Excluída: a linha é mantida, com e-mail, senha e demais dados de login apagados (e-mail livre para novo cadastro) e o Nickname mantido e reservado (R0009). Define os motivos de conta do cemitério (Ficha de Personagem R0010) |
 | MustChangePassword | bool | setado por `make reset-gm-password` (ver "[[Requisitos - Login e Cadastro]]" R0005); limpo quando o próprio usuário troca a senha |
 
 **InviteCodes**
@@ -235,7 +236,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK | |
 | CampaignId | FK → Campaigns | criada dentro de uma campanha (Campanha R0004) |
 | OwnerId | FK → Users | |
-| Morto | bool, NOT NULL, padrão `false` | cabeçalho da ficha — a marca de morte, só o GM a altera; um dos motivos do cemitério (Ficha de Personagem R0010). Os outros motivos (dono removido da campanha, conta inativa) são calculados, não guardados |
+| Morto | bool, NOT NULL, padrão `false` | cabeçalho da ficha — a marca de morte, só o GM a altera; um dos motivos do cemitério (Ficha de Personagem R0010). Os outros motivos (dono removido da campanha, conta do dono desativada ou excluída) são calculados, não guardados |
 | ImageId | FK → Images, nullable (`SetNull`) | 1.a |
 | Nome | string, nullable | 1.a |
 | Linhagem | enum, nullable | 1.a |

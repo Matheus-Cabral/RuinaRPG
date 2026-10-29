@@ -31,7 +31,7 @@ Duas abas: **Cadastro do Gamemaster** (nickname, e-mail, senha, confirmação) e
 
 Ferramentas do GM (a numeração é a do canvas original; as demais vieram depois):
 
-1. **Convidar jogador** (códigos de convite e a busca/redefinição de senha dos jogadores do GM): [[Requisitos - Convite de Jogador]].
+1. **Convidar jogador** (códigos de convite, a busca/redefinição de senha dos jogadores do GM e as ações Desativar, Reativar e Excluir conta, com a seção **Desativados**): [[Requisitos - Convite de Jogador]].
 2. **Bestiário do *GM***: [[Requisitos - Ficha de Criaturas]].
 3. **NPCs do *GM***: [[Requisitos - Ficha de NPCs]].
 4. **Itens e Equipamentos**: [[Requisitos - Catálogo de Itens e Equipamentos]].

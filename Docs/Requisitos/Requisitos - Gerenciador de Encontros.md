@@ -82,6 +82,8 @@ Renomear o Encontro é permitido em qualquer fase.
 
 **Descrição**: Na preparação e em andamento, o GM remove um participante do Encontro (com confirmação). Se ele tinha a vez, ela passa ao seguinte na ordem de Iniciativa (ou ao primeiro do Turno seguinte, se era o último; nesse caso o Turno avança em um). Quem recebe a vez fica com 3 Ações restantes (R0005). Se não sobrar nenhum participante, ninguém tem a vez até que um participante seja adicionado e o GM avance a vez.
 
+O mesmo caminho é usado quando um jogador sai da campanha ("[[Requisitos - Campanha]]" R0018, e a desativação ou exclusão da conta dele, "[[Requisitos - Convite de Jogador]]" R0008 e R0009): todo participante vindo de uma Ficha de Personagem dele, ou de uma ficha de NPC/Criatura que estava concedida a ele, é removido dos Encontros **em preparação ou em andamento** da campanha, com a passagem da vez e a linha no log do Encontro (R0010) de uma remoção comum. Encontros finalizados não mudam, por serem histórico.
+
   
 
 # **R0009** - Encontros finalizados ficam em uma lista à parte.
