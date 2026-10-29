@@ -55,11 +55,12 @@ que era do jogador volta ao GM.
 
 ### Alterar a posse de uma ficha concedida
 
-- Novo: em **Concessões existentes** (aba Conceder Ficha da campanha), o GM muda o dono de uma ficha de NPC/Criatura
-  anexada à campanha para **outro membro ativo** da campanha, ou a devolve ao GM (sem dono). A ficha é a mesma (não
-  é cópia): o histórico e o log continuam.
-- As fichas que voltaram ao GM por remoção aparecem ali como "sem dono" *(chamada minha: hoje uma ficha sem dono
-  não aparece em Concessões; passa a aparecer quando está anexada à campanha por concessão)*.
+- Novo: ação **Alterar dono** numa ficha de NPC/Criatura do GM anexada à campanha: o GM escolhe **um membro ativo**
+  da campanha, ou devolve a ficha ao GM (sem dono). A ficha é a mesma (não é cópia): histórico e log continuam.
+- Onde: em **Concessões existentes** (fichas com dono) e na aba **Anexos** (fichas de NPC/Criatura sem dono). Hoje
+  "ser concessão" é "ter dono jogador"; uma ficha que voltou ao GM vira um anexo comum do GM (privado, como as
+  concessões já são) e aparece em Anexos, de onde o GM pode dá-la de novo *(chamada minha, revista no plano: evita
+  coluna nova e migração de dados)*.
 - Mudar a posse com a ficha num Encontro ativo: o participante continua, ligado à mesma ficha *(chamada minha)*.
 
 ### Estado da conta
