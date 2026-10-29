@@ -606,4 +606,80 @@ public class GerenciadorDeEncontrosTests : MudBunitContext
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Resumo da ficha — Goblin"));
         _requests.Should().Contain("GET encounters/e1/participants/p2/resumo");
     }
+
+    private static EncounterParticipantResponse NoCemiterio() =>
+        new("p9", "Morta", 11, 0, 0, 0, 2, true, new() { "Atordoado" }, new(), "Personagem", NoCemiterio: true);
+
+    [Fact]
+    public async Task Participante_no_cemiterio_tem_icone_e_edicao_desabilitada()
+    {
+        _participants = new() { NoCemiterio() };
+        var cut = await RenderLoadedAsync();
+
+        cut.FindAll("[title='Ficha no cemitério'], [aria-label='Ficha no cemitério']").Should().NotBeEmpty();
+        Botao(cut, "Adicionar condição").HasAttribute("disabled").Should().BeTrue();
+        cut.FindAll(".mud-chip .mud-chip-close-button").Should().BeEmpty();
+        Botao(cut, "Editar").HasAttribute("disabled").Should().BeFalse();
+        await cut.InvokeAsync(() => Botao(cut, "Editar").Click());
+        foreach (var rotulo in new[] { "PV", "PF", "PA" })
+            cut.Find("#" + cut.FindAll("label").Single(l => l.TextContent.Trim() == rotulo).GetAttribute("for"))
+                .HasAttribute("disabled").Should().BeTrue(rotulo);
+    }
+
+    [Fact]
+    public async Task Participante_no_cemiterio_edita_iniciativa_e_acoes_sem_mexer_em_PV_PF_PA()
+    {
+        string? corpo = null;
+        _override = r =>
+        {
+            if (r.Method != HttpMethod.Put) return null;
+            corpo = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        };
+        _participants = new() { NoCemiterio() };
+        var cut = await RenderLoadedAsync();
+        await cut.InvokeAsync(() => Botao(cut, "Editar").Click());
+        var rotuloIniciativa = cut.FindAll("form").Last().QuerySelectorAll("label").Single(l => l.TextContent.Trim() == "Iniciativa");
+        cut.Find("#" + rotuloIniciativa.GetAttribute("for")).Change("20");
+        cut.FindAll("form").Last().Submit();
+
+        cut.WaitForState(() => corpo is not null);
+        var json = System.Text.Json.JsonDocument.Parse(corpo!).RootElement;
+        json.GetProperty("iniciativa").GetInt32().Should().Be(20);
+        json.GetProperty("pv").GetInt32().Should().Be(json.GetProperty("pvCarregado").GetInt32());
+        json.GetProperty("pf").GetInt32().Should().Be(json.GetProperty("pfCarregado").GetInt32());
+        json.GetProperty("pa").GetInt32().Should().Be(json.GetProperty("paCarregado").GetInt32());
+    }
+
+    [Fact]
+    public async Task Participante_no_cemiterio_pode_ser_removido()
+    {
+        _participants = new() { NoCemiterio() };
+        var cut = await RenderLoadedAsync();
+
+        var remover = cut.Find("button[aria-label='Remover do encontro']");
+        remover.HasAttribute("disabled").Should().BeFalse();
+        _ = cut.InvokeAsync(() => remover.Click());
+        cut.WaitForAssertion(() => cut.FindAll(".mud-dialog").Should().NotBeEmpty());
+        cut.FindAll(".mud-dialog button").First(b => b.TextContent.Trim() == "Remover").Click();
+        cut.WaitForAssertion(() => _requests.Should().Contain("DELETE encounters/e1/participants/p9"));
+    }
+
+    [Fact]
+    public async Task Seletor_nao_oferece_ficha_no_cemiterio()
+    {
+        _override = r => r.Method == HttpMethod.Get && r.RequestUri!.AbsolutePath.EndsWith("campaigns/c1/character-sheets")
+            ? Task.FromResult(Json(new[]
+            {
+                new { id = "f1", nome = "Viva", noCemiterio = false },
+                new { id = "f2", nome = "Morta", noCemiterio = true },
+            }))
+            : null;
+        var cut = await RenderLoadedAsync();
+
+        var picker = cut.FindComponents<RuinaRPG.Client.Shared.EntityPicker>().First();
+        var resultados = await picker.Instance.SearchAsyncForTests("");
+
+        resultados.Select(o => o.Label).Should().Equal("Viva");
+    }
 }
