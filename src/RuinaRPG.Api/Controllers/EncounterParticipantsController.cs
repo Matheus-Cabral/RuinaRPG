@@ -18,9 +18,9 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants")]
-public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, EncounterTurnos turnos, CondicoesDoEncontro condicoesDoEncontro,
+public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog log, CondicoesDoEncontro condicoesDoEncontro,
     CharacterSheetStats personagens, NpcSheetStats npcs, CreatureSheetStats criaturas, CondicoesAtivasDaFicha condicoes, CemiterioDaFicha cemiterio,
-    IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<EncounterParticipantsController> logger) : ControllerBase
+    RemocaoDeParticipante remocao, IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<EncounterParticipantsController> logger) : ControllerBase
 {
     /// <summary>Gerenciador de Encontros R0002: uma Ficha de Personagem no cemitério não entra num encontro.</summary>
     public const string RecusaDoCemiterio = RuinaRPG.Contracts.CharacterSheets.TextosDoCemiterio.RecusaDeEncontro;
@@ -303,36 +303,10 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
         if (RequireEditable(encounter!) is { } wrongPhase)
             return wrongPhase;
 
-        var participants = await db.EncounterParticipants
-            .Where(p => p.EncounterId == encounterId)
-            .OrderByDescending(p => p.Iniciativa).ThenBy(p => p.Id)
-            .ToListAsync();
-        var participant = participants.FirstOrDefault(p => p.Id == id);
-        if (participant is null)
+        if (!await db.EncounterParticipants.AnyAsync(p => p.Id == id && p.EncounterId == encounterId))
             return NotFound();
 
-        // Registered first, while the removed participant still has the turn: "X saiu" belongs under X's own vez and Turno.
-        await log.RegistrarAsync(encounter!, EncounterLogTipo.ParticipanteRemovido, participant.Nome);
-
-        MudancaDeVez? mudanca = null;
-        if (encounter!.CurrentParticipantId == id)
-        {
-            // Order passed is the one BEFORE the removal.
-            var next = TurnAdvanceCalculator.AfterRemoval(encounter.CurrentRound, id, participants.Select(p => p.Id).ToList());
-            var receiver = next is { } handover ? participants.Single(p => p.Id == handover.ParticipantId) : null;
-            mudanca = await turnos.DarAVezAsync(encounter, receiver, next?.Round ?? encounter.CurrentRound, MotivoDaVez.Remocao);
-        }
-
-        var conditions = await db.EncounterParticipantConditions.Where(c => c.EncounterParticipantId == id).ToListAsync();
-        db.EncounterParticipantConditions.RemoveRange(conditions);
-        // As Condições do catálogo saem com ele. Apagadas aqui (e não só pela cascata) para o log da ficha registrar cada uma.
-        db.EncounterParticipantCondicoes.RemoveRange(await db.EncounterParticipantCondicoes.Where(c => c.EncounterParticipantId == id).ToListAsync());
-        db.EncounterParticipants.Remove(participant);
-        // Quem recebeu a vez: expiração (se entrou num Turno novo) e linhas "a cada vez" dele. O removido já não conta.
-        if (mudanca is not null)
-            await condicoesDoEncontro.AoMudarAVezAsync(encounter, mudanca);
-        // A ficha do removido volta aos totais sem as Condições dele.
-        await condicoesDoEncontro.AoMudarAtivacaoAsync([id]);
+        await remocao.RemoverAsync(encounter!, id);
 
         await db.SaveChangesAsync();
         await condicoesDoEncontro.NotificarAsync();
