@@ -154,3 +154,12 @@ FAKE
 rm ruinarpg-smoke:ccc" ]
   grep -qF /home/pro/RuinaRPG/deploy/state/colors.env "$P/runner.md"
 }
+
+# Over the socket, pg_isready goes green on the temporary server postgres runs while initialising a fresh
+# volume, which then shuts down: the next command meets "the database system is shutting down".
+@test "every pg_isready healthcheck under deploy/ goes over TCP" {
+  run grep -rn --include='*.yml' 'pg_isready' "$BATS_TEST_DIRNAME/.."
+  echo "$output"
+  [ -n "$output" ]
+  [ -z "$(grep -v 'pg_isready -h 127\.0\.0\.1 ' <<< "$output")" ]
+}
