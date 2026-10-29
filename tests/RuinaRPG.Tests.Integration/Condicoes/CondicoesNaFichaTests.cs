@@ -900,7 +900,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         foreach (var p in await LerAsync<List<SkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
         foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateCharacterMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
         foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
                 new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));

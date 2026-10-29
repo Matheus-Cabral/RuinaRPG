@@ -10,7 +10,7 @@ using RuinaRPG.Infrastructure.Rules;
 
 namespace RuinaRPG.Api.Controllers.Fichas;
 
-/// <summary>Maestrias da ficha (criar, listar e apagar), para os três tipos. A rota fica na subclasse de cada tipo.</summary>
+/// <summary>Maestrias da ficha (criar, listar, editar e apagar), para os três tipos. A rota fica na subclasse de cada tipo.</summary>
 public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLinhaDeAtributo, TAtributo>(
     RuinaRpgDbContext db, IPericiaCatalogo pericias, ITipoDeFicha<TSheet> tipo)
     : FichaControllerBase<TSheet>(tipo)
@@ -83,6 +83,35 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
         }
 
         return responses;
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<MasteryResponse>> Update(Guid sheetId, Guid id, UpdateMasteryRequest request)
+    {
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+            return erro;
+
+        var pericia = await Pericias.AtivaPorChaveAsync(request.Pericia);
+        if (pericia is null)
+            return BadRequest(PericiaOuAtributoDesconhecido);
+        if (!Enum.TryParse<TAtributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
+            return BadRequest(PericiaOuAtributoDesconhecido);
+        if (Tipo.SoPericiasDeCriatura && !pericia.DisponivelParaCriaturas)
+            return BadRequest("Perícia fora da lista permitida para Criaturas.");
+
+        var mastery = await Linhas.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
+        if (mastery is null)
+            return NotFound();
+
+        mastery.Nome = request.Nome;
+        mastery.PericiaId = pericia.Id;
+        mastery.Atributo = atributo;
+        mastery.GastoMaestria = request.GastoMaestria;
+        await Db.SaveChangesAsync();
+
+        var porId = await Pericias.PorIdAsync();
+        var total = await ComputeTotalAsync(sheet, mastery.Id, pericia, atributo, mastery.GastoMaestria, await Tipo.CondicoesAsync(sheet));
+        return Ok(ParaResposta(mastery, total, porId));
     }
 
     [HttpDelete("{id}")]

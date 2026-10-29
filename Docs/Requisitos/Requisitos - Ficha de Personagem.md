@@ -336,7 +336,7 @@ Recurso separado da Maestria de Atributos (ver 2.a) — tem seu próprio poço d
 - *Gasto Maestria*: campo numérico ≥ 0, editável — pontos investidos nessa Maestria. Limitado pelos Pontos de Maestria disponíveis (concedidos pela "[[Tabela de Níveis]]", ver "[[Requisitos - Auditoria de Regras]]" R0013).
 - *Total*: campo calculado, não editável. `Total = Gasto Maestria + Bruto [Perícia escolhida] + [Atributo escolhido]` (ver "[[Formulas]]"; "Bruto [Perícia]" definido em 2.b).
 
-Uma Maestria pode ser removida pelo jogador a qualquer momento.
+Uma Maestria pode ser editada na própria linha (Nome, Perícia, Atributo e Gasto Maestria) e removida pelo jogador a qualquer momento; vale igualmente para a Ficha de NPC e a Ficha de Criatura.
 
   
 

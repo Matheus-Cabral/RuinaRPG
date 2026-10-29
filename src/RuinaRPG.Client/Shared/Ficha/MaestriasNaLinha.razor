@@ -1,8 +1,7 @@
 @using MudBlazor
 @inject PericiaCatalogo Catalogo
 
-@* A tabela das Maestrias com edição na linha (só nos tipos que a têm, TipoDeFichaCliente.EditaMaestriaNaLinha: o
-   PUT masteries/{id} só existe para eles). Os outros tipos mostram uma linha de texto por Maestria, na AbaCombate. *@
+@* A tabela das Maestrias com edição na linha, nos três tipos (PUT masteries/{id}). *@
 
 <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
     <thead><tr><th>Nome</th><th>Perícia</th><th>Atributo</th><th>Gasto Maestria</th><th>Total</th><th></th></tr></thead>

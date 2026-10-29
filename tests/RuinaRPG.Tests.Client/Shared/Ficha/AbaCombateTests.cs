@@ -26,6 +26,18 @@ public class AbaCombateTests : RedeDeSegurancaBase
 
     public static TheoryData<string> Tipos => new() { "Personagem", "NPC", "Criatura" };
 
+    public static TheoryData<string, string> TiposEPapeisDaMaestria
+    {
+        get
+        {
+            var dados = new TheoryData<string, string>();
+            foreach (var tipo in new[] { "Personagem", "NPC", "Criatura" })
+                foreach (var papel in new[] { "GM", "Jogador" })
+                    dados.Add(tipo, papel);
+            return dados;
+        }
+    }
+
     public static TheoryData<string> TiposComSina => new() { "Personagem", "NPC" };
 
     private async Task<IRenderedComponent<IComponent>> AbrirAsync(string tipo, string papel = "GM")
@@ -134,15 +146,15 @@ public class AbaCombateTests : RedeDeSegurancaBase
     }
 
     [Theory]
-    [InlineData("Personagem", 0, 1)]
-    [InlineData("NPC", 0, 0)]
-    [InlineData("Criatura", 1, 0)]
-    public async Task The_parts_follow_the_kind(string tipo, int armaManual, int maestriasNaLinha)
+    [InlineData("Personagem", 0)]
+    [InlineData("NPC", 0)]
+    [InlineData("Criatura", 1)]
+    public async Task The_parts_follow_the_kind(string tipo, int armaManual)
     {
         var cut = await AbrirAsync(tipo);
 
         cut.FindComponents<ArmaManualForm>().Should().HaveCount(armaManual);
-        cut.FindComponents<MaestriasNaLinha>().Should().HaveCount(maestriasNaLinha);
+        cut.FindComponents<MaestriasNaLinha>().Should().HaveCount(1);
         // Arma, os dois slots vazios e o escudo: o seletor do Catálogo do tipo (também o da Origem "Catálogo" da Criatura).
         cut.FindComponents<SeletorDeItem>().Select(s => s.Instance.Tipo).Should().Equal("Arma", "Armadura", "Armadura", "Escudo");
         cut.FindComponents<MudRating>().Should().HaveCount(tipo == "Criatura" ? 0 : 1);
@@ -410,10 +422,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         cut.WaitForAssertion(() =>
         {
             LinhasDasMaestrias(cut).Should().HaveCount(2);
-            if (tipo == "Personagem")
-                LinhasDasMaestrias(cut)[1].QuerySelector("input")!.GetAttribute("value").Should().Be("Defesa Firme");
-            else
-                TextoNormalizado(LinhasDasMaestrias(cut)[1]).Should().StartWith("Defesa Firme — Atletismo / Vigor — Gasto 2 — Total 6");
+            LinhasDasMaestrias(cut)[1].QuerySelector("input")!.GetAttribute("value").Should().Be("Defesa Firme");
             Campo(FormularioDe(cut, "Adicionar Maestria"), "Nome").GetAttribute("value").Should().BeNullOrEmpty();
             Campo(FormularioDe(cut, "Adicionar Maestria"), "Gasto Maestria").GetAttribute("value").Should().Be("0");
         }, LimiteDeEspera);
@@ -432,20 +441,18 @@ public class AbaCombateTests : RedeDeSegurancaBase
         cut.WaitForAssertion(() => LinhasDasMaestrias(cut).Should().BeEmpty(), LimiteDeEspera);
     }
 
-    // Só o Personagem edita a Maestria na linha.
     [Theory]
-    [InlineData("GM")]
-    [InlineData("Jogador")]
-    public async Task Editing_a_maestria_inline_shows_the_reloaded_row(string papel)
+    [MemberData(nameof(TiposEPapeisDaMaestria))]
+    public async Task Editing_a_maestria_inline_shows_the_reloaded_row(string tipo, string papel)
     {
-        var cut = await AbrirAsync("Personagem", papel);
+        var cut = await AbrirAsync(tipo, papel);
         Responder("/masteries", new[] { Maestria("ma1", "Golpe Certeiro", 3, 7) });
 
         await cut.InvokeAsync(() => LinhasDasMaestrias(cut).Single().QuerySelectorAll("td")[3].QuerySelector("input")!.Change("3"));
 
         await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(
-            "PUT /character-sheets/s1/masteries/ma1 {\"atributo\":\"Vigor\",\"gastoMaestria\":3,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}",
-            "GET /character-sheets/s1/masteries"));
+            $"PUT /{Prefixo(tipo)}/s1/masteries/ma1 {{\"atributo\":\"Vigor\",\"gastoMaestria\":3,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}}",
+            $"GET /{Prefixo(tipo)}/s1/masteries"));
         cut.WaitForAssertion(() =>
         {
             var linha = LinhasDasMaestrias(cut).Single();

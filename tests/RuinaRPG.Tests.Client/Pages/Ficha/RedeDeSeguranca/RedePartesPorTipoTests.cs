@@ -9,7 +9,7 @@ namespace RuinaRPG.Tests.Client.Pages.Ficha.RedeDeSeguranca;
 /// <summary>
 /// Rede de segurança do E: as partes que só alguns tipos têm e que as outras redes não cobrem — o diálogo de
 /// Característica Racial (Personagem e NPC, cada um com o seu texto), os pontos de Acerto Crítico (Personagem),
-/// os Espólios (Criatura) e as Maestrias (adicionar e remover nos três; editar na linha só no Personagem). O
+/// os Espólios (Criatura) e as Maestrias (adicionar e remover nos três; editar na linha nos três). O
 /// Nível e a Experiência editados à mão (NPC e Criatura) e os ajustes de XP e PI (Personagem) estão em
 /// <see cref="RedeCabecalhoEInformacoesBasicasTests"/>. Fixa o que a tela faz hoje; precisa passar sem mudanças
 /// depois de cada passo do E. As classes aninhadas existem só para o xUnit rodá-las em paralelo.
@@ -268,7 +268,7 @@ public abstract class RedePartesPorTipoTests : RedeDeSegurancaBase
         private Task<IRenderedComponent<IComponent>> AbrirCombateAsync(string tipo, string papel) =>
             AbrirAbaAsync(tipo, papel, "Combate", $"GET {K(tipo)}/equipment-penalties");
 
-        private static IElement LinhaDaMaestriaNoPersonagem(IRenderedComponent<IComponent> cut) =>
+        private static IElement LinhaDaMaestria(IRenderedComponent<IComponent> cut) =>
             AbaAberta(cut).QuerySelectorAll("table").Single(t => t.QuerySelectorAll("th").Any(th => TextoNormalizado(th) == "Gasto Maestria")).QuerySelectorAll("tbody tr").Single();
 
         [Theory]
@@ -295,54 +295,52 @@ public abstract class RedePartesPorTipoTests : RedeDeSegurancaBase
         {
             var cut = await AbrirCombateAsync(tipo, papel);
 
-            var remover = tipo == "Personagem"
-                ? Botao(LinhaDaMaestriaNoPersonagem(cut), "Remover")
-                : AbaAberta(cut).QuerySelectorAll("tr").Single(tr => TextoNormalizado(tr).StartsWith("Golpe Firme —", StringComparison.Ordinal)).QuerySelector("button")!;
-            await cut.InvokeAsync(() => remover.Click());
+            await cut.InvokeAsync(() => Botao(LinhaDaMaestria(cut), "Remover").Click());
 
             await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal($"DELETE {K(tipo)}/masteries/ma1", $"GET {K(tipo)}/masteries"));
         }
 
         [Theory]
-        [MemberData(nameof(Papeis))]
-        public async Task No_personagem_editar_o_nome_na_linha_grava_a_maestria(string papel)
+        [MemberData(nameof(TiposEPapeis))]
+        public async Task Editar_o_nome_na_linha_grava_a_maestria(string tipo, string papel)
         {
-            var cut = await AbrirCombateAsync("Personagem", papel);
+            var cut = await AbrirCombateAsync(tipo, papel);
 
-            await cut.InvokeAsync(() => LinhaDaMaestriaNoPersonagem(cut).QuerySelectorAll("input")[0].Change("Golpe Certeiro"));
+            await cut.InvokeAsync(() => LinhaDaMaestria(cut).QuerySelectorAll("input")[0].Change("Golpe Certeiro"));
 
             await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(
-                "PUT /character-sheets/s1/masteries/ma1 {\"atributo\":\"Vigor\",\"gastoMaestria\":1,\"nome\":\"Golpe Certeiro\",\"pericia\":\"Atletismo\"}",
-                "GET /character-sheets/s1/masteries"));
+                $"PUT {K(tipo)}/masteries/ma1 {{\"atributo\":\"Vigor\",\"gastoMaestria\":1,\"nome\":\"Golpe Certeiro\",\"pericia\":\"Atletismo\"}}",
+                $"GET {K(tipo)}/masteries"));
         }
 
         [Theory]
-        [MemberData(nameof(Papeis))]
-        public async Task No_personagem_editar_o_gasto_na_linha_grava_a_maestria(string papel)
+        [MemberData(nameof(TiposEPapeis))]
+        public async Task Editar_o_gasto_na_linha_grava_a_maestria(string tipo, string papel)
         {
-            var cut = await AbrirCombateAsync("Personagem", papel);
+            var cut = await AbrirCombateAsync(tipo, papel);
 
-            var gasto = LinhaDaMaestriaNoPersonagem(cut).QuerySelectorAll("td")[3].QuerySelector("input")!;
+            var gasto = LinhaDaMaestria(cut).QuerySelectorAll("td")[3].QuerySelector("input")!;
             await cut.InvokeAsync(() => gasto.Change("3"));
 
             await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(
-                "PUT /character-sheets/s1/masteries/ma1 {\"atributo\":\"Vigor\",\"gastoMaestria\":3,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}",
-                "GET /character-sheets/s1/masteries"));
+                $"PUT {K(tipo)}/masteries/ma1 {{\"atributo\":\"Vigor\",\"gastoMaestria\":3,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}}",
+                $"GET {K(tipo)}/masteries"));
         }
 
         // Um erro do servidor ao editar a Maestria aparece no alerta da página.
-        [Fact]
-        public async Task No_personagem_uma_edicao_recusada_mostra_a_mensagem_do_servidor()
+        [Theory]
+        [MemberData(nameof(TiposEPapeis))]
+        public async Task Uma_edicao_recusada_mostra_a_mensagem_do_servidor(string tipo, string papel)
         {
-            var cut = await AbrirCombateAsync("Personagem", "GM");
+            var cut = await AbrirCombateAsync(tipo, papel);
             ResponderErro("/masteries/ma1", System.Net.HttpStatusCode.BadRequest, "Gasto acima do limite.");
 
-            var gasto = LinhaDaMaestriaNoPersonagem(cut).QuerySelectorAll("td")[3].QuerySelector("input")!;
+            var gasto = LinhaDaMaestria(cut).QuerySelectorAll("td")[3].QuerySelector("input")!;
             await cut.InvokeAsync(() => gasto.Change("30"));
 
             await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(
-                "PUT /character-sheets/s1/masteries/ma1 {\"atributo\":\"Vigor\",\"gastoMaestria\":30,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}",
-                "GET /character-sheets/s1/masteries"));
+                $"PUT {K(tipo)}/masteries/ma1 {{\"atributo\":\"Vigor\",\"gastoMaestria\":30,\"nome\":\"Golpe Firme\",\"pericia\":\"Atletismo\"}}",
+                $"GET {K(tipo)}/masteries"));
             cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Gasto acima do limite.");
         }
     }

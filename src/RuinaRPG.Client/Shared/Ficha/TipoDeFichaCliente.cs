@@ -77,9 +77,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// </summary>
     public required bool TemArmaManual { get; init; }
 
-    /// <summary>A edição na linha das Maestrias (<c>PUT masteries/{id}</c>).</summary>
-    public required bool EditaMaestriaNaLinha { get; init; }
-
     /// <summary>A edição na linha das Afeições (<c>PUT affections/{id}</c>).</summary>
     public required bool EditaAfeicaoNaLinha { get; init; }
 
@@ -134,7 +131,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CriaCaracteristicaNoPicker = false,
         MostraPesoDasArmas = true,
         TemArmaManual = false,
-        EditaMaestriaNaLinha = true,
         EditaAfeicaoNaLinha = true,
         TemRunas = true,
         TemInventario = true,
@@ -166,7 +162,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         AjudaDoXpPorAbate = "XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.",
         MostraPesoDasArmas = true,
         TemArmaManual = false,
-        EditaMaestriaNaLinha = false,
         EditaAfeicaoNaLinha = false,
         TemRunas = true,
         TemInventario = true,
@@ -197,7 +192,6 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CriaCaracteristicaNoPicker = true,
         MostraPesoDasArmas = false,
         TemArmaManual = true,
-        EditaMaestriaNaLinha = false,
         EditaAfeicaoNaLinha = false,
         TemRunas = false,
         TemInventario = false,

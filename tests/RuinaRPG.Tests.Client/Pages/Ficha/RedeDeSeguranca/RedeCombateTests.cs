@@ -92,9 +92,8 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
     protected static IEnumerable<string> Maestrias(string tipo) => new[]
     {
         "Maestrias", "«»", "Nome", "Escolha uma Perícia", "Perícia", "Escolha um Atributo", "Atributo", "«0»", "Gasto Maestria", "Adicionar Maestria",
-    }.Concat(tipo == "Personagem"
-        ? new[] { "Nome", "Perícia", "Atributo", "Gasto Maestria", "Total", "«Golpe Firme»", "Atletismo", "Vigor", "«1»", "4", "Remover" }
-        : new[] { "Golpe Firme — Atletismo / Vigor — Gasto 1 — Total 4", "Remover" });
+        "Nome", "Perícia", "Atributo", "Gasto Maestria", "Total", "«Golpe Firme»", "Atletismo", "Vigor", "«1»", "4", "Remover",
+    };
 
     protected static readonly string[] Armaduras =
     {

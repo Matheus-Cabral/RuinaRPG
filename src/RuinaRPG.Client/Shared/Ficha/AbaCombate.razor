@@ -2,8 +2,7 @@
 @inject PericiaCatalogo Catalogo
 
 @* A aba Combate das três fichas: os recursos (com a Sina e o Estresse onde o tipo os tem), os Sub-Atributos, o
-   Modificador de Dano, as Armas (a arma manual onde o tipo a tem: ArmaManualForm), as Maestrias (editadas na linha onde
-   o tipo as edita: MaestriasNaLinha), as Armaduras e os Escudos. Os recursos, a Sina, a Cobertura e a Afinidade são do
+   Modificador de Dano, as Armas (a arma manual onde o tipo a tem: ArmaManualForm), as Maestrias (editadas na linha: MaestriasNaLinha), as Armaduras e os Escudos. Os recursos, a Sina, a Cobertura e a Afinidade são do
    formulário auto-salvo da página (Formulario): os recursos vão no autosave (AoMudar), a Sina salva na hora
    (SalvarAgora), a Cobertura e a Afinidade salvam na hora e releem as abas (SalvarERecarregar), num evento só da página.
    O resto são ações do estado. *@
@@ -146,24 +145,7 @@
         <MudNumericField T="int" @bind-Value="Estado.FormularioDeMaestria.GastoMaestria" Label="Gasto Maestria" />
         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-3">Adicionar Maestria</MudButton>
     </EditForm>
-    @if (Estado.Tipo.EditaMaestriaNaLinha)
-    {
-        <MaestriasNaLinha />
-    }
-    else
-    {
-        <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
-            <tbody>
-                @foreach (var mastery in Estado.Maestrias)
-                {
-                    <tr>
-                        <td>@mastery.Nome — @Estado.NomeDaPericia(mastery.Pericia, Catalogo) / @AtributoDisplay.Label(mastery.Atributo) — Gasto @mastery.GastoMaestria — Total @mastery.Total</td>
-                        <td><MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => Estado.RemoverMaestriaAsync(mastery.Id))">Remover</MudButton></td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    }
+    <MaestriasNaLinha />
 </Section>
 
 <Section Title="Armaduras">

@@ -54,7 +54,6 @@ public class TipoDeFichaClienteTests
     [InlineData(nameof(TipoDeFichaCliente.TemRunas), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemAfinidades), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemTracosRaciais), true, true, false)]
-    [InlineData(nameof(TipoDeFichaCliente.EditaMaestriaNaLinha), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.EditaAfeicaoNaLinha), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemArmaManual), false, false, true)]
     [InlineData(nameof(TipoDeFichaCliente.CondicoesSoSeConcedida), false, true, true)]

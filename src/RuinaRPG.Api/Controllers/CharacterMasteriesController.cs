@@ -25,32 +25,4 @@ public sealed class CharacterMasteriesController(RuinaRpgDbContext db, IPericiaC
 
     protected override MasteryResponse Resposta(string id, string nome, string pericia, string atributo, int gastoMaestria, int total) =>
         new(id, nome, pericia, atributo, gastoMaestria, total);
-
-    // Só o Personagem edita uma Maestria existente; NPC e Criatura só criam e apagam.
-    [HttpPut("{id}")]
-    public async Task<ActionResult<MasteryResponse>> Update(Guid sheetId, Guid id, UpdateCharacterMasteryRequest request)
-    {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
-            return erro;
-
-        var pericia = await Pericias.AtivaPorChaveAsync(request.Pericia);
-        if (pericia is null)
-            return BadRequest(PericiaOuAtributoDesconhecido);
-        if (!Enum.TryParse<Atributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
-            return BadRequest(PericiaOuAtributoDesconhecido);
-
-        var mastery = await Db.CharacterMasteries.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
-        if (mastery is null)
-            return NotFound();
-
-        mastery.Nome = request.Nome;
-        mastery.PericiaId = pericia.Id;
-        mastery.Atributo = atributo;
-        mastery.GastoMaestria = request.GastoMaestria;
-        await Db.SaveChangesAsync();
-
-        var porId = await Pericias.PorIdAsync();
-        var total = await ComputeTotalAsync(sheet, mastery.Id, pericia, atributo, mastery.GastoMaestria, await Tipo.CondicoesAsync(sheet));
-        return Ok(ParaResposta(mastery, total, porId));
-    }
 }
