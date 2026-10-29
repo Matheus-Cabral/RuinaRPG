@@ -74,17 +74,40 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
             EscolhaRacialAberta = false;
     }
 
-    /// <summary>Relê só o estado do cemitério (o aviso em tempo real, a caixa "Morto"); o alerta de erro fica como está.</summary>
+    /// <summary>A recusa de escrita do servidor numa ficha no cemitério (409).</summary>
+    public const string RecusaDoCemiterio = "Esta ficha está no cemitério e não pode ser editada.";
+
+    /// <summary>
+    /// A ficha acabou de entrar no cemitério (<see cref="RecarregarCemiterioAsync"/>): a página relê o formulário assim
+    /// que o auto-save terminar, para que nada recusado fique na tela. Um evento, não um gancho obrigatório: só a página
+    /// de um tipo com cemitério o assina.
+    /// </summary>
+    public event Action? EntrouNoCemiterio;
+
+    /// <summary>
+    /// Relê só o estado do cemitério (o aviso em tempo real, a caixa "Morto"); o alerta de erro fica como está, exceto a
+    /// recusa do cemitério, que sai quando a ficha sai do cemitério.
+    /// </summary>
     public async Task RecarregarCemiterioAsync()
     {
         if (!Tipo.TemCemiterio)
             return;
         var response = await Http.GetAsync(Tipo.Url(SheetId));
         if (!response.IsSuccessStatusCode)
+        {
+            MostrarErro("Não foi possível atualizar a ficha.");
             return;
+        }
         var ficha = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         if (ficha is not null)
+        {
+            var antes = SomenteLeitura;
             DefinirCemiterio(ficha.NoCemiterio, ficha.MotivosDoCemiterio);
+            if (!antes && SomenteLeitura)
+                EntrouNoCemiterio?.Invoke();
+            if (antes && !SomenteLeitura && Erro == RecusaDoCemiterio)
+                Erro = null;
+        }
         NotificarAlteracao();
     }
 

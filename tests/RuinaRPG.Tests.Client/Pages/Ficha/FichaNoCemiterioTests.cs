@@ -186,7 +186,9 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
 
         await cut.InvokeAsync(() => CaixaMorto(cut)!.Change(true));
 
-        await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal("PUT /character-sheets/s1/morte {\"morto\":true}", "GET /character-sheets/s1"));
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal("PUT /character-sheets/s1/morte {\"morto\":true}", "GET /character-sheets/s1",
+            // Entrou no cemitério: o formulário é relido do servidor (nenhuma edição recusada fica na tela).
+            "GET /character-sheets/s1"));
         cut.WaitForAssertion(() => TextoNormalizado(Raiz(cut)).Should().Contain("Esta ficha está no cemitério: Personagem morto."));
         CaixaMorto(cut)!.HasAttribute("checked").Should().BeTrue();
         ControlesHabilitados(cut).Should().BeEmpty();
@@ -259,6 +261,73 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
 
         cut.WaitForAssertion(() => Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa)),
             TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task No_cemiterio_o_avatar_so_mostra_a_imagem()
+    {
+        FichaNoCemiterio("Morte");
+        var cut = await AbrirAsync("Jogador");
+
+        await cut.InvokeAsync(() => AbaAberta(cut).QuerySelector(".mud-avatar")!.Click());
+
+        var dialogo = Dialogo(cut);
+        dialogo.QuerySelectorAll("button").Select(TextoNormalizado).Should().Equal("Fechar");
+        dialogo.QuerySelectorAll("input").Should().BeEmpty();
+        dialogo.QuerySelector("img").Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Edicao_pendente_recusada_volta_ao_valor_do_servidor_e_sair_do_cemiterio_limpa_a_recusa()
+    {
+        // Review Focus 1: o jogador digita, o GM marca Morto antes do auto-save; o save recebe 409.
+        var cut = await AbrirAsync("Jogador");
+        ResponderErro("/character-sheets/s1/pontos-de-ignicao", HttpStatusCode.Conflict, Recusa);
+        await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Pontos de Ignição Atual").Change("20"));
+        FichaNoCemiterio("Morte");
+        await cut.InvokeAsync(() => NotificationConnection.RaiseFichaNoCemiterioAlteradaAsync(SheetId));
+
+        // A recusa fica no alerta e o campo volta ao que o servidor tem (nada recusado fica na tela).
+        cut.WaitForAssertion(() =>
+        {
+            Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa));
+            Campo(AbaAberta(cut), "Pontos de Ignição Atual").GetAttribute("value").Should().Be("12");
+        }, TimeSpan.FromSeconds(3));
+        ControlesHabilitados(cut).Should().BeEmpty();
+
+        // O GM desmarca: a ficha volta a editável e a recusa, que não vale mais, sai do alerta.
+        FichaForaDoCemiterio();
+        await cut.InvokeAsync(() => NotificationConnection.RaiseFichaNoCemiterioAlteradaAsync(SheetId));
+
+        cut.WaitForAssertion(() => TextoNormalizado(Raiz(cut)).Should().NotContain("cemitério"));
+        ControlesHabilitados(cut).Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Recusa_409_recarrega_o_formulario_com_o_valor_do_servidor()
+    {
+        var cut = await AbrirAsync("Jogador");
+        ResponderErro("/character-sheets/s1/pontos-de-ignicao", HttpStatusCode.Conflict, Recusa);
+
+        await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Pontos de Ignição Atual").Change("20"));
+
+        cut.WaitForAssertion(() =>
+        {
+            Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa));
+            Campo(AbaAberta(cut), "Pontos de Ignição Atual").GetAttribute("value").Should().Be("12");
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task Falha_ao_reler_o_estado_do_cemiterio_aparece_na_pagina()
+    {
+        var cut = await AbrirAsync("Jogador");
+        Responder("^/character-sheets/s1$", null);
+
+        await cut.InvokeAsync(() => NotificationConnection.RaiseFichaNoCemiterioAlteradaAsync(SheetId));
+
+        cut.WaitForAssertion(() => Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado)
+            .Should().Contain(a => a.Contains("Não foi possível atualizar a ficha.")));
     }
 
     private static List<string> LinksDaTrilha(IRenderedComponent<IComponent> cut) =>

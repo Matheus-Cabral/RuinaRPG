@@ -34,7 +34,16 @@ public sealed partial class FichaEstado
     /// </summary>
     public async Task DefinirMorteAsync(bool morto)
     {
-        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, "morte"), new DefinirMorteRequest(morto));
+        HttpResponseMessage response;
+        try
+        {
+            response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, "morte"), new DefinirMorteRequest(morto));
+        }
+        catch (HttpRequestException)
+        {
+            MostrarErro("Não foi possível alterar a caixa Morto.");
+            return;
+        }
         if (!response.IsSuccessStatusCode)
         {
             MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível alterar a caixa Morto.");

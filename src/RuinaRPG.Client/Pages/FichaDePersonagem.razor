@@ -105,6 +105,44 @@
             aoFalhar: falha => _ = AvisarFalhaDaRecargaAsync());
         Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
         Notifier.FichaNoCemiterioAlterada += OnFichaNoCemiterioAlterada;
+        _estado.EntrouNoCemiterio += AgendarRecargaDoFormulario;
+    }
+
+    private bool _recargaDoFormularioAgendada;
+    private bool _descartada;
+
+    // A ficha entrou no cemitério, ou um salvamento foi recusado por isso: assim que o auto-save terminar (os salvamentos
+    // pendentes também recebem a recusa), o formulário volta ao que o servidor tem. A mensagem do alerta fica.
+    private void AgendarRecargaDoFormulario()
+    {
+        if (_recargaDoFormularioAgendada)
+            return;
+        _recargaDoFormularioAgendada = true;
+        _ = RecarregarFormularioQuandoOciosoAsync();
+    }
+
+    private async Task RecarregarFormularioQuandoOciosoAsync()
+    {
+        try
+        {
+            while (_autoSave.Ocupado && !_descartada)
+                await Task.Delay(50);
+            if (_descartada)
+                return;
+            await InvokeAsync(async () =>
+            {
+                _recargaDoFormularioAgendada = false;
+                var erro = _errorMessage;
+                await LoadSheetAsync();
+                if (erro is not null)
+                    _errorMessage = erro;
+                StateHasChanged();
+            });
+        }
+        catch (Exception)
+        {
+            // Ninguém espera esta tarefa: se a página saiu ou a releitura falhou, o formulário fica como está.
+        }
     }
 
     // O GM marcou ou desmarcou "Morto": a ficha aberta entra ou sai do modo leitura sem recarregar a página. Só o estado
@@ -188,6 +226,8 @@
         _autoSave.StateChanged -= StateHasChangedFromAutoSave;
         Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
         Notifier.FichaNoCemiterioAlterada -= OnFichaNoCemiterioAlterada;
+        _estado.EntrouNoCemiterio -= AgendarRecargaDoFormulario;
+        _descartada = true;
         _recarga.Dispose();
     }
 
@@ -338,7 +378,10 @@
     {
         var mensagem = await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.";
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
             _errorMessage = mensagem;
+            AgendarRecargaDoFormulario();
+        }
         return new InvalidOperationException(mensagem);
     }
 

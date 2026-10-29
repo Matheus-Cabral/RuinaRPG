@@ -29,6 +29,9 @@
                 {
                     <MudImage Src="@Formulario.ImageUrl" Width="240" Class="mb-2" />
                 }
+                @* No cemitério o diálogo (fora da desabilitação em cascata das abas) só mostra a imagem. *@
+                @if (!Estado.SomenteLeitura)
+                {
                 <div>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _editandoImagem = !_editandoImagem)" title="Editar imagem" />
                     @if (Formulario.ImageId is not null)
@@ -48,6 +51,7 @@
                     <ImageGalleryDialog @bind-Visible="_galeriaAberta" Images="Estado.MinhasImagens" AllowClear="true"
                                          IsSelectedFunc="@(id => id == Formulario.ImageId)"
                                          OnPick="EscolherImagemAsync" />
+                }
                 }
             </DialogContent>
             <DialogActions>
