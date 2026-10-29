@@ -7,4 +7,7 @@ public static class NotificationEvents
     public const string SecretNotesChanged = "SecretNotesChanged";
     public const string CondicoesAlteradas = "CondicoesAlteradas";
     public const string FichaNoCemiterioAlterada = "FichaNoCemiterioAlterada";
+
+    /// <summary>O jogador entrou ou saiu de uma campanha (Campanha R0018): o painel aberto recarrega as campanhas e as fichas.</summary>
+    public const string CampanhasDoJogadorAlteradas = "CampanhasDoJogadorAlteradas";
 }

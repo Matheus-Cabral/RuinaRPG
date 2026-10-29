@@ -1,6 +1,7 @@
 DELETE /api/arcas/{roll:int}/evolucoes/{id:guid} (roll:Int32:Path, id:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=GM)]
 DELETE /api/campaigns/{campaignId}/attachments/{id} (campaignId:Guid:Path, id:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=GM)]
 DELETE /api/campaigns/{campaignId}/diary/{entryId} (campaignId:Guid:Path, entryId:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=GM)]
+DELETE /api/campaigns/{campaignId}/members/{userId} (campaignId:Guid:Path, userId:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=GM)]
 DELETE /api/campaigns/{campaignId}/secret-notes/{noteId} (campaignId:Guid:Path, noteId:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=GM)]
 DELETE /api/campaigns/{id} (id:Guid:Path, request:DeleteCampaignRequest:Body) -> Task<IActionResult> [authorize(policy=,roles=GM)]
 DELETE /api/character-sheets/{id} (id:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=);authorize(policy=,roles=GM)]

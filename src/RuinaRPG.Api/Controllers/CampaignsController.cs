@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Contracts.Notifications;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/campaigns")]
 [Authorize(Roles = "GM")]
-public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, ILogger<CampaignsController> logger) : ControllerBase
+public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, SaidaDoJogador saida, ILogger<CampaignsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CampaignResponse>> Create(CreateCampaignRequest request)
@@ -124,6 +125,30 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             db.ChangeTracker.Clear();
         }
 
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Campanha R0018: o jogador deixa a campanha. Tudo numa transação (<see cref="SaidaDoJogador"/>); um encontro
+    /// alterado ao mesmo tempo por outra ação desfaz tudo e responde 409.
+    /// </summary>
+    [HttpDelete("{campaignId}/members/{userId}")]
+    [ConflitoDeConcorrenciaDoEncontro]
+    public async Task<IActionResult> RemoveMember(Guid campaignId, Guid userId)
+    {
+        var gmId = CurrentGmId();
+        if (!await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId))
+            return NotFound();
+        if (!await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == userId))
+            return NotFound();
+
+        await using (var transacao = await db.Database.BeginTransactionAsync())
+        {
+            await saida.SairAsync(userId, [campaignId]);
+            await db.SaveChangesAsync();
+            await transacao.CommitAsync();
+        }
+        await saida.NotificarAsync();
         return NoContent();
     }
 
