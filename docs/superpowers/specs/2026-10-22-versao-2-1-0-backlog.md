@@ -82,3 +82,19 @@ in `TipoDeFichaCliente` instead of reusing UI capability flags to pick Creature 
   8. Leituras 404 × 403 — averiguar caso a caso.
 - **Propostas do G (`2026-10-23-g-propostas-sistema-rpg.md`):** só corrigir ortografia; o resto fica como está.
 - **Deploy automático:** configurar (provisionar o pipeline) antes de publicar a 2.1.0.
+
+## Cemitério — entregue em 2026-10-29 (branch `release/2.1.0`, até 7736482)
+
+Spec `2026-10-24-versao-2-1-0-cemiterio-design.md`, plano `2026-10-24-versao-2-1-0-cemiterio.md`. Pendências
+deixadas para os próximos itens da 2.1.0:
+
+- **Antes da próxima migration:** o `RuinaRpgDbContextModelSnapshot` está com nomes de propriedade anteriores ao
+  D (todo `migrations add` regera ~570 linhas de ruído de renomeação) — aceitar o snapshot regenerado num commit
+  próprio; e `DatabaseInitializerTests` simula o 1.5.0 apagando `Morto` pelo nome — tornar genérico.
+- **Remover jogador:** basta apagar o vínculo de membro (o motivo `RemovidoDaCampanha` já é calculado e o nome do
+  dono já vem na resposta). A visão do ex-membro sobre a campanha (nome/imagens) não foi desenhada.
+- **Contas:** acrescentar o motivo `ContaInativa` em `Cemiterio.Motivos`/`CemiterioDaFicha`.
+- Menores, sem efeito em comportamento: o Painel duplica o cartão da ficha; o filtro do cemitério carrega a ficha
+  rastreada + consulta o GM a cada escrita; a regra de template de rota está duplicada entre filtro e teste;
+  qualquer 409 ao salvar a ficha recarrega o formulário; ao sair do cemitério o Atual acima do máximo só é cortado
+  no próximo salvamento.
