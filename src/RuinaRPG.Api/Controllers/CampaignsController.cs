@@ -10,6 +10,7 @@ using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Contracts.Notifications;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
@@ -106,7 +107,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         var player = await userManager.FindByIdAsync(request.UserId);
-        if (player is null || player.InvitedByGmId != gmId)
+        if (player is null || player.InvitedByGmId != gmId || player.Estado != EstadoDaConta.Ativa)
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         if (await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == player.Id))
