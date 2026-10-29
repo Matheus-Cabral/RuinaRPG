@@ -134,6 +134,20 @@ public class CemiterioTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
+    public async Task Lista_da_campanha_traz_o_nickname_do_dono_mesmo_sem_ser_membro()
+    {
+        var c = await MontarAsync();
+        await RemoverMembroAsync(c);
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{c.CampaignId}/character-sheets", c.GmToken));
+        var lista = (await response.Content.ReadFromJsonAsync<List<CharacterSheetResponse>>())!;
+        var item = lista.Single(s => s.Id == c.SheetId);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var esperado = await db.Users.Where(u => u.Id == Guid.Parse(c.PlayerId)).Select(u => u.Nickname).SingleAsync();
+        item.DonoNickname.Should().Be(esperado);
+    }
+
+    [Fact]
     public async Task Minha_campanha_nao_lista_ficha_no_cemiterio()
     {
         var c = await MontarAsync();

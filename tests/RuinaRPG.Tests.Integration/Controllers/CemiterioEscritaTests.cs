@@ -107,6 +107,24 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
     }
 
     [Fact]
+    public async Task Outro_GM_recebe_o_mesmo_erro_de_antes()
+    {
+        var viva = await new TipoDeTestePersonagem().CriarFichaAsync(this);
+        var morta = await FichaMortaAsync();
+        var outroGm = await RegisterGmAndGetTokenAsync("OutroGm" + Guid.NewGuid().ToString("N")[..8], "og" + Guid.NewGuid().ToString("N")[..8] + "@t.com");
+        var corpoDaFicha = new TipoDeTestePersonagem().AtualizacaoComPi(0);
+        var corpoDoInventario = new { ItemId = Guid.NewGuid().ToString(), Qtd = 1 };
+
+        foreach (var (metodo, sufixo, corpo) in new (HttpMethod, string, object)[] { (HttpMethod.Put, "", corpoDaFicha), (HttpMethod.Post, "/inventory", corpoDoInventario) })
+        {
+            var naViva = await Client.SendAsync(AuthedRequest(metodo, $"/api/character-sheets/{viva.SheetId}{sufixo}", outroGm, corpo));
+            var naMorta = await Client.SendAsync(AuthedRequest(metodo, $"/api/character-sheets/{morta.SheetId}{sufixo}", outroGm, corpo));
+            naMorta.StatusCode.Should().Be(naViva.StatusCode, $"{metodo} {sufixo}");
+            naMorta.StatusCode.Should().NotBe(HttpStatusCode.Conflict);
+        }
+    }
+
+    [Fact]
     public async Task Ficha_viva_continua_editavel()
     {
         var c = await new TipoDeTestePersonagem().CriarFichaAsync(this);

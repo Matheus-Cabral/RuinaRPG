@@ -625,7 +625,7 @@ public class CampanhaDetalheTests : MudBunitContext
 
     private static object Ficha(string id, string owner, string nome, bool cemiterio, params string[] motivos) => new
     {
-        Id = id, CampaignId, OwnerId = owner, Nome = nome, Nivel = 7, Vocacao = "Guerreiro", Linhagem = "Humano",
+        Id = id, CampaignId, OwnerId = owner, DonoNickname = owner == "u1" ? "Ana" : "Beto", Nome = nome, Nivel = 7, Vocacao = "Guerreiro", Linhagem = "Humano",
         ImageUrl = cemiterio ? "/img/morto.png" : null, NoCemiterio = cemiterio, MotivosDoCemiterio = motivos,
     };
 
@@ -684,7 +684,7 @@ public class CampanhaDetalheTests : MudBunitContext
     }
 
     [Fact]
-    public void Aba_Cemiterio_mostra_traco_quando_o_dono_nao_e_mais_membro()
+    public void Aba_Cemiterio_mostra_o_nickname_do_dono_vindo_da_resposta()
     {
         var cut = RenderComFichas([Ficha("f2", "ex-membro", "Morta", true, "RemovidoDaCampanha")]);
         cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
@@ -692,7 +692,7 @@ public class CampanhaDetalheTests : MudBunitContext
         IrParaCemiterio(cut);
 
         cut.WaitForAssertion(() => cut.Find("[data-testid=cemiterio]").TextContent
-            .Should().Contain("Jogador removido da campanha").And.Contain("—"));
+            .Should().Contain("Jogador removido da campanha").And.Contain("jogador: Beto"));
     }
 
     [Fact]

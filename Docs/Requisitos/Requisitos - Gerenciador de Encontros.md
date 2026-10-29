@@ -114,7 +114,7 @@ Nada é registrado enquanto o Encontro está em preparação ou finalizado — a
 - escolher, em cada categoria desabilitada, se ela desabilita a categoria inteira ou só itens escolhidos da ficha do participante.
 - restringir cada modificador de Maestria a Maestrias escolhidas da ficha do participante (só as da Perícia do modificador, quando ele tem uma); sem escolha, o modificador vale em todas, como na entrada. As Maestrias escolhidas aparecem pelo nome na explicação da Condição na ficha.
 
-Num participante cuja ficha está no cemitério (R0015) o GM não aplica nem remove Condições. A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado.
+Num participante cuja ficha está no cemitério (R0015) o GM não aplica nem remove Condições. A mesma Condição não pode estar duas vezes no mesmo participante; Condições diferentes se somam. O GM remove uma Condição a qualquer momento antes de o Encontro ser finalizado, salvo num participante cuja ficha está no cemitério (R0015).
 
 Uma Condição só está **ativa** com o Encontro em andamento e enquanto a duração não venceu (R0012): na preparação ela fica no participante sem efeito nenhum, e começa a valer ao Iniciar. O efeito nos valores depende da origem do participante (R0002): numa Ficha de Personagem, ou numa Ficha de NPC/Criatura concedida a um jogador, a ficha mostra os valores com a Condição enquanto ela está ativa (ver "[[Requisitos - Ficha de Personagem]]" R0009), e o dono da ficha é avisado sempre que as Condições ativas dela mudam; numa Ficha de NPC/Criatura do GM, a ficha original nunca muda e a Condição só vale para aquela instância no Encontro, e o GM a vê no resumo da ficha (R0014).
 

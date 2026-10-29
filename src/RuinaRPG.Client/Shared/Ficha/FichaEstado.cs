@@ -75,7 +75,7 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     }
 
     /// <summary>A recusa de escrita do servidor numa ficha no cemitério (409).</summary>
-    public const string RecusaDoCemiterio = "Esta ficha está no cemitério e não pode ser editada.";
+    public const string RecusaDoCemiterio = RuinaRPG.Contracts.CharacterSheets.TextosDoCemiterio.RecusaDeEscrita;
 
     /// <summary>
     /// A ficha acabou de entrar no cemitério (<see cref="RecarregarCemiterioAsync"/>): a página relê o formulário assim

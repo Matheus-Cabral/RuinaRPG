@@ -123,9 +123,11 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
         var sheets = await Db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
         var motivos = await cemiterio.MotivosAsync(sheets);
+        var donos = sheets.Select(s => s.OwnerId).Distinct().ToList();
+        var nicknames = await Db.Users.Where(u => donos.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nickname);
         var responses = new List<CharacterSheetResponse>();
         foreach (var sheet in sheets)
-            responses.Add(await ToResponseAsync(sheet, motivos[sheet.Id]));
+            responses.Add(await ToResponseAsync(sheet, motivos[sheet.Id], nicknames.GetValueOrDefault(sheet.OwnerId)));
         return responses;
     }
 
@@ -302,9 +304,10 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
     private static List<string> MotivosComoTexto(IReadOnlyList<MotivoDoCemiterio> motivos) => motivos.Select(m => m.ToString()).ToList();
 
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
-        => await ToResponseAsync(s, await cemiterio.MotivosAsync(s));
+        => await ToResponseAsync(s, await cemiterio.MotivosAsync(s),
+            await Db.Users.Where(u => u.Id == s.OwnerId).Select(u => u.Nickname).FirstOrDefaultAsync());
 
-    private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s, IReadOnlyList<MotivoDoCemiterio> motivosDoCemiterio)
+    private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s, IReadOnlyList<MotivoDoCemiterio> motivosDoCemiterio, string? donoNickname)
     {
         var imageUrl = await UrlDaImagemAsync(Db, s.ImageId);
 
@@ -339,7 +342,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
             s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
-            motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio));
+            motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio), donoNickname);
     }
 
     /// <summary>

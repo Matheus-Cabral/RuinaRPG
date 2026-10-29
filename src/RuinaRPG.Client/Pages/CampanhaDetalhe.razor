@@ -93,7 +93,7 @@
                                     <ClickableAvatarImage Src="@sheet.ImageUrl" Size="Size.Small" Class="mr-2" />
                                 }
                                 <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, jogador: @(_members.FirstOrDefault(m => m.UserId == sheet.OwnerId)?.Nickname ?? "—")</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, jogador: @(sheet.DonoNickname ?? "—")</MudText>
                                 @foreach (var motivo in sheet.MotivosDoCemiterio)
                                 {
                                     <MudChip T="string" Size="Size.Small" Class="ml-2">@FichaEstado.RotuloDoMotivo(motivo)</MudChip>

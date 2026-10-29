@@ -53,4 +53,5 @@ public record CharacterSheetResponse(
     int VocacaoArcanaGasta,
     int VocacaoArcanaMaxima,
     bool NoCemiterio,
-    List<string> MotivosDoCemiterio);
+    List<string> MotivosDoCemiterio,
+    string? DonoNickname = null);

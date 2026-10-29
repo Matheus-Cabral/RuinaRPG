@@ -18,7 +18,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// </summary>
 public sealed class FichaNoCemiterioFilter(RuinaRpgDbContext db, CemiterioDaFicha cemiterio) : IAsyncResourceFilter
 {
-    public const string Mensagem = "Esta ficha está no cemitério e não pode ser editada.";
+    public const string Mensagem = RuinaRPG.Contracts.CharacterSheets.TextosDoCemiterio.RecusaDeEscrita;
 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {

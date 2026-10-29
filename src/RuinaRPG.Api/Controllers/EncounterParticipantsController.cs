@@ -23,7 +23,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
     IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<EncounterParticipantsController> logger) : ControllerBase
 {
     /// <summary>Gerenciador de Encontros R0002: uma Ficha de Personagem no cemitério não entra num encontro.</summary>
-    public const string RecusaDoCemiterio = "Esta ficha está no cemitério e não pode entrar em encontros.";
+    public const string RecusaDoCemiterio = RuinaRPG.Contracts.CharacterSheets.TextosDoCemiterio.RecusaDeEncontro;
 
     [HttpPost]
     public async Task<ActionResult<EncounterParticipantResponse>> Add(Guid encounterId, AddParticipantRequest request)
