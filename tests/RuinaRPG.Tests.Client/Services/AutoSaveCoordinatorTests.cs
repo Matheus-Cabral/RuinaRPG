@@ -192,6 +192,68 @@ public class AutoSaveCoordinatorTests
         Assert.Equal(1, maxRunning);
     }
 
+    // Spec 2.1.0 A.4: um recarregamento nunca sobrescreve um campo com edição pendente ou em envio, em qualquer canal.
+    [Fact]
+    public async Task Um_recarregamento_pedido_com_outra_edicao_pendente_espera_ela_terminar()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var eventos = new List<string>();
+        void Anotar(string e) { lock (eventos) eventos.Add(e); }
+
+        coordinator.NotifyChanged(async () =>
+        {
+            Anotar("salva geral");
+            await coordinator.RecarregarAsync(() => { Anotar("lê"); return Task.FromResult(1); }, _ => { Anotar("aplica"); return Task.CompletedTask; });
+            return true;
+        });
+        await Task.Delay(50);
+        coordinator.NotifyChanged(() => { Anotar("salva pi"); return Task.FromResult(true); }, "pi");
+
+        await WaitUntilAsync(() => { lock (eventos) return eventos.Contains("aplica"); }, TimeSpan.FromSeconds(3));
+        await Task.Delay(100);
+
+        lock (eventos) Assert.Equal(new[] { "salva geral", "salva pi", "lê", "aplica" }, eventos);
+        Assert.False(coordinator.Ocupado);
+    }
+
+    [Fact]
+    public async Task Um_recarregamento_sem_edicao_pendente_aplica_antes_de_o_salvamento_terminar()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var aplicado = false;
+        var aplicadoAntesDoFim = false;
+
+        coordinator.NotifyChanged(async () =>
+        {
+            await coordinator.RecarregarAsync(() => Task.FromResult(1), _ => { aplicado = true; return Task.CompletedTask; });
+            aplicadoAntesDoFim = aplicado;
+            return true;
+        });
+        await WaitUntilAsync(() => coordinator.State == AutoSaveState.Saved, TimeSpan.FromSeconds(3));
+
+        Assert.True(aplicadoAntesDoFim);
+    }
+
+    [Fact]
+    public async Task Uma_edicao_que_chega_durante_a_leitura_descarta_o_que_foi_lido_e_o_recarregamento_se_repete_depois()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var leituras = 0;
+        var primeiraLeitura = new TaskCompletionSource<int>();
+        var aplicados = new List<int>();
+
+        var recarga = coordinator.RecarregarAsync(
+            () => ++leituras == 1 ? primeiraLeitura.Task : Task.FromResult(2),
+            valor => { lock (aplicados) aplicados.Add(valor); return Task.CompletedTask; });
+        coordinator.NotifyChanged(() => Task.FromResult(true));
+        primeiraLeitura.SetResult(1);
+        await recarga;
+
+        lock (aplicados) Assert.Empty(aplicados); // o lido antes da edição não sobrescreve o campo editado
+        await WaitUntilAsync(() => { lock (aplicados) return aplicados.Count > 0; }, TimeSpan.FromSeconds(3));
+        lock (aplicados) Assert.Equal(new[] { 2 }, aplicados);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

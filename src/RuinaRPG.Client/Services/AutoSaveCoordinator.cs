@@ -12,6 +12,12 @@ public class AutoSaveCoordinator
     private readonly Dictionary<string, CancellationTokenSource> _debounceCts = new();
     private Task _inFlight = Task.CompletedTask;
     private int _emAndamento;
+    // Quantos commits já chegaram: um recarregamento cuja leitura começou antes de um commit não aplica o que leu.
+    private long _commits;
+    // Recarregamentos adiados porque havia edição pendente; rodam quando o auto-save fica ocioso.
+    private readonly List<Func<Task>> _recargasAdiadas = new();
+    // Verdadeiro só dentro do delegate de salvamento em execução: o próprio salvamento não conta como "outra" pendência.
+    private static readonly AsyncLocal<AutoSaveCoordinator?> _salvamentoEmExecucao = new();
 
     /// <summary>True from a field's commit until its save has finished (or was superseded): a reload must not run in between.</summary>
     public bool Ocupado => _emAndamento > 0;
@@ -35,6 +41,7 @@ public class AutoSaveCoordinator
         var cts = new CancellationTokenSource();
         _debounceCts[canal] = cts;
         _emAndamento++;
+        _commits++;
         _ = DebounceAndSaveAsync(validateAndSaveAsync, cts.Token);
     }
 
@@ -48,6 +55,63 @@ public class AutoSaveCoordinator
         {
             _emAndamento--;
         }
+
+        if (_emAndamento == 0 && _recargasAdiadas.Count > 0)
+            await ExecutarRecargasAdiadasAsync();
+    }
+
+    /// <summary>
+    /// Relê o servidor e aplica o lido no formulário sem nunca sobrescrever um campo com edição pendente ou em envio
+    /// (spec 2.1.0 A.4). Sem outra edição pendente, lê e aplica já (dentro de um salvamento, antes de ele terminar).
+    /// Com outra edição pendente (em qualquer canal), ou se um commit chegar durante a leitura, nada é aplicado agora:
+    /// o recarregamento roda de novo quando o auto-save ficar ocioso, e então o formulário mostra o servidor.
+    /// <paramref name="aplicar"/> deve escrever no formulário antes do primeiro await.
+    /// </summary>
+    public async Task RecarregarAsync<T>(Func<Task<T>> ler, Func<T, Task> aplicar)
+    {
+        while (true)
+        {
+            if (HaOutraEdicaoPendente)
+            {
+                _recargasAdiadas.Add(() => RecarregarAsync(ler, aplicar));
+                return;
+            }
+
+            var commitsAntesDaLeitura = _commits;
+            var lido = await ler();
+            if (commitsAntesDaLeitura == _commits && !HaOutraEdicaoPendente)
+            {
+                await aplicar(lido);
+                return;
+            }
+        }
+    }
+
+    private bool HaOutraEdicaoPendente => _emAndamento - (_salvamentoEmExecucao.Value == this ? 1 : 0) > 0;
+
+    private async Task ExecutarRecargasAdiadasAsync()
+    {
+        var recargas = _recargasAdiadas.ToList();
+        _recargasAdiadas.Clear();
+        foreach (var recarga in recargas)
+        {
+            try
+            {
+                await recarga();
+            }
+            catch
+            {
+                State = AutoSaveState.Error;
+            }
+        }
+        StateChanged?.Invoke();
+    }
+
+    private async Task<bool> ExecutarSalvamentoAsync(Func<Task<bool>> validateAndSaveAsync)
+    {
+        // Um AsyncLocal mudado aqui só vale para este método e o que ele espera: quem chamou não vê a mudança.
+        _salvamentoEmExecucao.Value = this;
+        return await validateAndSaveAsync();
     }
 
     private async Task DebounceAndSaveCoreAsync(Func<Task<bool>> validateAndSaveAsync, CancellationToken token)
@@ -81,7 +145,7 @@ public class AutoSaveCoordinator
 
             try
             {
-                var attempted = await validateAndSaveAsync();
+                var attempted = await ExecutarSalvamentoAsync(validateAndSaveAsync);
                 if (attempted)
                 {
                     State = AutoSaveState.Saved;

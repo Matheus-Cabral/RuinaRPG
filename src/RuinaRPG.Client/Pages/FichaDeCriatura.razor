@@ -168,17 +168,28 @@
             _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
     }
 
-    private async Task LoadSheetAsync()
+    // Relê a ficha pelo auto-save: um campo com edição pendente ou em envio nunca é sobrescrito (spec 2.1.0 A.4).
+    private Task LoadSheetAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
+    {
+        AplicarFicha(sheet);
+        return Task.CompletedTask;
+    });
+
+    private async Task<CreatureSheetResponse?> LerFichaAsync()
     {
         var response = await Http.GetAsync($"creature-sheets/{SheetId}");
-        if (!response.IsSuccessStatusCode)
+        return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CreatureSheetResponse>() : null;
+    }
+
+    private void AplicarFicha(CreatureSheetResponse? sheet)
+    {
+        if (sheet is null)
         {
             _errorMessage = "Não foi possível carregar a ficha.";
             return;
         }
 
-        var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
-        _campaignId = sheet!.CampaignId;
+        _campaignId = sheet.CampaignId;
         _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
@@ -354,15 +365,11 @@
     /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
     /// releitura falhar, o campo fica como está — a operação em si já deu certo.
     /// </summary>
-    private async Task RecarregarPontosDeIgnicaoAsync()
+    private Task RecarregarPontosDeIgnicaoAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
     {
-        var response = await Http.GetAsync($"creature-sheets/{SheetId}");
-        if (!response.IsSuccessStatusCode)
-            return;
-
-        var sheet = await response.Content.ReadFromJsonAsync<CreatureSheetResponse>();
         if (sheet is not null)
             _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicao;
-    }
+        return Task.CompletedTask;
+    });
 
 }

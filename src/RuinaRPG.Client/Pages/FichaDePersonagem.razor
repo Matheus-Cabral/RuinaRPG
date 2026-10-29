@@ -133,7 +133,8 @@
             {
                 _recargaDoFormularioAgendada = false;
                 var erro = _errorMessage;
-                await LoadSheetAsync();
+                // Já esperou o auto-save ficar ocioso; o que estiver em edição agora será recusado pelo cemitério.
+                AplicarFicha(await LerFichaAsync());
                 if (erro is not null)
                     _errorMessage = erro;
                 StateHasChanged();
@@ -266,21 +267,32 @@
         _campaignName = campaigns.FirstOrDefault(c => c.Id == _campaignId)?.Nome;
     }
 
-    private async Task LoadSheetAsync()
+    // Relê a ficha pelo auto-save: um campo com edição pendente ou em envio nunca é sobrescrito (spec 2.1.0 A.4).
+    private Task LoadSheetAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
+    {
+        AplicarFicha(sheet);
+        return Task.CompletedTask;
+    });
+
+    private async Task<CharacterSheetResponse?> LerFichaAsync()
     {
         var response = await Http.GetAsync($"character-sheets/{SheetId}");
-        if (!response.IsSuccessStatusCode)
+        return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CharacterSheetResponse>() : null;
+    }
+
+    private void AplicarFicha(CharacterSheetResponse? sheet)
+    {
+        if (sheet is null)
         {
             _errorMessage = "Não foi possível carregar a ficha.";
             return;
         }
 
-        var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        _campaignId = sheet!.CampaignId;
+        _campaignId = sheet.CampaignId;
         _estado.DefinirCemiterio(sheet.NoCemiterio, sheet.MotivosDoCemiterio);
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
-        _form.Nome = sheet!.Nome;
+        _form.Nome = sheet.Nome;
         _form.Linhagem = sheet.Linhagem;
         _form.Variante = sheet.Variante;
         _form.Vocacao = sheet.Vocacao;
@@ -453,16 +465,12 @@
     /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
     /// releitura falhar, o campo fica como está — a operação em si já deu certo.
     /// </summary>
-    private async Task RecarregarPontosDeIgnicaoAsync()
+    private Task RecarregarPontosDeIgnicaoAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
     {
-        var response = await Http.GetAsync($"character-sheets/{SheetId}");
-        if (!response.IsSuccessStatusCode)
-            return;
-
-        var sheet = await response.Content.ReadFromJsonAsync<CharacterSheetResponse>();
         if (sheet is not null)
             _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
-    }
+        return Task.CompletedTask;
+    });
 
     private async Task OnEquipagemChosenAsync()
     {
