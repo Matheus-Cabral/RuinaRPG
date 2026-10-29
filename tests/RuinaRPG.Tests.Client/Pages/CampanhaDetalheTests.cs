@@ -667,7 +667,7 @@ public class CampanhaDetalheTests : MudBunitContext
     [Fact]
     public void Aba_Cemiterio_lista_imagem_nome_nivel_dono_e_motivos()
     {
-        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte", "ContaInativa")]);
+        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte", "ContaDesativada")]);
         cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
 
         IrParaCemiterio(cut);
@@ -676,7 +676,7 @@ public class CampanhaDetalheTests : MudBunitContext
         {
             var texto = cut.Find("[data-testid=cemiterio]").TextContent;
             texto.Should().Contain("Morta").And.Contain("Nível 7").And.Contain("Ana")
-                .And.Contain("Personagem morto").And.Contain("Conta do jogador inativa");
+                .And.Contain("Personagem morto").And.Contain("Conta do jogador desativada");
             cut.Find("[data-testid=cemiterio] img").GetAttribute("src").Should().Contain("morto.png");
             cut.Find("[data-testid=cemiterio] a").GetAttribute("href").Should().Be("fichas/f2");
             cut.Find("[data-testid=cemiterio] button[aria-label='Log da ficha']").Should().NotBeNull();

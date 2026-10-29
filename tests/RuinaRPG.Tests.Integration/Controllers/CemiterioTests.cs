@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Controllers;
@@ -48,6 +49,13 @@ public class CemiterioTests(ApiFixture fixture) : ApiTestBase(fixture)
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         db.CampaignMembers.Add(new RuinaRPG.Infrastructure.Campaigns.CampaignMember { Id = Guid.NewGuid(), CampaignId = Guid.Parse(c.CampaignId), UserId = Guid.Parse(c.PlayerId) });
         await db.SaveChangesAsync();
+    }
+
+    private async Task MarcarEstadoDaContaAsync(string userId, EstadoDaConta estado)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        await db.Users.Where(u => u.Id == Guid.Parse(userId)).ExecuteUpdateAsync(s => s.SetProperty(x => x.Estado, estado));
     }
 
     private async Task<CharacterSheetResponse> GetAsync(string token, string sheetId)
@@ -157,6 +165,37 @@ public class CemiterioTests(ApiFixture fixture) : ApiTestBase(fixture)
         await MarcarMortoAsync(c.SheetId);
         var depois = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{c.CampaignId}/player-view", c.PlayerToken));
         (await depois.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>())!.MinhasFichas.Should().NotContain(f => f.Id == c.SheetId);
+    }
+
+    private async Task<IReadOnlyList<string>> MotivosNaListaDaCampanhaAsync(Cenario c)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/campaigns/{c.CampaignId}/character-sheets", c.GmToken));
+        var lista = (await response.Content.ReadFromJsonAsync<List<CharacterSheetResponse>>())!;
+        return lista.Single(s => s.Id == c.SheetId).MotivosDoCemiterio;
+    }
+
+    [Fact]
+    public async Task Ficha_de_conta_desativada_mostra_o_motivo()
+    {
+        var c = await MontarAsync();
+        await MarcarEstadoDaContaAsync(c.PlayerId, EstadoDaConta.Desativada);
+
+        var sheet = await GetAsync(c.GmToken, c.SheetId);
+        sheet.NoCemiterio.Should().BeTrue();
+        sheet.MotivosDoCemiterio.Should().Equal("ContaDesativada");
+        // A lista calcula os motivos em lote: o estado do dono vale ali também.
+        (await MotivosNaListaDaCampanhaAsync(c)).Should().Equal("ContaDesativada");
+    }
+
+    [Fact]
+    public async Task Ficha_de_conta_excluida_mostra_o_motivo()
+    {
+        var c = await MontarAsync();
+        await RemoverMembroAsync(c);
+        await MarcarEstadoDaContaAsync(c.PlayerId, EstadoDaConta.Excluida);
+
+        (await GetAsync(c.GmToken, c.SheetId)).MotivosDoCemiterio.Should().Equal("RemovidoDaCampanha", "ContaExcluida");
+        (await MotivosNaListaDaCampanhaAsync(c)).Should().Equal("RemovidoDaCampanha", "ContaExcluida");
     }
 
     private Task<HttpResponseMessage> DefinirMorteAsync(string token, string sheetId, bool morto) =>

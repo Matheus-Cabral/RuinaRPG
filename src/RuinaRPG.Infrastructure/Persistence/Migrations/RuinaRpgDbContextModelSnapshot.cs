@@ -1858,6 +1858,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid?>("InvitedByGmId")
                         .HasColumnType("uuid");
 

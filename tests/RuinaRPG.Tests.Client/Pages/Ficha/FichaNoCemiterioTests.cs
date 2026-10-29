@@ -76,12 +76,12 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
     [Fact]
     public async Task Ficha_no_cemiterio_mostra_o_aviso_com_os_motivos()
     {
-        FichaNoCemiterio("Morte", "RemovidoDaCampanha", "ContaInativa");
+        FichaNoCemiterio("Morte", "RemovidoDaCampanha", "ContaExcluida");
 
         var cut = await AbrirAsync("Jogador");
 
         var aviso = Raiz(cut).QuerySelectorAll(".mud-alert").Single(a => TextoNormalizado(a).StartsWith("Esta ficha está no cemitério"));
-        TextoNormalizado(aviso).Should().Be("Esta ficha está no cemitério: Personagem morto, Jogador removido da campanha, Conta do jogador inativa.");
+        TextoNormalizado(aviso).Should().Be("Esta ficha está no cemitério: Personagem morto, Jogador removido da campanha, Conta do jogador excluída.");
         aviso.QuerySelector("svg").Should().NotBeNull("o aviso tem ícone MudBlazor");
     }
 

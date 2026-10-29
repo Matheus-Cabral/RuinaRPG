@@ -1,5 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using RuinaRPG.Api;
@@ -70,8 +72,9 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
         await using (var scope = services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            // Um banco da 1.5.0 ainda não tem as colunas das migrations posteriores à baseline.
-            await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"CharacterSheets\" DROP COLUMN \"Morto\"");
+            // Um banco da 1.5.0 ainda não tem o que as migrations posteriores à baseline acrescentaram: voltar à
+            // baseline roda o Down de cada uma delas (a baseline é o schema da 1.5.0), sem desfazer nada à mão.
+            await db.GetService<IMigrator>().MigrateAsync(HistoricoDeMigracoes150.Baseline);
             await db.Database.ExecuteSqlRawAsync("DELETE FROM \"__EFMigrationsHistory\"");
             foreach (var id in HistoricoDeMigracoes150.Ids)
                 await db.Database.ExecuteSqlAsync($"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({id}, '8.0.10')");

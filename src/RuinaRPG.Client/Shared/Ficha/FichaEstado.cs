@@ -45,7 +45,7 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     /// </summary>
     public bool SomenteLeitura { get; private set; }
 
-    /// <summary>Os motivos do cemitério como o servidor os manda (<c>Morte</c>, <c>RemovidoDaCampanha</c>, <c>ContaInativa</c>).</summary>
+    /// <summary>Os motivos do cemitério como o servidor os manda (<c>Morte</c>, <c>RemovidoDaCampanha</c>, <c>ContaDesativada</c>, <c>ContaExcluida</c>).</summary>
     public IReadOnlyList<string> MotivosDoCemiterio { get; private set; } = [];
 
     /// <summary>A caixa "Morto" do GM: marcada quando um dos motivos é a morte.</summary>
@@ -56,7 +56,8 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     {
         "Morte" => "Personagem morto",
         "RemovidoDaCampanha" => "Jogador removido da campanha",
-        "ContaInativa" => "Conta do jogador inativa",
+        "ContaDesativada" => "Conta do jogador desativada",
+        "ContaExcluida" => "Conta do jogador excluída",
         _ => motivo,
     };
 

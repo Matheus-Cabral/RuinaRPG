@@ -124,6 +124,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             // normalized (upper-invariant) column so the uniqueness is case-insensitive.
             entity.Property(u => u.NormalizedNickname).IsRequired();
             entity.HasIndex(u => u.NormalizedNickname).IsUnique();
+            // Gravado pelo nome (Ativa/Desativada/Excluida); o padrão Ativa no banco vem da migration EstadoDaConta.
+            entity.Property(u => u.Estado).HasConversion<string>();
         });
 
         builder.Entity<RefreshToken>(entity =>

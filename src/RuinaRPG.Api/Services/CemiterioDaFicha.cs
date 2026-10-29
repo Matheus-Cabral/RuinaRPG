@@ -15,7 +15,8 @@ public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
     public async Task<IReadOnlyList<MotivoDoCemiterio>> MotivosAsync(CharacterSheet sheet)
     {
         var donoEhMembro = await db.CampaignMembers.AnyAsync(m => m.CampaignId == sheet.CampaignId && m.UserId == sheet.OwnerId);
-        return Cemiterio.Motivos(sheet.Morto, donoEhMembro, EstadoDaConta.Ativa);
+        var estadoDoDono = await db.Users.Where(u => u.Id == sheet.OwnerId).Select(u => u.Estado).SingleAsync();
+        return Cemiterio.Motivos(sheet.Morto, donoEhMembro, estadoDoDono);
     }
 
     /// <summary>A Ficha de Personagem existe e está no cemitério. Ficha apagada não está.</summary>
@@ -32,7 +33,11 @@ public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
                 .ToListAsync())
             .Select(m => (m.CampaignId, m.UserId))
             .ToHashSet();
+        var estados = await db.Users
+            .Where(u => donos.Contains(u.Id))
+            .Select(u => new { u.Id, u.Estado })
+            .ToDictionaryAsync(u => u.Id, u => u.Estado);
 
-        return sheets.ToDictionary(s => s.Id, s => Cemiterio.Motivos(s.Morto, vinculos.Contains((s.CampaignId, s.OwnerId)), EstadoDaConta.Ativa));
+        return sheets.ToDictionary(s => s.Id, s => Cemiterio.Motivos(s.Morto, vinculos.Contains((s.CampaignId, s.OwnerId)), estados[s.OwnerId]));
     }
 }

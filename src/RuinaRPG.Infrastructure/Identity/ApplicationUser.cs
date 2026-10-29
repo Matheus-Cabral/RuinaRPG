@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Domain.Enums;
 
 namespace RuinaRPG.Infrastructure.Identity;
@@ -50,6 +51,12 @@ public class ApplicationUser : IdentityUser<Guid>
     // same pattern as IsRulesAuditor above, and cleared by AuthController.ChangePassword once the
     // GM sets their own new password.
     public bool MustChangePassword { get; set; }
+
+    /// <summary>
+    /// Estado da conta (Convite de Jogador: desativar, reativar, excluir). Só contas de papel Jogador saem de Ativa;
+    /// as transições ficam em <see cref="ContaDeJogador"/>. O cemitério lê este estado (CemiterioDaFicha).
+    /// </summary>
+    public EstadoDaConta Estado { get; set; } = EstadoDaConta.Ativa;
 
     // Null-tolerant: a request body that omits the nickname binds null here, and that must
     // surface as a 400 from the not-null/unique constraints, not as an NRE in this setter.
