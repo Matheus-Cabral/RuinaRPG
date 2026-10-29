@@ -30,6 +30,16 @@ public abstract class FichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTi
     /// </summary>
     protected abstract Task DefinirXpAsync(FichaDeTeste f, int xp);
 
+    protected async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
+                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
+                null, null, null, null,
+                null, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
     protected async Task<string> CreateArmaduraItemAsync(string gmToken, int rf, int rm)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
@@ -50,6 +60,27 @@ public abstract class FichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTi
         var tabela = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-niveis", token))).Content.ReadFromJsonAsync<TabelaDeNiveisResponse>();
         var coluna = tabela!.Colunas.Single(c => c.ChaveDeSistema == "PontosDeAtributo").Id;
         return tabela.Linhas.Where(l => l.Nivel >= primeiroNivel && l.Nivel <= ultimoNivel).Sum(l => l.Valores.GetValueOrDefault(coluna) ?? 0);
+    }
+
+    [Fact]
+    public async Task Arma_equipada_nao_pesa_e_desequipada_pesa()
+    {
+        // Peso Atual (2026-09-08): Arma equipada não conta, desequipada conta. A Criatura não mostra o Peso,
+        // mas a Movimentação o usa: Peso Máximo = floor((4+4)/2) = 4; uma Arma de 50 desequipada leva ao piso 1.
+        var f = await NovaFichaAsync();
+        foreach (var atributo in new[] { "Agilidade", "Forca", "Vigor" })
+            await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"attributes/{atributo}"), f.Token, new AtualizarAtributo(4, 0, false)));
+        var itemId = await CreateArmaItemAsync(f.GmToken, "Espada Pesada", peso: 50m);
+        var adicionada = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "weapons"), f.Token, new AdicionarArma(itemId)));
+        var armaId = (await adicionada.Content.ReadFromJsonAsync<ArmaLida>())!.Id;
+
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"weapons/{armaId}"), f.Token, true));
+        var equipada = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token))).Content.ReadFromJsonAsync<SubAttributesResponse>();
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"weapons/{armaId}"), f.Token, false));
+        var desequipada = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token))).Content.ReadFromJsonAsync<SubAttributesResponse>();
+
+        equipada!.Movimentacao.Should().Be(8);
+        desequipada!.Movimentacao.Should().Be(1);
     }
 
     [Fact]
@@ -260,16 +291,6 @@ public abstract class FichaDePersonagemOuNpcTestes<TTipo>(ApiFixture fixture) : 
                 null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, capacidadeExtra)));
-        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
-    protected async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Arma", nome, peso, 50, null, "Espadas", null,
-                "F", "UmaMao", "2D6", 3, "19", 2, "Cortante",
-                null, null, null, null,
-                null, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 

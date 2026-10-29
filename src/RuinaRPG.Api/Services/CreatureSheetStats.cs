@@ -28,20 +28,12 @@ public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, 
     protected override bool SoPericiasDeCriatura => true;
 
     /// <summary>
-    /// Ataques naturais (ItemId nulo) não pesam — só Armas/Armaduras/Escudos do Catálogo entram no Peso Total
-    /// Carregado, equipados ou não. Espólios (5.a) é o que a Criatura deixa ao ser derrotada, não inventário
-    /// carregado: o Peso não aparece na resposta, só entra na Movimentação.
-    /// See docs/superpowers/archive/specs/2026-09-08-inventory-weight-and-capacity-design.md.
+    /// Espólios (5.a) é o que a Criatura deixa ao ser derrotada, não inventário carregado: sem Inventário. O Peso
+    /// carregado (Armas e Escudos do Catálogo desequipados, como no Personagem) só entra na Movimentação.
     /// </summary>
-    protected override async Task<Carga> CargaAsync(CreatureSheet sheet, int forca, int vigor)
-    {
-        var id = sheet.Id;
-        var weapons = await Db.CreatureWeapons.Where(w => w.SheetId == id && w.ItemId != null).Join(Db.Items, w => w.ItemId!.Value, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var armorSlots = await Db.CreatureArmorSlots.Where(a => a.SheetId == id && a.ItemId != null).Join(Db.Items, a => a.ItemId!.Value, i => i.Id, (a, i) => i.Peso).ToListAsync();
-        var shields = await Db.CreatureShields.Where(s => s.SheetId == id).Join(Db.Items, s => s.ItemId, i => i.Id, (s, i) => i.Peso).ToListAsync();
-        var pesoTotalCarregado = weapons.Sum(w => w.Peso) + armorSlots.Sum() + shields.Sum();
-        return new Carga(pesoTotalCarregado, CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal: 0m, bonusDeCarga: 0m), Exibida: false);
-    }
+    protected override Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync(Guid sheetId) => Task.FromResult(new List<(int, decimal, decimal?)>());
+
+    protected override bool ExibePeso => false;
 
     /// <summary>Eficiência Elemental/Dano Elemental não existem na Ficha de Criatura — ela não tem Vocação nem a lista incremental de Afinidades (2.c).</summary>
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(CreatureSheet sheet, EfeitosDeCondicao efeitos) =>

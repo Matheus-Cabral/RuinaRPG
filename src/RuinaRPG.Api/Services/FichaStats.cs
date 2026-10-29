@@ -75,13 +75,19 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     protected IRulesDataProvider Rules { get; } = rules;
 
     /// <summary>Peso carregado e máximo que a Movimentação usa; <c>Exibida</c> falso deixa os dois fora da resposta (Criatura).</summary>
-    protected record Carga(decimal PesoAtual, decimal PesoMaximo, bool Exibida = true, decimal BonusDeCargaDaCampanha = 0m);
+    protected record Carga(decimal PesoAtual, decimal PesoMaximo, decimal BonusDeCargaDaCampanha = 0m);
 
     /// <summary>O Histórico da ficha, que dá o bônus +6/+3 de Perícia. Criatura não tem Histórico: null.</summary>
     protected abstract Guid? HistoricoId(TSheet sheet);
 
-    /// <summary>Peso Total Carregado (2.b) e Peso Máximo, com os totais de Força e Vigor já calculados.</summary>
-    protected abstract Task<Carga> CargaAsync(TSheet sheet, int forca, int vigor);
+    /// <summary>As linhas do Inventário (Qtd, Peso e Capacidade Extra do item); a Criatura não tem Inventário: vazio.</summary>
+    protected abstract Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync(Guid sheetId);
+
+    /// <summary>Bônus de carga da Campanha (Requisitos - Campanha): só a Ficha de Personagem pertence a uma.</summary>
+    protected virtual Task<decimal> BonusDeCargaAsync(TSheet sheet) => Task.FromResult(0m);
+
+    /// <summary>Peso Atual e Peso Máximo aparecem na resposta? A Criatura os usa na Movimentação, mas não os exibe.</summary>
+    protected virtual bool ExibePeso => true;
 
     /// <summary>Eficiência e Dano Elemental (2.b); a Criatura não tem Afinidades: os dois ficam nulos.</summary>
     protected abstract Task<(int? Eficiencia, int? Dano)> ElementalAsync(TSheet sheet, EfeitosDeCondicao efeitos);
@@ -159,8 +165,8 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
             DefesaNatural: efeitos.NoSubAtributo(SubAtributoAlvo.DefesaNatural, SubAttributeFormulas.DefesaNatural(vigor, brutoFortitude, escudo: equippedShield ?? 0, artefatos: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.DefesaNatural), cobertura: coberturaBonus)),
             ReducaoFisica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoFisica, SubAttributeFormulas.ReducaoFisica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoFisica), armadura: armaduraRf)),
             ReducaoMagica: efeitos.NoSubAtributo(SubAtributoAlvo.ReducaoMagica, SubAttributeFormulas.ReducaoMagica(artefato: ArtifactBonusCalculator.Sum(artefatos, TipoDeAlvo.SubAtributo, SubAtributoAlvo.ReducaoMagica), armaduraMagica: armaduraRm)),
-            PesoAtual: carga.Exibida ? carga.PesoAtual : null,
-            PesoMaximo: carga.Exibida ? carga.PesoMaximo : null,
+            PesoAtual: ExibePeso ? carga.PesoAtual : null,
+            PesoMaximo: ExibePeso ? carga.PesoMaximo : null,
             EficienciaElemental: eficienciaElemental,
             DanoElemental: danoElemental,
             BonusDeCargaDaCampanha: carga.BonusDeCargaDaCampanha);
@@ -299,26 +305,33 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     }
 
     /// <summary>
-    /// Peso Total 2.b do Personagem e do NPC (docs/superpowers/archive/specs/2026-09-08-inventory-weight-and-capacity-design.md):
-    /// Inventário (5.a) + Armas/Escudos DESequipados. Armaduras nunca contam — slot com ItemId está vestido. Um item de
-    /// Capacidade Extra ("mochila") não soma o próprio Peso: aumenta o Peso Máximo.
+    /// Peso Total Carregado (2.b, fórmula de 2026-09-08) e Peso Máximo: Inventário (sem os itens de Capacidade
+    /// Extra) + Armas e Escudos do Catálogo desequipados; equipados e Armaduras não pesam, ataques naturais
+    /// (sem item) tampouco. A Capacidade Extra e o bônus da Campanha só entram no Peso Máximo.
     /// </summary>
-    protected async Task<Carga> CargaDoInventarioAsync<TArma, TItem>(Guid id, int forca, int vigor, decimal bonusDeCarga)
-        where TArma : class, IEquipavelDoCatalogo
-        where TItem : class, IItemDoInventarioDaFicha
+    private async Task<Carga> CargaAsync(TSheet sheet, int forca, int vigor)
     {
-        var weapons = await Db.Set<TArma>().Where(w => w.SheetId == id).Join(Db.Items, w => w.ItemId, i => i.Id, (w, i) => new { w.IsEquipped, i.Peso }).ToListAsync();
-        var shields = await Db.Set<TEscudo>().Where(s => s.SheetId == id).Join(Db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
-        var inventoryItems = await Db.Set<TItem>().Where(i => i.SheetId == id)
-            .Join(Db.Set<ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
-            .ToListAsync();
+        var id = sheet.Id;
+        var bonusDeCarga = await BonusDeCargaAsync(sheet);
+        var armas = await ArmasDoCatalogoAsync(id);
+        var pesosDosItens = await Db.Items.Where(i => armas.Select(a => a.ItemId).Contains(i.Id)).ToDictionaryAsync(i => i.Id, i => i.Peso);
+        var escudos = await Db.Set<TEscudo>().Where(s => s.SheetId == id).Join(Db.Items, s => s.ItemId, i => i.Id, (s, i) => new { s.IsEquipped, i.Peso }).ToListAsync();
+        var inventario = await InventarioAsync(id);
 
-        var pesoAtual = inventoryItems.Where(i => CarryWeightCalculator.CountsTowardPesoAtual(i.CapacidadeExtra)).Sum(i => i.Peso * i.Qtd)
-            + weapons.Where(w => !w.IsEquipped).Sum(w => w.Peso)
-            + shields.Where(s => !s.IsEquipped).Sum(s => s.Peso);
-        var capacidadeExtraTotal = inventoryItems.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
-        return new Carga(pesoAtual, CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga), BonusDeCargaDaCampanha: bonusDeCarga);
+        var pesoAtual = inventario.Where(i => CarryWeightCalculator.CountsTowardPesoAtual(i.CapacidadeExtra)).Sum(i => i.Peso * i.Qtd)
+            + armas.Where(a => !a.IsEquipped).Sum(a => pesosDosItens[a.ItemId])
+            + escudos.Where(s => !s.IsEquipped).Sum(s => s.Peso);
+        var capacidadeExtraTotal = inventario.Sum(i => (i.CapacidadeExtra ?? 0m) * i.Qtd);
+        return new Carga(pesoAtual, CarryWeightCalculator.PesoMaximo(forca, vigor, capacidadeExtraTotal, bonusDeCarga), bonusDeCarga);
     }
+
+    /// <summary>O Inventário de Personagem e NPC (TItem é a linha de Inventário do tipo).</summary>
+    protected async Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync<TItem>(Guid sheetId)
+        where TItem : class, IItemDoInventarioDaFicha =>
+        (await Db.Set<TItem>().Where(i => i.SheetId == sheetId)
+            .Join(Db.Set<ItemGeral>(), i => i.ItemId, g => g.Id, (i, g) => new { i.Qtd, g.Peso, g.CapacidadeExtra })
+            .ToListAsync())
+            .Select(x => (x.Qtd, x.Peso, x.CapacidadeExtra)).ToList();
 
     /// <summary>
     /// Eficiência e Dano Elemental do Personagem e do NPC: saem do valor da Afinidade correspondente já com as
