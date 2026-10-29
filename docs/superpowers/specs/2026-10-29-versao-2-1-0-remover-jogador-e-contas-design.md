@@ -110,6 +110,36 @@ que era do jogador volta ao GM.
 - **Modelo de Dados:** estado da conta.
 - **01 - Visão Geral:** a página de jogadores com os desativados.
 
+## Estrutura (pedido do usuário: seguir a estrutura da 2.0.0, sem refatoração futura)
+
+O código novo segue o mapa do `CLAUDE.md` e os desenhos D (`2026-10-18-versao-2-0-0-d-backend-design.md`) e E
+(`2026-10-19-versao-2-0-0-e-cliente-design.md`). Aplicado a esta entrega:
+
+- **Regras no Domain, puras:** as transições de estado da conta (Ativa → Desativada → Ativa; Ativa/Desativada →
+  Excluída; nenhuma saída de Excluída), "este GM pode gerir esta conta" e os motivos do cemitério ficam em
+  `src/RuinaRPG.Domain`, sem EF, ASP.NET ou Identity, com testes unitários. Controllers e serviços só buscam os
+  dados e chamam essas regras.
+- **Uma única "saída do jogador":** remover da campanha, desativar e excluir usam **o mesmo** serviço da Api (um
+  ponto que, para um jogador e um conjunto de campanhas, apaga os vínculos, devolve as concessões e tira os
+  participantes dos encontros ativos). Nenhuma das três ações reimplementa esses passos.
+- **Encontros:** a remoção de participantes reaproveita o caminho já existente de "remover participante"
+  (Gerenciador de Encontros R0008 — passagem da vez, log, Condições). Se ele hoje só existe dentro do controller,
+  é extraído para um serviço e o controller passa a usá-lo; nada é copiado.
+- **Fichas concedidas (NPC e Criatura):** "alterar a posse" é **uma** implementação genérica sobre
+  `ITipoDeFicha<TSheet>` (base em `Controllers/Fichas/`, fechada por `TipoNpc`/`TipoCriatura`, como os demais
+  recursos de ficha), com **um** record em `Contracts/Fichas/`. Testes genéricos por tipo, no padrão de
+  `tests/.../Controllers/Fichas/` (classe abstrata + subclasse por tipo), para NPC e Criatura.
+- **Contas:** endpoints na área de jogadores já existente (`PlayersController`/rotas `players`), contratos em
+  `Contracts` junto dos de jogadores; o estado da conta é uma coluna de `ApplicationUser` mapeada pelo
+  `RuinaRpgDbContext`, sem tabela paralela.
+- **Cliente:** as ações entram nas páginas e componentes que já existem (aba Membros e Concessões em
+  `CampanhaDetalhe`, página de jogadores `GmJogadores`), reaproveitando os padrões delas (diálogo de confirmação,
+  `DismissibleAlert`, tooltips). Nada de componente com ramos "se Personagem / se Criatura": diferenças por tipo de
+  ficha vêm de `TipoDeFichaCliente`. Os rótulos de motivo do cemitério ficam onde os outros já estão
+  (`FichaEstado.RotuloDoMotivo`), e textos compartilhados por servidor e cliente ficam em `Contracts`, como
+  `TextosDoCemiterio`.
+- **Se algo não couber nessa estrutura**, o implementador para e reporta, em vez de criar um caminho paralelo.
+
 ## Restrições
 
 - TDD em toda unidade de comportamento (Técnico R0011); build com 0 warnings; projetos de teste um de cada vez.
