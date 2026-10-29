@@ -18,6 +18,7 @@
 @using RuinaRPG.Domain.SpellsAndAbilities
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
+@using RuinaRPG.Client.Shared.Ficha
 @using System.ComponentModel.DataAnnotations
 
 <Breadcrumbs Items="@Crumbs" />
@@ -25,7 +26,7 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
-<MudTabs Class="mt-3">
+<MudTabs Class="mt-3" @bind-ActivePanelIndex="_abaAtiva">
     <MudTabPanel Text="Membros">
         <Section Title="Adicionar Jogador">
             <MudTextField T="string" @bind-Value="_memberSearch" Immediate="true" @bind-Value:after="DebouncedSearchPlayersAsync" Label="Buscar jogador para adicionar" />
@@ -51,7 +52,7 @@
                             <MudText>@member.Nickname</MudText>
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</MudButton>
                             <MudList T="string" Dense="true">
-                                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
+                                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId && !s.NoCemiterio))
                                 {
                                     <MudListItem T="string">
                                         @if (sheet.ImageUrl is not null)
@@ -71,6 +72,41 @@
                     </MudListItem>
                 }
             </MudList>
+        </Section>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Cemitério">
+        <Section Title="Cemitério">
+            <div data-testid="cemiterio">
+                @if (!_sheets.Any(s => s.NoCemiterio))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nenhuma ficha no cemitério.</MudText>
+                }
+                else
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var sheet in _sheets.Where(s => s.NoCemiterio))
+                        {
+                            <MudListItem T="string">
+                                @if (sheet.ImageUrl is not null)
+                                {
+                                    <ClickableAvatarImage Src="@sheet.ImageUrl" Size="Size.Small" Class="mr-2" />
+                                }
+                                <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, jogador: @(_members.FirstOrDefault(m => m.UserId == sheet.OwnerId)?.Nickname ?? "—")</MudText>
+                                @foreach (var motivo in sheet.MotivosDoCemiterio)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Class="ml-2">@FichaEstado.RotuloDoMotivo(motivo)</MudChip>
+                                }
+                                <MudTooltip Text="Log da ficha">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                   OnClick="@(() => AbrirLogAsync("character", sheet.Id, sheet.Nome))" />
+                                </MudTooltip>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </div>
         </Section>
     </MudTabPanel>
 
@@ -410,6 +446,11 @@
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
 
+    /// <summary><c>?aba=cemiterio</c> (do aviso da ficha no cemitério) abre a aba Cemitério.</summary>
+    [SupplyParameterFromQuery(Name = "aba")] public string? Aba { get; set; }
+
+    private int _abaAtiva;
+
     private string? _campaignName;
     private CampaignResponse? _campaign;
     private readonly CampaignDetailsFormModel _detailsForm = new();
@@ -482,6 +523,8 @@
 
     protected override void OnInitialized()
     {
+        if (Aba == "cemiterio")
+            _abaAtiva = 1;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
     }
 

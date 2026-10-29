@@ -6,6 +6,7 @@
 @using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.CharacterSheets
 @using MudBlazor
+@using RuinaRPG.Client.Shared.Ficha
 
 <Breadcrumbs Items="@Crumbs" />
 
@@ -38,13 +39,13 @@
         else
         {
             <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
-            @if (_errorMessage is null && _myCharacters.Count == 0)
+            @if (_errorMessage is null && _vivas.Count == 0)
             {
                 <MudText Color="Color.Secondary" Class="mt-3">Você ainda não tem nenhuma ficha de personagem — peça ao seu GM para criar uma.</MudText>
             }
 
-            <MudGrid Class="mt-3">
-                @foreach (var sheet in _myCharacters)
+            <MudGrid Class="mt-3" data-testid="fichas-vivas">
+                @foreach (var sheet in _vivas)
                 {
                     <MudItem xs="12" sm="6" md="4">
                         <MudCard>
@@ -71,6 +72,45 @@
                     </MudItem>
                 }
             </MudGrid>
+
+            @if (_noCemiterio.Count > 0)
+            {
+                <div data-testid="cemiterio">
+                    <MudText Typo="Typo.h5" Class="mt-5">Cemitério</MudText>
+                    <MudGrid Class="mt-1">
+                        @foreach (var sheet in _noCemiterio)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard>
+                                    <MudCardHeader>
+                                        <CardHeaderAvatar>
+                                            @if (sheet.ImageUrl is not null)
+                                            {
+                                                <ClickableAvatarImage Src="@sheet.ImageUrl" Size="Size.Large" />
+                                            }
+                                            else
+                                            {
+                                                <MudAvatar Size="Size.Large" />
+                                            }
+                                        </CardHeaderAvatar>
+                                        <CardHeaderContent>
+                                            <MudText Typo="Typo.h6">@(sheet.Nome ?? "(sem nome)")</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Nível @sheet.Nivel — @sheet.CampanhaNome</MudText>
+                                            @foreach (var motivo in sheet.MotivosDoCemiterio)
+                                            {
+                                                <MudChip T="string" Size="Size.Small">@FichaEstado.RotuloDoMotivo(motivo)</MudChip>
+                                            }
+                                        </CardHeaderContent>
+                                    </MudCardHeader>
+                                    <MudCardActions>
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"fichas/{sheet.Id}")">Abrir</MudButton>
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </div>
+            }
         }
     }
 
@@ -82,6 +122,8 @@
 
     private MeResponse? _me;
     private List<MyCharacterSheetSummaryResponse> _myCharacters = new();
+    private List<MyCharacterSheetSummaryResponse> _vivas => _myCharacters.Where(c => !c.NoCemiterio).ToList();
+    private List<MyCharacterSheetSummaryResponse> _noCemiterio => _myCharacters.Where(c => c.NoCemiterio).ToList();
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()

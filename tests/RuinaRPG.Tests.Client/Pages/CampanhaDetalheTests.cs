@@ -622,4 +622,95 @@ public class CampanhaDetalheTests : MudBunitContext
         await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] .mud-list-item").Click());
         nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e3");
     }
+
+    private static object Ficha(string id, string owner, string nome, bool cemiterio, params string[] motivos) => new
+    {
+        Id = id, CampaignId, OwnerId = owner, Nome = nome, Nivel = 7, Vocacao = "Guerreiro", Linhagem = "Humano",
+        ImageUrl = cemiterio ? "/img/morto.png" : null, NoCemiterio = cemiterio, MotivosDoCemiterio = motivos,
+    };
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComFichas(object[] fichas, string? query = null)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+        var members = new[] { new CampaignMemberResponse("u1", "Ana", "ana@x.com") };
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            object body = path.EndsWith("/members") ? members
+                : path.EndsWith("/character-sheets") ? fichas
+                : path.EndsWith("campaigns") ? new List<CampaignResponse> { new(CampaignId, "Camp", "", null) }
+                : new List<object>();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
+        }));
+        if (query is not null)
+            Services.GetRequiredService<NavigationManager>().NavigateTo($"/campanhas/{CampaignId}?{query}");
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    private static void IrParaCemiterio(IRenderedComponent<CampanhaDetalhe> cut)
+    {
+        var header = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Cemitério");
+        cut.InvokeAsync(() => header.Click());
+    }
+
+    [Fact]
+    public void Membros_nao_lista_ficha_no_cemiterio()
+    {
+        var cut = RenderComFichas([Ficha("f1", "u1", "Viva", false), Ficha("f2", "u1", "Morta", true, "Morte")]);
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Viva"));
+        cut.Markup.Should().NotContain("Morta");
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_lista_imagem_nome_nivel_dono_e_motivos()
+    {
+        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte", "ContaInativa")]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            var texto = cut.Find("[data-testid=cemiterio]").TextContent;
+            texto.Should().Contain("Morta").And.Contain("Nível 7").And.Contain("Ana")
+                .And.Contain("Personagem morto").And.Contain("Conta do jogador inativa");
+            cut.Find("[data-testid=cemiterio] img").GetAttribute("src").Should().Contain("morto.png");
+            cut.Find("[data-testid=cemiterio] a").GetAttribute("href").Should().Be("fichas/f2");
+            cut.Find("[data-testid=cemiterio] button[aria-label='Log da ficha']").Should().NotBeNull();
+        });
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_mostra_traco_quando_o_dono_nao_e_mais_membro()
+    {
+        var cut = RenderComFichas([Ficha("f2", "ex-membro", "Morta", true, "RemovidoDaCampanha")]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid=cemiterio]").TextContent
+            .Should().Contain("Jogador removido da campanha").And.Contain("—"));
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_vazia_mostra_mensagem()
+    {
+        var cut = RenderComFichas([Ficha("f1", "u1", "Viva", false)]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Nenhuma ficha no cemitério."));
+    }
+
+    [Fact]
+    public void Query_aba_cemiterio_abre_a_aba()
+    {
+        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte")], "aba=cemiterio");
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid=cemiterio]").TextContent.Should().Contain("Morta"));
+    }
 }
