@@ -18,7 +18,10 @@ genéricos por tipo cobrem os três.
 1. **Breadcrumb do NPC/Criatura concedido** (E, diferença A5). O jogador que abre uma ficha de NPC/Criatura
    concedida a ele vê "Painel / NPCs do GM" (ou "Bestiário do GM"), que leva a páginas só do GM. Passa a ver o
    caminho pela campanha, como na Ficha de Personagem: Painel → Minhas Campanhas → a campanha → a ficha. O GM
-   continua vendo o caminho de hoje.
+   continua vendo o caminho de hoje. *(Chamada minha: a campanha é a que o servidor já calcula em
+   `ITipoDeFicha.CampanhaAsync` — a do anexo em que o dono é membro; se a resposta da ficha ainda não a traz, ela
+   entra no record compartilhado de `Contracts/Fichas/`. Quem vê o caminho do GM é o GM da ficha; o dono jogador vê
+   o da campanha.)*
 2. **"Placeholder" nos seletores de item** de NPC e Criatura (`Shared/CatalogoItemPicker.razor:13` passa o texto
    literal `Placeholder`). Usar o placeholder certo de cada campo, como os seletores da Ficha de Personagem. A rede
    de segurança `RedeDeSeguranca/` fixou o texto de hoje: atualizar com a correção, explicando no commit.
@@ -28,7 +31,9 @@ genéricos por tipo cobrem os três.
    do auto-save, os Pontos de Ignição: o recarregamento do salvamento geral (`LoadSheetAsync`) sobrescreve o PI do
    formulário antes de o salvamento do PI rodar, e a edição some. Corrigir para que nenhuma edição pendente se
    perca por um recarregamento (ligado ao resíduo conhecido do `AutoSaveCoordinator` de guardar um só salvamento
-   pendente).
+   pendente). *(Chamada minha: a regra vale no código compartilhado — um recarregamento nunca sobrescreve um campo
+   com edição pendente ou em envio, em qualquer campo e nos três tipos —, não só para Nome+PI. O teste do cenário
+   A.4 e um teste genérico do coordenador provam isso.)*
 5. **Recusa ao trocar o atributo de uma Perícia sem mensagem** (`FichaEstado.Atributos.cs`, nos três tipos):
    mostrar a mensagem do servidor no alerta de erro, como as outras edições.
 
@@ -37,9 +42,11 @@ genéricos por tipo cobrem os três.
 Lista completa em `2026-10-18-versao-2-0-0-d-backend-design.md`, seção "Divergências encontradas".
 
 1. **Jogador apaga NPC/Criatura concedido** → corrigir: só o GM da ficha apaga (Campanha R0010, "criação e
-   exclusão continuam exclusivas do GM"). O jogador dono recebe a mesma recusa que um estranho.
+   exclusão continuam exclusivas do GM"). O jogador dono recebe a mesma recusa que um estranho: **404**, como toda
+   negação de NPC/Criatura hoje *(chamada minha)*.
 2. **Maestria existente (PUT)** → NPC e Criatura também editam, como o Personagem (Ficha de Criaturas 4.e "mesma
-   estrutura do Personagem"). O endpoint sai da subclasse do Personagem para o controller genérico.
+   estrutura do Personagem"). O endpoint sai da subclasse do Personagem para o controller genérico, com as mesmas
+   validações nos três tipos *(chamada minha)*.
 3. **Orçamento de Perícias** → só o Personagem tem; **mantém**.
 4. **Afeição existente (PUT)** → só o Personagem tem; **mantém**.
 5. **Inventário do NPC aceita qualquer item** → correto; **mantém**.
@@ -48,7 +55,8 @@ Lista completa em `2026-10-18-versao-2-0-0-d-backend-design.md`, seção "Diverg
    404** (não confirma que a ficha existe) e **escrita por quem não tem acesso: 403**. As Magias já seguem isso.
 7. **Peso carregado da Criatura** → atualizar para a fórmula de 2026-09-08 (só Inventário e Armas/Escudos
    **desequipados** contam), igual a Personagem e NPC. O hook `CargaAsync` sobrescrito em `CreatureSheetStats`
-   deixa de existir.
+   deixa de existir. *(Chamada minha: o peso é calculado na leitura, nada gravado muda; nenhuma migração de
+   dados.)*
 8. **Leituras 404 × 403 do Personagem** → "averigue caso a caso". **Proposta:** pela regra do item 6, os cinco GET
    que hoje negam com 403 — `level-up-notice`, `sub-attributes`, `condicoes-ativas`, `equipment-penalties`,
    `modificador-de-dano` — passam a negar com **404**, como os outros GET da ficha. Caso a caso: todos são leituras
@@ -65,7 +73,8 @@ Lista completa em `2026-10-18-versao-2-0-0-d-backend-design.md`, seção "Diverg
    para escolher os records da Criatura.
 
 Os dois são refatorações sem mudança de comportamento: as redes de segurança do cliente (`RedeDeSeguranca/`) não
-podem mudar.
+podem mudar. *(Ordem, chamada minha: A.2 entra antes, atualizando a rede; C é feito depois, contra a rede já
+atualizada.)*
 
 ## D. Ortografia do livro de regras
 
@@ -80,6 +89,9 @@ ou nome de arquivo.
 - Antes de trocar uma palavra em arquivo embutido (lista do `CLAUDE.md`), confirmar que ela não é chave de seed
   nem de parser. Os snapshots congelados do livro (`LivroDeRegrasCongeladoTests`, `RulebookEquipagemCongeladoTests`)
   mudam só pelos acentos, de forma intencional e explicada.
+- *(Chamadas minhas:)* palavra que for chave de seed, de parser ou cabeçalho lido pelo `IRulesDataProvider` **não**
+  é trocada — fica anotada no relatório; maiúscula só onde for erro de grafia (ex.: início de frase), nunca
+  concordância.
 
 ## Restrições
 
