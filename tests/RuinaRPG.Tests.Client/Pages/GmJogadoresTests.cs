@@ -206,6 +206,20 @@ public class GmJogadoresTests : MudBunitContext
     }
 
     [Fact]
+    public void Desativar_com_conflito_do_encontro_mostra_o_texto_do_servidor()
+    {
+        var cut = Renderizar(Ativa("1", "Ana"));
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Ana"));
+        _falha = HttpStatusCode.Conflict;
+        _corpoDaFalha = "O encontro foi alterado por outra ação. Tente de novo.";
+        cut.Find("[data-testid=desativar-1]").Click();
+        ConfirmarNoDialogo(cut, "Desativar");
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("O encontro foi alterado por outra ação."));
+        cut.Markup.Should().NotContain("A conta já está nesse estado.");
+    }
+
+    [Fact]
     public void Reativar_com_jogador_inexistente_mostra_nao_encontrado()
     {
         var cut = Renderizar(Desativada("2", "Beto"));

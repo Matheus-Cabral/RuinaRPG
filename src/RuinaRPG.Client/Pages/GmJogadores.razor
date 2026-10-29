@@ -170,7 +170,8 @@
                 var detail = await response.Content.ReadAsStringAsync();
                 return string.IsNullOrWhiteSpace(detail) ? fallback : detail;
             case System.Net.HttpStatusCode.Conflict:
-                return "A conta já está nesse estado.";
+                var conflito = await response.Content.ReadAsStringAsync();
+                return string.IsNullOrWhiteSpace(conflito) ? "A conta já está nesse estado." : conflito;
             case System.Net.HttpStatusCode.NotFound:
                 return "Jogador não encontrado.";
             default:
