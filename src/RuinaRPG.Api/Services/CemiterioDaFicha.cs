@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -14,7 +15,7 @@ public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
     public async Task<IReadOnlyList<MotivoDoCemiterio>> MotivosAsync(CharacterSheet sheet)
     {
         var donoEhMembro = await db.CampaignMembers.AnyAsync(m => m.CampaignId == sheet.CampaignId && m.UserId == sheet.OwnerId);
-        return Cemiterio.Motivos(sheet.Morto, donoEhMembro);
+        return Cemiterio.Motivos(sheet.Morto, donoEhMembro, EstadoDaConta.Ativa);
     }
 
     /// <summary>A Ficha de Personagem existe e está no cemitério. Ficha apagada não está.</summary>
@@ -32,6 +33,6 @@ public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
             .Select(m => (m.CampaignId, m.UserId))
             .ToHashSet();
 
-        return sheets.ToDictionary(s => s.Id, s => Cemiterio.Motivos(s.Morto, vinculos.Contains((s.CampaignId, s.OwnerId))));
+        return sheets.ToDictionary(s => s.Id, s => Cemiterio.Motivos(s.Morto, vinculos.Contains((s.CampaignId, s.OwnerId)), EstadoDaConta.Ativa));
     }
 }
