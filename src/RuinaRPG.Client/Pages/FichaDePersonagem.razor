@@ -280,11 +280,13 @@
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CharacterSheetResponse>() : null;
     }
 
+    private const string ErroAoCarregarAFicha = "Não foi possível carregar a ficha.";
+
     private void AplicarFicha(CharacterSheetResponse? sheet)
     {
         if (sheet is null)
         {
-            _errorMessage = "Não foi possível carregar a ficha.";
+            _errorMessage = ErroAoCarregarAFicha;
             return;
         }
 
@@ -339,7 +341,9 @@
         _form.FocoMaximo = sheet.FocoMaximo;
         _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
         _form.EstresseMaximo = sheet.EstresseMaximo;
-        _errorMessage = null;
+        // Só some o erro da própria releitura: uma recusa de outro salvamento (ex.: o 409 do cemitério) continua à vista.
+        if (_errorMessage == ErroAoCarregarAFicha)
+            _errorMessage = null;
     }
 
     private async Task<bool> SaveIfValidAsync()

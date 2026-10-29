@@ -181,11 +181,13 @@
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CreatureSheetResponse>() : null;
     }
 
+    private const string ErroAoCarregarAFicha = "Não foi possível carregar a ficha.";
+
     private void AplicarFicha(CreatureSheetResponse? sheet)
     {
         if (sheet is null)
         {
-            _errorMessage = "Não foi possível carregar a ficha.";
+            _errorMessage = ErroAoCarregarAFicha;
             return;
         }
 
@@ -212,7 +214,9 @@
         _form.VitalidadeMaximo = sheet.VitalidadeMaximo;
         _form.FocoMaximo = sheet.FocoMaximo;
         _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
-        _errorMessage = null;
+        // Só some o erro da própria releitura: uma recusa de outro salvamento (ex.: o 409 do cemitério) continua à vista.
+        if (_errorMessage == ErroAoCarregarAFicha)
+            _errorMessage = null;
     }
 
     private async Task<bool> SaveIfValidAsync()
@@ -233,6 +237,7 @@
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
+        _errorMessage = null;
         await LoadSheetAsync();
         await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();
@@ -303,6 +308,7 @@
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
+        _errorMessage = null;
         await LoadSheetAsync();
         await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();
@@ -323,6 +329,7 @@
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
+        _errorMessage = null;
         await LoadSheetAsync();
         await _estado.CarregarAvisoDeNovoNivelAsync();
         await _estado.CarregarAtributosECombateAsync();

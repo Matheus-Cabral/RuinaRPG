@@ -16,11 +16,17 @@ public class AutoSaveCoordinator
     private long _commits;
     // Recarregamentos adiados porque havia edição pendente; rodam quando o auto-save fica ocioso.
     private readonly List<Func<Task>> _recargasAdiadas = new();
-    // Verdadeiro só dentro do delegate de salvamento em execução: o próprio salvamento não conta como "outra" pendência.
+    private bool _executandoRecargasAdiadas;
+    // Este coordenador só dentro do delegate de salvamento em execução: o próprio salvamento não conta como "outra"
+    // pendência. Como todo AsyncLocal, o valor também flui para tarefas disparadas sem await dentro do salvamento; uma
+    // delas que chame RecarregarAsync depois que o salvamento terminou desconta uma pendência que não é a dela.
     private static readonly AsyncLocal<AutoSaveCoordinator?> _salvamentoEmExecucao = new();
 
-    /// <summary>True from a field's commit until its save has finished (or was superseded): a reload must not run in between.</summary>
-    public bool Ocupado => _emAndamento > 0;
+    /// <summary>
+    /// True from a field's commit until its save has finished (or was superseded), and while reloads deferred by
+    /// RecarregarAsync are queued or running: a reload must not run in between.
+    /// </summary>
+    public bool Ocupado => _emAndamento > 0 || _recargasAdiadas.Count > 0 || _executandoRecargasAdiadas;
 
     public AutoSaveState State { get; private set; } = AutoSaveState.Idle;
     public DateTime? LastSavedAt { get; private set; }
@@ -91,18 +97,30 @@ public class AutoSaveCoordinator
 
     private async Task ExecutarRecargasAdiadasAsync()
     {
-        var recargas = _recargasAdiadas.ToList();
-        _recargasAdiadas.Clear();
-        foreach (var recarga in recargas)
+        if (_executandoRecargasAdiadas)
+            return;
+        _executandoRecargasAdiadas = true;
+        try
         {
-            try
+            while (_recargasAdiadas.Count > 0 && _emAndamento == 0)
             {
-                await recarga();
+                var recarga = _recargasAdiadas[0];
+                _recargasAdiadas.RemoveAt(0);
+                try
+                {
+                    await recarga();
+                }
+                catch
+                {
+                    // Uma releitura que falhou (rede, resposta ilegível): o indicador mostra "Erro ao salvar", como
+                    // quando o recarregamento rodava dentro do salvamento.
+                    State = AutoSaveState.Error;
+                }
             }
-            catch
-            {
-                State = AutoSaveState.Error;
-            }
+        }
+        finally
+        {
+            _executandoRecargasAdiadas = false;
         }
         StateChanged?.Invoke();
     }

@@ -254,6 +254,47 @@ public class AutoSaveCoordinatorTests
         lock (aplicados) Assert.Equal(new[] { 2 }, aplicados);
     }
 
+    [Fact]
+    public async Task Ocupado_continua_verdadeiro_ate_as_recargas_adiadas_terminarem()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var leitura = new TaskCompletionSource<int>();
+        var lendo = false;
+        var aplicado = false;
+
+        coordinator.NotifyChanged(async () =>
+        {
+            await coordinator.RecarregarAsync(() => { lendo = true; return leitura.Task; }, _ => { aplicado = true; return Task.CompletedTask; });
+            return true;
+        });
+        await Task.Delay(50);
+        coordinator.NotifyChanged(() => Task.FromResult(true), "pi");
+
+        await WaitUntilAsync(() => lendo, TimeSpan.FromSeconds(3));
+        Assert.True(coordinator.Ocupado); // os salvamentos terminaram, mas a releitura adiada ainda corre
+
+        leitura.SetResult(1);
+        await WaitUntilAsync(() => !coordinator.Ocupado, TimeSpan.FromSeconds(3));
+        Assert.True(aplicado);
+    }
+
+    [Fact]
+    public async Task Uma_recarga_adiada_que_falha_poe_o_estado_em_Error_e_libera_o_Ocupado()
+    {
+        var coordinator = new AutoSaveCoordinator();
+
+        coordinator.NotifyChanged(async () =>
+        {
+            await coordinator.RecarregarAsync<int>(() => throw new InvalidOperationException("boom"), _ => Task.CompletedTask);
+            return true;
+        });
+        await Task.Delay(50);
+        coordinator.NotifyChanged(() => Task.FromResult(true), "pi");
+
+        await WaitUntilAsync(() => coordinator.State == AutoSaveState.Error, TimeSpan.FromSeconds(3));
+        await WaitUntilAsync(() => !coordinator.Ocupado, TimeSpan.FromSeconds(3));
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

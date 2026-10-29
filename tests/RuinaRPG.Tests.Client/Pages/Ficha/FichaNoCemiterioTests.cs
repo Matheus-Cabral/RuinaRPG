@@ -264,6 +264,26 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
     }
 
     [Fact]
+    public async Task Recusa_409_depois_de_um_salvamento_com_recarga_adiada_continua_no_alerta()
+    {
+        // Spec 2.1.0 A.4: o Nome salva e a releitura dele fica adiada (o PI está pendente); o PI recebe 409. Quando tudo
+        // assenta, a releitura adiada não pode ter apagado a recusa do alerta.
+        var cut = await AbrirAsync("Jogador");
+        ResponderErro("/character-sheets/s1/pontos-de-ignicao", HttpStatusCode.Conflict, Recusa);
+
+        await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Nome").Change("Novo"));
+        await Task.Delay(100);
+        await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Pontos de Ignição Atual").Change("20"));
+        await Task.Delay(1500);
+
+        cut.WaitForAssertion(() =>
+        {
+            Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa));
+            Campo(AbaAberta(cut), "Pontos de Ignição Atual").GetAttribute("value").Should().Be("12");
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
     public async Task No_cemiterio_o_avatar_so_mostra_a_imagem()
     {
         FichaNoCemiterio("Morte");
