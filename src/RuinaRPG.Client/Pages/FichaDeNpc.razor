@@ -61,7 +61,7 @@
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
     private bool _historiaLoaded { get => _estado.HistoriaCarregada; set => _estado.HistoriaCarregada = value; }
 
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.TrilhaDaFichaConcedivel(_form.Nome);
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.Trilha(_form.Nome);
 
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Npc);
     private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();

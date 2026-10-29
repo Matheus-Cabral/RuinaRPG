@@ -115,7 +115,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         lista.Add(tipo == "Criatura" ? $"GET {k}/spoils" : $"GET {k}/inventory");
         lista.AddRange(new[] { $"GET {k}/artifacts", $"GET {k}/affections", $"GET {k}/traits" });
         if (tipo == "Personagem")
-            lista.AddRange(new[] { $"GET {k}/diary", "GET /campaigns" });
+            lista.AddRange(new[] { $"GET {k}/diary", jogador ? "GET /campaigns/mine" : "GET /campaigns" });
         if (tipo != "Criatura")
             lista.Add($"GET {k}/racial-traits/pending");
         if (tipo == "Criatura")
@@ -528,7 +528,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
                 custoAlternativo = (int?)null, custoAlternativoAPartirDoGrau = (int?)null, preRequisitos = Array.Empty<string[]>(),
             },
         },
-        "/campaigns" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
+        "/campaigns" or "/campaigns/mine" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
         "/images/mine" or "/campaigns/c1/available-images" => new[]
         {
             new { id = "img1", url = "/img/um.png", createdAt = "2026-10-01T12:00:00Z" },

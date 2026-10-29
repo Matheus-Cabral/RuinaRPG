@@ -38,6 +38,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
     // 2.1.0 (A.1): o jogador dono de um NPC/Criatura concedido vê o caminho pela campanha, como no Personagem; o GM, o de hoje.
     protected static string[] Trilha(string tipo, string papel) => (tipo, papel) switch
     {
+        ("Personagem", "Jogador") => new[] { "Painel", "/", "Minhas Campanhas", "/", "Crônicas de Alker", "/", "Aria" },
         ("Personagem", _) => new[] { "Painel", "/", "Campanhas", "/", "Crônicas de Alker", "/", "Aria" },
         ("NPC", "Jogador") => new[] { "Painel", "/", "Minhas Campanhas", "/", "Crônicas de Alker", "/", "Borin" },
         ("Criatura", "Jogador") => new[] { "Painel", "/", "Minhas Campanhas", "/", "Crônicas de Alker", "/", "Lobo Cinzento" },
@@ -47,6 +48,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     protected static string[] LinksDaTrilha(string tipo, string papel) => (tipo, papel) switch
     {
+        ("Personagem", "Jogador") => new[] { "Painel → painel", "Minhas Campanhas → minhas-campanhas", "Crônicas de Alker → campanhas/c1/jogador", "Aria → #" },
         ("Personagem", _) => new[] { "Painel → painel", "Campanhas → campanhas", "Crônicas de Alker → campanhas/c1", "Aria → #" },
         ("NPC", "Jogador") => new[] { "Painel → painel", "Minhas Campanhas → minhas-campanhas", "Crônicas de Alker → campanhas/c1/jogador", "Borin → #" },
         ("Criatura", "Jogador") => new[] { "Painel → painel", "Minhas Campanhas → minhas-campanhas", "Crônicas de Alker → campanhas/c1/jogador", "Lobo Cinzento → #" },

@@ -37,17 +37,33 @@ public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo
     public string? CampaignName { get; set; }
 
     /// <summary>
-    /// A trilha do NPC e da Criatura (2.1.0 A.1): o GM vê Painel, a lista do GM (<see cref="TipoDeFichaCliente.ListaDoGm"/>)
-    /// e a ficha; o jogador dono, que não abre as páginas do GM, vê Painel, Minhas Campanhas, a campanha e a ficha.
+    /// A trilha da ficha, a mesma para os três tipos. O jogador nunca recebe link de página do GM: vê Painel, Minhas
+    /// Campanhas, a campanha (<c>campanhas/{id}/jogador</c>) e a ficha; no cemitério, Painel e a ficha (a seção Cemitério dele
+    /// fica no Painel). O GM vê a lista do GM (<see cref="TipoDeFichaCliente.ListaDoGm"/>: NPC, Criatura) ou, no Personagem,
+    /// Campanhas e a campanha (a aba Cemitério dela quando a ficha está no cemitério).
     /// </summary>
-    public List<RuinaRPG.Client.Shared.BreadcrumbItem> TrilhaDaFichaConcedivel(string? nome)
+    public List<RuinaRPG.Client.Shared.BreadcrumbItem> Trilha(string? nome)
     {
-        var ficha = new RuinaRPG.Client.Shared.BreadcrumbItem(string.IsNullOrWhiteSpace(nome) ? Tipo.Titulo : nome);
-        if (!IsGmCaller && CampaignId is not null && CampaignName is not null)
-            return new() { new("Painel", "painel"), new("Minhas Campanhas", "minhas-campanhas"), new(CampaignName, $"campanhas/{CampaignId}/jogador"), ficha };
+        var trilha = new List<RuinaRPG.Client.Shared.BreadcrumbItem> { new("Painel", "painel") };
+        var temCampanha = CampaignId is not null && CampaignName is not null;
+        if (!IsGmCaller)
+        {
+            if (temCampanha && !SomenteLeitura)
+            {
+                trilha.Add(new("Minhas Campanhas", "minhas-campanhas"));
+                trilha.Add(new(CampaignName!, $"campanhas/{CampaignId}/jogador"));
+            }
+        }
+        else if (Tipo.ListaDoGm is { } lista)
+            trilha.Add(new(lista.Rotulo, lista.Rota));
+        else if (temCampanha)
+        {
+            trilha.Add(new("Campanhas", "campanhas"));
+            trilha.Add(new(CampaignName!, SomenteLeitura ? $"campanhas/{CampaignId}?aba=cemiterio" : $"campanhas/{CampaignId}"));
+        }
 
-        var lista = Tipo.ListaDoGm!.Value;
-        return new() { new("Painel", "painel"), new(lista.Rotulo, lista.Rota), ficha };
+        trilha.Add(new(string.IsNullOrWhiteSpace(nome) ? Tipo.Titulo : nome));
+        return trilha;
     }
 
     /// <summary>A galeria de imagens: as do GM, ou as liberadas na campanha para o jogador.</summary>

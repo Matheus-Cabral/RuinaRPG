@@ -54,7 +54,7 @@
     private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
 
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.TrilhaDaFichaConcedivel(_form.Nome);
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.Trilha(_form.Nome);
 
     // A Criatura sempre tem Abate e Assistência (0 antes da carga, como sempre mostrou).
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };

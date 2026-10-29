@@ -71,23 +71,7 @@
     private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
     private bool _historiaLoaded { get => _estado.HistoriaCarregada; set => _estado.HistoriaCarregada = value; }
 
-    private string? _campaignName;
-
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs
-    {
-        get
-        {
-            var crumbs = new List<RuinaRPG.Client.Shared.BreadcrumbItem> { new("Painel", "painel") };
-            // No cemitério o jogador volta ao Painel (a seção Cemitério dele) e o GM à aba Cemitério da campanha.
-            var mostraCampanha = _campaignName is not null && _campaignId is not null && (_isGmCaller || !_estado.SomenteLeitura);
-            if (mostraCampanha)
-                crumbs.Add(new("Campanhas", "campanhas"));
-            if (mostraCampanha)
-                crumbs.Add(new(_campaignName!, _estado.SomenteLeitura ? $"campanhas/{_campaignId}?aba=cemiterio" : $"campanhas/{_campaignId}"));
-            crumbs.Add(new(string.IsNullOrWhiteSpace(_form.Nome) ? "Ficha de Personagem" : _form.Nome));
-            return crumbs;
-        }
-    }
+    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.Trilha(_form.Nome);
 
     // Antes da carga o VIS do Personagem mostra 0 (no NPC fica em branco), como sempre mostrou.
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Personagem) { EAPAtual = 0 };
@@ -261,10 +245,11 @@
     private async Task LoadCampaignNameAsync()
     {
         if (_campaignId is null) return;
-        var response = await Http.GetAsync("campaigns");
+        // O jogador não lê a lista do GM: as campanhas dele vêm de campaigns/mine.
+        var response = await Http.GetAsync(_isGmCaller ? "campaigns" : "campaigns/mine");
         if (!response.IsSuccessStatusCode) return;
         var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
-        _campaignName = campaigns.FirstOrDefault(c => c.Id == _campaignId)?.Nome;
+        _estado.CampaignName = campaigns.FirstOrDefault(c => c.Id == _campaignId)?.Nome;
     }
 
     // Relê a ficha pelo auto-save: um campo com edição pendente ou em envio nunca é sobrescrito (spec 2.1.0 A.4).
