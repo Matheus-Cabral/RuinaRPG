@@ -118,7 +118,7 @@
         @if (Model.PossuiRequisitos)
         {
             <Section Title="Requisitos">
-                <RequisitosDePassivaEditor Model="Model.Requisitos" ModoEquipamento="true" OnChanged="OnChangedAsync" />
+                <RequisitosDePassivaEditor Model="Model.Requisitos" ModoEquipamento="true" OnChanged="OnChangedAsync" OnError="OnImageError" />
             </Section>
             <Section Title="Penalidade" Subtitle="Aplicada enquanto os requisitos não forem cumpridos.">
                 <PenalidadeDeEquipamentoEditor Model="Model.Penalidade" OnChanged="OnChangedAsync" />

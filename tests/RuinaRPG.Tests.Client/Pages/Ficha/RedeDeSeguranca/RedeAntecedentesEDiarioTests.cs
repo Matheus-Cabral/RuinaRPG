@@ -106,6 +106,22 @@ public abstract class RedeAntecedentesEDiarioTests : RedeDeSegurancaBase
             AbaAberta(cut).QuerySelectorAll("button[disabled]").Should().BeEmpty();
         }
 
+        // 2.1.0: um /api/rulebook inválido não derruba a aba: a mensagem vai ao alerta da página e os campos continuam.
+        [Theory]
+        [MemberData(nameof(TiposComAntecedentes))]
+        public async Task Estrela_com_resposta_invalida_mostra_erro_e_a_aba_continua(string tipo, string papel)
+        {
+            Responder("/rulebook/estrelas-alkerianas", "{ isto não é um documento");
+            var cut = await RenderFichaAsync(tipo, papel);
+
+            await IrParaAbaAsync(cut, "Antecedentes");
+
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado)
+                .Should().Equal("Não foi possível carregar as Estrelas do Livro de Regras."));
+            AbaAberta(cut).QuerySelectorAll("input[placeholder]").Select(i => i.GetAttribute("placeholder"))
+                .Should().Equal("Escolha uma Estrela", "Escolha um Histórico");
+        }
+
         // O editor de texto só lê o HTML ao ser criado: ele começa com a História que veio na ficha.
         [Theory]
         [MemberData(nameof(TiposComAntecedentes))]

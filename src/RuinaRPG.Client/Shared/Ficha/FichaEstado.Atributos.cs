@@ -93,13 +93,14 @@ public sealed partial class FichaEstado
         await RecarregarEMudarPenalidadesAsync();
     }
 
-    /// <summary>O "—" (vazio) tira o atributo da perícia. Como sempre, a resposta não mexe no alerta.</summary>
+    /// <summary>O "—" (vazio) tira o atributo da perícia. A mensagem de uma recusa vai para o alerta, um salvamento certo o apaga.</summary>
     public async Task AtualizarAtributoDaPericiaAsync(string pericia, object? valor)
     {
         var atual = Pericias.Single(s => s.Pericia == pericia);
         var atributoEscolhido = valor?.ToString();
-        await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"skills/{pericia}"),
+        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"skills/{pericia}"),
             new UpdateSkillRequest(atual.Gasto, string.IsNullOrEmpty(atributoEscolhido) ? null : atributoEscolhido));
+        Erro = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await RecarregarEMudarPenalidadesAsync();
     }
 

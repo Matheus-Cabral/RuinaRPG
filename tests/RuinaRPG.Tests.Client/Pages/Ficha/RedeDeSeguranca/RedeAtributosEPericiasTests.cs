@@ -284,6 +284,21 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/skills/Atletismo {{\"atributoEscolhido\":\"Vigor\",\"gasto\":3}}", recarregaPenalidades: true);
             cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Should().BeEmpty());
         }
+
+        // 2.1.0: trocar o atributo da perícia também mostra a recusa do servidor no alerta (antes era ignorada).
+        [Theory]
+        [InlineData("Personagem")]
+        [InlineData("NPC")]
+        [InlineData("Criatura")]
+        public async Task Recusa_ao_trocar_atributo_da_pericia_mostra_a_mensagem(string tipo)
+        {
+            ResponderErro("/skills/Atletismo", HttpStatusCode.BadRequest, "Atributo não permitido.");
+            var cut = await AbrirAbaAsync(tipo, "GM");
+
+            await EscolherAsync(cut, () => LinhaDaPericia(cut).QuerySelectorAll("td")[3], "—");
+
+            cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Atributo não permitido."));
+        }
     }
 
     /// <summary>Afinidades (Personagem e NPC): adicionar e remover.</summary>

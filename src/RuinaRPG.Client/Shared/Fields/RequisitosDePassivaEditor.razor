@@ -55,7 +55,7 @@
 
 <div class="d-flex align-center" style="gap:4px">
     <div style="flex:1">
-        <EstrelaSelect Value="@Model.Estrela" ValueChanged="OnEstrelaChangedAsync" />
+        <EstrelaSelect Value="@Model.Estrela" ValueChanged="OnEstrelaChangedAsync" OnError="OnError" />
     </div>
     <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="LimparEstrelaAsync" title="Limpar Estrela" aria-label="Limpar Estrela" />
 </div>
@@ -145,6 +145,9 @@
 @code {
     [Parameter, EditorRequired] public RequisitosFormModel Model { get; set; } = null!;
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Recebe a mensagem de um campo que não pôde carregar (hoje, as Estrelas); o chamador a mostra no alerta da tela.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
     /// <summary>Equipamento (Arma, Armadura, Escudo, Artefato): só Vocação/Classe, Afinidade, Estrela, Atributos, Sub-Atributos e Perícias.</summary>
     [Parameter] public bool ModoEquipamento { get; set; }
 

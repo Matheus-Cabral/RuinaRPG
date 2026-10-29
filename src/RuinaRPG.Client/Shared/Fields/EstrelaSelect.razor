@@ -47,6 +47,9 @@
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
+    /// <summary>Recebe a mensagem quando o Livro de Regras não responde com o documento das Estrelas.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
     private bool _open;
     private bool _loading;
     private RulebookSectionResponse? _card;
@@ -57,8 +60,15 @@
     public static readonly string[] Estrelas =
         ["Aeurer", "Liora", "Vaelen", "Theron", "Maetus", "Almora", "Elvani", "Sareli", "Gaelion", "Sadir"];
 
-    protected override async Task OnInitializedAsync() =>
-        _cartoes = (await BuscarCartoesAsync()) ?? new();
+    protected override async Task OnInitializedAsync()
+    {
+        var cartoes = await BuscarCartoesAsync();
+        if (cartoes is null)
+            await OnError.InvokeAsync(MensagemDeErro);
+        _cartoes = cartoes ?? new();
+    }
+
+    private const string MensagemDeErro = "Não foi possível carregar as Estrelas do Livro de Regras.";
 
     // Sem o cartão (Livro de Regras fora do ar ou cartão removido), o rótulo cai para o próprio Nome.
     private string Rotulo(string? nome)
@@ -93,7 +103,7 @@
             var documento = await Http.GetFromJsonAsync<RulebookDocumentResponse>("rulebook/estrelas-alkerianas");
             return documento?.Sections;
         }
-        catch (HttpRequestException)
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException)
         {
             return null;
         }
@@ -105,7 +115,9 @@
         _loading = true;
         _open = true;
         var cartoes = await BuscarCartoesAsync();
-        if (cartoes is not null)
+        if (cartoes is null)
+            await OnError.InvokeAsync(MensagemDeErro);
+        else
             _cartoes = cartoes;
         _card = cartoes is null ? null : CartaoDe(cartoes, Value!);
         _loading = false;

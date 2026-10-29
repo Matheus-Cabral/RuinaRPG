@@ -86,7 +86,7 @@
                 </InfoPopup>
             </TitleInfo>
             <ChildContent>
-                <RequisitosDePassivaEditor Model="_form.Requisitos" OnChanged="NotifySavedAsync" />
+                <RequisitosDePassivaEditor Model="_form.Requisitos" OnChanged="NotifySavedAsync" OnError="@(e => _errorMessage = e)" />
             </ChildContent>
         </Section>
     }

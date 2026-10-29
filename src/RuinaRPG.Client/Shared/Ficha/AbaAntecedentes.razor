@@ -9,7 +9,7 @@
 @if (Estado.Tipo.TemAntecedentes)
 {
     <Section Title="Estrela e Histórico">
-        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" />
+        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" OnError="@Estado.MostrarErro" />
         <HistoricoSelect @bind-Value="Formulario.HistoricoId" @bind-Value:after="MudouAsync" />
     </Section>
     <Section>
