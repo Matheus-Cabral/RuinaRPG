@@ -53,12 +53,24 @@
     protected override Task OnInitializedAsync()
     {
         Notifier.Changed += OnNotifierChanged;
+        Notifier.CampanhasDoJogadorAlteradas += OnCampanhasDoJogadorAlteradas;
         return LoadAsync();
     }
 
     private void OnNotifierChanged() => _ = InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Notifier.Changed -= OnNotifierChanged;
+    // Campanha R0018: o GM adicionou ou removeu o jogador de uma campanha.
+    private void OnCampanhasDoJogadorAlteradas() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Notifier.Changed -= OnNotifierChanged;
+        Notifier.CampanhasDoJogadorAlteradas -= OnCampanhasDoJogadorAlteradas;
+    }
 
     private async Task LoadAsync()
     {

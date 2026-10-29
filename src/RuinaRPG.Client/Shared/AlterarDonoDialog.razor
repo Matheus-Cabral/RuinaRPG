@@ -1,0 +1,59 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using MudBlazor
+@using RuinaRPG.Contracts.Campaigns
+@using RuinaRPG.Contracts.Fichas
+@*
+    Campanha R0019: passa uma ficha de NPC/Criatura do GM para um membro da campanha, ou a devolve ao GM (sem dono).
+    O diálogo não conhece o tipo da ficha: quem o abre passa o endereço pronto (PUT {rota}/{id}/dono) e os membros.
+    Fecha com sucesso depois do PUT; a recusa do servidor fica no diálogo.
+*@
+<MudDialog>
+    <DialogContent>
+        <DismissibleAlert @bind-Message="_errorMessage" Class="mb-3" />
+        <MudSelect T="string" Label="Novo dono" @bind-Value="_donoId">
+            <MudSelectItem Value="@SemDono">GM (sem dono)</MudSelectItem>
+            @foreach (var membro in Membros)
+            {
+                <MudSelectItem Value="@membro.UserId">@membro.Nickname</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SalvarAsync">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string SemDono = "";
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>O endereço pronto do PUT (<c>TipoDeFichaCliente.Url(id, "dono")</c>).</summary>
+    [Parameter, EditorRequired] public string Url { get; set; } = "";
+
+    /// <summary>Os membros da campanha (só contas Ativas chegam aqui: a saída da conta tira o membro).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<CampaignMemberResponse> Membros { get; set; } = [];
+
+    /// <summary>O dono de hoje, ou <c>null</c> se a ficha é do GM.</summary>
+    [Parameter] public string? DonoAtualId { get; set; }
+
+    private string _donoId = SemDono;
+    private string? _errorMessage;
+
+    protected override void OnInitialized() => _donoId = DonoAtualId ?? SemDono;
+
+    private async Task SalvarAsync()
+    {
+        var response = await Http.PutAsJsonAsync(Url, new AlterarDonoRequest(_donoId == SemDono ? null : _donoId));
+        if (!response.IsSuccessStatusCode)
+        {
+            var recusa = await response.Content.ReadAsStringAsync();
+            _errorMessage = string.IsNullOrWhiteSpace(recusa) ? "Não foi possível alterar o dono." : recusa;
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

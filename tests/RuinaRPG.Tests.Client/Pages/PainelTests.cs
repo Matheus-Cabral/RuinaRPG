@@ -70,4 +70,33 @@ public class PainelTests : MudBunitContext
             cut.Find("[data-testid=cemiterio]").TextContent.Should().Contain("Morta");
         });
     }
+
+    [Fact]
+    public async Task Aviso_de_campanhas_recarrega_o_painel()
+    {
+        var fichas = new List<object> { Resumo("s1", "Aria", cemiterio: false) };
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("jogador");
+        authContext.SetRoles("Jogador");
+        Services.AddBlazoredLocalStorage();
+        Services.AddScoped<AuthStateService>();
+        Services.AddScoped<TokenAuthenticationStateProvider>();
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("auth/me")
+                ? new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new { Id = "u", Nickname = "Ana", Email = "a@x.com", Role = "Jogador", IsRulesAuditor = false })
+                }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(fichas) }));
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        var cut = Render<Painel>();
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Aria"));
+        cut.Markup.Should().NotContain("Cemitério");
+
+        fichas.Clear();
+        fichas.Add(Resumo("s1", "Aria", cemiterio: true, "JogadorRemovido"));
+        await cut.InvokeAsync(() => NotificationConnection.RaiseCampanhasDoJogadorAlteradasAsync());
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Cemitério"));
+    }
 }

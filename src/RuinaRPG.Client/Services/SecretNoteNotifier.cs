@@ -38,6 +38,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     public event Action<string>? FichaNoCemiterioAlterada;
 
     /// <summary>
+    /// The player entered or left a campaign (Campanha R0018, no payload): the panel, Minhas Campanhas and the open
+    /// campaign reload. May be raised off the renderer's context — use InvokeAsync.
+    /// </summary>
+    public event Action? CampanhasDoJogadorAlteradas;
+
+    /// <summary>
     /// Idempotent, and safe to call on every navigation: MainLayout does exactly that, which is
     /// also what brings a connection that gave up reconnecting back to life.
     /// </summary>
@@ -63,7 +69,7 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
         await refresh();
         try
         {
-            await connection.StartAsync(OnReceivedAsync, refresh, OnCondicoesAlteradasAsync, OnFichaNoCemiterioAlteradaAsync);
+            await connection.StartAsync(OnReceivedAsync, refresh, OnCondicoesAlteradasAsync, OnFichaNoCemiterioAlteradaAsync, OnCampanhasDoJogadorAlteradasAsync);
         }
         catch (Exception)
         {
@@ -112,6 +118,12 @@ public class SecretNoteNotifier(HttpClient http, INotificationConnection connect
     private Task OnFichaNoCemiterioAlteradaAsync(string sheetId)
     {
         FichaNoCemiterioAlterada?.Invoke(sheetId);
+        return Task.CompletedTask;
+    }
+
+    private Task OnCampanhasDoJogadorAlteradasAsync()
+    {
+        CampanhasDoJogadorAlteradas?.Invoke();
         return Task.CompletedTask;
     }
 

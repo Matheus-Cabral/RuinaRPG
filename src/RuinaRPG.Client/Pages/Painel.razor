@@ -1,4 +1,6 @@
 @page "/painel"
+@implements IDisposable
+@inject RuinaRPG.Client.Services.SecretNoteNotifier Notifier
 @inject HttpClient Http
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
@@ -128,6 +130,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Notifier.CampanhasDoJogadorAlteradas += OnCampanhasDoJogadorAlteradas;
         var meResponse = await Http.GetAsync("auth/me");
         if (!meResponse.IsSuccessStatusCode)
             return;
@@ -136,6 +139,16 @@
         if (_me?.Role == "Jogador")
             await LoadMyCharactersAsync();
     }
+
+    // Campanha R0018: o GM tirou o jogador de uma campanha (ou o devolveu): as fichas e o cemitério mudaram.
+    private void OnCampanhasDoJogadorAlteradas() => _ = InvokeAsync(async () =>
+    {
+        if (_me?.Role == "Jogador")
+            await LoadMyCharactersAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Notifier.CampanhasDoJogadorAlteradas -= OnCampanhasDoJogadorAlteradas;
 
     private async Task LoadMyCharactersAsync()
     {
