@@ -62,12 +62,35 @@ public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
         return connection;
     }
 
-    private static async Task<bool> WaitForParticipantsChangedAsync(HubConnection connection)
+    private static readonly TimeSpan Arrives = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Subscribes before the triggering request; the caller starts the <see cref="Arrives"/> window only after the
+    /// request has answered (as the other hub tests do). Starting it before let a slow request under CPU load —
+    /// PUTs of 5 s were seen in CI — eat the whole window before the server even sent the push.
+    /// </summary>
+    private sealed class ParticipantsChangedListener : IDisposable
     {
-        var tcs = new TaskCompletionSource();
-        using var registration = connection.On("ParticipantsChanged", () => tcs.TrySetResult());
-        var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(5)));
-        return completed == tcs.Task;
+        private readonly TaskCompletionSource _arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly IDisposable _registration;
+
+        public ParticipantsChangedListener(HubConnection connection) =>
+            _registration = connection.On("ParticipantsChanged", () => _arrived.TrySetResult());
+
+        public async Task<bool> ArrivedAsync()
+        {
+            try
+            {
+                await _arrived.Task.WaitAsync(Arrives);
+                return true;
+            }
+            catch (TimeoutException)
+            {
+                return false;
+            }
+        }
+
+        public void Dispose() => _registration.Dispose();
     }
 
     /// <summary>
@@ -107,13 +130,13 @@ public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
             new AddParticipantRequest(sheetId, null, null, 8)));
 
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
-        var waitTask = WaitForParticipantsChangedAsync(connection);
+        using var listener = new ParticipantsChangedListener(connection);
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidCharacterUpdate("Vann Astrel", 5)));
         updateResponse.EnsureSuccessStatusCode();
 
-        (await waitTask).Should().BeTrue("updating a live-sourced CharacterSheet participant should broadcast ParticipantsChanged to the encounter's group");
+        (await listener.ArrivedAsync()).Should().BeTrue("updating a live-sourced CharacterSheet participant should broadcast ParticipantsChanged to the encounter's group");
     }
 
     [Fact]
@@ -139,13 +162,13 @@ public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
         added!.IsLiveSourced.Should().BeTrue();
 
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
-        var waitTask = WaitForParticipantsChangedAsync(connection);
+        using var listener = new ParticipantsChangedListener(connection);
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{npcId}", gmToken,
             ValidNpcUpdate("Goblin Concedido", 7)));
         updateResponse.EnsureSuccessStatusCode();
 
-        (await waitTask).Should().BeTrue("updating a granted (live-sourced) NpcSheet participant should broadcast ParticipantsChanged to the encounter's group");
+        (await listener.ArrivedAsync()).Should().BeTrue("updating a granted (live-sourced) NpcSheet participant should broadcast ParticipantsChanged to the encounter's group");
     }
 
     [Fact]
@@ -169,13 +192,13 @@ public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
         added!.IsLiveSourced.Should().BeTrue();
 
         await using var connection = await ConnectAndJoinAsync(gmToken, encounterId);
-        var waitTask = WaitForParticipantsChangedAsync(connection);
+        using var listener = new ParticipantsChangedListener(connection);
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken,
             ValidCreatureUpdate("Lobo Concedido", 7)));
         updateResponse.EnsureSuccessStatusCode();
 
-        (await waitTask).Should().BeTrue("updating a granted (live-sourced) CreatureSheet participant should broadcast ParticipantsChanged to the encounter's group");
+        (await listener.ArrivedAsync()).Should().BeTrue("updating a granted (live-sourced) CreatureSheet participant should broadcast ParticipantsChanged to the encounter's group");
     }
 
     [Fact]
@@ -195,13 +218,13 @@ public class EncounterHubTests(ApiFixture fixture) : ApiTestBase(fixture)
             new AddParticipantRequest(sheetId, null, null, 8)));
 
         await using var connection = await ConnectWithQueryStringTokenAndJoinAsync(gmToken, encounterId);
-        var waitTask = WaitForParticipantsChangedAsync(connection);
+        using var listener = new ParticipantsChangedListener(connection);
 
         var updateResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidCharacterUpdate("Vann Querystring", 3)));
         updateResponse.EnsureSuccessStatusCode();
 
-        (await waitTask).Should().BeTrue("a connection authenticated purely via ?access_token= query string should still join the group and receive broadcasts");
+        (await listener.ArrivedAsync()).Should().BeTrue("a connection authenticated purely via ?access_token= query string should still join the group and receive broadcasts");
     }
 
     [Fact]
