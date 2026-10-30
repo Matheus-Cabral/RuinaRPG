@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET 8, ASP.NET Core MVC, EF Core + PostgreSQL (Testcontainers), SignalR, Blazor WebAssembly + MudBlazor 9.9, xUnit + bUnit.
 
-**Spec:** `docs/superpowers/specs/2026-10-24-versao-2-1-0-cemiterio-design.md` (ler inteiro antes de qualquer tarefa).
+**Spec:** `docs/superpowers/archive/specs/2026-10-24-versao-2-1-0-cemiterio-design.md` (ler inteiro antes de qualquer tarefa).
 
 ## Global Constraints
 

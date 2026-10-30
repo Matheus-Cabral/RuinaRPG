@@ -19,7 +19,14 @@
    **Atencao:** o grupo `docker` equivale a root **nesta VM de desenvolvimento**. Aceito, porque o runner precisa dirigir o clone.
    **Verificacao:** `id ghrunner` lista `docker`.
 
-3. Instale o .NET 8 SDK se faltar:
+3. Instale o `gh` (GitHub CLI) **para todos os usuarios** — os jobs `report`/`deploy` o usam como `ghrunner`. Um `gh` em `~/.local/bin` de outro usuario nao serve (o deploy da 2.1.0 falhou por isso):
+   ```bash
+   command -v gh >/dev/null && sudo install -m 755 -o root -g root "$(command -v gh)" /usr/local/bin/gh || sudo apt-get install -y gh
+   sudo -u ghrunner bash -lc 'command -v gh && gh --version | head -1'
+   ```
+   **Verificacao:** a ultima linha imprime `/usr/local/bin/gh` (ou `/usr/bin/gh`) e a versao.
+
+   Instale tambem o .NET 8 SDK se faltar:
    ```bash
    dotnet --version || sudo apt-get install -y dotnet-sdk-8.0
    ```

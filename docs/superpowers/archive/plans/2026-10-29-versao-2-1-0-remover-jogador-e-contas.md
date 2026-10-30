@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET 8, ASP.NET Core + Identity, EF Core/PostgreSQL, SignalR, Blazor WASM + MudBlazor 9.9, xUnit + bUnit + Testcontainers.
 
-**Spec:** `docs/superpowers/specs/2026-10-29-versao-2-1-0-remover-jogador-e-contas-design.md` (ler inteiro, em especial a seção **Estrutura**). Base: `2026-10-24-versao-2-1-0-cemiterio-design.md` (já implementado).
+**Spec:** `docs/superpowers/archive/specs/2026-10-29-versao-2-1-0-remover-jogador-e-contas-design.md` (ler inteiro, em especial a seção **Estrutura**). Base: `2026-10-24-versao-2-1-0-cemiterio-design.md` (já implementado).
 
 ## Global Constraints
 

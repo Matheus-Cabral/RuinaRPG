@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET 8, ASP.NET Core, EF Core/PostgreSQL, Blazor WASM + MudBlazor 9.9, xUnit + bUnit + Testcontainers.
 
-**Spec:** `docs/superpowers/specs/2026-10-29-versao-2-1-0-correcoes-e-acabamento-design.md` (aprovado; ler a seção Estrutura e as "chamadas minhas").
+**Spec:** `docs/superpowers/archive/specs/2026-10-29-versao-2-1-0-correcoes-e-acabamento-design.md` (aprovado; ler a seção Estrutura e as "chamadas minhas").
 
 ## Global Constraints
 
